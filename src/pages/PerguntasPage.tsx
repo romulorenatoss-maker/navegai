@@ -251,13 +251,13 @@ export default function PerguntasPage() {
 
 
 
-      {/* Filter by tipo_servico */}
+      {/* Filter by checklist title */}
       <div className="bg-card border border-border rounded-lg shadow-card mb-4">
         <div className="px-4 py-3 border-b border-border">
-          <p className="text-caption text-muted-foreground uppercase tracking-wider font-medium">Filtrar por Tipo de Serviço</p>
+          <p className="text-caption text-muted-foreground uppercase tracking-wider font-medium">Filtrar por Título</p>
         </div>
         <div className="divide-y divide-border">
-          {Array.from(summaryByTipo.entries()).map(([key, val]) => (
+          {Array.from(summaryByChecklist.entries()).map(([key, val]) => (
             <button key={key} type="button" onClick={() => setFiltroTipoServico(prev => prev === key ? null : key)}
               className={`flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors ${
                 filtroTipoServico === key ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/50"}`}>
@@ -267,7 +267,7 @@ export default function PerguntasPage() {
                 val.totalNota >= 100 ? "badge-complete" : val.totalNota >= 50 ? "badge-active" : "badge-pending"}`}>{val.totalNota} pts</span>
             </button>
           ))}
-          {summaryByTipo.size === 0 && !isLoading && <p className="px-4 py-6 text-center text-body text-muted-foreground">Nenhuma pergunta cadastrada.</p>}
+          {summaryByChecklist.size === 0 && !isLoading && <p className="px-4 py-6 text-center text-body text-muted-foreground">Nenhuma pergunta cadastrada.</p>}
         </div>
       </div>
 
