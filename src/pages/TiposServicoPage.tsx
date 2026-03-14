@@ -27,24 +27,25 @@ export default function TiposServicoPage() {
   const [editing, setEditing] = useState<TipoServico | null>(null);
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
-  const [setorId, setSetorId] = useState<string>("");
+  const [checklistId, setChecklistId] = useState<string>("");
   const [selectedTiposAvaliacao, setSelectedTiposAvaliacao] = useState<string[]>([]);
 
   const { data: tipos = [], isLoading } = useQuery({
     queryKey: ["tipos_servico"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("tipos_servico").select("*, setores(nome)").order("nome");
+      const { data, error } = await (supabase as any).from("tipos_servico").select("*, setores(nome), checklists!tipos_servico_checklist_id_fkey(titulo)").order("nome");
       if (error) throw error;
       return data;
     },
   });
 
-  const { data: setores = [] } = useQuery({
-    queryKey: ["setores"],
+  // Fetch all checklists for the selector
+  const { data: allChecklists = [] } = useQuery({
+    queryKey: ["all_checklists"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("setores").select("*").eq("ativo", true).order("nome");
+      const { data, error } = await supabase.from("checklists").select("id, titulo").eq("ativo", true).order("titulo");
       if (error) throw error;
-      return data;
+      return data || [];
     },
   });
 
@@ -75,14 +76,14 @@ export default function TiposServicoPage() {
 
   const upsert = useMutation({
     mutationFn: async () => {
-      const payload = { nome, descricao, setor_id: setorId || null };
+      const payload = { nome, descricao, checklist_id: checklistId || null, setor_id: null };
       let tipoId: string;
       if (editing) {
-        const { error } = await supabase.from("tipos_servico").update(payload).eq("id", editing.id);
+        const { error } = await (supabase as any).from("tipos_servico").update(payload).eq("id", editing.id);
         if (error) throw error;
         tipoId = editing.id;
       } else {
-        const { data, error } = await supabase.from("tipos_servico").insert(payload).select("id").single();
+        const { data, error } = await (supabase as any).from("tipos_servico").insert(payload).select("id").single();
         if (error) throw error;
         tipoId = data.id;
       }
@@ -95,6 +96,7 @@ export default function TiposServicoPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tipos_servico"] });
+      queryClient.invalidateQueries({ queryKey: ["all_checklists"] });
       toast.success(editing ? "Tipo de serviço atualizado." : "Tipo de serviço criado.");
       closeDialog();
     },
@@ -119,8 +121,8 @@ export default function TiposServicoPage() {
     onError: (err: any) => toast.error(err.message),
   });
 
-  const openCreate = () => { setEditing(null); setNome(""); setDescricao(""); setSetorId(""); setSelectedTiposAvaliacao([]); setDialogOpen(true); };
-  const openEdit = (t: TipoServico) => { setEditing(t); setNome(t.nome); setDescricao(t.descricao || ""); setSetorId(t.setor_id || ""); setDialogOpen(true); };
+  const openCreate = () => { setEditing(null); setNome(""); setDescricao(""); setChecklistId(""); setSelectedTiposAvaliacao([]); setDialogOpen(true); };
+  const openEdit = (t: any) => { setEditing(t); setNome(t.nome); setDescricao(t.descricao || ""); setChecklistId(t.checklist_id || ""); setDialogOpen(true); };
   const closeDialog = () => { setDialogOpen(false); setEditing(null); setSelectedTiposAvaliacao([]); };
 
   const toggleTA = (taId: string) => {
@@ -132,7 +134,7 @@ export default function TiposServicoPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-section font-semibold text-foreground">Tipos de Serviço</h1>
-          <p className="text-body text-muted-foreground">Configure tipos de serviço e vincule tipos de avaliação.</p>
+          <p className="text-body text-muted-foreground">Configure tipos de serviço e vincule checklists de avaliação.</p>
         </div>
         <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Novo Tipo</Button>
       </div>
@@ -141,7 +143,8 @@ export default function TiposServicoPage() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-border">
-              <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Nome / Setor</th>
+              <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Nome</th>
+              <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Checklist</th>
               <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Avaliações</th>
               <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Perguntas</th>
               <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Por Setor</th>
@@ -151,10 +154,10 @@ export default function TiposServicoPage() {
           </thead>
           <tbody className="divide-y divide-border">
             {isLoading ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Carregando...</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">Carregando...</td></tr>
             ) : tipos.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhum tipo cadastrado.</td></tr>
-            ) : tipos.map((t) => (
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhum tipo cadastrado.</td></tr>
+            ) : tipos.map((t: any) => (
               <TipoRow key={t.id} t={t} onToggle={() => toggleAtivo.mutate(t)} onEdit={() => openEdit(t)} onRemove={() => remove.mutate(t.id)} />
             ))}
           </tbody>
@@ -168,13 +171,15 @@ export default function TiposServicoPage() {
             <div className="space-y-1.5"><Label>Nome</Label><Input value={nome} onChange={e => setNome(e.target.value)} required /></div>
             <div className="space-y-1.5"><Label>Descrição</Label><Textarea value={descricao} onChange={e => setDescricao(e.target.value)} /></div>
             <div className="space-y-1.5">
-              <Label>Setor</Label>
-              <Select value={setorId} onValueChange={setSetorId}>
-                <SelectTrigger><SelectValue placeholder="Selecione um setor" /></SelectTrigger>
+              <Label>Checklist Associado</Label>
+              <Select value={checklistId} onValueChange={setChecklistId}>
+                <SelectTrigger><SelectValue placeholder="Selecione um checklist" /></SelectTrigger>
                 <SelectContent>
-                  {setores.map(s => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {allChecklists.map(c => <SelectItem key={c.id} value={c.id}>{c.titulo}</SelectItem>)}
                 </SelectContent>
               </Select>
+              <p className="text-caption text-muted-foreground">O checklist define as perguntas carregadas na avaliação deste serviço.</p>
             </div>
 
             {/* Evaluation Types */}
@@ -198,8 +203,8 @@ export default function TiposServicoPage() {
               )}
             </div>
 
-            {/* Checklist Templates */}
-            <ChecklistTemplateManager tipoServicoId={editing?.id || null} />
+            {/* Checklist Questions Manager */}
+            <ChecklistTemplateManager checklistId={checklistId === "none" ? null : checklistId || null} />
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={closeDialog}>Cancelar</Button>
@@ -233,15 +238,23 @@ function TipoRow({ t, onToggle, onEdit, onRemove }: { t: any; onToggle: () => vo
     },
   });
 
-  // Fetch question breakdown by sector
+  // Fetch question breakdown by sector (using checklist_id if available)
   const { data: breakdown } = useQuery<SectorBreakdown>({
-    queryKey: ["tipo_servico_breakdown", t.id],
+    queryKey: ["tipo_servico_breakdown", t.id, t.checklist_id],
     queryFn: async () => {
-      const { data: perguntas } = await supabase
+      let query = supabase
         .from("perguntas_avaliacao")
         .select("peso, setor_avaliado_id, setores!perguntas_avaliacao_setor_avaliado_id_fkey(nome)")
-        .eq("ativo", true)
-        .eq("tipo_servico_id", t.id);
+        .eq("ativo", true);
+      
+      // If service type has a checklist, load questions by checklist_id
+      if (t.checklist_id) {
+        query = (query as any).eq("checklist_id", t.checklist_id);
+      } else {
+        query = query.eq("tipo_servico_id", t.id);
+      }
+
+      const { data: perguntas } = await query;
 
       const result: SectorBreakdown = { totalPerguntas: 0, totalPontos: 0, atendimentoPerguntas: 0, atendimentoPontos: 0, tecnicoPerguntas: 0, tecnicoPontos: 0 };
       if (!perguntas) return result;
@@ -263,13 +276,15 @@ function TipoRow({ t, onToggle, onEdit, onRemove }: { t: any; onToggle: () => vo
   });
 
   const b = breakdown || { totalPerguntas: 0, totalPontos: 0, atendimentoPerguntas: 0, atendimentoPontos: 0, tecnicoPerguntas: 0, tecnicoPontos: 0 };
+  const checklistNome = t.checklists?.titulo || null;
 
   return (
     <tr className="hover:bg-muted/50 transition-colors">
       <td className="px-4 py-3">
         <div className="text-body font-medium text-foreground">{t.nome}</div>
-        <div className="text-caption text-muted-foreground">{t.setores?.nome || "—"}</div>
+        {t.descricao && <div className="text-caption text-muted-foreground">{t.descricao}</div>}
       </td>
+      <td className="px-4 py-3 text-caption text-muted-foreground">{checklistNome || "—"}</td>
       <td className="px-4 py-3 text-caption text-muted-foreground">{links.length > 0 ? links.join(", ") : "—"}</td>
       <td className="px-4 py-3">
         <div className="text-body font-medium text-foreground">{b.totalPerguntas}</div>
