@@ -55,6 +55,7 @@ const STEPS = [
   { label: "Tipo de Serviço", description: "Selecione o tipo" },
   { label: "Dados da OS", description: "Número, cliente e CPF" },
   { label: "Avaliado", description: "Colaborador a avaliar" },
+  { label: "Avaliação", description: "Responda as perguntas" },
 ];
 
 function formatCpf(value: string): string {
