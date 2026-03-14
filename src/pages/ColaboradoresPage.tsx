@@ -157,14 +157,6 @@ export default function ColaboradoresPage() {
 
       await syncRole(editing.user_id, cargo);
       await saveSetores(editing.id);
-
-      // Save tipos de serviço if avaliador
-      if (cargo === "avaliador") {
-        await saveTiposServico(editing.id);
-      } else {
-        // Remove any existing tipo assignments if no longer avaliador
-        await supabase.from("avaliador_tipos_servico").delete().eq("avaliador_id", editing.id);
-      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profiles"] });
