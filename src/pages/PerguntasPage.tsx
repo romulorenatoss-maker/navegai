@@ -99,12 +99,25 @@ export default function PerguntasPage() {
     queryFn: async () => { const { data } = await supabase.from("tipos_servico").select("*").eq("ativo", true).order("nome"); return data || []; },
   });
 
-  const { data: tiposAvaliacao = [] } = useQuery({
-    queryKey: ["tipos_avaliacao_ativos"],
+  // Query sectors that have evaluator users
+  const { data: setoresComAvaliadores = [] } = useQuery({
+    queryKey: ["setores_com_avaliadores"],
     queryFn: async () => {
-      const { data } = await (supabase as any).from("tipos_avaliacao").select("*").eq("ativo", true).order("nome");
-      return (data || []) as TipoAvaliacao[];
+      // Get user_ids with 'avaliador' role
+      const { data: avaliadorRoles } = await supabase.from("user_roles").select("user_id").eq("role", "avaliador");
+      if (!avaliadorRoles?.length) return setores;
+      const avaliadorUserIds = avaliadorRoles.map(r => r.user_id);
+      // Get profile_ids for those users
+      const { data: profiles } = await supabase.from("profiles").select("id").in("user_id", avaliadorUserIds);
+      if (!profiles?.length) return setores;
+      const profileIds = profiles.map(p => p.id);
+      // Get distinct setor_ids from colaborador_setores
+      const { data: colabSetores } = await supabase.from("colaborador_setores").select("setor_id").in("profile_id", profileIds);
+      if (!colabSetores?.length) return setores;
+      const setorIds = [...new Set(colabSetores.map(cs => cs.setor_id))];
+      return setores.filter(s => setorIds.includes(s.id));
     },
+    enabled: setores.length > 0,
   });
 
   // avaliadores query removed - no longer needed for question form
