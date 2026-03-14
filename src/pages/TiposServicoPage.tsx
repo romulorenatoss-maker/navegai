@@ -279,11 +279,13 @@ function TipoRow({ t, onToggle, onEdit, onRemove }: { t: any; onToggle: () => vo
         <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${t.ativo ? "badge-complete" : "badge-expired"}`}>{t.ativo ? "Ativo" : "Inativo"}</span>
       </td>
       <td className="px-4 py-3 text-right">
-        <div className="flex items-center justify-end gap-1">
-          <Button variant="ghost" size="sm" onClick={onToggle} className="press-effect">{t.ativo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}</Button>
-          <Button variant="ghost" size="sm" onClick={onEdit} className="press-effect"><Pencil className="w-4 h-4" /></Button>
-          <Button variant="ghost" size="sm" onClick={onRemove} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
-        </div>
+        {isAdmin && (
+          <div className="flex items-center justify-end gap-1">
+            <Button variant="ghost" size="sm" onClick={onToggle} className="press-effect">{t.ativo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}</Button>
+            <Button variant="ghost" size="sm" onClick={onEdit} className="press-effect"><Pencil className="w-4 h-4" /></Button>
+            <Button variant="ghost" size="sm" onClick={onRemove} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
+          </div>
+        )}
       </td>
     </tr>
   );
