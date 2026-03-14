@@ -1349,7 +1349,7 @@ export default function AvaliacaoOSPage() {
     addLine();
     addText("Resumo", 12, "bold");
     addText(`Total de perguntas: ${evalPerguntas.length}`, 10);
-    addText(`Respondidas: ${evalAnsweredCount}`, 10);
+    addText(`Respondidas: ${globalAnsweredCount}`, 10);
     if (evalMaxScore > 0) {
       addText(`Pontuação: ${evalTotalScore}/${evalMaxScore} pts (${((evalTotalScore / evalMaxScore) * 100).toFixed(1)}%)`, 10, "bold");
     }
