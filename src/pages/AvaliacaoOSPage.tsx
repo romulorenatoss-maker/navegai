@@ -532,6 +532,47 @@ export default function AvaliacaoOSPage() {
         </div>
       </div>
 
+      {/* Pending Evaluations List */}
+      {!os && pendingAvaliacoes.length > 0 && (
+        <div className="bg-card border border-border rounded-lg shadow-card mb-6">
+          <div className="p-4 border-b border-border flex items-center gap-2">
+            <Clock className="w-4 h-4 text-warning" />
+            <h2 className="text-body font-semibold text-foreground">Avaliações Pendentes</h2>
+            <span className="text-caption text-muted-foreground ml-auto">{pendingAvaliacoes.length} pendente(s)</span>
+          </div>
+          <div className="divide-y divide-border">
+            {pendingAvaliacoes.map((a: any) => (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => {
+                  const osNum = a.ordens_servico?.numero_os;
+                  if (osNum) {
+                    setSearchQuery(osNum);
+                    searchOS(osNum, false);
+                  }
+                }}
+                className="w-full flex items-center gap-4 px-4 py-3 text-left hover:bg-muted/50 transition-colors press-effect"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-body font-medium text-primary font-tabular">OS #{a.ordens_servico?.numero_os}</span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border badge-active">Em andamento</span>
+                  </div>
+                  <p className="text-caption text-muted-foreground mt-0.5">
+                    {a.ordens_servico?.cliente_nome || "Sem cliente"} • Avaliado: {a._colaborador_nome}
+                  </p>
+                </div>
+                <div className="text-caption text-muted-foreground font-tabular shrink-0">
+                  {new Date(a.created_at).toLocaleDateString("pt-BR")}
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Create OS Wizard Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className={step === 3 ? "max-w-2xl" : "max-w-lg"}>
