@@ -1310,6 +1310,7 @@ export default function AvaliacaoOSPage() {
     setEvalEvidencias({});
     setEvalFinalized(false);
     setEvalScore(null);
+    autoFinalizeTriggered.current = false;
   };
 
   const resetForm = () => {
