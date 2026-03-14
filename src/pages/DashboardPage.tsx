@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ClipboardCheck, Clock, CheckCircle2, Trophy, Users, BarChart3,
-  CalendarIcon, Filter
+  CalendarIcon, Filter, AlertCircle, Hourglass
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
