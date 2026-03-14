@@ -1647,12 +1647,12 @@ export default function AvaliacaoOSPage() {
               <div className="flex items-center gap-2 text-xs">
                 <Progress value={evalProgressPercent} className="h-1.5 w-20 sm:w-28" />
                 <span className="font-medium text-foreground font-tabular">{evalProgressPercent}%</span>
-                {!evalFinalized && autoSaving && (
+                {!isLocked && autoSaving && (
                   <span className="text-muted-foreground flex items-center gap-1">
                     <Loader2 className="w-3 h-3 animate-spin" /> Salvando
                   </span>
                 )}
-                {!evalFinalized && !autoSaving && evalAnsweredCount > 0 && (
+                {!isLocked && !autoSaving && evalAnsweredCount > 0 && (
                   <span className="text-success flex items-center gap-1">
                     <Check className="w-3 h-3" /> Salvo
                   </span>
@@ -1664,14 +1664,14 @@ export default function AvaliacaoOSPage() {
                     <Download className="w-3 h-3 mr-1" /> PDF
                   </Button>
                 )}
-                {!evalFinalized && (
+                {!isLocked && (
                   <Button size="sm" onClick={handleFinalizeEvaluation} disabled={evalProgressPercent < 100 || evalSubmitting} className="press-effect h-8 text-xs px-3">
                     {evalSubmitting && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
                     Finalizar
                   </Button>
                 )}
                 <Button variant="outline" size="sm" onClick={backToList} className="press-effect h-8 text-xs px-3">
-                  {evalFinalized ? "Fechar" : "Sair"}
+                  {isLocked ? "Fechar" : "Sair"}
                 </Button>
               </div>
             </div>
