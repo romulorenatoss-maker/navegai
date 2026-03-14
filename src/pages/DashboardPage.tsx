@@ -561,6 +561,63 @@ export default function DashboardPage() {
         ))}
       </motion.div>
 
+      {/* Pending Sections - My Sector & Other Sector */}
+      {(pendingMySector.length > 0 || pendingOtherSector.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Pending - My Sector */}
+          <motion.div variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
+            <div className="p-4 border-b border-border flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-warning" />
+              <h2 className="text-body font-semibold text-foreground">Pendente – Meu Setor</h2>
+              <span className="text-caption text-muted-foreground">({pendingMySector.length})</span>
+            </div>
+            <div className="divide-y divide-border">
+              {pendingMySector.length > 0 ? pendingMySector.map(item => (
+                <div key={item.os_id} className="px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer flex items-center gap-3"
+                  onClick={() => navigate(`/avaliacoes/pesquisa?os=${item.numero_os}&mode=eval`)}>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-body font-medium text-primary underline underline-offset-2 font-tabular">OS #{item.numero_os}</p>
+                    <p className="text-caption text-muted-foreground truncate">{item.cliente_nome || "—"} · {item.tipo_servico_nome || "—"}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Progress value={item.progress} className="h-2 w-16" />
+                    <span className="text-caption font-medium font-tabular text-muted-foreground w-10 text-right">{item.progress}%</span>
+                  </div>
+                </div>
+              )) : (
+                <p className="px-4 py-6 text-center text-caption text-muted-foreground">Nenhuma pendência no seu setor.</p>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Pending - Other Sector */}
+          <motion.div variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
+            <div className="p-4 border-b border-border flex items-center gap-2">
+              <Hourglass className="w-4 h-4 text-muted-foreground" />
+              <h2 className="text-body font-semibold text-foreground">Pendente – Outro Setor</h2>
+              <span className="text-caption text-muted-foreground">({pendingOtherSector.length})</span>
+            </div>
+            <div className="divide-y divide-border">
+              {pendingOtherSector.length > 0 ? pendingOtherSector.map(item => (
+                <div key={item.os_id} className="px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer flex items-center gap-3"
+                  onClick={() => navigate(`/avaliacoes/pesquisa?os=${item.numero_os}&mode=eval`)}>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-body font-medium text-foreground font-tabular">OS #{item.numero_os}</p>
+                    <p className="text-caption text-muted-foreground truncate">{item.cliente_nome || "—"} · {item.tipo_servico_nome || "—"}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Progress value={item.progress} className="h-2 w-16" />
+                    <span className="text-caption font-medium font-tabular text-muted-foreground w-10 text-right">{item.progress}%</span>
+                  </div>
+                </div>
+              )) : (
+                <p className="px-4 py-6 text-center text-caption text-muted-foreground">Nenhuma OS aguardando outro setor.</p>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       {/* Single OS Table */}
       {loading ? (
         <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
