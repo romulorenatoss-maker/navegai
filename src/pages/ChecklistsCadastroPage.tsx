@@ -22,7 +22,7 @@ const recorrenciaLabel: Record<string, string> = {
   diaria: "Diária",
   semanal: "Semanal",
   mensal: "Mensal",
-  personalizada: "Personalizada",
+  quando_criada: "Quando Criada",
 };
 
 export default function ChecklistsCadastroPage() {
