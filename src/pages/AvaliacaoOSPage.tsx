@@ -756,7 +756,7 @@ export default function AvaliacaoOSPage() {
     setEvalOsId(osId);
     setEvalAvaliacaoId(avaliacaoId);
     setTipoServicoId(osData.tipo_servico_id || "");
-    setSelectedTipoAvaliacaoId(aval.tipo_avaliacao_id as string || "");
+    // tipo_avaliacao_id no longer tracked
     setEvalFinalized(aval.concluida || false);
     setEvalScore(aval.nota_final as number | null);
 
