@@ -1442,7 +1442,7 @@ export default function AvaliacaoOSPage() {
             </div>
             <h2 className="text-xl font-bold text-foreground">Avaliação Concluída!</h2>
             <p className="text-3xl font-bold text-primary font-tabular mt-2">{evalScore?.toFixed(1)}%</p>
-            <p className="text-sm text-muted-foreground mt-1">{evalAnsweredCount} perguntas respondidas</p>
+            <p className="text-sm text-muted-foreground mt-1">{globalAnsweredCount} perguntas respondidas</p>
             <Button onClick={generatePDF} variant="outline" className="mt-4 press-effect" disabled={!canExport}>
               <Download className="w-4 h-4 mr-2" /> Baixar PDF da Avaliação
             </Button>
