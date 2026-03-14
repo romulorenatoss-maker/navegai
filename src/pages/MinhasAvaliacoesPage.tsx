@@ -80,7 +80,10 @@ export default function MinhasAvaliacoesPage() {
           .select("pergunta_id, resposta, observacao, evidencia_url")
           .eq("avaliacao_id", aval.id);
 
-        const perguntaIds = respostas?.map(r => r.pergunta_id) || [];
+        // Skip evaluations with no responses (evaluator didn't score this person)
+        if (!respostas || respostas.length === 0) continue;
+
+        const perguntaIds = respostas.map(r => r.pergunta_id);
         let perguntas: any[] = [];
         if (perguntaIds.length > 0) {
           const { data: ps } = await supabase.from("perguntas_avaliacao").select("id, pergunta, peso, target_employee_type").in("id", perguntaIds);
@@ -89,22 +92,14 @@ export default function MinhasAvaliacoesPage() {
 
         // Get avaliador name
         const { data: avaliador } = await supabase.from("profiles").select("nome").eq("id", aval.avaliador_id).single();
-        
-        // Get tipo_avaliacao name
-        let taNome = "—";
-        if (aval.tipo_avaliacao_id) {
-          const { data: ta } = await (supabase as any).from("tipos_avaliacao").select("nome").eq("id", aval.tipo_avaliacao_id).single();
-          if (ta) taNome = ta.nome;
-        }
 
         result.push({
           ...aval,
           _avaliador_nome: avaliador?.nome || "—",
-          _ta_nome: taNome,
-          _respostas: respostas?.map(r => {
+          _respostas: respostas.map(r => {
             const pg = perguntas.find(p => p.id === r.pergunta_id);
             return { ...r, pergunta: pg?.pergunta || "—", peso: pg?.peso || 0, target: pg?.target_employee_type || "geral" };
-          }) || [],
+          }),
         });
       }
       return result;
