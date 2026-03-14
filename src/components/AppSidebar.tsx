@@ -7,45 +7,50 @@ import {
   HelpCircle, Wrench, LogOut, Star, ClipboardList, AlertTriangle, Link2,
 } from "lucide-react";
 
-const navSections = [
+const allNavSections = [
   {
     title: "Principal",
+    adminOnly: false,
     items: [
-      { to: "/", icon: LayoutDashboard, label: "Dashboard" },
+      { to: "/", icon: LayoutDashboard, label: "Dashboard", adminOnly: false },
     ],
   },
   {
     title: "Avaliações",
+    adminOnly: false,
     items: [
-      { to: "/avaliacoes/pesquisa", icon: FileSearch, label: "Pesquisa de OS" },
-      { to: "/avaliacoes/minhas", icon: Star, label: "Minhas Avaliações" },
-      { to: "/avaliacoes/inconsistencias", icon: AlertTriangle, label: "Inconsistências" },
-      { to: "/avaliacoes/inconsistencias-vinculadas", icon: Link2, label: "Incons. Vinculadas" },
+      { to: "/avaliacoes/pesquisa", icon: FileSearch, label: "Pesquisa de OS", adminOnly: false },
+      { to: "/avaliacoes/minhas", icon: Star, label: "Minhas Avaliações", adminOnly: false },
+      { to: "/avaliacoes/inconsistencias", icon: AlertTriangle, label: "Inconsistências", adminOnly: false },
+      { to: "/avaliacoes/inconsistencias-vinculadas", icon: Link2, label: "Incons. Vinculadas", adminOnly: false },
     ],
   },
   {
     title: "Checklists",
+    adminOnly: true,
     items: [
-      { to: "/checklists/cadastro", icon: ListChecks, label: "Cadastro" },
-      { to: "/checklists/execucao", icon: PlayCircle, label: "Execução" },
-      { to: "/checklists/gestao", icon: FolderKanban, label: "Gestão" },
-      { to: "/avaliacoes/perguntas", icon: HelpCircle, label: "Perguntas" },
+      { to: "/checklists/cadastro", icon: ListChecks, label: "Cadastro", adminOnly: true },
+      { to: "/checklists/execucao", icon: PlayCircle, label: "Execução", adminOnly: true },
+      { to: "/checklists/gestao", icon: FolderKanban, label: "Gestão", adminOnly: true },
+      { to: "/avaliacoes/perguntas", icon: HelpCircle, label: "Perguntas", adminOnly: true },
     ],
   },
   {
     title: "Cadastros",
+    adminOnly: false,
     items: [
-      { to: "/cadastros/setores", icon: Building2, label: "Setores" },
-      { to: "/cadastros/colaboradores", icon: Users, label: "Colaboradores" },
-      { to: "/cadastros/clientes", icon: ClipboardCheck, label: "Clientes" },
-      { to: "/cadastros/servicos", icon: Wrench, label: "Serviços" },
-      { to: "/cadastros/tipos-avaliacao", icon: ClipboardList, label: "Tipos Avaliação" },
+      { to: "/cadastros/setores", icon: Building2, label: "Setores", adminOnly: true },
+      { to: "/cadastros/colaboradores", icon: Users, label: "Colaboradores", adminOnly: true },
+      { to: "/cadastros/clientes", icon: ClipboardCheck, label: "Clientes", adminOnly: false },
+      { to: "/cadastros/servicos", icon: Wrench, label: "Serviços", adminOnly: true },
+      { to: "/cadastros/tipos-avaliacao", icon: ClipboardList, label: "Tipos Avaliação", adminOnly: true },
     ],
   },
   {
     title: "Sistema",
+    adminOnly: true,
     items: [
-      { to: "/relatorios", icon: BarChart3, label: "Relatórios" },
+      { to: "/relatorios", icon: BarChart3, label: "Relatórios", adminOnly: true },
     ],
   },
 ];
@@ -55,24 +60,30 @@ interface AppSidebarProps {
   onSignOut?: () => void;
   mobile?: boolean;
   onNavigate?: () => void;
+  isAdmin?: boolean;
 }
 
-export function AppSidebar({ userName = "Usuário", onSignOut, mobile, onNavigate }: AppSidebarProps) {
+export function AppSidebar({ userName = "Usuário", onSignOut, mobile, onNavigate, isAdmin = false }: AppSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
 
-  // In mobile mode, always show expanded, no collapse toggle
   const isCollapsed = mobile ? false : collapsed;
   const width = mobile ? "100%" : isCollapsed ? 64 : 240;
+
+  // Filter sections and items based on role
+  const navSections = allNavSections
+    .map((section) => {
+      const filteredItems = section.items.filter((item) => isAdmin || !item.adminOnly);
+      return { ...section, items: filteredItems };
+    })
+    .filter((section) => section.items.length > 0);
 
   return (
     <motion.aside
       animate={mobile ? undefined : { width }}
       transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
       className={`${mobile ? "h-full w-full" : "h-screen fixed left-0 top-0 z-40"} bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border`}
-      style={mobile ? undefined : undefined}
     >
-      {/* Header - hide on mobile since parent has header */}
       {!mobile && (
         <div className="h-14 flex items-center px-4 border-b border-sidebar-border shrink-0">
           <AnimatePresence mode="wait">
