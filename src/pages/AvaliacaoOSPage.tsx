@@ -698,6 +698,11 @@ export default function AvaliacaoOSPage() {
   const handleCreateAndStart = async () => {
     if (!profile) return;
     if (!tipoServicoId) { toast.error("Selecione o tipo de serviço."); return; }
+    // Each evaluator must select their sector's employee
+    const needsAtendente = hasAtendimentoAccess || isAdmin;
+    const needsTecnico = hasTecnicoAccess || isAdmin;
+    if (needsAtendente && !atendenteId) { toast.error("Selecione o atendente avaliado."); return; }
+    if (needsTecnico && !tecnicoId) { toast.error("Selecione o técnico avaliado."); return; }
     if (!atendenteId && !tecnicoId) { toast.error("Selecione pelo menos um colaborador avaliado."); return; }
 
     try {
