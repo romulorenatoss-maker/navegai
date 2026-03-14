@@ -137,8 +137,16 @@ export default function PerguntasPage() {
     onError: (err: any) => toast.error(err.message),
   });
 
+  const getNextOrdem = (tipoId: string) => {
+    const related = perguntas.filter((p) =>
+      tipoId ? p.tipo_servico_id === tipoId : !p.tipo_servico_id
+    );
+    if (related.length === 0) return 1;
+    return Math.max(...related.map((p) => p.ordem)) + 1;
+  };
+
   const openCreate = () => {
-    setEditing(null); setPergunta(""); setTipoServicoId(""); setAvaliadorId(""); setTipoAvaliado("atendente"); setPeso("1"); setOrdem(String(perguntas.length)); setPreviewAnswer(null);
+    setEditing(null); setPergunta(""); setTipoServicoId(""); setAvaliadorId(""); setTipoAvaliado("atendente"); setPeso("1"); setOrdem(String(getNextOrdem(""))); setPreviewAnswer(null);
     setDialogOpen(true);
   };
   const openEdit = (p: Pergunta) => {
@@ -273,7 +281,7 @@ export default function PerguntasPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Tipo de Serviço</Label>
-                <Select value={tipoServicoId} onValueChange={setTipoServicoId}>
+                <Select value={tipoServicoId} onValueChange={(v) => { setTipoServicoId(v); if (!editing) setOrdem(String(getNextOrdem(v === "todos" ? "" : v))); }}>
                   <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todos">Todos</SelectItem>
