@@ -451,63 +451,105 @@ export default function DashboardPage() {
       if (!osInPeriod?.length) { setTecnicoMedias([]); setSetorMedias([]); return; }
 
       const osIds = osInPeriod.map(o => o.id);
-      // Fetch avaliacoes WITH avaliador_id to determine sector
-      const { data: avaliacoes } = await supabase
-        .from("avaliacoes")
-        .select("nota_final, ordem_servico_id, avaliador_id")
-        .in("ordem_servico_id", osIds)
-        .eq("concluida", true)
-        .not("nota_final", "is", null);
-
-      if (!avaliacoes?.length) { setTecnicoMedias([]); setSetorMedias([]); return; }
-
       const osMap: Record<string, typeof osInPeriod[0]> = {};
       osInPeriod.forEach(o => { osMap[o.id] = o; });
 
-      // Get all avaliador IDs to resolve their sectors
-      const avaliadorIds = [...new Set(avaliacoes.map((a: any) => a.avaliador_id))];
-      const [avaliadorSetorLinksRes, avaliadorProfilesRes, setoresRes] = await Promise.all([
-        supabase.from("colaborador_setores").select("profile_id, setor_id").in("profile_id", avaliadorIds),
-        supabase.from("profiles").select("id, setor_id").in("id", avaliadorIds),
+      // Fetch os_perguntas, respostas and perguntas in parallel
+      const [osPerguntasRes, respostasRes, setoresRes] = await Promise.all([
+        (supabase as any).from("os_perguntas").select("os_id, pergunta_id").in("os_id", osIds),
+        supabase.from("respostas_avaliacao").select("ordem_servico_id, pergunta_id, resposta").in("ordem_servico_id", osIds).not("resposta", "is", null),
         supabase.from("setores").select("id, nome").eq("ativo", true),
       ]);
 
       const setorNames: Record<string, string> = {};
       (setoresRes.data || []).forEach(s => { setorNames[s.id] = s.nome; });
 
-      // Build avaliador → setor map
-      const avaliadorSetorMap: Record<string, string | null> = {};
-      (avaliadorProfilesRes.data || []).forEach(p => { avaliadorSetorMap[p.id] = p.setor_id; });
-      (avaliadorSetorLinksRes.data || []).forEach(l => { avaliadorSetorMap[l.profile_id] = l.setor_id; });
+      // Build os_perguntas map
+      const perguntasByOS: Record<string, string[]> = {};
+      ((osPerguntasRes as any).data || []).forEach((op: any) => {
+        if (!perguntasByOS[op.os_id]) perguntasByOS[op.os_id] = [];
+        perguntasByOS[op.os_id].push(op.pergunta_id);
+      });
 
-      // Find setor IDs by name for mapping
-      const setorIdByName: Record<string, string> = {};
-      (setoresRes.data || []).forEach(s => { setorIdByName[s.nome.toLowerCase()] = s.id; });
+      // Build respostas map: os_id -> { pergunta_id -> resposta }
+      const respostasByOS: Record<string, Record<string, string>> = {};
+      ((respostasRes as any).data || []).forEach((r: any) => {
+        if (!r.ordem_servico_id) return;
+        if (!respostasByOS[r.ordem_servico_id]) respostasByOS[r.ordem_servico_id] = {};
+        respostasByOS[r.ordem_servico_id][r.pergunta_id] = r.resposta;
+      });
 
-      // Map each avaliacao score to the correct evaluated employee based on avaliador's sector
+      // Find OS with 100% progress (all questions answered)
+      const completedOsIds: string[] = [];
+      for (const osId of osIds) {
+        const osPerguntaIds = perguntasByOS[osId] || [];
+        if (osPerguntaIds.length === 0) continue;
+        const osRespostas = respostasByOS[osId] || {};
+        const answered = osPerguntaIds.filter(pid => osRespostas[pid]).length;
+        if (answered >= osPerguntaIds.length) completedOsIds.push(osId);
+      }
+
+      if (completedOsIds.length === 0) { setTecnicoMedias([]); setSetorMedias([]); return; }
+
+      // Fetch pergunta details (peso, setor_avaliado_id) for all relevant perguntas
+      const allPerguntaIds = [...new Set(completedOsIds.flatMap(osId => perguntasByOS[osId] || []))];
+      const { data: perguntasData } = await supabase
+        .from("perguntas_avaliacao")
+        .select("id, peso, setor_avaliado_id")
+        .in("id", allPerguntaIds);
+
+      const perguntaInfo: Record<string, { peso: number; setor_avaliado_id: string | null }> = {};
+      (perguntasData || []).forEach(p => { perguntaInfo[p.id] = { peso: p.peso, setor_avaliado_id: p.setor_avaliado_id }; });
+
+      // Calculate score per OS per sector
+      // employeeScores: profile_id -> { notas: number[] }
       const employeeScores: Record<string, { notas: number[] }> = {};
-      avaliacoes.forEach((a: any) => {
-        const os = osMap[a.ordem_servico_id];
-        if (!os || a.nota_final == null) return;
 
-        const avaliadorSetor = avaliadorSetorMap[a.avaliador_id];
-        const avaliadorSetorNome = avaliadorSetor ? (setorNames[avaliadorSetor] || "").toLowerCase() : "";
+      for (const osId of completedOsIds) {
+        const os = osMap[osId];
+        if (!os) continue;
+        const osPerguntaIds = perguntasByOS[osId] || [];
+        const osRespostas = respostasByOS[osId] || {};
 
-        let targetColabId: string | null = null;
-        if (avaliadorSetorNome.includes("atendimento") && os.atendente_id) {
-          targetColabId = os.atendente_id;
-        } else if (avaliadorSetorNome.includes("cnico") && os.tecnico_id) {
-          // "técnico" or "tecnico"
-          targetColabId = os.tecnico_id;
-        } else {
-          // Fallback: use colaborador_avaliado_id or whichever is available
-          targetColabId = os.colaborador_avaliado_id || os.tecnico_id || os.atendente_id;
+        // Group perguntas by setor
+        const setorPerguntas: Record<string, string[]> = {};
+        for (const pid of osPerguntaIds) {
+          const info = perguntaInfo[pid];
+          const setorId = info?.setor_avaliado_id || "geral";
+          if (!setorPerguntas[setorId]) setorPerguntas[setorId] = [];
+          setorPerguntas[setorId].push(pid);
         }
 
-        if (!targetColabId) return;
-        if (!employeeScores[targetColabId]) employeeScores[targetColabId] = { notas: [] };
-        employeeScores[targetColabId].notas.push(a.nota_final);
-      });
+        // Calculate score per setor and assign to correct employee
+        for (const [setorId, pids] of Object.entries(setorPerguntas)) {
+          let totalWeight = 0;
+          let earnedWeight = 0;
+          for (const pid of pids) {
+            const resp = osRespostas[pid];
+            const peso = perguntaInfo[pid]?.peso || 1;
+            if (resp === "na") continue;
+            totalWeight += peso;
+            if (resp === "sim") earnedWeight += peso;
+          }
+          if (totalWeight === 0) continue;
+          const nota = (earnedWeight / totalWeight) * 100;
+
+          // Determine which employee gets this score based on setor
+          const setorNome = (setorNames[setorId] || "").toLowerCase();
+          let targetColabId: string | null = null;
+          if (setorNome.includes("atendimento") && os.atendente_id) {
+            targetColabId = os.atendente_id;
+          } else if (setorNome.includes("cnico") && os.tecnico_id) {
+            targetColabId = os.tecnico_id;
+          } else {
+            targetColabId = os.colaborador_avaliado_id || os.tecnico_id || os.atendente_id;
+          }
+
+          if (!targetColabId) continue;
+          if (!employeeScores[targetColabId]) employeeScores[targetColabId] = { notas: [] };
+          employeeScores[targetColabId].notas.push(nota);
+        }
+      }
 
       const colabIds = Object.keys(employeeScores);
       if (colabIds.length === 0) { setTecnicoMedias([]); setSetorMedias([]); return; }
@@ -540,7 +582,7 @@ export default function DashboardPage() {
       tecMedias.sort((a, b) => b.media - a.media);
       setTecnicoMedias(tecMedias);
 
-      // Sector averages: average of each employee's individual average within the sector
+      // Sector averages
       const setorEmployeeAvgs: Record<string, { nome: string; avgs: number[] }> = {};
       tecMedias.forEach(t => {
         const pSetores = profileSetores[t.profile_id] || [];
