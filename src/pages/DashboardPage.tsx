@@ -243,10 +243,20 @@ export default function DashboardPage() {
       if (mySetorIds.length === 0 && profile.setor_id) mySetorIds = [profile.setor_id];
       if (mySetorIds.length === 0 && !isAdmin) { setPendingMySector([]); setPendingOtherSector([]); setCompletedOS([]); return; }
 
-      const { data: openOS } = await supabase
+      let pendingQuery = supabase
         .from("ordens_servico")
         .select("id, numero_os, cliente_nome, tipo_servico_id, status, colaborador_avaliado_id, atendente_id, tecnico_id")
         .order("created_at", { ascending: false });
+
+      if (statusFilter !== "all") {
+        if (statusFilter === "em_andamento") {
+          pendingQuery = pendingQuery.in("status", ["em_andamento", "aberta"]);
+        } else {
+          pendingQuery = pendingQuery.eq("status", statusFilter);
+        }
+      }
+
+      const { data: openOS } = await pendingQuery;
       if (!openOS?.length) { setPendingMySector([]); setPendingOtherSector([]); setCompletedOS([]); return; }
 
       const osIds = openOS.map(o => o.id);
