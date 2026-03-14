@@ -1262,7 +1262,7 @@ export default function AvaliacaoOSPage() {
     setFormFoundOS(null);
     setFormPendingAval(null);
     setTipoServicoId("");
-    setSelectedTipoAvaliacaoId("");
+    // selectedTipoAvaliacaoId removed
     setAtendenteId("");
     setTecnicoId("");
   };
