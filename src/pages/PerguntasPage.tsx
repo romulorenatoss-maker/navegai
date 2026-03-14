@@ -146,7 +146,7 @@ export default function PerguntasPage() {
         tipo_servico_id: resolvedTipoId,
         tipo_avaliacao_id: resolvedTaId,
         target_employee_type: targetEmployeeType,
-        avaliador_id: avaliadorId === "todos" || !avaliadorId ? null : avaliadorId,
+        avaliador_id: null,
         setor_avaliado_id: setorAvaliadoId === "todos" || !setorAvaliadoId ? null : setorAvaliadoId,
         tipo_avaliado: tipoAvaliado,
         peso: Math.min(100, Math.max(1, parseInt(peso) || 1)),
