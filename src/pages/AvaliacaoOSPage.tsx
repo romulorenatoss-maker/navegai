@@ -795,16 +795,7 @@ export default function AvaliacaoOSPage() {
         </div>
       )}
 
-      {/* Filters */}
-      {!os && (
-        <div className="bg-card border border-border rounded-lg shadow-card mb-6">
-          <button
-            type="button"
-            onClick={() => setShowFilters(!showFilters)}
-            className="w-full p-4 flex items-center gap-2 text-left hover:bg-muted/30 transition-colors"
-          >
-            <Filter className="w-4 h-4 text-primary" />
-            <span className="text-body font-semibold text-foreground">Filtros de Pesquisa</span>
+
             {hasActiveFilter && (
               <span className="text-caption bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Ativo</span>
             )}
