@@ -1,0 +1,1 @@
+ALTER TABLE public.perguntas_avaliacao DROP CONSTRAINT perguntas_avaliacao_peso_check;
