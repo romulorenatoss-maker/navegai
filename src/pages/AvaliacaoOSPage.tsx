@@ -1988,32 +1988,32 @@ export default function AvaliacaoOSPage() {
 
               {tipoServicoId && (
                 <div className="space-y-3">
-                  {(hasAtendimentoAccess || isAdmin) ? (
+                  {(hasAtendimentoAccess || isAdmin) && (
                     <div className="space-y-1.5">
-                      <Label>Atendente Avaliado *</Label>
+                      <Label>Atendente Avaliado {(hasAtendimentoAccess || isAdmin) ? "*" : ""}</Label>
                       <Select value={atendenteId} onValueChange={setAtendenteId}>
                         <SelectTrigger><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
                         <SelectContent>
                           {atendimentoProfiles.filter(p => p.id !== profile?.id).map(p =>
-                            <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>
+                            <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
                           )}
                         </SelectContent>
                       </Select>
                     </div>
-                  ) : null}
-                  {(hasTecnicoAccess || isAdmin) ? (
+                  )}
+                  {(hasTecnicoAccess || isAdmin) && (
                     <div className="space-y-1.5">
-                      <Label>Técnico Avaliado *</Label>
+                      <Label>Técnico Avaliado {(hasTecnicoAccess || isAdmin) ? "*" : ""}</Label>
                       <Select value={tecnicoId} onValueChange={setTecnicoId}>
                         <SelectTrigger><SelectValue placeholder="Selecione o técnico" /></SelectTrigger>
                         <SelectContent>
                           {tecnicoProfiles.filter(p => p.id !== profile?.id).map(p =>
-                            <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>
+                            <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
                           )}
                         </SelectContent>
                       </Select>
                     </div>
-                  ) : null}
+                  )}
                 </div>
               )}
 
