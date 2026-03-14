@@ -38,7 +38,7 @@ export default function ColaboradoresPage() {
   const [cargo, setCargo] = useState("atendente");
   const [selectedSetores, setSelectedSetores] = useState<string[]>([]);
   const [senha, setSenha] = useState("");
-  const [selectedTiposServico, setSelectedTiposServico] = useState<string[]>([]);
+  
 
   const { data: profiles = [], isLoading } = useQuery({
     queryKey: ["profiles"],
@@ -71,14 +71,6 @@ export default function ColaboradoresPage() {
     },
   });
 
-  const { data: tiposServico = [] } = useQuery({
-    queryKey: ["tipos_servico_all"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("tipos_servico").select("*, setores:setor_id(nome)").eq("ativo", true).order("nome");
-      if (error) throw error;
-      return data;
-    },
-  });
 
   // Load assigned tipos and setores when editing
   useEffect(() => {
@@ -90,18 +82,8 @@ export default function ColaboradoresPage() {
       .eq("profile_id", editing.id)
       .then(({ data }) => {
         setSelectedSetores(data?.map((d) => d.setor_id) || []);
-      });
-    // Load tipos if avaliador
-    if (cargo === "avaliador") {
-      supabase
-        .from("avaliador_tipos_servico")
-        .select("tipo_servico_id")
-        .eq("avaliador_id", editing.id)
-        .then(({ data }) => {
-          setSelectedTiposServico(data?.map((d) => d.tipo_servico_id) || []);
-        });
-    }
-  }, [editing, cargo]);
+    });
+  }, [editing]);
 
   const syncRole = async (userId: string, cargo: string) => {
     const { error } = await supabase.rpc("sync_user_role", { _user_id: userId, _cargo: cargo });
@@ -126,16 +108,6 @@ export default function ColaboradoresPage() {
     await supabase.from("profiles").update({ setor_id: selectedSetores[0] || null }).eq("id", profileId);
   };
 
-  const saveTiposServico = async (profileId: string) => {
-    await supabase.from("avaliador_tipos_servico").delete().eq("avaliador_id", profileId);
-    if (selectedTiposServico.length > 0) {
-      const rows = selectedTiposServico.map((tid) => ({
-        avaliador_id: profileId,
-        tipo_servico_id: tid,
-      }));
-      await supabase.from("avaliador_tipos_servico").insert(rows);
-    }
-  };
 
   const create = useMutation({
     mutationFn: async () => {
@@ -165,7 +137,6 @@ export default function ColaboradoresPage() {
 
       if (createdProfile) {
         await saveSetores(createdProfile.id);
-        if (cargo === "avaliador") await saveTiposServico(createdProfile.id);
       }
     },
     onSuccess: () => {
@@ -186,14 +157,6 @@ export default function ColaboradoresPage() {
 
       await syncRole(editing.user_id, cargo);
       await saveSetores(editing.id);
-
-      // Save tipos de serviço if avaliador
-      if (cargo === "avaliador") {
-        await saveTiposServico(editing.id);
-      } else {
-        // Remove any existing tipo assignments if no longer avaliador
-        await supabase.from("avaliador_tipos_servico").delete().eq("avaliador_id", editing.id);
-      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profiles"] });
@@ -226,12 +189,10 @@ export default function ColaboradoresPage() {
 
   const openCreate = () => {
     setEditing(null); setNome(""); setEmail(""); setCargo("atendente"); setSelectedSetores([]); setSenha("");
-    setSelectedTiposServico([]);
     setDialogOpen(true);
   };
   const openEdit = (p: Profile) => {
     setEditing(p); setNome(p.nome); setEmail(p.email); setCargo(p.cargo || "atendente"); setSelectedSetores([]);
-    setSelectedTiposServico([]);
     setDialogOpen(true);
   };
   const closeDialog = () => { setDialogOpen(false); setEditing(null); };
@@ -241,11 +202,6 @@ export default function ColaboradoresPage() {
     else create.mutate();
   };
 
-  const toggleTipoServico = (id: string) => {
-    setSelectedTiposServico((prev) =>
-      prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]
-    );
-  };
 
   const isSubmitting = create.isPending || update.isPending;
 
@@ -343,7 +299,7 @@ export default function ColaboradoresPage() {
             )}
             <div className="space-y-1.5">
               <Label>Cargo / Permissão</Label>
-              <Select value={cargo} onValueChange={(v) => { setCargo(v); if (v !== "avaliador") setSelectedTiposServico([]); }}>
+              <Select value={cargo} onValueChange={setCargo}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.entries(cargoConfig).map(([value, cfg]) => (
@@ -366,17 +322,9 @@ export default function ColaboradoresPage() {
                     <Checkbox
                       checked={selectedSetores.includes(s.id)}
                       onCheckedChange={() => {
-                        setSelectedSetores((prev) => {
-                          const next = prev.includes(s.id) ? prev.filter((x) => x !== s.id) : [...prev, s.id];
-                          // Remove tipos that no longer belong to any selected setor
-                          setSelectedTiposServico((prevTipos) =>
-                            prevTipos.filter((tid) => {
-                              const tipo = tiposServico.find((t) => t.id === tid);
-                              return tipo?.setor_id && next.includes(tipo.setor_id);
-                            })
-                          );
-                          return next;
-                        });
+                        setSelectedSetores((prev) =>
+                          prev.includes(s.id) ? prev.filter((x) => x !== s.id) : [...prev, s.id]
+                        );
                       }}
                     />
                     <span className="text-body font-medium text-foreground">{s.nome}</span>
@@ -387,39 +335,6 @@ export default function ColaboradoresPage() {
                 <p className="text-caption text-muted-foreground">{selectedSetores.length} setor(es) selecionado(s)</p>
               )}
             </div>
-
-            {/* Tipos de Serviço para Avaliador */}
-            {cargo === "avaliador" && (
-              <div className="space-y-2">
-                <Label>Tipos de Serviço Atribuídos</Label>
-                <p className="text-caption text-muted-foreground">
-                  {selectedSetores.length === 0
-                    ? "Selecione ao menos um setor acima para ver os tipos de serviço disponíveis."
-                    : "Selecione os tipos de serviço que este avaliador poderá avaliar."}
-                </p>
-                <div className="border border-border rounded-lg p-3 space-y-2 max-h-48 overflow-y-auto">
-                  {selectedSetores.length === 0 ? (
-                    <p className="text-caption text-muted-foreground text-center py-2">Nenhum setor selecionado.</p>
-                  ) : tiposServico.filter((ts) => ts.setor_id && selectedSetores.includes(ts.setor_id)).length === 0 ? (
-                    <p className="text-caption text-muted-foreground text-center py-2">Nenhum tipo de serviço para os setores selecionados.</p>
-                  ) : tiposServico.filter((ts) => ts.setor_id && selectedSetores.includes(ts.setor_id)).map((ts) => (
-                    <label key={ts.id} className="flex items-center gap-3 py-1.5 px-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors">
-                      <Checkbox
-                        checked={selectedTiposServico.includes(ts.id)}
-                        onCheckedChange={() => toggleTipoServico(ts.id)}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <span className="text-body font-medium text-foreground">{ts.nome}</span>
-                        <span className="text-caption text-muted-foreground ml-2">({(ts as any).setores?.nome || "Sem setor"})</span>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-                {selectedTiposServico.length > 0 && (
-                  <p className="text-caption text-muted-foreground">{selectedTiposServico.length} tipo(s) selecionado(s)</p>
-                )}
-              </div>
-            )}
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={closeDialog}>Cancelar</Button>
