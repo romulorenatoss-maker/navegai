@@ -1095,7 +1095,12 @@ export default function AvaliacaoOSPage() {
   const selectedTipoNome = tiposAvaliacao.find(t => t.id === selectedTipoAvaliacaoId)?.nome;
   const evalTipoServicoNome = tiposServico.find(t => t.id === evalOsData?.tipo_servico_id)?.nome;
 
-  const canCreateEval = !!tipoServicoId && (!!atendenteId || !!tecnicoId);
+  const canCreateEval = !!tipoServicoId && (
+    isAdmin ? (!!atendenteId && !!tecnicoId) :
+    hasAtendimentoAccess ? !!atendenteId :
+    hasTecnicoAccess ? !!tecnicoId :
+    (!!atendenteId || !!tecnicoId)
+  );
 
   // --- PDF Generation ---
   const generatePDF = useCallback(() => {
