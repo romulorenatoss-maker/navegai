@@ -232,28 +232,39 @@ export default function MinhasAvaliacoesPage() {
                   {aval._respostas.map((r: any, i: number) => (
                     <div key={i} className="px-4 py-3">
                       <div className="flex items-start gap-3">
-                        {r.resposta === "sim" ? <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" /> :
-                         r.resposta === "nao" ? <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" /> :
-                         <span className="w-4 h-4 rounded-full bg-muted shrink-0 mt-0.5" />}
+                        <span className="text-caption font-medium text-muted-foreground font-tabular w-6 shrink-0 pt-0.5">
+                          {String(i + 1).padStart(2, "0")}
+                        </span>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-foreground">{r.pergunta}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className={cn(
-                              "inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border",
-                              r.resposta === "sim" ? "border-success/40 bg-success/10 text-success" :
-                              r.resposta === "nao" ? "border-destructive/40 bg-destructive/10 text-destructive" :
-                              "border-muted-foreground/30 bg-muted text-muted-foreground"
-                            )}>
-                              {r.resposta === "sim" ? "SIM" : r.resposta === "nao" ? "NÃO" : "N/A"}
-                            </span>
+
+                          {/* Resposta selecionada - destaque visual */}
+                          <div className="flex items-center gap-2 mt-2">
+                            <div className="flex bg-muted rounded-md p-0.5 gap-0.5">
+                              {[
+                                { label: "Sim", value: "sim", active: "bg-success text-success-foreground" },
+                                { label: "Não", value: "nao", active: "bg-destructive text-destructive-foreground" },
+                                { label: "N/A", value: "na", active: "bg-muted-foreground text-background" },
+                              ].map(opt => (
+                                <span
+                                  key={opt.value}
+                                  className={cn(
+                                    "px-3 py-1 rounded text-caption font-medium transition-all",
+                                    r.resposta === opt.value ? opt.active : "text-muted-foreground/40"
+                                  )}
+                                >
+                                  {opt.label}
+                                </span>
+                              ))}
+                            </div>
                             <span className="text-caption text-muted-foreground">Peso: {r.peso}</span>
                             <span className="text-caption text-muted-foreground">• {r.target === "atendente" ? "Atendente" : r.target === "tecnico" ? "Técnico" : "Geral"}</span>
                           </div>
 
                           {/* Observação */}
                           {r.observacao && (
-                            <div className="mt-2 bg-muted/50 border border-border rounded p-2">
-                              <p className="text-caption text-muted-foreground flex items-center gap-1 mb-0.5">
+                            <div className="mt-2 bg-destructive/5 border border-destructive/20 rounded p-2">
+                              <p className="text-caption text-destructive flex items-center gap-1 mb-0.5 font-medium">
                                 <MessageSquare className="w-3 h-3" /> Observação:
                               </p>
                               <p className="text-sm text-foreground">{r.observacao}</p>
@@ -262,16 +273,19 @@ export default function MinhasAvaliacoesPage() {
 
                           {/* Evidência (foto) */}
                           {r.evidencia_url && (
-                            <div className="mt-2">
-                              <p className="text-caption text-muted-foreground flex items-center gap-1 mb-1">
-                                <ImageIcon className="w-3 h-3" /> Evidência:
+                            <div className="mt-2 bg-muted/30 border border-border rounded p-2">
+                              <p className="text-caption text-muted-foreground flex items-center gap-1 mb-1.5 font-medium">
+                                <ImageIcon className="w-3 h-3" /> Evidência anexada:
                               </p>
                               <img
                                 src={r.evidencia_url}
                                 alt="Evidência"
-                                className="rounded-lg border border-border max-h-32 object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                className="rounded-lg border border-border max-h-40 object-cover cursor-pointer hover:opacity-80 transition-opacity shadow-sm"
                                 onClick={() => window.open(r.evidencia_url, "_blank")}
                               />
+                              <p className="text-caption text-primary mt-1 cursor-pointer hover:underline" onClick={() => window.open(r.evidencia_url, "_blank")}>
+                                Clique para ampliar
+                              </p>
                             </div>
                           )}
                         </div>
