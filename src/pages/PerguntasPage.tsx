@@ -253,21 +253,6 @@ export default function PerguntasPage() {
           </div>
         </>
       )}
-              <tfoot>
-                <tr className="border-t-2 border-primary/20 bg-muted/30">
-                  <td colSpan={5} className="px-4 py-3 text-body font-semibold text-foreground text-right">
-                    Soma Total ({perguntasFiltradas.length} perguntas):
-                  </td>
-                  <td className="px-4 py-3 text-center text-subhead font-bold text-primary font-tabular">
-                    {somaPesoFiltrado}
-                  </td>
-                  <td></td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
-        </div>
-      </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
