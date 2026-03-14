@@ -143,61 +143,27 @@ export function useAvaliacaoOS() {
   };
 
   const loadQuestions = async (avaliacaoId: string, profileId: string, osId: string) => {
-    // Get OS details for filtering
-    const { data: osData } = await supabase
-      .from("ordens_servico")
-      .select("tipo_servico_id, colaborador_avaliado_id")
-      .eq("id", osId)
-      .single();
+    // Load questions from os_perguntas (frozen snapshot per OS)
+    const { data: osPerguntas } = await (supabase as any)
+      .from("os_perguntas")
+      .select("pergunta_id")
+      .eq("os_id", osId);
 
-    // Get evaluated collaborator's setores (multi-setor)
-    let setorIds: string[] = [];
-    if (osData?.colaborador_avaliado_id) {
-      const { data: setorLinks } = await supabase
-        .from("colaborador_setores")
-        .select("setor_id")
-        .eq("profile_id", osData.colaborador_avaliado_id);
-      setorIds = setorLinks?.map((l) => l.setor_id) || [];
-      // Fallback to legacy setor_id
-      if (setorIds.length === 0) {
-        const { data: colabProfile } = await supabase
-          .from("profiles")
-          .select("setor_id")
-          .eq("id", osData.colaborador_avaliado_id)
-          .single();
-        if (colabProfile?.setor_id) setorIds = [colabProfile.setor_id];
-      }
+    if (!osPerguntas?.length) {
+      setQuestions([]);
+      return;
     }
 
-    // Build query with filters
-    let query = supabase
+    const perguntaIds = osPerguntas.map((op: any) => op.pergunta_id);
+    const { data: perguntas } = await supabase
       .from("perguntas_avaliacao")
       .select("*")
-      .eq("ativo", true)
-      .or(`avaliador_id.eq.${profileId},avaliador_id.is.null`);
-
-    // Filter by tipo_servico: matching OR null (global questions)
-    if (osData?.tipo_servico_id) {
-      query = query.or(`tipo_servico_id.eq.${osData.tipo_servico_id},tipo_servico_id.is.null`);
-    } else if (setorIds.length > 0) {
-      // No tipo_servico on OS, but avaliado has setores — get tipos_servico for those setores
-      const { data: tiposDoSetor } = await supabase
-        .from("tipos_servico")
-        .select("id")
-        .in("setor_id", setorIds);
-      
-      if (tiposDoSetor && tiposDoSetor.length > 0) {
-        const tipoIds = tiposDoSetor.map(t => `tipo_servico_id.eq.${t.id}`).join(",");
-        query = query.or(`${tipoIds},tipo_servico_id.is.null`);
-      }
-    }
-
-    const { data: perguntas } = await query.order("ordem");
+      .in("id", perguntaIds)
+      .order("ordem");
 
     if (!perguntas) return;
 
-    // FIX: Load responses by ordem_servico_id (shared across all evaluators)
-    // instead of avaliacao_id (per evaluator) to see cross-sector answers
+    // Load responses by ordem_servico_id (shared across all evaluators)
     const { data: respostas } = await supabase
       .from("respostas_avaliacao")
       .select("*")

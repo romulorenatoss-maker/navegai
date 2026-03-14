@@ -549,6 +549,42 @@ export type Database = {
           },
         ]
       }
+      os_perguntas: {
+        Row: {
+          created_at: string
+          id: string
+          os_id: string
+          pergunta_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          os_id: string
+          pergunta_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          os_id?: string
+          pergunta_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_perguntas_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "os_perguntas_pergunta_id_fkey"
+            columns: ["pergunta_id"]
+            isOneToOne: false
+            referencedRelation: "perguntas_avaliacao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       perguntas_avaliacao: {
         Row: {
           ativo: boolean
