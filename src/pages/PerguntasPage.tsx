@@ -193,7 +193,7 @@ export default function PerguntasPage() {
       </div>
 
       {/* Questions table - only when filters selected */}
-      {hasFilters && (
+      {hasFilter && (
         <>
           <div className="flex items-center justify-between mb-2">
             <p className="text-body font-medium text-foreground">
