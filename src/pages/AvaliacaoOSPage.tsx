@@ -438,7 +438,7 @@ export default function AvaliacaoOSPage() {
     queryFn: async () => {
       if (!selectedOS?.id || view !== "os_detail") return [];
       const { data: avals } = await supabase.from("avaliacoes")
-        .select("id, avaliador_id, tipo_avaliacao_id, concluida, nota_final")
+        .select("id, avaliador_id, tipo_avaliacao_id, concluida, concluida_em, nota_final")
         .eq("ordem_servico_id", selectedOS.id);
       if (!avals?.length) return [];
 
