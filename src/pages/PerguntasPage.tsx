@@ -248,8 +248,15 @@ export default function PerguntasPage() {
   };
   const closeDialog = () => { setDialogOpen(false); setEditing(null); setPreviewAnswer(null); };
 
-
-
+  return (
+    <div className="p-6 max-w-5xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-section font-semibold text-foreground">Perguntas de Avaliação</h1>
+          <p className="text-body text-muted-foreground">Cadastro e ordenação de perguntas por checklist e avaliação.</p>
+        </div>
+        <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Nova Pergunta</Button>
+      </div>
 
       {/* Filter by checklist title */}
       <div className="bg-card border border-border rounded-lg shadow-card mb-4">
