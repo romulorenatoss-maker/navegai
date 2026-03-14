@@ -317,12 +317,11 @@ export default function DashboardPage() {
         const myAval = allAvals.find(a => a.ordem_servico_id === os.id && a.avaliador_id === profile.id);
         const osAvals = allAvals.filter(a => a.ordem_servico_id === os.id);
 
-        const myUnanswered = myQuestions.filter(q => !myAval || !answeredSet.has(`${myAval.id}:${q.id}`));
+        // FIX: Check if question is answered for this OS (any evaluator)
+        const myUnanswered = myQuestions.filter(q => !answeredSet.has(`${os.id}:${q.id}`));
 
-        // Count unique questions answered by ANY evaluator for this OS
-        const uniqueAnswered = perguntasForOS.filter(q =>
-          osAvals.some(a => answeredSet.has(`${a.id}:${q.id}`))
-        ).length;
+        // Count unique questions answered for this OS
+        const uniqueAnswered = perguntasForOS.filter(q => answeredSet.has(`${os.id}:${q.id}`)).length;
         const progress = perguntasForOS.length > 0 ? Math.round((uniqueAnswered / perguntasForOS.length) * 100) : 0;
 
         // Resolve colaborador avaliado name
