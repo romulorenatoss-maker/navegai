@@ -57,7 +57,7 @@ export default function PerguntasPage() {
   const [tipoServicoId, setTipoServicoId] = useState("");
   const [tipoAvaliacaoId, setTipoAvaliacaoId] = useState("");
   const [targetEmployeeType, setTargetEmployeeType] = useState("geral");
-  const [avaliadorId, setAvaliadorId] = useState("");
+  // avaliadorId removed - evaluator access is determined by their sector
   const [setorAvaliadoId, setSetorAvaliadoId] = useState("");
   const [tipoAvaliado, setTipoAvaliado] = useState("atendente");
   const [peso, setPeso] = useState("1");
