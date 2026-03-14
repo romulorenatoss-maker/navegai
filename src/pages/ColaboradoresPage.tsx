@@ -202,11 +202,6 @@ export default function ColaboradoresPage() {
     else create.mutate();
   };
 
-  const toggleTipoServico = (id: string) => {
-    setSelectedTiposServico((prev) =>
-      prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]
-    );
-  };
 
   const isSubmitting = create.isPending || update.isPending;
 
