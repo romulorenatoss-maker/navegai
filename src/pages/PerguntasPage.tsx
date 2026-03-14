@@ -32,6 +32,7 @@ function SortableRow({ p, index, onEdit, onRemove, isAdmin }: { p: any; index: n
       <td className="px-2 py-3 text-caption text-muted-foreground font-tabular w-8">{String(index + 1).padStart(2, "0")}</td>
       <td className="px-4 py-3 text-body font-medium text-foreground">{p.pergunta}</td>
       <td className="px-4 py-3 text-body text-muted-foreground">{p.setores?.nome || "Todos"}</td>
+      <td className="px-4 py-3 text-body text-muted-foreground">{p.setor_nota?.nome || "—"}</td>
       <td className="px-4 py-3 text-center text-body font-semibold text-foreground font-tabular">{p.peso}</td>
       <td className="px-4 py-3 text-right">
         {isAdmin && (
@@ -52,8 +53,7 @@ export default function PerguntasPage() {
   const [editing, setEditing] = useState<Pergunta | null>(null);
   const [pergunta, setPergunta] = useState("");
   const [checklistId, setChecklistId] = useState("");
-  const [tipoServicoId, setTipoServicoId] = useState("");
-  const [tipoAvaliacaoId, setTipoAvaliacaoId] = useState("");
+  const [setorNotaId, setSetorNotaId] = useState("");
   const [targetEmployeeType, setTargetEmployeeType] = useState("geral");
   const [setorAvaliadoId, setSetorAvaliadoId] = useState("");
   const [tipoAvaliado, setTipoAvaliado] = useState("atendente");
@@ -93,7 +93,7 @@ export default function PerguntasPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("perguntas_avaliacao")
-        .select("*, tipos_servico(nome), setores!perguntas_avaliacao_setor_avaliado_id_fkey(nome), checklists!perguntas_avaliacao_checklist_id_fkey(titulo)")
+        .select("*, setores!perguntas_avaliacao_setor_avaliado_id_fkey(nome), checklists!perguntas_avaliacao_checklist_id_fkey(titulo), setor_nota:setores!perguntas_avaliacao_setor_nota_id_fkey(nome)")
         .order("ordem");
       if (error) throw error;
       return (data || []).map((p: any) => ({ ...p, _checklist_titulo: p.checklists?.titulo || null }));
@@ -105,10 +105,6 @@ export default function PerguntasPage() {
     queryFn: async () => { const { data } = await supabase.from("setores").select("*").eq("ativo", true).order("nome"); return data || []; },
   });
 
-  const { data: tipos = [] } = useQuery({
-    queryKey: ["tipos_servico_ativos"],
-    queryFn: async () => { const { data } = await supabase.from("tipos_servico").select("*").eq("ativo", true).order("nome"); return data || []; },
-  });
 
   const { data: setoresComAvaliadores = [] } = useQuery({
     queryKey: ["setores_com_avaliadores"],
@@ -241,25 +237,24 @@ export default function PerguntasPage() {
 
   const somaPesoFiltrado = useMemo(() => perguntasFiltradas.reduce((a, p) => a + p.peso, 0), [perguntasFiltradas]);
 
-  const getNextOrdem = (tipoId: string) => {
-    const related = perguntas.filter(p => tipoId ? p.tipo_servico_id === tipoId : !p.tipo_servico_id);
-    if (related.length === 0) return 1;
-    return Math.max(...related.map(p => p.ordem)) + 1;
+  const getNextOrdem = () => {
+    if (perguntas.length === 0) return 1;
+    return Math.max(...perguntas.map(p => p.ordem)) + 1;
   };
 
   const upsert = useMutation({
     mutationFn: async () => {
-      const resolvedTipoId = tipoServicoId === "todos" || !tipoServicoId ? null : tipoServicoId;
       const resolvedChecklistId = checklistId === "none" || !checklistId ? null : checklistId;
-      const computedOrdem = editing ? parseInt(ordem) : getNextOrdem(resolvedTipoId || "");
+      const computedOrdem = editing ? parseInt(ordem) : getNextOrdem();
       const payload = {
         pergunta,
-        tipo_servico_id: resolvedTipoId,
+        tipo_servico_id: null,
         tipo_avaliacao_id: null,
         checklist_id: resolvedChecklistId,
         target_employee_type: targetEmployeeType,
         avaliador_id: null,
         setor_avaliado_id: setorAvaliadoId === "todos" || !setorAvaliadoId ? null : setorAvaliadoId,
+        setor_nota_id: setorNotaId === "none" || !setorNotaId ? null : setorNotaId,
         tipo_avaliado: tipoAvaliado,
         peso: Math.min(100, Math.max(1, parseInt(peso) || 1)),
         ordem: computedOrdem,
@@ -308,17 +303,15 @@ export default function PerguntasPage() {
   }, [perguntasFiltradas, reorderMutation]);
 
   const openCreate = () => {
-    setEditing(null); setPergunta(""); setChecklistId(""); setTipoServicoId(""); setTipoAvaliacaoId(""); setTargetEmployeeType("geral");
+    setEditing(null); setPergunta(""); setChecklistId(""); setSetorNotaId(""); setTargetEmployeeType("geral");
     setSetorAvaliadoId(""); setTipoAvaliado("atendente"); setPeso("1"); setOrdem("0"); setPreviewAnswer(null); setLinkedInconsistencyId("");
     setDialogOpen(true);
   };
   const openEdit = (p: Pergunta) => {
     setEditing(p); setPergunta(p.pergunta); setChecklistId(p.checklist_id || "");
-    setTipoServicoId(p.tipo_servico_id || "");
-    setTipoAvaliacaoId((p as any).tipo_avaliacao_id || "");
+    setSetorNotaId((p as any).setor_nota_id || "");
     setTargetEmployeeType((p as any).target_employee_type || "geral");
-    const tipo = tipos.find(t => t.id === p.tipo_servico_id);
-    setSetorAvaliadoId(tipo?.setor_id || (p as any).setor_avaliado_id || "");
+    setSetorAvaliadoId((p as any).setor_avaliado_id || "");
     setTipoAvaliado(p.tipo_avaliado); setPeso(String(p.peso)); setOrdem(String(p.ordem)); setPreviewAnswer(null);
     setLinkedInconsistencyId((p as any).correlacao_pergunta_id || "");
     setDialogOpen(true);
@@ -391,17 +384,18 @@ export default function PerguntasPage() {
                   <tr className="border-b border-border">
                     <th className="w-8 px-2 py-2"></th>
                     <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-2 py-2 w-8">#</th>
-                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Pergunta</th>
-                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Quem Avalia</th>
-                    <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Nota</th>
-                    <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Ações</th>
+                     <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Pergunta</th>
+                     <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Quem Avalia</th>
+                     <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Nota p/ Setor</th>
+                     <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Nota</th>
+                     <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Ações</th>
                   </tr>
                 </thead>
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                   <SortableContext items={perguntasFiltradas.map(p => p.id)} strategy={verticalListSortingStrategy}>
                     <tbody>
                       {perguntasFiltradas.length === 0 ? (
-                        <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhuma pergunta encontrada.</td></tr>
+                        <tr><td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhuma pergunta encontrada.</td></tr>
                       ) : perguntasFiltradas.map((p, i) => (
                         <SortableRow key={p.id} p={p} index={i} onEdit={openEdit} onRemove={id => remove.mutate(id)} isAdmin={isAdmin} />
                       ))}
@@ -410,10 +404,10 @@ export default function PerguntasPage() {
                 </DndContext>
                 {perguntasFiltradas.length > 0 && (
                   <tfoot>
-                    <tr className="border-t-2 border-primary/20 bg-muted/30">
-                      <td colSpan={4} className="px-4 py-3 text-body font-semibold text-foreground text-right">Soma Total:</td>
-                      <td className="px-4 py-3 text-center text-subhead font-bold text-primary font-tabular">{somaPesoFiltrado}</td>
-                      <td></td>
+                     <tr className="border-t-2 border-primary/20 bg-muted/30">
+                       <td colSpan={5} className="px-4 py-3 text-body font-semibold text-foreground text-right">Soma Total:</td>
+                       <td className="px-4 py-3 text-center text-subhead font-bold text-primary font-tabular">{somaPesoFiltrado}</td>
+                       <td></td>
                     </tr>
                   </tfoot>
                 )}
@@ -495,23 +489,7 @@ export default function PerguntasPage() {
             <div className="space-y-1.5"><Label>Pergunta</Label><Input value={pergunta} onChange={e => setPergunta(e.target.value)} required /></div>
 
             <div className="grid grid-cols-2 gap-4">
-              {/* 2. Service Type */}
-              <div className="space-y-1.5">
-                <Label>Tipo de Serviço</Label>
-                <Select value={tipoServicoId} onValueChange={val => {
-                  setTipoServicoId(val);
-                  const tipo = tipos.find(t => t.id === val);
-                  if (tipo?.setor_id) setSetorAvaliadoId(tipo.setor_id);
-                  else if (val === "todos") setSetorAvaliadoId("");
-                }}>
-                  <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos</SelectItem>
-                    {tipos.map(t => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              {/* 3. Who Evaluates */}
+              {/* 2. Who Evaluates */}
               <div className="space-y-1.5">
                 <Label>Quem Avalia (Setor)</Label>
                 <Select value={setorAvaliadoId} onValueChange={setSetorAvaliadoId}>
@@ -522,6 +500,18 @@ export default function PerguntasPage() {
                   </SelectContent>
                 </Select>
                 <p className="text-caption text-muted-foreground">Setor responsável por responder esta pergunta.</p>
+              </div>
+              {/* 3. Nota para Setor */}
+              <div className="space-y-1.5">
+                <Label>Nota para Setor</Label>
+                <Select value={setorNotaId} onValueChange={setSetorNotaId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o setor" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    {setores.map(s => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <p className="text-caption text-muted-foreground">Setor do avaliado que recebe a nota desta pergunta.</p>
               </div>
             </div>
 
