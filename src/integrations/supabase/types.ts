@@ -397,6 +397,71 @@ export type Database = {
           },
         ]
       }
+      inconsistencias_vinculadas: {
+        Row: {
+          avaliacao_id: string | null
+          created_at: string
+          detectada_em: string
+          id: string
+          ordem_servico_id: string
+          pergunta_a_id: string
+          pergunta_b_id: string
+          resposta_a: string
+          resposta_b: string
+        }
+        Insert: {
+          avaliacao_id?: string | null
+          created_at?: string
+          detectada_em?: string
+          id?: string
+          ordem_servico_id: string
+          pergunta_a_id: string
+          pergunta_b_id: string
+          resposta_a: string
+          resposta_b: string
+        }
+        Update: {
+          avaliacao_id?: string | null
+          created_at?: string
+          detectada_em?: string
+          id?: string
+          ordem_servico_id?: string
+          pergunta_a_id?: string
+          pergunta_b_id?: string
+          resposta_a?: string
+          resposta_b?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inconsistencias_vinculadas_avaliacao_id_fkey"
+            columns: ["avaliacao_id"]
+            isOneToOne: false
+            referencedRelation: "avaliacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inconsistencias_vinculadas_ordem_servico_id_fkey"
+            columns: ["ordem_servico_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inconsistencias_vinculadas_pergunta_a_id_fkey"
+            columns: ["pergunta_a_id"]
+            isOneToOne: false
+            referencedRelation: "perguntas_avaliacao"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inconsistencias_vinculadas_pergunta_b_id_fkey"
+            columns: ["pergunta_b_id"]
+            isOneToOne: false
+            referencedRelation: "perguntas_avaliacao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ordens_servico: {
         Row: {
           atendente_id: string | null
