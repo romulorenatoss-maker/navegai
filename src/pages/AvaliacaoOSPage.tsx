@@ -109,6 +109,8 @@ export default function AvaliacaoOSPage() {
   const [wizardFinalized, setWizardFinalized] = useState(false);
   const [wizardScore, setWizardScore] = useState<number | null>(null);
   const [wizardSubmitting, setWizardSubmitting] = useState(false);
+  const [existingAvaliacaoId, setExistingAvaliacaoId] = useState<string | null>(null);
+  const [existingOsId, setExistingOsId] = useState<string | null>(null);
 
   // Filter state
   const [filterDateFrom, setFilterDateFrom] = useState<Date | undefined>();
@@ -399,6 +401,43 @@ export default function AvaliacaoOSPage() {
     setWizardFinalized(false);
     setWizardScore(null);
     setWizardSubmitting(false);
+    setExistingAvaliacaoId(null);
+    setExistingOsId(null);
+    setCreateDialogOpen(true);
+  };
+
+  const openPendingInWizard = async (pending: any) => {
+    const osData = pending.ordens_servico;
+    if (!osData) return;
+
+    // Pre-fill wizard state from existing OS
+    setTipoServicoId(osData.tipo_servico_id || "");
+    setNewOsNumero(osData.numero_os || "");
+    setClienteNome(osData.cliente_nome || "");
+    setClienteCpf("");
+    setColaboradorId(osData.colaborador_avaliado_id || "");
+    setExistingAvaliacaoId(pending.id);
+    setExistingOsId(pending.ordem_servico_id);
+    setWizardFinalized(false);
+    setWizardScore(null);
+    setWizardSubmitting(false);
+
+    // Load existing respostas
+    const { data: respostas } = await supabase
+      .from("respostas_avaliacao")
+      .select("pergunta_id, resposta, observacao")
+      .eq("avaliacao_id", pending.id);
+
+    const answers: Record<string, Answer> = {};
+    const observations: Record<string, string> = {};
+    respostas?.forEach((r) => {
+      if (r.resposta) answers[r.pergunta_id] = r.resposta as Answer;
+      if (r.observacao) observations[r.pergunta_id] = r.observacao;
+    });
+    setWizardAnswers(answers);
+    setWizardObservations(observations);
+
+    setStep(3);
     setCreateDialogOpen(true);
   };
 
@@ -514,101 +553,140 @@ export default function AvaliacaoOSPage() {
 
     setWizardSubmitting(true);
     try {
-      const num = newOsNumero.trim();
-      const cpfDigits = clienteCpf.replace(/\D/g, "");
-      const nomeTrimmed = clienteNome.trim() || null;
-      const cpfTrimmed = cpfDigits.length === 11 ? clienteCpf.trim() : null;
+      let osId: string;
+      let avalId: string;
 
-      // Handle client
-      let clienteId: string | null = null;
-      if (cpfTrimmed) {
-        const { data: existing } = await supabase
-          .from("clientes")
-          .select("id")
-          .eq("cpf", cpfTrimmed)
-          .limit(1)
-          .single();
-        if (existing) {
-          clienteId = existing.id;
-        } else {
+      if (existingAvaliacaoId && existingOsId) {
+        // Resuming a pending evaluation
+        osId = existingOsId;
+        avalId = existingAvaliacaoId;
+
+        // Upsert all respostas
+        const respostas = previewPerguntas.map((p) => ({
+          avaliacao_id: avalId,
+          pergunta_id: p.id,
+          resposta: wizardAnswers[p.id],
+          observacao: wizardObservations[p.id] || null,
+        }));
+        for (const r of respostas) {
+          await supabase.from("respostas_avaliacao").upsert(r, { onConflict: "avaliacao_id,pergunta_id" });
+        }
+
+        // Update avaliacao as concluded
+        const nota = wizardMaxScore > 0 ? (wizardTotalScore / wizardMaxScore) * 100 : 0;
+        const { error: avalErr } = await supabase
+          .from("avaliacoes")
+          .update({ concluida: true, nota_final: nota })
+          .eq("id", avalId);
+        if (avalErr) throw avalErr;
+
+        // Update OS status
+        await supabase
+          .from("ordens_servico")
+          .update({ status: "concluida", data_conclusao: new Date().toISOString() })
+          .eq("id", osId);
+
+        setWizardScore(nota);
+        setWizardFinalized(true);
+        toast.success(`Avaliação concluída! Nota: ${nota.toFixed(1)}%`);
+        refetchPending();
+      } else {
+        // Creating new OS + evaluation
+        const num = newOsNumero.trim();
+        const cpfDigits = clienteCpf.replace(/\D/g, "");
+        const nomeTrimmed = clienteNome.trim() || null;
+        const cpfTrimmed = cpfDigits.length === 11 ? clienteCpf.trim() : null;
+
+        // Handle client
+        let clienteId: string | null = null;
+        if (cpfTrimmed) {
+          const { data: existing } = await supabase
+            .from("clientes")
+            .select("id")
+            .eq("cpf", cpfTrimmed)
+            .limit(1)
+            .single();
+          if (existing) {
+            clienteId = existing.id;
+          } else {
+            const { data: newCliente } = await supabase
+              .from("clientes")
+              .insert({ nome: nomeTrimmed || "Sem nome", cpf: cpfTrimmed })
+              .select("id")
+              .single();
+            if (newCliente) clienteId = newCliente.id;
+          }
+        } else if (nomeTrimmed) {
           const { data: newCliente } = await supabase
             .from("clientes")
-            .insert({ nome: nomeTrimmed || "Sem nome", cpf: cpfTrimmed })
+            .insert({ nome: nomeTrimmed, cpf: null })
             .select("id")
             .single();
           if (newCliente) clienteId = newCliente.id;
         }
-      } else if (nomeTrimmed) {
-        const { data: newCliente } = await supabase
-          .from("clientes")
-          .insert({ nome: nomeTrimmed, cpf: null })
-          .select("id")
-          .single();
-        if (newCliente) clienteId = newCliente.id;
-      }
 
-      // Check if OS exists
-      const { data: existingOS } = await supabase
-        .from("ordens_servico")
-        .select("id")
-        .eq("numero_os", num)
-        .limit(1)
-        .single();
-
-      let osId: string;
-      if (existingOS) {
-        osId = existingOS.id;
-      } else {
-        const { data: newOs, error: osErr } = await supabase
+        // Check if OS exists
+        const { data: existingOS } = await supabase
           .from("ordens_servico")
+          .select("id")
+          .eq("numero_os", num)
+          .limit(1)
+          .single();
+
+        if (existingOS) {
+          osId = existingOS.id;
+        } else {
+          const { data: newOs, error: osErr } = await supabase
+            .from("ordens_servico")
+            .insert({
+              numero_os: num,
+              cliente_nome: nomeTrimmed,
+              cliente_cpf: cpfTrimmed,
+              tipo_servico_id: tipoServicoId,
+              colaborador_avaliado_id: colaboradorId,
+              cliente_id: clienteId,
+            })
+            .select("id")
+            .single();
+          if (osErr) throw osErr;
+          osId = newOs.id;
+        }
+
+        // Create avaliacao
+        const nota = wizardMaxScore > 0 ? (wizardTotalScore / wizardMaxScore) * 100 : 0;
+        const { data: newAval, error: avalErr } = await supabase
+          .from("avaliacoes")
           .insert({
-            numero_os: num,
-            cliente_nome: nomeTrimmed,
-            cliente_cpf: cpfTrimmed,
-            tipo_servico_id: tipoServicoId,
-            colaborador_avaliado_id: colaboradorId,
-            cliente_id: clienteId,
+            ordem_servico_id: osId,
+            avaliador_id: profile!.id,
+            concluida: true,
+            nota_final: nota,
           })
           .select("id")
           .single();
-        if (osErr) throw osErr;
-        osId = newOs.id;
+        if (avalErr) throw avalErr;
+
+        // Insert all respostas
+        const respostas = previewPerguntas.map((p) => ({
+          avaliacao_id: newAval.id,
+          pergunta_id: p.id,
+          resposta: wizardAnswers[p.id],
+          observacao: wizardObservations[p.id] || null,
+        }));
+        const { error: respErr } = await supabase.from("respostas_avaliacao").insert(respostas);
+        if (respErr) throw respErr;
+
+        // Update OS status
+        await supabase
+          .from("ordens_servico")
+          .update({ status: "concluida", data_conclusao: new Date().toISOString() })
+          .eq("id", osId);
+
+        setWizardScore(nota);
+        setWizardFinalized(true);
+        toast.success(`Avaliação concluída! Nota: ${nota.toFixed(1)}%`);
+        refetchPending();
       }
-
-      // Create avaliacao
-      const nota = wizardMaxScore > 0 ? (wizardTotalScore / wizardMaxScore) * 100 : 0;
-      const { data: newAval, error: avalErr } = await supabase
-        .from("avaliacoes")
-        .insert({
-          ordem_servico_id: osId,
-          avaliador_id: profile!.id,
-          concluida: true,
-          nota_final: nota,
-        })
-        .select("id")
-        .single();
-      if (avalErr) throw avalErr;
-
-      // Insert all respostas
-      const respostas = previewPerguntas.map((p) => ({
-        avaliacao_id: newAval.id,
-        pergunta_id: p.id,
-        resposta: wizardAnswers[p.id],
-        observacao: wizardObservations[p.id] || null,
-      }));
-      const { error: respErr } = await supabase.from("respostas_avaliacao").insert(respostas);
-      if (respErr) throw respErr;
-
-      // Update OS status
-      await supabase
-        .from("ordens_servico")
-        .update({ status: "concluida", data_conclusao: new Date().toISOString() })
-        .eq("id", osId);
-
-      setWizardScore(nota);
-      setWizardFinalized(true);
-      toast.success(`Avaliação concluída! Nota: ${nota.toFixed(1)}%`);
-      refetchPending();
     } catch (err: any) {
       toast.error("Erro ao finalizar: " + err.message);
     } finally {
@@ -798,13 +876,7 @@ export default function AvaliacaoOSPage() {
               <button
                 key={a.id}
                 type="button"
-                onClick={() => {
-                  const osNum = a.ordens_servico?.numero_os;
-                  if (osNum) {
-                    setSearchQuery(osNum);
-                    searchOS(osNum, false);
-                  }
-                }}
+                onClick={() => openPendingInWizard(a)}
                 className="w-full flex items-center gap-4 px-4 py-3 text-left hover:bg-muted/50 transition-colors press-effect"
               >
                 <div className="flex-1 min-w-0">
@@ -830,7 +902,7 @@ export default function AvaliacaoOSPage() {
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className={step === 3 ? "max-w-2xl" : "max-w-lg"}>
           <DialogHeader>
-            <DialogTitle>Criar Nova Ordem de Serviço</DialogTitle>
+            <DialogTitle>{existingAvaliacaoId ? `Continuar Avaliação — OS #${newOsNumero}` : "Criar Nova Ordem de Serviço"}</DialogTitle>
           </DialogHeader>
 
           {/* Stepper */}
