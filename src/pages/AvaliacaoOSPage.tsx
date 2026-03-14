@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { detectInconsistencies, markAuditOnlyAndCalculateScore } from "@/hooks/useInconsistencyDetection";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -86,6 +86,7 @@ function isValidCpf(cpf: string): boolean {
 // --- Main Component ---
 export default function AvaliacaoOSPage() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { profile, isAdmin, hasRole } = useAuth();
   const showAllTipos = isAdmin || hasRole("gestor");
 
@@ -631,6 +632,8 @@ export default function AvaliacaoOSPage() {
       toast.success(`Avaliação concluída! Nota: ${nota.toFixed(1)}%`);
       try { await detectInconsistencies(evalOsId); } catch (e) { console.warn("Inconsistency detection error:", e); }
       refetchPending();
+      // Navigate back to dashboard after finalizing
+      setTimeout(() => navigate("/"), 1500);
     } catch (err: any) {
       toast.error("Erro: " + err.message);
     } finally {
@@ -779,7 +782,7 @@ export default function AvaliacaoOSPage() {
   // --- Full-Page Evaluation View ---
   if (view === "evaluation" && evalOsData) {
     return (
-      <div className="p-4 sm:p-6 max-w-4xl mx-auto pb-24">
+      <div className="p-4 sm:p-6 max-w-4xl mx-auto pb-32">
         <Button variant="ghost" size="sm" className="mb-3 press-effect" onClick={backToList}>
           <ChevronLeft className="w-4 h-4 mr-1" /> Voltar para lista
         </Button>
