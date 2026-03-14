@@ -152,11 +152,12 @@ export default function ColaboradoresPage() {
     mutationFn: async () => {
       if (!editing) return;
       const { error } = await supabase.from("profiles").update({
-        nome, cargo, setor_id: setorId || null,
+        nome, cargo, setor_id: selectedSetores[0] || null,
       }).eq("id", editing.id);
       if (error) throw error;
 
       await syncRole(editing.user_id, cargo);
+      await saveSetores(editing.id);
 
       // Save tipos de serviço if avaliador
       if (cargo === "avaliador") {
