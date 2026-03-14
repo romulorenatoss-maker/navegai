@@ -265,7 +265,7 @@ export default function DesempenhoColaboradorPage() {
     queryFn: async () => {
       if (!selectedOsId) return null;
       const { data: avals } = await supabase.from("avaliacoes")
-        .select("id, avaliador_id, tipo_avaliacao_id, nota_final, concluida")
+        .select("id, avaliador_id, tipo_avaliacao_id, nota_final, concluida, concluida_em")
         .eq("ordem_servico_id", selectedOsId);
       if (!avals?.length) return null;
 
