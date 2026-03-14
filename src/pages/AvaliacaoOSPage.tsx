@@ -1090,6 +1090,7 @@ export default function AvaliacaoOSPage() {
     }
   };
 
+
   const handleFinalizeEvaluation = async () => {
     if (!evalAvaliacaoId || !evalOsId) return;
 
@@ -1309,6 +1310,7 @@ export default function AvaliacaoOSPage() {
     setEvalEvidencias({});
     setEvalFinalized(false);
     setEvalScore(null);
+    autoFinalizeTriggered.current = false;
   };
 
   const resetForm = () => {
@@ -1344,6 +1346,25 @@ export default function AvaliacaoOSPage() {
   
   const evalTotalScore = evalPerguntas.reduce((a, p) => evalAnswers[p.id] === "sim" ? a + p.peso : a, 0);
   const evalMaxScore = evalPerguntas.reduce((a, p) => evalAnswers[p.id] !== "na" && evalAnswers[p.id] != null ? a + p.peso : a, 0);
+
+  // Auto-finalize when all answerable questions are answered
+  const autoFinalizeTriggered = useRef(false);
+  useEffect(() => {
+    if (evalFinalized || isOsFullyConcluded || evalSubmitting || autoFinalizeTriggered.current) return;
+    if (answerablePerguntas.length === 0) return;
+    const allAnswered = answerablePerguntas.every(p => evalAnswers[p.id] != null);
+    if (!allAnswered) return;
+    // Check "nao" answers have observations and evidence
+    const missingObs = answerablePerguntas.some(p => evalAnswers[p.id] === "nao" && !(evalObservations[p.id]?.trim()));
+    const missingEvidence = answerablePerguntas.some(p => evalAnswers[p.id] === "nao" && !evalEvidencias[p.id]);
+    if (missingObs || missingEvidence) return;
+    // Delay to let auto-save finish
+    autoFinalizeTriggered.current = true;
+    const timer = setTimeout(() => {
+      handleFinalizeEvaluation();
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [evalAnswers, answerablePerguntas, evalFinalized, isOsFullyConcluded, evalSubmitting, evalObservations, evalEvidencias]);
 
   const atendenteNome = allProfiles.find(p => p.id === (selectedOS as any)?.atendente_id)?.nome;
   const tecnicoNome = allProfiles.find(p => p.id === (selectedOS as any)?.tecnico_id)?.nome;
@@ -1844,11 +1865,10 @@ export default function AvaliacaoOSPage() {
                     <Download className="w-3 h-3 mr-1" /> PDF
                   </Button>
                 )}
-                {!isLocked && globalProgressPercent >= 100 && (
-                  <Button size="sm" onClick={handleFinalizeEvaluation} disabled={evalSubmitting} className="press-effect h-8 text-xs px-3">
-                    {evalSubmitting && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
-                    Finalizar
-                  </Button>
+                {!isLocked && evalSubmitting && (
+                  <span className="text-muted-foreground flex items-center gap-1 text-xs">
+                    <Loader2 className="w-3 h-3 animate-spin" /> Finalizando...
+                  </span>
                 )}
                 <Button variant="outline" size="sm" onClick={backToList} className="press-effect h-8 text-xs px-3">
                   {isLocked ? "Fechar" : "Sair"}
