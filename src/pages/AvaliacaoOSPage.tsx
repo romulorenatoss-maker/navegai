@@ -522,7 +522,7 @@ export default function AvaliacaoOSPage() {
               .single();
 
             if (existingAval) {
-              if (existingAval.tipo_avaliacao_id) setSelectedTipoAvaliacaoId(existingAval.tipo_avaliacao_id);
+              // tipo_avaliacao_id no longer tracked
 
               if (existingAval.concluida && existingOS.status !== "concluida") {
                 await supabase
