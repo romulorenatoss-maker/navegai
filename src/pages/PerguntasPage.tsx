@@ -14,6 +14,8 @@ import type { Tables } from "@/integrations/supabase/types";
 
 type Pergunta = Tables<"perguntas_avaliacao">;
 
+type PreviewAnswer = "sim" | "nao" | "na" | null;
+
 export default function PerguntasPage() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
