@@ -111,7 +111,7 @@ export default function RelatoriosPage() {
   // Export loading
   const [exportLoading, setExportLoading] = useState(false);
 
-  const competenceMonths = useMemo(() => getCompetenceMonths(), []);
+  
 
   // Fetch OS
   const fetchOS = useCallback(async () => {
