@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ClipboardCheck, Clock, CheckCircle2, FolderOpen } from "lucide-react";
+import { ClipboardCheck, Clock, CheckCircle2, FolderOpen, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface OSStats {
@@ -9,6 +9,12 @@ interface OSStats {
   em_andamento: number;
   concluidas: number;
   total: number;
+}
+
+interface ClienteRanking {
+  cliente_id: string;
+  cliente_nome: string;
+  os_count: number;
 }
 
 const containerVariants = {
@@ -25,10 +31,11 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const [stats, setStats] = useState<OSStats>({ abertas: 0, em_andamento: 0, concluidas: 0, total: 0 });
   const [recentOS, setRecentOS] = useState<any[]>([]);
+  const [ranking, setRanking] = useState<ClienteRanking[]>([]);
 
   useEffect(() => {
     const fetchStats = async () => {
-      const { data } = await supabase.from("ordens_servico").select("id, numero_os, status, created_at, cliente_nome").order("created_at", { ascending: false }).limit(50);
+      const { data } = await supabase.from("ordens_servico").select("id, numero_os, status, created_at, cliente_nome, cliente_id").order("created_at", { ascending: false }).limit(50);
       if (!data) return;
 
       setStats({
@@ -39,7 +46,38 @@ export default function DashboardPage() {
       });
       setRecentOS(data.slice(0, 10));
     };
+
+    const fetchRanking = async () => {
+      const sixtyDaysAgo = new Date();
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+      
+      const { data } = await supabase
+        .from("ordens_servico")
+        .select("cliente_id, cliente_nome")
+        .gte("created_at", sixtyDaysAgo.toISOString())
+        .not("cliente_id", "is", null);
+
+      if (!data) return;
+
+      const countMap: Record<string, { nome: string; count: number }> = {};
+      data.forEach((os: any) => {
+        if (!os.cliente_id) return;
+        if (!countMap[os.cliente_id]) {
+          countMap[os.cliente_id] = { nome: os.cliente_nome || "Sem nome", count: 0 };
+        }
+        countMap[os.cliente_id].count++;
+      });
+
+      const sorted = Object.entries(countMap)
+        .map(([id, v]) => ({ cliente_id: id, cliente_nome: v.nome, os_count: v.count }))
+        .sort((a, b) => b.os_count - a.os_count)
+        .slice(0, 10);
+
+      setRanking(sorted);
+    };
+
     fetchStats();
+    fetchRanking();
   }, []);
 
   const cards = [
