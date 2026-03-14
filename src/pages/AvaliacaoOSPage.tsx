@@ -4,13 +4,14 @@ import { detectInconsistencies, markAuditOnlyAndCalculateScore } from "@/hooks/u
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, AlertTriangle, Loader2, ChevronRight, ChevronLeft,
-  Check, Clock, Trash2, Eye, Users, MessageSquare, Camera, X, Image as ImageIcon
+  Check, Clock, Trash2, Eye, Users, MessageSquare, Camera, X, Image as ImageIcon, Lock
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
@@ -120,6 +121,11 @@ export default function AvaliacaoOSPage() {
   const [evalScore, setEvalScore] = useState<number | null>(null);
   const [evalSubmitting, setEvalSubmitting] = useState(false);
   const [autoSaving, setAutoSaving] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteOsId, setDeleteOsId] = useState<string | null>(null);
+  const [deleteOsNumero, setDeleteOsNumero] = useState<string>("");
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const debounceTimers = useRef<Record<string, NodeJS.Timeout>>({});
 
   // --- Queries ---
@@ -632,16 +638,52 @@ export default function AvaliacaoOSPage() {
     }
   };
 
-  const handleDeleteOS = async (osId: string) => {
-    if (!confirm("Excluir esta OS e todas as avaliações vinculadas?")) return;
-    const { data: avals } = await supabase.from("avaliacoes").select("id").eq("ordem_servico_id", osId);
-    if (avals) { for (const a of avals) { await supabase.from("respostas_avaliacao").delete().eq("avaliacao_id", a.id); } }
-    await supabase.from("avaliacoes").delete().eq("ordem_servico_id", osId);
-    await supabase.from("ordens_servico").delete().eq("id", osId);
-    toast.success("OS excluída.");
-    setSelectedOS(null);
-    setView("list");
-    refetchPending();
+  const promptDeleteOS = (osId: string, osNumero: string) => {
+    if (!isAdmin) { toast.error("Apenas administradores podem excluir OS."); return; }
+    setDeleteOsId(osId);
+    setDeleteOsNumero(osNumero);
+    setDeletePassword("");
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDeleteOS = async () => {
+    if (!deleteOsId || !profile) return;
+    if (!deletePassword.trim()) { toast.error("Informe sua senha."); return; }
+
+    setDeleteLoading(true);
+    try {
+      // Verify password via re-authentication
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: profile.email,
+        password: deletePassword,
+      });
+      if (authError) { toast.error("Senha incorreta."); return; }
+
+      // Delete all related data
+      const { data: avals } = await supabase.from("avaliacoes").select("id").eq("ordem_servico_id", deleteOsId);
+      if (avals) { for (const a of avals) { await supabase.from("respostas_avaliacao").delete().eq("avaliacao_id", a.id); } }
+      await supabase.from("avaliacoes").delete().eq("ordem_servico_id", deleteOsId);
+      await supabase.from("ordens_servico").delete().eq("id", deleteOsId);
+
+      // Audit log - only OS number
+      await supabase.from("audit_logs").insert({
+        user_id: profile.user_id,
+        acao: "exclusao_os",
+        tabela: "ordens_servico",
+        registro_id: deleteOsId,
+        dados_anteriores: { numero_os: deleteOsNumero },
+      } as any);
+
+      toast.success(`OS #${deleteOsNumero} excluída com sucesso.`);
+      setDeleteDialogOpen(false);
+      setSelectedOS(null);
+      setView("list");
+      refetchPending();
+    } catch (err: any) {
+      toast.error("Erro ao excluir: " + err.message);
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   const backToList = () => {
@@ -1001,7 +1043,7 @@ export default function AvaliacaoOSPage() {
             </Button>
           )}
           {selectedOS.status !== "concluida" && isAdmin && (
-            <Button variant="destructive" onClick={() => handleDeleteOS(selectedOS.id)} className="press-effect w-full sm:w-auto">
+            <Button variant="destructive" onClick={() => promptDeleteOS(selectedOS.id, selectedOS.numero_os)} className="press-effect w-full sm:w-auto">
               <Trash2 className="w-4 h-4 mr-2" /> Excluir OS
             </Button>
           )}
@@ -1272,6 +1314,42 @@ export default function AvaliacaoOSPage() {
           </div>
         </div>
       )}
+
+      {/* Delete OS Password Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={(open) => { if (!deleteLoading) setDeleteDialogOpen(open); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Lock className="w-5 h-5" /> Confirmar Exclusão
+            </DialogTitle>
+            <DialogDescription>
+              Você está prestes a excluir a <strong>OS #{deleteOsNumero}</strong> e todos os dados vinculados (avaliações, respostas e evidências). Esta ação é irreversível.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label>Digite sua senha para confirmar</Label>
+              <Input
+                type="password"
+                placeholder="Sua senha de acesso"
+                value={deletePassword}
+                onChange={e => setDeletePassword(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleConfirmDeleteOS()}
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleteLoading}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDeleteOS} disabled={deleteLoading || !deletePassword.trim()}>
+              {deleteLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+              Excluir OS
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
