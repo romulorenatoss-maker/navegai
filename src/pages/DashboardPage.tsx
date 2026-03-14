@@ -612,7 +612,7 @@ export default function DashboardPage() {
   const osEmAndamento = useMemo(() => allOS.filter((o) => o.status === "em_andamento"), [allOS]);
   const osConcluidas = useMemo(() => allOS.filter((o) => o.status === "concluida"), [allOS]);
 
-  const [statusFilter, setStatusFilter] = useState<"all" | "aberta" | "em_andamento" | "concluida">("all");
+  // statusFilter already declared above
 
   const filteredOS = useMemo(() => {
     if (statusFilter === "all") return allOS;
