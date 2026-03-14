@@ -140,8 +140,8 @@ export default function DashboardPage() {
     const fetch = async () => {
       setLoading(true);
 
-      const from = startDate ? startDate.toISOString() : startOfMonth(now).toISOString();
-      const to = endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString();
+      const from = startDate ? startOfDay(startDate).toISOString() : startOfMonth(now).toISOString();
+      const to = endDate ? endOfDay(endDate).toISOString() : endOfMonth(now).toISOString();
 
       let query = supabase
         .from("ordens_servico")
