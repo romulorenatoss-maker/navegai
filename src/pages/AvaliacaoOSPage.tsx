@@ -146,6 +146,37 @@ export default function AvaliacaoOSPage() {
     concludeAvaliacao, answeredCount, totalScore, maxScore,
   } = useAvaliacaoOS();
 
+  // Fetch collaborators from the evaluated collaborator's sector
+  const { data: setorColaboradores = [] } = useQuery({
+    queryKey: ["setor_colaboradores_os", os?.colaborador_avaliado_id],
+    queryFn: async () => {
+      if (!os?.colaborador_avaliado_id) return [];
+      const { data: links } = await supabase
+        .from("colaborador_setores")
+        .select("setor_id, setores(nome)")
+        .eq("profile_id", os.colaborador_avaliado_id);
+      if (!links || links.length === 0) return [];
+      const setorIds = links.map((l) => l.setor_id);
+      const setorNames = Object.fromEntries(links.map((l) => [l.setor_id, (l as any).setores?.nome || ""]));
+      const { data: allLinks } = await supabase
+        .from("colaborador_setores")
+        .select("profile_id, setor_id")
+        .in("setor_id", setorIds);
+      if (!allLinks || allLinks.length === 0) return [];
+      const profileIds = [...new Set(allLinks.map((l) => l.profile_id))];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, nome, cargo")
+        .eq("ativo", true)
+        .in("id", profileIds);
+      return (profiles || []).map((p) => ({
+        ...p,
+        setorNome: setorNames[allLinks.find((l) => l.profile_id === p.id)?.setor_id || ""] || "",
+      }));
+    },
+    enabled: !!os?.colaborador_avaliado_id,
+  });
+
   // Fetch pending (non-concluded) evaluations for current user
   const { data: pendingAvaliacoes = [], refetch: refetchPending } = useQuery({
     queryKey: ["pending_avaliacoes", profile?.id],
