@@ -141,7 +141,10 @@ export default function MinhasAvaliacoesPage() {
                 <div className="bg-muted/30 px-4 py-3 flex items-center justify-between">
                   <div>
                     <p className="text-body font-semibold text-foreground">{aval._ta_nome}</p>
-                    <p className="text-caption text-muted-foreground">Avaliador: {aval._avaliador_nome}</p>
+                    <p className="text-caption text-muted-foreground">
+                      Avaliador: {aval._avaliador_nome}
+                      {aval.concluida_em && ` • Concluído em ${new Date(aval.concluida_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}`}
+                    </p>
                   </div>
                   {aval.nota_final != null && (
                     <span className={cn("text-body font-bold font-tabular", aval.nota_final >= 80 ? "text-success" : aval.nota_final >= 60 ? "text-warning" : "text-destructive")}>
