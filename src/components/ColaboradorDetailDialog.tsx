@@ -14,8 +14,9 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   User, FileText, Trash2, Lock, Loader2, ShieldCheck,
-  Eye, MessageSquare, CheckCircle2, Clock, AlertCircle
+  Eye, MessageSquare, CheckCircle2, Clock, AlertCircle, Shield
 } from "lucide-react";
+import PermissoesTelasTab from "@/components/PermissoesTelasTab";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Profile = Tables<"profiles">;
