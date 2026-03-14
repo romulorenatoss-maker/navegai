@@ -237,10 +237,9 @@ export default function PerguntasPage() {
 
   const somaPesoFiltrado = useMemo(() => perguntasFiltradas.reduce((a, p) => a + p.peso, 0), [perguntasFiltradas]);
 
-  const getNextOrdem = (tipoId: string) => {
-    const related = perguntas.filter(p => tipoId ? p.tipo_servico_id === tipoId : !p.tipo_servico_id);
-    if (related.length === 0) return 1;
-    return Math.max(...related.map(p => p.ordem)) + 1;
+  const getNextOrdem = () => {
+    if (perguntas.length === 0) return 1;
+    return Math.max(...perguntas.map(p => p.ordem)) + 1;
   };
 
   const upsert = useMutation({
