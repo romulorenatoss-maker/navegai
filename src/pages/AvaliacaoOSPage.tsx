@@ -1858,11 +1858,10 @@ export default function AvaliacaoOSPage() {
                     <Download className="w-3 h-3 mr-1" /> PDF
                   </Button>
                 )}
-                {!isLocked && globalProgressPercent >= 100 && (
-                  <Button size="sm" onClick={handleFinalizeEvaluation} disabled={evalSubmitting} className="press-effect h-8 text-xs px-3">
-                    {evalSubmitting && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
-                    Finalizar
-                  </Button>
+                {!isLocked && evalSubmitting && (
+                  <span className="text-muted-foreground flex items-center gap-1 text-xs">
+                    <Loader2 className="w-3 h-3 animate-spin" /> Finalizando...
+                  </span>
                 )}
                 <Button variant="outline" size="sm" onClick={backToList} className="press-effect h-8 text-xs px-3">
                   {isLocked ? "Fechar" : "Sair"}
