@@ -2,22 +2,9 @@ import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  LayoutDashboard,
-  ClipboardCheck,
-  FileSearch,
-  ListChecks,
-  PlayCircle,
-  FolderKanban,
-  BarChart3,
-  Shield,
-  Settings,
-  ChevronLeft,
-  ChevronRight,
-  Building2,
-  Users,
-  HelpCircle,
-  Wrench,
-  LogOut,
+  LayoutDashboard, ClipboardCheck, FileSearch, ListChecks, PlayCircle, FolderKanban,
+  BarChart3, Shield, Settings, ChevronLeft, ChevronRight, Building2, Users,
+  HelpCircle, Wrench, LogOut, Star, ClipboardList,
 } from "lucide-react";
 
 const navSections = [
@@ -31,6 +18,7 @@ const navSections = [
     title: "Avaliações",
     items: [
       { to: "/avaliacoes/pesquisa", icon: FileSearch, label: "Pesquisa de OS" },
+      { to: "/avaliacoes/minhas", icon: Star, label: "Minhas Avaliações" },
     ],
   },
   {
@@ -49,6 +37,7 @@ const navSections = [
       { to: "/cadastros/colaboradores", icon: Users, label: "Colaboradores" },
       { to: "/cadastros/clientes", icon: ClipboardCheck, label: "Clientes" },
       { to: "/cadastros/servicos", icon: Wrench, label: "Serviços" },
+      { to: "/cadastros/tipos-avaliacao", icon: ClipboardList, label: "Tipos Avaliação" },
     ],
   },
   {
@@ -76,16 +65,10 @@ export function AppSidebar({ userName = "Usuário", onSignOut }: AppSidebarProps
       transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
       className="h-screen bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border fixed left-0 top-0 z-40"
     >
-      {/* Header */}
       <div className="h-14 flex items-center px-4 border-b border-sidebar-border shrink-0">
         <AnimatePresence mode="wait">
           {!collapsed && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex items-center gap-2 overflow-hidden"
-            >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 overflow-hidden">
               <div className="w-7 h-7 rounded-md bg-sidebar-primary flex items-center justify-center">
                 <span className="text-sidebar-primary-foreground text-xs font-bold">N</span>
               </div>
@@ -100,18 +83,12 @@ export function AppSidebar({ userName = "Usuário", onSignOut }: AppSidebarProps
         )}
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
         {navSections.map((section) => (
           <div key={section.title}>
             <AnimatePresence>
               {!collapsed && (
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="text-caption text-sidebar-muted uppercase tracking-wider px-2 mb-1"
-                >
+                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-caption text-sidebar-muted uppercase tracking-wider px-2 mb-1">
                   {section.title}
                 </motion.p>
               )}
@@ -120,25 +97,15 @@ export function AppSidebar({ userName = "Usuário", onSignOut }: AppSidebarProps
               {section.items.map((item) => {
                 const isActive = location.pathname === item.to;
                 return (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
+                  <NavLink key={item.to} to={item.to}
                     className={`flex items-center gap-3 px-2 py-2 rounded-md text-body transition-colors duration-150 press-effect ${
-                      isActive
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                      isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                     }`}
-                    title={collapsed ? item.label : undefined}
-                  >
+                    title={collapsed ? item.label : undefined}>
                     <item.icon className="w-4 h-4 shrink-0" />
                     <AnimatePresence>
                       {!collapsed && (
-                        <motion.span
-                          initial={{ opacity: 0, width: 0 }}
-                          animate={{ opacity: 1, width: "auto" }}
-                          exit={{ opacity: 0, width: 0 }}
-                          className="whitespace-nowrap overflow-hidden"
-                        >
+                        <motion.span initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: "auto" }} exit={{ opacity: 0, width: 0 }} className="whitespace-nowrap overflow-hidden">
                           {item.label}
                         </motion.span>
                       )}
@@ -151,12 +118,8 @@ export function AppSidebar({ userName = "Usuário", onSignOut }: AppSidebarProps
         ))}
       </nav>
 
-      {/* Footer */}
       <div className="border-t border-sidebar-border p-2 shrink-0 space-y-1">
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="w-full flex items-center gap-3 px-2 py-2 rounded-md text-body text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors press-effect"
-        >
+        <button onClick={() => setCollapsed(!collapsed)} className="w-full flex items-center gap-3 px-2 py-2 rounded-md text-body text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors press-effect">
           {collapsed ? <ChevronRight className="w-4 h-4 shrink-0 mx-auto" /> : <ChevronLeft className="w-4 h-4 shrink-0" />}
           {!collapsed && <span>Recolher</span>}
         </button>

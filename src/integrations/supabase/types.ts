@@ -56,6 +56,7 @@ export type Database = {
           nota_final: number | null
           observacao_geral: string | null
           ordem_servico_id: string
+          tipo_avaliacao_id: string | null
           updated_at: string
         }
         Insert: {
@@ -66,6 +67,7 @@ export type Database = {
           nota_final?: number | null
           observacao_geral?: string | null
           ordem_servico_id: string
+          tipo_avaliacao_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -76,6 +78,7 @@ export type Database = {
           nota_final?: number | null
           observacao_geral?: string | null
           ordem_servico_id?: string
+          tipo_avaliacao_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -91,6 +94,13 @@ export type Database = {
             columns: ["ordem_servico_id"]
             isOneToOne: false
             referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avaliacoes_tipo_avaliacao_id_fkey"
+            columns: ["tipo_avaliacao_id"]
+            isOneToOne: false
+            referencedRelation: "tipos_avaliacao"
             referencedColumns: ["id"]
           },
         ]
@@ -285,6 +295,7 @@ export type Database = {
       }
       ordens_servico: {
         Row: {
+          atendente_id: string | null
           cliente_cpf: string | null
           cliente_id: string | null
           cliente_nome: string | null
@@ -295,10 +306,12 @@ export type Database = {
           id: string
           numero_os: string
           status: Database["public"]["Enums"]["os_status"]
+          tecnico_id: string | null
           tipo_servico_id: string | null
           updated_at: string
         }
         Insert: {
+          atendente_id?: string | null
           cliente_cpf?: string | null
           cliente_id?: string | null
           cliente_nome?: string | null
@@ -309,10 +322,12 @@ export type Database = {
           id?: string
           numero_os: string
           status?: Database["public"]["Enums"]["os_status"]
+          tecnico_id?: string | null
           tipo_servico_id?: string | null
           updated_at?: string
         }
         Update: {
+          atendente_id?: string | null
           cliente_cpf?: string | null
           cliente_id?: string | null
           cliente_nome?: string | null
@@ -323,10 +338,18 @@ export type Database = {
           id?: string
           numero_os?: string
           status?: Database["public"]["Enums"]["os_status"]
+          tecnico_id?: string | null
           tipo_servico_id?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "ordens_servico_atendente_id_fkey"
+            columns: ["atendente_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ordens_servico_cliente_id_fkey"
             columns: ["cliente_id"]
@@ -337,6 +360,13 @@ export type Database = {
           {
             foreignKeyName: "ordens_servico_colaborador_avaliado_id_fkey"
             columns: ["colaborador_avaliado_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ordens_servico_tecnico_id_fkey"
+            columns: ["tecnico_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -361,6 +391,8 @@ export type Database = {
           pergunta: string
           peso: number
           setor_avaliado_id: string | null
+          target_employee_type: string
+          tipo_avaliacao_id: string | null
           tipo_avaliado: string
           tipo_servico_id: string | null
           updated_at: string
@@ -375,6 +407,8 @@ export type Database = {
           pergunta: string
           peso?: number
           setor_avaliado_id?: string | null
+          target_employee_type?: string
+          tipo_avaliacao_id?: string | null
           tipo_avaliado?: string
           tipo_servico_id?: string | null
           updated_at?: string
@@ -389,6 +423,8 @@ export type Database = {
           pergunta?: string
           peso?: number
           setor_avaliado_id?: string | null
+          target_employee_type?: string
+          tipo_avaliacao_id?: string | null
           tipo_avaliado?: string
           tipo_servico_id?: string | null
           updated_at?: string
@@ -413,6 +449,13 @@ export type Database = {
             columns: ["setor_avaliado_id"]
             isOneToOne: false
             referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "perguntas_avaliacao_tipo_avaliacao_id_fkey"
+            columns: ["tipo_avaliacao_id"]
+            isOneToOne: false
+            referencedRelation: "tipos_avaliacao"
             referencedColumns: ["id"]
           },
           {
@@ -543,6 +586,69 @@ export type Database = {
           id?: string
           nome?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      tipo_servico_tipos_avaliacao: {
+        Row: {
+          created_at: string
+          id: string
+          tipo_avaliacao_id: string
+          tipo_servico_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          tipo_avaliacao_id: string
+          tipo_servico_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          tipo_avaliacao_id?: string
+          tipo_servico_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tipo_servico_tipos_avaliacao_tipo_avaliacao_id_fkey"
+            columns: ["tipo_avaliacao_id"]
+            isOneToOne: false
+            referencedRelation: "tipos_avaliacao"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tipo_servico_tipos_avaliacao_tipo_servico_id_fkey"
+            columns: ["tipo_servico_id"]
+            isOneToOne: false
+            referencedRelation: "tipos_servico"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tipos_avaliacao: {
+        Row: {
+          ativo: boolean
+          cargo_responsavel: string | null
+          created_at: string
+          descricao: string | null
+          id: string
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean
+          cargo_responsavel?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome: string
+        }
+        Update: {
+          ativo?: boolean
+          cargo_responsavel?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string
         }
         Relationships: []
       }
