@@ -98,6 +98,11 @@ export default function AvaliacaoOSPage() {
   const [clienteCpf, setClienteCpf] = useState("");
   const [colaboradorId, setColaboradorId] = useState("");
   const [cpfClienteEncontrado, setCpfClienteEncontrado] = useState<string | null>(null);
+  const [wizardAnswers, setWizardAnswers] = useState<Record<string, Answer>>({});
+  const [wizardObservations, setWizardObservations] = useState<Record<string, string>>({});
+  const [wizardFinalized, setWizardFinalized] = useState(false);
+  const [wizardScore, setWizardScore] = useState<number | null>(null);
+  const [wizardSubmitting, setWizardSubmitting] = useState(false);
 
   // Auto-fill client name when CPF is found in DB
   useEffect(() => {
