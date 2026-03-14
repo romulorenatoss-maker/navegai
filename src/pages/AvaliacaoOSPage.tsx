@@ -652,6 +652,7 @@ export default function AvaliacaoOSPage() {
     setEvalOsData(null);
     setEvalAnswers({});
     setEvalObservations({});
+    setEvalEvidencias({});
     setEvalFinalized(false);
     setEvalScore(null);
   };
