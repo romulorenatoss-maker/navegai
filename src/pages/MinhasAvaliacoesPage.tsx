@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Eye, CheckCircle2, XCircle, MessageSquare, Image as ImageIcon, Loader2, CalendarIcon, Search } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchNotasPorSetor, calcularMediaColaborador } from "@/hooks/useNotasPorSetor";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -42,23 +43,17 @@ export default function MinhasAvaliacoesPage() {
     enabled: !!profile?.id,
   });
 
-  // Calculate average score for all filtered OS
+  // Calculate average score using per-sector SQL function
   const { data: notaMedia } = useQuery({
-    queryKey: ["minhas_avaliacoes_media", minhasOS.map(o => o.id).join(",")],
+    queryKey: ["minhas_avaliacoes_media_setor", profile?.id, searchTrigger],
     queryFn: async () => {
-      if (minhasOS.length === 0) return null;
-      const osIds = minhasOS.map(o => o.id);
-      const { data } = await supabase
-        .from("avaliacoes")
-        .select("nota_final")
-        .in("ordem_servico_id", osIds)
-        .eq("concluida", true)
-        .not("nota_final", "is", null);
-      if (!data || data.length === 0) return null;
-      const sum = data.reduce((acc, a) => acc + Number(a.nota_final), 0);
-      return sum / data.length;
+      if (!profile?.id) return null;
+      const from = startDate ? startOfDay(startDate).toISOString() : startOfMonth(now).toISOString();
+      const to = endDate ? endOfDay(endDate).toISOString() : endOfDay(endOfMonth(now)).toISOString();
+      const notas = await fetchNotasPorSetor(from, to);
+      return calcularMediaColaborador(notas, profile.id);
     },
-    enabled: minhasOS.length > 0,
+    enabled: !!profile?.id,
   });
 
   // Load evaluation details for selected OS

@@ -1090,6 +1090,29 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calcular_notas_por_setor: {
+        Args: { p_data_fim?: string; p_data_inicio?: string }
+        Returns: {
+          nota: number
+          os_id: string
+          profile_id: string
+          profile_nome: string
+          setor_id: string
+          setor_nome: string
+          tipo: string
+        }[]
+      }
+      dashboard_metricas_agregadas: {
+        Args: { p_data_fim?: string; p_data_inicio?: string }
+        Returns: {
+          media_nota: number
+          nome: string
+          profile_id: string
+          setor_nome: string
+          tipo: string
+          total_os: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

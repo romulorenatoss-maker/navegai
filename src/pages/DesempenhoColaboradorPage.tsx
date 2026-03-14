@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { fetchNotasPorSetor, calcularMediaColaborador, calcularNotaPorOS } from "@/hooks/useNotasPorSetor";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -171,37 +172,34 @@ export default function DesempenhoColaboradorPage() {
         tss?.forEach(t => { tsMap[t.id] = t.nome; });
       }
 
-      const osIds = osData.map(o => o.id);
-      const { data: avals } = await supabase.from("avaliacoes")
-        .select("ordem_servico_id, nota_final, concluida")
-        .in("ordem_servico_id", osIds)
-        .eq("concluida", true);
-
-      const scoreMap: Record<string, number[]> = {};
-      avals?.forEach(a => {
-        if (a.nota_final != null) {
-          if (!scoreMap[a.ordem_servico_id]) scoreMap[a.ordem_servico_id] = [];
-          scoreMap[a.ordem_servico_id].push(Number(a.nota_final));
-        }
-      });
+      // Use SQL function to get per-sector scores
+      const notas = await fetchNotasPorSetor();
 
       return osData.map(os => ({
         ...os,
         tipo_servico_nome: tsMap[os.tipo_servico_id || ""] || "—",
-        avg_nota: scoreMap[os.id]?.length
-          ? scoreMap[os.id].reduce((a, b) => a + b, 0) / scoreMap[os.id].length
-          : null,
+        avg_nota: calcularNotaPorOS(notas, targetProfileId, os.id),
       }));
     },
     enabled: !!targetProfileId,
   });
 
-  // Average score
+  // Average score using SQL function (per-sector calculation)
+  const { data: notasPorSetorData = [] } = useQuery({
+    queryKey: ["perf_notas_setor", targetProfileId, startDate?.toISOString(), endDate?.toISOString()],
+    queryFn: async () => {
+      if (!targetProfileId) return [];
+      const from = startDate?.toISOString() || startOfMonth(now).toISOString();
+      const to = endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString();
+      return fetchNotasPorSetor(from, to);
+    },
+    enabled: !!targetProfileId,
+  });
+
   const avgScore = useMemo(() => {
-    const allNotas = evaluations.flatMap(e => e.avaliacoes.map(a => a.nota_final).filter(Boolean)) as number[];
-    if (allNotas.length === 0) return null;
-    return allNotas.reduce((a, b) => a + b, 0) / allNotas.length;
-  }, [evaluations]);
+    if (!targetProfileId) return null;
+    return calcularMediaColaborador(notasPorSetorData, targetProfileId);
+  }, [notasPorSetorData, targetProfileId]);
 
   // Most frequent errors
   const { data: frequentErrors = [] } = useQuery({
