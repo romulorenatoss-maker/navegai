@@ -1255,7 +1255,7 @@ export default function AvaliacaoOSPage() {
   // Auto-finalize when all answerable questions are answered
   const autoFinalizeTriggered = useRef(false);
   useEffect(() => {
-    if (evalFinalized || isOsFullyConcluded || evalSubmitting || autoFinalizeTriggered.current) return;
+    if (evalFinalized || isOsFullyConcluded || evalSubmitting || autoFinalizeTriggered.current || isEditing) return;
     if (answerablePerguntas.length === 0) return;
     const allAnswered = answerablePerguntas.every(p => evalAnswers[p.id] != null);
     if (!allAnswered) return;
