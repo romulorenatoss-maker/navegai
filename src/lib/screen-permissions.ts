@@ -10,22 +10,22 @@ export interface ScreenDef {
 export const ALL_SCREENS: ScreenDef[] = [
   // Principal
   { path: "/", label: "Dashboard", group: "Principal" },
+  // Cadastros (ordem de setup)
+  { path: "/cadastros/setores", label: "Setores", group: "Cadastros" },
+  { path: "/cadastros/colaboradores", label: "Colaboradores", group: "Cadastros" },
+  { path: "/cadastros/clientes", label: "Clientes", group: "Cadastros" },
+  { path: "/cadastros/servicos", label: "Tipos de Serviço", group: "Cadastros" },
+  { path: "/cadastros/tipos-avaliacao", label: "Tipos de Avaliação", group: "Cadastros" },
+  // Perguntas & Checklists
+  { path: "/avaliacoes/perguntas", label: "Perguntas", group: "Perguntas & Checklists" },
+  { path: "/checklists/cadastro", label: "Cadastro de Checklists", group: "Perguntas & Checklists" },
+  { path: "/checklists/execucao", label: "Execução", group: "Perguntas & Checklists" },
+  { path: "/checklists/gestao", label: "Gestão", group: "Perguntas & Checklists" },
   // Avaliações
   { path: "/avaliacoes/pesquisa", label: "Pesquisa de OS", group: "Avaliações" },
   { path: "/avaliacoes/minhas", label: "Minhas Avaliações", group: "Avaliações" },
   { path: "/avaliacoes/inconsistencias", label: "Inconsistências", group: "Avaliações" },
   { path: "/avaliacoes/inconsistencias-vinculadas", label: "Incons. Vinculadas", group: "Avaliações" },
-  // Checklists
-  { path: "/checklists/cadastro", label: "Cadastro de Checklists", group: "Checklists" },
-  { path: "/checklists/execucao", label: "Execução de Checklist", group: "Checklists" },
-  { path: "/checklists/gestao", label: "Gestão de Checklists", group: "Checklists" },
-  { path: "/avaliacoes/perguntas", label: "Perguntas", group: "Checklists" },
-  // Cadastros
-  { path: "/cadastros/setores", label: "Setores", group: "Cadastros" },
-  { path: "/cadastros/colaboradores", label: "Colaboradores", group: "Cadastros" },
-  { path: "/cadastros/clientes", label: "Clientes", group: "Cadastros" },
-  { path: "/cadastros/servicos", label: "Serviços", group: "Cadastros" },
-  { path: "/cadastros/tipos-avaliacao", label: "Tipos Avaliação", group: "Cadastros" },
   // Sistema
   { path: "/relatorios", label: "Relatórios", group: "Sistema" },
   { path: "/desempenho", label: "Desempenho", group: "Sistema" },
