@@ -132,30 +132,7 @@ export default function AvaliacaoOSPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const debounceTimers = useRef<Record<string, NodeJS.Timeout>>({});
 
-  // tiposAvaliacao removed - no longer used
-
-  const { data: tiposServico = [] } = useQuery({
-    queryKey: ["tipos_servico_aval", profile?.id, isAdmin, evaluatorSetorIds.join(",")],
-    queryFn: async () => {
-      if (!profile?.id) return [];
-      if (isAdmin) {
-        const { data } = await supabase.from("tipos_servico").select("*, setores:setor_id(nome)").eq("ativo", true).order("nome");
-        return data || [];
-      }
-      // Filter by evaluator's sectors
-      if (evaluatorSetorIds.length === 0) {
-        // Fallback: show all if evaluator has no sector assigned
-        const { data } = await supabase.from("tipos_servico").select("*, setores:setor_id(nome)").eq("ativo", true).order("nome");
-        return data || [];
-      }
-      // Show tipos_servico whose setor_id matches evaluator's sectors, OR setor_id is null (global)
-      const { data } = await supabase.from("tipos_servico").select("*, setores:setor_id(nome)").eq("ativo", true).order("nome");
-      return (data || []).filter((t: any) => !t.setor_id || evaluatorSetorIds.includes(t.setor_id));
-    },
-    enabled: !!profile?.id,
-  });
-
-  // linkedTiposAvaliacao removed - no longer used
+  // --- Queries ---
 
   const { data: allProfiles = [] } = useQuery({
     queryKey: ["profiles_for_eval"],
@@ -194,18 +171,31 @@ export default function AvaliacaoOSPage() {
     return n.includes("técnico") || n.includes("tecnico");
   });
 
+  const { data: tiposServico = [] } = useQuery({
+    queryKey: ["tipos_servico_aval", profile?.id, isAdmin, evaluatorSetorIds.join(",")],
+    queryFn: async () => {
+      if (!profile?.id) return [];
+      if (isAdmin) {
+        const { data } = await supabase.from("tipos_servico").select("*, setores:setor_id(nome)").eq("ativo", true).order("nome");
+        return data || [];
+      }
+      // Filter by evaluator's sectors - show types with matching setor_id or null (global)
+      const { data } = await supabase.from("tipos_servico").select("*, setores:setor_id(nome)").eq("ativo", true).order("nome");
+      if (evaluatorSetorIds.length === 0) return data || [];
+      return (data || []).filter((t: any) => !t.setor_id || evaluatorSetorIds.includes(t.setor_id));
+    },
+    enabled: !!profile?.id,
+  });
+
   const isQuestionAnswerable = useCallback((setorAvaliadoId: string | null) => {
     if (isAdmin) return true;
     if (!setorAvaliadoId) return true;
     return evaluatorSetorIds.includes(setorAvaliadoId);
   }, [isAdmin, evaluatorSetorIds]);
 
-  const selectedTipoAvaliacao = useMemo(() => tiposAvaliacao.find(t => t.id === selectedTipoAvaliacaoId), [tiposAvaliacao, selectedTipoAvaliacaoId]);
   const isAtendimentoEvaluator = useMemo(() => {
-    if (hasAtendimentoAccess && !hasTecnicoAccess) return true;
-    const cargo = selectedTipoAvaliacao?.cargo_responsavel?.toLowerCase() || "";
-    return cargo.includes("atendente") || cargo.includes("atendimento");
-  }, [selectedTipoAvaliacao, hasAtendimentoAccess, hasTecnicoAccess]);
+    return hasAtendimentoAccess && !hasTecnicoAccess;
+  }, [hasAtendimentoAccess, hasTecnicoAccess]);
 
   const selectedTipoServico = useMemo(() => tiposServico.find(t => t.id === tipoServicoId), [tiposServico, tipoServicoId]);
 
