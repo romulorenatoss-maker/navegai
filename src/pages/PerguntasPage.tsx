@@ -152,7 +152,7 @@ export default function PerguntasPage() {
   const upsert = useMutation({
     mutationFn: async () => {
       const resolvedTipoId = tipoServicoId === "todos" || !tipoServicoId ? null : tipoServicoId;
-      const resolvedTaId = tipoAvaliacaoId === "todos" || !tipoAvaliacaoId ? null : tipoAvaliacaoId;
+      const resolvedTaId = null; // tipo_avaliacao no longer used - sector determines who evaluates
       const computedOrdem = editing ? parseInt(ordem) : getNextOrdem(resolvedTipoId || "");
       const payload = {
         pergunta,
