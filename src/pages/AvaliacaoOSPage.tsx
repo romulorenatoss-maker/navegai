@@ -417,7 +417,8 @@ export default function AvaliacaoOSPage() {
 
     setWizardSubmitting(true);
     try {
-      const nota = wizardMaxScore > 0 ? (wizardTotalScore / wizardMaxScore) * 100 : 0;
+      // Use sector-based scoring: only responsible sector answers count
+      let nota: number;
       let osId: string;
       let avalId: string;
 
@@ -427,6 +428,9 @@ export default function AvaliacaoOSPage() {
         for (const p of previewPerguntas) {
           await supabase.from("respostas_avaliacao").upsert({ avaliacao_id: existingAvaliacaoId, pergunta_id: p.id, resposta: wizardAnswers[p.id], observacao: wizardObservations[p.id] || null }, { onConflict: "avaliacao_id,pergunta_id" });
         }
+        // Calculate score based on responsible sector
+        const scoreResult = await markAuditOnlyAndCalculateScore(existingAvaliacaoId, selectedTipoAvaliacaoId, previewPerguntas, wizardAnswers);
+        nota = scoreResult.nota;
         await supabase.from("avaliacoes").update({ concluida: true, nota_final: nota }).eq("id", existingAvaliacaoId);
         avalId = existingAvaliacaoId;
       } else if (existingOsId) {
