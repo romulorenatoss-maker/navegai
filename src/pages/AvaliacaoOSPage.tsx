@@ -4,7 +4,7 @@ import { detectInconsistencies, markAuditOnlyAndCalculateScore } from "@/hooks/u
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, AlertTriangle, Loader2, ChevronRight, ChevronLeft,
-  Check, Clock, Trash2, Eye, Users, MessageSquare
+  Check, Clock, Trash2, Eye, Users, MessageSquare, Camera, X, Image as ImageIcon
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -114,6 +114,8 @@ export default function AvaliacaoOSPage() {
   const [evalOsData, setEvalOsData] = useState<any | null>(null);
   const [evalAnswers, setEvalAnswers] = useState<Record<string, Answer>>({});
   const [evalObservations, setEvalObservations] = useState<Record<string, string>>({});
+  const [evalEvidencias, setEvalEvidencias] = useState<Record<string, string>>({});
+  const [uploadingEvidence, setUploadingEvidence] = useState<string | null>(null);
   const [evalFinalized, setEvalFinalized] = useState(false);
   const [evalScore, setEvalScore] = useState<number | null>(null);
   const [evalSubmitting, setEvalSubmitting] = useState(false);
@@ -438,6 +440,38 @@ export default function AvaliacaoOSPage() {
     debounceTimers.current[perguntaId] = setTimeout(() => autoSaveObservation(perguntaId, text), 800);
   }, [autoSaveObservation]);
 
+  const handleEvidenceUpload = useCallback(async (perguntaId: string, file: File) => {
+    if (!evalAvaliacaoId) return;
+    setUploadingEvidence(perguntaId);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${evalAvaliacaoId}/${perguntaId}.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from("evidencias").upload(path, file, { upsert: true });
+      if (uploadErr) throw uploadErr;
+      const { data: urlData } = supabase.storage.from("evidencias").getPublicUrl(path);
+      const url = urlData.publicUrl;
+      setEvalEvidencias(prev => ({ ...prev, [perguntaId]: url }));
+      await supabase.from("respostas_avaliacao").upsert(
+        { avaliacao_id: evalAvaliacaoId, pergunta_id: perguntaId, evidencia_url: url },
+        { onConflict: "avaliacao_id,pergunta_id" }
+      );
+      toast.success("Evidência anexada!");
+    } catch (e: any) {
+      toast.error("Erro ao enviar evidência: " + e.message);
+    } finally {
+      setUploadingEvidence(null);
+    }
+  }, [evalAvaliacaoId]);
+
+  const handleRemoveEvidence = useCallback(async (perguntaId: string) => {
+    if (!evalAvaliacaoId) return;
+    setEvalEvidencias(prev => { const n = { ...prev }; delete n[perguntaId]; return n; });
+    await supabase.from("respostas_avaliacao").upsert(
+      { avaliacao_id: evalAvaliacaoId, pergunta_id: perguntaId, evidencia_url: null },
+      { onConflict: "avaliacao_id,pergunta_id" }
+    );
+  }, [evalAvaliacaoId]);
+
   // --- Handlers ---
   const openEvaluation = async (avaliacaoId: string, osId: string) => {
     const { data: osData } = await supabase.from("ordens_servico").select("*").eq("id", osId).single();
@@ -454,12 +488,18 @@ export default function AvaliacaoOSPage() {
     setEvalFinalized(aval.concluida || false);
     setEvalScore(aval.nota_final as number | null);
 
-    const { data: respostas } = await supabase.from("respostas_avaliacao").select("pergunta_id, resposta, observacao").eq("avaliacao_id", avaliacaoId);
+    const { data: respostas } = await supabase.from("respostas_avaliacao").select("pergunta_id, resposta, observacao, evidencia_url").eq("avaliacao_id", avaliacaoId);
     const ans: Record<string, Answer> = {};
     const obs: Record<string, string> = {};
-    respostas?.forEach(r => { if (r.resposta) ans[r.pergunta_id] = r.resposta as Answer; if (r.observacao) obs[r.pergunta_id] = r.observacao; });
+    const evid: Record<string, string> = {};
+    respostas?.forEach(r => {
+      if (r.resposta) ans[r.pergunta_id] = r.resposta as Answer;
+      if (r.observacao) obs[r.pergunta_id] = r.observacao;
+      if (r.evidencia_url) evid[r.pergunta_id] = r.evidencia_url;
+    });
     setEvalAnswers(ans);
     setEvalObservations(obs);
+    setEvalEvidencias(evid);
     setView("evaluation");
   };
 
@@ -572,6 +612,8 @@ export default function AvaliacaoOSPage() {
     if (unanswered.length > 0) { toast.error("Responda todas as perguntas antes de concluir."); return; }
     const missingObs = evalPerguntas.filter(p => evalAnswers[p.id] === "nao" && !(evalObservations[p.id]?.trim()));
     if (missingObs.length > 0) { toast.error("Descreva a irregularidade para itens reprovados."); return; }
+    const missingEvidence = evalPerguntas.filter(p => evalAnswers[p.id] === "nao" && !evalEvidencias[p.id]);
+    if (missingEvidence.length > 0) { toast.error("Anexe a evidência fotográfica para todos os itens reprovados."); return; }
 
     setEvalSubmitting(true);
     try {
@@ -610,6 +652,7 @@ export default function AvaliacaoOSPage() {
     setEvalOsData(null);
     setEvalAnswers({});
     setEvalObservations({});
+    setEvalEvidencias({});
     setEvalFinalized(false);
     setEvalScore(null);
   };
@@ -734,6 +777,8 @@ export default function AvaliacaoOSPage() {
             {evalPerguntas.map((p, i) => {
               const answer = evalAnswers[p.id] || null;
               const observation = evalObservations[p.id] || "";
+              const evidenciaUrl = evalEvidencias[p.id] || null;
+              const isUploading = uploadingEvidence === p.id;
               return (
                 <motion.div
                   key={p.id}
@@ -772,7 +817,7 @@ export default function AvaliacaoOSPage() {
                           exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }}
                           className="overflow-hidden"
                         >
-                          <div className="ml-11 mt-3 bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-2">
+                          <div className="ml-11 mt-3 bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-3">
                             <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
                               <AlertTriangle className="w-3.5 h-3.5" /> Descreva a irregularidade encontrada
                             </div>
@@ -783,6 +828,56 @@ export default function AvaliacaoOSPage() {
                               disabled={evalFinalized}
                               className="bg-card min-h-[80px] text-sm"
                             />
+
+                            {/* Evidence photo upload - required */}
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
+                                <Camera className="w-3.5 h-3.5" /> Evidência fotográfica *
+                              </div>
+
+                              {evidenciaUrl ? (
+                                <div className="relative inline-block">
+                                  <img
+                                    src={evidenciaUrl}
+                                    alt="Evidência"
+                                    className="rounded-lg border border-border max-h-40 object-cover cursor-pointer"
+                                    onClick={() => window.open(evidenciaUrl, "_blank")}
+                                  />
+                                  {!evalFinalized && (
+                                    <button
+                                      onClick={() => handleRemoveEvidence(p.id)}
+                                      className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-md hover:bg-destructive/90 transition-colors"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
+                              ) : (
+                                <label className={cn(
+                                  "flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors text-sm",
+                                  isUploading ? "border-muted-foreground/30 bg-muted/30 cursor-wait" : "border-destructive/30 hover:border-destructive/50 hover:bg-destructive/5",
+                                  evalFinalized && "opacity-50 cursor-not-allowed"
+                                )}>
+                                  {isUploading ? (
+                                    <><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> Enviando...</>
+                                  ) : (
+                                    <><Camera className="w-4 h-4 text-destructive" /> Anexar foto da evidência</>
+                                  )}
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    capture="environment"
+                                    className="hidden"
+                                    disabled={evalFinalized || isUploading}
+                                    onChange={e => {
+                                      const file = e.target.files?.[0];
+                                      if (file) handleEvidenceUpload(p.id, file);
+                                      e.target.value = "";
+                                    }}
+                                  />
+                                </label>
+                              )}
+                            </div>
                           </div>
                         </motion.div>
                       )}
