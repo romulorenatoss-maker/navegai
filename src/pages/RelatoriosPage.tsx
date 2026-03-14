@@ -28,6 +28,7 @@ interface OSRow {
   cliente_nome: string | null;
   tipo_servico_id: string | null;
   tipo_servico_nome: string | null;
+  colaborador_avaliado_id: string | null;
 }
 
 // --- Helpers ---
@@ -68,6 +69,33 @@ export default function RelatoriosPage() {
   const [startDate, setStartDate] = useState<Date | undefined>(startOfMonth(now));
   const [endDate, setEndDate] = useState<Date | undefined>(endOfMonth(now));
 
+  // Advanced filters
+  const [filterStatus, setFilterStatus] = useState<string>("todos");
+  const [filterSetor, setFilterSetor] = useState<string>("todos");
+  const [filterAvaliador, setFilterAvaliador] = useState<string>("todos");
+  const [filterAvaliado, setFilterAvaliado] = useState<string>("todos");
+  const [filterCliente, setFilterCliente] = useState("");
+
+  // Filter options (loaded from DB)
+  const [setores, setSetores] = useState<{ id: string; nome: string }[]>([]);
+  const [avaliadores, setAvaliadores] = useState<{ id: string; nome: string }[]>([]);
+  const [avaliados, setAvaliados] = useState<{ id: string; nome: string }[]>([]);
+
+  // Load filter options on mount
+  useEffect(() => {
+    const loadFilterOptions = async () => {
+      const [setoresRes, profilesRes] = await Promise.all([
+        supabase.from("setores").select("id, nome").eq("ativo", true).order("nome"),
+        supabase.from("profiles").select("id, nome, cargo").eq("ativo", true).order("nome"),
+      ]);
+      setSetores(setoresRes.data || []);
+      const profiles = profilesRes.data || [];
+      setAvaliadores(profiles.filter((p) => p.cargo === "administrador" || p.cargo === "avaliador"));
+      setAvaliados(profiles);
+    };
+    loadFilterOptions();
+  }, []);
+
   const handleCompetenceChange = (val: string) => {
     setCompetenceMonth(val);
   };
@@ -75,7 +103,6 @@ export default function RelatoriosPage() {
   const handleFilterModeChange = (mode: FilterMode) => {
     setFilterMode(mode);
     if (mode === "competencia") {
-      // Reset dates to match current competence month
       const [y, m] = competenceMonth.split("-").map(Number);
       const d = new Date(y, m - 1, 1);
       setStartDate(startOfMonth(d));
@@ -117,7 +144,7 @@ export default function RelatoriosPage() {
 
     const { data: osData } = await supabase
       .from("ordens_servico")
-      .select("id, numero_os, status, created_at, cliente_nome, tipo_servico_id")
+      .select("id, numero_os, status, created_at, cliente_nome, tipo_servico_id, colaborador_avaliado_id")
       .gte("created_at", from)
       .lte("created_at", to)
       .order("created_at", { ascending: false });
@@ -130,19 +157,21 @@ export default function RelatoriosPage() {
 
     const osIds = osData.map((o) => o.id);
 
-    // Fetch tipo_servico names, os_perguntas, and respostas in parallel
+    // Fetch tipo_servico names, os_perguntas, respostas, and avaliacoes in parallel
     const tipoIds = [...new Set(osData.map((o) => o.tipo_servico_id).filter(Boolean))] as string[];
 
-    const [tiposRes, osPerguntasRes, respostasRes] = await Promise.all([
+    const [tiposRes, osPerguntasRes, respostasRes, avaliacoesForFilterRes] = await Promise.all([
       tipoIds.length > 0
-        ? supabase.from("tipos_servico").select("id, nome").in("id", tipoIds)
+        ? supabase.from("tipos_servico").select("id, nome, setor_id").in("id", tipoIds)
         : Promise.resolve({ data: [] }),
       supabase.from("os_perguntas").select("os_id, pergunta_id").in("os_id", osIds),
       supabase.from("respostas_avaliacao").select("ordem_servico_id, pergunta_id, resposta").in("ordem_servico_id", osIds).not("resposta", "is", null),
+      supabase.from("avaliacoes").select("ordem_servico_id, avaliador_id").in("ordem_servico_id", osIds),
     ]);
 
     const tipoNames: Record<string, string> = {};
-    (tiposRes.data || []).forEach((t: any) => { tipoNames[t.id] = t.nome; });
+    const tipoSetorMap: Record<string, string | null> = {};
+    (tiposRes.data || []).forEach((t: any) => { tipoNames[t.id] = t.nome; tipoSetorMap[t.id] = t.setor_id; });
 
     // Build os_perguntas count per OS
     const perguntaCountByOS: Record<string, number> = {};
@@ -158,31 +187,60 @@ export default function RelatoriosPage() {
       answeredByOS[r.ordem_servico_id].add(r.pergunta_id);
     });
 
+    // Build avaliador map per OS
+    const avaliadorByOS: Record<string, Set<string>> = {};
+    (avaliacoesForFilterRes.data || []).forEach((a: any) => {
+      if (!avaliadorByOS[a.ordem_servico_id]) avaliadorByOS[a.ordem_servico_id] = new Set();
+      avaliadorByOS[a.ordem_servico_id].add(a.avaliador_id);
+    });
+
+    let results = osData.map((os) => {
+      const totalPerguntas = perguntaCountByOS[os.id] || 0;
+      const totalRespondidas = answeredByOS[os.id]?.size || 0;
+      const progress = totalPerguntas > 0 ? (totalRespondidas / totalPerguntas) * 100 : 0;
+
+      let computedStatus: string;
+      if (totalRespondidas === 0) {
+        computedStatus = "aberta";
+      } else if (progress >= 100) {
+        computedStatus = "concluida";
+      } else {
+        computedStatus = "em_andamento";
+      }
+
+      return {
+        ...os,
+        status: computedStatus,
+        tipo_servico_nome: os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || null : null,
+        setor_id: os.tipo_servico_id ? tipoSetorMap[os.tipo_servico_id] || null : null,
+        avaliador_ids: avaliadorByOS[os.id] || new Set<string>(),
+      };
+    });
+
+    // Apply client-side filters
+    if (filterStatus !== "todos") {
+      results = results.filter((o) => o.status === filterStatus);
+    }
+    if (filterSetor !== "todos") {
+      results = results.filter((o) => o.setor_id === filterSetor);
+    }
+    if (filterAvaliador !== "todos") {
+      results = results.filter((o) => o.avaliador_ids.has(filterAvaliador));
+    }
+    if (filterAvaliado !== "todos") {
+      results = results.filter((o) => o.colaborador_avaliado_id === filterAvaliado);
+    }
+    if (filterCliente.trim()) {
+      const term = filterCliente.trim().toLowerCase();
+      results = results.filter((o) => o.cliente_nome?.toLowerCase().includes(term));
+    }
+
     setOsList(
-      osData.map((os) => {
-        const totalPerguntas = perguntaCountByOS[os.id] || 0;
-        const totalRespondidas = answeredByOS[os.id]?.size || 0;
-        const progress = totalPerguntas > 0 ? (totalRespondidas / totalPerguntas) * 100 : 0;
-
-        let computedStatus: string;
-        if (totalRespondidas === 0) {
-          computedStatus = "aberta";
-        } else if (progress >= 100) {
-          computedStatus = "concluida";
-        } else {
-          computedStatus = "em_andamento";
-        }
-
-        return {
-          ...os,
-          status: computedStatus,
-          tipo_servico_nome: os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || null : null,
-        };
-      })
+      results.map(({ setor_id, avaliador_ids, ...rest }) => rest)
     );
     setSelected(new Set());
     setLoading(false);
-  }, [filterMode, competenceMonth, startDate, endDate]);
+  }, [filterMode, competenceMonth, startDate, endDate, filterStatus, filterSetor, filterAvaliador, filterAvaliado, filterCliente]);
 
   // Only auto-fetch on mount
   useEffect(() => { fetchOS(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -539,6 +597,79 @@ export default function RelatoriosPage() {
             {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Search className="w-4 h-4 mr-1" />}
             Buscar
           </Button>
+        </div>
+
+        {/* Advanced Filters Row */}
+        <div className="flex flex-wrap gap-4 items-end mt-4 pt-4 border-t border-border">
+          <div className="flex flex-col gap-1.5 min-w-[160px]">
+            <label className="text-caption font-medium text-muted-foreground">Status</label>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="aberta">Aberta</SelectItem>
+                <SelectItem value="em_andamento">Em andamento</SelectItem>
+                <SelectItem value="concluida">Concluída</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-col gap-1.5 min-w-[160px]">
+            <label className="text-caption font-medium text-muted-foreground">Setor</label>
+            <Select value={filterSetor} onValueChange={setFilterSetor}>
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                {setores.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-col gap-1.5 min-w-[160px]">
+            <label className="text-caption font-medium text-muted-foreground">Avaliador</label>
+            <Select value={filterAvaliador} onValueChange={setFilterAvaliador}>
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                {avaliadores.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-col gap-1.5 min-w-[160px]">
+            <label className="text-caption font-medium text-muted-foreground">Avaliado</label>
+            <Select value={filterAvaliado} onValueChange={setFilterAvaliado}>
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                {avaliados.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-col gap-1.5 min-w-[160px]">
+            <label className="text-caption font-medium text-muted-foreground">Cliente</label>
+            <Input
+              className="h-9"
+              placeholder="Buscar cliente..."
+              value={filterCliente}
+              onChange={(e) => setFilterCliente(e.target.value)}
+            />
+          </div>
         </div>
       </div>
 
