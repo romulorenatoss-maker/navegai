@@ -161,7 +161,7 @@ export default function PerguntasPage() {
   const hasFilter = filtroTipoServico !== null;
   const perguntasFiltradas = useMemo(() => {
     if (!hasFilter) return [];
-    return perguntas.filter(p => (p.tipo_servico_id || "global") === filtroTipoServico).sort((a, b) => a.ordem - b.ordem);
+    return perguntas.filter(p => (p.checklist_id || "sem_checklist") === filtroTipoServico).sort((a, b) => a.ordem - b.ordem);
   }, [perguntas, filtroTipoServico, hasFilter]);
 
   const somaPesoFiltrado = useMemo(() => perguntasFiltradas.reduce((a, p) => a + p.peso, 0), [perguntasFiltradas]);
