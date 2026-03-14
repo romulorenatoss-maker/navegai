@@ -33,7 +33,7 @@ export default function ColaboradoresPage() {
   const [editing, setEditing] = useState<Profile | null>(null);
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
-  const [cargo, setCargo] = useState("atendente");
+  const [cargo, setCargo] = useState("avaliado");
   const [selectedSetores, setSelectedSetores] = useState<string[]>([]);
   const [senha, setSenha] = useState("");
   
