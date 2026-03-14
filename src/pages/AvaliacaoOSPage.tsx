@@ -501,44 +501,27 @@ export default function AvaliacaoOSPage() {
     enabled: !!selectedOS?.id && view === "os_detail",
   });
 
-  // Questions for evaluation view - loads from linked checklists or fallback to tipo_servico_id
+  // Questions for evaluation view - loads from os_perguntas (frozen snapshot)
   const { data: evalPerguntas = [] } = useQuery({
-    queryKey: ["eval_perguntas_v3", tipoServicoId],
+    queryKey: ["eval_perguntas_v4", evalOsId],
     queryFn: async () => {
-      if (!tipoServicoId) return [];
+      if (!evalOsId) return [];
       
-      // Get linked checklists via junction table
-      const { data: checklistLinks } = await (supabase as any)
-        .from("tipo_servico_checklists")
-        .select("checklist_id")
-        .eq("tipo_servico_id", tipoServicoId);
+      // Load questions from os_perguntas (frozen snapshot per OS)
+      const { data: osPerguntas } = await (supabase as any)
+        .from("os_perguntas")
+        .select("pergunta_id")
+        .eq("os_id", evalOsId);
       
-      const checklistIds = (checklistLinks || []).map((l: any) => l.checklist_id);
+      if (!osPerguntas?.length) return [];
       
-      let query = supabase
+      const perguntaIds = osPerguntas.map((op: any) => op.pergunta_id);
+      const { data } = await supabase
         .from("perguntas_avaliacao")
         .select("id, pergunta, peso, ordem, target_employee_type, setor_avaliado_id, setores!perguntas_avaliacao_setor_avaliado_id_fkey(nome)")
-        .eq("ativo", true);
-
-      if (checklistIds.length > 0) {
-        // Load questions from all linked checklists
-        query = (query as any).in("checklist_id", checklistIds);
-      } else {
-        // Fallback: load by tipo_servico_id or checklist_id on service type
-        const { data: tipoServico } = await (supabase as any)
-          .from("tipos_servico")
-          .select("checklist_id")
-          .eq("id", tipoServicoId)
-          .single();
-        
-        if (tipoServico?.checklist_id) {
-          query = (query as any).eq("checklist_id", tipoServico.checklist_id);
-        } else {
-          query = query.or(`tipo_servico_id.eq.${tipoServicoId},tipo_servico_id.is.null`);
-        }
-      }
-
-      const { data } = await query.order("ordem");
+        .in("id", perguntaIds)
+        .order("ordem");
+      
       return (data || []).map((p: any) => ({
         ...p,
         target_employee_type: p.target_employee_type || "geral",
@@ -546,7 +529,7 @@ export default function AvaliacaoOSPage() {
         _setor_nome: p.setores?.nome || null,
       }));
     },
-    enabled: !!tipoServicoId,
+    enabled: !!evalOsId,
   });
 
   // Auto-select tipo_avaliacao based on cargo/sector
