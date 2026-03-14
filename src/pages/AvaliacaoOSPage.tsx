@@ -653,38 +653,131 @@ export default function AvaliacaoOSPage() {
                   )}
                 </div>
               )}
+
+              {/* Step 3: Avaliação (Questions) */}
+              {step === 3 && (
+                <div className="space-y-3">
+                  {wizardFinalized ? (
+                    <div className="text-center py-6 space-y-3">
+                      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-success/10 mb-2">
+                        <Check className="w-8 h-8 text-success" />
+                      </div>
+                      <h3 className="text-subhead font-semibold text-foreground">Avaliação Concluída!</h3>
+                      <p className="text-section font-bold text-primary font-tabular">{wizardScore?.toFixed(1)}%</p>
+                      <p className="text-body text-muted-foreground">
+                        {wizardAnsweredCount} perguntas respondidas • {wizardTotalScore}/{wizardMaxScore} pontos
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Progress */}
+                      <div className="flex items-center justify-between text-caption mb-1">
+                        <span className="text-muted-foreground">Progresso</span>
+                        <span className="font-medium text-foreground font-tabular">
+                          {wizardAnsweredCount}/{previewPerguntas.length} respondidas
+                          {wizardMaxScore > 0 && ` — ${((wizardTotalScore / wizardMaxScore) * 100).toFixed(1)}%`}
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-muted rounded-full overflow-hidden mb-3">
+                        <motion.div
+                          className="h-full bg-primary rounded-full"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${previewPerguntas.length > 0 ? (wizardAnsweredCount / previewPerguntas.length) * 100 : 0}%` }}
+                          transition={{ duration: 0.3 }}
+                        />
+                      </div>
+
+                      <div className="max-h-[40vh] overflow-y-auto space-y-0 divide-y divide-border border border-border rounded-lg">
+                        {previewPerguntas.map((p, i) => (
+                          <div key={p.id} className="p-3 flex flex-col gap-2">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex gap-2 items-start flex-1">
+                                <span className="text-caption text-muted-foreground font-tabular mt-0.5 w-5 shrink-0">
+                                  {String(i + 1).padStart(2, "0")}
+                                </span>
+                                <div>
+                                  <p className="text-body font-medium text-foreground">{p.pergunta}</p>
+                                  <p className="text-caption text-muted-foreground">Peso: {p.peso}</p>
+                                </div>
+                              </div>
+                              <SegmentedControl
+                                value={wizardAnswers[p.id] || null}
+                                onChange={(v) => setWizardAnswers((prev) => ({ ...prev, [p.id]: v }))}
+                              />
+                            </div>
+
+                            <AnimatePresence>
+                              {wizardAnswers[p.id] === "nao" && (
+                                <motion.div
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: "auto" }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  transition={{ duration: 0.2 }}
+                                  className="overflow-hidden"
+                                >
+                                  <div className="bg-muted rounded-lg p-3 ml-7 space-y-2">
+                                    <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
+                                      <AlertTriangle className="w-3.5 h-3.5" />
+                                      Descreva a irregularidade.
+                                    </div>
+                                    <Input
+                                      placeholder="Descreva a irregularidade..."
+                                      value={wizardObservations[p.id] || ""}
+                                      onChange={(e) => setWizardObservations((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                                      className="bg-card h-9"
+                                    />
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </motion.div>
           </AnimatePresence>
 
           {/* Navigation */}
           <DialogFooter className="flex justify-between sm:justify-between gap-2 mt-2">
             <div>
-              {step > 0 && (
+              {step > 0 && !wizardFinalized && (
                 <Button type="button" variant="outline" onClick={() => setStep(step - 1)}>
                   <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
                 </Button>
               )}
             </div>
             <div className="flex gap-2">
-              <Button type="button" variant="ghost" onClick={() => setCreateDialogOpen(false)}>Cancelar</Button>
-              {step < 2 ? (
-                <Button
-                  type="button"
-                  onClick={() => setStep(step + 1)}
-                  disabled={!canAdvance(step)}
-                  className="press-effect"
-                >
-                  Próximo <ChevronRight className="w-4 h-4 ml-1" />
+              {wizardFinalized ? (
+                <Button type="button" onClick={() => setCreateDialogOpen(false)} className="press-effect">
+                  Fechar
                 </Button>
               ) : (
-                <Button
-                  type="button"
-                  onClick={handleCreateOS}
-                  disabled={!canAdvance(2)}
-                  className="press-effect"
-                >
-                  Criar e Avaliar
-                </Button>
+                <>
+                  <Button type="button" variant="ghost" onClick={() => setCreateDialogOpen(false)}>Cancelar</Button>
+                  {step < 3 ? (
+                    <Button
+                      type="button"
+                      onClick={() => setStep(step + 1)}
+                      disabled={!canAdvance(step)}
+                      className="press-effect"
+                    >
+                      Próximo <ChevronRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      onClick={handleFinalizeWizard}
+                      disabled={!canAdvance(3) || wizardSubmitting}
+                      className="press-effect"
+                    >
+                      {wizardSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                      Finalizar Avaliação
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           </DialogFooter>
