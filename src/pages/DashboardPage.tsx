@@ -590,7 +590,7 @@ export default function DashboardPage() {
     { label: "Concluídas", value: osConcluidas.length, icon: CheckCircle2, color: "text-success", filter: "concluida" as const },
   ];
 
-  const competenceMonths = useMemo(() => getCompetenceMonths(), []);
+  
 
   // --- Section toggle state ---
   const [showCompleted, setShowCompleted] = useState(false);
