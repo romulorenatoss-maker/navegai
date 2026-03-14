@@ -1721,8 +1721,8 @@ export default function AvaliacaoOSPage() {
           <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur border-t border-border px-3 py-2 z-30">
             <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-xs">
-                <Progress value={evalProgressPercent} className="h-1.5 w-20 sm:w-28" />
-                <span className="font-medium text-foreground font-tabular">{evalProgressPercent}%</span>
+                <Progress value={globalProgressPercent} className="h-1.5 w-20 sm:w-28" />
+                <span className="font-medium text-foreground font-tabular">{globalProgressPercent}%</span>
                 {!isLocked && autoSaving && (
                   <span className="text-muted-foreground flex items-center gap-1">
                     <Loader2 className="w-3 h-3 animate-spin" /> Salvando
