@@ -293,15 +293,16 @@ export default function DashboardPage() {
       const allPerguntas = perguntasRes.data || [];
       const allAvals = avalsRes.data || [];
 
-      const avalIds = allAvals.map(a => a.id);
+      // FIX: Fetch responses by ordem_servico_id (shared across all evaluators)
       let allRespostas: any[] = [];
-      if (avalIds.length > 0) {
+      if (osIds.length > 0) {
         const { data: resp } = await supabase
-          .from("respostas_avaliacao").select("avaliacao_id, pergunta_id, resposta")
-          .in("avaliacao_id", avalIds).not("resposta", "is", null);
+          .from("respostas_avaliacao").select("ordem_servico_id, pergunta_id, resposta")
+          .in("ordem_servico_id", osIds).not("resposta", "is", null);
         allRespostas = resp || [];
       }
-      const answeredSet = new Set(allRespostas.map(r => `${r.avaliacao_id}:${r.pergunta_id}`));
+      // Key: os_id:pergunta_id — one response per OS+question regardless of evaluator
+      const answeredSet = new Set(allRespostas.map((r: any) => `${r.ordem_servico_id}:${r.pergunta_id}`));
 
       const myPending: PendingOS[] = [];
       const otherPending: PendingOS[] = [];
