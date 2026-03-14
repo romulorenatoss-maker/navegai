@@ -485,18 +485,7 @@ export default function AvaliacaoOSPage() {
     enabled: !!evalOsId,
   });
 
-  // Auto-select tipo_avaliacao based on cargo/sector
-  useEffect(() => {
-    if (linkedTiposAvaliacao.length > 0) {
-      if (profile?.cargo) {
-        const match = linkedTiposAvaliacao.find(ta => ta.cargo_responsavel === profile.cargo);
-        if (match) { setSelectedTipoAvaliacaoId(match.id); return; }
-      }
-      if (!selectedTipoAvaliacaoId) {
-        setSelectedTipoAvaliacaoId(linkedTiposAvaliacao[0].id);
-      }
-    }
-  }, [linkedTiposAvaliacao, profile]);
+  // Auto-select tipo_avaliacao removed - no longer used
 
   // URL param: pre-fill OS number and optionally auto-open evaluation
   useEffect(() => {
