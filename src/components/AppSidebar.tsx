@@ -19,6 +19,7 @@ const navSections = [
     items: [
       { to: "/avaliacoes/pesquisa", icon: FileSearch, label: "Pesquisa de OS" },
       { to: "/avaliacoes/minhas", icon: Star, label: "Minhas Avaliações" },
+      { to: "/avaliacoes/inconsistencias", icon: AlertTriangle, label: "Inconsistências" },
     ],
   },
   {

@@ -488,6 +488,9 @@ export default function AvaliacaoOSPage() {
       setWizardScore(nota);
       setWizardFinalized(true);
       toast.success(`Avaliação concluída! Nota: ${nota.toFixed(1)}%`);
+      
+      // Detect inconsistencies across evaluators for this OS
+      try { await detectInconsistencies(osId); } catch (e) { console.warn("Inconsistency detection error:", e); }
       refetchPending();
       if (selectedOS) {
         const { data: refreshed } = await supabase.from("ordens_servico").select("*").eq("id", selectedOS.id).single();
