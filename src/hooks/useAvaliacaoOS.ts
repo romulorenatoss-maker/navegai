@@ -177,12 +177,12 @@ export function useAvaliacaoOS() {
     // Filter by tipo_servico: matching OR null (global questions)
     if (osData?.tipo_servico_id) {
       query = query.or(`tipo_servico_id.eq.${osData.tipo_servico_id},tipo_servico_id.is.null`);
-    } else if (setorId) {
-      // No tipo_servico on OS, but avaliado has a setor — get tipos_servico for that setor
+    } else if (setorIds.length > 0) {
+      // No tipo_servico on OS, but avaliado has setores — get tipos_servico for those setores
       const { data: tiposDoSetor } = await supabase
         .from("tipos_servico")
         .select("id")
-        .eq("setor_id", setorId);
+        .in("setor_id", setorIds);
       
       if (tiposDoSetor && tiposDoSetor.length > 0) {
         const tipoIds = tiposDoSetor.map(t => `tipo_servico_id.eq.${t.id}`).join(",");
