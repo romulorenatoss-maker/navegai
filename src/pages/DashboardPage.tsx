@@ -117,6 +117,7 @@ export default function DashboardPage() {
   const now = new Date();
   const [startDate, setStartDate] = useState<Date | undefined>(startOfMonth(now));
   const [endDate, setEndDate] = useState<Date | undefined>(endOfMonth(now));
+  const [statusFilter, setStatusFilter] = useState<"all" | "aberta" | "em_andamento" | "concluida">("all");
   const [searchTrigger, setSearchTrigger] = useState(0);
 
   // Data state
