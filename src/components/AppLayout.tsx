@@ -3,7 +3,7 @@ import { AppSidebar } from "./AppSidebar";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function AppLayout() {
-  const { profile } = useAuth();
+  const { profile, signOut } = useAuth();
 
   return (
     <div className="min-h-screen bg-background">
