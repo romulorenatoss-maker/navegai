@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   CalendarIcon, Filter, Trash2, Download, Loader2, CheckSquare,
-  Square, AlertTriangle, FileText
+  Square, AlertTriangle, FileText, Search
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -62,16 +62,37 @@ export default function RelatoriosPage() {
 
   // Filters
   const now = new Date();
+  type FilterMode = "competencia" | "periodo";
+  const [filterMode, setFilterMode] = useState<FilterMode>("competencia");
   const [competenceMonth, setCompetenceMonth] = useState(format(now, "yyyy-MM"));
   const [startDate, setStartDate] = useState<Date | undefined>(startOfMonth(now));
   const [endDate, setEndDate] = useState<Date | undefined>(endOfMonth(now));
 
   const handleCompetenceChange = (val: string) => {
     setCompetenceMonth(val);
-    const [y, m] = val.split("-").map(Number);
-    const d = new Date(y, m - 1, 1);
-    setStartDate(startOfMonth(d));
-    setEndDate(endOfMonth(d));
+  };
+
+  const handleFilterModeChange = (mode: FilterMode) => {
+    setFilterMode(mode);
+    if (mode === "competencia") {
+      // Reset dates to match current competence month
+      const [y, m] = competenceMonth.split("-").map(Number);
+      const d = new Date(y, m - 1, 1);
+      setStartDate(startOfMonth(d));
+      setEndDate(endOfMonth(d));
+    }
+  };
+
+  const getFilterDates = () => {
+    if (filterMode === "competencia") {
+      const [y, m] = competenceMonth.split("-").map(Number);
+      const d = new Date(y, m - 1, 1);
+      return { from: startOfMonth(d).toISOString(), to: endOfMonth(d).toISOString() };
+    }
+    return {
+      from: startDate ? startDate.toISOString() : startOfMonth(now).toISOString(),
+      to: endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString(),
+    };
   };
 
   // Data
@@ -92,8 +113,7 @@ export default function RelatoriosPage() {
   // Fetch OS
   const fetchOS = useCallback(async () => {
     setLoading(true);
-    const from = startDate ? startDate.toISOString() : startOfMonth(now).toISOString();
-    const to = endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString();
+    const { from, to } = getFilterDates();
 
     const { data: osData } = await supabase
       .from("ordens_servico")
@@ -162,9 +182,10 @@ export default function RelatoriosPage() {
     );
     setSelected(new Set());
     setLoading(false);
-  }, [startDate, endDate]);
+  }, [filterMode, competenceMonth, startDate, endDate]);
 
-  useEffect(() => { fetchOS(); }, [fetchOS]);
+  // Only auto-fetch on mount
+  useEffect(() => { fetchOS(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Selection
   const allSelected = osList.length > 0 && selected.size === osList.length;
@@ -443,48 +464,77 @@ export default function RelatoriosPage() {
           <Filter className="w-4 h-4 text-muted-foreground" />
           <span className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Filtros</span>
         </div>
+
+        {/* Filter mode toggle */}
+        <div className="flex gap-2 mb-4">
+          <Button
+            variant={filterMode === "competencia" ? "default" : "outline"}
+            size="sm"
+            onClick={() => handleFilterModeChange("competencia")}
+          >
+            Mês de Competência
+          </Button>
+          <Button
+            variant={filterMode === "periodo" ? "default" : "outline"}
+            size="sm"
+            onClick={() => handleFilterModeChange("periodo")}
+          >
+            Período entre Datas
+          </Button>
+        </div>
+
         <div className="flex flex-wrap gap-4 items-end">
-          <div className="flex flex-col gap-1.5 min-w-[200px]">
-            <label className="text-caption font-medium text-muted-foreground">Mês de Competência</label>
-            <Select value={competenceMonth} onValueChange={handleCompetenceChange}>
-              <SelectTrigger className="h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {competenceMonths.map((m) => (
-                  <SelectItem key={m.value} value={m.value} className="capitalize">{m.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-caption font-medium text-muted-foreground">Data Início</label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("h-9 w-[160px] justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
-                  <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                  {startDate ? format(startDate, "dd/MM/yyyy") : "Selecionar"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus className="p-3 pointer-events-auto" locale={ptBR} />
-              </PopoverContent>
-            </Popover>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-caption font-medium text-muted-foreground">Data Fim</label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("h-9 w-[160px] justify-start text-left font-normal", !endDate && "text-muted-foreground")}>
-                  <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                  {endDate ? format(endDate, "dd/MM/yyyy") : "Selecionar"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus className="p-3 pointer-events-auto" locale={ptBR} />
-              </PopoverContent>
-            </Popover>
-          </div>
+          {filterMode === "competencia" ? (
+            <div className="flex flex-col gap-1.5 min-w-[200px]">
+              <label className="text-caption font-medium text-muted-foreground">Mês de Competência</label>
+              <Select value={competenceMonth} onValueChange={handleCompetenceChange}>
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {competenceMonths.map((m) => (
+                    <SelectItem key={m.value} value={m.value} className="capitalize">{m.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-caption font-medium text-muted-foreground">Data Início</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("h-9 w-[160px] justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
+                      <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                      {startDate ? format(startDate, "dd/MM/yyyy") : "Selecionar"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus className="p-3 pointer-events-auto" locale={ptBR} />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-caption font-medium text-muted-foreground">Data Fim</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("h-9 w-[160px] justify-start text-left font-normal", !endDate && "text-muted-foreground")}>
+                      <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                      {endDate ? format(endDate, "dd/MM/yyyy") : "Selecionar"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus className="p-3 pointer-events-auto" locale={ptBR} />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </>
+          )}
+
+          <Button onClick={fetchOS} disabled={loading} className="h-9">
+            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Search className="w-4 h-4 mr-1" />}
+            Buscar
+          </Button>
         </div>
       </div>
 
