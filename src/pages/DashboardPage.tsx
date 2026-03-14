@@ -162,6 +162,45 @@ export default function DashboardPage() {
           </table>
         </div>
       </motion.div>
+
+      {/* Ranking de clientes */}
+      <motion.div variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card mt-6">
+        <div className="p-4 border-b border-border flex items-center gap-2">
+          <Trophy className="w-4 h-4 text-warning" />
+          <h2 className="text-body font-semibold text-foreground">Clientes com mais OS nos últimos 60 dias</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 w-12">#</th>
+                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Cliente</th>
+                <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Qtd. OS</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {ranking.map((r, i) => (
+                <tr
+                  key={r.cliente_id}
+                  className="hover:bg-muted/50 transition-colors cursor-pointer"
+                  onClick={() => navigate(`/cadastros/clientes?id=${r.cliente_id}`)}
+                >
+                  <td className="px-4 py-3 text-body font-tabular text-muted-foreground">{i + 1}</td>
+                  <td className="px-4 py-3 text-body font-medium text-primary underline underline-offset-2">{r.cliente_nome}</td>
+                  <td className="px-4 py-3 text-body font-semibold font-tabular text-right">{r.os_count}</td>
+                </tr>
+              ))}
+              {ranking.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="px-4 py-8 text-center text-body text-muted-foreground">
+                    Nenhum dado nos últimos 60 dias.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </motion.div>
     </div>
   );
 }
