@@ -597,6 +597,14 @@ export default function AvaliacaoOSPage() {
 
             if (existingAval) {
               if (existingAval.tipo_avaliacao_id) setSelectedTipoAvaliacaoId(existingAval.tipo_avaliacao_id);
+
+              if (existingAval.concluida && existingOS.status !== "concluida") {
+                await supabase
+                  .from("avaliacoes")
+                  .update({ concluida: false, nota_final: null } as any)
+                  .eq("id", existingAval.id);
+              }
+
               await openEvaluation(existingAval.id, existingOS.id);
             } else {
               // No evaluation yet — show OS detail for setup
