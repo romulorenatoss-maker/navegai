@@ -198,6 +198,9 @@ export default function TiposServicoPage() {
               )}
             </div>
 
+            {/* Checklist Templates */}
+            <ChecklistTemplateManager tipoServicoId={editing?.id || null} />
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={closeDialog}>Cancelar</Button>
               <Button type="submit" disabled={upsert.isPending} className="press-effect">{upsert.isPending ? "Salvando..." : "Salvar"}</Button>
