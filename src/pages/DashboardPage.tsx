@@ -142,12 +142,22 @@ export default function DashboardPage() {
       const from = startDate ? startDate.toISOString() : startOfMonth(now).toISOString();
       const to = endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString();
 
-      const { data: osData } = await supabase
+      let query = supabase
         .from("ordens_servico")
         .select("id, numero_os, status, created_at, cliente_nome, cliente_id, tipo_servico_id")
         .gte("created_at", from)
         .lte("created_at", to)
         .order("created_at", { ascending: false });
+
+      if (statusFilter !== "all") {
+        if (statusFilter === "em_andamento") {
+          query = query.in("status", ["em_andamento", "aberta"]);
+        } else {
+          query = query.eq("status", statusFilter);
+        }
+      }
+
+      const { data: osData } = await query;
 
       if (!osData || osData.length === 0) {
         setAllOS([]);
