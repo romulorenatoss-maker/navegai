@@ -7,7 +7,7 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen bg-background">
-      <AppSidebar userName={profile?.nome || "Usuário"} />
+      <AppSidebar userName={profile?.nome || "Usuário"} onSignOut={signOut} />
       <main className="ml-[240px] min-h-screen transition-all duration-200">
         <Outlet />
       </main>

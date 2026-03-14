@@ -61,7 +61,12 @@ const navSections = [
   },
 ];
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  userName?: string;
+  onSignOut?: () => void;
+}
+
+export function AppSidebar({ userName = "Usuário", onSignOut }: AppSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
 
