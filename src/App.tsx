@@ -20,6 +20,7 @@ import MinhasAvaliacoesPage from "./pages/MinhasAvaliacoesPage";
 import InconsistenciasPage from "./pages/InconsistenciasPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import RelatoriosPage from "./pages/RelatoriosPage";
+import DesempenhoColaboradorPage from "./pages/DesempenhoColaboradorPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
