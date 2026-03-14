@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, AlertTriangle, Camera, FileVideo, FileText } from "lucide-react";
+import { Plus, Pencil, Trash2, AlertTriangle, Camera, FileVideo, FileText, GripVertical } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,9 +13,71 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AnimatePresence, motion } from "framer-motion";
 import type { Tables } from "@/integrations/supabase/types";
 
-type Pergunta = Tables<"perguntas_avaliacao">;
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
+type Pergunta = Tables<"perguntas_avaliacao">;
 type PreviewAnswer = "sim" | "nao" | "na" | null;
+
+function SortableRow({
+  p,
+  index,
+  onEdit,
+  onRemove,
+}: {
+  p: any;
+  index: number;
+  onEdit: (p: Pergunta) => void;
+  onRemove: (id: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <tr ref={setNodeRef} style={style} className="hover:bg-muted/50 transition-colors border-b border-border">
+      <td className="px-2 py-3 w-8">
+        <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-foreground">
+          <GripVertical className="w-4 h-4" />
+        </button>
+      </td>
+      <td className="px-2 py-3 text-caption text-muted-foreground font-tabular w-8">{String(index + 1).padStart(2, "0")}</td>
+      <td className="px-4 py-3 text-body font-medium text-foreground">{p.pergunta}</td>
+      <td className="px-4 py-3 text-body text-muted-foreground">{p.profiles?.nome || "Todos"}</td>
+      <td className="px-4 py-3">
+        <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${p.tipo_avaliado === "atendente" ? "badge-active" : "badge-pending"}`}>
+          {p.tipo_avaliado}
+        </span>
+      </td>
+      <td className="px-4 py-3 text-center text-body font-semibold text-foreground font-tabular">{p.peso}</td>
+      <td className="px-4 py-3 text-right">
+        <div className="flex items-center justify-end gap-1">
+          <Button variant="ghost" size="sm" onClick={() => onEdit(p)} className="press-effect"><Pencil className="w-4 h-4" /></Button>
+          <Button variant="ghost" size="sm" onClick={() => onRemove(p.id)} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
+        </div>
+      </td>
+    </tr>
+  );
+}
 
 export default function PerguntasPage() {
   const queryClient = useQueryClient();
@@ -28,11 +90,13 @@ export default function PerguntasPage() {
   const [peso, setPeso] = useState("1");
   const [ordem, setOrdem] = useState("0");
 
-  // Preview state
   const [previewAnswer, setPreviewAnswer] = useState<PreviewAnswer>(null);
-
-  // Filter state - single select
   const [filtroTipoServico, setFiltroTipoServico] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   const { data: perguntas = [], isLoading } = useQuery({
     queryKey: ["perguntas_avaliacao"],
@@ -64,7 +128,6 @@ export default function PerguntasPage() {
     },
   });
 
-  // Summary cards grouped by tipo_servico
   const summaryByTipo = useMemo(() => {
     const map = new Map<string, { nome: string; count: number; totalPeso: number }>();
     for (const p of perguntas) {
@@ -78,7 +141,6 @@ export default function PerguntasPage() {
     return map;
   }, [perguntas]);
 
-  // Filtered questions based on single select
   const hasFilter = filtroTipoServico !== null;
   const perguntasFiltradas = useMemo(() => {
     if (!hasFilter) return [];
@@ -99,15 +161,25 @@ export default function PerguntasPage() {
     setFiltroTipoServico((prev) => (prev === key ? null : key));
   };
 
+  const getNextOrdem = (tipoId: string) => {
+    const related = perguntas.filter((p) =>
+      tipoId ? p.tipo_servico_id === tipoId : !p.tipo_servico_id
+    );
+    if (related.length === 0) return 1;
+    return Math.max(...related.map((p) => p.ordem)) + 1;
+  };
+
   const upsert = useMutation({
     mutationFn: async () => {
+      const resolvedTipoId = tipoServicoId === "todos" || !tipoServicoId ? null : tipoServicoId;
+      const computedOrdem = editing ? parseInt(ordem) : getNextOrdem(resolvedTipoId || "");
       const payload = {
         pergunta,
-        tipo_servico_id: tipoServicoId || null,
-        avaliador_id: avaliadorId || null,
+        tipo_servico_id: resolvedTipoId,
+        avaliador_id: avaliadorId === "todos" || !avaliadorId ? null : avaliadorId,
         tipo_avaliado: tipoAvaliado,
         peso: Math.min(100, Math.max(1, parseInt(peso) || 1)),
-        ordem: parseInt(ordem),
+        ordem: computedOrdem,
       };
       if (editing) {
         const { error } = await supabase.from("perguntas_avaliacao").update(payload).eq("id", editing.id);
@@ -134,16 +206,39 @@ export default function PerguntasPage() {
     onError: (err: any) => toast.error(err.message),
   });
 
-  const getNextOrdem = (tipoId: string) => {
-    const related = perguntas.filter((p) =>
-      tipoId ? p.tipo_servico_id === tipoId : !p.tipo_servico_id
-    );
-    if (related.length === 0) return 1;
-    return Math.max(...related.map((p) => p.ordem)) + 1;
-  };
+  const reorderMutation = useMutation({
+    mutationFn: async (items: { id: string; ordem: number }[]) => {
+      const promises = items.map((item) =>
+        supabase.from("perguntas_avaliacao").update({ ordem: item.ordem }).eq("id", item.id)
+      );
+      const results = await Promise.all(promises);
+      const err = results.find((r) => r.error);
+      if (err?.error) throw err.error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["perguntas_avaliacao"] });
+    },
+    onError: (err: any) => toast.error("Erro ao reordenar: " + err.message),
+  });
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+
+      const oldIndex = perguntasFiltradas.findIndex((p) => p.id === active.id);
+      const newIndex = perguntasFiltradas.findIndex((p) => p.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      const reordered = arrayMove(perguntasFiltradas, oldIndex, newIndex);
+      const updates = reordered.map((p, i) => ({ id: p.id, ordem: i + 1 }));
+      reorderMutation.mutate(updates);
+    },
+    [perguntasFiltradas, reorderMutation]
+  );
 
   const openCreate = () => {
-    setEditing(null); setPergunta(""); setTipoServicoId(""); setAvaliadorId(""); setTipoAvaliado("atendente"); setPeso("1"); setOrdem(String(getNextOrdem(""))); setPreviewAnswer(null);
+    setEditing(null); setPergunta(""); setTipoServicoId(""); setAvaliadorId(""); setTipoAvaliado("atendente"); setPeso("1"); setOrdem("0"); setPreviewAnswer(null);
     setDialogOpen(true);
   };
   const openEdit = (p: Pergunta) => {
@@ -192,52 +287,40 @@ export default function PerguntasPage() {
         </div>
       </div>
 
-      {/* Questions table - only when filters selected */}
+      {/* Questions table with drag-and-drop */}
       {hasFilter && (
         <>
           <div className="flex items-center justify-between mb-2">
             <p className="text-body font-medium text-foreground">
               {perguntasFiltradas.length} pergunta{perguntasFiltradas.length !== 1 ? "s" : ""} • <span className="text-primary font-bold">{somaPesoFiltrado} pts</span>
             </p>
+            <p className="text-caption text-muted-foreground">Arraste para reordenar</p>
           </div>
           <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 w-8">#</th>
+                    <th className="w-8 px-2 py-2"></th>
+                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-2 py-2 w-8">#</th>
                     <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Pergunta</th>
                     <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Avaliador</th>
-                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Tipo Serviço</th>
                     <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Avaliado</th>
                     <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Peso</th>
                     <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Ações</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
-                  {perguntasFiltradas.length === 0 ? (
-                    <tr><td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhuma pergunta encontrada.</td></tr>
-                  ) : perguntasFiltradas.map((p, i) => (
-                    <tr key={p.id} className="hover:bg-muted/50 transition-colors">
-                      <td className="px-4 py-3 text-caption text-muted-foreground font-tabular">{String(i + 1).padStart(2, "0")}</td>
-                      <td className="px-4 py-3 text-body font-medium text-foreground">{p.pergunta}</td>
-                      <td className="px-4 py-3 text-body text-muted-foreground">{(p as any).profiles?.nome || "Todos"}</td>
-                      <td className="px-4 py-3 text-body text-muted-foreground">{(p as any).tipos_servico?.nome || "Global"}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${p.tipo_avaliado === "atendente" ? "badge-active" : "badge-pending"}`}>
-                          {p.tipo_avaliado}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center text-body font-semibold text-foreground font-tabular">{p.peso}</td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => openEdit(p)} className="press-effect"><Pencil className="w-4 h-4" /></Button>
-                          <Button variant="ghost" size="sm" onClick={() => remove.mutate(p.id)} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  <SortableContext items={perguntasFiltradas.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+                    <tbody>
+                      {perguntasFiltradas.length === 0 ? (
+                        <tr><td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhuma pergunta encontrada.</td></tr>
+                      ) : perguntasFiltradas.map((p, i) => (
+                        <SortableRow key={p.id} p={p} index={i} onEdit={openEdit} onRemove={(id) => remove.mutate(id)} />
+                      ))}
+                    </tbody>
+                  </SortableContext>
+                </DndContext>
                 {perguntasFiltradas.length > 0 && (
                   <tfoot>
                     <tr className="border-t-2 border-primary/20 bg-muted/30">
@@ -276,7 +359,7 @@ export default function PerguntasPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Tipo de Serviço</Label>
-                <Select value={tipoServicoId} onValueChange={(v) => { setTipoServicoId(v); if (!editing) setOrdem(String(getNextOrdem(v === "todos" ? "" : v))); }}>
+                <Select value={tipoServicoId} onValueChange={setTipoServicoId}>
                   <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todos">Todos</SelectItem>
@@ -295,15 +378,9 @@ export default function PerguntasPage() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Peso</Label>
-                <Input type="number" min={1} max={100} value={peso} onChange={(e) => setPeso(e.target.value)} required />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Ordem</Label>
-                <Input type="number" min={0} value={ordem} onChange={(e) => setOrdem(e.target.value)} required />
-              </div>
+            <div className="space-y-1.5">
+              <Label>Peso</Label>
+              <Input type="number" min={1} max={100} value={peso} onChange={(e) => setPeso(e.target.value)} required />
             </div>
 
             {/* Live Preview */}
@@ -352,24 +429,14 @@ export default function PerguntasPage() {
                           </div>
                           <div className="space-y-1.5">
                             <Label className="text-caption">Descrição do ocorrido *</Label>
-                            <Textarea
-                              placeholder="Descreva a irregularidade encontrada..."
-                              className="bg-card h-20 text-caption"
-                              disabled
-                            />
+                            <Textarea placeholder="Descreva a irregularidade encontrada..." className="bg-card h-20 text-caption" disabled />
                           </div>
                           <div>
                             <Label className="text-caption mb-1.5 block">Anexar evidência *</Label>
                             <div className="flex gap-2">
-                              <Button type="button" variant="outline" size="sm" className="text-caption" disabled>
-                                <Camera className="w-3.5 h-3.5 mr-1.5" /> Foto
-                              </Button>
-                              <Button type="button" variant="outline" size="sm" className="text-caption" disabled>
-                                <FileVideo className="w-3.5 h-3.5 mr-1.5" /> Vídeo
-                              </Button>
-                              <Button type="button" variant="outline" size="sm" className="text-caption" disabled>
-                                <FileText className="w-3.5 h-3.5 mr-1.5" /> Documento
-                              </Button>
+                              <Button type="button" variant="outline" size="sm" className="text-caption" disabled><Camera className="w-3.5 h-3.5 mr-1.5" /> Foto</Button>
+                              <Button type="button" variant="outline" size="sm" className="text-caption" disabled><FileVideo className="w-3.5 h-3.5 mr-1.5" /> Vídeo</Button>
+                              <Button type="button" variant="outline" size="sm" className="text-caption" disabled><FileText className="w-3.5 h-3.5 mr-1.5" /> Documento</Button>
                             </div>
                           </div>
                         </div>
