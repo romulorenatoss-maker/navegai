@@ -1,16 +1,22 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, AlertTriangle, Loader2, Plus, ListChecks, ChevronRight, ChevronLeft, Check, Clock } from "lucide-react";
+import { Search, AlertTriangle, Loader2, Plus, ListChecks, ChevronRight, ChevronLeft, Check, Clock, Filter, CalendarIcon, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { useAvaliacaoOS, Answer } from "@/hooks/useAvaliacaoOS";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 const SegmentedControl = ({
   value,
@@ -104,6 +110,13 @@ export default function AvaliacaoOSPage() {
   const [wizardScore, setWizardScore] = useState<number | null>(null);
   const [wizardSubmitting, setWizardSubmitting] = useState(false);
 
+  // Filter state
+  const [filterDateFrom, setFilterDateFrom] = useState<Date | undefined>();
+  const [filterDateTo, setFilterDateTo] = useState<Date | undefined>();
+  const [filterMonth, setFilterMonth] = useState<string>("");
+  const [filterStatus, setFilterStatus] = useState<string>("todos");
+  const [showFilters, setShowFilters] = useState(false);
+
   // Auto-fill client name when CPF is found in DB
   useEffect(() => {
     const cpfDigits = clienteCpf.replace(/\D/g, "");
@@ -165,6 +178,83 @@ export default function AvaliacaoOSPage() {
     },
     enabled: !!profile?.id,
   });
+
+  // Generate month options (last 12 months)
+  const monthOptions = useMemo(() => {
+    const months: { value: string; label: string }[] = [];
+    const now = new Date();
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({
+        value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+        label: format(d, "MMMM yyyy", { locale: ptBR }),
+      });
+    }
+    return months;
+  }, []);
+
+  // Filtered OS query
+  const hasActiveFilter = !!filterDateFrom || !!filterDateTo || !!filterMonth || filterStatus !== "todos";
+
+  const { data: filteredOS = [], isFetching: filterLoading } = useQuery({
+    queryKey: ["filtered_os", filterDateFrom?.toISOString(), filterDateTo?.toISOString(), filterMonth, filterStatus],
+    queryFn: async () => {
+      let query = supabase
+        .from("ordens_servico")
+        .select("id, numero_os, status, created_at, data_abertura, cliente_nome, colaborador_avaliado_id, tipo_servico_id")
+        .order("data_abertura", { ascending: false });
+
+      // Date range filter
+      if (filterDateFrom) {
+        query = query.gte("data_abertura", filterDateFrom.toISOString());
+      }
+      if (filterDateTo) {
+        const endOfDay = new Date(filterDateTo);
+        endOfDay.setHours(23, 59, 59, 999);
+        query = query.lte("data_abertura", endOfDay.toISOString());
+      }
+
+      // Month filter (overrides date range if set)
+      if (filterMonth) {
+        const [year, month] = filterMonth.split("-").map(Number);
+        const start = new Date(year, month - 1, 1);
+        const end = new Date(year, month, 0, 23, 59, 59, 999);
+        query = query.gte("data_abertura", start.toISOString()).lte("data_abertura", end.toISOString());
+      }
+
+      // Status filter
+      if (filterStatus && filterStatus !== "todos") {
+        query = query.eq("status", filterStatus as "aberta" | "em_andamento" | "concluida");
+      }
+
+      const { data, error } = await query.limit(200);
+      if (error) throw error;
+
+      // Get collaborator names
+      const colabIds = [...new Set((data || []).map((o) => o.colaborador_avaliado_id).filter(Boolean))];
+      let colabMap: Record<string, string> = {};
+      if (colabIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, nome")
+          .in("id", colabIds);
+        profiles?.forEach((p) => { colabMap[p.id] = p.nome; });
+      }
+
+      return (data || []).map((o) => ({
+        ...o,
+        _colaborador_nome: o.colaborador_avaliado_id ? (colabMap[o.colaborador_avaliado_id] || "—") : "—",
+      }));
+    },
+    enabled: hasActiveFilter,
+  });
+
+  const clearFilters = () => {
+    setFilterDateFrom(undefined);
+    setFilterDateTo(undefined);
+    setFilterMonth("");
+    setFilterStatus("todos");
+  };
 
   // Fetch tipos de serviço: all for admin/gestor, only assigned for avaliador
   const { data: tiposDoAvaliador = [] } = useQuery({
@@ -571,6 +661,202 @@ export default function AvaliacaoOSPage() {
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Filters */}
+      {!os && (
+        <div className="bg-card border border-border rounded-lg shadow-card mb-6">
+          <button
+            type="button"
+            onClick={() => setShowFilters(!showFilters)}
+            className="w-full p-4 flex items-center gap-2 text-left hover:bg-muted/30 transition-colors"
+          >
+            <Filter className="w-4 h-4 text-primary" />
+            <span className="text-body font-semibold text-foreground">Filtros de Pesquisa</span>
+            {hasActiveFilter && (
+              <span className="text-caption bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Ativo</span>
+            )}
+            <ChevronRight className={`w-4 h-4 text-muted-foreground ml-auto transition-transform ${showFilters ? "rotate-90" : ""}`} />
+          </button>
+
+          <AnimatePresence>
+            {showFilters && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="px-4 pb-4 space-y-4 border-t border-border pt-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Date From */}
+                    <div className="space-y-1.5">
+                      <Label className="text-caption">Data Início</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn("w-full justify-start text-left font-normal h-10", !filterDateFrom && "text-muted-foreground")}
+                          >
+                            <CalendarIcon className="w-4 h-4 mr-2" />
+                            {filterDateFrom ? format(filterDateFrom, "dd/MM/yyyy") : "Selecione"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={filterDateFrom}
+                            onSelect={(d) => { setFilterDateFrom(d); setFilterMonth(""); }}
+                            locale={ptBR}
+                            initialFocus
+                            className={cn("p-3 pointer-events-auto")}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                    {/* Date To */}
+                    <div className="space-y-1.5">
+                      <Label className="text-caption">Data Fim</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn("w-full justify-start text-left font-normal h-10", !filterDateTo && "text-muted-foreground")}
+                          >
+                            <CalendarIcon className="w-4 h-4 mr-2" />
+                            {filterDateTo ? format(filterDateTo, "dd/MM/yyyy") : "Selecione"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={filterDateTo}
+                            onSelect={(d) => { setFilterDateTo(d); setFilterMonth(""); }}
+                            locale={ptBR}
+                            initialFocus
+                            className={cn("p-3 pointer-events-auto")}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                    {/* Month */}
+                    <div className="space-y-1.5">
+                      <Label className="text-caption">Mês de Competência</Label>
+                      <Select
+                        value={filterMonth}
+                        onValueChange={(v) => {
+                          setFilterMonth(v);
+                          setFilterDateFrom(undefined);
+                          setFilterDateTo(undefined);
+                        }}
+                      >
+                        <SelectTrigger className="h-10">
+                          <SelectValue placeholder="Selecione o mês" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {monthOptions.map((m) => (
+                            <SelectItem key={m.value} value={m.value}>
+                              {m.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Status */}
+                    <div className="space-y-1.5">
+                      <Label className="text-caption">Status</Label>
+                      <Select value={filterStatus} onValueChange={setFilterStatus}>
+                        <SelectTrigger className="h-10">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todos">Todos</SelectItem>
+                          <SelectItem value="aberta">Aberta</SelectItem>
+                          <SelectItem value="em_andamento">Em Andamento</SelectItem>
+                          <SelectItem value="concluida">Concluída</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {hasActiveFilter && (
+                    <div className="flex justify-end">
+                      <Button variant="ghost" size="sm" onClick={clearFilters} className="text-caption">
+                        <X className="w-3.5 h-3.5 mr-1" /> Limpar filtros
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+
+      {/* Filtered Results */}
+      {!os && hasActiveFilter && (
+        <div className="bg-card border border-border rounded-lg shadow-card mb-6">
+          <div className="p-4 border-b border-border flex items-center gap-2">
+            <Search className="w-4 h-4 text-primary" />
+            <h2 className="text-body font-semibold text-foreground">Resultados</h2>
+            <span className="text-caption bg-muted text-foreground px-2 py-0.5 rounded-full font-medium font-tabular ml-auto">
+              {filterLoading ? "..." : `${filteredOS.length} resultado(s)`}
+            </span>
+          </div>
+          {filterLoading ? (
+            <div className="p-8 text-center">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mx-auto" />
+            </div>
+          ) : filteredOS.length === 0 ? (
+            <div className="p-8 text-center text-body text-muted-foreground">
+              Nenhuma OS encontrada com os filtros selecionados.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">OS</th>
+                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Cliente</th>
+                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Avaliado</th>
+                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Status</th>
+                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Data</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filteredOS.map((item: any) => (
+                    <tr
+                      key={item.id}
+                      className="hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => {
+                        setSearchQuery(item.numero_os);
+                        searchOS(item.numero_os, false);
+                      }}
+                    >
+                      <td className="px-4 py-3 text-body font-medium text-primary underline underline-offset-2 font-tabular">{item.numero_os}</td>
+                      <td className="px-4 py-3 text-body text-muted-foreground">{item.cliente_nome || "—"}</td>
+                      <td className="px-4 py-3 text-body text-muted-foreground">{item._colaborador_nome}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${
+                          item.status === "aberta" ? "badge-pending" : item.status === "em_andamento" ? "badge-active" : "badge-complete"
+                        }`}>
+                          {item.status === "aberta" ? "Aberta" : item.status === "em_andamento" ? "Em andamento" : "Concluída"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-body text-muted-foreground font-tabular">
+                        {new Date(item.data_abertura).toLocaleDateString("pt-BR")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
