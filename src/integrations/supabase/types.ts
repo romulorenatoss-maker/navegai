@@ -747,6 +747,42 @@ export type Database = {
         }
         Relationships: []
       }
+      tipo_servico_checklists: {
+        Row: {
+          checklist_id: string
+          created_at: string
+          id: string
+          tipo_servico_id: string
+        }
+        Insert: {
+          checklist_id: string
+          created_at?: string
+          id?: string
+          tipo_servico_id: string
+        }
+        Update: {
+          checklist_id?: string
+          created_at?: string
+          id?: string
+          tipo_servico_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tipo_servico_checklists_checklist_id_fkey"
+            columns: ["checklist_id"]
+            isOneToOne: false
+            referencedRelation: "checklists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tipo_servico_checklists_tipo_servico_id_fkey"
+            columns: ["tipo_servico_id"]
+            isOneToOne: false
+            referencedRelation: "tipos_servico"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tipo_servico_tipos_avaliacao: {
         Row: {
           created_at: string
