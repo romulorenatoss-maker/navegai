@@ -440,6 +440,38 @@ export default function AvaliacaoOSPage() {
     debounceTimers.current[perguntaId] = setTimeout(() => autoSaveObservation(perguntaId, text), 800);
   }, [autoSaveObservation]);
 
+  const handleEvidenceUpload = useCallback(async (perguntaId: string, file: File) => {
+    if (!evalAvaliacaoId) return;
+    setUploadingEvidence(perguntaId);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${evalAvaliacaoId}/${perguntaId}.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from("evidencias").upload(path, file, { upsert: true });
+      if (uploadErr) throw uploadErr;
+      const { data: urlData } = supabase.storage.from("evidencias").getPublicUrl(path);
+      const url = urlData.publicUrl;
+      setEvalEvidencias(prev => ({ ...prev, [perguntaId]: url }));
+      await supabase.from("respostas_avaliacao").upsert(
+        { avaliacao_id: evalAvaliacaoId, pergunta_id: perguntaId, evidencia_url: url },
+        { onConflict: "avaliacao_id,pergunta_id" }
+      );
+      toast.success("Evidência anexada!");
+    } catch (e: any) {
+      toast.error("Erro ao enviar evidência: " + e.message);
+    } finally {
+      setUploadingEvidence(null);
+    }
+  }, [evalAvaliacaoId]);
+
+  const handleRemoveEvidence = useCallback(async (perguntaId: string) => {
+    if (!evalAvaliacaoId) return;
+    setEvalEvidencias(prev => { const n = { ...prev }; delete n[perguntaId]; return n; });
+    await supabase.from("respostas_avaliacao").upsert(
+      { avaliacao_id: evalAvaliacaoId, pergunta_id: perguntaId, evidencia_url: null },
+      { onConflict: "avaliacao_id,pergunta_id" }
+    );
+  }, [evalAvaliacaoId]);
+
   // --- Handlers ---
   const openEvaluation = async (avaliacaoId: string, osId: string) => {
     const { data: osData } = await supabase.from("ordens_servico").select("*").eq("id", osId).single();
