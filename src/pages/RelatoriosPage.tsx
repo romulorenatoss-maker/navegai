@@ -63,9 +63,6 @@ export default function RelatoriosPage() {
 
   // Filters
   const now = new Date();
-  type FilterMode = "competencia" | "periodo";
-  const [filterMode, setFilterMode] = useState<FilterMode>("competencia");
-  const [competenceMonth, setCompetenceMonth] = useState(format(now, "yyyy-MM"));
   const [startDate, setStartDate] = useState<Date | undefined>(startOfMonth(now));
   const [endDate, setEndDate] = useState<Date | undefined>(endOfMonth(now));
 
@@ -96,31 +93,10 @@ export default function RelatoriosPage() {
     loadFilterOptions();
   }, []);
 
-  const handleCompetenceChange = (val: string) => {
-    setCompetenceMonth(val);
-  };
-
-  const handleFilterModeChange = (mode: FilterMode) => {
-    setFilterMode(mode);
-    if (mode === "competencia") {
-      const [y, m] = competenceMonth.split("-").map(Number);
-      const d = new Date(y, m - 1, 1);
-      setStartDate(startOfMonth(d));
-      setEndDate(endOfMonth(d));
-    }
-  };
-
-  const getFilterDates = () => {
-    if (filterMode === "competencia") {
-      const [y, m] = competenceMonth.split("-").map(Number);
-      const d = new Date(y, m - 1, 1);
-      return { from: startOfMonth(d).toISOString(), to: endOfMonth(d).toISOString() };
-    }
-    return {
-      from: startDate ? startDate.toISOString() : startOfMonth(now).toISOString(),
-      to: endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString(),
-    };
-  };
+  const getFilterDates = () => ({
+    from: startDate ? startDate.toISOString() : startOfMonth(now).toISOString(),
+    to: endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString(),
+  });
 
   // Data
   const [osList, setOsList] = useState<OSRow[]>([]);
