@@ -1210,6 +1210,8 @@ export default function AvaliacaoOSPage() {
   };
 
   // --- Computed ---
+  const isOsFullyConcluded = evalOsData?.status === "concluida";
+  const isLocked = isOsFullyConcluded; // Only lock when OS is fully concluded by all sectors
   const answerablePerguntas = useMemo(() => evalPerguntas.filter(p => isQuestionAnswerable(p.setor_avaliado_id)), [evalPerguntas, isQuestionAnswerable]);
   const pendingPerguntas = useMemo(() => evalPerguntas.filter(p => !isQuestionAnswerable(p.setor_avaliado_id)), [evalPerguntas, isQuestionAnswerable]);
   const evalAnsweredCount = answerablePerguntas.filter(p => evalAnswers[p.id] != null).length;
