@@ -188,11 +188,11 @@ export default function DesempenhoColaboradorPage() {
 
   // Most frequent errors
   const { data: frequentErrors = [] } = useQuery({
-    queryKey: ["perf_errors", targetProfileId, startDate?.toISOString(), endDate?.toISOString()],
+    queryKey: ["perf_errors", targetProfileId, appliedStart?.toISOString(), appliedEnd?.toISOString()],
     queryFn: async () => {
       if (!targetProfileId) return [];
-      const from = startDate?.toISOString() || startOfMonth(now).toISOString();
-      const to = endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString();
+      const from = appliedStart?.toISOString() || startOfMonth(now).toISOString();
+      const to = appliedEnd ? endOfMonth(appliedEnd).toISOString() : endOfMonth(now).toISOString();
 
       const { data: osData } = await supabase
         .from("ordens_servico")
