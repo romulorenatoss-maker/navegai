@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, AlertTriangle, Camera, FileVideo, FileText } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,8 +31,8 @@ export default function PerguntasPage() {
   // Preview state
   const [previewAnswer, setPreviewAnswer] = useState<PreviewAnswer>(null);
 
-  // Filter state - multi-select
-  const [filtrosTipoServico, setFiltrosTipoServico] = useState<Set<string>>(new Set());
+  // Filter state - single select
+  const [filtroTipoServico, setFiltroTipoServico] = useState<string | null>(null);
 
   const { data: perguntas = [], isLoading } = useQuery({
     queryKey: ["perguntas_avaliacao"],
@@ -78,28 +78,25 @@ export default function PerguntasPage() {
     return map;
   }, [perguntas]);
 
-  // Filtered questions based on multi-select
-  const hasFilters = filtrosTipoServico.size > 0;
+  // Filtered questions based on single select
+  const hasFilter = filtroTipoServico !== null;
   const perguntasFiltradas = useMemo(() => {
-    if (!hasFilters) return perguntas;
-    return perguntas.filter((p) => {
-      const key = p.tipo_servico_id || "global";
-      return filtrosTipoServico.has(key);
-    });
-  }, [perguntas, filtrosTipoServico, hasFilters]);
+    if (!hasFilter) return [];
+    return perguntas
+      .filter((p) => {
+        const key = p.tipo_servico_id || "global";
+        return key === filtroTipoServico;
+      })
+      .sort((a, b) => a.ordem - b.ordem);
+  }, [perguntas, filtroTipoServico, hasFilter]);
 
   const somaPesoFiltrado = useMemo(
     () => perguntasFiltradas.reduce((acc, p) => acc + p.peso, 0),
     [perguntasFiltradas]
   );
 
-  const toggleFiltro = (key: string) => {
-    setFiltrosTipoServico((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
+  const selectFiltro = (key: string) => {
+    setFiltroTipoServico((prev) => (prev === key ? null : key));
   };
 
   const upsert = useMutation({
@@ -165,44 +162,38 @@ export default function PerguntasPage() {
         <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Nova Pergunta</Button>
       </div>
 
-      {/* Filter chips */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        {Array.from(summaryByTipo.entries()).map(([key, val]) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => toggleFiltro(key)}
-            className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-caption font-medium transition-all press-effect ${
-              filtrosTipoServico.has(key)
-                ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                : "bg-card text-foreground border-border hover:bg-muted/50"
-            }`}
-          >
-            <Checkbox
-              checked={filtrosTipoServico.has(key)}
-              onCheckedChange={() => toggleFiltro(key)}
-              className="pointer-events-none"
-            />
-            <span>{val.nome}</span>
-            <span className={`px-1.5 py-0.5 rounded text-[11px] font-tabular ${
-              filtrosTipoServico.has(key) ? "bg-primary-foreground/20" : "bg-muted"
-            }`}>
-              {val.count}
-            </span>
-            <span className={`px-1.5 py-0.5 rounded text-[11px] font-bold font-tabular ${
-              filtrosTipoServico.has(key) ? "bg-primary-foreground/20" : val.totalPeso >= 100 ? "badge-complete" : val.totalPeso >= 50 ? "badge-active" : "badge-pending"
-            }`}>
-              {val.totalPeso} pts
-            </span>
-          </button>
-        ))}
-        {summaryByTipo.size === 0 && !isLoading && (
-          <p className="text-body text-muted-foreground">Nenhuma pergunta cadastrada.</p>
-        )}
+      {/* Filter list */}
+      <div className="bg-card border border-border rounded-lg shadow-card mb-4">
+        <div className="px-4 py-3 border-b border-border">
+          <p className="text-caption text-muted-foreground uppercase tracking-wider font-medium">Filtrar por Tipo de Serviço</p>
+        </div>
+        <div className="divide-y divide-border">
+          {Array.from(summaryByTipo.entries()).map(([key, val]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => selectFiltro(key)}
+              className={`flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors ${
+                filtroTipoServico === key ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/50"
+              }`}
+            >
+              <span className={`text-body font-medium flex-1 ${filtroTipoServico === key ? "text-primary" : "text-foreground"}`}>{val.nome}</span>
+              <span className="text-caption text-muted-foreground font-tabular">{val.count} pergunta{val.count !== 1 ? "s" : ""}</span>
+              <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-caption font-bold border font-tabular ${
+                val.totalPeso >= 100 ? "badge-complete" : val.totalPeso >= 50 ? "badge-active" : "badge-pending"
+              }`}>
+                {val.totalPeso} pts
+              </span>
+            </button>
+          ))}
+          {summaryByTipo.size === 0 && !isLoading && (
+            <p className="px-4 py-6 text-center text-body text-muted-foreground">Nenhuma pergunta cadastrada.</p>
+          )}
+        </div>
       </div>
 
       {/* Questions table - only when filters selected */}
-      {hasFilters && (
+      {hasFilter && (
         <>
           <div className="flex items-center justify-between mb-2">
             <p className="text-body font-medium text-foreground">
