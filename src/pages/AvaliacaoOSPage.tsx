@@ -501,7 +501,7 @@ export default function AvaliacaoOSPage() {
 
       {/* Create OS Wizard Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className={step === 3 ? "max-w-2xl" : "max-w-lg"}>
           <DialogHeader>
             <DialogTitle>Criar Nova Ordem de Serviço</DialogTitle>
           </DialogHeader>
