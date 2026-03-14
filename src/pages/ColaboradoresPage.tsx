@@ -299,7 +299,7 @@ export default function ColaboradoresPage() {
             )}
             <div className="space-y-1.5">
               <Label>Cargo / Permissão</Label>
-              <Select value={cargo} onValueChange={(v) => { setCargo(v); if (v !== "avaliador") setSelectedTiposServico([]); }}>
+              <Select value={cargo} onValueChange={setCargo}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.entries(cargoConfig).map(([value, cfg]) => (
