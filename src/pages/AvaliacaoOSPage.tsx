@@ -281,44 +281,38 @@ export default function AvaliacaoOSPage() {
     enabled: !!tipoServicoId,
   });
 
-  // Questions grouped by sector for os_detail view
+  // Questions grouped by sector for os_detail view - from os_perguntas
   const { data: osDetailBySetor = { atendimento: [], tecnico: [] } } = useQuery({
-    queryKey: ["os_detail_by_setor", selectedOS?.id, view],
+    queryKey: ["os_detail_by_setor_v2", selectedOS?.id, view],
     queryFn: async () => {
       if (!selectedOS?.id || view !== "os_detail") return { atendimento: [], tecnico: [] };
-      const tsId = selectedOS.tipo_servico_id;
-      if (!tsId) return { atendimento: [], tecnico: [] };
 
-      // Get linked checklists
-      const { data: checklistLinks } = await (supabase as any).from("tipo_servico_checklists").select("checklist_id").eq("tipo_servico_id", tsId);
-      const checklistIds = (checklistLinks || []).map((l: any) => l.checklist_id);
+      // Load from os_perguntas
+      const { data: osPerguntas } = await (supabase as any)
+        .from("os_perguntas")
+        .select("pergunta_id")
+        .eq("os_id", selectedOS.id);
+      
+      const perguntaIds = (osPerguntas || []).map((op: any) => op.pergunta_id);
+      if (perguntaIds.length === 0) return { atendimento: [], tecnico: [] };
 
-      // Get all questions
-      let pergQuery = supabase.from("perguntas_avaliacao")
+      const { data: perguntas } = await supabase
+        .from("perguntas_avaliacao")
         .select("id, pergunta, peso, ordem, setor_avaliado_id, setores!perguntas_avaliacao_setor_avaliado_id_fkey(id, nome)")
-        .eq("ativo", true);
-      if (checklistIds.length > 0) {
-        pergQuery = (pergQuery as any).in("checklist_id", checklistIds);
-      } else {
-        pergQuery = pergQuery.or(`tipo_servico_id.eq.${tsId},tipo_servico_id.is.null`);
-      }
-      const { data: perguntas } = await pergQuery.order("ordem");
+        .in("id", perguntaIds)
+        .order("ordem");
       if (!perguntas?.length) return { atendimento: [], tecnico: [] };
 
       // Get all answers for this OS
-      const { data: avals } = await supabase.from("avaliacoes").select("id, avaliador_id, tipo_avaliacao_id, concluida, nota_final").eq("ordem_servico_id", selectedOS.id);
-      const avalIds = (avals || []).map(a => a.id);
-      let respostas: any[] = [];
-      if (avalIds.length > 0) {
-        const { data: r } = await supabase.from("respostas_avaliacao").select("avaliacao_id, pergunta_id, resposta, observacao, evidencia_url").in("avaliacao_id", avalIds);
-        respostas = r || [];
-      }
+      const { data: respostas } = await supabase
+        .from("respostas_avaliacao")
+        .select("pergunta_id, resposta, observacao, evidencia_url")
+        .eq("ordem_servico_id", selectedOS.id)
+        .not("resposta", "is", null);
 
-      // Build answer map: pergunta_id -> resposta
       const answerMap: Record<string, any> = {};
-      respostas.forEach(r => { answerMap[r.pergunta_id] = r; });
+      (respostas || []).forEach(r => { answerMap[r.pergunta_id] = r; });
 
-      // Split by sector
       const atendimento: any[] = [];
       const tecnico: any[] = [];
       (perguntas || []).forEach((p: any) => {
