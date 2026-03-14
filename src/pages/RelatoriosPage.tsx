@@ -201,7 +201,7 @@ export default function RelatoriosPage() {
     );
     setSelected(new Set());
     setLoading(false);
-  }, [filterMode, competenceMonth, startDate, endDate, filterStatus, filterSetor, filterAvaliador, filterAvaliado, filterCliente]);
+  }, [startDate, endDate, filterStatus, filterSetor, filterAvaliador, filterAvaliado, filterCliente]);
 
   // Only auto-fetch on mount
   useEffect(() => { fetchOS(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
