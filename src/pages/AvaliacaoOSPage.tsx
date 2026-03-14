@@ -83,7 +83,9 @@ function isValidCpf(cpf: string): boolean {
 
 export default function AvaliacaoOSPage() {
   const [searchParams] = useSearchParams();
-  const { profile } = useAuth();
+  const { profile, isAdmin, hasRole } = useAuth();
+  const isGestor = hasRole("gestor");
+  const showAllTipos = isAdmin || isGestor;
   const [searchQuery, setSearchQuery] = useState("");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
@@ -125,11 +127,22 @@ export default function AvaliacaoOSPage() {
     concludeAvaliacao, answeredCount, totalScore, maxScore,
   } = useAvaliacaoOS();
 
-  // Fetch tipos de serviço assigned to this evaluator via junction table
+  // Fetch tipos de serviço: all for admin/gestor, only assigned for avaliador
   const { data: tiposDoAvaliador = [] } = useQuery({
-    queryKey: ["tipos_servico_do_avaliador", profile?.id],
+    queryKey: ["tipos_servico_do_avaliador", profile?.id, showAllTipos],
     queryFn: async () => {
       if (!profile?.id) return [];
+
+      if (showAllTipos) {
+        const { data: tipos } = await supabase
+          .from("tipos_servico")
+          .select("*, setores:setor_id(nome)")
+          .eq("ativo", true)
+          .order("nome");
+        return tipos || [];
+      }
+
+      // Avaliador: only assigned types
       const { data: assignments } = await supabase
         .from("avaliador_tipos_servico")
         .select("tipo_servico_id")
