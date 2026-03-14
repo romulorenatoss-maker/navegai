@@ -938,6 +938,20 @@ export default function AvaliacaoOSPage() {
 
   const handleFinalizeEvaluation = async () => {
     if (!evalAvaliacaoId || !evalOsId) return;
+
+    // Check that employee selections are set based on evaluator's sector
+    const currentOsData = evalOsData;
+    if (currentOsData) {
+      if (hasTecnicoAccess && !currentOsData.tecnico_id) {
+        toast.error("Selecione o técnico avaliado antes de finalizar.");
+        return;
+      }
+      if (hasAtendimentoAccess && !currentOsData.atendente_id) {
+        toast.error("Selecione o atendente avaliado antes de finalizar.");
+        return;
+      }
+    }
+
     // Only check answerable questions (evaluator's sector)
     const answerableQuestions = evalPerguntas.filter(p => isQuestionAnswerable(p.setor_avaliado_id));
     const unanswered = answerableQuestions.filter(p => evalAnswers[p.id] == null);
@@ -1272,11 +1286,47 @@ export default function AvaliacaoOSPage() {
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 mt-3 pt-3 border-t border-border">
               <div className="flex items-center gap-2 text-sm">
                 <span className="text-muted-foreground">Atendente:</span>
-                <span className="font-medium text-foreground">{evalAtendenteNome || "Não definido"}</span>
+                {evalOsData.atendente_id ? (
+                  <span className="font-medium text-foreground">{evalAtendenteNome || "Não definido"}</span>
+                ) : (hasAtendimentoAccess || isAdmin) && !evalFinalized ? (
+                  <Select value={atendenteId} onValueChange={async (val) => {
+                    setAtendenteId(val);
+                    await supabase.from("ordens_servico").update({ atendente_id: val } as any).eq("id", evalOsData.id);
+                    setEvalOsData({ ...evalOsData, atendente_id: val });
+                    toast.success("Atendente salvo!");
+                  }}>
+                    <SelectTrigger className="h-8 w-[180px]"><SelectValue placeholder="Selecionar atendente" /></SelectTrigger>
+                    <SelectContent>
+                      {atendimentoProfiles.filter(p => p.id !== profile?.id).map(p =>
+                        <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <span className="font-medium text-warning italic">Pendente</span>
+                )}
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <span className="text-muted-foreground">Técnico:</span>
-                <span className="font-medium text-foreground">{evalTecnicoNome || "Não definido"}</span>
+                {evalOsData.tecnico_id ? (
+                  <span className="font-medium text-foreground">{evalTecnicoNome || "Não definido"}</span>
+                ) : (hasTecnicoAccess || isAdmin) && !evalFinalized ? (
+                  <Select value={tecnicoId} onValueChange={async (val) => {
+                    setTecnicoId(val);
+                    await supabase.from("ordens_servico").update({ tecnico_id: val } as any).eq("id", evalOsData.id);
+                    setEvalOsData({ ...evalOsData, tecnico_id: val });
+                    toast.success("Técnico salvo!");
+                  }}>
+                    <SelectTrigger className="h-8 w-[180px]"><SelectValue placeholder="Selecionar técnico" /></SelectTrigger>
+                    <SelectContent>
+                      {tecnicoProfiles.filter(p => p.id !== profile?.id).map(p =>
+                        <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <span className="font-medium text-warning italic">Pendente</span>
+                )}
               </div>
             </div>
           </div>
@@ -1672,11 +1722,47 @@ export default function AvaliacaoOSPage() {
             </div>
             <div>
               <span className="text-muted-foreground">Atendente:</span>
-              <p className="font-medium text-foreground">{detailAtendenteNome || "Não definido"}</p>
+              {selectedOS.atendente_id ? (
+                <p className="font-medium text-foreground">{detailAtendenteNome || "—"}</p>
+              ) : (hasAtendimentoAccess || isAdmin) ? (
+                <Select value={atendenteId} onValueChange={async (val) => {
+                  setAtendenteId(val);
+                  await supabase.from("ordens_servico").update({ atendente_id: val } as any).eq("id", selectedOS.id);
+                  setSelectedOS({ ...selectedOS, atendente_id: val });
+                  toast.success("Atendente salvo!");
+                }}>
+                  <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                  <SelectContent>
+                    {atendimentoProfiles.filter(p => p.id !== profile?.id).map(p =>
+                      <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="font-medium text-warning italic">Pendente</p>
+              )}
             </div>
             <div>
               <span className="text-muted-foreground">Técnico:</span>
-              <p className="font-medium text-foreground">{detailTecnicoNome || "Não definido"}</p>
+              {selectedOS.tecnico_id ? (
+                <p className="font-medium text-foreground">{detailTecnicoNome || "—"}</p>
+              ) : (hasTecnicoAccess || isAdmin) ? (
+                <Select value={tecnicoId} onValueChange={async (val) => {
+                  setTecnicoId(val);
+                  await supabase.from("ordens_servico").update({ tecnico_id: val } as any).eq("id", selectedOS.id);
+                  setSelectedOS({ ...selectedOS, tecnico_id: val });
+                  toast.success("Técnico salvo!");
+                }}>
+                  <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                  <SelectContent>
+                    {tecnicoProfiles.filter(p => p.id !== profile?.id).map(p =>
+                      <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="font-medium text-warning italic">Pendente</p>
+              )}
             </div>
           </div>
         </div>
@@ -1720,9 +1806,18 @@ export default function AvaliacaoOSPage() {
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-2 mt-4">
           {selectedOS.status !== "concluida" && (
-            <Button onClick={() => startMyEvaluation(selectedOS)} className="press-effect w-full sm:w-auto">
-              <Eye className="w-4 h-4 mr-2" /> Iniciar / Continuar Avaliação
-            </Button>
+            <>
+              <Button onClick={() => startMyEvaluation(selectedOS)} className="press-effect w-full sm:w-auto">
+                <Eye className="w-4 h-4 mr-2" /> Iniciar / Continuar Avaliação
+              </Button>
+              {/* Warning if employee not set */}
+              {(hasTecnicoAccess && !selectedOS.tecnico_id) && (
+                <p className="text-caption text-warning flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> Selecione o técnico avaliado acima antes de iniciar.</p>
+              )}
+              {(hasAtendimentoAccess && !selectedOS.atendente_id) && (
+                <p className="text-caption text-warning flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> Selecione o atendente avaliado acima antes de iniciar.</p>
+              )}
+            </>
           )}
         </div>
 
