@@ -84,6 +84,7 @@ export function useAvaliacaoOS() {
           cliente_cpf: extras?.cliente_cpf || null,
           tipo_servico_id: extras?.tipo_servico_id || null,
           colaborador_avaliado_id: extras?.colaborador_avaliado_id || null,
+          cliente_id: extras?.cliente_id || null,
         })
         .select()
         .single();
