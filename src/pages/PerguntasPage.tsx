@@ -405,10 +405,10 @@ export default function PerguntasPage() {
                 </DndContext>
                 {perguntasFiltradas.length > 0 && (
                   <tfoot>
-                    <tr className="border-t-2 border-primary/20 bg-muted/30">
-                      <td colSpan={4} className="px-4 py-3 text-body font-semibold text-foreground text-right">Soma Total:</td>
-                      <td className="px-4 py-3 text-center text-subhead font-bold text-primary font-tabular">{somaPesoFiltrado}</td>
-                      <td></td>
+                     <tr className="border-t-2 border-primary/20 bg-muted/30">
+                       <td colSpan={5} className="px-4 py-3 text-body font-semibold text-foreground text-right">Soma Total:</td>
+                       <td className="px-4 py-3 text-center text-subhead font-bold text-primary font-tabular">{somaPesoFiltrado}</td>
+                       <td></td>
                     </tr>
                   </tfoot>
                 )}
