@@ -259,6 +259,7 @@ export default function PerguntasPage() {
         tipo_avaliado: tipoAvaliado,
         peso: Math.min(100, Math.max(1, parseInt(peso) || 1)),
         ordem: computedOrdem,
+        correlacao_pergunta_id: linkedInconsistencyId || null,
       };
       if (editing) {
         const { error } = await supabase.from("perguntas_avaliacao").update(payload as any).eq("id", editing.id);
