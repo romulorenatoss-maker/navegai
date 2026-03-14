@@ -1,11 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, AlertTriangle, Loader2, Plus, ListChecks } from "lucide-react";
+import { Search, AlertTriangle, Loader2, Plus, ListChecks, ChevronRight, ChevronLeft, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useAvaliacaoOS, Answer } from "@/hooks/useAvaliacaoOS";
 import { useQuery } from "@tanstack/react-query";
@@ -52,15 +51,24 @@ const statusLabel: Record<string, { text: string; badge: string }> = {
   concluida: { text: "Concluída", badge: "badge-complete" },
 };
 
+const STEPS = [
+  { label: "Tipo de Serviço", description: "Selecione o tipo" },
+  { label: "Dados da OS", description: "Número, cliente e CPF" },
+  { label: "Avaliado", description: "Colaborador a avaliar" },
+];
+
 export default function AvaliacaoOSPage() {
   const [searchParams] = useSearchParams();
   const { profile } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+
+  // Wizard state
+  const [step, setStep] = useState(0);
+  const [tipoServicoId, setTipoServicoId] = useState("");
   const [newOsNumero, setNewOsNumero] = useState("");
   const [clienteNome, setClienteNome] = useState("");
   const [clienteCpf, setClienteCpf] = useState("");
-  const [tipoServicoId, setTipoServicoId] = useState("");
   const [colaboradorId, setColaboradorId] = useState("");
 
   const {
@@ -69,63 +77,72 @@ export default function AvaliacaoOSPage() {
     concludeAvaliacao, answeredCount, totalScore, maxScore,
   } = useAvaliacaoOS();
 
-  const { data: tipos = [] } = useQuery({
-    queryKey: ["tipos_servico_ativos"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("tipos_servico").select("*").eq("ativo", true).order("nome");
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const { data: colaboradores = [] } = useQuery({
-    queryKey: ["colaboradores_ativos"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("*").eq("ativo", true).order("nome");
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  // Preview questions that will be linked to the current evaluator based on selected tipo_servico and colaborador
-  const { data: previewPerguntas = [] } = useQuery({
-    queryKey: ["preview_perguntas", tipoServicoId, colaboradorId, profile?.id],
+  // Fetch tipos de serviço that the current evaluator has questions for
+  const { data: tiposDoAvaliador = [] } = useQuery({
+    queryKey: ["tipos_servico_do_avaliador", profile?.id],
     queryFn: async () => {
       if (!profile?.id) return [];
-      
-      let query = supabase
+      // Get distinct tipo_servico_ids from questions assigned to this evaluator (or all)
+      const { data: perguntas } = await supabase
         .from("perguntas_avaliacao")
-        .select("id, pergunta, peso, ordem, tipo_servico_id")
+        .select("tipo_servico_id")
         .eq("ativo", true)
         .or(`avaliador_id.eq.${profile.id},avaliador_id.is.null`);
 
-      if (tipoServicoId) {
-        query = query.or(`tipo_servico_id.eq.${tipoServicoId},tipo_servico_id.is.null`);
-      } else if (colaboradorId) {
-        // Get setor from colaborador, then tipos from that setor
-        const { data: colabProfile } = await supabase
-          .from("profiles")
-          .select("setor_id")
-          .eq("id", colaboradorId)
-          .single();
-        
-        if (colabProfile?.setor_id) {
-          const { data: tiposDoSetor } = await supabase
-            .from("tipos_servico")
-            .select("id")
-            .eq("setor_id", colabProfile.setor_id);
-          
-          if (tiposDoSetor && tiposDoSetor.length > 0) {
-            const tipoIds = tiposDoSetor.map(t => `tipo_servico_id.eq.${t.id}`).join(",");
-            query = query.or(`${tipoIds},tipo_servico_id.is.null`);
-          }
-        }
-      }
+      if (!perguntas) return [];
+      const tipoIds = [...new Set(perguntas.map((p) => p.tipo_servico_id).filter(Boolean))];
+      if (tipoIds.length === 0) return [];
 
-      const { data } = await query.order("ordem");
+      const { data: tipos } = await supabase
+        .from("tipos_servico")
+        .select("*, setores:setor_id(nome)")
+        .eq("ativo", true)
+        .in("id", tipoIds)
+        .order("nome");
+
+      return tipos || [];
+    },
+    enabled: !!profile?.id,
+  });
+
+  // Get the selected tipo_servico to determine sector
+  const selectedTipo = useMemo(
+    () => tiposDoAvaliador.find((t) => t.id === tipoServicoId),
+    [tiposDoAvaliador, tipoServicoId]
+  );
+
+  // Fetch colaboradores filtered by the sector of the selected service type
+  const { data: colaboradoresFiltrados = [] } = useQuery({
+    queryKey: ["colaboradores_por_setor", selectedTipo?.setor_id],
+    queryFn: async () => {
+      if (!selectedTipo?.setor_id) return [];
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("ativo", true)
+        .eq("setor_id", selectedTipo.setor_id)
+        .order("nome");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedTipo?.setor_id,
+  });
+
+  // Preview questions for summary
+  const { data: previewPerguntas = [] } = useQuery({
+    queryKey: ["preview_perguntas", tipoServicoId, profile?.id],
+    queryFn: async () => {
+      if (!profile?.id || !tipoServicoId) return [];
+      const { data } = await supabase
+        .from("perguntas_avaliacao")
+        .select("id, pergunta, peso, ordem")
+        .eq("ativo", true)
+        .or(`avaliador_id.eq.${profile.id},avaliador_id.is.null`)
+        .or(`tipo_servico_id.eq.${tipoServicoId},tipo_servico_id.is.null`)
+        .order("ordem");
       return data || [];
     },
-    enabled: createDialogOpen && !!profile?.id && (!!tipoServicoId || !!colaboradorId),
+    enabled: !!tipoServicoId && !!profile?.id,
   });
 
   useEffect(() => {
@@ -141,32 +158,37 @@ export default function AvaliacaoOSPage() {
   };
 
   const openCreateDialog = () => {
+    setStep(0);
+    setTipoServicoId("");
     setNewOsNumero("");
     setClienteNome("");
     setClienteCpf("");
-    setTipoServicoId("");
     setColaboradorId("");
     setCreateDialogOpen(true);
   };
 
   const handleCreateOS = () => {
     const num = newOsNumero.trim();
-    if (!num) {
-      toast.error("Informe o número da OS.");
-      return;
-    }
-    if (!/^\d+$/.test(num)) {
-      toast.error("O número da OS deve conter apenas dígitos.");
-      return;
-    }
+    if (!num) { toast.error("Informe o número da OS."); return; }
+    if (!/^\d+$/.test(num)) { toast.error("O número da OS deve conter apenas dígitos."); return; }
+    if (!tipoServicoId) { toast.error("Selecione o tipo de serviço."); return; }
+    if (!colaboradorId) { toast.error("Selecione o colaborador avaliado."); return; }
+
     searchOS(num, true, {
       cliente_nome: clienteNome.trim() || null,
       cliente_cpf: clienteCpf.trim() || null,
-      tipo_servico_id: tipoServicoId || null,
-      colaborador_avaliado_id: colaboradorId || null,
+      tipo_servico_id: tipoServicoId,
+      colaborador_avaliado_id: colaboradorId,
     });
     setCreateDialogOpen(false);
     setSearchQuery(num);
+  };
+
+  const canAdvance = (s: number) => {
+    if (s === 0) return !!tipoServicoId;
+    if (s === 1) return !!newOsNumero.trim();
+    if (s === 2) return !!colaboradorId;
+    return false;
   };
 
   const isCompleted = avaliacao?.concluida === true;
@@ -207,71 +229,180 @@ export default function AvaliacaoOSPage() {
         </div>
       </div>
 
-      {/* Create OS Dialog */}
+      {/* Create OS Wizard Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Criar Nova Ordem de Serviço</DialogTitle></DialogHeader>
-          <form onSubmit={(e) => { e.preventDefault(); handleCreateOS(); }} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Número da OS *</Label>
-              <Input
-                value={newOsNumero}
-                onChange={(e) => setNewOsNumero(e.target.value.replace(/\D/g, ""))}
-                placeholder="Apenas números"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Nome do Cliente</Label>
-                <Input value={clienteNome} onChange={(e) => setClienteNome(e.target.value)} placeholder="Nome completo" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>CPF do Cliente</Label>
-                <Input value={clienteCpf} onChange={(e) => setClienteCpf(e.target.value)} placeholder="000.000.000-00" />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Tipo de Serviço</Label>
-              <Select value={tipoServicoId} onValueChange={setTipoServicoId}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  {tipos.map((t) => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Colaborador Avaliado</Label>
-              <Select value={colaboradorId} onValueChange={setColaboradorId}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  {colaboradores.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            {/* Preview of linked questions */}
-            {previewPerguntas.length > 0 && (
-              <div className="space-y-1.5">
-                <Label className="flex items-center gap-1.5">
-                  <ListChecks className="w-4 h-4 text-primary" />
-                  Perguntas vinculadas ({previewPerguntas.length})
-                </Label>
-                <div className="bg-muted/50 rounded-lg border border-border p-3 max-h-40 overflow-y-auto space-y-1">
-                  {previewPerguntas.map((p, i) => (
-                    <div key={p.id} className="flex items-start gap-2 text-caption">
-                      <span className="text-muted-foreground font-tabular w-5 shrink-0">{String(i + 1).padStart(2, "0")}</span>
-                      <span className="text-foreground flex-1">{p.pergunta}</span>
-                      <span className="text-muted-foreground shrink-0">Peso: {p.peso}</span>
-                    </div>
-                  ))}
+          <DialogHeader>
+            <DialogTitle>Criar Nova Ordem de Serviço</DialogTitle>
+          </DialogHeader>
+
+          {/* Stepper */}
+          <div className="flex items-center gap-1 mb-4">
+            {STEPS.map((s, i) => (
+              <div key={i} className="flex items-center gap-1 flex-1">
+                <div className={`flex items-center justify-center w-7 h-7 rounded-full text-caption font-bold shrink-0 transition-colors ${
+                  i < step ? "bg-primary text-primary-foreground"
+                    : i === step ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground"
+                }`}>
+                  {i < step ? <Check className="w-3.5 h-3.5" /> : i + 1}
                 </div>
+                <div className="hidden sm:block min-w-0">
+                  <p className={`text-caption font-medium truncate ${i === step ? "text-foreground" : "text-muted-foreground"}`}>{s.label}</p>
+                </div>
+                {i < STEPS.length - 1 && <div className={`flex-1 h-px mx-1 ${i < step ? "bg-primary" : "bg-border"}`} />}
               </div>
-            )}
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancelar</Button>
-              <Button type="submit" className="press-effect">Criar e Avaliar</Button>
-            </DialogFooter>
-          </form>
+            ))}
+          </div>
+
+          {/* Step Content */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={step}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              {/* Step 0: Tipo de Serviço */}
+              {step === 0 && (
+                <div className="space-y-2">
+                  <p className="text-body text-muted-foreground mb-3">Selecione o tipo de serviço para esta OS. Apenas tipos com perguntas atribuídas a você são exibidos.</p>
+                  <div className="space-y-1 max-h-64 overflow-y-auto">
+                    {tiposDoAvaliador.length === 0 ? (
+                      <p className="text-body text-muted-foreground text-center py-6">Nenhum tipo de serviço com perguntas atribuídas.</p>
+                    ) : tiposDoAvaliador.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setTipoServicoId(t.id)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-all press-effect ${
+                          tipoServicoId === t.id
+                            ? "bg-primary/10 border-primary text-primary"
+                            : "bg-card border-border hover:bg-muted/50 text-foreground"
+                        }`}
+                      >
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                          tipoServicoId === t.id ? "border-primary bg-primary" : "border-muted-foreground/30"
+                        }`}>
+                          {tipoServicoId === t.id && <Check className="w-3 h-3 text-primary-foreground" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-body font-medium truncate">{t.nome}</p>
+                          <p className="text-caption text-muted-foreground">{(t as any).setores?.nome || "Sem setor"}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 1: Dados da OS */}
+              {step === 1 && (
+                <div className="space-y-4">
+                  <p className="text-body text-muted-foreground mb-1">Informe os dados da ordem de serviço.</p>
+                  <div className="space-y-1.5">
+                    <Label>Número da OS *</Label>
+                    <Input
+                      value={newOsNumero}
+                      onChange={(e) => setNewOsNumero(e.target.value.replace(/\D/g, ""))}
+                      placeholder="Apenas números"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label>Nome do Cliente</Label>
+                      <Input value={clienteNome} onChange={(e) => setClienteNome(e.target.value)} placeholder="Nome completo" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>CPF do Cliente</Label>
+                      <Input value={clienteCpf} onChange={(e) => setClienteCpf(e.target.value)} placeholder="000.000.000-00" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: Colaborador Avaliado */}
+              {step === 2 && (
+                <div className="space-y-2">
+                  <p className="text-body text-muted-foreground mb-3">
+                    Selecione o colaborador a ser avaliado. Listando apenas colaboradores do setor <span className="font-semibold text-foreground">{(selectedTipo as any)?.setores?.nome || "—"}</span>.
+                  </p>
+                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                    {colaboradoresFiltrados.length === 0 ? (
+                      <p className="text-body text-muted-foreground text-center py-6">Nenhum colaborador encontrado neste setor.</p>
+                    ) : colaboradoresFiltrados.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => setColaboradorId(c.id)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-all press-effect ${
+                          colaboradorId === c.id
+                            ? "bg-primary/10 border-primary text-primary"
+                            : "bg-card border-border hover:bg-muted/50 text-foreground"
+                        }`}
+                      >
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                          colaboradorId === c.id ? "border-primary bg-primary" : "border-muted-foreground/30"
+                        }`}>
+                          {colaboradorId === c.id && <Check className="w-3 h-3 text-primary-foreground" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-body font-medium truncate">{c.nome}</p>
+                          <p className="text-caption text-muted-foreground">{c.cargo || "Sem cargo"} • {c.email}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Summary */}
+                  {colaboradorId && previewPerguntas.length > 0 && (
+                    <div className="mt-3 bg-muted/30 border border-border rounded-lg p-3">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <ListChecks className="w-4 h-4 text-primary" />
+                        <span className="text-caption font-medium text-foreground">{previewPerguntas.length} perguntas vinculadas</span>
+                        <span className="text-caption text-muted-foreground ml-auto font-tabular">{previewPerguntas.reduce((s, p) => s + p.peso, 0)} pts</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Navigation */}
+          <DialogFooter className="flex justify-between sm:justify-between gap-2 mt-2">
+            <div>
+              {step > 0 && (
+                <Button type="button" variant="outline" onClick={() => setStep(step - 1)}>
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" variant="ghost" onClick={() => setCreateDialogOpen(false)}>Cancelar</Button>
+              {step < 2 ? (
+                <Button
+                  type="button"
+                  onClick={() => setStep(step + 1)}
+                  disabled={!canAdvance(step)}
+                  className="press-effect"
+                >
+                  Próximo <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={handleCreateOS}
+                  disabled={!canAdvance(2)}
+                  className="press-effect"
+                >
+                  Criar e Avaliar
+                </Button>
+              )}
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
