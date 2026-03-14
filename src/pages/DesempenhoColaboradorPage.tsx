@@ -79,11 +79,11 @@ export default function DesempenhoColaboradorPage() {
 
   // Evaluations where this employee was evaluated
   const { data: evaluations = [], refetch: refetchEvaluations } = useQuery({
-    queryKey: ["perf_evals", targetProfileId, startDate?.toISOString(), endDate?.toISOString()],
+    queryKey: ["perf_evals", targetProfileId, appliedStart?.toISOString(), appliedEnd?.toISOString()],
     queryFn: async () => {
       if (!targetProfileId) return [];
-      const from = startDate?.toISOString() || startOfMonth(now).toISOString();
-      const to = endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString();
+      const from = appliedStart?.toISOString() || startOfMonth(now).toISOString();
+      const to = appliedEnd ? endOfMonth(appliedEnd).toISOString() : endOfMonth(now).toISOString();
 
       const { data: osData } = await supabase
         .from("ordens_servico")
