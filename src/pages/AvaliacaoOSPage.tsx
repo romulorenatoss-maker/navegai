@@ -465,12 +465,11 @@ export default function AvaliacaoOSPage() {
     }
   }, [linkedTiposAvaliacao, profile]);
 
-  // URL param search
+  // URL param: pre-fill OS number
   useEffect(() => {
     const os = searchParams.get("os");
     if (os) {
       setFormOsNumero(os);
-      handleValidate(os);
     }
   }, []);
 
