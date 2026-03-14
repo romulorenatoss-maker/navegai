@@ -4,8 +4,9 @@ import { detectInconsistencies, markAuditOnlyAndCalculateScore } from "@/hooks/u
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, AlertTriangle, Loader2, ChevronRight, ChevronLeft,
-  Check, Clock, Trash2, Eye, Users, MessageSquare, Camera, X, Image as ImageIcon, Lock
+  Check, Clock, Trash2, Eye, Users, MessageSquare, Camera, X, Image as ImageIcon, Lock, Download
 } from "lucide-react";
+import { jsPDF } from "jspdf";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -1093,6 +1094,94 @@ export default function AvaliacaoOSPage() {
 
   const canCreateEval = !!tipoServicoId && (!!atendenteId || !!tecnicoId);
 
+  // --- PDF Generation ---
+  const generatePDF = useCallback(() => {
+    if (!evalOsData) return;
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 15;
+    const contentWidth = pageWidth - margin * 2;
+    let y = 20;
+
+    const addText = (text: string, size: number, style: "normal" | "bold" = "normal", maxWidth = contentWidth) => {
+      doc.setFontSize(size);
+      doc.setFont("helvetica", style);
+      const lines = doc.splitTextToSize(text, maxWidth);
+      if (y + lines.length * (size * 0.5) > doc.internal.pageSize.getHeight() - 20) {
+        doc.addPage();
+        y = 20;
+      }
+      doc.text(lines, margin, y);
+      y += lines.length * (size * 0.5) + 2;
+    };
+
+    const addLine = () => {
+      doc.setDrawColor(200);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 4;
+    };
+
+    // Header
+    addText(`Relatório de Avaliação - OS #${evalOsData.numero_os}`, 16, "bold");
+    addText(`Data: ${new Date().toLocaleDateString("pt-BR")}`, 10);
+    y += 2;
+    addLine();
+
+    // OS Info
+    addText("Informações da OS", 12, "bold");
+    addText(`Cliente: ${evalOsData.cliente_nome || "—"}`, 10);
+    addText(`CPF: ${evalOsData.cliente_cpf || "—"}`, 10);
+    addText(`Tipo de Serviço: ${evalTipoServicoNome || "—"}`, 10);
+    addText(`Atendente: ${evalAtendenteNome || "Não definido"}`, 10);
+    addText(`Técnico: ${evalTecnicoNome || "Não definido"}`, 10);
+    addText(`Status: ${statusLabel[evalOsData.status]?.text || evalOsData.status}`, 10);
+    if (evalScore != null) {
+      addText(`Nota Final: ${evalScore.toFixed(1)}%`, 12, "bold");
+    }
+    y += 4;
+    addLine();
+
+    // Questions
+    addText("Checklist de Avaliação", 12, "bold");
+    y += 2;
+
+    evalPerguntas.forEach((p, i) => {
+      const answer = evalAnswers[p.id];
+      const obs = evalObservations[p.id];
+      const hasEvidence = !!evalEvidencias[p.id];
+      const answerLabel = answer === "sim" ? "SIM" : answer === "nao" ? "NÃO" : answer === "na" ? "N/A" : "—";
+
+      if (y > doc.internal.pageSize.getHeight() - 40) {
+        doc.addPage();
+        y = 20;
+      }
+
+      addText(`${String(i + 1).padStart(2, "0")}. ${p.pergunta}`, 10, "bold");
+      addText(`   Resposta: ${answerLabel}  |  Nota: ${p.peso}`, 10);
+
+      if (obs?.trim()) {
+        addText(`   Observação: ${obs}`, 9);
+      }
+      if (hasEvidence) {
+        addText(`   📷 Foto anexada`, 9);
+      }
+      y += 2;
+    });
+
+    // Score summary
+    y += 4;
+    addLine();
+    addText("Resumo", 12, "bold");
+    addText(`Total de perguntas: ${evalPerguntas.length}`, 10);
+    addText(`Respondidas: ${evalAnsweredCount}`, 10);
+    if (evalMaxScore > 0) {
+      addText(`Pontuação: ${evalTotalScore}/${evalMaxScore} pts (${((evalTotalScore / evalMaxScore) * 100).toFixed(1)}%)`, 10, "bold");
+    }
+
+    doc.save(`avaliacao_os_${evalOsData.numero_os}.pdf`);
+    toast.success("PDF gerado com sucesso!");
+  }, [evalOsData, evalPerguntas, evalAnswers, evalObservations, evalEvidencias, evalScore, evalTipoServicoNome, evalAtendenteNome, evalTecnicoNome, evalAnsweredCount, evalTotalScore, evalMaxScore]);
+
   // ===================== RENDER =====================
 
   // --- Full-Page Evaluation View ---
@@ -1171,6 +1260,9 @@ export default function AvaliacaoOSPage() {
             <h2 className="text-xl font-bold text-foreground">Avaliação Concluída!</h2>
             <p className="text-3xl font-bold text-primary font-tabular mt-2">{evalScore?.toFixed(1)}%</p>
             <p className="text-sm text-muted-foreground mt-1">{evalAnsweredCount} perguntas respondidas</p>
+            <Button onClick={generatePDF} variant="outline" className="mt-4 press-effect">
+              <Download className="w-4 h-4 mr-2" /> Baixar PDF da Avaliação
+            </Button>
           </motion.div>
         )}
 
@@ -1658,6 +1750,17 @@ export default function AvaliacaoOSPage() {
         if (existingOS.atendente_id) setAtendenteId(existingOS.atendente_id);
         if (existingOS.tecnico_id) setTecnicoId(existingOS.tecnico_id);
 
+        // Update OS with client data if missing
+        if (cliente && (!existingOS.cliente_nome || !existingOS.cliente_cpf || !existingOS.cliente_id)) {
+          await supabase.from("ordens_servico").update({
+            cliente_nome: cliente.nome,
+            cliente_cpf: cliente.cpf,
+            cliente_id: cliente.id,
+          } as any).eq("id", existingOS.id);
+          existingOS.cliente_nome = cliente.nome;
+          existingOS.cliente_cpf = cliente.cpf;
+        }
+
         // Check for pending evaluation — if found, open it directly
         if (profile) {
           const { data: pendingAval } = await supabase
@@ -1810,11 +1913,11 @@ export default function AvaliacaoOSPage() {
                 </div>
                 <div>
                   <span className="text-muted-foreground">Cliente:</span>
-                  <p className="font-medium text-foreground">{formFoundOS.cliente_nome || "—"}</p>
+                  <p className="font-medium text-foreground">{formFoundCliente?.nome || formFoundOS.cliente_nome || "—"}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">CPF:</span>
-                  <p className="font-medium text-foreground">{formFoundOS.cliente_cpf || "—"}</p>
+                  <p className="font-medium text-foreground">{formFoundCliente?.cpf || formFoundOS.cliente_cpf || formClienteCpf || "—"}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Status:</span>
