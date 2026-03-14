@@ -340,11 +340,17 @@ export default function ColaboradoresPage() {
             {cargo === "avaliador" && (
               <div className="space-y-2">
                 <Label>Tipos de Serviço Atribuídos</Label>
-                <p className="text-caption text-muted-foreground">Selecione os tipos de serviço que este avaliador poderá avaliar.</p>
+                <p className="text-caption text-muted-foreground">
+                  {selectedSetores.length === 0
+                    ? "Selecione ao menos um setor acima para ver os tipos de serviço disponíveis."
+                    : "Selecione os tipos de serviço que este avaliador poderá avaliar."}
+                </p>
                 <div className="border border-border rounded-lg p-3 space-y-2 max-h-48 overflow-y-auto">
-                  {tiposServico.length === 0 ? (
-                    <p className="text-caption text-muted-foreground text-center py-2">Nenhum tipo de serviço cadastrado.</p>
-                  ) : tiposServico.map((ts) => (
+                  {selectedSetores.length === 0 ? (
+                    <p className="text-caption text-muted-foreground text-center py-2">Nenhum setor selecionado.</p>
+                  ) : tiposServico.filter((ts) => ts.setor_id && selectedSetores.includes(ts.setor_id)).length === 0 ? (
+                    <p className="text-caption text-muted-foreground text-center py-2">Nenhum tipo de serviço para os setores selecionados.</p>
+                  ) : tiposServico.filter((ts) => ts.setor_id && selectedSetores.includes(ts.setor_id)).map((ts) => (
                     <label key={ts.id} className="flex items-center gap-3 py-1.5 px-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors">
                       <Checkbox
                         checked={selectedTiposServico.includes(ts.id)}
