@@ -107,10 +107,7 @@ export default function PerguntasPage() {
     },
   });
 
-  const { data: avaliadores = [] } = useQuery({
-    queryKey: ["avaliadores_list"],
-    queryFn: async () => { const { data } = await supabase.from("profiles").select("*").eq("ativo", true).order("nome"); return data || []; },
-  });
+  // avaliadores query removed - no longer needed for question form
 
   const summaryByTipo = useMemo(() => {
     const map = new Map<string, { nome: string; count: number; totalPeso: number }>();
