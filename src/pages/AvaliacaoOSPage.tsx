@@ -114,6 +114,8 @@ export default function AvaliacaoOSPage() {
   const [evalOsData, setEvalOsData] = useState<any | null>(null);
   const [evalAnswers, setEvalAnswers] = useState<Record<string, Answer>>({});
   const [evalObservations, setEvalObservations] = useState<Record<string, string>>({});
+  const [evalEvidencias, setEvalEvidencias] = useState<Record<string, string>>({});
+  const [uploadingEvidence, setUploadingEvidence] = useState<string | null>(null);
   const [evalFinalized, setEvalFinalized] = useState(false);
   const [evalScore, setEvalScore] = useState<number | null>(null);
   const [evalSubmitting, setEvalSubmitting] = useState(false);
