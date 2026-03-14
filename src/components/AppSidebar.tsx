@@ -66,6 +66,14 @@ function NavDropdown({ section, onNavigate }: { section: typeof allNavSections[0
   const location = useLocation();
   const hasActive = section.items.some(item => location.pathname === item.to);
 
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
   // Single item sections (like Dashboard) render as direct link
   if (section.items.length === 1) {
     const item = section.items[0];
@@ -86,14 +94,6 @@ function NavDropdown({ section, onNavigate }: { section: typeof allNavSections[0
       </NavLink>
     );
   }
-
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
 
   return (
     <div ref={ref} className="relative">
