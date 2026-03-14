@@ -490,23 +490,7 @@ export default function PerguntasPage() {
             <div className="space-y-1.5"><Label>Pergunta</Label><Input value={pergunta} onChange={e => setPergunta(e.target.value)} required /></div>
 
             <div className="grid grid-cols-2 gap-4">
-              {/* 2. Service Type */}
-              <div className="space-y-1.5">
-                <Label>Tipo de Serviço</Label>
-                <Select value={tipoServicoId} onValueChange={val => {
-                  setTipoServicoId(val);
-                  const tipo = tipos.find(t => t.id === val);
-                  if (tipo?.setor_id) setSetorAvaliadoId(tipo.setor_id);
-                  else if (val === "todos") setSetorAvaliadoId("");
-                }}>
-                  <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos</SelectItem>
-                    {tipos.map(t => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              {/* 3. Who Evaluates */}
+              {/* 2. Who Evaluates */}
               <div className="space-y-1.5">
                 <Label>Quem Avalia (Setor)</Label>
                 <Select value={setorAvaliadoId} onValueChange={setSetorAvaliadoId}>
@@ -517,6 +501,18 @@ export default function PerguntasPage() {
                   </SelectContent>
                 </Select>
                 <p className="text-caption text-muted-foreground">Setor responsável por responder esta pergunta.</p>
+              </div>
+              {/* 3. Nota para Setor */}
+              <div className="space-y-1.5">
+                <Label>Nota para Setor</Label>
+                <Select value={setorNotaId} onValueChange={setSetorNotaId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o setor" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    {setores.map(s => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <p className="text-caption text-muted-foreground">Setor do avaliado que recebe a nota desta pergunta.</p>
               </div>
             </div>
 
