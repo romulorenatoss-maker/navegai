@@ -108,17 +108,24 @@ export default function AvaliacaoOSPage() {
     [tiposDoAvaliador, tipoServicoId]
   );
 
-  // Fetch colaboradores filtered by the sector of the selected service type
+  // Fetch colaboradores filtered by sector, excluding the evaluator themselves
   const { data: colaboradoresFiltrados = [] } = useQuery({
-    queryKey: ["colaboradores_por_setor", selectedTipo?.setor_id],
+    queryKey: ["colaboradores_por_setor", selectedTipo?.setor_id, profile?.id],
     queryFn: async () => {
       if (!selectedTipo?.setor_id) return [];
-      const { data, error } = await supabase
+      let query = supabase
         .from("profiles")
         .select("*")
         .eq("ativo", true)
         .eq("setor_id", selectedTipo.setor_id)
         .order("nome");
+
+      // Exclude the current evaluator from the list
+      if (profile?.id) {
+        query = query.neq("id", profile.id);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
