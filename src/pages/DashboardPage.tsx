@@ -711,7 +711,11 @@ export default function DashboardPage() {
               "bg-card border rounded-lg p-4 shadow-card cursor-pointer transition-all",
               statusFilter === card.filter ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-primary/40"
             )}
-            onClick={() => setStatusFilter(statusFilter === card.filter ? "all" : card.filter)}
+            onClick={() => {
+              const newFilter = statusFilter === card.filter ? "all" : card.filter;
+              setStatusFilter(newFilter);
+              setSearchTrigger(prev => prev + 1);
+            }}
           >
             <div className="flex items-center justify-between mb-3">
               <span className="text-caption text-muted-foreground font-medium uppercase tracking-wider">{card.label}</span>
