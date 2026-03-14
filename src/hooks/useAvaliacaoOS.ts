@@ -167,11 +167,18 @@ export function useAvaliacaoOS() {
     // Filter by tipo_servico: matching OR null (global questions)
     if (osData?.tipo_servico_id) {
       query = query.or(`tipo_servico_id.eq.${osData.tipo_servico_id},tipo_servico_id.is.null`);
+    } else if (setorId) {
+      // No tipo_servico on OS, but avaliado has a setor — get tipos_servico for that setor
+      const { data: tiposDoSetor } = await supabase
+        .from("tipos_servico")
+        .select("id")
+        .eq("setor_id", setorId);
+      
+      if (tiposDoSetor && tiposDoSetor.length > 0) {
+        const tipoIds = tiposDoSetor.map(t => `tipo_servico_id.eq.${t.id}`).join(",");
+        query = query.or(`${tipoIds},tipo_servico_id.is.null`);
+      }
     }
-
-    // Filter by setor via tipo_servico relationship
-    // Questions linked to a tipo_servico that belongs to the avaliado's setor
-    // This is handled by tipo_servico_id filter above since tipos_servico are linked to setores
 
     const { data: perguntas } = await query.order("ordem");
 
