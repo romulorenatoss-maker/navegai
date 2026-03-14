@@ -1145,8 +1145,13 @@ export default function AvaliacaoOSPage() {
   );
 
   // --- PDF Generation ---
+  const canExport = evalOsData?.status === "concluida";
   const generatePDF = useCallback(() => {
     if (!evalOsData) return;
+    if (evalOsData.status !== "concluida") {
+      toast.error("Avaliação ainda não concluída. Exportação indisponível.");
+      return;
+    }
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 15;
