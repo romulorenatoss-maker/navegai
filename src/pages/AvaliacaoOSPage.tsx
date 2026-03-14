@@ -172,17 +172,12 @@ export default function AvaliacaoOSPage() {
   });
 
   const { data: tiposServico = [] } = useQuery({
-    queryKey: ["tipos_servico_aval", profile?.id, isAdmin, evaluatorSetorIds.join(",")],
+    queryKey: ["tipos_servico_aval", profile?.id],
     queryFn: async () => {
       if (!profile?.id) return [];
-      if (isAdmin) {
-        const { data } = await supabase.from("tipos_servico").select("*, setores:setor_id(nome)").eq("ativo", true).order("nome");
-        return data || [];
-      }
-      // Filter by evaluator's sectors - show types with matching setor_id or null (global)
+      // Show all active service types - sector filtering happens at question level
       const { data } = await supabase.from("tipos_servico").select("*, setores:setor_id(nome)").eq("ativo", true).order("nome");
-      if (evaluatorSetorIds.length === 0) return data || [];
-      return (data || []).filter((t: any) => !t.setor_id || evaluatorSetorIds.includes(t.setor_id));
+      return data || [];
     },
     enabled: !!profile?.id,
   });
