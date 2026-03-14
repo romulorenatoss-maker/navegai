@@ -1210,6 +1210,8 @@ export default function AvaliacaoOSPage() {
   };
 
   // --- Computed ---
+  const isOsFullyConcluded = evalOsData?.status === "concluida";
+  const isLocked = isOsFullyConcluded; // Only lock when OS is fully concluded by all sectors
   const answerablePerguntas = useMemo(() => evalPerguntas.filter(p => isQuestionAnswerable(p.setor_avaliado_id)), [evalPerguntas, isQuestionAnswerable]);
   const pendingPerguntas = useMemo(() => evalPerguntas.filter(p => !isQuestionAnswerable(p.setor_avaliado_id)), [evalPerguntas, isQuestionAnswerable]);
   const evalAnsweredCount = answerablePerguntas.filter(p => evalAnswers[p.id] != null).length;
@@ -1361,7 +1363,7 @@ export default function AvaliacaoOSPage() {
                 <span className="text-muted-foreground">Atendente:</span>
                 {evalOsData.atendente_id ? (
                   <span className="font-medium text-foreground">{evalAtendenteNome || "Não definido"}</span>
-                ) : (hasAtendimentoAccess || isAdmin) && !evalFinalized ? (
+                ) : (hasAtendimentoAccess || isAdmin) && !isLocked ? (
                   <Select value={atendenteId} onValueChange={async (val) => {
                     setAtendenteId(val);
                     await supabase.from("ordens_servico").update({ atendente_id: val } as any).eq("id", evalOsData.id);
@@ -1383,7 +1385,7 @@ export default function AvaliacaoOSPage() {
                 <span className="text-muted-foreground">Técnico:</span>
                 {evalOsData.tecnico_id ? (
                   <span className="font-medium text-foreground">{evalTecnicoNome || "Não definido"}</span>
-                ) : (hasTecnicoAccess || isAdmin) && !evalFinalized ? (
+                ) : (hasTecnicoAccess || isAdmin) && !isLocked ? (
                   <Select value={tecnicoId} onValueChange={async (val) => {
                     setTecnicoId(val);
                     await supabase.from("ordens_servico").update({ tecnico_id: val } as any).eq("id", evalOsData.id);
@@ -1489,7 +1491,7 @@ export default function AvaliacaoOSPage() {
                     {isQuestionAnswerable(p.setor_avaliado_id) ? (
                       <>
                         <div className="ml-11">
-                          <SegmentedControl value={answer} onChange={v => handleAnswerChange(p.id, v)} disabled={evalFinalized} />
+                          <SegmentedControl value={answer} onChange={v => handleAnswerChange(p.id, v)} disabled={isLocked} />
                         </div>
 
                         <AnimatePresence>
@@ -1507,7 +1509,7 @@ export default function AvaliacaoOSPage() {
                                   placeholder="Descreva o problema encontrado..."
                                   value={observation}
                                   onChange={e => handleObservationChange(p.id, e.target.value)}
-                                  disabled={evalFinalized}
+                                  disabled={isLocked}
                                   className="bg-card min-h-[80px] text-sm"
                                 />
 
@@ -1525,7 +1527,7 @@ export default function AvaliacaoOSPage() {
                                         className="rounded-lg border border-border max-h-40 object-cover cursor-pointer"
                                         onClick={() => window.open(evidenciaUrl, "_blank")}
                                       />
-                                      {!evalFinalized && (
+                                      {!isLocked && (
                                         <button
                                           onClick={() => handleRemoveEvidence(p.id)}
                                           className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-md hover:bg-destructive/90 transition-colors"
@@ -1539,7 +1541,7 @@ export default function AvaliacaoOSPage() {
                                     <label className={cn(
                                       "flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors text-sm",
                                       isUploading ? "border-muted-foreground/30 bg-muted/30 cursor-wait" : "border-destructive/30 hover:border-destructive/50 hover:bg-destructive/5",
-                                      evalFinalized && "opacity-50 cursor-not-allowed"
+                                      isLocked && "opacity-50 cursor-not-allowed"
                                     )}>
                                       {isUploading ? (
                                         <><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> Enviando...</>
@@ -1550,7 +1552,7 @@ export default function AvaliacaoOSPage() {
                                         type="file"
                                         accept="image/*"
                                         className="hidden"
-                                        disabled={evalFinalized || isUploading}
+                                        disabled={isLocked || isUploading}
                                         onChange={e => {
                                           const file = e.target.files?.[0];
                                           if (file) handleEvidenceUpload(p.id, file);
@@ -1561,7 +1563,7 @@ export default function AvaliacaoOSPage() {
                                     <label className={cn(
                                       "flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors text-sm",
                                       isUploading ? "border-muted-foreground/30 bg-muted/30 cursor-wait" : "border-destructive/30 hover:border-destructive/50 hover:bg-destructive/5",
-                                      evalFinalized && "opacity-50 cursor-not-allowed"
+                                      isLocked && "opacity-50 cursor-not-allowed"
                                     )}>
                                       {!isUploading && (
                                         <><Camera className="w-4 h-4 text-destructive" /> Câmera</>
@@ -1571,7 +1573,7 @@ export default function AvaliacaoOSPage() {
                                         accept="image/*"
                                         capture="environment"
                                         className="hidden"
-                                        disabled={evalFinalized || isUploading}
+                                        disabled={isLocked || isUploading}
                                         onChange={e => {
                                           const file = e.target.files?.[0];
                                           if (file) handleEvidenceUpload(p.id, file);
@@ -1645,12 +1647,12 @@ export default function AvaliacaoOSPage() {
               <div className="flex items-center gap-2 text-xs">
                 <Progress value={evalProgressPercent} className="h-1.5 w-20 sm:w-28" />
                 <span className="font-medium text-foreground font-tabular">{evalProgressPercent}%</span>
-                {!evalFinalized && autoSaving && (
+                {!isLocked && autoSaving && (
                   <span className="text-muted-foreground flex items-center gap-1">
                     <Loader2 className="w-3 h-3 animate-spin" /> Salvando
                   </span>
                 )}
-                {!evalFinalized && !autoSaving && evalAnsweredCount > 0 && (
+                {!isLocked && !autoSaving && evalAnsweredCount > 0 && (
                   <span className="text-success flex items-center gap-1">
                     <Check className="w-3 h-3" /> Salvo
                   </span>
@@ -1662,14 +1664,14 @@ export default function AvaliacaoOSPage() {
                     <Download className="w-3 h-3 mr-1" /> PDF
                   </Button>
                 )}
-                {!evalFinalized && (
+                {!isLocked && (
                   <Button size="sm" onClick={handleFinalizeEvaluation} disabled={evalProgressPercent < 100 || evalSubmitting} className="press-effect h-8 text-xs px-3">
                     {evalSubmitting && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
                     Finalizar
                   </Button>
                 )}
                 <Button variant="outline" size="sm" onClick={backToList} className="press-effect h-8 text-xs px-3">
-                  {evalFinalized ? "Fechar" : "Sair"}
+                  {isLocked ? "Fechar" : "Sair"}
                 </Button>
               </div>
             </div>
