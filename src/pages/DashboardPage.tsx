@@ -325,10 +325,11 @@ export default function DashboardPage() {
 
         const myUnanswered = myQuestions.filter(q => !myAval || !answeredSet.has(`${myAval.id}:${q.id}`));
 
-        const totalAnswered = osAvals.reduce((sum, a) => {
-          return sum + perguntasForOS.filter(q => answeredSet.has(`${a.id}:${q.id}`)).length;
-        }, 0);
-        const progress = perguntasForOS.length > 0 ? Math.round((totalAnswered / perguntasForOS.length) * 100) : 0;
+        // Count unique questions answered by ANY evaluator for this OS
+        const uniqueAnswered = perguntasForOS.filter(q =>
+          osAvals.some(a => answeredSet.has(`${a.id}:${q.id}`))
+        ).length;
+        const progress = perguntasForOS.length > 0 ? Math.round((uniqueAnswered / perguntasForOS.length) * 100) : 0;
 
         const pendingItem: PendingOS = {
           os_id: os.id, numero_os: os.numero_os, cliente_nome: os.cliente_nome,
