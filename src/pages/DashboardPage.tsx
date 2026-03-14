@@ -244,8 +244,8 @@ export default function DashboardPage() {
       if (mySetorIds.length === 0 && profile.setor_id) mySetorIds = [profile.setor_id];
       if (mySetorIds.length === 0 && !isAdmin) { setPendingMySector([]); setPendingOtherSector([]); setCompletedOS([]); return; }
 
-      const from = startDate ? startDate.toISOString() : startOfMonth(now).toISOString();
-      const to = endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString();
+      const from = startDate ? startOfDay(startDate).toISOString() : startOfMonth(now).toISOString();
+      const to = endDate ? endOfDay(endDate).toISOString() : endOfMonth(now).toISOString();
 
       let pendingQuery = supabase
         .from("ordens_servico")
