@@ -459,7 +459,7 @@ export default function RelatoriosPage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `relatorio_os_${competenceMonth}.csv`;
+      link.download = `relatorio_os_${startDate ? format(startDate, "yyyy-MM-dd") : "export"}.xlsx`;
       link.click();
       URL.revokeObjectURL(url);
 
