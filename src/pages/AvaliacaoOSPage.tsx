@@ -1118,6 +1118,22 @@ export default function AvaliacaoOSPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
           >
+            {/* Back button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mb-3 press-effect"
+              onClick={() => {
+                setSearchQuery("");
+                // Reset OS state by searching empty
+                window.location.hash = "";
+                // Clear the loaded OS by resetting hook state
+                searchOS("__clear__", false);
+              }}
+            >
+              <ChevronLeft className="w-4 h-4 mr-1" /> Voltar para lista
+            </Button>
+
             {/* OS Header */}
             <div className="bg-card border border-border rounded-lg p-4 shadow-card mb-4">
               <div className="flex items-center justify-between mb-3">
