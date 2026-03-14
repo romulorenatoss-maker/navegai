@@ -103,6 +103,7 @@ export default function DesempenhoColaboradorPage() {
         .from("ordens_servico")
         .select("id, numero_os, tipo_servico_id, created_at, cliente_nome, tecnico_id, atendente_id, status")
         .or(`tecnico_id.eq.${targetProfileId},atendente_id.eq.${targetProfileId},colaborador_avaliado_id.eq.${targetProfileId}`)
+        .eq("status", "concluida")
         .gte("created_at", from)
         .lte("created_at", to)
         .order("created_at", { ascending: false });
