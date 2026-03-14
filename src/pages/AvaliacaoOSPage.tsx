@@ -4,7 +4,7 @@ import { detectInconsistencies, markAuditOnlyAndCalculateScore } from "@/hooks/u
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, AlertTriangle, Loader2, ChevronRight, ChevronLeft,
-  Check, Clock, Trash2, Eye, Users, MessageSquare, Camera, X, Image as ImageIcon
+  Check, Clock, Trash2, Eye, Users, MessageSquare, Camera, X, Image as ImageIcon, Lock
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
