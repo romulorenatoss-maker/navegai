@@ -161,6 +161,14 @@ export default function MinhasAvaliacoesPage() {
         <Button onClick={() => setSearchTrigger(p => p + 1)} className="press-effect">
           <Search className="w-4 h-4 mr-2" /> Buscar
         </Button>
+        {notaMedia != null && (
+          <div className="flex items-center gap-2 ml-2 bg-muted/50 border border-border rounded-lg px-4 py-2">
+            <span className="text-sm font-medium text-muted-foreground">Nota Média:</span>
+            <span className={cn("text-lg font-bold font-tabular", notaMedia >= 80 ? "text-success" : notaMedia >= 60 ? "text-warning" : "text-destructive")}>
+              {notaMedia.toFixed(1)}%
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
