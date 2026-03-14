@@ -386,13 +386,25 @@ export default function DashboardPage() {
   // Fetch ranking + scores
   useEffect(() => {
     const fetchRanking = async () => {
-      const sixtyDaysAgo = new Date();
-      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
-      const { data } = await supabase
+      const from = startDate ? startDate.toISOString() : startOfMonth(now).toISOString();
+      const to = endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString();
+
+      let query = supabase
         .from("ordens_servico")
-        .select("cliente_id, cliente_nome")
-        .gte("created_at", sixtyDaysAgo.toISOString())
+        .select("cliente_id, cliente_nome, status")
+        .gte("created_at", from)
+        .lte("created_at", to)
         .not("cliente_id", "is", null);
+
+      if (statusFilter !== "all") {
+        if (statusFilter === "em_andamento") {
+          query = query.in("status", ["em_andamento", "aberta"]);
+        } else {
+          query = query.eq("status", statusFilter);
+        }
+      }
+
+      const { data } = await query;
       if (!data) return;
       const countMap: Record<string, { nome: string; count: number }> = {};
       data.forEach((os: any) => {
