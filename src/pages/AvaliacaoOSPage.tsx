@@ -1307,7 +1307,7 @@ export default function AvaliacaoOSPage() {
   const tecnicoNome = allProfiles.find(p => p.id === (selectedOS as any)?.tecnico_id)?.nome;
   const evalAtendenteNome = allProfiles.find(p => p.id === evalOsData?.atendente_id)?.nome;
   const evalTecnicoNome = allProfiles.find(p => p.id === evalOsData?.tecnico_id)?.nome;
-  const selectedTipoNome = tiposAvaliacao.find(t => t.id === selectedTipoAvaliacaoId)?.nome;
+  const selectedTipoNome = evalTipoServicoNome || tiposServico.find(t => t.id === tipoServicoId)?.nome;
   const evalTipoServicoNome = tiposServico.find(t => t.id === evalOsData?.tipo_servico_id)?.nome;
 
   const canCreateEval = !!tipoServicoId && (
