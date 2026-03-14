@@ -1637,7 +1637,7 @@ export default function AvaliacaoOSPage() {
                             <Eye className="w-4 h-4 mr-1" /> Ver Detalhes
                           </Button>
                           {formFoundOS.status !== "concluida" && (
-                            <Button size="sm" onClick={() => { setSelectedOS(formFoundOS); setView("os_detail"); }} className="press-effect">
+                            <Button size="sm" onClick={() => startMyEvaluation(formFoundOS)} className="press-effect">
                               Iniciar / Continuar Avaliação <ChevronRight className="w-4 h-4 ml-1" />
                             </Button>
                           )}
