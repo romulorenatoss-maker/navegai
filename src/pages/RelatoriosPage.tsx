@@ -182,9 +182,10 @@ export default function RelatoriosPage() {
     );
     setSelected(new Set());
     setLoading(false);
-  }, [startDate, endDate]);
+  }, [filterMode, competenceMonth, startDate, endDate]);
 
-  useEffect(() => { fetchOS(); }, [fetchOS]);
+  // Only auto-fetch on mount
+  useEffect(() => { fetchOS(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Selection
   const allSelected = osList.length > 0 && selected.size === osList.length;
