@@ -953,12 +953,15 @@ export default function AvaliacaoOSPage() {
   };
 
   const resetForm = () => {
-    setFormOsNumero("");
-    setFormClienteNome("");
     setFormClienteCpf("");
+    setFormClienteNome("");
+    setCpfValidated(false);
+    setFormFoundCliente(null);
+    setShowNewClienteForm(false);
+    setClienteId(null);
+    setFormOsNumero("");
     setFormValidated(false);
     setFormFoundOS(null);
-    setFormFoundCliente(null);
     setFormPendingAval(null);
     setTipoServicoId("");
     setSelectedTipoAvaliacaoId("");
