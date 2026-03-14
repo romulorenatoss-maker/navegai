@@ -37,6 +37,7 @@ export interface CreateOSExtras {
   cliente_cpf?: string | null;
   tipo_servico_id?: string | null;
   colaborador_avaliado_id?: string | null;
+  cliente_id?: string | null;
 }
 
 export function useAvaliacaoOS() {
