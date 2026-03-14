@@ -244,9 +244,14 @@ export default function DashboardPage() {
       if (mySetorIds.length === 0 && profile.setor_id) mySetorIds = [profile.setor_id];
       if (mySetorIds.length === 0 && !isAdmin) { setPendingMySector([]); setPendingOtherSector([]); setCompletedOS([]); return; }
 
+      const from = startDate ? startDate.toISOString() : startOfMonth(now).toISOString();
+      const to = endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString();
+
       let pendingQuery = supabase
         .from("ordens_servico")
         .select("id, numero_os, cliente_nome, tipo_servico_id, status, colaborador_avaliado_id, atendente_id, tecnico_id")
+        .gte("created_at", from)
+        .lte("created_at", to)
         .order("created_at", { ascending: false });
 
       if (statusFilter !== "all") {
