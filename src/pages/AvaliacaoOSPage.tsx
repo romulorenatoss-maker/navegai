@@ -2445,7 +2445,7 @@ export default function AvaliacaoOSPage() {
                   {tiposServico.length === 0 ? (
                     <p className="text-body text-muted-foreground text-center py-4">Nenhum tipo de serviço disponível.</p>
                   ) : tiposServico.map((t) => (
-                    <button key={t.id} type="button" onClick={() => { setTipoServicoId(t.id); setSelectedTipoAvaliacaoId(""); }}
+                    <button key={t.id} type="button" onClick={() => { setTipoServicoId(t.id); }}
                       className={cn("w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-left transition-all press-effect text-sm",
                         tipoServicoId === t.id ? "bg-primary/10 border-primary text-primary" : "bg-card border-border hover:bg-muted/50")}>
                       <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0",
