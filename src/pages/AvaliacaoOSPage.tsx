@@ -1456,6 +1456,9 @@ export default function AvaliacaoOSPage() {
                     Finalizar Avaliação
                   </Button>
                 )}
+                <Button variant="outline" onClick={backToList} className="press-effect">
+                  {evalFinalized ? "Fechar" : "Sair"}
+                </Button>
               </div>
             </div>
           </div>
