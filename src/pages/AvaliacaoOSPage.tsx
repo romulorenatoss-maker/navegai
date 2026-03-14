@@ -2218,7 +2218,7 @@ export default function AvaliacaoOSPage() {
 
           if (pendingAval) {
             setFormPendingAval(pendingAval);
-            if (pendingAval.tipo_avaliacao_id) setSelectedTipoAvaliacaoId(pendingAval.tipo_avaliacao_id);
+            // tipo_avaliacao_id no longer tracked
             toast.info("Avaliação pendente encontrada. Abrindo...");
             // Open directly
             setCpfValidating(false);
