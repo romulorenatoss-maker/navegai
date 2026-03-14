@@ -499,23 +499,23 @@ export default function AvaliacaoOSPage() {
   const selectedTipoNome = tiposAvaliacao.find(t => t.id === selectedTipoAvaliacaoId)?.nome;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-section font-semibold text-foreground">Avaliação de OS</h1>
-        <p className="text-body text-muted-foreground">Busque uma OS ou crie uma nova. Cada OS pode ter múltiplos avaliadores.</p>
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto">
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-lg sm:text-section font-semibold text-foreground">Avaliação de OS</h1>
+        <p className="text-sm sm:text-body text-muted-foreground">Busque uma OS ou crie uma nova.</p>
       </div>
 
       {/* Search */}
       {!selectedOS && (
-        <div className="bg-card border border-border rounded-lg p-4 shadow-card mb-6">
-          <div className="flex gap-3">
+        <div className="bg-card border border-border rounded-lg p-3 sm:p-4 shadow-card mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1">
               <Label htmlFor="os-search" className="text-body font-medium mb-1.5 block">Número da OS</Label>
               <Input id="os-search" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Ex: 12345" className="h-10" onKeyDown={e => e.key === "Enter" && handleSearch()} />
             </div>
             <div className="flex items-end gap-2">
-              <Button onClick={handleSearch} variant="outline" className="h-10 press-effect"><Search className="w-4 h-4 mr-2" /> Buscar</Button>
-              <Button onClick={openCreateDialog} className="h-10 press-effect"><Plus className="w-4 h-4 mr-2" /> Criar OS</Button>
+              <Button onClick={handleSearch} variant="outline" className="h-10 flex-1 sm:flex-none press-effect"><Search className="w-4 h-4 mr-2" /> Buscar</Button>
+              <Button onClick={openCreateDialog} className="h-10 flex-1 sm:flex-none press-effect"><Plus className="w-4 h-4 mr-2" /> Criar OS</Button>
             </div>
           </div>
         </div>
