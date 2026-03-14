@@ -940,63 +940,81 @@ export default function DashboardPage() {
         </motion.div>
       )}
 
-      {/* Score averages - by sector */}
-      {setorMedias.length > 0 && (
-        <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {setorMedias.map((s) => (
-            <motion.div key={s.setor_id} variants={itemVariants}
+      {/* Score averages - Atendimento and Técnico side by side */}
+      <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {(() => {
+          const atendiSetor = setorMedias.find(s => s.setor_nome.toLowerCase().includes("atendimento"));
+          const tecnicoSetor = setorMedias.find(s => s.setor_nome.toLowerCase().includes("cnico"));
+          const sectors = [
+            { label: "Média Atendimento", data: atendiSetor },
+            { label: "Média Técnico", data: tecnicoSetor },
+          ];
+          return sectors.map((s) => (
+            <motion.div key={s.label} variants={itemVariants}
               className="bg-card border border-border rounded-lg p-4 shadow-card">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-caption text-muted-foreground font-medium uppercase tracking-wider">Média {s.setor_nome}</span>
+                <span className="text-caption text-muted-foreground font-medium uppercase tracking-wider">{s.label}</span>
                 <BarChart3 className="w-4 h-4 text-primary" />
               </div>
-              <div className={cn("inline-flex px-3 py-1 rounded-lg", getScoreBg(s.media))}>
-                <span className={cn("text-section font-bold font-tabular", getScoreColor(s.media))}>{s.media.toFixed(1)}%</span>
-              </div>
-              <p className="text-caption text-muted-foreground mt-1">{s.total_avaliacoes} avaliação(ões)</p>
+              {s.data ? (
+                <>
+                  <div className={cn("inline-flex px-3 py-1 rounded-lg", getScoreBg(s.data.media))}>
+                    <span className={cn("text-section font-bold font-tabular", getScoreColor(s.data.media))}>{s.data.media.toFixed(1)}%</span>
+                  </div>
+                  <p className="text-caption text-muted-foreground mt-1">{s.data.total_avaliacoes} avaliação(ões)</p>
+                </>
+              ) : (
+                <p className="text-caption text-muted-foreground">Sem dados no período</p>
+              )}
             </motion.div>
-          ))}
-        </motion.div>
-      )}
+          ));
+        })()}
+      </motion.div>
 
-      {/* Employee Rankings by Sector */}
-      {tecnicoMedias.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {(() => {
-            const groups = new Map<string, TecnicoMedia[]>();
-            tecnicoMedias.forEach(t => {
-              const setor = t.setor_nome || "Sem setor";
-              if (!groups.has(setor)) groups.set(setor, []);
-              groups.get(setor)!.push(t);
-            });
+      {/* Employee Rankings - Atendimento and Técnico side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {(() => {
+          const groups = new Map<string, TecnicoMedia[]>();
+          tecnicoMedias.forEach(t => {
+            const setor = t.setor_nome || "Sem setor";
+            if (!groups.has(setor)) groups.set(setor, []);
+            groups.get(setor)!.push(t);
+          });
 
-            return Array.from(groups.entries()).map(([setorNome, employees]) => (
-              <motion.div key={setorNome} variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
-                <div className="p-4 border-b border-border flex items-center gap-2">
-                  <Users className="w-4 h-4 text-primary" />
-                  <h2 className="text-body font-semibold text-foreground">Ranking — {setorNome}</h2>
-                </div>
-                <div className="divide-y divide-border">
-                  {employees.map((t, i) => (
-                    <div key={t.profile_id}
-                      className="px-4 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors cursor-pointer"
-                      onClick={() => navigate(`/desempenho?id=${t.profile_id}`)}>
-                      <span className="text-caption font-medium text-muted-foreground font-tabular w-6">{i + 1}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-body font-medium text-primary underline underline-offset-2 truncate">{t.nome}</p>
-                        <p className="text-caption text-muted-foreground">{t.total_avaliacoes} avaliação(ões)</p>
-                      </div>
-                      <div className={cn("px-3 py-1 rounded-lg", getScoreBg(t.media))}>
-                        <span className={cn("text-body font-bold font-tabular", getScoreColor(t.media))}>{t.media.toFixed(1)}%</span>
-                      </div>
+          const sortedEntries = Array.from(groups.entries()).sort(([a], [b]) => {
+            if (a.toLowerCase().includes("atendimento")) return -1;
+            if (b.toLowerCase().includes("atendimento")) return 1;
+            return a.localeCompare(b);
+          });
+
+          return sortedEntries.map(([setorNome, employees]) => (
+            <motion.div key={setorNome} variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
+              <div className="p-4 border-b border-border flex items-center gap-2">
+                <Users className="w-4 h-4 text-primary" />
+                <h2 className="text-body font-semibold text-foreground">Ranking — {setorNome}</h2>
+              </div>
+              <div className="divide-y divide-border">
+                {employees.length > 0 ? employees.map((t, i) => (
+                  <div key={t.profile_id}
+                    className="px-4 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors cursor-pointer"
+                    onClick={() => navigate(`/desempenho?id=${t.profile_id}`)}>
+                    <span className="text-caption font-medium text-muted-foreground font-tabular w-6">{i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-body font-medium text-primary underline underline-offset-2 truncate">{t.nome}</p>
+                      <p className="text-caption text-muted-foreground">{t.total_avaliacoes} avaliação(ões)</p>
                     </div>
-                  ))}
-                </div>
-              </motion.div>
-            ));
-          })()}
-        </div>
-      )}
+                    <div className={cn("px-3 py-1 rounded-lg", getScoreBg(t.media))}>
+                      <span className={cn("text-body font-bold font-tabular", getScoreColor(t.media))}>{t.media.toFixed(1)}%</span>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="px-4 py-6 text-center text-caption text-muted-foreground">Sem dados no período</div>
+                )}
+              </div>
+            </motion.div>
+          ));
+        })()}
+      </div>
 
       {/* Client ranking */}
       <motion.div variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
