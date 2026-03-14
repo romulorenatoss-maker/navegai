@@ -864,6 +864,68 @@ export default function AvaliacaoOSPage() {
     await openEvaluation(formPendingAval.id, formFoundOS.id);
   };
 
+  // Snapshot checklist questions into os_perguntas (idempotent)
+  const snapshotOsPerguntas = async (osId: string, tsId: string) => {
+    // Check if already snapshotted
+    const { data: existing } = await (supabase as any)
+      .from("os_perguntas")
+      .select("id", { count: "exact", head: true })
+      .eq("os_id", osId);
+    if (existing && (existing as any).length > 0) return; // Already snapshotted
+    // Also check via count
+    const { count } = await (supabase as any)
+      .from("os_perguntas")
+      .select("id", { count: "exact", head: true })
+      .eq("os_id", osId);
+    if (count && count > 0) return;
+
+    // Get linked checklists via junction table
+    const { data: checklistLinks } = await (supabase as any)
+      .from("tipo_servico_checklists")
+      .select("checklist_id")
+      .eq("tipo_servico_id", tsId);
+    const checklistIds = (checklistLinks || []).map((l: any) => l.checklist_id);
+
+    let perguntaIds: string[] = [];
+
+    if (checklistIds.length > 0) {
+      const { data: perguntas } = await supabase
+        .from("perguntas_avaliacao")
+        .select("id")
+        .eq("ativo", true)
+        .in("checklist_id", checklistIds);
+      perguntaIds = (perguntas || []).map(p => p.id);
+    } else {
+      // Fallback: checklist_id on service type
+      const { data: tipoServico } = await supabase
+        .from("tipos_servico")
+        .select("checklist_id")
+        .eq("id", tsId)
+        .single();
+      if (tipoServico?.checklist_id) {
+        const { data: perguntas } = await supabase
+          .from("perguntas_avaliacao")
+          .select("id")
+          .eq("ativo", true)
+          .eq("checklist_id", tipoServico.checklist_id);
+        perguntaIds = (perguntas || []).map(p => p.id);
+      } else {
+        // Last fallback: tipo_servico_id or global
+        const { data: perguntas } = await supabase
+          .from("perguntas_avaliacao")
+          .select("id")
+          .eq("ativo", true)
+          .or(`tipo_servico_id.eq.${tsId},tipo_servico_id.is.null`);
+        perguntaIds = (perguntas || []).map(p => p.id);
+      }
+    }
+
+    if (perguntaIds.length > 0) {
+      const rows = perguntaIds.map(pid => ({ os_id: osId, pergunta_id: pid }));
+      await (supabase as any).from("os_perguntas").insert(rows);
+    }
+  };
+
   const startMyEvaluation = async (osOverride?: any) => {
     const theOS = osOverride || selectedOS;
     if (!theOS || !profile) return;
