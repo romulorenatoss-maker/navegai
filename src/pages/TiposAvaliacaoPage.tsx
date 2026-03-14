@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface TipoAvaliacao {
   id: string;
@@ -19,6 +20,7 @@ interface TipoAvaliacao {
 }
 
 export default function TiposAvaliacaoPage() {
+  const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<TipoAvaliacao | null>(null);
@@ -77,7 +79,7 @@ export default function TiposAvaliacaoPage() {
           <h1 className="text-section font-semibold text-foreground">Tipos de Avaliação</h1>
           <p className="text-body text-muted-foreground">Defina os tipos de avaliação (ex: Atendimento, Técnico, Qualidade).</p>
         </div>
-        <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Novo Tipo</Button>
+        {isAdmin && <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Novo Tipo</Button>}
       </div>
 
       <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
@@ -103,11 +105,13 @@ export default function TiposAvaliacaoPage() {
                   <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${t.ativo ? "badge-complete" : "badge-expired"}`}>{t.ativo ? "Ativo" : "Inativo"}</span>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => toggleAtivo.mutate(t)} className="press-effect">{t.ativo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}</Button>
-                    <Button variant="ghost" size="sm" onClick={() => openEdit(t)} className="press-effect"><Pencil className="w-4 h-4" /></Button>
-                    <Button variant="ghost" size="sm" onClick={() => remove.mutate(t.id)} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
-                  </div>
+                  {isAdmin && (
+                    <div className="flex items-center justify-end gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => toggleAtivo.mutate(t)} className="press-effect">{t.ativo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}</Button>
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(t)} className="press-effect"><Pencil className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="sm" onClick={() => remove.mutate(t.id)} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}

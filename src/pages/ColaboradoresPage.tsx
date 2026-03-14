@@ -203,15 +203,7 @@ export default function ColaboradoresPage() {
 
   const isSubmitting = create.isPending || update.isPending;
 
-  if (!isAdmin) {
-    return (
-      <div className="p-6 max-w-5xl mx-auto">
-        <div className="bg-card border border-border rounded-lg p-8 text-center">
-          <p className="text-body text-muted-foreground">Acesso restrito. Apenas administradores podem gerenciar colaboradores.</p>
-        </div>
-      </div>
-    );
-  }
+  // Access is now controlled by permissoes_tela — no admin block needed
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -220,9 +212,11 @@ export default function ColaboradoresPage() {
           <h1 className="text-section font-semibold text-foreground">Colaboradores</h1>
           <p className="text-body text-muted-foreground">Gerencie os colaboradores e suas permissões.</p>
         </div>
-        <Button onClick={openCreate} className="press-effect">
-          <Plus className="w-4 h-4 mr-2" /> Novo Colaborador
-        </Button>
+        {isAdmin && (
+          <Button onClick={openCreate} className="press-effect">
+            <Plus className="w-4 h-4 mr-2" /> Novo Colaborador
+          </Button>
+        )}
       </div>
 
       <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
@@ -266,10 +260,10 @@ export default function ColaboradoresPage() {
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Button variant="ghost" size="sm" onClick={() => { setDetailProfile(p); setDetailViewOpen(true); }} className="press-effect" title="Ver detalhes"><Eye className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="sm" onClick={() => toggleAtivo.mutate(p)} className="press-effect">{p.ativo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}</Button>
-                        <Button variant="ghost" size="sm" onClick={() => openEdit(p)} className="press-effect"><Pencil className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="sm" onClick={() => { setEditing(p); setSessionViewOpen(true); }} className="press-effect" title="Sessões"><Clock className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="sm" onClick={() => remove.mutate(p.id)} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                        {isAdmin && <Button variant="ghost" size="sm" onClick={() => toggleAtivo.mutate(p)} className="press-effect">{p.ativo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}</Button>}
+                        {isAdmin && <Button variant="ghost" size="sm" onClick={() => openEdit(p)} className="press-effect"><Pencil className="w-4 h-4" /></Button>}
+                        {isAdmin && <Button variant="ghost" size="sm" onClick={() => { setEditing(p); setSessionViewOpen(true); }} className="press-effect" title="Sessões"><Clock className="w-4 h-4" /></Button>}
+                        {isAdmin && <Button variant="ghost" size="sm" onClick={() => remove.mutate(p.id)} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>}
                       </div>
                     </td>
                   </tr>

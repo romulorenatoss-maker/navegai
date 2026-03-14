@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AnimatePresence, motion } from "framer-motion";
 import type { Tables } from "@/integrations/supabase/types";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent,
 } from "@dnd-kit/core";
@@ -22,27 +23,30 @@ import { CSS } from "@dnd-kit/utilities";
 type Pergunta = Tables<"perguntas_avaliacao">;
 type PreviewAnswer = "sim" | "nao" | "na" | null;
 
-function SortableRow({ p, index, onEdit, onRemove }: { p: any; index: number; onEdit: (p: Pergunta) => void; onRemove: (id: string) => void }) {
+function SortableRow({ p, index, onEdit, onRemove, isAdmin }: { p: any; index: number; onEdit: (p: Pergunta) => void; onRemove: (id: string) => void; isAdmin: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
   return (
     <tr ref={setNodeRef} style={style} className="hover:bg-muted/50 transition-colors border-b border-border">
-      <td className="px-2 py-3 w-8"><button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-foreground"><GripVertical className="w-4 h-4" /></button></td>
+      <td className="px-2 py-3 w-8">{isAdmin && <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-foreground"><GripVertical className="w-4 h-4" /></button>}</td>
       <td className="px-2 py-3 text-caption text-muted-foreground font-tabular w-8">{String(index + 1).padStart(2, "0")}</td>
       <td className="px-4 py-3 text-body font-medium text-foreground">{p.pergunta}</td>
       <td className="px-4 py-3 text-body text-muted-foreground">{p.setores?.nome || "Todos"}</td>
       <td className="px-4 py-3 text-center text-body font-semibold text-foreground font-tabular">{p.peso}</td>
       <td className="px-4 py-3 text-right">
-        <div className="flex items-center justify-end gap-1">
-          <Button variant="ghost" size="sm" onClick={() => onEdit(p)} className="press-effect"><Pencil className="w-4 h-4" /></Button>
-          <Button variant="ghost" size="sm" onClick={() => onRemove(p.id)} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
-        </div>
+        {isAdmin && (
+          <div className="flex items-center justify-end gap-1">
+            <Button variant="ghost" size="sm" onClick={() => onEdit(p)} className="press-effect"><Pencil className="w-4 h-4" /></Button>
+            <Button variant="ghost" size="sm" onClick={() => onRemove(p.id)} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
+          </div>
+        )}
       </td>
     </tr>
   );
 }
 
 export default function PerguntasPage() {
+  const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Pergunta | null>(null);
@@ -328,12 +332,14 @@ export default function PerguntasPage() {
           <h1 className="text-section font-semibold text-foreground">Perguntas de Avaliação</h1>
           <p className="text-body text-muted-foreground">Cadastro e ordenação de perguntas por checklist e avaliação.</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={openCreateChecklist} className="press-effect">
-            <Package className="w-4 h-4 mr-2" /> Novo Checklist
-          </Button>
-          <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Nova Pergunta</Button>
-        </div>
+        {isAdmin && (
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={openCreateChecklist} className="press-effect">
+              <Package className="w-4 h-4 mr-2" /> Novo Checklist
+            </Button>
+            <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Nova Pergunta</Button>
+          </div>
+        )}
       </div>
 
       {/* Filter by checklist title */}
@@ -397,7 +403,7 @@ export default function PerguntasPage() {
                       {perguntasFiltradas.length === 0 ? (
                         <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhuma pergunta encontrada.</td></tr>
                       ) : perguntasFiltradas.map((p, i) => (
-                        <SortableRow key={p.id} p={p} index={i} onEdit={openEdit} onRemove={id => remove.mutate(id)} />
+                        <SortableRow key={p.id} p={p} index={i} onEdit={openEdit} onRemove={id => remove.mutate(id)} isAdmin={isAdmin} />
                       ))}
                     </tbody>
                   </SortableContext>

@@ -11,10 +11,12 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import type { Tables } from "@/integrations/supabase/types";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Setor = Tables<"setores">;
 
 export default function SetoresPage() {
+  const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Setor | null>(null);
@@ -80,9 +82,11 @@ export default function SetoresPage() {
           <h1 className="text-section font-semibold text-foreground">Setores</h1>
           <p className="text-body text-muted-foreground">Gerencie os setores da organização.</p>
         </div>
-        <Button onClick={openCreate} className="press-effect">
-          <Plus className="w-4 h-4 mr-2" /> Novo Setor
-        </Button>
+        {isAdmin && (
+          <Button onClick={openCreate} className="press-effect">
+            <Plus className="w-4 h-4 mr-2" /> Novo Setor
+          </Button>
+        )}
       </div>
 
       <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
@@ -110,17 +114,19 @@ export default function SetoresPage() {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => toggleAtivo.mutate(s)} className="press-effect">
-                      {s.ativo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => openEdit(s)} className="press-effect">
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => remove.mutate(s.id)} className="press-effect text-destructive">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
+                  {isAdmin && (
+                    <div className="flex items-center justify-end gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => toggleAtivo.mutate(s)} className="press-effect">
+                        {s.ativo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(s)} className="press-effect">
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => remove.mutate(s.id)} className="press-effect text-destructive">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}

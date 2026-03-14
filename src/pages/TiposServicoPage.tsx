@@ -10,10 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import type { Tables } from "@/integrations/supabase/types";
+import { useAuth } from "@/contexts/AuthContext";
 
 type TipoServico = Tables<"tipos_servico">;
 
 export default function TiposServicoPage() {
+  const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<TipoServico | null>(null);
@@ -132,7 +134,7 @@ export default function TiposServicoPage() {
           <h1 className="text-section font-semibold text-foreground">Tipos de Serviço</h1>
           <p className="text-body text-muted-foreground">Configure tipos de serviço e vincule checklists de avaliação.</p>
         </div>
-        <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Novo Tipo</Button>
+        {isAdmin && <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Novo Tipo</Button>}
       </div>
 
       <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
@@ -208,6 +210,7 @@ interface SectorBreakdown {
 }
 
 function TipoRow({ t, onToggle, onEdit, onRemove }: { t: any; onToggle: () => void; onEdit: () => void; onRemove: () => void }) {
+  const { isAdmin } = useAuth();
   // Fetch linked checklists
   const { data: linkedChecklists, isLoading: loadingChecklists } = useQuery({
     queryKey: ["tsc_display", t.id],
@@ -277,11 +280,13 @@ function TipoRow({ t, onToggle, onEdit, onRemove }: { t: any; onToggle: () => vo
         <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${t.ativo ? "badge-complete" : "badge-expired"}`}>{t.ativo ? "Ativo" : "Inativo"}</span>
       </td>
       <td className="px-4 py-3 text-right">
-        <div className="flex items-center justify-end gap-1">
-          <Button variant="ghost" size="sm" onClick={onToggle} className="press-effect">{t.ativo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}</Button>
-          <Button variant="ghost" size="sm" onClick={onEdit} className="press-effect"><Pencil className="w-4 h-4" /></Button>
-          <Button variant="ghost" size="sm" onClick={onRemove} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
-        </div>
+        {isAdmin && (
+          <div className="flex items-center justify-end gap-1">
+            <Button variant="ghost" size="sm" onClick={onToggle} className="press-effect">{t.ativo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}</Button>
+            <Button variant="ghost" size="sm" onClick={onEdit} className="press-effect"><Pencil className="w-4 h-4" /></Button>
+            <Button variant="ghost" size="sm" onClick={onRemove} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
+          </div>
+        )}
       </td>
     </tr>
   );
