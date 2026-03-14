@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ClipboardCheck, Clock, CheckCircle2, FolderOpen, Trophy, Users, BarChart3 } from "lucide-react";
+import { ClipboardCheck, Clock, CheckCircle2, Trophy, Users, BarChart3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface OSStats {
@@ -98,7 +98,7 @@ export default function DashboardPage() {
 
       const sorted = Object.entries(countMap)
         .map(([id, v]) => ({ cliente_id: id, cliente_nome: v.nome, os_count: v.count }))
-        .filter((c) => c.os_count > 2)
+        .filter((c) => c.os_count >= 2)
         .sort((a, b) => b.os_count - a.os_count)
         .slice(0, 10);
 
@@ -217,8 +217,7 @@ export default function DashboardPage() {
 
   const cards = [
     { label: "Total de OS", value: stats.total, icon: ClipboardCheck, color: "text-primary" },
-    { label: "Abertas", value: stats.abertas, icon: FolderOpen, color: "text-warning" },
-    { label: "Em Andamento", value: stats.em_andamento, icon: Clock, color: "text-primary" },
+    { label: "Em Andamento", value: stats.em_andamento, icon: Clock, color: "text-warning" },
     { label: "Concluídas", value: stats.concluidas, icon: CheckCircle2, color: "text-success" },
   ];
 
@@ -241,7 +240,7 @@ export default function DashboardPage() {
         <p className="text-body text-muted-foreground">Visão geral das Ordens de Serviço</p>
       </div>
 
-      <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         {cards.map((card) => (
           <motion.div key={card.label} variants={itemVariants} className="bg-card border border-border rounded-lg p-4 shadow-card">
             <div className="flex items-center justify-between mb-3">
@@ -337,7 +336,7 @@ export default function DashboardPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-body text-muted-foreground font-tabular">
-                    {new Date(item.created_at).toLocaleDateString("pt-BR")}
+                    {new Date(item.created_at).toLocaleDateString("pt-BR")} {new Date(item.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                   </td>
                 </tr>
               ))}

@@ -853,6 +853,7 @@ export default function AvaliacaoOSPage() {
                                   )}
                                 </div>
                               ) : (
+                              <div className="flex gap-2">
                                 <label className={cn(
                                   "flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors text-sm",
                                   isUploading ? "border-muted-foreground/30 bg-muted/30 cursor-wait" : "border-destructive/30 hover:border-destructive/50 hover:bg-destructive/5",
@@ -861,7 +862,27 @@ export default function AvaliacaoOSPage() {
                                   {isUploading ? (
                                     <><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> Enviando...</>
                                   ) : (
-                                    <><Camera className="w-4 h-4 text-destructive" /> Anexar foto da evidência</>
+                                    <><ImageIcon className="w-4 h-4 text-destructive" /> Galeria</>
+                                  )}
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    disabled={evalFinalized || isUploading}
+                                    onChange={e => {
+                                      const file = e.target.files?.[0];
+                                      if (file) handleEvidenceUpload(p.id, file);
+                                      e.target.value = "";
+                                    }}
+                                  />
+                                </label>
+                                <label className={cn(
+                                  "flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors text-sm",
+                                  isUploading ? "border-muted-foreground/30 bg-muted/30 cursor-wait" : "border-destructive/30 hover:border-destructive/50 hover:bg-destructive/5",
+                                  evalFinalized && "opacity-50 cursor-not-allowed"
+                                )}>
+                                  {!isUploading && (
+                                    <><Camera className="w-4 h-4 text-destructive" /> Câmera</>
                                   )}
                                   <input
                                     type="file"
@@ -876,6 +897,7 @@ export default function AvaliacaoOSPage() {
                                     }}
                                   />
                                 </label>
+                              </div>
                               )}
                             </div>
                           </div>
