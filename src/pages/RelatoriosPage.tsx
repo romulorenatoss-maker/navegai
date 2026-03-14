@@ -616,7 +616,7 @@ export default function RelatoriosPage() {
               disabled={exportLoading}
             >
               {exportLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
-              Exportar CSV
+              Exportar Excel
             </Button>
             {isAdmin && (
               <Button
