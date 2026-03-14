@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { fetchNotasPorSetor, calcularMediaColaborador, calcularNotaPorOS } from "@/hooks/useNotasPorSetor";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
