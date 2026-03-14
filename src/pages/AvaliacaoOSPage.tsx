@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, AlertTriangle, Loader2 } from "lucide-react";
+import { Search, AlertTriangle, Loader2, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -82,10 +82,14 @@ export default function AvaliacaoOSPage() {
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             />
           </div>
-          <div className="flex items-end">
-            <Button onClick={handleSearch} className="h-10 press-effect" disabled={loading}>
+          <div className="flex items-end gap-2">
+            <Button onClick={handleSearch} variant="outline" className="h-10 press-effect" disabled={loading}>
               {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
               Buscar
+            </Button>
+            <Button onClick={handleSearch} className="h-10 press-effect" disabled={loading || !searchQuery.trim()}>
+              {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+              Criar OS
             </Button>
           </div>
         </div>
