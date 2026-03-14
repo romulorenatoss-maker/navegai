@@ -113,7 +113,7 @@ export function useAvaliacaoOS() {
       if (existingAval.concluida) {
         toast.info("Esta avaliação já foi concluída por você.");
       }
-      await loadQuestions(existingAval.id, profile.id);
+      await loadQuestions(existingAval.id, profile.id, osId);
       return;
     }
 
@@ -135,16 +135,52 @@ export function useAvaliacaoOS() {
       .eq("status", "aberta");
 
     setAvaliacao(newAval as AvaliacaoData);
-    await loadQuestions(newAval.id, profile.id);
+    await loadQuestions(newAval.id, profile.id, osId);
   };
 
-  const loadQuestions = async (avaliacaoId: string, profileId: string) => {
-    const { data: perguntas } = await supabase
+  const loadQuestions = async (avaliacaoId: string, profileId: string, osId: string) => {
+    // Get OS details for filtering
+    const { data: osData } = await supabase
+      .from("ordens_servico")
+      .select("tipo_servico_id, colaborador_avaliado_id")
+      .eq("id", osId)
+      .single();
+
+    // Get evaluated collaborator's setor
+    let setorId: string | null = null;
+    if (osData?.colaborador_avaliado_id) {
+      const { data: colabProfile } = await supabase
+        .from("profiles")
+        .select("setor_id")
+        .eq("id", osData.colaborador_avaliado_id)
+        .single();
+      setorId = colabProfile?.setor_id || null;
+    }
+
+    // Build query with filters
+    let query = supabase
       .from("perguntas_avaliacao")
       .select("*")
       .eq("ativo", true)
-      .or(`avaliador_id.eq.${profileId},avaliador_id.is.null`)
-      .order("ordem");
+      .or(`avaliador_id.eq.${profileId},avaliador_id.is.null`);
+
+    // Filter by tipo_servico: matching OR null (global questions)
+    if (osData?.tipo_servico_id) {
+      query = query.or(`tipo_servico_id.eq.${osData.tipo_servico_id},tipo_servico_id.is.null`);
+    } else if (setorId) {
+      // No tipo_servico on OS, but avaliado has a setor — get tipos_servico for that setor
+      const { data: tiposDoSetor } = await supabase
+        .from("tipos_servico")
+        .select("id")
+        .eq("setor_id", setorId);
+      
+      if (tiposDoSetor && tiposDoSetor.length > 0) {
+        const tipoIds = tiposDoSetor.map(t => `tipo_servico_id.eq.${t.id}`).join(",");
+        query = query.or(`${tipoIds},tipo_servico_id.is.null`);
+      }
+    }
+
+    const { data: perguntas } = await query.order("ordem");
 
     if (!perguntas) return;
 
