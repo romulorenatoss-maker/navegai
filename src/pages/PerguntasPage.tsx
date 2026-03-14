@@ -112,36 +112,8 @@ export default function PerguntasPage() {
     enabled: setores.length > 0,
   });
 
-  // Checklist CRUD
-  const createChecklist = useMutation({
-    mutationFn: async () => {
-      if (!newChecklistTitle.trim()) throw new Error("Informe o título do checklist.");
-      const { error } = await supabase.from("checklists").insert({ titulo: newChecklistTitle.trim() } as any);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["checklists_all"] });
-      toast.success("Checklist criado.");
-      setNewChecklistTitle("");
-      setChecklistDialogOpen(false);
-    },
-    onError: (err: any) => toast.error(err.message),
-  });
 
-  const deleteChecklist = useMutation({
-    mutationFn: async (id: string) => {
-      // Unlink questions first
-      await (supabase as any).from("perguntas_avaliacao").update({ checklist_id: null }).eq("checklist_id", id);
-      const { error } = await supabase.from("checklists").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["checklists_all"] });
-      queryClient.invalidateQueries({ queryKey: ["perguntas_avaliacao"] });
-      toast.success("Checklist excluído.");
-    },
-    onError: (err: any) => toast.error(err.message),
-  });
+
 
   const summaryByChecklist = useMemo(() => {
     const map = new Map<string, { nome: string; count: number; totalNota: number }>();
