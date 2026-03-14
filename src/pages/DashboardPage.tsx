@@ -320,14 +320,22 @@ export default function DashboardPage() {
   const osEmAndamento = useMemo(() => allOS.filter((o) => o.status === "em_andamento"), [allOS]);
   const osConcluidas = useMemo(() => allOS.filter((o) => o.status === "concluida"), [allOS]);
 
+  // Status filter tab
+  const [statusFilter, setStatusFilter] = useState<"all" | "aberta" | "em_andamento" | "concluida">("all");
+
+  const filteredOS = useMemo(() => {
+    if (statusFilter === "all") return allOS;
+    return allOS.filter((o) => o.status === statusFilter);
+  }, [allOS, statusFilter]);
+
   const handleClickOS = (os: OSWithProgress) => {
     navigate(`/avaliacoes/pesquisa?os=${os.numero_os}`);
   };
 
   const cards = [
-    { label: "Pendentes", value: osAbertas.length, icon: ClipboardCheck, color: "text-warning" },
-    { label: "Em Andamento", value: osEmAndamento.length, icon: Clock, color: "text-primary" },
-    { label: "Concluídas", value: osConcluidas.length, icon: CheckCircle2, color: "text-success" },
+    { label: "Pendentes", value: osAbertas.length, icon: ClipboardCheck, color: "text-warning", filter: "aberta" as const },
+    { label: "Em Andamento", value: osEmAndamento.length, icon: Clock, color: "text-primary", filter: "em_andamento" as const },
+    { label: "Concluídas", value: osConcluidas.length, icon: CheckCircle2, color: "text-success", filter: "concluida" as const },
   ];
 
   const competenceMonths = useMemo(() => getCompetenceMonths(), []);
@@ -347,7 +355,6 @@ export default function DashboardPage() {
           <span className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Filtros</span>
         </div>
         <div className="flex flex-wrap gap-4 items-end">
-          {/* Competence Month */}
           <div className="flex flex-col gap-1.5 min-w-[200px]">
             <label className="text-caption font-medium text-muted-foreground">Mês de Competência</label>
             <Select value={competenceMonth} onValueChange={handleCompetenceChange}>
@@ -361,8 +368,6 @@ export default function DashboardPage() {
               </SelectContent>
             </Select>
           </div>
-
-          {/* Start Date */}
           <div className="flex flex-col gap-1.5">
             <label className="text-caption font-medium text-muted-foreground">Data Início</label>
             <Popover>
@@ -377,8 +382,6 @@ export default function DashboardPage() {
               </PopoverContent>
             </Popover>
           </div>
-
-          {/* End Date */}
           <div className="flex flex-col gap-1.5">
             <label className="text-caption font-medium text-muted-foreground">Data Fim</label>
             <Popover>
@@ -396,10 +399,18 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Summary Cards */}
+      {/* Summary Cards — clickable to filter */}
       <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {cards.map((card) => (
-          <motion.div key={card.label} variants={itemVariants} className="bg-card border border-border rounded-lg p-4 shadow-card">
+          <motion.div
+            key={card.label}
+            variants={itemVariants}
+            className={cn(
+              "bg-card border rounded-lg p-4 shadow-card cursor-pointer transition-all",
+              statusFilter === card.filter ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-primary/40"
+            )}
+            onClick={() => setStatusFilter(statusFilter === card.filter ? "all" : card.filter)}
+          >
             <div className="flex items-center justify-between mb-3">
               <span className="text-caption text-muted-foreground font-medium uppercase tracking-wider">{card.label}</span>
               <card.icon className={`w-4 h-4 ${card.color}`} />
@@ -409,36 +420,70 @@ export default function DashboardPage() {
         ))}
       </motion.div>
 
-      {/* OS Sections */}
+      {/* Single OS Table */}
       {loading ? (
         <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
           <Clock className="w-4 h-4 animate-spin" /> Carregando...
         </div>
       ) : (
-        <div className="space-y-4">
-          <OSSection
-            title="OS Pendentes"
-            icon={<ClipboardCheck className="w-4 h-4 text-warning" />}
-            items={osAbertas}
-            emptyText="Nenhuma OS pendente no período."
-            onClickOS={handleClickOS}
-          />
-          <OSSection
-            title="OS Em Andamento"
-            icon={<Clock className="w-4 h-4 text-primary" />}
-            items={osEmAndamento}
-            emptyText="Nenhuma OS em andamento no período."
-            onClickOS={handleClickOS}
-          />
-          <OSSection
-            title="OS Concluídas"
-            icon={<CheckCircle2 className="w-4 h-4 text-success" />}
-            items={osConcluidas}
-            emptyText="Nenhuma OS concluída no período."
-            defaultOpen={false}
-            onClickOS={handleClickOS}
-          />
-        </div>
+        <motion.div variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
+          <div className="p-4 border-b border-border flex items-center justify-between">
+            <h2 className="text-body font-semibold text-foreground">
+              Ordens de Serviço
+              {statusFilter !== "all" && (
+                <span className="text-muted-foreground font-normal ml-1">— {statusText[statusFilter]}</span>
+              )}
+              <span className="text-muted-foreground font-normal ml-1">({filteredOS.length})</span>
+            </h2>
+            {statusFilter !== "all" && (
+              <Button variant="ghost" size="sm" onClick={() => setStatusFilter("all")} className="text-xs text-muted-foreground">
+                Mostrar todas
+              </Button>
+            )}
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">OS</th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Cliente</th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Tipo de Serviço</th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 w-40">Progresso</th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filteredOS.map((item) => (
+                  <tr
+                    key={item.id}
+                    className="hover:bg-muted/50 transition-colors cursor-pointer"
+                    onClick={() => handleClickOS(item)}
+                  >
+                    <td className="px-4 py-3 text-body font-medium text-primary underline underline-offset-2 font-tabular">{item.numero_os}</td>
+                    <td className="px-4 py-3 text-body text-muted-foreground">{item.cliente_nome || "—"}</td>
+                    <td className="px-4 py-3 text-body text-muted-foreground">{item.tipo_servico_nome || "—"}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <Progress value={item.progress} className="h-2 flex-1" />
+                        <span className="text-caption font-medium font-tabular text-muted-foreground w-10 text-right">{item.progress}%</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border", statusBadge[item.status])}>
+                        {statusText[item.status]}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {filteredOS.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhuma OS encontrada no período.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
       )}
 
       {/* Score averages */}
