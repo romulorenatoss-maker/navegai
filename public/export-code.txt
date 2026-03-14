@@ -1,0 +1,1440 @@
+================================================================
+ARQUIVO: src/contexts/AuthContext.tsx
+================================================================
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { Session, User } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
+import type { Tables, Enums } from "@/integrations/supabase/types";
+
+type Profile = Tables<"profiles">;
+type AppRole = Enums<"app_role">;
+
+interface AuthContextType {
+  session: Session | null;
+  user: User | null;
+  profile: Profile | null;
+  roles: AppRole[];
+  allowedScreens: string[];
+  loading: boolean;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, nome: string) => Promise<{ error: Error | null }>;
+  signOut: () => Promise<void>;
+  hasRole: (role: AppRole) => boolean;
+  isAdmin: boolean;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [roles, setRoles] = useState<AppRole[]>([]);
+  const [allowedScreens, setAllowedScreens] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchProfileAndRoles = async (userId: string) => {
+    const [profileRes, rolesRes] = await Promise.all([
+      supabase.from("profiles").select("*").eq("user_id", userId).single(),
+      supabase.from("user_roles").select("role").eq("user_id", userId),
+    ]);
+    if (profileRes.data) {
+      setProfile(profileRes.data);
+      const { data: perms } = await supabase
+        .from("permissoes_tela")
+        .select("tela_path")
+        .eq("profile_id", profileRes.data.id);
+      setAllowedScreens(perms?.map((p: any) => p.tela_path) || []);
+    }
+    if (rolesRes.data) setRoles(rolesRes.data.map((r) => r.role));
+  };
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          setTimeout(() => fetchProfileAndRoles(session.user.id), 0);
+        } else {
+          setProfile(null);
+          setRoles([]);
+          setAllowedScreens([]);
+        }
+        setLoading(false);
+      }
+    );
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchProfileAndRoles(session.user.id);
+      }
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const signIn = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return { error: error as Error | null };
+  };
+
+  const signUp = async (email: string, password: string, nome: string) => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { nome } },
+    });
+    return { error: error as Error | null };
+  };
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+  };
+
+  const hasRole = (role: AppRole) => roles.includes(role);
+  const isAdmin = hasRole("admin");
+
+  return (
+    <AuthContext.Provider
+      value={{ session, user, profile, roles, allowedScreens, loading, signIn, signUp, signOut, hasRole, isAdmin }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error("useAuth must be used within AuthProvider");
+  return context;
+}
+
+================================================================
+ARQUIVO: src/hooks/useAvaliacaoOS.ts
+================================================================
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+import { detectInconsistencies } from "@/hooks/useInconsistencyDetection";
+import { detectLinkedInconsistencies } from "@/hooks/useLinkedInconsistencyDetection";
+
+export type Answer = "sim" | "nao" | "na" | null;
+
+export interface QuestionState {
+  pergunta_id: string;
+  texto: string;
+  peso: number;
+  ordem: number;
+  answer: Answer;
+  observation: string;
+  evidencia_url: string | null;
+}
+
+export interface OSData {
+  id: string;
+  numero_os: string;
+  cliente_nome: string | null;
+  cliente_cpf: string | null;
+  status: string;
+  data_abertura: string;
+  tipo_servico_id: string | null;
+  colaborador_avaliado_id: string | null;
+}
+
+export interface AvaliacaoData {
+  id: string;
+  concluida: boolean;
+  nota_final: number | null;
+}
+
+export interface CreateOSExtras {
+  cliente_nome?: string | null;
+  cliente_cpf?: string | null;
+  tipo_servico_id?: string | null;
+  colaborador_avaliado_id?: string | null;
+  cliente_id?: string | null;
+}
+
+export function useAvaliacaoOS() {
+  const { profile } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [os, setOs] = useState<OSData | null>(null);
+  const [avaliacao, setAvaliacao] = useState<AvaliacaoData | null>(null);
+  const [questions, setQuestions] = useState<QuestionState[]>([]);
+
+  const searchOS = async (query: string, autoCreate = false, extras?: CreateOSExtras) => {
+    setLoading(true);
+    try {
+      const { data: existing } = await supabase
+        .from("ordens_servico")
+        .select("*")
+        .eq("numero_os", query)
+        .limit(1)
+        .single();
+
+      if (existing) {
+        setOs(existing as OSData);
+        await loadOrCreateAvaliacao(existing.id);
+        if (autoCreate) {
+          toast.info("OS já existe. Abrindo avaliação existente.");
+        }
+        return;
+      }
+
+      if (!autoCreate) {
+        toast.info("Nenhuma OS encontrada com esse número.");
+        setOs(null);
+        setAvaliacao(null);
+        setQuestions([]);
+        return;
+      }
+
+      const { data: newOs, error } = await supabase
+        .from("ordens_servico")
+        .insert({
+          numero_os: query,
+          cliente_nome: extras?.cliente_nome || null,
+          cliente_cpf: extras?.cliente_cpf || null,
+          tipo_servico_id: extras?.tipo_servico_id || null,
+          colaborador_avaliado_id: extras?.colaborador_avaliado_id || null,
+          cliente_id: extras?.cliente_id || null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      setOs(newOs as OSData);
+      await loadOrCreateAvaliacao(newOs.id);
+      toast.success("OS criada com sucesso!");
+    } catch (err: any) {
+      toast.error("Erro ao buscar/criar OS: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadOrCreateAvaliacao = async (osId: string) => {
+    if (!profile) return;
+
+    const { data: existingAval } = await supabase
+      .from("avaliacoes")
+      .select("*")
+      .eq("ordem_servico_id", osId)
+      .eq("avaliador_id", profile.id)
+      .single();
+
+    if (existingAval) {
+      setAvaliacao(existingAval as AvaliacaoData);
+      if (existingAval.concluida) {
+        toast.info("Esta avaliação já foi concluída por você.");
+      }
+      await loadQuestions(existingAval.id, profile.id, osId);
+      return;
+    }
+
+    const { data: newAval, error } = await supabase
+      .from("avaliacoes")
+      .insert({ ordem_servico_id: osId, avaliador_id: profile.id })
+      .select()
+      .single();
+
+    if (error) {
+      toast.error("Erro ao criar avaliação: " + error.message);
+      return;
+    }
+
+    await supabase
+      .from("ordens_servico")
+      .update({ status: "em_andamento" })
+      .eq("id", osId)
+      .eq("status", "aberta");
+
+    setAvaliacao(newAval as AvaliacaoData);
+    await loadQuestions(newAval.id, profile.id, osId);
+  };
+
+  const loadQuestions = async (avaliacaoId: string, profileId: string, osId: string) => {
+    const { data: osData } = await supabase
+      .from("ordens_servico")
+      .select("tipo_servico_id, colaborador_avaliado_id")
+      .eq("id", osId)
+      .single();
+
+    let setorIds: string[] = [];
+    if (osData?.colaborador_avaliado_id) {
+      const { data: setorLinks } = await supabase
+        .from("colaborador_setores")
+        .select("setor_id")
+        .eq("profile_id", osData.colaborador_avaliado_id);
+      setorIds = setorLinks?.map((l) => l.setor_id) || [];
+      if (setorIds.length === 0) {
+        const { data: colabProfile } = await supabase
+          .from("profiles")
+          .select("setor_id")
+          .eq("id", osData.colaborador_avaliado_id)
+          .single();
+        if (colabProfile?.setor_id) setorIds = [colabProfile.setor_id];
+      }
+    }
+
+    let query = supabase
+      .from("perguntas_avaliacao")
+      .select("*")
+      .eq("ativo", true)
+      .or(`avaliador_id.eq.${profileId},avaliador_id.is.null`);
+
+    if (osData?.tipo_servico_id) {
+      query = query.or(`tipo_servico_id.eq.${osData.tipo_servico_id},tipo_servico_id.is.null`);
+    } else if (setorIds.length > 0) {
+      const { data: tiposDoSetor } = await supabase
+        .from("tipos_servico")
+        .select("id")
+        .in("setor_id", setorIds);
+      
+      if (tiposDoSetor && tiposDoSetor.length > 0) {
+        const tipoIds = tiposDoSetor.map(t => `tipo_servico_id.eq.${t.id}`).join(",");
+        query = query.or(`${tipoIds},tipo_servico_id.is.null`);
+      }
+    }
+
+    const { data: perguntas } = await query.order("ordem");
+
+    if (!perguntas) return;
+
+    // FIX: Load responses by ordem_servico_id (shared across all evaluators)
+    const { data: respostas } = await supabase
+      .from("respostas_avaliacao")
+      .select("*")
+      .eq("ordem_servico_id", osId);
+
+    const respostasMap = new Map(respostas?.map((r) => [r.pergunta_id, r]) || []);
+
+    setQuestions(
+      perguntas.map((p) => {
+        const resp = respostasMap.get(p.id);
+        return {
+          pergunta_id: p.id,
+          texto: p.pergunta,
+          peso: p.peso,
+          ordem: p.ordem,
+          answer: (resp?.resposta as Answer) || null,
+          observation: resp?.observacao || "",
+          evidencia_url: resp?.evidencia_url || null,
+        };
+      })
+    );
+  };
+
+  const updateAnswer = async (perguntaId: string, answer: Answer) => {
+    if (!avaliacao || !os) return;
+
+    setQuestions((prev) =>
+      prev.map((q) => (q.pergunta_id === perguntaId ? { ...q, answer } : q))
+    );
+
+    await supabase.from("respostas_avaliacao").upsert(
+      {
+        ordem_servico_id: os.id,
+        pergunta_id: perguntaId,
+        resposta: answer,
+        avaliacao_id: avaliacao.id,
+        avaliador_id: profile?.id,
+      } as any,
+      { onConflict: "ordem_servico_id,pergunta_id" }
+    );
+  };
+
+  const updateObservation = async (perguntaId: string, observation: string) => {
+    if (!avaliacao || !os) return;
+
+    setQuestions((prev) =>
+      prev.map((q) => (q.pergunta_id === perguntaId ? { ...q, observation } : q))
+    );
+
+    await supabase.from("respostas_avaliacao").upsert(
+      {
+        ordem_servico_id: os.id,
+        pergunta_id: perguntaId,
+        observacao: observation,
+        avaliacao_id: avaliacao.id,
+        avaliador_id: profile?.id,
+      } as any,
+      { onConflict: "ordem_servico_id,pergunta_id" }
+    );
+  };
+
+  const concludeAvaliacao = async () => {
+    if (!avaliacao || !os) return;
+
+    const answeredQuestions = questions.filter((q) => q.answer !== null);
+    if (answeredQuestions.length < questions.length) {
+      toast.error("Responda todas as perguntas antes de concluir.");
+      return;
+    }
+
+    const totalWeight = questions.reduce(
+      (acc, q) => (q.answer !== "na" ? acc + q.peso : acc),
+      0
+    );
+    const earnedWeight = questions.reduce(
+      (acc, q) => (q.answer === "sim" ? acc + q.peso : acc),
+      0
+    );
+    const nota = totalWeight > 0 ? (earnedWeight / totalWeight) * 100 : 0;
+
+    const { error } = await supabase
+      .from("avaliacoes")
+      .update({ concluida: true, nota_final: nota })
+      .eq("id", avaliacao.id);
+
+    if (error) {
+      toast.error("Erro ao concluir: " + error.message);
+      return;
+    }
+
+    setAvaliacao({ ...avaliacao, concluida: true, nota_final: nota });
+    toast.success(`Avaliação concluída! Nota: ${nota.toFixed(1)}%`);
+    
+    try { await detectInconsistencies(os.id); } catch (e) { console.warn("Inconsistency detection error:", e); }
+    try { if (avaliacao) await detectLinkedInconsistencies(avaliacao.id, os.id); } catch (e) { console.warn("Linked inconsistency detection error:", e); }
+  };
+
+  const answeredCount = questions.filter((q) => q.answer !== null).length;
+  const totalScore = questions.reduce((acc, q) => (q.answer === "sim" ? acc + q.peso : acc), 0);
+  const maxScore = questions.reduce(
+    (acc, q) => (q.answer !== "na" && q.answer !== null ? acc + q.peso : acc),
+    0
+  );
+
+  const clearOS = () => {
+    setOs(null);
+    setAvaliacao(null);
+    setQuestions([]);
+  };
+
+  return {
+    loading,
+    os,
+    avaliacao,
+    questions,
+    searchOS,
+    updateAnswer,
+    updateObservation,
+    concludeAvaliacao,
+    answeredCount,
+    totalScore,
+    maxScore,
+    clearOS,
+  };
+}
+
+================================================================
+ARQUIVO: src/hooks/useInconsistencyDetection.ts
+================================================================
+import { supabase } from "@/integrations/supabase/client";
+
+interface EvaluatorAnswer {
+  avaliador_id: string;
+  avaliador_nome: string;
+  tipo_avaliacao_id: string;
+  tipo_avaliacao_nome: string;
+  resposta: string;
+  is_responsible: boolean;
+}
+
+export async function detectInconsistencies(osId: string) {
+  const { data: avaliacoes } = await supabase
+    .from("avaliacoes")
+    .select("id, avaliador_id, tipo_avaliacao_id, concluida")
+    .eq("ordem_servico_id", osId);
+
+  if (!avaliacoes || avaliacoes.length < 2) return;
+
+  const avalIds = avaliacoes.map(a => a.id);
+  const { data: allRespostas } = await supabase
+    .from("respostas_avaliacao")
+    .select("avaliacao_id, pergunta_id, resposta")
+    .in("avaliacao_id", avalIds);
+
+  if (!allRespostas) return;
+
+  const avaliadorIds = [...new Set(avaliacoes.map(a => a.avaliador_id))];
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, nome")
+    .in("id", avaliadorIds);
+  const nameMap = new Map(profiles?.map(p => [p.id, p.nome]) || []);
+
+  const taIds = [...new Set(avaliacoes.filter(a => a.tipo_avaliacao_id).map(a => a.tipo_avaliacao_id!))];
+  let taNameMap = new Map<string, string>();
+  if (taIds.length > 0) {
+    const { data: tas } = await (supabase as any).from("tipos_avaliacao").select("id, nome").in("id", taIds);
+    taNameMap = new Map(tas?.map((t: any) => [t.id, t.nome]) || []);
+  }
+
+  const perguntaIds = [...new Set(allRespostas.map(r => r.pergunta_id))];
+  const { data: perguntas } = await supabase
+    .from("perguntas_avaliacao")
+    .select("id, tipo_avaliacao_id, setor_avaliado_id")
+    .in("id", perguntaIds);
+  const perguntaMap = new Map(perguntas?.map(p => [p.id, p]) || []);
+
+  const avalMap = new Map(avaliacoes.map(a => [a.id, a]));
+
+  const answersByQuestion = new Map<string, EvaluatorAnswer[]>();
+  for (const r of allRespostas) {
+    if (!r.resposta) continue;
+    const aval = avalMap.get(r.avaliacao_id);
+    if (!aval) continue;
+
+    const pergunta = perguntaMap.get(r.pergunta_id);
+    const isResponsible = pergunta?.tipo_avaliacao_id
+      ? pergunta.tipo_avaliacao_id === aval.tipo_avaliacao_id
+      : true;
+
+    const entry: EvaluatorAnswer = {
+      avaliador_id: aval.avaliador_id,
+      avaliador_nome: nameMap.get(aval.avaliador_id) || "—",
+      tipo_avaliacao_id: aval.tipo_avaliacao_id || "",
+      tipo_avaliacao_nome: taNameMap.get(aval.tipo_avaliacao_id || "") || "—",
+      resposta: r.resposta,
+      is_responsible: isResponsible,
+    };
+
+    if (!answersByQuestion.has(r.pergunta_id)) {
+      answersByQuestion.set(r.pergunta_id, []);
+    }
+    answersByQuestion.get(r.pergunta_id)!.push(entry);
+  }
+
+  for (const [perguntaId, answers] of answersByQuestion) {
+    if (answers.length < 2) continue;
+
+    const uniqueAnswers = new Set(answers.map(a => a.resposta));
+    if (uniqueAnswers.size <= 1) continue;
+
+    const pergunta = perguntaMap.get(perguntaId);
+
+    const { data: existing } = await (supabase as any)
+      .from("avaliacoes_inconsistencias")
+      .select("id")
+      .eq("ordem_servico_id", osId)
+      .eq("pergunta_id", perguntaId)
+      .limit(1)
+      .single();
+
+    const record = {
+      ordem_servico_id: osId,
+      pergunta_id: perguntaId,
+      respostas_por_avaliador: answers.map(a => ({
+        avaliador_id: a.avaliador_id,
+        avaliador_nome: a.avaliador_nome,
+        tipo_avaliacao: a.tipo_avaliacao_nome,
+        resposta: a.resposta,
+        is_responsible: a.is_responsible,
+      })),
+      setor_responsavel_id: pergunta?.setor_avaliado_id || null,
+      tipo_avaliacao_responsavel_id: pergunta?.tipo_avaliacao_id || null,
+      detectada_em: new Date().toISOString(),
+      resolvida: false,
+    };
+
+    if (existing) {
+      await (supabase as any)
+        .from("avaliacoes_inconsistencias")
+        .update(record)
+        .eq("id", existing.id);
+    } else {
+      await (supabase as any)
+        .from("avaliacoes_inconsistencias")
+        .insert(record);
+    }
+  }
+}
+
+export async function markAuditOnlyAndCalculateScore(
+  avaliacaoId: string,
+  avaliadorTipoAvaliacaoId: string,
+  previewPerguntas: Array<{ id: string; peso: number }>,
+  wizardAnswers: Record<string, string | null>
+): Promise<{ nota: number; auditOnlyIds: string[] }> {
+  const auditOnlyIds: string[] = [];
+  let totalWeight = 0;
+  let earnedWeight = 0;
+
+  for (const p of previewPerguntas) {
+    const answer = wizardAnswers[p.id];
+    if (!answer) continue;
+
+    const { data: pergunta } = await supabase
+      .from("perguntas_avaliacao")
+      .select("tipo_avaliacao_id")
+      .eq("id", p.id)
+      .single();
+
+    const isResponsible = !pergunta?.tipo_avaliacao_id || pergunta.tipo_avaliacao_id === avaliadorTipoAvaliacaoId;
+
+    if (!isResponsible) {
+      auditOnlyIds.push(p.id);
+      await supabase
+        .from("respostas_avaliacao")
+        .update({ is_audit_only: true } as any)
+        .eq("avaliacao_id", avaliacaoId)
+        .eq("pergunta_id", p.id);
+    } else {
+      if (answer !== "na") {
+        totalWeight += p.peso;
+        if (answer === "sim") earnedWeight += p.peso;
+      }
+    }
+  }
+
+  const nota = totalWeight > 0 ? (earnedWeight / totalWeight) * 100 : 0;
+  return { nota, auditOnlyIds };
+}
+
+================================================================
+ARQUIVO: src/hooks/useLinkedInconsistencyDetection.ts
+================================================================
+import { supabase } from "@/integrations/supabase/client";
+
+export async function detectLinkedInconsistencies(avaliacaoId: string, osId: string) {
+  const { data: respostas } = await supabase
+    .from("respostas_avaliacao")
+    .select("pergunta_id, resposta")
+    .eq("avaliacao_id", avaliacaoId);
+
+  if (!respostas || respostas.length === 0) return;
+
+  const answerMap = new Map(respostas.map(r => [r.pergunta_id, r.resposta]));
+  const perguntaIds = respostas.map(r => r.pergunta_id);
+
+  const { data: perguntas } = await supabase
+    .from("perguntas_avaliacao")
+    .select("id, correlacao_pergunta_id")
+    .in("id", perguntaIds)
+    .not("correlacao_pergunta_id", "is", null);
+
+  if (!perguntas || perguntas.length === 0) return;
+
+  for (const p of perguntas) {
+    const linkedId = p.correlacao_pergunta_id;
+    if (!linkedId) continue;
+
+    const answerA = answerMap.get(p.id);
+    const answerB = answerMap.get(linkedId);
+
+    if (!answerA || !answerB) continue;
+    if (answerA === "na" && answerB === "na") continue;
+
+    if (answerA !== answerB) {
+      const { data: existing } = await (supabase as any)
+        .from("inconsistencias_vinculadas")
+        .select("id")
+        .eq("ordem_servico_id", osId)
+        .eq("pergunta_a_id", p.id)
+        .eq("pergunta_b_id", linkedId)
+        .eq("avaliacao_id", avaliacaoId)
+        .limit(1)
+        .single();
+
+      if (!existing) {
+        await (supabase as any)
+          .from("inconsistencias_vinculadas")
+          .insert({
+            ordem_servico_id: osId,
+            pergunta_a_id: p.id,
+            pergunta_b_id: linkedId,
+            resposta_a: answerA,
+            resposta_b: answerB,
+            avaliacao_id: avaliacaoId,
+          });
+      }
+    }
+  }
+}
+
+================================================================
+ARQUIVO: src/pages/DashboardPage.tsx (998 linhas)
+================================================================
+// NOTA: Arquivo muito grande - segue completo abaixo
+
+import { useEffect, useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  ClipboardCheck, Clock, CheckCircle2, Trophy, Users, BarChart3,
+  CalendarIcon, Filter, AlertCircle, Hourglass, ArrowRight
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { format, startOfMonth, endOfMonth } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+// --- Types ---
+interface OSRow {
+  id: string;
+  numero_os: string;
+  status: string;
+  created_at: string;
+  cliente_nome: string | null;
+  cliente_id: string | null;
+  tipo_servico_id: string | null;
+}
+
+interface OSWithProgress extends OSRow {
+  tipo_servico_nome: string | null;
+  total_perguntas: number;
+  total_respondidas: number;
+  progress: number;
+}
+
+interface ClienteRanking {
+  cliente_id: string;
+  cliente_nome: string;
+  os_count: number;
+}
+
+interface TecnicoMedia {
+  profile_id: string;
+  nome: string;
+  media: number;
+  total_avaliacoes: number;
+  setor_nome: string;
+}
+
+interface SetorMedia {
+  setor_id: string;
+  setor_nome: string;
+  media: number;
+  total_avaliacoes: number;
+}
+
+interface PendingOS {
+  os_id: string;
+  numero_os: string;
+  cliente_nome: string | null;
+  tipo_servico_nome: string | null;
+  colaborador_avaliado_nome: string | null;
+  pending_count: number;
+  progress: number;
+  setor_pendente_nome: string | null;
+}
+
+interface SectorPending {
+  setor_id: string;
+  setor_nome: string;
+  pending_count: number;
+}
+
+// --- Helpers ---
+function getCompetenceMonths(): { value: string; label: string }[] {
+  const months = [];
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({
+      value: format(d, "yyyy-MM"),
+      label: format(d, "MMMM yyyy", { locale: ptBR }),
+    });
+  }
+  return months;
+}
+
+function getScoreColor(score: number): string {
+  if (score >= 80) return "text-success";
+  if (score >= 60) return "text-warning";
+  return "text-destructive";
+}
+
+function getScoreBg(score: number): string {
+  if (score >= 80) return "bg-success/10";
+  if (score >= 60) return "bg-warning/10";
+  return "bg-destructive/10";
+}
+
+const containerVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.05 } },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.25 } },
+};
+
+const statusBadge: Record<string, string> = {
+  aberta: "border-warning/40 bg-warning/10 text-warning",
+  em_andamento: "border-primary/40 bg-primary/10 text-primary",
+  concluida: "border-success/40 bg-success/10 text-success",
+};
+
+const statusText: Record<string, string> = {
+  aberta: "Aberta",
+  em_andamento: "Em andamento",
+  concluida: "Concluída",
+};
+
+// --- Main ---
+export default function DashboardPage() {
+  const navigate = useNavigate();
+  const { profile, isAdmin } = useAuth();
+
+  const now = new Date();
+  const [competenceMonth, setCompetenceMonth] = useState(format(now, "yyyy-MM"));
+  const [startDate, setStartDate] = useState<Date | undefined>(startOfMonth(now));
+  const [endDate, setEndDate] = useState<Date | undefined>(endOfMonth(now));
+
+  const handleCompetenceChange = (val: string) => {
+    setCompetenceMonth(val);
+    const [y, m] = val.split("-").map(Number);
+    const d = new Date(y, m - 1, 1);
+    setStartDate(startOfMonth(d));
+    setEndDate(endOfMonth(d));
+  };
+
+  // Data state
+  const [allOS, setAllOS] = useState<OSWithProgress[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [ranking, setRanking] = useState<ClienteRanking[]>([]);
+  const [tecnicoMedias, setTecnicoMedias] = useState<TecnicoMedia[]>([]);
+  const [setorMedias, setSetorMedias] = useState<SetorMedia[]>([]);
+
+  // Pending sections
+  const [pendingMySector, setPendingMySector] = useState<PendingOS[]>([]);
+  const [pendingOtherSector, setPendingOtherSector] = useState<PendingOS[]>([]);
+  const [completedOS, setCompletedOS] = useState<PendingOS[]>([]);
+
+  // Admin: pending count per sector
+  const [sectorPendingSummary, setSectorPendingSummary] = useState<SectorPending[]>([]);
+
+  // Fetch OS with progress
+  useEffect(() => {
+    const fetch = async () => {
+      setLoading(true);
+
+      const from = startDate ? startDate.toISOString() : startOfMonth(now).toISOString();
+      const to = endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString();
+
+      const { data: osData } = await supabase
+        .from("ordens_servico")
+        .select("id, numero_os, status, created_at, cliente_nome, cliente_id, tipo_servico_id")
+        .gte("created_at", from)
+        .lte("created_at", to)
+        .order("created_at", { ascending: false });
+
+      if (!osData || osData.length === 0) {
+        setAllOS([]);
+        setLoading(false);
+        return;
+      }
+
+      const tipoIds = [...new Set(osData.map((o) => o.tipo_servico_id).filter(Boolean))] as string[];
+      let tipoNames: Record<string, string> = {};
+      if (tipoIds.length > 0) {
+        const { data: tipos } = await supabase.from("tipos_servico").select("id, nome").in("id", tipoIds);
+        tipos?.forEach((t) => { tipoNames[t.id] = t.nome; });
+      }
+
+      const osIds = osData.map((o) => o.id);
+      const { data: avaliacoes } = await supabase
+        .from("avaliacoes")
+        .select("id, ordem_servico_id, concluida")
+        .in("ordem_servico_id", osIds);
+
+      const avalIds = avaliacoes?.map((a) => a.id) || [];
+
+      const { data: allPerguntas } = await supabase
+        .from("perguntas_avaliacao")
+        .select("id, tipo_servico_id")
+        .eq("ativo", true);
+
+      // FIX: Fetch responses by ordem_servico_id (shared across all evaluators)
+      const answeredByOS: Record<string, Set<string>> = {};
+      if (osIds.length > 0) {
+        const { data: allResp } = await supabase
+          .from("respostas_avaliacao")
+          .select("ordem_servico_id, pergunta_id")
+          .in("ordem_servico_id", osIds)
+          .not("resposta", "is", null);
+        
+        allResp?.forEach((r: any) => {
+          if (r.ordem_servico_id) {
+            if (!answeredByOS[r.ordem_servico_id]) answeredByOS[r.ordem_servico_id] = new Set();
+            answeredByOS[r.ordem_servico_id].add(r.pergunta_id);
+          }
+        });
+      }
+
+      const result: OSWithProgress[] = osData.map((os) => {
+        const osAvals = avaliacoes?.filter((a) => a.ordem_servico_id === os.id) || [];
+        const perguntasForOS = allPerguntas?.filter(
+          (p) => !p.tipo_servico_id || p.tipo_servico_id === os.tipo_servico_id
+        ) || [];
+        const totalPerguntas = perguntasForOS.length;
+        const osAnswered = answeredByOS[os.id] || new Set();
+        const totalRespondidas = perguntasForOS.filter(p => osAnswered.has(p.id)).length;
+        const progress = totalPerguntas > 0 ? Math.round((totalRespondidas / totalPerguntas) * 100) : 0;
+
+        let computedStatus: string;
+        if (totalRespondidas === 0) {
+          computedStatus = "aberta";
+        } else if (progress >= 100 && osAvals.length > 0 && osAvals.every((a) => a.concluida)) {
+          computedStatus = "concluida";
+        } else {
+          computedStatus = "em_andamento";
+        }
+
+        return {
+          ...os,
+          status: computedStatus,
+          tipo_servico_nome: os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || null : null,
+          total_perguntas: totalPerguntas,
+          total_respondidas: totalRespondidas,
+          progress,
+        };
+      });
+
+      setAllOS(result);
+      setLoading(false);
+    };
+
+    fetch();
+  }, [startDate, endDate]);
+
+  // Fetch pending OS by sector for current evaluator
+  useEffect(() => {
+    if (!profile) return;
+    const fetchPending = async () => {
+      const { data: sectorLinks } = await supabase
+        .from("colaborador_setores").select("setor_id").eq("profile_id", profile.id);
+      let mySetorIds = sectorLinks?.map(l => l.setor_id) || [];
+      if (mySetorIds.length === 0 && profile.setor_id) mySetorIds = [profile.setor_id];
+      if (mySetorIds.length === 0 && !isAdmin) { setPendingMySector([]); setPendingOtherSector([]); setCompletedOS([]); return; }
+
+      const { data: openOS } = await supabase
+        .from("ordens_servico")
+        .select("id, numero_os, cliente_nome, tipo_servico_id, status, colaborador_avaliado_id, atendente_id, tecnico_id")
+        .order("created_at", { ascending: false });
+      if (!openOS?.length) { setPendingMySector([]); setPendingOtherSector([]); setCompletedOS([]); return; }
+
+      const osIds = openOS.map(o => o.id);
+      const tipoIds = [...new Set(openOS.map(o => o.tipo_servico_id).filter(Boolean))] as string[];
+
+      const profileIdsToResolve = new Set<string>();
+      openOS.forEach(o => {
+        if (o.colaborador_avaliado_id) profileIdsToResolve.add(o.colaborador_avaliado_id);
+        if (o.atendente_id) profileIdsToResolve.add(o.atendente_id);
+        if (o.tecnico_id) profileIdsToResolve.add(o.tecnico_id);
+      });
+
+      const [tiposRes, perguntasRes, avalsRes, setoresRes, profilesRes] = await Promise.all([
+        tipoIds.length > 0 ? supabase.from("tipos_servico").select("id, nome").in("id", tipoIds) : { data: [] },
+        supabase.from("perguntas_avaliacao").select("id, tipo_servico_id, setor_avaliado_id").eq("ativo", true),
+        supabase.from("avaliacoes").select("id, ordem_servico_id, avaliador_id, concluida").in("ordem_servico_id", osIds),
+        supabase.from("setores").select("id, nome").eq("ativo", true),
+        profileIdsToResolve.size > 0 ? supabase.from("profiles").select("id, nome").in("id", [...profileIdsToResolve]) : { data: [] },
+      ]);
+
+      const tipoNames: Record<string, string> = {};
+      (tiposRes.data as any[])?.forEach((t: any) => { tipoNames[t.id] = t.nome; });
+      const setoresMap: Record<string, string> = {};
+      (setoresRes.data as any[])?.forEach((s: any) => { setoresMap[s.id] = s.nome; });
+      const profileNames: Record<string, string> = {};
+      (profilesRes.data as any[])?.forEach((p: any) => { profileNames[p.id] = p.nome; });
+
+      const allPerguntas = perguntasRes.data || [];
+      const allAvals = avalsRes.data || [];
+
+      // FIX: Fetch responses by ordem_servico_id (shared across all evaluators)
+      let allRespostas: any[] = [];
+      if (osIds.length > 0) {
+        const { data: resp } = await supabase
+          .from("respostas_avaliacao").select("ordem_servico_id, pergunta_id, resposta")
+          .in("ordem_servico_id", osIds).not("resposta", "is", null);
+        allRespostas = resp || [];
+      }
+      const answeredSet = new Set(allRespostas.map((r: any) => `${r.ordem_servico_id}:${r.pergunta_id}`));
+
+      const myPending: PendingOS[] = [];
+      const otherPending: PendingOS[] = [];
+      const completed: PendingOS[] = [];
+
+      for (const os of openOS) {
+        const perguntasForOS = allPerguntas.filter(p => !p.tipo_servico_id || p.tipo_servico_id === os.tipo_servico_id);
+        if (perguntasForOS.length === 0) continue;
+
+        const myQuestions = isAdmin ? perguntasForOS : perguntasForOS.filter(p => !p.setor_avaliado_id || mySetorIds.includes(p.setor_avaliado_id));
+        const otherQuestions = isAdmin ? [] : perguntasForOS.filter(p => p.setor_avaliado_id && !mySetorIds.includes(p.setor_avaliado_id));
+        const myAval = allAvals.find(a => a.ordem_servico_id === os.id && a.avaliador_id === profile.id);
+        const osAvals = allAvals.filter(a => a.ordem_servico_id === os.id);
+
+        const myUnanswered = myQuestions.filter(q => !answeredSet.has(`${os.id}:${q.id}`));
+
+        const uniqueAnswered = perguntasForOS.filter(q => answeredSet.has(`${os.id}:${q.id}`)).length;
+        const progress = perguntasForOS.length > 0 ? Math.round((uniqueAnswered / perguntasForOS.length) * 100) : 0;
+
+        const colabId = os.colaborador_avaliado_id || os.atendente_id || os.tecnico_id;
+        const colabNome = colabId ? profileNames[colabId] || null : null;
+
+        const pendingSetorIds = new Set<string>();
+        for (const q of perguntasForOS) {
+          if (!q.setor_avaliado_id) continue;
+          const answered = answeredSet.has(`${os.id}:${q.id}`);
+          if (!answered) pendingSetorIds.add(q.setor_avaliado_id);
+        }
+        const pendingSetorNames = [...pendingSetorIds].map(id => setoresMap[id] || "Sem setor");
+
+        // If my avaliacao is concluded, my part is done regardless of unanswered questions
+        const myPartDone = myAval?.concluida === true || myUnanswered.length === 0;
+
+        if (progress >= 100 && osAvals.length > 0 && osAvals.every(a => a.concluida)) {
+          completed.push({
+            os_id: os.id, numero_os: os.numero_os, cliente_nome: os.cliente_nome,
+            tipo_servico_nome: os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || null : null,
+            colaborador_avaliado_nome: colabNome, pending_count: 0, progress: 100,
+            setor_pendente_nome: null,
+          });
+        } else if (!myPartDone) {
+          myPending.push({
+            os_id: os.id, numero_os: os.numero_os, cliente_nome: os.cliente_nome,
+            tipo_servico_nome: os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || null : null,
+            colaborador_avaliado_nome: colabNome, pending_count: myUnanswered.length, progress,
+            setor_pendente_nome: null,
+          });
+        } else if (otherQuestions.length > 0) {
+          const otherUnanswered = otherQuestions.some(q =>
+            !answeredSet.has(`${os.id}:${q.id}`)
+          );
+          if (otherUnanswered) {
+            const otherPendingSetores = [...pendingSetorIds]
+              .filter(id => !mySetorIds.includes(id))
+              .map(id => setoresMap[id] || "Sem setor");
+
+            otherPending.push({
+              os_id: os.id, numero_os: os.numero_os, cliente_nome: os.cliente_nome,
+              tipo_servico_nome: os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || null : null,
+              colaborador_avaliado_nome: colabNome, pending_count: 0, progress,
+              setor_pendente_nome: otherPendingSetores.join(", ") || "Outro setor",
+            });
+          }
+        }
+      }
+
+      // Admin: calculate pending by sector
+      if (isAdmin) {
+        const sectorOSCount: Record<string, Set<string>> = {};
+        for (const os of openOS.filter(o => o.status !== "concluida")) {
+          const perguntasForOS = allPerguntas.filter(p => !p.tipo_servico_id || p.tipo_servico_id === os.tipo_servico_id);
+          const osAvals = allAvals.filter(a => a.ordem_servico_id === os.id);
+
+          for (const q of perguntasForOS) {
+            if (!q.setor_avaliado_id) continue;
+            const answered = answeredSet.has(`${os.id}:${q.id}`);
+            if (!answered) {
+              if (!sectorOSCount[q.setor_avaliado_id]) sectorOSCount[q.setor_avaliado_id] = new Set();
+              sectorOSCount[q.setor_avaliado_id].add(os.id);
+            }
+          }
+        }
+
+        const summary: SectorPending[] = Object.entries(sectorOSCount)
+          .map(([setorId, osSet]) => ({
+            setor_id: setorId,
+            setor_nome: setoresMap[setorId] || "Sem setor",
+            pending_count: osSet.size,
+          }))
+          .sort((a, b) => b.pending_count - a.pending_count);
+        setSectorPendingSummary(summary);
+      }
+
+      setPendingMySector(myPending);
+      setPendingOtherSector(otherPending);
+      setCompletedOS(completed.slice(0, 20));
+    };
+    fetchPending();
+  }, [profile, isAdmin, startDate, endDate]);
+
+  // Fetch ranking + scores
+  useEffect(() => {
+    const fetchRanking = async () => {
+      const sixtyDaysAgo = new Date();
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+      const { data } = await supabase
+        .from("ordens_servico")
+        .select("cliente_id, cliente_nome")
+        .gte("created_at", sixtyDaysAgo.toISOString())
+        .not("cliente_id", "is", null);
+      if (!data) return;
+      const countMap: Record<string, { nome: string; count: number }> = {};
+      data.forEach((os: any) => {
+        if (!os.cliente_id) return;
+        if (!countMap[os.cliente_id]) countMap[os.cliente_id] = { nome: os.cliente_nome || "Sem nome", count: 0 };
+        countMap[os.cliente_id].count++;
+      });
+      const sorted = Object.entries(countMap)
+        .map(([id, v]) => ({ cliente_id: id, cliente_nome: v.nome, os_count: v.count }))
+        .filter((c) => c.os_count >= 2)
+        .sort((a, b) => b.os_count - a.os_count)
+        .slice(0, 10);
+      setRanking(sorted);
+    };
+
+    const fetchScores = async () => {
+      const from = startDate ? startDate.toISOString() : startOfMonth(now).toISOString();
+      const to = endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString();
+
+      const { data: osInPeriod } = await supabase
+        .from("ordens_servico")
+        .select("id, tecnico_id, atendente_id, colaborador_avaliado_id, tipo_servico_id")
+        .gte("created_at", from)
+        .lte("created_at", to);
+
+      if (!osInPeriod?.length) { setTecnicoMedias([]); setSetorMedias([]); return; }
+
+      const osIds = osInPeriod.map(o => o.id);
+      const { data: avaliacoes } = await supabase
+        .from("avaliacoes")
+        .select("nota_final, ordem_servico_id")
+        .in("ordem_servico_id", osIds)
+        .eq("concluida", true)
+        .not("nota_final", "is", null);
+
+      if (!avaliacoes?.length) { setTecnicoMedias([]); setSetorMedias([]); return; }
+
+      const osMap: Record<string, typeof osInPeriod[0]> = {};
+      osInPeriod.forEach(o => { osMap[o.id] = o; });
+
+      const tecMap: Record<string, { notas: number[] }> = {};
+      avaliacoes.forEach((a: any) => {
+        const os = osMap[a.ordem_servico_id];
+        if (!os) return;
+        const colabId = os.colaborador_avaliado_id || os.tecnico_id || os.atendente_id;
+        if (!colabId || a.nota_final == null) return;
+        if (!tecMap[colabId]) tecMap[colabId] = { notas: [] };
+        tecMap[colabId].notas.push(a.nota_final);
+      });
+
+      const colabIds = Object.keys(tecMap);
+      if (colabIds.length === 0) { setTecnicoMedias([]); setSetorMedias([]); return; }
+
+      const { data: profiles } = await supabase.from("profiles").select("id, nome, setor_id").in("id", colabIds);
+      const { data: setorLinks } = await supabase.from("colaborador_setores").select("profile_id, setor_id").in("profile_id", colabIds);
+
+      const profileSetores: Record<string, string[]> = {};
+      setorLinks?.forEach((l) => {
+        if (!profileSetores[l.profile_id]) profileSetores[l.profile_id] = [];
+        profileSetores[l.profile_id].push(l.setor_id);
+      });
+      profiles?.forEach((p) => {
+        if (!profileSetores[p.id] && p.setor_id) profileSetores[p.id] = [p.setor_id];
+      });
+
+      const allSetorIds = new Set<string>();
+      profiles?.forEach((p) => { if (p.setor_id) allSetorIds.add(p.setor_id); });
+      setorLinks?.forEach((l) => allSetorIds.add(l.setor_id));
+
+      let setorNames: Record<string, string> = {};
+      if (allSetorIds.size > 0) {
+        const { data: setores } = await supabase.from("setores").select("id, nome").in("id", [...allSetorIds]);
+        setores?.forEach((s) => { setorNames[s.id] = s.nome; });
+      }
+
+      const tecMedias: TecnicoMedia[] = [];
+      profiles?.forEach((p) => {
+        const entry = tecMap[p.id];
+        if (entry) {
+          const avg = entry.notas.reduce((a, b) => a + b, 0) / entry.notas.length;
+          const pSetores = profileSetores[p.id] || [];
+          const primarySetorName = pSetores.length > 0 ? (setorNames[pSetores[0]] || "Sem setor") : "Sem setor";
+          tecMedias.push({ profile_id: p.id, nome: p.nome, media: avg, total_avaliacoes: entry.notas.length, setor_nome: primarySetorName });
+        }
+      });
+      tecMedias.sort((a, b) => b.media - a.media);
+      setTecnicoMedias(tecMedias);
+
+      const setorScoreMap: Record<string, { nome: string; notas: number[] }> = {};
+      Object.entries(tecMap).forEach(([profileId, entry]) => {
+        const setores = profileSetores[profileId] || [];
+        setores.forEach((setorId) => {
+          if (!setorScoreMap[setorId]) setorScoreMap[setorId] = { nome: setorNames[setorId] || "Sem setor", notas: [] };
+          setorScoreMap[setorId].notas.push(...entry.notas);
+        });
+      });
+
+      const sMedias: SetorMedia[] = Object.entries(setorScoreMap).map(([id, v]) => ({
+        setor_id: id, setor_nome: v.nome,
+        media: v.notas.reduce((a, b) => a + b, 0) / v.notas.length,
+        total_avaliacoes: v.notas.length,
+      }));
+      sMedias.sort((a, b) => b.media - a.media);
+      setSetorMedias(sMedias);
+    };
+
+    fetchRanking();
+    fetchScores();
+  }, [startDate, endDate]);
+
+  // Split OS by status
+  const osAbertas = useMemo(() => allOS.filter((o) => o.status === "aberta"), [allOS]);
+  const osEmAndamento = useMemo(() => allOS.filter((o) => o.status === "em_andamento"), [allOS]);
+  const osConcluidas = useMemo(() => allOS.filter((o) => o.status === "concluida"), [allOS]);
+
+  const [statusFilter, setStatusFilter] = useState<"all" | "aberta" | "em_andamento" | "concluida">("all");
+
+  const filteredOS = useMemo(() => {
+    if (statusFilter === "all") return allOS;
+    if (statusFilter === "em_andamento") return allOS.filter((o) => o.status === "em_andamento" || o.status === "aberta");
+    return allOS.filter((o) => o.status === statusFilter);
+  }, [allOS, statusFilter]);
+
+  const handleClickOS = (os: OSWithProgress) => {
+    navigate(`/avaliacoes/pesquisa?os=${os.numero_os}&mode=eval`);
+  };
+
+  const cards = [
+    { label: "Total de OS", value: allOS.length, icon: ClipboardCheck, color: "text-foreground", filter: "all" as const },
+    { label: "Em Andamento", value: osEmAndamento.length + osAbertas.length, icon: Clock, color: "text-primary", filter: "em_andamento" as const },
+    { label: "Concluídas", value: osConcluidas.length, icon: CheckCircle2, color: "text-success", filter: "concluida" as const },
+  ];
+
+  const competenceMonths = useMemo(() => getCompetenceMonths(), []);
+
+  const [showCompleted, setShowCompleted] = useState(false);
+
+  return (
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      {/* ... RENDER COMPLETO DO DASHBOARD ... */}
+      {/* O código de renderização é extenso - consulte o arquivo original para o JSX completo */}
+      {/* Inclui: Filtros, Cards de resumo, Pendências por setor (admin), */}
+      {/* Minhas Avaliações Pendentes, Aguardando Outros Setores, Concluídas, */}
+      {/* Tabela de OS, Rankings por setor, Rankings de clientes */}
+    </div>
+  );
+}
+
+================================================================
+ARQUIVO: src/pages/AvaliacaoOSPage.tsx (2500 linhas)
+================================================================
+// NOTA: Este é o maior arquivo do projeto. Contém toda a lógica de:
+// - Busca combinada CPF + OS
+// - Criação de OS e avaliações
+// - Formulário de avaliação com perguntas por setor
+// - Auto-save de respostas (upsert por ordem_servico_id + pergunta_id)
+// - Upload de evidências fotográficas
+// - Finalização com cálculo de nota por setor
+// - Detecção de inconsistências
+// - Geração de PDF
+// - Exclusão de OS com reautenticação
+
+// PONTOS CRÍTICOS PARA ANÁLISE DO ERRO:
+
+// 1. AUTO-SAVE (linha ~730-774):
+// O upsert usa onConflict: "ordem_servico_id,pergunta_id"
+// Isso significa que CADA pergunta tem UMA resposta por OS (compartilhada entre setores)
+const autoSaveAnswer = async (perguntaId: string, answer: Answer) => {
+  if (!evalOsId || !profile) return;
+  await supabase.from("respostas_avaliacao").upsert(
+    { 
+      ordem_servico_id: evalOsId, 
+      pergunta_id: perguntaId, 
+      resposta: answer,
+      avaliador_id: profile.id,
+      avaliador_setor_id: evaluatorSetorIds[0] || null,
+      avaliacao_id: evalAvaliacaoId,
+    },
+    { onConflict: "ordem_servico_id,pergunta_id" }
+  );
+};
+
+// 2. FINALIZAÇÃO (linha ~1030-1091):
+// Calcula nota apenas das perguntas respondíveis pelo setor do avaliador
+// Verifica se TODAS as perguntas globais foram respondidas para marcar OS como concluída
+const handleFinalizeEvaluation = async () => {
+  const answerableQuestions = evalPerguntas.filter(p => isQuestionAnswerable(p.setor_avaliado_id));
+  const unanswered = answerableQuestions.filter(p => evalAnswers[p.id] == null);
+  if (unanswered.length > 0) { toast.error("Responda todas as perguntas do seu setor antes de concluir."); return; }
+  
+  // Calculate score only from answerable questions
+  let totalWeight = 0, earnedWeight = 0;
+  for (const p of answerableQuestions) {
+    const answer = evalAnswers[p.id];
+    if (answer !== "na" && answer != null) {
+      totalWeight += p.peso;
+      if (answer === "sim") earnedWeight += p.peso;
+    }
+  }
+  const nota = totalWeight > 0 ? (earnedWeight / totalWeight) * 100 : 0;
+
+  await supabase.from("avaliacoes").update({ concluida: true, nota_final: nota }).eq("id", evalAvaliacaoId);
+  
+  // Check if ALL questions across all sectors are now answered
+  const allAnswered = evalPerguntas.every(p => evalAnswers[p.id] != null);
+  if (allAnswered && evalOsId) {
+    await supabase.from("ordens_servico").update({ status: "concluida", data_conclusao: new Date().toISOString() }).eq("id", evalOsId);
+  }
+};
+
+// 3. ABERTURA DA AVALIAÇÃO (linha ~823-880):
+// Carrega TODAS as respostas da OS (não apenas da avaliação do usuário)
+const openEvaluation = async (avaliacaoId: string, osId: string) => {
+  const { data: allRespostas } = await supabase
+    .from("respostas_avaliacao")
+    .select("pergunta_id, resposta, observacao, evidencia_url, avaliador_id")
+    .eq("ordem_servico_id", osId);
+
+  // Todas as respostas são carregadas nos mapas de respostas
+  (allRespostas || []).forEach((r: any) => {
+    if (r.resposta) ans[r.pergunta_id] = r.resposta;
+    if (r.observacao) obs[r.pergunta_id] = r.observacao;
+    if (r.evidencia_url) evid[r.pergunta_id] = r.evidencia_url;
+  });
+};
+
+// 4. PERGUNTAS POR SETOR (linha ~505-550):
+// Carrega perguntas via checklists vinculados ao tipo de serviço
+// Cada pergunta tem setor_avaliado_id que determina qual setor responde
+
+// 5. CONTROLE DE ACESSO (linha ~218-222):
+// isQuestionAnswerable: retorna true se admin OU se o setor da pergunta está nos setores do avaliador
+
+================================================================
+ARQUIVO: src/pages/MinhasAvaliacoesPage.tsx
+================================================================
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { Eye, ChevronLeft, CheckCircle2, XCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
+
+export default function MinhasAvaliacoesPage() {
+  const { profile } = useAuth();
+  const [selectedAval, setSelectedAval] = useState<any | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  const { data: minhasOS = [], isLoading } = useQuery({
+    queryKey: ["minhas_avaliacoes", profile?.id],
+    queryFn: async () => {
+      if (!profile?.id) return [];
+      const { data } = await supabase
+        .from("ordens_servico")
+        .select("id, numero_os, cliente_nome, status, created_at, tipo_servico_id, atendente_id, tecnico_id")
+        .eq("status", "concluida")
+        .or(`atendente_id.eq.${profile.id},tecnico_id.eq.${profile.id}`)
+        .order("created_at", { ascending: false });
+      return data || [];
+    },
+    enabled: !!profile?.id,
+  });
+
+  const { data: avalDetails = [] } = useQuery({
+    queryKey: ["aval_detail", selectedAval?.id],
+    queryFn: async () => {
+      if (!selectedAval?.id) return [];
+      const { data: avals } = await supabase
+        .from("avaliacoes")
+        .select("id, avaliador_id, concluida, nota_final, tipo_avaliacao_id")
+        .eq("ordem_servico_id", selectedAval.id)
+        .eq("concluida", true);
+      if (!avals) return [];
+
+      const result = [];
+      for (const aval of avals) {
+        const { data: respostas } = await supabase
+          .from("respostas_avaliacao")
+          .select("pergunta_id, resposta, observacao, evidencia_url")
+          .eq("avaliacao_id", aval.id);
+
+        const perguntaIds = respostas?.map(r => r.pergunta_id) || [];
+        let perguntas: any[] = [];
+        if (perguntaIds.length > 0) {
+          const { data: ps } = await supabase.from("perguntas_avaliacao").select("id, pergunta, peso, target_employee_type").in("id", perguntaIds);
+          perguntas = ps || [];
+        }
+
+        const { data: avaliador } = await supabase.from("profiles").select("nome").eq("id", aval.avaliador_id).single();
+        
+        let taNome = "—";
+        if (aval.tipo_avaliacao_id) {
+          const { data: ta } = await (supabase as any).from("tipos_avaliacao").select("nome").eq("id", aval.tipo_avaliacao_id).single();
+          if (ta) taNome = ta.nome;
+        }
+
+        result.push({
+          ...aval,
+          _avaliador_nome: avaliador?.nome || "—",
+          _ta_nome: taNome,
+          _respostas: respostas?.map(r => {
+            const pg = perguntas.find(p => p.id === r.pergunta_id);
+            return { ...r, pergunta: pg?.pergunta || "—", peso: pg?.peso || 0, target: pg?.target_employee_type || "geral" };
+          }) || [],
+        });
+      }
+      return result;
+    },
+    enabled: !!selectedAval?.id,
+  });
+
+  const openDetail = (os: any) => { setSelectedAval(os); setDetailOpen(true); };
+
+  const myRole = (os: any) => {
+    if (os.atendente_id === profile?.id && os.tecnico_id === profile?.id) return "Atendente + Técnico";
+    if (os.atendente_id === profile?.id) return "Atendente";
+    if (os.tecnico_id === profile?.id) return "Técnico";
+    return "—";
+  };
+
+  return (
+    <div className="p-6 max-w-4xl mx-auto">
+      {/* ... renderização da tabela e dialog de detalhes ... */}
+    </div>
+  );
+}
+
+================================================================
+ARQUIVO: src/pages/RelatoriosPage.tsx (593 linhas)
+================================================================
+// Exportação CSV e exclusão em massa de OS
+// Ver arquivo completo no projeto
+
+================================================================
+RESUMO DO PROBLEMA REPORTADO:
+================================================================
+1. Ao finalizar uma avaliação do setor "Atendimento", apenas 1 resposta 
+   foi salva no banco (de 29 perguntas do setor).
+2. O progresso no dashboard mostra ~2% quando deveria mostrar ~50%.
+3. A OS continua aparecendo em "Minhas Avaliações Pendentes" mesmo após
+   o usuário ter concluído sua parte.
+
+HIPÓTESES:
+- O upsert com onConflict: "ordem_servico_id,pergunta_id" pode estar 
+  falhando silenciosamente para algumas perguntas
+- A constraint unique(ordem_servico_id, pergunta_id) pode não existir 
+  na tabela respostas_avaliacao
+- O auto-save pode estar sendo chamado mas falhando sem feedback visual
+- A lógica myPartDone no dashboard pode não estar detectando corretamente
+  quando a avaliação foi marcada como concluída
+
+TABELAS RELEVANTES:
+- ordens_servico (OS principal)
+- avaliacoes (1 por avaliador por OS, tem concluida + nota_final)
+- respostas_avaliacao (1 por OS + pergunta, compartilhada entre setores)
+- perguntas_avaliacao (perguntas com setor_avaliado_id)
+- colaborador_setores (setores do avaliador)
+- profiles (dados do usuário)
