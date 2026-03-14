@@ -1415,8 +1415,8 @@ export default function AvaliacaoOSPage() {
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-foreground">Progresso da Avaliação</span>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-foreground font-tabular">{evalProgressPercent}%</span>
-              <span className="text-caption text-muted-foreground font-tabular">({evalAnsweredCount}/{evalPerguntas.length} perguntas)</span>
+              <span className="text-sm font-bold text-foreground font-tabular">{globalProgressPercent}%</span>
+              <span className="text-caption text-muted-foreground font-tabular">({globalAnsweredCount}/{evalPerguntas.length} perguntas)</span>
             </div>
           </div>
           <Progress value={evalProgressPercent} className="h-3" />
