@@ -224,7 +224,7 @@ export default function AvaliacaoOSPage() {
 
       // Status filter
       if (filterStatus && filterStatus !== "todos") {
-        query = query.eq("status", filterStatus);
+        query = query.eq("status", filterStatus as "aberta" | "em_andamento" | "concluida");
       }
 
       const { data, error } = await query.limit(200);
