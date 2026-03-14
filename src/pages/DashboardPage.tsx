@@ -44,6 +44,7 @@ interface TecnicoMedia {
   nome: string;
   media: number;
   total_avaliacoes: number;
+  setor_nome: string;
 }
 
 interface SetorMedia {
@@ -324,7 +325,9 @@ export default function DashboardPage() {
         const entry = tecMap[p.id];
         if (entry) {
           const avg = entry.notas.reduce((a, b) => a + b, 0) / entry.notas.length;
-          tecMedias.push({ profile_id: p.id, nome: p.nome, media: avg, total_avaliacoes: entry.notas.length });
+          const pSetores = profileSetores[p.id] || [];
+          const primarySetorName = pSetores.length > 0 ? (setorNames[pSetores[0]] || "Sem setor") : "Sem setor";
+          tecMedias.push({ profile_id: p.id, nome: p.nome, media: avg, total_avaliacoes: entry.notas.length, setor_nome: primarySetorName });
         }
       });
       tecMedias.sort((a, b) => b.media - a.media);
@@ -554,18 +557,23 @@ export default function DashboardPage() {
       {/* Employee Rankings by Sector */}
       {tecnicoMedias.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Group employees by sector */}
           {(() => {
-            // We need to split tecnicoMedias by sector
-            // For now show all as a single ranked list - clickable to performance page
-            return (
-              <motion.div variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card lg:col-span-2">
+            // Group employees by sector
+            const groups = new Map<string, TecnicoMedia[]>();
+            tecnicoMedias.forEach(t => {
+              const setor = t.setor_nome || "Sem setor";
+              if (!groups.has(setor)) groups.set(setor, []);
+              groups.get(setor)!.push(t);
+            });
+
+            return Array.from(groups.entries()).map(([setorNome, employees]) => (
+              <motion.div key={setorNome} variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
                 <div className="p-4 border-b border-border flex items-center gap-2">
                   <Users className="w-4 h-4 text-primary" />
-                  <h2 className="text-body font-semibold text-foreground">Ranking de Colaboradores</h2>
+                  <h2 className="text-body font-semibold text-foreground">Ranking — {setorNome}</h2>
                 </div>
                 <div className="divide-y divide-border">
-                  {tecnicoMedias.map((t, i) => (
+                  {employees.map((t, i) => (
                     <div key={t.profile_id}
                       className="px-4 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors cursor-pointer"
                       onClick={() => navigate(`/desempenho?id=${t.profile_id}`)}>
@@ -581,7 +589,7 @@ export default function DashboardPage() {
                   ))}
                 </div>
               </motion.div>
-            );
+            ));
           })()}
         </div>
       )}

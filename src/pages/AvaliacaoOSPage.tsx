@@ -177,16 +177,52 @@ export default function AvaliacaoOSPage() {
     },
   });
 
+  // Evaluator's sectors
+  const { data: evaluatorSetores = [] } = useQuery({
+    queryKey: ["evaluator_setores", profile?.id],
+    queryFn: async () => {
+      if (!profile?.id) return [];
+      const { data: links } = await supabase
+        .from("colaborador_setores")
+        .select("setor_id, setores:setor_id(id, nome)")
+        .eq("profile_id", profile.id);
+      if (links?.length) return links.map((l: any) => l.setores).filter(Boolean);
+      if (profile.setor_id) {
+        const { data } = await supabase.from("setores").select("id, nome").eq("id", profile.setor_id).single();
+        return data ? [data] : [];
+      }
+      return [];
+    },
+    enabled: !!profile?.id,
+  });
+
+  const evaluatorSetorIds = useMemo(() => evaluatorSetores.map((s: any) => s.id), [evaluatorSetores]);
+  const hasAtendimentoAccess = isAdmin || evaluatorSetores.some((s: any) => {
+    const n = (s.nome || "").toLowerCase();
+    return n.includes("atendimento") || n.includes("atendente");
+  });
+  const hasTecnicoAccess = isAdmin || evaluatorSetores.some((s: any) => {
+    const n = (s.nome || "").toLowerCase();
+    return n.includes("técnico") || n.includes("tecnico");
+  });
+
+  const isQuestionAnswerable = useCallback((setorAvaliadoId: string | null) => {
+    if (isAdmin) return true;
+    if (!setorAvaliadoId) return true;
+    return evaluatorSetorIds.includes(setorAvaliadoId);
+  }, [isAdmin, evaluatorSetorIds]);
+
   const selectedTipoAvaliacao = useMemo(() => tiposAvaliacao.find(t => t.id === selectedTipoAvaliacaoId), [tiposAvaliacao, selectedTipoAvaliacaoId]);
   const isAtendimentoEvaluator = useMemo(() => {
+    if (hasAtendimentoAccess && !hasTecnicoAccess) return true;
     const cargo = selectedTipoAvaliacao?.cargo_responsavel?.toLowerCase() || "";
     return cargo.includes("atendente") || cargo.includes("atendimento");
-  }, [selectedTipoAvaliacao]);
+  }, [selectedTipoAvaliacao, hasAtendimentoAccess, hasTecnicoAccess]);
 
   const selectedTipoServico = useMemo(() => tiposServico.find(t => t.id === tipoServicoId), [tiposServico, tipoServicoId]);
 
   const { data: profilesBySetor = [] } = useQuery({
-    queryKey: ["profiles_by_setor", tipoServicoId, selectedTipoAvaliacaoId],
+    queryKey: ["profiles_by_setor", tipoServicoId],
     queryFn: async () => {
       if (!selectedTipoServico?.setor_id) return allProfiles.filter(p => p.id !== profile?.id);
       const { data: links } = await supabase.from("colaborador_setores").select("profile_id").eq("setor_id", selectedTipoServico.setor_id);
@@ -194,7 +230,7 @@ export default function AvaliacaoOSPage() {
       const ids = links.map(l => l.profile_id);
       return allProfiles.filter(p => p.id !== profile?.id && ids.includes(p.id));
     },
-    enabled: !!tipoServicoId && !!selectedTipoAvaliacaoId,
+    enabled: !!tipoServicoId,
   });
 
   // Pending evaluations
@@ -364,28 +400,37 @@ export default function AvaliacaoOSPage() {
 
   // Questions for evaluation view
   const { data: evalPerguntas = [] } = useQuery({
-    queryKey: ["eval_perguntas", tipoServicoId, selectedTipoAvaliacaoId],
+    queryKey: ["eval_perguntas_v2", tipoServicoId],
     queryFn: async () => {
-      if (!tipoServicoId || !selectedTipoAvaliacaoId) return [];
+      if (!tipoServicoId) return [];
       const { data } = await supabase
         .from("perguntas_avaliacao")
-        .select("id, pergunta, peso, ordem, target_employee_type")
+        .select("id, pergunta, peso, ordem, target_employee_type, setor_avaliado_id, setores!perguntas_avaliacao_setor_avaliado_id_fkey(nome)")
         .eq("ativo", true)
         .or(`tipo_servico_id.eq.${tipoServicoId},tipo_servico_id.is.null`)
-        .or(`tipo_avaliacao_id.eq.${selectedTipoAvaliacaoId},tipo_avaliacao_id.is.null`)
         .order("ordem");
-      return (data || []).map((p: any) => ({ ...p, target_employee_type: p.target_employee_type || "geral" }));
+      return (data || []).map((p: any) => ({
+        ...p,
+        target_employee_type: p.target_employee_type || "geral",
+        setor_avaliado_id: p.setor_avaliado_id || null,
+        _setor_nome: p.setores?.nome || null,
+      }));
     },
-    enabled: !!tipoServicoId && !!selectedTipoAvaliacaoId,
+    enabled: !!tipoServicoId,
   });
 
-  // Auto-select tipo_avaliacao for non-admins
+  // Auto-select tipo_avaliacao based on cargo/sector
   useEffect(() => {
-    if (!isAdmin && profile?.cargo && linkedTiposAvaliacao.length > 0) {
-      const match = linkedTiposAvaliacao.find(ta => ta.cargo_responsavel === profile.cargo);
-      if (match) setSelectedTipoAvaliacaoId(match.id);
+    if (linkedTiposAvaliacao.length > 0) {
+      if (profile?.cargo) {
+        const match = linkedTiposAvaliacao.find(ta => ta.cargo_responsavel === profile.cargo);
+        if (match) { setSelectedTipoAvaliacaoId(match.id); return; }
+      }
+      if (!selectedTipoAvaliacaoId) {
+        setSelectedTipoAvaliacaoId(linkedTiposAvaliacao[0].id);
+      }
     }
-  }, [linkedTiposAvaliacao, profile, isAdmin]);
+  }, [linkedTiposAvaliacao, profile]);
 
   // URL param search
   useEffect(() => {
@@ -625,7 +670,8 @@ export default function AvaliacaoOSPage() {
   // Create OS from form + start evaluation
   const handleCreateAndStart = async () => {
     if (!profile) return;
-    if (!tipoServicoId || !selectedTipoAvaliacaoId) { toast.error("Selecione tipo de serviço e avaliação."); return; }
+    if (!tipoServicoId) { toast.error("Selecione o tipo de serviço."); return; }
+    if (!atendenteId && !tecnicoId) { toast.error("Selecione pelo menos um colaborador avaliado."); return; }
 
     try {
       const num = formOsNumero.trim();
@@ -662,9 +708,19 @@ export default function AvaliacaoOSPage() {
         osId = newOs.id;
       }
 
+      // Auto-determine tipo_avaliacao_id from evaluator's cargo
+      let finalTipoAvaliacaoId = selectedTipoAvaliacaoId;
+      if (!finalTipoAvaliacaoId && profile.cargo) {
+        const match = linkedTiposAvaliacao.find(ta => ta.cargo_responsavel === profile.cargo);
+        if (match) finalTipoAvaliacaoId = match.id;
+      }
+      if (!finalTipoAvaliacaoId && linkedTiposAvaliacao.length > 0) {
+        finalTipoAvaliacaoId = linkedTiposAvaliacao[0].id;
+      }
+
       // Create avaliacao
       const { data: newAval, error: ae } = await supabase.from("avaliacoes").insert({
-        ordem_servico_id: osId, avaliador_id: profile.id, tipo_avaliacao_id: selectedTipoAvaliacaoId, concluida: false,
+        ordem_servico_id: osId, avaliador_id: profile.id, tipo_avaliacao_id: finalTipoAvaliacaoId || null, concluida: false,
       } as any).select("id").single();
       if (ae) throw ae;
 
@@ -677,24 +733,35 @@ export default function AvaliacaoOSPage() {
 
   const handleFinalizeEvaluation = async () => {
     if (!evalAvaliacaoId || !evalOsId) return;
-    const unanswered = evalPerguntas.filter(p => evalAnswers[p.id] == null);
-    if (unanswered.length > 0) { toast.error("Responda todas as perguntas antes de concluir."); return; }
-    const missingObs = evalPerguntas.filter(p => evalAnswers[p.id] === "nao" && !(evalObservations[p.id]?.trim()));
+    // Only check answerable questions (evaluator's sector)
+    const answerableQuestions = evalPerguntas.filter(p => isQuestionAnswerable(p.setor_avaliado_id));
+    const unanswered = answerableQuestions.filter(p => evalAnswers[p.id] == null);
+    if (unanswered.length > 0) { toast.error("Responda todas as perguntas do seu setor antes de concluir."); return; }
+    const missingObs = answerableQuestions.filter(p => evalAnswers[p.id] === "nao" && !(evalObservations[p.id]?.trim()));
     if (missingObs.length > 0) { toast.error("Descreva a irregularidade para itens reprovados."); return; }
-    const missingEvidence = evalPerguntas.filter(p => evalAnswers[p.id] === "nao" && !evalEvidencias[p.id]);
+    const missingEvidence = answerableQuestions.filter(p => evalAnswers[p.id] === "nao" && !evalEvidencias[p.id]);
     if (missingEvidence.length > 0) { toast.error("Anexe a evidência fotográfica para todos os itens reprovados."); return; }
 
     setEvalSubmitting(true);
     try {
-      const scoreResult = await markAuditOnlyAndCalculateScore(evalAvaliacaoId, selectedTipoAvaliacaoId, evalPerguntas, evalAnswers);
-      const nota = scoreResult.nota;
+      // Calculate score only from answerable questions
+      let totalWeight = 0;
+      let earnedWeight = 0;
+      for (const p of answerableQuestions) {
+        const answer = evalAnswers[p.id];
+        if (answer !== "na" && answer != null) {
+          totalWeight += p.peso;
+          if (answer === "sim") earnedWeight += p.peso;
+        }
+      }
+      const nota = totalWeight > 0 ? (earnedWeight / totalWeight) * 100 : 0;
+
       await supabase.from("avaliacoes").update({ concluida: true, nota_final: nota }).eq("id", evalAvaliacaoId);
       setEvalScore(nota);
       setEvalFinalized(true);
       toast.success(`Avaliação concluída! Nota: ${nota.toFixed(1)}%`);
       try { await detectInconsistencies(evalOsId); } catch (e) { console.warn("Inconsistency detection error:", e); }
       refetchPending();
-      // Navigate back to dashboard after finalizing
       setTimeout(() => navigate("/"), 1500);
     } catch (err: any) {
       toast.error("Erro: " + err.message);
@@ -825,10 +892,12 @@ export default function AvaliacaoOSPage() {
   };
 
   // --- Computed ---
-  const evalAnsweredCount = evalPerguntas.filter(p => evalAnswers[p.id] != null).length;
-  const evalProgressPercent = evalPerguntas.length > 0 ? Math.round((evalAnsweredCount / evalPerguntas.length) * 100) : 0;
-  const evalTotalScore = evalPerguntas.reduce((a, p) => evalAnswers[p.id] === "sim" ? a + p.peso : a, 0);
-  const evalMaxScore = evalPerguntas.reduce((a, p) => evalAnswers[p.id] !== "na" && evalAnswers[p.id] != null ? a + p.peso : a, 0);
+  const answerablePerguntas = useMemo(() => evalPerguntas.filter(p => isQuestionAnswerable(p.setor_avaliado_id)), [evalPerguntas, isQuestionAnswerable]);
+  const pendingPerguntas = useMemo(() => evalPerguntas.filter(p => !isQuestionAnswerable(p.setor_avaliado_id)), [evalPerguntas, isQuestionAnswerable]);
+  const evalAnsweredCount = answerablePerguntas.filter(p => evalAnswers[p.id] != null).length;
+  const evalProgressPercent = answerablePerguntas.length > 0 ? Math.round((evalAnsweredCount / answerablePerguntas.length) * 100) : 0;
+  const evalTotalScore = answerablePerguntas.reduce((a, p) => evalAnswers[p.id] === "sim" ? a + p.peso : a, 0);
+  const evalMaxScore = answerablePerguntas.reduce((a, p) => evalAnswers[p.id] !== "na" && evalAnswers[p.id] != null ? a + p.peso : a, 0);
 
   const atendenteNome = allProfiles.find(p => p.id === (selectedOS as any)?.atendente_id)?.nome;
   const tecnicoNome = allProfiles.find(p => p.id === (selectedOS as any)?.tecnico_id)?.nome;
@@ -837,7 +906,7 @@ export default function AvaliacaoOSPage() {
   const selectedTipoNome = tiposAvaliacao.find(t => t.id === selectedTipoAvaliacaoId)?.nome;
   const evalTipoServicoNome = tiposServico.find(t => t.id === evalOsData?.tipo_servico_id)?.nome;
 
-  const canCreateEval = !!tipoServicoId && !!selectedTipoAvaliacaoId && (isAtendimentoEvaluator ? !!atendenteId : !!tecnicoId);
+  const canCreateEval = !!tipoServicoId && (!!atendenteId || !!tecnicoId);
 
   // ===================== RENDER =====================
 
@@ -959,104 +1028,117 @@ export default function AvaliacaoOSPage() {
                       </div>
                     </div>
 
-                    <div className="ml-11">
-                      <SegmentedControl value={answer} onChange={v => handleAnswerChange(p.id, v)} disabled={evalFinalized} />
-                    </div>
+                    {isQuestionAnswerable(p.setor_avaliado_id) ? (
+                      <>
+                        <div className="ml-11">
+                          <SegmentedControl value={answer} onChange={v => handleAnswerChange(p.id, v)} disabled={evalFinalized} />
+                        </div>
 
-                    <AnimatePresence>
-                      {answer === "nao" && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="ml-11 mt-3 bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-3">
-                            <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
-                              <AlertTriangle className="w-3.5 h-3.5" /> Descreva a irregularidade encontrada
-                            </div>
-                            <Textarea
-                              placeholder="Descreva o problema encontrado..."
-                              value={observation}
-                              onChange={e => handleObservationChange(p.id, e.target.value)}
-                              disabled={evalFinalized}
-                              className="bg-card min-h-[80px] text-sm"
-                            />
+                        <AnimatePresence>
+                          {answer === "nao" && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="ml-11 mt-3 bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-3">
+                                <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
+                                  <AlertTriangle className="w-3.5 h-3.5" /> Descreva a irregularidade encontrada
+                                </div>
+                                <Textarea
+                                  placeholder="Descreva o problema encontrado..."
+                                  value={observation}
+                                  onChange={e => handleObservationChange(p.id, e.target.value)}
+                                  disabled={evalFinalized}
+                                  className="bg-card min-h-[80px] text-sm"
+                                />
 
-                            {/* Evidence photo upload - required */}
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
-                                <Camera className="w-3.5 h-3.5" /> Evidência fotográfica *
-                              </div>
+                                {/* Evidence photo upload - required */}
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
+                                    <Camera className="w-3.5 h-3.5" /> Evidência fotográfica *
+                                  </div>
 
-                              {evidenciaUrl ? (
-                                <div className="relative inline-block">
-                                  <img
-                                    src={evidenciaUrl}
-                                    alt="Evidência"
-                                    className="rounded-lg border border-border max-h-40 object-cover cursor-pointer"
-                                    onClick={() => window.open(evidenciaUrl, "_blank")}
-                                  />
-                                  {!evalFinalized && (
-                                    <button
-                                      onClick={() => handleRemoveEvidence(p.id)}
-                                      className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-md hover:bg-destructive/90 transition-colors"
-                                    >
-                                      <X className="w-3.5 h-3.5" />
-                                    </button>
+                                  {evidenciaUrl ? (
+                                    <div className="relative inline-block">
+                                      <img
+                                        src={evidenciaUrl}
+                                        alt="Evidência"
+                                        className="rounded-lg border border-border max-h-40 object-cover cursor-pointer"
+                                        onClick={() => window.open(evidenciaUrl, "_blank")}
+                                      />
+                                      {!evalFinalized && (
+                                        <button
+                                          onClick={() => handleRemoveEvidence(p.id)}
+                                          className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-md hover:bg-destructive/90 transition-colors"
+                                        >
+                                          <X className="w-3.5 h-3.5" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  ) : (
+                                  <div className="flex gap-2">
+                                    <label className={cn(
+                                      "flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors text-sm",
+                                      isUploading ? "border-muted-foreground/30 bg-muted/30 cursor-wait" : "border-destructive/30 hover:border-destructive/50 hover:bg-destructive/5",
+                                      evalFinalized && "opacity-50 cursor-not-allowed"
+                                    )}>
+                                      {isUploading ? (
+                                        <><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> Enviando...</>
+                                      ) : (
+                                        <><ImageIcon className="w-4 h-4 text-destructive" /> Galeria</>
+                                      )}
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        disabled={evalFinalized || isUploading}
+                                        onChange={e => {
+                                          const file = e.target.files?.[0];
+                                          if (file) handleEvidenceUpload(p.id, file);
+                                          e.target.value = "";
+                                        }}
+                                      />
+                                    </label>
+                                    <label className={cn(
+                                      "flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors text-sm",
+                                      isUploading ? "border-muted-foreground/30 bg-muted/30 cursor-wait" : "border-destructive/30 hover:border-destructive/50 hover:bg-destructive/5",
+                                      evalFinalized && "opacity-50 cursor-not-allowed"
+                                    )}>
+                                      {!isUploading && (
+                                        <><Camera className="w-4 h-4 text-destructive" /> Câmera</>
+                                      )}
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        capture="environment"
+                                        className="hidden"
+                                        disabled={evalFinalized || isUploading}
+                                        onChange={e => {
+                                          const file = e.target.files?.[0];
+                                          if (file) handleEvidenceUpload(p.id, file);
+                                          e.target.value = "";
+                                        }}
+                                      />
+                                    </label>
+                                  </div>
                                   )}
                                 </div>
-                              ) : (
-                              <div className="flex gap-2">
-                                <label className={cn(
-                                  "flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors text-sm",
-                                  isUploading ? "border-muted-foreground/30 bg-muted/30 cursor-wait" : "border-destructive/30 hover:border-destructive/50 hover:bg-destructive/5",
-                                  evalFinalized && "opacity-50 cursor-not-allowed"
-                                )}>
-                                  {isUploading ? (
-                                    <><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> Enviando...</>
-                                  ) : (
-                                    <><ImageIcon className="w-4 h-4 text-destructive" /> Galeria</>
-                                  )}
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    disabled={evalFinalized || isUploading}
-                                    onChange={e => {
-                                      const file = e.target.files?.[0];
-                                      if (file) handleEvidenceUpload(p.id, file);
-                                      e.target.value = "";
-                                    }}
-                                  />
-                                </label>
-                                <label className={cn(
-                                  "flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors text-sm",
-                                  isUploading ? "border-muted-foreground/30 bg-muted/30 cursor-wait" : "border-destructive/30 hover:border-destructive/50 hover:bg-destructive/5",
-                                  evalFinalized && "opacity-50 cursor-not-allowed"
-                                )}>
-                                  {!isUploading && (
-                                    <><Camera className="w-4 h-4 text-destructive" /> Câmera</>
-                                  )}
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    capture="environment"
-                                    className="hidden"
-                                    disabled={evalFinalized || isUploading}
-                                    onChange={e => {
-                                      const file = e.target.files?.[0];
-                                      if (file) handleEvidenceUpload(p.id, file);
-                                      e.target.value = "";
-                                    }}
-                                  />
-                                </label>
                               </div>
-                              )}
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </>
+                    ) : (
+                      <div className="ml-11 mt-1">
+                        <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-warning/5 border border-warning/20">
+                          <Clock className="w-4 h-4 text-warning shrink-0" />
+                          <span className="text-sm text-muted-foreground">
+                            PENDENTE — aguardando avaliação do setor <strong className="text-foreground">{(p as any)._setor_nome || "responsável"}</strong>
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               );
@@ -1458,51 +1540,31 @@ export default function AvaliacaoOSPage() {
                       </div>
                     </div>
 
-                    {/* Tipo de Avaliação */}
-                    {tipoServicoId && linkedTiposAvaliacao.length > 0 && (
-                      <div className="space-y-2">
-                        <Label className="text-body font-medium">Tipo de Avaliação *</Label>
-                        {isAdmin ? (
-                          <div className="space-y-1">
-                            {linkedTiposAvaliacao.map(ta => (
-                              <button key={ta.id} type="button" onClick={() => setSelectedTipoAvaliacaoId(ta.id)}
-                                className={cn("w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-left transition-all press-effect text-sm",
-                                  selectedTipoAvaliacaoId === ta.id ? "bg-primary/10 border-primary" : "bg-card border-border hover:bg-muted/50")}>
-                                <div className={cn("w-4 h-4 rounded-full border-2 shrink-0",
-                                  selectedTipoAvaliacaoId === ta.id ? "border-primary bg-primary" : "border-muted-foreground/30")} />
-                                <span className="font-medium">{ta.nome}</span>
-                                <span className="text-caption text-muted-foreground ml-auto">{ta.cargo_responsavel || "—"}</span>
-                              </button>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-body text-foreground bg-muted/50 px-3 py-2 rounded-md">
-                            {selectedTipoNome || "Nenhum tipo de avaliação corresponde ao seu cargo."}
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Employee Selection */}
-                    {tipoServicoId && selectedTipoAvaliacaoId && (
-                      <div className="space-y-2">
-                        {isAtendimentoEvaluator ? (
+                    {/* Employee Selection - Sector-based */}
+                    {tipoServicoId && (
+                      <div className="space-y-3">
+                        {(hasAtendimentoAccess || isAdmin) && (
                           <div className="space-y-1.5">
-                            <Label>Atendente Avaliado *</Label>
-                            <Select value={atendenteId} onValueChange={setAtendenteId}>
+                            <Label>Atendente Avaliado {hasAtendimentoAccess ? "*" : ""}</Label>
+                            <Select value={atendenteId} onValueChange={setAtendenteId} disabled={!hasAtendimentoAccess && !isAdmin}>
                               <SelectTrigger><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
                               <SelectContent>
-                                {profilesBySetor.map(p => <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>)}
+                                {allProfiles.filter(p => p.id !== profile?.id).map(p =>
+                                  <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>
+                                )}
                               </SelectContent>
                             </Select>
                           </div>
-                        ) : (
+                        )}
+                        {(hasTecnicoAccess || isAdmin) && (
                           <div className="space-y-1.5">
-                            <Label>Técnico Avaliado *</Label>
-                            <Select value={tecnicoId} onValueChange={setTecnicoId}>
+                            <Label>Técnico Avaliado {hasTecnicoAccess ? "*" : ""}</Label>
+                            <Select value={tecnicoId} onValueChange={setTecnicoId} disabled={!hasTecnicoAccess && !isAdmin}>
                               <SelectTrigger><SelectValue placeholder="Selecione o técnico" /></SelectTrigger>
                               <SelectContent>
-                                {profilesBySetor.map(p => <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>)}
+                                {allProfiles.filter(p => p.id !== profile?.id).map(p =>
+                                  <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>
+                                )}
                               </SelectContent>
                             </Select>
                           </div>
