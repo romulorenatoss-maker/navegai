@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ClipboardCheck, Clock, CheckCircle2, FolderOpen, Trophy } from "lucide-react";
+import { ClipboardCheck, Clock, CheckCircle2, FolderOpen, Trophy, Users, BarChart3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface OSStats {
@@ -17,6 +17,20 @@ interface ClienteRanking {
   os_count: number;
 }
 
+interface TecnicoMedia {
+  profile_id: string;
+  nome: string;
+  media: number;
+  total_avaliacoes: number;
+}
+
+interface SetorMedia {
+  setor_id: string;
+  setor_nome: string;
+  media: number;
+  total_avaliacoes: number;
+}
+
 const containerVariants = {
   hidden: {},
   show: { transition: { staggerChildren: 0.05 } },
@@ -27,11 +41,25 @@ const itemVariants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.25 } },
 };
 
+function getScoreColor(score: number): string {
+  if (score >= 80) return "text-success";
+  if (score >= 60) return "text-warning";
+  return "text-destructive";
+}
+
+function getScoreBg(score: number): string {
+  if (score >= 80) return "bg-success/10";
+  if (score >= 60) return "bg-warning/10";
+  return "bg-destructive/10";
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [stats, setStats] = useState<OSStats>({ abertas: 0, em_andamento: 0, concluidas: 0, total: 0 });
   const [recentOS, setRecentOS] = useState<any[]>([]);
   const [ranking, setRanking] = useState<ClienteRanking[]>([]);
+  const [tecnicoMedias, setTecnicoMedias] = useState<TecnicoMedia[]>([]);
+  const [setorMedias, setSetorMedias] = useState<SetorMedia[]>([]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -76,8 +104,114 @@ export default function DashboardPage() {
       setRanking(sorted);
     };
 
+    const fetchScores = async () => {
+      // Get concluded avaliacoes with OS info
+      const { data: avaliacoes } = await supabase
+        .from("avaliacoes")
+        .select("nota_final, ordens_servico:ordem_servico_id(colaborador_avaliado_id, tipo_servico_id)")
+        .eq("concluida", true)
+        .not("nota_final", "is", null);
+
+      if (!avaliacoes || avaliacoes.length === 0) return;
+
+      // Group by colaborador_avaliado_id
+      const tecMap: Record<string, { notas: number[] }> = {};
+      const tipoServicoIds = new Set<string>();
+
+      avaliacoes.forEach((a: any) => {
+        const colabId = a.ordens_servico?.colaborador_avaliado_id;
+        const tipoId = a.ordens_servico?.tipo_servico_id;
+        if (!colabId || a.nota_final == null) return;
+        if (!tecMap[colabId]) tecMap[colabId] = { notas: [] };
+        tecMap[colabId].notas.push(a.nota_final);
+        if (tipoId) tipoServicoIds.add(tipoId);
+      });
+
+      // Get profile names
+      const colabIds = Object.keys(tecMap);
+      if (colabIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, nome, setor_id")
+          .in("id", colabIds);
+
+        // Also get setores from colaborador_setores junction table
+        const { data: setorLinks } = await supabase
+          .from("colaborador_setores")
+          .select("profile_id, setor_id")
+          .in("profile_id", colabIds);
+
+        // Get setor names
+        const allSetorIds = new Set<string>();
+        profiles?.forEach((p) => { if (p.setor_id) allSetorIds.add(p.setor_id); });
+        setorLinks?.forEach((l) => allSetorIds.add(l.setor_id));
+
+        let setorNames: Record<string, string> = {};
+        if (allSetorIds.size > 0) {
+          const { data: setores } = await supabase
+            .from("setores")
+            .select("id, nome")
+            .in("id", [...allSetorIds]);
+          setores?.forEach((s) => { setorNames[s.id] = s.nome; });
+        }
+
+        // Build technician medias
+        const tecMedias: TecnicoMedia[] = [];
+        profiles?.forEach((p) => {
+          const entry = tecMap[p.id];
+          if (entry) {
+            const avg = entry.notas.reduce((a, b) => a + b, 0) / entry.notas.length;
+            tecMedias.push({
+              profile_id: p.id,
+              nome: p.nome,
+              media: avg,
+              total_avaliacoes: entry.notas.length,
+            });
+          }
+        });
+        tecMedias.sort((a, b) => b.media - a.media);
+        setTecnicoMedias(tecMedias);
+
+        // Build setor medias using junction table
+        const setorScoreMap: Record<string, { nome: string; notas: number[] }> = {};
+        
+        // Map each profile to their setores
+        const profileSetores: Record<string, string[]> = {};
+        setorLinks?.forEach((l) => {
+          if (!profileSetores[l.profile_id]) profileSetores[l.profile_id] = [];
+          profileSetores[l.profile_id].push(l.setor_id);
+        });
+        // Fallback to legacy setor_id
+        profiles?.forEach((p) => {
+          if (!profileSetores[p.id] && p.setor_id) {
+            profileSetores[p.id] = [p.setor_id];
+          }
+        });
+
+        Object.entries(tecMap).forEach(([profileId, entry]) => {
+          const setores = profileSetores[profileId] || [];
+          setores.forEach((setorId) => {
+            if (!setorScoreMap[setorId]) {
+              setorScoreMap[setorId] = { nome: setorNames[setorId] || "Sem setor", notas: [] };
+            }
+            setorScoreMap[setorId].notas.push(...entry.notas);
+          });
+        });
+
+        const sMedias: SetorMedia[] = Object.entries(setorScoreMap).map(([id, v]) => ({
+          setor_id: id,
+          setor_nome: v.nome,
+          media: v.notas.reduce((a, b) => a + b, 0) / v.notas.length,
+          total_avaliacoes: v.notas.length,
+        }));
+        sMedias.sort((a, b) => b.media - a.media);
+        setSetorMedias(sMedias);
+      }
+    };
+
     fetchStats();
     fetchRanking();
+    fetchScores();
   }, []);
 
   const cards = [
@@ -117,6 +251,61 @@ export default function DashboardPage() {
           </motion.div>
         ))}
       </motion.div>
+
+      {/* Score averages row */}
+      {(tecnicoMedias.length > 0 || setorMedias.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Per-technician averages */}
+          {tecnicoMedias.length > 0 && (
+            <motion.div variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
+              <div className="p-4 border-b border-border flex items-center gap-2">
+                <Users className="w-4 h-4 text-primary" />
+                <h2 className="text-body font-semibold text-foreground">Média por Colaborador</h2>
+              </div>
+              <div className="divide-y divide-border">
+                {tecnicoMedias.map((t) => (
+                  <div key={t.profile_id} className="px-4 py-3 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-body font-medium text-foreground truncate">{t.nome}</p>
+                      <p className="text-caption text-muted-foreground">{t.total_avaliacoes} avaliação(ões)</p>
+                    </div>
+                    <div className={`px-3 py-1 rounded-lg ${getScoreBg(t.media)}`}>
+                      <span className={`text-body font-bold font-tabular ${getScoreColor(t.media)}`}>
+                        {t.media.toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Per-sector averages */}
+          {setorMedias.length > 0 && (
+            <motion.div variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
+              <div className="p-4 border-b border-border flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-primary" />
+                <h2 className="text-body font-semibold text-foreground">Média por Setor</h2>
+              </div>
+              <div className="divide-y divide-border">
+                {setorMedias.map((s) => (
+                  <div key={s.setor_id} className="px-4 py-3 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-body font-medium text-foreground truncate">{s.setor_nome}</p>
+                      <p className="text-caption text-muted-foreground">{s.total_avaliacoes} avaliação(ões)</p>
+                    </div>
+                    <div className={`px-3 py-1 rounded-lg ${getScoreBg(s.media)}`}>
+                      <span className={`text-body font-bold font-tabular ${getScoreColor(s.media)}`}>
+                        {s.media.toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </div>
+      )}
 
       <motion.div variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
         <div className="p-4 border-b border-border">

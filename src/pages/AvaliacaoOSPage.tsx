@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, AlertTriangle, Loader2, Plus, ListChecks, ChevronRight, ChevronLeft, Check } from "lucide-react";
+import { Search, AlertTriangle, Loader2, Plus, ListChecks, ChevronRight, ChevronLeft, Check, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -132,6 +132,39 @@ export default function AvaliacaoOSPage() {
     searchOS, updateAnswer, updateObservation,
     concludeAvaliacao, answeredCount, totalScore, maxScore,
   } = useAvaliacaoOS();
+
+  // Fetch pending (non-concluded) evaluations for current user
+  const { data: pendingAvaliacoes = [], refetch: refetchPending } = useQuery({
+    queryKey: ["pending_avaliacoes", profile?.id],
+    queryFn: async () => {
+      if (!profile?.id) return [];
+      const { data: avals } = await supabase
+        .from("avaliacoes")
+        .select("id, ordem_servico_id, concluida, nota_final, created_at, ordens_servico:ordem_servico_id(numero_os, cliente_nome, status, tipo_servico_id, colaborador_avaliado_id)")
+        .eq("avaliador_id", profile.id)
+        .eq("concluida", false)
+        .order("created_at", { ascending: false });
+      
+      if (!avals) return [];
+      
+      // Get collaborator names
+      const colabIds = [...new Set(avals.map((a: any) => a.ordens_servico?.colaborador_avaliado_id).filter(Boolean))];
+      let colabMap: Record<string, string> = {};
+      if (colabIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, nome")
+          .in("id", colabIds);
+        profiles?.forEach((p) => { colabMap[p.id] = p.nome; });
+      }
+
+      return avals.map((a: any) => ({
+        ...a,
+        _colaborador_nome: colabMap[a.ordens_servico?.colaborador_avaliado_id] || "—",
+      }));
+    },
+    enabled: !!profile?.id,
+  });
 
   // Fetch tipos de serviço: all for admin/gestor, only assigned for avaliador
   const { data: tiposDoAvaliador = [] } = useQuery({
@@ -454,6 +487,7 @@ export default function AvaliacaoOSPage() {
       setWizardScore(nota);
       setWizardFinalized(true);
       toast.success(`Avaliação concluída! Nota: ${nota.toFixed(1)}%`);
+      refetchPending();
     } catch (err: any) {
       toast.error("Erro ao finalizar: " + err.message);
     } finally {
@@ -498,6 +532,47 @@ export default function AvaliacaoOSPage() {
           </div>
         </div>
       </div>
+
+      {/* Pending Evaluations List */}
+      {!os && pendingAvaliacoes.length > 0 && (
+        <div className="bg-card border border-border rounded-lg shadow-card mb-6">
+          <div className="p-4 border-b border-border flex items-center gap-2">
+            <Clock className="w-4 h-4 text-warning" />
+            <h2 className="text-body font-semibold text-foreground">Avaliações Pendentes</h2>
+            <span className="text-caption text-muted-foreground ml-auto">{pendingAvaliacoes.length} pendente(s)</span>
+          </div>
+          <div className="divide-y divide-border">
+            {pendingAvaliacoes.map((a: any) => (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => {
+                  const osNum = a.ordens_servico?.numero_os;
+                  if (osNum) {
+                    setSearchQuery(osNum);
+                    searchOS(osNum, false);
+                  }
+                }}
+                className="w-full flex items-center gap-4 px-4 py-3 text-left hover:bg-muted/50 transition-colors press-effect"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-body font-medium text-primary font-tabular">OS #{a.ordens_servico?.numero_os}</span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border badge-active">Em andamento</span>
+                  </div>
+                  <p className="text-caption text-muted-foreground mt-0.5">
+                    {a.ordens_servico?.cliente_nome || "Sem cliente"} • Avaliado: {a._colaborador_nome}
+                  </p>
+                </div>
+                <div className="text-caption text-muted-foreground font-tabular shrink-0">
+                  {new Date(a.created_at).toLocaleDateString("pt-BR")}
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Create OS Wizard Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
