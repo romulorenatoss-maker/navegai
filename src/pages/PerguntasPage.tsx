@@ -105,10 +105,6 @@ export default function PerguntasPage() {
     queryFn: async () => { const { data } = await supabase.from("setores").select("*").eq("ativo", true).order("nome"); return data || []; },
   });
 
-  const { data: tipos = [] } = useQuery({
-    queryKey: ["tipos_servico_ativos"],
-    queryFn: async () => { const { data } = await supabase.from("tipos_servico").select("*").eq("ativo", true).order("nome"); return data || []; },
-  });
 
   const { data: setoresComAvaliadores = [] } = useQuery({
     queryKey: ["setores_com_avaliadores"],
