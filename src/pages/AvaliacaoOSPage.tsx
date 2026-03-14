@@ -1090,9 +1090,6 @@ export default function AvaliacaoOSPage() {
     }
   };
 
-  const handleAutoFinalize = useCallback(async () => {
-    return handleFinalizeEvaluation();
-  }, []);
 
   const handleFinalizeEvaluation = async () => {
     if (!evalAvaliacaoId || !evalOsId) return;
