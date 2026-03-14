@@ -94,14 +94,20 @@ export default function AvaliacaoOSPage() {
   const [view, setView] = useState<"list" | "os_detail" | "evaluation">("list");
   const [selectedOS, setSelectedOS] = useState<any | null>(null);
 
-  // Inline validation form
-  const [formOsNumero, setFormOsNumero] = useState("");
-  const [formClienteNome, setFormClienteNome] = useState("");
+  // Step 1: CPF validation
   const [formClienteCpf, setFormClienteCpf] = useState("");
+  const [formClienteNome, setFormClienteNome] = useState("");
+  const [cpfValidating, setCpfValidating] = useState(false);
+  const [cpfValidated, setCpfValidated] = useState(false);
+  const [formFoundCliente, setFormFoundCliente] = useState<any | null>(null);
+  const [showNewClienteForm, setShowNewClienteForm] = useState(false);
+  const [clienteId, setClienteId] = useState<string | null>(null);
+
+  // Step 2: OS validation
+  const [formOsNumero, setFormOsNumero] = useState("");
   const [formValidating, setFormValidating] = useState(false);
   const [formValidated, setFormValidated] = useState(false);
   const [formFoundOS, setFormFoundOS] = useState<any | null>(null);
-  const [formFoundCliente, setFormFoundCliente] = useState<any | null>(null);
   const [formPendingAval, setFormPendingAval] = useState<any | null>(null);
 
   // Setup state (after validation, for creating new OS)
