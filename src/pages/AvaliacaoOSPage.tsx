@@ -87,6 +87,47 @@ export default function AvaliacaoOSPage() {
     },
   });
 
+  // Preview questions that will be linked to the current evaluator based on selected tipo_servico and colaborador
+  const { data: previewPerguntas = [] } = useQuery({
+    queryKey: ["preview_perguntas", tipoServicoId, colaboradorId, profile?.id],
+    queryFn: async () => {
+      if (!profile?.id) return [];
+      
+      let query = supabase
+        .from("perguntas_avaliacao")
+        .select("id, pergunta, peso, ordem, tipo_servico_id")
+        .eq("ativo", true)
+        .or(`avaliador_id.eq.${profile.id},avaliador_id.is.null`);
+
+      if (tipoServicoId) {
+        query = query.or(`tipo_servico_id.eq.${tipoServicoId},tipo_servico_id.is.null`);
+      } else if (colaboradorId) {
+        // Get setor from colaborador, then tipos from that setor
+        const { data: colabProfile } = await supabase
+          .from("profiles")
+          .select("setor_id")
+          .eq("id", colaboradorId)
+          .single();
+        
+        if (colabProfile?.setor_id) {
+          const { data: tiposDoSetor } = await supabase
+            .from("tipos_servico")
+            .select("id")
+            .eq("setor_id", colabProfile.setor_id);
+          
+          if (tiposDoSetor && tiposDoSetor.length > 0) {
+            const tipoIds = tiposDoSetor.map(t => `tipo_servico_id.eq.${t.id}`).join(",");
+            query = query.or(`${tipoIds},tipo_servico_id.is.null`);
+          }
+        }
+      }
+
+      const { data } = await query.order("ordem");
+      return data || [];
+    },
+    enabled: createDialogOpen && !!profile?.id && (!!tipoServicoId || !!colaboradorId),
+  });
+
   useEffect(() => {
     const osParam = searchParams.get("os");
     if (osParam) {
