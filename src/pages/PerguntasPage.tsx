@@ -114,9 +114,9 @@ export default function PerguntasPage() {
     for (const p of perguntas) {
       const key = p.tipo_servico_id || "global";
       const nome = (p as any).tipos_servico?.nome || "Global (todos)";
-      const cur = map.get(key) || { nome, count: 0, totalPeso: 0 };
+      const cur = map.get(key) || { nome, count: 0, totalNota: 0 };
       cur.count += 1;
-      cur.totalPeso += p.peso;
+      cur.totalNota += p.peso;
       map.set(key, cur);
     }
     return map;
