@@ -646,6 +646,35 @@ export type Database = {
           },
         ]
       }
+      permissoes_tela: {
+        Row: {
+          created_at: string
+          id: string
+          profile_id: string
+          tela_path: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          profile_id: string
+          tela_path: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          profile_id?: string
+          tela_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permissoes_tela_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           ativo: boolean
