@@ -135,17 +135,22 @@ export default function AvaliacaoOSPage() {
   // tiposAvaliacao removed - no longer used
 
   const { data: tiposServico = [] } = useQuery({
-    queryKey: ["tipos_servico_aval", profile?.id, showAllTipos],
+    queryKey: ["tipos_servico_aval", profile?.id, isAdmin, evaluatorSetorIds.join(",")],
     queryFn: async () => {
       if (!profile?.id) return [];
-      if (showAllTipos) {
+      if (isAdmin) {
         const { data } = await supabase.from("tipos_servico").select("*, setores:setor_id(nome)").eq("ativo", true).order("nome");
         return data || [];
       }
-      const { data: assignments } = await supabase.from("avaliador_tipos_servico").select("tipo_servico_id").eq("avaliador_id", profile.id);
-      if (!assignments?.length) return [];
-      const { data } = await supabase.from("tipos_servico").select("*, setores:setor_id(nome)").eq("ativo", true).in("id", assignments.map(a => a.tipo_servico_id)).order("nome");
-      return data || [];
+      // Filter by evaluator's sectors
+      if (evaluatorSetorIds.length === 0) {
+        // Fallback: show all if evaluator has no sector assigned
+        const { data } = await supabase.from("tipos_servico").select("*, setores:setor_id(nome)").eq("ativo", true).order("nome");
+        return data || [];
+      }
+      // Show tipos_servico whose setor_id matches evaluator's sectors, OR setor_id is null (global)
+      const { data } = await supabase.from("tipos_servico").select("*, setores:setor_id(nome)").eq("ativo", true).order("nome");
+      return (data || []).filter((t: any) => !t.setor_id || evaluatorSetorIds.includes(t.setor_id));
     },
     enabled: !!profile?.id,
   });
