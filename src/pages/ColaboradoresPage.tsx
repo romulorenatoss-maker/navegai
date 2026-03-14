@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -21,6 +20,7 @@ export default function ColaboradoresPage() {
   const [email, setEmail] = useState("");
   const [cargo, setCargo] = useState("atendente");
   const [setorId, setSetorId] = useState("");
+  const [senha, setSenha] = useState("");
 
   const { data: profiles = [], isLoading } = useQuery({
     queryKey: ["profiles"],
@@ -38,6 +38,35 @@ export default function ColaboradoresPage() {
       if (error) throw error;
       return data;
     },
+  });
+
+  const create = useMutation({
+    mutationFn: async () => {
+      // Create auth user via signup
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password: senha,
+        options: { data: { nome } },
+      });
+      if (authError) throw authError;
+      if (!authData.user) throw new Error("Erro ao criar usuário.");
+
+      // Wait a moment for the trigger to create the profile
+      await new Promise((r) => setTimeout(r, 1000));
+
+      // Update the profile with extra fields
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ cargo, setor_id: setorId || null })
+        .eq("user_id", authData.user.id);
+      if (updateError) throw updateError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["profiles"] });
+      toast.success("Colaborador criado com sucesso.");
+      closeDialog();
+    },
+    onError: (err: any) => toast.error(err.message),
   });
 
   const update = useMutation({
@@ -65,11 +94,37 @@ export default function ColaboradoresPage() {
     onError: (err: any) => toast.error(err.message),
   });
 
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("profiles").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["profiles"] });
+      toast.success("Colaborador excluído.");
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const openCreate = () => {
+    setEditing(null); setNome(""); setEmail(""); setCargo("atendente"); setSetorId(""); setSenha("");
+    setDialogOpen(true);
+  };
   const openEdit = (p: Profile) => {
     setEditing(p); setNome(p.nome); setEmail(p.email); setCargo(p.cargo || "atendente"); setSetorId(p.setor_id || "");
     setDialogOpen(true);
   };
   const closeDialog = () => { setDialogOpen(false); setEditing(null); };
+
+  const handleSubmit = () => {
+    if (editing) {
+      update.mutate();
+    } else {
+      create.mutate();
+    }
+  };
+
+  const isSubmitting = create.isPending || update.isPending;
 
   const cargoLabel: Record<string, string> = {
     atendente: "Atendente", tecnico: "Técnico", executor: "Executor", avaliador: "Avaliador",
@@ -80,54 +135,69 @@ export default function ColaboradoresPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-section font-semibold text-foreground">Colaboradores</h1>
-          <p className="text-body text-muted-foreground">Cadastro dos colaboradores e executores. Novos colaboradores são criados ao fazer signup.</p>
+          <p className="text-body text-muted-foreground">Gerencie os colaboradores da organização.</p>
         </div>
+        <Button onClick={openCreate} className="press-effect">
+          <Plus className="w-4 h-4 mr-2" /> Novo Colaborador
+        </Button>
       </div>
 
       <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Nome</th>
-              <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Email</th>
-              <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Cargo</th>
-              <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Setor</th>
-              <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Status</th>
-              <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {isLoading ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Carregando...</td></tr>
-            ) : profiles.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhum colaborador cadastrado.</td></tr>
-            ) : profiles.map((p) => (
-              <tr key={p.id} className="hover:bg-muted/50 transition-colors">
-                <td className="px-4 py-3 text-body font-medium text-foreground">{p.nome}</td>
-                <td className="px-4 py-3 text-body text-muted-foreground">{p.email}</td>
-                <td className="px-4 py-3 text-body text-muted-foreground">{cargoLabel[p.cargo || ""] || p.cargo || "—"}</td>
-                <td className="px-4 py-3 text-body text-muted-foreground">{(p as any).setores?.nome || "—"}</td>
-                <td className="px-4 py-3">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${p.ativo ? "badge-complete" : "badge-expired"}`}>{p.ativo ? "Ativo" : "Inativo"}</span>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => toggleAtivo.mutate(p)} className="press-effect">{p.ativo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}</Button>
-                    <Button variant="ghost" size="sm" onClick={() => openEdit(p)} className="press-effect"><Pencil className="w-4 h-4" /></Button>
-                  </div>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Nome</th>
+                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Email</th>
+                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Cargo</th>
+                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Setor</th>
+                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Status</th>
+                <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Ações</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {isLoading ? (
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Carregando...</td></tr>
+              ) : profiles.length === 0 ? (
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhum colaborador cadastrado.</td></tr>
+              ) : profiles.map((p) => (
+                <tr key={p.id} className="hover:bg-muted/50 transition-colors">
+                  <td className="px-4 py-3 text-body font-medium text-foreground">{p.nome}</td>
+                  <td className="px-4 py-3 text-body text-muted-foreground">{p.email}</td>
+                  <td className="px-4 py-3 text-body text-muted-foreground">{cargoLabel[p.cargo || ""] || p.cargo || "—"}</td>
+                  <td className="px-4 py-3 text-body text-muted-foreground">{(p as any).setores?.nome || "—"}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${p.ativo ? "badge-complete" : "badge-expired"}`}>{p.ativo ? "Ativo" : "Inativo"}</span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => toggleAtivo.mutate(p)} className="press-effect">{p.ativo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}</Button>
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(p)} className="press-effect"><Pencil className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="sm" onClick={() => remove.mutate(p.id)} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Editar Colaborador</DialogTitle></DialogHeader>
-          <form onSubmit={(e) => { e.preventDefault(); update.mutate(); }} className="space-y-4">
+          <DialogHeader><DialogTitle>{editing ? "Editar Colaborador" : "Novo Colaborador"}</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-4">
             <div className="space-y-1.5"><Label>Nome</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} required /></div>
-            <div className="space-y-1.5"><Label>Email</Label><Input value={email} disabled className="bg-muted" /></div>
+            <div className="space-y-1.5">
+              <Label>Email</Label>
+              <Input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required disabled={!!editing} className={editing ? "bg-muted" : ""} />
+            </div>
+            {!editing && (
+              <div className="space-y-1.5">
+                <Label>Senha</Label>
+                <Input value={senha} onChange={(e) => setSenha(e.target.value)} type="password" required minLength={6} placeholder="Mínimo 6 caracteres" />
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Cargo</Label>
@@ -151,7 +221,7 @@ export default function ColaboradoresPage() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={closeDialog}>Cancelar</Button>
-              <Button type="submit" disabled={update.isPending} className="press-effect">{update.isPending ? "Salvando..." : "Salvar"}</Button>
+              <Button type="submit" disabled={isSubmitting} className="press-effect">{isSubmitting ? "Salvando..." : "Salvar"}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
