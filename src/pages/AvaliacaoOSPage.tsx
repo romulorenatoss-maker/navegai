@@ -560,7 +560,7 @@ export default function AvaliacaoOSPage() {
               <div>
                 <h2 className="text-subhead font-semibold text-foreground font-tabular">OS #{selectedOS.numero_os}</h2>
                 <p className="text-body text-muted-foreground mt-1">{selectedOS.cliente_nome || "Sem cliente"}</p>
-                <div className="flex gap-4 mt-2 text-caption text-muted-foreground">
+                <div className="flex flex-col sm:flex-row gap-1 sm:gap-4 mt-2 text-caption text-muted-foreground">
                   <span>Atendente: <strong className="text-foreground">{atendenteNome || "Não definido"}</strong></span>
                   <span>Técnico: <strong className="text-foreground">{tecnicoNome || "Não definido"}</strong></span>
                 </div>
