@@ -5,7 +5,11 @@ import { Search, AlertTriangle, Loader2, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useAvaliacaoOS, Answer } from "@/hooks/useAvaliacaoOS";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const SegmentedControl = ({
@@ -50,11 +54,36 @@ const statusLabel: Record<string, { text: string; badge: string }> = {
 export default function AvaliacaoOSPage() {
   const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [newOsNumero, setNewOsNumero] = useState("");
+  const [clienteNome, setClienteNome] = useState("");
+  const [clienteCpf, setClienteCpf] = useState("");
+  const [tipoServicoId, setTipoServicoId] = useState("");
+  const [colaboradorId, setColaboradorId] = useState("");
+
   const {
     loading, os, avaliacao, questions,
     searchOS, updateAnswer, updateObservation,
     concludeAvaliacao, answeredCount, totalScore, maxScore,
   } = useAvaliacaoOS();
+
+  const { data: tipos = [] } = useQuery({
+    queryKey: ["tipos_servico_ativos"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("tipos_servico").select("*").eq("ativo", true).order("nome");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: colaboradores = [] } = useQuery({
+    queryKey: ["colaboradores_ativos"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("*").eq("ativo", true).order("nome");
+      if (error) throw error;
+      return data;
+    },
+  });
 
   useEffect(() => {
     const osParam = searchParams.get("os");
@@ -68,14 +97,33 @@ export default function AvaliacaoOSPage() {
     if (searchQuery.trim()) searchOS(searchQuery.trim(), false);
   };
 
-  const handleCreate = () => {
-    const val = searchQuery.trim();
-    if (!val) return;
-    if (!/^\d+$/.test(val)) {
+  const openCreateDialog = () => {
+    setNewOsNumero("");
+    setClienteNome("");
+    setClienteCpf("");
+    setTipoServicoId("");
+    setColaboradorId("");
+    setCreateDialogOpen(true);
+  };
+
+  const handleCreateOS = () => {
+    const num = newOsNumero.trim();
+    if (!num) {
+      toast.error("Informe o número da OS.");
+      return;
+    }
+    if (!/^\d+$/.test(num)) {
       toast.error("O número da OS deve conter apenas dígitos.");
       return;
     }
-    searchOS(val, true);
+    searchOS(num, true, {
+      cliente_nome: clienteNome.trim() || null,
+      cliente_cpf: clienteCpf.trim() || null,
+      tipo_servico_id: tipoServicoId || null,
+      colaborador_avaliado_id: colaboradorId || null,
+    });
+    setCreateDialogOpen(false);
+    setSearchQuery(num);
   };
 
   const isCompleted = avaliacao?.concluida === true;
@@ -84,7 +132,7 @@ export default function AvaliacaoOSPage() {
     <div className="p-6 max-w-4xl mx-auto">
       <div className="mb-6">
         <h1 className="text-section font-semibold text-foreground">Avaliação de OS</h1>
-        <p className="text-body text-muted-foreground">Busque uma OS para iniciar a avaliação.</p>
+        <p className="text-body text-muted-foreground">Busque uma OS existente ou crie uma nova para iniciar a avaliação.</p>
       </div>
 
       {/* Search */}
@@ -98,7 +146,7 @@ export default function AvaliacaoOSPage() {
               id="os-search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Ex: OS-12345"
+              placeholder="Ex: 12345"
               className="h-10"
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             />
@@ -108,13 +156,63 @@ export default function AvaliacaoOSPage() {
               {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
               Buscar
             </Button>
-            <Button onClick={handleCreate} className="h-10 press-effect" disabled={loading || !searchQuery.trim()}>
-              {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+            <Button onClick={openCreateDialog} className="h-10 press-effect" disabled={loading}>
+              <Plus className="w-4 h-4 mr-2" />
               Criar OS
             </Button>
           </div>
         </div>
       </div>
+
+      {/* Create OS Dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Criar Nova Ordem de Serviço</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); handleCreateOS(); }} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Número da OS *</Label>
+              <Input
+                value={newOsNumero}
+                onChange={(e) => setNewOsNumero(e.target.value.replace(/\D/g, ""))}
+                placeholder="Apenas números"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Nome do Cliente</Label>
+                <Input value={clienteNome} onChange={(e) => setClienteNome(e.target.value)} placeholder="Nome completo" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>CPF do Cliente</Label>
+                <Input value={clienteCpf} onChange={(e) => setClienteCpf(e.target.value)} placeholder="000.000.000-00" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Tipo de Serviço</Label>
+              <Select value={tipoServicoId} onValueChange={setTipoServicoId}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {tipos.map((t) => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Colaborador Avaliado</Label>
+              <Select value={colaboradorId} onValueChange={setColaboradorId}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {colaboradores.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancelar</Button>
+              <Button type="submit" className="press-effect">Criar e Avaliar</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <AnimatePresence>
         {os && (
@@ -133,12 +231,14 @@ export default function AvaliacaoOSPage() {
                   {statusLabel[os.status]?.text || os.status}
                 </span>
               </div>
-              {os.cliente_nome && (
+              {(os.cliente_nome || os.cliente_cpf) && (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-body">
-                  <div>
-                    <span className="text-muted-foreground text-caption block">Cliente</span>
-                    <span className="font-medium text-foreground">{os.cliente_nome}</span>
-                  </div>
+                  {os.cliente_nome && (
+                    <div>
+                      <span className="text-muted-foreground text-caption block">Cliente</span>
+                      <span className="font-medium text-foreground">{os.cliente_nome}</span>
+                    </div>
+                  )}
                   {os.cliente_cpf && (
                     <div>
                       <span className="text-muted-foreground text-caption block">CPF</span>
