@@ -603,14 +603,14 @@ export default function AvaliacaoOSPage() {
           </div>
 
           {/* Actions */}
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             {selectedOS.status !== "concluida" && (
-              <Button onClick={startMyEvaluation} className="press-effect">
-                <Eye className="w-4 h-4 mr-2" /> Iniciar / Continuar Minha Avaliação
+              <Button onClick={startMyEvaluation} className="press-effect w-full sm:w-auto">
+                <Eye className="w-4 h-4 mr-2" /> Iniciar / Continuar
               </Button>
             )}
             {selectedOS.status !== "concluida" && isAdmin && (
-              <Button variant="destructive" onClick={() => handleDeleteOS(selectedOS.id)} className="press-effect">
+              <Button variant="destructive" onClick={() => handleDeleteOS(selectedOS.id)} className="press-effect w-full sm:w-auto">
                 <Trash2 className="w-4 h-4 mr-2" /> Excluir OS
               </Button>
             )}
