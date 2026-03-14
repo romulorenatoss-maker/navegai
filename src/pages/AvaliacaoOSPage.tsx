@@ -1523,8 +1523,26 @@ export default function AvaliacaoOSPage() {
           )}
         </div>
 
+        {/* Editing mode banner */}
+        {isEditing && (
+          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+            className="bg-warning/5 border-2 border-warning/20 rounded-lg p-4 mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Pencil className="w-5 h-5 text-warning" />
+              <div>
+                <p className="text-sm font-semibold text-foreground">Modo de Edição</p>
+                <p className="text-caption text-muted-foreground">Altere os avaliados e respostas. Clique em Salvar quando terminar.</p>
+              </div>
+            </div>
+            <Button size="sm" onClick={handleSaveEditing} disabled={evalSubmitting} className="press-effect">
+              {evalSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+              Salvar
+            </Button>
+          </motion.div>
+        )}
+
         {/* Finalized state */}
-        {evalFinalized && (
+        {evalFinalized && !isEditing && (
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
             className="bg-success/5 border-2 border-success/20 rounded-lg p-6 mb-4 text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-success/10 mb-3">
@@ -1533,7 +1551,12 @@ export default function AvaliacaoOSPage() {
             <h2 className="text-xl font-bold text-foreground">Avaliação Concluída!</h2>
             <p className="text-3xl font-bold text-primary font-tabular mt-2">{evalScore?.toFixed(1)}%</p>
             <p className="text-sm text-muted-foreground mt-1">{globalAnsweredCount} perguntas respondidas</p>
-            <Button onClick={generatePDF} variant="outline" className="mt-4 press-effect" disabled={!canExport}>
+            {canEdit && (
+              <Button onClick={handleStartEditing} variant="outline" className="mt-3 press-effect">
+                <Pencil className="w-4 h-4 mr-2" /> Alterar Avaliação
+              </Button>
+            )}
+            <Button onClick={generatePDF} variant="outline" className="mt-3 ml-2 press-effect" disabled={!canExport}>
               <Download className="w-4 h-4 mr-2" /> Baixar PDF da Avaliação
             </Button>
             {!canExport && (
