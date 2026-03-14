@@ -140,9 +140,10 @@ export default function TiposServicoPage() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-border">
-              <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Nome</th>
-              <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Setor</th>
+              <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Nome / Setor</th>
               <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Avaliações</th>
+              <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Perguntas</th>
+              <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Por Setor</th>
               <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Status</th>
               <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Ações</th>
             </tr>
