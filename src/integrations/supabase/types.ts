@@ -247,6 +247,42 @@ export type Database = {
         }
         Relationships: []
       }
+      colaborador_setores: {
+        Row: {
+          created_at: string
+          id: string
+          profile_id: string
+          setor_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          profile_id: string
+          setor_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          profile_id?: string
+          setor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "colaborador_setores_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "colaborador_setores_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ordens_servico: {
         Row: {
           cliente_cpf: string | null
