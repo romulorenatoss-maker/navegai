@@ -12,7 +12,19 @@ import type { Tables } from "@/integrations/supabase/types";
 
 type Pergunta = Tables<"perguntas_avaliacao">;
 
-export default function PerguntasPage() {
+// Group questions by evaluator and sum weights
+function calcPesoByAvaliador(perguntas: any[]): Map<string, { nome: string; total: number; count: number }> {
+  const map = new Map<string, { nome: string; total: number; count: number }>();
+  for (const p of perguntas) {
+    const key = p.avaliador_id || "todos";
+    const nome = (p as any).profiles?.nome || "Todos";
+    const current = map.get(key) || { nome, total: 0, count: 0 };
+    current.total += p.peso;
+    current.count += 1;
+    map.set(key, current);
+  }
+  return map;
+}
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Pergunta | null>(null);
