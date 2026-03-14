@@ -134,7 +134,7 @@ export default function TiposServicoPage() {
           <h1 className="text-section font-semibold text-foreground">Tipos de Serviço</h1>
           <p className="text-body text-muted-foreground">Configure tipos de serviço e vincule checklists de avaliação.</p>
         </div>
-        <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Novo Tipo</Button>
+        {isAdmin && <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Novo Tipo</Button>}
       </div>
 
       <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
