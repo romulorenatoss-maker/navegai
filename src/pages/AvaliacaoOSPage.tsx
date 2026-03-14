@@ -1236,13 +1236,20 @@ export default function AvaliacaoOSPage() {
 
   // --- Computed ---
   const isOsFullyConcluded = evalOsData?.status === "concluida";
-  const isLocked = isOsFullyConcluded; // Only lock when OS is fully concluded by all sectors
   const answerablePerguntas = useMemo(() => evalPerguntas.filter(p => isQuestionAnswerable(p.setor_avaliado_id)), [evalPerguntas, isQuestionAnswerable]);
   const pendingPerguntas = useMemo(() => evalPerguntas.filter(p => !isQuestionAnswerable(p.setor_avaliado_id)), [evalPerguntas, isQuestionAnswerable]);
-  const evalAnsweredCount = answerablePerguntas.filter(p => evalAnswers[p.id] != null).length;
-  const evalProgressPercent = answerablePerguntas.length > 0 ? Math.round((evalAnsweredCount / answerablePerguntas.length) * 100) : 0;
-  const evalTotalScore = answerablePerguntas.reduce((a, p) => evalAnswers[p.id] === "sim" ? a + p.peso : a, 0);
-  const evalMaxScore = answerablePerguntas.reduce((a, p) => evalAnswers[p.id] !== "na" && evalAnswers[p.id] != null ? a + p.peso : a, 0);
+  
+  // Global progress: ALL questions answered across ALL evaluators
+  const globalAnsweredCount = evalPerguntas.filter(p => evalAnswers[p.id] != null).length;
+  const globalProgressPercent = evalPerguntas.length > 0 ? Math.round((globalAnsweredCount / evalPerguntas.length) * 100) : 0;
+  const isLocked = isOsFullyConcluded || globalProgressPercent === 100;
+  
+  // My sector progress
+  const myAnsweredCount = answerablePerguntas.filter(p => evalAnswers[p.id] != null).length;
+  const myProgressPercent = answerablePerguntas.length > 0 ? Math.round((myAnsweredCount / answerablePerguntas.length) * 100) : 0;
+  
+  const evalTotalScore = evalPerguntas.reduce((a, p) => evalAnswers[p.id] === "sim" ? a + p.peso : a, 0);
+  const evalMaxScore = evalPerguntas.reduce((a, p) => evalAnswers[p.id] !== "na" && evalAnswers[p.id] != null ? a + p.peso : a, 0);
 
   const atendenteNome = allProfiles.find(p => p.id === (selectedOS as any)?.atendente_id)?.nome;
   const tecnicoNome = allProfiles.find(p => p.id === (selectedOS as any)?.tecnico_id)?.nome;
