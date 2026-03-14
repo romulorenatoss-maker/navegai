@@ -109,6 +109,8 @@ export default function AvaliacaoOSPage() {
   const [wizardFinalized, setWizardFinalized] = useState(false);
   const [wizardScore, setWizardScore] = useState<number | null>(null);
   const [wizardSubmitting, setWizardSubmitting] = useState(false);
+  const [existingAvaliacaoId, setExistingAvaliacaoId] = useState<string | null>(null);
+  const [existingOsId, setExistingOsId] = useState<string | null>(null);
 
   // Filter state
   const [filterDateFrom, setFilterDateFrom] = useState<Date | undefined>();
