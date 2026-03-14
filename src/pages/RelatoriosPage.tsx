@@ -598,6 +598,79 @@ export default function RelatoriosPage() {
             Buscar
           </Button>
         </div>
+
+        {/* Advanced Filters Row */}
+        <div className="flex flex-wrap gap-4 items-end mt-4 pt-4 border-t border-border">
+          <div className="flex flex-col gap-1.5 min-w-[160px]">
+            <label className="text-caption font-medium text-muted-foreground">Status</label>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="aberta">Aberta</SelectItem>
+                <SelectItem value="em_andamento">Em andamento</SelectItem>
+                <SelectItem value="concluida">Concluída</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-col gap-1.5 min-w-[160px]">
+            <label className="text-caption font-medium text-muted-foreground">Setor</label>
+            <Select value={filterSetor} onValueChange={setFilterSetor}>
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                {setores.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-col gap-1.5 min-w-[160px]">
+            <label className="text-caption font-medium text-muted-foreground">Avaliador</label>
+            <Select value={filterAvaliador} onValueChange={setFilterAvaliador}>
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                {avaliadores.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-col gap-1.5 min-w-[160px]">
+            <label className="text-caption font-medium text-muted-foreground">Avaliado</label>
+            <Select value={filterAvaliado} onValueChange={setFilterAvaliado}>
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                {avaliados.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-col gap-1.5 min-w-[160px]">
+            <label className="text-caption font-medium text-muted-foreground">Cliente</label>
+            <Input
+              className="h-9"
+              placeholder="Buscar cliente..."
+              value={filterCliente}
+              onChange={(e) => setFilterCliente(e.target.value)}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Action bar */}
