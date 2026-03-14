@@ -63,11 +63,7 @@ function SortableRow({
       <td className="px-2 py-3 text-caption text-muted-foreground font-tabular w-8">{String(index + 1).padStart(2, "0")}</td>
       <td className="px-4 py-3 text-body font-medium text-foreground">{p.pergunta}</td>
       <td className="px-4 py-3 text-body text-muted-foreground">{p.profiles?.nome || "Todos"}</td>
-      <td className="px-4 py-3">
-        <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${p.tipo_avaliado === "atendente" ? "badge-active" : "badge-pending"}`}>
-          {p.tipo_avaliado}
-        </span>
-      </td>
+      <td className="px-4 py-3 text-body text-muted-foreground">{p.setores?.nome || "Todos"}</td>
       <td className="px-4 py-3 text-center text-body font-semibold text-foreground font-tabular">{p.peso}</td>
       <td className="px-4 py-3 text-right">
         <div className="flex items-center justify-end gap-1">
@@ -86,6 +82,7 @@ export default function PerguntasPage() {
   const [pergunta, setPergunta] = useState("");
   const [tipoServicoId, setTipoServicoId] = useState("");
   const [avaliadorId, setAvaliadorId] = useState("");
+  const [setorAvaliadoId, setSetorAvaliadoId] = useState("");
   const [tipoAvaliado, setTipoAvaliado] = useState("atendente");
   const [peso, setPeso] = useState("1");
   const [ordem, setOrdem] = useState("0");
@@ -103,8 +100,17 @@ export default function PerguntasPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("perguntas_avaliacao")
-        .select("*, tipos_servico(nome), profiles!perguntas_avaliacao_avaliador_id_fkey(nome)")
+        .select("*, tipos_servico(nome), profiles!perguntas_avaliacao_avaliador_id_fkey(nome), setores!perguntas_avaliacao_setor_avaliado_id_fkey(nome)")
         .order("ordem");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: setores = [] } = useQuery({
+    queryKey: ["setores_ativos"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("setores").select("*").eq("ativo", true).order("nome");
       if (error) throw error;
       return data;
     },
@@ -177,6 +183,7 @@ export default function PerguntasPage() {
         pergunta,
         tipo_servico_id: resolvedTipoId,
         avaliador_id: avaliadorId === "todos" || !avaliadorId ? null : avaliadorId,
+        setor_avaliado_id: setorAvaliadoId === "todos" || !setorAvaliadoId ? null : setorAvaliadoId,
         tipo_avaliado: tipoAvaliado,
         peso: Math.min(100, Math.max(1, parseInt(peso) || 1)),
         ordem: computedOrdem,
@@ -238,11 +245,11 @@ export default function PerguntasPage() {
   );
 
   const openCreate = () => {
-    setEditing(null); setPergunta(""); setTipoServicoId(""); setAvaliadorId(""); setTipoAvaliado("atendente"); setPeso("1"); setOrdem("0"); setPreviewAnswer(null);
+    setEditing(null); setPergunta(""); setTipoServicoId(""); setAvaliadorId(""); setSetorAvaliadoId(""); setTipoAvaliado("atendente"); setPeso("1"); setOrdem("0"); setPreviewAnswer(null);
     setDialogOpen(true);
   };
   const openEdit = (p: Pergunta) => {
-    setEditing(p); setPergunta(p.pergunta); setTipoServicoId(p.tipo_servico_id || ""); setAvaliadorId(p.avaliador_id || ""); setTipoAvaliado(p.tipo_avaliado); setPeso(String(p.peso)); setOrdem(String(p.ordem)); setPreviewAnswer(null);
+    setEditing(p); setPergunta(p.pergunta); setTipoServicoId(p.tipo_servico_id || ""); setAvaliadorId(p.avaliador_id || ""); setSetorAvaliadoId((p as any).setor_avaliado_id || ""); setTipoAvaliado(p.tipo_avaliado); setPeso(String(p.peso)); setOrdem(String(p.ordem)); setPreviewAnswer(null);
     setDialogOpen(true);
   };
   const closeDialog = () => { setDialogOpen(false); setEditing(null); setPreviewAnswer(null); };
@@ -305,7 +312,7 @@ export default function PerguntasPage() {
                     <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-2 py-2 w-8">#</th>
                     <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Pergunta</th>
                     <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Avaliador</th>
-                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Avaliado</th>
+                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Setor Avaliado</th>
                     <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Peso</th>
                     <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Ações</th>
                   </tr>
@@ -368,14 +375,15 @@ export default function PerguntasPage() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Tipo de Avaliado</Label>
-                <Select value={tipoAvaliado} onValueChange={setTipoAvaliado}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Label>Setor Avaliado</Label>
+                <Select value={setorAvaliadoId} onValueChange={setSetorAvaliadoId}>
+                  <SelectTrigger><SelectValue placeholder="Todos os setores" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="atendente">Atendente</SelectItem>
-                    <SelectItem value="tecnico">Técnico</SelectItem>
+                    <SelectItem value="todos">Todos os setores</SelectItem>
+                    {setores.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                <p className="text-caption text-muted-foreground">Selecione o setor que será avaliado por esta pergunta.</p>
               </div>
             </div>
             <div className="space-y-1.5">

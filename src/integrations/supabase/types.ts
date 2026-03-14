@@ -360,6 +360,7 @@ export type Database = {
           ordem: number
           pergunta: string
           peso: number
+          setor_avaliado_id: string | null
           tipo_avaliado: string
           tipo_servico_id: string | null
           updated_at: string
@@ -373,6 +374,7 @@ export type Database = {
           ordem?: number
           pergunta: string
           peso?: number
+          setor_avaliado_id?: string | null
           tipo_avaliado?: string
           tipo_servico_id?: string | null
           updated_at?: string
@@ -386,6 +388,7 @@ export type Database = {
           ordem?: number
           pergunta?: string
           peso?: number
+          setor_avaliado_id?: string | null
           tipo_avaliado?: string
           tipo_servico_id?: string | null
           updated_at?: string
@@ -403,6 +406,13 @@ export type Database = {
             columns: ["correlacao_pergunta_id"]
             isOneToOne: false
             referencedRelation: "perguntas_avaliacao"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "perguntas_avaliacao_setor_avaliado_id_fkey"
+            columns: ["setor_avaliado_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
             referencedColumns: ["id"]
           },
           {

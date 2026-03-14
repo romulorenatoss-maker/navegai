@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, AlertTriangle, Loader2, Plus, ListChecks, ChevronRight, ChevronLeft, Check, Clock, Filter, CalendarIcon, X } from "lucide-react";
+import { Search, AlertTriangle, Loader2, Plus, ListChecks, ChevronRight, ChevronLeft, Check, Clock, Filter, CalendarIcon, X, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -145,6 +145,37 @@ export default function AvaliacaoOSPage() {
     searchOS, updateAnswer, updateObservation,
     concludeAvaliacao, answeredCount, totalScore, maxScore,
   } = useAvaliacaoOS();
+
+  // Fetch collaborators from the evaluated collaborator's sector
+  const { data: setorColaboradores = [] } = useQuery({
+    queryKey: ["setor_colaboradores_os", os?.colaborador_avaliado_id],
+    queryFn: async () => {
+      if (!os?.colaborador_avaliado_id) return [];
+      const { data: links } = await supabase
+        .from("colaborador_setores")
+        .select("setor_id, setores(nome)")
+        .eq("profile_id", os.colaborador_avaliado_id);
+      if (!links || links.length === 0) return [];
+      const setorIds = links.map((l) => l.setor_id);
+      const setorNames = Object.fromEntries(links.map((l) => [l.setor_id, (l as any).setores?.nome || ""]));
+      const { data: allLinks } = await supabase
+        .from("colaborador_setores")
+        .select("profile_id, setor_id")
+        .in("setor_id", setorIds);
+      if (!allLinks || allLinks.length === 0) return [];
+      const profileIds = [...new Set(allLinks.map((l) => l.profile_id))];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, nome, cargo")
+        .eq("ativo", true)
+        .in("id", profileIds);
+      return (profiles || []).map((p) => ({
+        ...p,
+        setorNome: setorNames[allLinks.find((l) => l.profile_id === p.id)?.setor_id || ""] || "",
+      }));
+    },
+    enabled: !!os?.colaborador_avaliado_id,
+  });
 
   // Fetch pending (non-concluded) evaluations for current user
   const { data: pendingAvaliacoes = [], refetch: refetchPending } = useQuery({
@@ -795,7 +826,6 @@ export default function AvaliacaoOSPage() {
         </div>
       )}
 
-
       {/* Create OS Wizard Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className={step === 3 ? "max-w-2xl" : "max-w-lg"}>
@@ -1115,6 +1145,33 @@ export default function AvaliacaoOSPage() {
                 </div>
               )}
             </div>
+
+            {/* Colaboradores do setor que receberão a nota */}
+            {setorColaboradores.length > 0 && (
+              <div className="bg-card border border-border rounded-lg p-4 shadow-card mb-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Users className="w-4 h-4 text-primary" />
+                  <h3 className="text-body font-semibold text-foreground">Colaboradores vinculados ao setor</h3>
+                  <span className="text-caption text-muted-foreground ml-auto">{setorColaboradores.length} pessoa(s)</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {setorColaboradores.map((c: any) => (
+                    <div
+                      key={c.id}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-caption font-medium ${
+                        c.id === os?.colaborador_avaliado_id
+                          ? "bg-primary/10 border-primary text-primary"
+                          : "bg-muted/50 border-border text-foreground"
+                      }`}
+                    >
+                      <span>{c.nome}</span>
+                      {c.cargo && <span className="text-muted-foreground">• {c.cargo}</span>}
+                      {c.id === os?.colaborador_avaliado_id && <span className="text-primary font-bold">(Avaliado)</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {isCompleted && (
               <div className="bg-card border border-success/30 rounded-lg p-4 shadow-card mb-4">
