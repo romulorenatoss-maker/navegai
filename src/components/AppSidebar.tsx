@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ClipboardCheck, FileSearch, ListChecks, PlayCircle, FolderKanban,
-  BarChart3, Building2, Users, HelpCircle, Wrench, LogOut, Star, ClipboardList,
+  BarChart3, Building2, Users, HelpCircle, Wrench, LogOut, Star,
   AlertTriangle, Link2, PanelLeftClose, PanelLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
