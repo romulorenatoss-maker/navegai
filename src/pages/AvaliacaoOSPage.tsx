@@ -1198,6 +1198,24 @@ export default function AvaliacaoOSPage() {
     setEvalFinalized(false);
     setEvalScore(null);
     autoFinalizeTriggered.current = false;
+    setIsEditing(false);
+  };
+
+  const handleStartEditing = async () => {
+    if (!evalAvaliacaoId) return;
+    // Reopen the evaluation in the database
+    await supabase.from("avaliacoes").update({ concluida: false, nota_final: null } as any).eq("id", evalAvaliacaoId);
+    setEvalFinalized(false);
+    setEvalScore(null);
+    setIsEditing(true);
+    autoFinalizeTriggered.current = true; // Prevent auto-finalize while editing
+    toast.info("Modo de edição ativado. Altere os dados e clique em Salvar.");
+  };
+
+  const handleSaveEditing = async () => {
+    setIsEditing(false);
+    // Re-finalize the evaluation
+    await handleFinalizeEvaluation();
   };
 
   const resetForm = () => {
