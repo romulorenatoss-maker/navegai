@@ -474,7 +474,59 @@ export default function AvaliacaoOSPage() {
     }
   }, []);
 
-  // --- Validate OS/Client ---
+  // --- Step 1: Validate CPF ---
+  const handleCpfValidation = async () => {
+    const cpfDigits = formClienteCpf.replace(/\D/g, "");
+    if (cpfDigits.length !== 11) { toast.error("Informe um CPF completo."); return; }
+    if (!isValidCpf(cpfDigits)) { toast.error("CPF inválido."); return; }
+
+    setCpfValidating(true);
+    try {
+      const { data: cliente } = await supabase
+        .from("clientes")
+        .select("id, nome, cpf")
+        .eq("cpf", formClienteCpf.trim())
+        .limit(1)
+        .single();
+
+      if (cliente) {
+        setFormFoundCliente(cliente);
+        setFormClienteNome(cliente.nome);
+        setClienteId(cliente.id);
+        setShowNewClienteForm(false);
+        toast.success(`Cliente encontrado: ${cliente.nome}`);
+      } else {
+        setFormFoundCliente(null);
+        setShowNewClienteForm(true);
+        setClienteId(null);
+        toast.info("Cliente não encontrado. Preencha o nome para cadastrar.");
+      }
+      setCpfValidated(true);
+    } catch (err: any) {
+      toast.error("Erro ao buscar cliente: " + err.message);
+    } finally {
+      setCpfValidating(false);
+    }
+  };
+
+  // --- Create new client from form ---
+  const handleCreateCliente = async () => {
+    const nome = formClienteNome.trim();
+    if (!nome) { toast.error("Informe o nome do cliente."); return; }
+    const cpfTr = formClienteCpf.trim();
+    try {
+      const { data: nc, error } = await supabase.from("clientes").insert({ nome, cpf: cpfTr }).select("id, nome, cpf").single();
+      if (error) throw error;
+      setFormFoundCliente(nc);
+      setClienteId(nc!.id);
+      setShowNewClienteForm(false);
+      toast.success("Cliente cadastrado com sucesso!");
+    } catch (err: any) {
+      toast.error("Erro ao cadastrar cliente: " + err.message);
+    }
+  };
+
+  // --- Step 2: Validate OS ---
   const handleValidate = async (overrideOs?: string) => {
     const num = (overrideOs || formOsNumero).trim();
     if (!num) { toast.error("Informe o número da OS."); return; }
@@ -482,11 +534,9 @@ export default function AvaliacaoOSPage() {
     setFormValidating(true);
     setFormValidated(false);
     setFormFoundOS(null);
-    setFormFoundCliente(null);
     setFormPendingAval(null);
 
     try {
-      // 1. Check if OS exists
       const { data: existingOS } = await supabase
         .from("ordens_servico")
         .select("*")
@@ -496,13 +546,10 @@ export default function AvaliacaoOSPage() {
 
       if (existingOS) {
         setFormFoundOS(existingOS);
-        setFormClienteNome(existingOS.cliente_nome || "");
-        setFormClienteCpf(existingOS.cliente_cpf ? formatCpf(existingOS.cliente_cpf) : "");
         if (existingOS.tipo_servico_id) setTipoServicoId(existingOS.tipo_servico_id);
         if (existingOS.atendente_id) setAtendenteId(existingOS.atendente_id);
         if (existingOS.tecnico_id) setTecnicoId(existingOS.tecnico_id);
 
-        // Check if there's a pending evaluation for current user
         if (profile) {
           const { data: pendingAval } = await supabase
             .from("avaliacoes")
@@ -516,31 +563,13 @@ export default function AvaliacaoOSPage() {
           if (pendingAval) {
             setFormPendingAval(pendingAval);
             if (pendingAval.tipo_avaliacao_id) setSelectedTipoAvaliacaoId(pendingAval.tipo_avaliacao_id);
-            toast.info("OS encontrada com avaliação pendente. Clique em 'Continuar Avaliação'.");
+            toast.info("OS encontrada com avaliação pendente.");
           } else {
             toast.success("OS encontrada! Configure a avaliação abaixo.");
           }
         }
       } else {
-        // 2. Check if client exists by CPF
-        const cpfDigits = formClienteCpf.replace(/\D/g, "");
-        if (cpfDigits.length === 11 && isValidCpf(cpfDigits)) {
-          const { data: cliente } = await supabase
-            .from("clientes")
-            .select("id, nome, cpf")
-            .eq("cpf", formClienteCpf.trim())
-            .limit(1)
-            .single();
-          if (cliente) {
-            setFormFoundCliente(cliente);
-            setFormClienteNome(cliente.nome);
-            toast.info(`Cliente encontrado: ${cliente.nome}. OS não encontrada, preencha os dados para criar.`);
-          } else {
-            toast.info("OS e cliente não encontrados. Preencha os dados para criar.");
-          }
-        } else {
-          toast.info("OS não encontrada. Preencha os dados para criar.");
-        }
+        toast.info("OS não encontrada. Preencha os dados para criar.");
       }
 
       setFormValidated(true);
