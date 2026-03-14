@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, AlertTriangle, Loader2, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useAvaliacaoOS, Answer } from "@/hooks/useAvaliacaoOS";
+import { toast } from "sonner";
 
 const SegmentedControl = ({
   value,
@@ -46,6 +48,7 @@ const statusLabel: Record<string, { text: string; badge: string }> = {
 };
 
 export default function AvaliacaoOSPage() {
+  const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const {
     loading, os, avaliacao, questions,
@@ -53,12 +56,26 @@ export default function AvaliacaoOSPage() {
     concludeAvaliacao, answeredCount, totalScore, maxScore,
   } = useAvaliacaoOS();
 
+  useEffect(() => {
+    const osParam = searchParams.get("os");
+    if (osParam) {
+      setSearchQuery(osParam);
+      searchOS(osParam, false);
+    }
+  }, []);
+
   const handleSearch = () => {
     if (searchQuery.trim()) searchOS(searchQuery.trim(), false);
   };
 
   const handleCreate = () => {
-    if (searchQuery.trim()) searchOS(searchQuery.trim(), true);
+    const val = searchQuery.trim();
+    if (!val) return;
+    if (!/^\d+$/.test(val)) {
+      toast.error("O número da OS deve conter apenas dígitos.");
+      return;
+    }
+    searchOS(val, true);
   };
 
   const isCompleted = avaliacao?.concluida === true;

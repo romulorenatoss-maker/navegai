@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ClipboardCheck, Clock, CheckCircle2, FolderOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +22,7 @@ const itemVariants = {
 };
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<OSStats>({ abertas: 0, em_andamento: 0, concluidas: 0, total: 0 });
   const [recentOS, setRecentOS] = useState<any[]>([]);
 
@@ -94,8 +96,12 @@ export default function DashboardPage() {
             </thead>
             <tbody className="divide-y divide-border">
               {recentOS.map((item) => (
-                <tr key={item.id} className="hover:bg-muted/50 transition-colors">
-                  <td className="px-4 py-3 text-body font-medium text-foreground font-tabular">{item.numero_os}</td>
+                <tr
+                  key={item.id}
+                  className="hover:bg-muted/50 transition-colors cursor-pointer"
+                  onClick={() => navigate(`/avaliacoes/pesquisa?os=${item.numero_os}`)}
+                >
+                  <td className="px-4 py-3 text-body font-medium text-primary underline underline-offset-2 font-tabular">{item.numero_os}</td>
                   <td className="px-4 py-3 text-body text-muted-foreground">{item.cliente_nome || "—"}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${statusBadge[item.status]}`}>
