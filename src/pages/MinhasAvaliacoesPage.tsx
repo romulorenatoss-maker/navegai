@@ -1,27 +1,41 @@
 import { useState } from "react";
-import { Eye, CheckCircle2, XCircle, MessageSquare, Image as ImageIcon, Loader2 } from "lucide-react";
+import { Eye, CheckCircle2, XCircle, MessageSquare, Image as ImageIcon, Loader2, CalendarIcon, Search } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { format, startOfDay, endOfDay, startOfMonth, endOfMonth } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export default function MinhasAvaliacoesPage() {
   const { profile } = useAuth();
   const [selectedAval, setSelectedAval] = useState<any | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
+  const now = new Date();
+  const [startDate, setStartDate] = useState<Date | undefined>(startOfMonth(now));
+  const [endDate, setEndDate] = useState<Date | undefined>(endOfMonth(now));
+  const [searchTrigger, setSearchTrigger] = useState(0);
+
   // Get completed OS where current user is atendente or tecnico
   const { data: minhasOS = [], isLoading } = useQuery({
-    queryKey: ["minhas_avaliacoes", profile?.id],
+    queryKey: ["minhas_avaliacoes", profile?.id, searchTrigger],
     queryFn: async () => {
       if (!profile?.id) return [];
+      const from = startDate ? startOfDay(startDate).toISOString() : startOfMonth(now).toISOString();
+      const to = endDate ? endOfDay(endDate).toISOString() : endOfDay(endOfMonth(now)).toISOString();
+
       const { data } = await supabase
         .from("ordens_servico")
         .select("id, numero_os, cliente_nome, cliente_cpf, status, created_at, tipo_servico_id, atendente_id, tecnico_id")
         .eq("status", "concluida")
         .or(`atendente_id.eq.${profile.id},tecnico_id.eq.${profile.id}`)
+        .gte("created_at", from)
+        .lte("created_at", to)
         .order("created_at", { ascending: false });
       return data || [];
     },
