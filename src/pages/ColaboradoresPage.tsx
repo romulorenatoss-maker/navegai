@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import type { Tables } from "@/integrations/supabase/types";
 
 type Profile = Tables<"profiles">;
+
+const cargoConfig: Record<string, { label: string; badge: string; description: string }> = {
+  administrador: { label: "Administrador", badge: "badge-complete", description: "Acesso total ao sistema" },
+  avaliador: { label: "Avaliador", badge: "badge-active", description: "Executa avaliações de OS" },
+  executor: { label: "Executor", badge: "badge-pending", description: "Realiza checklists operacionais" },
+  gestor: { label: "Gestor", badge: "badge-pending", description: "Monitora tarefas e indicadores" },
+  atendente: { label: "Atendente", badge: "badge-expired", description: "Atendimento ao cliente" },
+  tecnico: { label: "Técnico", badge: "badge-expired", description: "Suporte técnico" },
+};
 
 export default function ColaboradoresPage() {
   const queryClient = useQueryClient();
@@ -40,9 +49,16 @@ export default function ColaboradoresPage() {
     },
   });
 
+  const syncRole = async (userId: string, cargo: string) => {
+    const { error } = await supabase.rpc("sync_user_role", {
+      _user_id: userId,
+      _cargo: cargo,
+    });
+    if (error) console.error("Erro ao sincronizar role:", error.message);
+  };
+
   const create = useMutation({
     mutationFn: async () => {
-      // Create auth user via signup
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password: senha,
@@ -51,15 +67,15 @@ export default function ColaboradoresPage() {
       if (authError) throw authError;
       if (!authData.user) throw new Error("Erro ao criar usuário.");
 
-      // Wait a moment for the trigger to create the profile
       await new Promise((r) => setTimeout(r, 1000));
 
-      // Update the profile with extra fields
       const { error: updateError } = await supabase
         .from("profiles")
         .update({ cargo, setor_id: setorId || null })
         .eq("user_id", authData.user.id);
       if (updateError) throw updateError;
+
+      await syncRole(authData.user.id, cargo);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profiles"] });
@@ -76,6 +92,8 @@ export default function ColaboradoresPage() {
         nome, cargo, setor_id: setorId || null,
       }).eq("id", editing.id);
       if (error) throw error;
+
+      await syncRole(editing.user_id, cargo);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profiles"] });
@@ -126,16 +144,12 @@ export default function ColaboradoresPage() {
 
   const isSubmitting = create.isPending || update.isPending;
 
-  const cargoLabel: Record<string, string> = {
-    atendente: "Atendente", tecnico: "Técnico", executor: "Executor", avaliador: "Avaliador",
-  };
-
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-section font-semibold text-foreground">Colaboradores</h1>
-          <p className="text-body text-muted-foreground">Gerencie os colaboradores da organização.</p>
+          <p className="text-body text-muted-foreground">Gerencie os colaboradores e suas permissões.</p>
         </div>
         <Button onClick={openCreate} className="press-effect">
           <Plus className="w-4 h-4 mr-2" /> Novo Colaborador
@@ -160,24 +174,36 @@ export default function ColaboradoresPage() {
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Carregando...</td></tr>
               ) : profiles.length === 0 ? (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhum colaborador cadastrado.</td></tr>
-              ) : profiles.map((p) => (
-                <tr key={p.id} className="hover:bg-muted/50 transition-colors">
-                  <td className="px-4 py-3 text-body font-medium text-foreground">{p.nome}</td>
-                  <td className="px-4 py-3 text-body text-muted-foreground">{p.email}</td>
-                  <td className="px-4 py-3 text-body text-muted-foreground">{cargoLabel[p.cargo || ""] || p.cargo || "—"}</td>
-                  <td className="px-4 py-3 text-body text-muted-foreground">{(p as any).setores?.nome || "—"}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${p.ativo ? "badge-complete" : "badge-expired"}`}>{p.ativo ? "Ativo" : "Inativo"}</span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => toggleAtivo.mutate(p)} className="press-effect">{p.ativo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}</Button>
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(p)} className="press-effect"><Pencil className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="sm" onClick={() => remove.mutate(p.id)} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              ) : profiles.map((p) => {
+                const cfg = cargoConfig[p.cargo || ""] || { label: p.cargo || "—", badge: "badge-expired" };
+                return (
+                  <tr key={p.id} className="hover:bg-muted/50 transition-colors">
+                    <td className="px-4 py-3 text-body font-medium text-foreground">
+                      <div className="flex items-center gap-2">
+                        {p.cargo === "administrador" && <ShieldCheck className="w-4 h-4 text-success shrink-0" />}
+                        {p.nome}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-body text-muted-foreground">{p.email}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${cfg.badge}`}>
+                        {cfg.label}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-body text-muted-foreground">{(p as any).setores?.nome || "—"}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${p.ativo ? "badge-complete" : "badge-expired"}`}>{p.ativo ? "Ativo" : "Inativo"}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => toggleAtivo.mutate(p)} className="press-effect">{p.ativo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}</Button>
+                        <Button variant="ghost" size="sm" onClick={() => openEdit(p)} className="press-effect"><Pencil className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="sm" onClick={() => remove.mutate(p.id)} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -198,26 +224,30 @@ export default function ColaboradoresPage() {
                 <Input value={senha} onChange={(e) => setSenha(e.target.value)} type="password" required minLength={6} placeholder="Mínimo 6 caracteres" />
               </div>
             )}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Cargo</Label>
-                <Select value={cargo} onValueChange={setCargo}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="atendente">Atendente</SelectItem>
-                    <SelectItem value="tecnico">Técnico</SelectItem>
-                    <SelectItem value="executor">Executor</SelectItem>
-                    <SelectItem value="avaliador">Avaliador</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Setor</Label>
-                <Select value={setorId} onValueChange={setSetorId}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>{setores.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-1.5">
+              <Label>Cargo / Permissão</Label>
+              <Select value={cargo} onValueChange={setCargo}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(cargoConfig).map(([value, cfg]) => (
+                    <SelectItem key={value} value={value}>
+                      <div className="flex flex-col">
+                        <span>{cfg.label}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-caption text-muted-foreground">
+                {cargoConfig[cargo]?.description || ""}
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Setor</Label>
+              <Select value={setorId} onValueChange={setSetorId}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>{setores.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
+              </Select>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={closeDialog}>Cancelar</Button>
