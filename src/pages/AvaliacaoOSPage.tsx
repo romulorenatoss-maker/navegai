@@ -1336,7 +1336,7 @@ export default function AvaliacaoOSPage() {
   // Global progress: ALL questions answered across ALL evaluators
   const globalAnsweredCount = evalPerguntas.filter(p => evalAnswers[p.id] != null).length;
   const globalProgressPercent = evalPerguntas.length > 0 ? Math.round((globalAnsweredCount / evalPerguntas.length) * 100) : 0;
-  const isLocked = isOsFullyConcluded || globalProgressPercent === 100;
+  const isLocked = isOsFullyConcluded || evalFinalized;
   
   // My sector progress
   const myAnsweredCount = answerablePerguntas.filter(p => evalAnswers[p.id] != null).length;
