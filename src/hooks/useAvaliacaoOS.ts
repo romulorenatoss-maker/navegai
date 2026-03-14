@@ -222,7 +222,7 @@ export function useAvaliacaoOS() {
   };
 
   const updateAnswer = async (perguntaId: string, answer: Answer) => {
-    if (!avaliacao) return;
+    if (!avaliacao || !os) return;
 
     setQuestions((prev) =>
       prev.map((q) => (q.pergunta_id === perguntaId ? { ...q, answer } : q))
@@ -230,16 +230,18 @@ export function useAvaliacaoOS() {
 
     await supabase.from("respostas_avaliacao").upsert(
       {
-        avaliacao_id: avaliacao.id,
+        ordem_servico_id: os.id,
         pergunta_id: perguntaId,
         resposta: answer,
-      },
-      { onConflict: "avaliacao_id,pergunta_id" }
+        avaliacao_id: avaliacao.id,
+        avaliador_id: profile?.id,
+      } as any,
+      { onConflict: "ordem_servico_id,pergunta_id" }
     );
   };
 
   const updateObservation = async (perguntaId: string, observation: string) => {
-    if (!avaliacao) return;
+    if (!avaliacao || !os) return;
 
     setQuestions((prev) =>
       prev.map((q) => (q.pergunta_id === perguntaId ? { ...q, observation } : q))
@@ -247,11 +249,14 @@ export function useAvaliacaoOS() {
 
     await supabase.from("respostas_avaliacao").upsert(
       {
-        avaliacao_id: avaliacao.id,
+        ordem_servico_id: os.id,
         pergunta_id: perguntaId,
         observacao: observation,
-      },
-      { onConflict: "avaliacao_id,pergunta_id" }
+        avaliacao_id: avaliacao.id,
+        avaliador_id: profile?.id,
+      } as any,
+      { onConflict: "ordem_servico_id,pergunta_id" }
+    );
     );
   };
 
