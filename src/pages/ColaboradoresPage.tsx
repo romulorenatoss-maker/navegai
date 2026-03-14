@@ -102,10 +102,18 @@ export default function ColaboradoresPage() {
   };
 
   const saveSetores = async (profileId: string) => {
-    await supabase.from("colaborador_setores").delete().eq("profile_id", profileId);
+    const { error: delError } = await supabase.from("colaborador_setores").delete().eq("profile_id", profileId);
+    if (delError) {
+      console.error("Erro ao limpar setores:", delError.message);
+      throw new Error("Erro ao salvar setores: " + delError.message);
+    }
     if (selectedSetores.length > 0) {
       const rows = selectedSetores.map((sid) => ({ profile_id: profileId, setor_id: sid }));
-      await supabase.from("colaborador_setores").insert(rows);
+      const { error: insError } = await supabase.from("colaborador_setores").insert(rows);
+      if (insError) {
+        console.error("Erro ao inserir setores:", insError.message);
+        throw new Error("Erro ao salvar setores: " + insError.message);
+      }
     }
     // Also update the legacy setor_id field with the first setor for backward compat
     await supabase.from("profiles").update({ setor_id: selectedSetores[0] || null }).eq("id", profileId);
