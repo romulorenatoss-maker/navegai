@@ -42,6 +42,25 @@ export default function MinhasAvaliacoesPage() {
     enabled: !!profile?.id,
   });
 
+  // Calculate average score for all filtered OS
+  const { data: notaMedia } = useQuery({
+    queryKey: ["minhas_avaliacoes_media", minhasOS.map(o => o.id).join(",")],
+    queryFn: async () => {
+      if (minhasOS.length === 0) return null;
+      const osIds = minhasOS.map(o => o.id);
+      const { data } = await supabase
+        .from("avaliacoes")
+        .select("nota_final")
+        .in("ordem_servico_id", osIds)
+        .eq("concluida", true)
+        .not("nota_final", "is", null);
+      if (!data || data.length === 0) return null;
+      const sum = data.reduce((acc, a) => acc + Number(a.nota_final), 0);
+      return sum / data.length;
+    },
+    enabled: minhasOS.length > 0,
+  });
+
   // Load evaluation details for selected OS
   const { data: avalDetails = [], isLoading: detailLoading } = useQuery({
     queryKey: ["aval_detail", selectedAval?.id],
@@ -142,6 +161,14 @@ export default function MinhasAvaliacoesPage() {
         <Button onClick={() => setSearchTrigger(p => p + 1)} className="press-effect">
           <Search className="w-4 h-4 mr-2" /> Buscar
         </Button>
+        {notaMedia != null && (
+          <div className="flex items-center gap-2 ml-2 bg-muted/50 border border-border rounded-lg px-4 py-2">
+            <span className="text-sm font-medium text-muted-foreground">Nota Média:</span>
+            <span className={cn("text-lg font-bold font-tabular", notaMedia >= 80 ? "text-success" : notaMedia >= 60 ? "text-warning" : "text-destructive")}>
+              {notaMedia.toFixed(1)}%
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
