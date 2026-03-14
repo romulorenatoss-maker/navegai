@@ -54,6 +54,7 @@ const statusLabel: Record<string, { text: string; badge: string }> = {
 
 export default function AvaliacaoOSPage() {
   const [searchParams] = useSearchParams();
+  const { profile } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newOsNumero, setNewOsNumero] = useState("");
