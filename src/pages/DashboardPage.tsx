@@ -466,6 +466,7 @@ export default function DashboardPage() {
 
   const filteredOS = useMemo(() => {
     if (statusFilter === "all") return allOS;
+    if (statusFilter === "em_andamento") return allOS.filter((o) => o.status === "em_andamento" || o.status === "aberta");
     return allOS.filter((o) => o.status === statusFilter);
   }, [allOS, statusFilter]);
 
