@@ -29,7 +29,7 @@ export default function ColaboradoresPage() {
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [cargo, setCargo] = useState("atendente");
-  const [setorId, setSetorId] = useState("");
+  const [selectedSetores, setSelectedSetores] = useState<string[]>([]);
   const [senha, setSenha] = useState("");
   const [selectedTiposServico, setSelectedTiposServico] = useState<string[]>([]);
 
