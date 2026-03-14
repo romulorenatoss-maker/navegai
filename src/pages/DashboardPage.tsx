@@ -142,12 +142,22 @@ export default function DashboardPage() {
       const from = startDate ? startDate.toISOString() : startOfMonth(now).toISOString();
       const to = endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString();
 
-      const { data: osData } = await supabase
+      let query = supabase
         .from("ordens_servico")
         .select("id, numero_os, status, created_at, cliente_nome, cliente_id, tipo_servico_id")
         .gte("created_at", from)
         .lte("created_at", to)
         .order("created_at", { ascending: false });
+
+      if (statusFilter !== "all") {
+        if (statusFilter === "em_andamento") {
+          query = query.in("status", ["em_andamento", "aberta"]);
+        } else {
+          query = query.eq("status", statusFilter);
+        }
+      }
+
+      const { data: osData } = await query;
 
       if (!osData || osData.length === 0) {
         setAllOS([]);
@@ -233,10 +243,20 @@ export default function DashboardPage() {
       if (mySetorIds.length === 0 && profile.setor_id) mySetorIds = [profile.setor_id];
       if (mySetorIds.length === 0 && !isAdmin) { setPendingMySector([]); setPendingOtherSector([]); setCompletedOS([]); return; }
 
-      const { data: openOS } = await supabase
+      let pendingQuery = supabase
         .from("ordens_servico")
         .select("id, numero_os, cliente_nome, tipo_servico_id, status, colaborador_avaliado_id, atendente_id, tecnico_id")
         .order("created_at", { ascending: false });
+
+      if (statusFilter !== "all") {
+        if (statusFilter === "em_andamento") {
+          pendingQuery = pendingQuery.in("status", ["em_andamento", "aberta"]);
+        } else {
+          pendingQuery = pendingQuery.eq("status", statusFilter);
+        }
+      }
+
+      const { data: openOS } = await pendingQuery;
       if (!openOS?.length) { setPendingMySector([]); setPendingOtherSector([]); setCompletedOS([]); return; }
 
       const osIds = openOS.map(o => o.id);
@@ -386,13 +406,25 @@ export default function DashboardPage() {
   // Fetch ranking + scores
   useEffect(() => {
     const fetchRanking = async () => {
-      const sixtyDaysAgo = new Date();
-      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
-      const { data } = await supabase
+      const from = startDate ? startDate.toISOString() : startOfMonth(now).toISOString();
+      const to = endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString();
+
+      let query = supabase
         .from("ordens_servico")
-        .select("cliente_id, cliente_nome")
-        .gte("created_at", sixtyDaysAgo.toISOString())
+        .select("cliente_id, cliente_nome, status")
+        .gte("created_at", from)
+        .lte("created_at", to)
         .not("cliente_id", "is", null);
+
+      if (statusFilter !== "all") {
+        if (statusFilter === "em_andamento") {
+          query = query.in("status", ["em_andamento", "aberta"]);
+        } else {
+          query = query.eq("status", statusFilter);
+        }
+      }
+
+      const { data } = await query;
       if (!data) return;
       const countMap: Record<string, { nome: string; count: number }> = {};
       data.forEach((os: any) => {
@@ -409,6 +441,13 @@ export default function DashboardPage() {
     };
 
     const fetchScores = async () => {
+      // Scores only make sense for concluded OS
+      if (statusFilter === "aberta" || statusFilter === "em_andamento") {
+        setTecnicoMedias([]);
+        setSetorMedias([]);
+        return;
+      }
+
       const from = startDate ? startDate.toISOString() : startOfMonth(now).toISOString();
       const to = endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString();
 
