@@ -110,13 +110,13 @@ export default function PerguntasPage() {
   // avaliadores query removed - no longer needed for question form
 
   const summaryByTipo = useMemo(() => {
-    const map = new Map<string, { nome: string; count: number; totalPeso: number }>();
+    const map = new Map<string, { nome: string; count: number; totalNota: number }>();
     for (const p of perguntas) {
       const key = p.tipo_servico_id || "global";
       const nome = (p as any).tipos_servico?.nome || "Global (todos)";
-      const cur = map.get(key) || { nome, count: 0, totalPeso: 0 };
+      const cur = map.get(key) || { nome, count: 0, totalNota: 0 };
       cur.count += 1;
-      cur.totalPeso += p.peso;
+      cur.totalNota += p.peso;
       map.set(key, cur);
     }
     return map;
@@ -234,7 +234,7 @@ export default function PerguntasPage() {
               <span className={`text-body font-medium flex-1 ${filtroTipoServico === key ? "text-primary" : "text-foreground"}`}>{val.nome}</span>
               <span className="text-caption text-muted-foreground font-tabular">{val.count} pergunta{val.count !== 1 ? "s" : ""}</span>
               <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-caption font-bold border font-tabular ${
-                val.totalPeso >= 100 ? "badge-complete" : val.totalPeso >= 50 ? "badge-active" : "badge-pending"}`}>{val.totalPeso} pts</span>
+                val.totalNota >= 100 ? "badge-complete" : val.totalNota >= 50 ? "badge-active" : "badge-pending"}`}>{val.totalNota} pts</span>
             </button>
           ))}
           {summaryByTipo.size === 0 && !isLoading && <p className="px-4 py-6 text-center text-body text-muted-foreground">Nenhuma pergunta cadastrada.</p>}
@@ -258,7 +258,7 @@ export default function PerguntasPage() {
                     <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Pergunta</th>
                     <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Tipo Avaliação</th>
                     
-                    <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Peso</th>
+                    <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Nota</th>
                     <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Ações</th>
                   </tr>
                 </thead>
@@ -337,8 +337,8 @@ export default function PerguntasPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Peso</Label>
-              <Input type="number" min={1} max={100} value={peso} onChange={e => setPeso(e.target.value)} required />
+              <Label>Nota</Label>
+              <Input type="number" min={1} max={100} value={peso} onChange={e => { const v = e.target.value.replace(/\D/g, ''); setPeso(v); }} onKeyDown={e => { if (!/[0-9]/.test(e.key) && !['Backspace','Delete','Tab','ArrowLeft','ArrowRight','Home','End'].includes(e.key)) e.preventDefault(); }} required inputMode="numeric" pattern="[0-9]*" />
             </div>
 
             {/* Preview */}
@@ -349,7 +349,7 @@ export default function PerguntasPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <p className="text-body font-medium text-foreground">{pergunta}</p>
-                      <p className="text-caption text-muted-foreground">Peso: {peso}</p>
+                      <p className="text-caption text-muted-foreground">Nota: {peso}</p>
                     </div>
                     <div className="flex bg-muted rounded-md p-0.5 gap-0.5 shrink-0">
                       {([
