@@ -610,17 +610,6 @@ export default function DashboardPage() {
           <span className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Filtros</span>
         </div>
         <div className="flex flex-wrap gap-4 items-end">
-          <div className="flex flex-col gap-1.5 min-w-[200px]">
-            <label className="text-caption font-medium text-muted-foreground">Mês de Competência</label>
-            <Select value={competenceMonth} onValueChange={handleCompetenceChange}>
-              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {competenceMonths.map((m) => (
-                  <SelectItem key={m.value} value={m.value} className="capitalize">{m.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-caption font-medium text-muted-foreground">Data Início</label>
             <Popover>
@@ -649,6 +638,21 @@ export default function DashboardPage() {
               </PopoverContent>
             </Popover>
           </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-caption font-medium text-muted-foreground">Status</label>
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+              <SelectTrigger className="h-9 w-[160px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="aberta">Aberta</SelectItem>
+                <SelectItem value="em_andamento">Em Andamento</SelectItem>
+                <SelectItem value="concluida">Concluída</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={() => setSearchTrigger(prev => prev + 1)} className="h-9">
+            <Filter className="w-4 h-4 mr-2" /> Buscar
+          </Button>
         </div>
       </div>
 
