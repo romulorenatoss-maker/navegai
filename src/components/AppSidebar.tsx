@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, ClipboardCheck, FileSearch, ListChecks, PlayCircle, FolderKanban,
   BarChart3, Shield, Settings, ChevronLeft, ChevronRight, Building2, Users,
-  HelpCircle, Wrench, LogOut, Star, ClipboardList,
+  HelpCircle, Wrench, LogOut, Star, ClipboardList, AlertTriangle,
 } from "lucide-react";
 
 const navSections = [
