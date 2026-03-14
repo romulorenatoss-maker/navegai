@@ -342,7 +342,7 @@ export default function DashboardPage() {
 
         const myPartDone = myAval?.concluida === true || myUnanswered.length === 0;
 
-        if (progress >= 100 && osAvals.length > 0 && osAvals.every(a => a.concluida)) {
+        if (os.status === "concluida") {
           completed.push({
             os_id: os.id, numero_os: os.numero_os, cliente_nome: os.cliente_nome,
             tipo_servico_nome: os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || null : null,

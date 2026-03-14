@@ -2152,10 +2152,10 @@ export default function AvaliacaoOSPage() {
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-2 mt-4">
           {(() => {
-            // Show button if OS is not concluded OR if current evaluator hasn't evaluated yet
+            // Hide button entirely if OS is concluded
+            if (selectedOS.status === "concluida") return null;
             const myAval = osAvaliacoes.find((a: any) => a.avaliador_id === profile?.id);
-            const canStart = selectedOS.status !== "concluida" || !myAval;
-            if (!canStart) return null;
+            if (myAval?.concluida) return null;
             return (
               <>
                 <Button onClick={() => startMyEvaluation(selectedOS)} className="press-effect w-full sm:w-auto">
