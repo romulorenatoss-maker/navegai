@@ -1405,11 +1405,24 @@ export default function AvaliacaoOSPage() {
                 {evalTipoServicoNome && <p className="text-caption text-muted-foreground mt-0.5">Serviço: {evalTipoServicoNome}</p>}
                 <p className="text-caption text-muted-foreground mt-0.5">Criada em: {format(new Date(evalOsData.created_at), "dd/MM/yyyy HH:mm")}</p>
               </div>
-              {autoSaving && (
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
-                  <Loader2 className="w-3 h-3 animate-spin" /> Salvando...
-                </div>
-              )}
+              <div className="flex items-center gap-2 shrink-0">
+                {autoSaving && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Loader2 className="w-3 h-3 animate-spin" /> Salvando...
+                  </div>
+                )}
+                {canEdit && !isEditing && (
+                  <Button size="sm" variant="outline" onClick={handleStartEditing} className="press-effect h-8 text-xs px-3">
+                    <Pencil className="w-3 h-3 mr-1" /> Alterar
+                  </Button>
+                )}
+                {isEditing && (
+                  <Button size="sm" onClick={handleSaveEditing} disabled={evalSubmitting} className="press-effect h-8 text-xs px-3">
+                    {evalSubmitting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Save className="w-3 h-3 mr-1" />}
+                    Salvar
+                  </Button>
+                )}
+              </div>
             </div>
 
             {/* Assigned employees + avaliadores info */}
