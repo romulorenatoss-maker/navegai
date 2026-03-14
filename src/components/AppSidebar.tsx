@@ -15,31 +15,31 @@ const allNavSections = [
     ],
   },
   {
+    title: "Cadastros",
+    items: [
+      { to: "/cadastros/setores", icon: Building2, label: "Setores" },
+      { to: "/cadastros/colaboradores", icon: Users, label: "Colaboradores" },
+      { to: "/cadastros/clientes", icon: ClipboardCheck, label: "Clientes" },
+      { to: "/cadastros/servicos", icon: Wrench, label: "Tipos de Serviço" },
+      { to: "/cadastros/tipos-avaliacao", icon: ClipboardList, label: "Tipos de Avaliação" },
+    ],
+  },
+  {
+    title: "Perguntas & Checklists",
+    items: [
+      { to: "/avaliacoes/perguntas", icon: HelpCircle, label: "Perguntas" },
+      { to: "/checklists/cadastro", icon: ListChecks, label: "Cadastro" },
+      { to: "/checklists/execucao", icon: PlayCircle, label: "Execução" },
+      { to: "/checklists/gestao", icon: FolderKanban, label: "Gestão" },
+    ],
+  },
+  {
     title: "Avaliações",
     items: [
       { to: "/avaliacoes/pesquisa", icon: FileSearch, label: "Pesquisa de OS" },
       { to: "/avaliacoes/minhas", icon: Star, label: "Minhas Avaliações" },
       { to: "/avaliacoes/inconsistencias", icon: AlertTriangle, label: "Inconsistências" },
       { to: "/avaliacoes/inconsistencias-vinculadas", icon: Link2, label: "Incons. Vinculadas" },
-    ],
-  },
-  {
-    title: "Checklists",
-    items: [
-      { to: "/checklists/cadastro", icon: ListChecks, label: "Cadastro" },
-      { to: "/checklists/execucao", icon: PlayCircle, label: "Execução" },
-      { to: "/checklists/gestao", icon: FolderKanban, label: "Gestão" },
-      { to: "/avaliacoes/perguntas", icon: HelpCircle, label: "Perguntas" },
-    ],
-  },
-  {
-    title: "Cadastros",
-    items: [
-      { to: "/cadastros/setores", icon: Building2, label: "Setores" },
-      { to: "/cadastros/colaboradores", icon: Users, label: "Colaboradores" },
-      { to: "/cadastros/clientes", icon: ClipboardCheck, label: "Clientes" },
-      { to: "/cadastros/servicos", icon: Wrench, label: "Serviços" },
-      { to: "/cadastros/tipos-avaliacao", icon: ClipboardList, label: "Tipos Avaliação" },
     ],
   },
   {
