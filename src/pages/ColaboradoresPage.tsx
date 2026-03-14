@@ -423,6 +423,18 @@ export default function ColaboradoresPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Session history dialog */}
+      <Dialog open={sessionViewOpen} onOpenChange={(v) => { setSessionViewOpen(v); if (!v) setEditing(null); }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Sessões — {editing?.nome || ""}</DialogTitle>
+          </DialogHeader>
+          {editing && (
+            <SessoesUsuarioTab profileId={editing.id} userId={editing.user_id} />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
