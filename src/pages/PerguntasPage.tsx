@@ -57,7 +57,7 @@ export default function PerguntasPage() {
   const [tipoServicoId, setTipoServicoId] = useState("");
   const [tipoAvaliacaoId, setTipoAvaliacaoId] = useState("");
   const [targetEmployeeType, setTargetEmployeeType] = useState("geral");
-  const [avaliadorId, setAvaliadorId] = useState("");
+  // avaliadorId removed - evaluator access is determined by their sector
   const [setorAvaliadoId, setSetorAvaliadoId] = useState("");
   const [tipoAvaliado, setTipoAvaliado] = useState("atendente");
   const [peso, setPeso] = useState("1");
@@ -75,7 +75,7 @@ export default function PerguntasPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("perguntas_avaliacao")
-        .select("*, tipos_servico(nome), profiles!perguntas_avaliacao_avaliador_id_fkey(nome), setores!perguntas_avaliacao_setor_avaliado_id_fkey(nome)")
+        .select("*, tipos_servico(nome), setores!perguntas_avaliacao_setor_avaliado_id_fkey(nome)")
         .order("ordem");
       if (error) throw error;
       // Load tipo_avaliacao names
@@ -107,10 +107,7 @@ export default function PerguntasPage() {
     },
   });
 
-  const { data: avaliadores = [] } = useQuery({
-    queryKey: ["avaliadores_list"],
-    queryFn: async () => { const { data } = await supabase.from("profiles").select("*").eq("ativo", true).order("nome"); return data || []; },
-  });
+  // avaliadores query removed - no longer needed for question form
 
   const summaryByTipo = useMemo(() => {
     const map = new Map<string, { nome: string; count: number; totalPeso: number }>();
@@ -149,7 +146,7 @@ export default function PerguntasPage() {
         tipo_servico_id: resolvedTipoId,
         tipo_avaliacao_id: resolvedTaId,
         target_employee_type: targetEmployeeType,
-        avaliador_id: avaliadorId === "todos" || !avaliadorId ? null : avaliadorId,
+        avaliador_id: null,
         setor_avaliado_id: setorAvaliadoId === "todos" || !setorAvaliadoId ? null : setorAvaliadoId,
         tipo_avaliado: tipoAvaliado,
         peso: Math.min(100, Math.max(1, parseInt(peso) || 1)),
@@ -199,14 +196,14 @@ export default function PerguntasPage() {
 
   const openCreate = () => {
     setEditing(null); setPergunta(""); setTipoServicoId(""); setTipoAvaliacaoId(""); setTargetEmployeeType("geral");
-    setAvaliadorId(""); setSetorAvaliadoId(""); setTipoAvaliado("atendente"); setPeso("1"); setOrdem("0"); setPreviewAnswer(null);
+    setSetorAvaliadoId(""); setTipoAvaliado("atendente"); setPeso("1"); setOrdem("0"); setPreviewAnswer(null);
     setDialogOpen(true);
   };
   const openEdit = (p: Pergunta) => {
     setEditing(p); setPergunta(p.pergunta); setTipoServicoId(p.tipo_servico_id || "");
     setTipoAvaliacaoId((p as any).tipo_avaliacao_id || "");
     setTargetEmployeeType((p as any).target_employee_type || "geral");
-    setAvaliadorId(p.avaliador_id || "");
+    // avaliadorId no longer used
     const tipo = tipos.find(t => t.id === p.tipo_servico_id);
     setSetorAvaliadoId(tipo?.setor_id || (p as any).setor_avaliado_id || "");
     setTipoAvaliado(p.tipo_avaliado); setPeso(String(p.peso)); setOrdem(String(p.ordem)); setPreviewAnswer(null);
@@ -351,21 +348,9 @@ export default function PerguntasPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Avaliador Responsável</Label>
-                <Select value={avaliadorId} onValueChange={setAvaliadorId}>
-                  <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos os avaliadores</SelectItem>
-                    {avaliadores.map(a => <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Peso</Label>
-                <Input type="number" min={1} max={100} value={peso} onChange={e => setPeso(e.target.value)} required />
-              </div>
+            <div className="space-y-1.5">
+              <Label>Peso</Label>
+              <Input type="number" min={1} max={100} value={peso} onChange={e => setPeso(e.target.value)} required />
             </div>
 
             {/* Preview */}
