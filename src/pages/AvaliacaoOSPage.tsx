@@ -561,13 +561,55 @@ export default function AvaliacaoOSPage() {
     }
   }, [linkedTiposAvaliacao, profile]);
 
-  // URL param: pre-fill OS number
+  // URL param: pre-fill OS number and optionally auto-open evaluation
   useEffect(() => {
     const os = searchParams.get("os");
+    const mode = searchParams.get("mode");
     if (os) {
       setFormOsNumero(os);
+      if (mode === "eval") {
+        // Auto-search and open the evaluation directly
+        (async () => {
+          try {
+            const { data: existingOS } = await supabase
+              .from("ordens_servico")
+              .select("*")
+              .eq("numero_os", os)
+              .limit(1)
+              .single();
+
+            if (!existingOS || !profile) return;
+
+            setFormFoundOS(existingOS);
+            if (existingOS.tipo_servico_id) setTipoServicoId(existingOS.tipo_servico_id);
+            if (existingOS.atendente_id) setAtendenteId(existingOS.atendente_id);
+            if (existingOS.tecnico_id) setTecnicoId(existingOS.tecnico_id);
+            setFormValidated(true);
+
+            // Check for existing evaluation by this user
+            const { data: existingAval } = await supabase
+              .from("avaliacoes")
+              .select("id, tipo_avaliacao_id, concluida, nota_final")
+              .eq("ordem_servico_id", existingOS.id)
+              .eq("avaliador_id", profile.id)
+              .limit(1)
+              .single();
+
+            if (existingAval) {
+              if (existingAval.tipo_avaliacao_id) setSelectedTipoAvaliacaoId(existingAval.tipo_avaliacao_id);
+              await openEvaluation(existingAval.id, existingOS.id);
+            } else {
+              // No evaluation yet — show OS detail for setup
+              setSelectedOS(existingOS);
+              setView("os_detail");
+            }
+          } catch (err) {
+            console.warn("Auto-open evaluation failed:", err);
+          }
+        })();
+      }
     }
-  }, []);
+  }, [profile]);
 
   // --- Step 1: Validate CPF ---
   const handleCpfValidation = async () => {
