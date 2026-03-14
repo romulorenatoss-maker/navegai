@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useIdleTimeout } from "@/hooks/useIdleTimeout";
 import { useSessionTracker } from "@/hooks/useSessionTracker";
-import { Menu } from "lucide-react";
+import { Menu, User } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "sonner";
 
@@ -13,6 +13,7 @@ export function AppLayout() {
   const { profile, user, signOut, isAdmin, allowedScreens } = useAuth();
   const isMobile = useIsMobile();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   const { endSession } = useSessionTracker(user?.id || null, profile?.id || null);
 
@@ -30,6 +31,9 @@ export function AppLayout() {
   }, [endSession, signOut]);
 
   const userNameDisplay = profile?.nome || "Usuário";
+  const userCargoDisplay = profile?.cargo
+    ? profile.cargo.charAt(0).toUpperCase() + profile.cargo.slice(1)
+    : "";
 
   if (isMobile) {
     return (
@@ -68,15 +72,21 @@ export function AppLayout() {
     );
   }
 
-  // Desktop: vertical sidebar + content
+  // Desktop: vertical sidebar with collapse support
   return (
     <div className="min-h-screen bg-background flex">
-      <aside className="w-60 shrink-0 border-r border-sidebar-border sticky top-0 h-screen overflow-hidden">
+      <aside
+        className={`shrink-0 border-r border-sidebar-border sticky top-0 h-screen overflow-hidden transition-all duration-200 ${
+          collapsed ? "w-14" : "w-60"
+        }`}
+      >
         <AppSidebar
           userName={userNameDisplay}
           onSignOut={handleSignOut}
           isAdmin={isAdmin}
           allowedScreens={allowedScreens}
+          collapsed={collapsed}
+          onToggleCollapse={() => setCollapsed(prev => !prev)}
         />
       </aside>
 
