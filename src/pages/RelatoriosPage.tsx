@@ -108,18 +108,57 @@ export default function RelatoriosPage() {
       return;
     }
 
+    const osIds = osData.map((o) => o.id);
+
+    // Fetch tipo_servico names, os_perguntas, and respostas in parallel
     const tipoIds = [...new Set(osData.map((o) => o.tipo_servico_id).filter(Boolean))] as string[];
-    let tipoNames: Record<string, string> = {};
-    if (tipoIds.length > 0) {
-      const { data: tipos } = await supabase.from("tipos_servico").select("id, nome").in("id", tipoIds);
-      tipos?.forEach((t) => { tipoNames[t.id] = t.nome; });
-    }
+
+    const [tiposRes, osPerguntasRes, respostasRes] = await Promise.all([
+      tipoIds.length > 0
+        ? supabase.from("tipos_servico").select("id, nome").in("id", tipoIds)
+        : Promise.resolve({ data: [] }),
+      supabase.from("os_perguntas").select("os_id, pergunta_id").in("os_id", osIds),
+      supabase.from("respostas_avaliacao").select("ordem_servico_id, pergunta_id, resposta").in("ordem_servico_id", osIds).not("resposta", "is", null),
+    ]);
+
+    const tipoNames: Record<string, string> = {};
+    (tiposRes.data || []).forEach((t: any) => { tipoNames[t.id] = t.nome; });
+
+    // Build os_perguntas count per OS
+    const perguntaCountByOS: Record<string, number> = {};
+    (osPerguntasRes.data || []).forEach((op: any) => {
+      perguntaCountByOS[op.os_id] = (perguntaCountByOS[op.os_id] || 0) + 1;
+    });
+
+    // Build answered count per OS (distinct pergunta_id)
+    const answeredByOS: Record<string, Set<string>> = {};
+    (respostasRes.data || []).forEach((r: any) => {
+      if (!r.ordem_servico_id) return;
+      if (!answeredByOS[r.ordem_servico_id]) answeredByOS[r.ordem_servico_id] = new Set();
+      answeredByOS[r.ordem_servico_id].add(r.pergunta_id);
+    });
 
     setOsList(
-      osData.map((os) => ({
-        ...os,
-        tipo_servico_nome: os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || null : null,
-      }))
+      osData.map((os) => {
+        const totalPerguntas = perguntaCountByOS[os.id] || 0;
+        const totalRespondidas = answeredByOS[os.id]?.size || 0;
+        const progress = totalPerguntas > 0 ? (totalRespondidas / totalPerguntas) * 100 : 0;
+
+        let computedStatus: string;
+        if (totalRespondidas === 0) {
+          computedStatus = "aberta";
+        } else if (progress >= 100) {
+          computedStatus = "concluida";
+        } else {
+          computedStatus = "em_andamento";
+        }
+
+        return {
+          ...os,
+          status: computedStatus,
+          tipo_servico_nome: os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || null : null,
+        };
+      })
     );
     setSelected(new Set());
     setLoading(false);
