@@ -32,7 +32,7 @@ const App = () => (
               <Route path="/" element={<DashboardPage />} />
               <Route path="/avaliacoes/pesquisa" element={<AvaliacaoOSPage />} />
               <Route path="/avaliacoes/perguntas" element={<PerguntasPage />} />
-              <Route path="/checklists/cadastro" element={<PlaceholderPage title="Cadastro de Checklists" description="Crie e configure checklists operacionais recorrentes." />} />
+              <Route path="/checklists/cadastro" element={<ChecklistsCadastroPage />} />
               <Route path="/checklists/execucao" element={<PlaceholderPage title="Execução de Checklist" description="Painel de tarefas do executor." />} />
               <Route path="/checklists/gestao" element={<PlaceholderPage title="Gestão de Checklists" description="Acompanhe todas as tarefas geradas pelos checklists." />} />
               <Route path="/cadastros/setores" element={<SetoresPage />} />
