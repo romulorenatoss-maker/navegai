@@ -1069,9 +1069,18 @@ export default function AvaliacaoOSPage() {
       await supabase.from("avaliacoes").update({ concluida: true, nota_final: nota }).eq("id", evalAvaliacaoId);
       setEvalScore(nota);
       setEvalFinalized(true);
-      toast.success(`Avaliação concluída! Nota: ${nota.toFixed(1)}%`);
-      try { await detectInconsistencies(evalOsId); } catch (e) { console.warn("Inconsistency detection error:", e); }
-      try { await detectLinkedInconsistencies(evalAvaliacaoId, evalOsId); } catch (e) { console.warn("Linked inconsistency detection error:", e); }
+      toast.success(`Avaliação do seu setor concluída! Nota: ${nota.toFixed(1)}%`);
+      
+      // Check if ALL questions across all sectors are now answered (global progress = 100%)
+      const allAnswered = evalPerguntas.every(p => evalAnswers[p.id] != null);
+      if (allAnswered && evalOsId) {
+        // Mark OS as concluded
+        await supabase.from("ordens_servico").update({ status: "concluida", data_conclusao: new Date().toISOString() } as any).eq("id", evalOsId);
+        toast.success("Todas as perguntas respondidas! OS concluída.");
+      }
+      
+      try { if (evalOsId) await detectInconsistencies(evalOsId); } catch (e) { console.warn("Inconsistency detection error:", e); }
+      try { if (evalAvaliacaoId && evalOsId) await detectLinkedInconsistencies(evalAvaliacaoId, evalOsId); } catch (e) { console.warn("Linked inconsistency detection error:", e); }
       refetchPending();
       setTimeout(() => navigate("/"), 1500);
     } catch (err: any) {
