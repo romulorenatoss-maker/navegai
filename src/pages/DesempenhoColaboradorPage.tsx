@@ -113,7 +113,7 @@ export default function DesempenhoColaboradorPage() {
       const tsIds = [...new Set(osData.map(o => o.tipo_servico_id).filter(Boolean))] as string[];
 
       const [avalsRes, tsRes] = await Promise.all([
-        supabase.from("avaliacoes").select("id, ordem_servico_id, nota_final, concluida, created_at, tipo_avaliacao_id")
+        supabase.from("avaliacoes").select("id, ordem_servico_id, nota_final, concluida, concluida_em, created_at, tipo_avaliacao_id")
           .in("ordem_servico_id", osIds).eq("concluida", true),
         tsIds.length > 0 ? supabase.from("tipos_servico").select("id, nome").in("id", tsIds) : { data: [] },
       ]);
