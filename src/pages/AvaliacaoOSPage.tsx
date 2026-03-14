@@ -726,30 +726,47 @@ export default function AvaliacaoOSPage() {
     }
   };
 
-  // --- Auto-save logic ---
+  // --- Auto-save logic (now uses ordem_servico_id) ---
   const autoSaveAnswer = useCallback(async (perguntaId: string, answer: Answer) => {
-    if (!evalAvaliacaoId) return;
+    if (!evalOsId || !profile) return;
     setAutoSaving(true);
     try {
+      // Find evaluator's setor
+      const setorId = evaluatorSetorIds[0] || null;
       await supabase.from("respostas_avaliacao").upsert(
-        { avaliacao_id: evalAvaliacaoId, pergunta_id: perguntaId, resposta: answer },
-        { onConflict: "avaliacao_id,pergunta_id" }
+        { 
+          ordem_servico_id: evalOsId, 
+          pergunta_id: perguntaId, 
+          resposta: answer,
+          avaliador_id: profile.id,
+          avaliador_setor_id: setorId,
+          avaliacao_id: evalAvaliacaoId,
+        } as any,
+        { onConflict: "ordem_servico_id,pergunta_id" }
       );
     } catch (e) { console.warn("Auto-save answer error:", e); }
     finally { setAutoSaving(false); }
-  }, [evalAvaliacaoId]);
+  }, [evalOsId, evalAvaliacaoId, profile, evaluatorSetorIds]);
 
   const autoSaveObservation = useCallback(async (perguntaId: string, observation: string) => {
-    if (!evalAvaliacaoId) return;
+    if (!evalOsId || !profile) return;
     setAutoSaving(true);
     try {
+      const setorId = evaluatorSetorIds[0] || null;
       await supabase.from("respostas_avaliacao").upsert(
-        { avaliacao_id: evalAvaliacaoId, pergunta_id: perguntaId, observacao: observation },
-        { onConflict: "avaliacao_id,pergunta_id" }
+        { 
+          ordem_servico_id: evalOsId, 
+          pergunta_id: perguntaId, 
+          observacao: observation,
+          avaliador_id: profile.id,
+          avaliador_setor_id: setorId,
+          avaliacao_id: evalAvaliacaoId,
+        } as any,
+        { onConflict: "ordem_servico_id,pergunta_id" }
       );
     } catch (e) { console.warn("Auto-save observation error:", e); }
     finally { setAutoSaving(false); }
-  }, [evalAvaliacaoId]);
+  }, [evalOsId, evalAvaliacaoId, profile, evaluatorSetorIds]);
 
   const handleAnswerChange = useCallback((perguntaId: string, answer: Answer) => {
     setEvalAnswers(prev => ({ ...prev, [perguntaId]: answer }));
@@ -763,19 +780,27 @@ export default function AvaliacaoOSPage() {
   }, [autoSaveObservation]);
 
   const handleEvidenceUpload = useCallback(async (perguntaId: string, file: File) => {
-    if (!evalAvaliacaoId) return;
+    if (!evalOsId || !profile) return;
     setUploadingEvidence(perguntaId);
     try {
       const ext = file.name.split(".").pop() || "jpg";
-      const path = `${evalAvaliacaoId}/${perguntaId}.${ext}`;
+      const path = `${evalOsId}/${perguntaId}.${ext}`;
       const { error: uploadErr } = await supabase.storage.from("evidencias").upload(path, file, { upsert: true });
       if (uploadErr) throw uploadErr;
       const { data: urlData } = supabase.storage.from("evidencias").getPublicUrl(path);
       const url = urlData.publicUrl;
       setEvalEvidencias(prev => ({ ...prev, [perguntaId]: url }));
+      const setorId = evaluatorSetorIds[0] || null;
       await supabase.from("respostas_avaliacao").upsert(
-        { avaliacao_id: evalAvaliacaoId, pergunta_id: perguntaId, evidencia_url: url },
-        { onConflict: "avaliacao_id,pergunta_id" }
+        { 
+          ordem_servico_id: evalOsId, 
+          pergunta_id: perguntaId, 
+          evidencia_url: url,
+          avaliador_id: profile.id,
+          avaliador_setor_id: setorId,
+          avaliacao_id: evalAvaliacaoId,
+        } as any,
+        { onConflict: "ordem_servico_id,pergunta_id" }
       );
       toast.success("Evidência anexada!");
     } catch (e: any) {
@@ -783,16 +808,16 @@ export default function AvaliacaoOSPage() {
     } finally {
       setUploadingEvidence(null);
     }
-  }, [evalAvaliacaoId]);
+  }, [evalOsId, evalAvaliacaoId, profile, evaluatorSetorIds]);
 
   const handleRemoveEvidence = useCallback(async (perguntaId: string) => {
-    if (!evalAvaliacaoId) return;
+    if (!evalOsId) return;
     setEvalEvidencias(prev => { const n = { ...prev }; delete n[perguntaId]; return n; });
     await supabase.from("respostas_avaliacao").upsert(
-      { avaliacao_id: evalAvaliacaoId, pergunta_id: perguntaId, evidencia_url: null },
-      { onConflict: "avaliacao_id,pergunta_id" }
+      { ordem_servico_id: evalOsId, pergunta_id: perguntaId, evidencia_url: null } as any,
+      { onConflict: "ordem_servico_id,pergunta_id" }
     );
-  }, [evalAvaliacaoId]);
+  }, [evalOsId]);
 
   // --- Handlers ---
   const openEvaluation = async (avaliacaoId: string, osId: string) => {
