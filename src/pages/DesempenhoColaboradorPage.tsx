@@ -34,18 +34,6 @@ function getScoreBg(score: number) {
   return "bg-destructive/10";
 }
 
-function getCompetenceMonths() {
-  const months = [];
-  const now = new Date();
-  for (let i = 0; i < 12; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push({
-      value: format(d, "yyyy-MM"),
-      label: format(d, "MMMM yyyy", { locale: ptBR }),
-    });
-  }
-  return months;
-}
 
 export default function DesempenhoColaboradorPage() {
   const [searchParams] = useSearchParams();
