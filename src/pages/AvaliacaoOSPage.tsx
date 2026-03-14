@@ -219,6 +219,8 @@ export default function AvaliacaoOSPage() {
     return cargo.includes("atendente") || cargo.includes("atendimento");
   }, [selectedTipoAvaliacao, hasAtendimentoAccess, hasTecnicoAccess]);
 
+  const selectedTipoServico = useMemo(() => tiposServico.find(t => t.id === tipoServicoId), [tiposServico, tipoServicoId]);
+
   const { data: profilesBySetor = [] } = useQuery({
     queryKey: ["profiles_by_setor", tipoServicoId],
     queryFn: async () => {
