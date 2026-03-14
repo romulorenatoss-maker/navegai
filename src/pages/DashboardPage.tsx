@@ -230,7 +230,7 @@ export default function DashboardPage() {
         let computedStatus: string;
         if (totalRespondidas === 0) {
           computedStatus = "aberta";
-        } else if (progress >= 100 && osAvals.length > 0 && osAvals.every((a) => a.concluida)) {
+        } else if (progress >= 100) {
           computedStatus = "concluida";
         } else {
           computedStatus = "em_andamento";
