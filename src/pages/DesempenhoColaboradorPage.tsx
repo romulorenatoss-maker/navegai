@@ -171,11 +171,11 @@ export default function DesempenhoColaboradorPage() {
 
   // Average score using SQL function (per-sector calculation)
   const { data: notasPorSetorData = [] } = useQuery({
-    queryKey: ["perf_notas_setor", targetProfileId, startDate?.toISOString(), endDate?.toISOString()],
+    queryKey: ["perf_notas_setor", targetProfileId, appliedStart?.toISOString(), appliedEnd?.toISOString()],
     queryFn: async () => {
       if (!targetProfileId) return [];
-      const from = startDate?.toISOString() || startOfMonth(now).toISOString();
-      const to = endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString();
+      const from = appliedStart?.toISOString() || startOfMonth(now).toISOString();
+      const to = appliedEnd ? endOfMonth(appliedEnd).toISOString() : endOfMonth(now).toISOString();
       return fetchNotasPorSetor(from, to);
     },
     enabled: !!targetProfileId,
