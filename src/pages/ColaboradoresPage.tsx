@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useAuth } from "@/contexts/AuthContext";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Profile = Tables<"profiles">;
@@ -22,6 +23,7 @@ const cargoConfig: Record<string, { label: string; badge: string; description: s
 };
 
 export default function ColaboradoresPage() {
+  const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Profile | null>(null);
@@ -240,6 +242,16 @@ export default function ColaboradoresPage() {
   };
 
   const isSubmitting = create.isPending || update.isPending;
+
+  if (!isAdmin) {
+    return (
+      <div className="p-6 max-w-5xl mx-auto">
+        <div className="bg-card border border-border rounded-lg p-8 text-center">
+          <p className="text-body text-muted-foreground">Acesso restrito. Apenas administradores podem gerenciar colaboradores.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
