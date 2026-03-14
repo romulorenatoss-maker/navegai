@@ -440,6 +440,13 @@ export default function ColaboradoresPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Collaborator Detail Dialog */}
+      <ColaboradorDetailDialog
+        open={detailViewOpen}
+        onOpenChange={(v) => { setDetailViewOpen(v); if (!v) setDetailProfile(null); }}
+        collaborator={detailProfile}
+      />
     </div>
   );
 }
