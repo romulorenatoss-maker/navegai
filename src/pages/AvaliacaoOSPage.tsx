@@ -487,6 +487,7 @@ export default function AvaliacaoOSPage() {
       setWizardScore(nota);
       setWizardFinalized(true);
       toast.success(`Avaliação concluída! Nota: ${nota.toFixed(1)}%`);
+      refetchPending();
     } catch (err: any) {
       toast.error("Erro ao finalizar: " + err.message);
     } finally {
