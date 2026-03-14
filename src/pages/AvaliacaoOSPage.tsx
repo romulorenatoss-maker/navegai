@@ -82,10 +82,14 @@ export default function AvaliacaoOSPage() {
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             />
           </div>
-          <div className="flex items-end">
-            <Button onClick={handleSearch} className="h-10 press-effect" disabled={loading}>
+          <div className="flex items-end gap-2">
+            <Button onClick={handleSearch} variant="outline" className="h-10 press-effect" disabled={loading}>
               {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
               Buscar
+            </Button>
+            <Button onClick={handleSearch} className="h-10 press-effect" disabled={loading || !searchQuery.trim()}>
+              {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+              Criar OS
             </Button>
           </div>
         </div>
