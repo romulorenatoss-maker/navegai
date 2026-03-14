@@ -325,18 +325,6 @@ export default function PerguntasPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Aplica-se a (Funcionário)</Label>
-                <Select value={targetEmployeeType} onValueChange={setTargetEmployeeType}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="geral">Geral (ambos)</SelectItem>
-                    <SelectItem value="atendente">Atendente</SelectItem>
-                    <SelectItem value="tecnico">Técnico</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-caption text-muted-foreground">Define a quem a pontuação se aplica.</p>
-              </div>
-              <div className="space-y-1.5">
                 <Label>Setor Avaliado</Label>
                 <Select value={setorAvaliadoId} onValueChange={setSetorAvaliadoId}>
                   <SelectTrigger><SelectValue placeholder="Todos os setores" /></SelectTrigger>
