@@ -83,7 +83,9 @@ function isValidCpf(cpf: string): boolean {
 
 export default function AvaliacaoOSPage() {
   const [searchParams] = useSearchParams();
-  const { profile } = useAuth();
+  const { profile, isAdmin, hasRole } = useAuth();
+  const isGestor = hasRole("gestor");
+  const showAllTipos = isAdmin || isGestor;
   const [searchQuery, setSearchQuery] = useState("");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
