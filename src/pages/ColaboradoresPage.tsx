@@ -288,7 +288,7 @@ export default function ColaboradoresPage() {
                         {cfg.label}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-body text-muted-foreground">{(p as any).setores?.nome || "—"}</td>
+                    <td className="px-4 py-3 text-body text-muted-foreground">{(p as any)._setoresNomes?.length > 0 ? (p as any)._setoresNomes.join(" / ") : "—"}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${p.ativo ? "badge-complete" : "badge-expired"}`}>{p.ativo ? "Ativo" : "Inativo"}</span>
                     </td>
