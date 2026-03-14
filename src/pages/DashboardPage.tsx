@@ -454,8 +454,8 @@ export default function DashboardPage() {
         return;
       }
 
-      const from = startDate ? startDate.toISOString() : startOfMonth(now).toISOString();
-      const to = endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString();
+      const from = startDate ? startOfDay(startDate).toISOString() : startOfMonth(now).toISOString();
+      const to = endDate ? endOfDay(endDate).toISOString() : endOfMonth(now).toISOString();
 
       const { data: osInPeriod } = await supabase
         .from("ordens_servico")
