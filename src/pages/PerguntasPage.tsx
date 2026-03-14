@@ -324,15 +324,15 @@ export default function PerguntasPage() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Tipo de Avaliação</Label>
-                <Select value={tipoAvaliacaoId} onValueChange={setTipoAvaliacaoId}>
-                  <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
+                <Label>Quem Avalia (Setor)</Label>
+                <Select value={setorAvaliadoId} onValueChange={setSetorAvaliadoId}>
+                  <SelectTrigger><SelectValue placeholder="Todos os setores" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="todos">Todos</SelectItem>
-                    {tiposAvaliacao.map(ta => <SelectItem key={ta.id} value={ta.id}>{ta.nome}</SelectItem>)}
+                    <SelectItem value="todos">Todos os setores</SelectItem>
+                    {setoresComAvaliadores.map(s => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <p className="text-caption text-muted-foreground">Define qual avaliador verá esta pergunta.</p>
+                <p className="text-caption text-muted-foreground">Setor responsável por responder esta pergunta.</p>
               </div>
             </div>
 
