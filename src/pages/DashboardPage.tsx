@@ -325,6 +325,54 @@ export default function DashboardPage() {
           if (otherUnanswered) otherPending.push(pendingItem);
         }
       }
+
+      // Admin: calculate pending by sector
+      if (isAdmin) {
+        // Get all setores
+        const { data: setoresData } = await supabase.from("setores").select("id, nome").eq("ativo", true);
+        const setoresMap: Record<string, string> = {};
+        setoresData?.forEach(s => { setoresMap[s.id] = s.nome; });
+
+        const sectorCount: Record<string, number> = {};
+        for (const os of openOS) {
+          const perguntasForOS = allPerguntas.filter(p => !p.tipo_servico_id || p.tipo_servico_id === os.tipo_servico_id);
+          const osAvals = allAvals.filter(a => a.ordem_servico_id === os.id);
+
+          for (const q of perguntasForOS) {
+            if (!q.setor_avaliado_id) continue;
+            const answered = osAvals.some(a => answeredSet.has(`${a.id}:${q.id}`));
+            if (!answered) {
+              sectorCount[q.setor_avaliado_id] = (sectorCount[q.setor_avaliado_id] || 0) + 1;
+            }
+          }
+        }
+
+        // Deduplicate: count OS per sector (not questions)
+        const sectorOSCount: Record<string, Set<string>> = {};
+        for (const os of openOS) {
+          const perguntasForOS = allPerguntas.filter(p => !p.tipo_servico_id || p.tipo_servico_id === os.tipo_servico_id);
+          const osAvals = allAvals.filter(a => a.ordem_servico_id === os.id);
+
+          for (const q of perguntasForOS) {
+            if (!q.setor_avaliado_id) continue;
+            const answered = osAvals.some(a => answeredSet.has(`${a.id}:${q.id}`));
+            if (!answered) {
+              if (!sectorOSCount[q.setor_avaliado_id]) sectorOSCount[q.setor_avaliado_id] = new Set();
+              sectorOSCount[q.setor_avaliado_id].add(os.id);
+            }
+          }
+        }
+
+        const summary: SectorPending[] = Object.entries(sectorOSCount)
+          .map(([setorId, osSet]) => ({
+            setor_id: setorId,
+            setor_nome: setoresMap[setorId] || "Sem setor",
+            pending_count: osSet.size,
+          }))
+          .sort((a, b) => b.pending_count - a.pending_count);
+        setSectorPendingSummary(summary);
+      }
+
       setPendingMySector(myPending);
       setPendingOtherSector(otherPending);
     };
