@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, AlertTriangle, Camera, FileVideo, FileText, GripVertical } from "lucide-react";
+import { Plus, Pencil, Trash2, AlertTriangle, Camera, FileVideo, FileText, GripVertical, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,12 +58,22 @@ export default function PerguntasPage() {
   const [previewAnswer, setPreviewAnswer] = useState<PreviewAnswer>(null);
   const [filtroTipoServico, setFiltroTipoServico] = useState<string | null>(null);
 
+  // Checklist CRUD state
+  const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
+  const [checklistDialogMode, setChecklistDialogMode] = useState<"create" | "edit">("create");
+  const [editingChecklistId, setEditingChecklistId] = useState<string | null>(null);
+  const [newChecklistTitle, setNewChecklistTitle] = useState("");
+  // Delete confirmation state
+  const [deleteChecklistDialogOpen, setDeleteChecklistDialogOpen] = useState(false);
+  const [deletingChecklistId, setDeletingChecklistId] = useState<string | null>(null);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deletePasswordError, setDeletePasswordError] = useState("");
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  // Checklists query
   const { data: checklists = [] } = useQuery({
     queryKey: ["checklists_all"],
     queryFn: async () => {
@@ -112,8 +122,88 @@ export default function PerguntasPage() {
     enabled: setores.length > 0,
   });
 
+  // Checklist create/edit mutation
+  const upsertChecklist = useMutation({
+    mutationFn: async () => {
+      if (!newChecklistTitle.trim()) throw new Error("Informe o título do checklist.");
+      if (checklistDialogMode === "edit" && editingChecklistId) {
+        const { error } = await supabase.from("checklists").update({ titulo: newChecklistTitle.trim() } as any).eq("id", editingChecklistId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("checklists").insert({ titulo: newChecklistTitle.trim() } as any);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["checklists_all"] });
+      queryClient.invalidateQueries({ queryKey: ["perguntas_avaliacao"] });
+      toast.success(checklistDialogMode === "edit" ? "Checklist renomeado." : "Checklist criado.");
+      setNewChecklistTitle("");
+      setEditingChecklistId(null);
+      setChecklistDialogOpen(false);
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
 
+  // Checklist delete mutation
+  const deleteChecklist = useMutation({
+    mutationFn: async (id: string) => {
+      await (supabase as any).from("perguntas_avaliacao").update({ checklist_id: null }).eq("checklist_id", id);
+      const { error } = await supabase.from("checklists").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["checklists_all"] });
+      queryClient.invalidateQueries({ queryKey: ["perguntas_avaliacao"] });
+      toast.success("Checklist excluído.");
+      setDeleteChecklistDialogOpen(false);
+      setDeletingChecklistId(null);
+      setDeletePassword("");
+      setDeletePasswordError("");
+      if (filtroTipoServico === deletingChecklistId) setFiltroTipoServico(null);
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
 
+  const handleDeleteChecklistConfirm = async () => {
+    if (!deletePassword.trim()) {
+      setDeletePasswordError("Informe sua senha para confirmar.");
+      return;
+    }
+    // Verify password via Supabase re-auth
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.email) {
+      setDeletePasswordError("Erro ao verificar usuário.");
+      return;
+    }
+    const { error } = await supabase.auth.signInWithPassword({ email: user.email, password: deletePassword });
+    if (error) {
+      setDeletePasswordError("Senha incorreta.");
+      return;
+    }
+    if (deletingChecklistId) deleteChecklist.mutate(deletingChecklistId);
+  };
+
+  const openCreateChecklist = () => {
+    setChecklistDialogMode("create");
+    setEditingChecklistId(null);
+    setNewChecklistTitle("");
+    setChecklistDialogOpen(true);
+  };
+
+  const openEditChecklist = (id: string, titulo: string) => {
+    setChecklistDialogMode("edit");
+    setEditingChecklistId(id);
+    setNewChecklistTitle(titulo);
+    setChecklistDialogOpen(true);
+  };
+
+  const openDeleteChecklist = (id: string) => {
+    setDeletingChecklistId(id);
+    setDeletePassword("");
+    setDeletePasswordError("");
+    setDeleteChecklistDialogOpen(true);
+  };
 
   const summaryByChecklist = useMemo(() => {
     const map = new Map<string, { nome: string; count: number; totalNota: number }>();
@@ -225,7 +315,12 @@ export default function PerguntasPage() {
           <h1 className="text-section font-semibold text-foreground">Perguntas de Avaliação</h1>
           <p className="text-body text-muted-foreground">Cadastro e ordenação de perguntas por checklist e avaliação.</p>
         </div>
-        <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Nova Pergunta</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={openCreateChecklist} className="press-effect">
+            <Package className="w-4 h-4 mr-2" /> Novo Checklist
+          </Button>
+          <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Nova Pergunta</Button>
+        </div>
       </div>
 
       {/* Filter by checklist title */}
@@ -234,16 +329,31 @@ export default function PerguntasPage() {
           <p className="text-caption text-muted-foreground uppercase tracking-wider font-medium">Filtrar por Título</p>
         </div>
         <div className="divide-y divide-border">
-          {Array.from(summaryByChecklist.entries()).map(([key, val]) => (
-            <button key={key} type="button" onClick={() => setFiltroTipoServico(prev => prev === key ? null : key)}
-              className={`flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors ${
+          {Array.from(summaryByChecklist.entries()).map(([key, val]) => {
+            const isReal = key !== "sem_checklist";
+            const checklist = isReal ? checklists.find(c => c.id === key) : null;
+            return (
+              <div key={key} className={`flex items-center gap-3 w-full px-4 py-2.5 transition-colors ${
                 filtroTipoServico === key ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/50"}`}>
-              <span className={`text-body font-medium flex-1 ${filtroTipoServico === key ? "text-primary" : "text-foreground"}`}>{val.nome}</span>
-              <span className="text-caption text-muted-foreground font-tabular">{val.count} pergunta{val.count !== 1 ? "s" : ""}</span>
-              <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-caption font-bold border font-tabular ${
-                val.totalNota >= 100 ? "badge-complete" : val.totalNota >= 50 ? "badge-active" : "badge-pending"}`}>{val.totalNota} pts</span>
-            </button>
-          ))}
+                <button type="button" onClick={() => setFiltroTipoServico(prev => prev === key ? null : key)} className="flex items-center gap-3 flex-1 text-left min-w-0">
+                  <span className={`text-body font-medium flex-1 truncate ${filtroTipoServico === key ? "text-primary" : "text-foreground"}`}>{val.nome}</span>
+                  <span className="text-caption text-muted-foreground font-tabular shrink-0">{val.count} pergunta{val.count !== 1 ? "s" : ""}</span>
+                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-caption font-bold border font-tabular shrink-0 ${
+                    val.totalNota >= 100 ? "badge-complete" : val.totalNota >= 50 ? "badge-active" : "badge-pending"}`}>{val.totalNota} pts</span>
+                </button>
+                {isReal && checklist && (
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openEditChecklist(checklist.id, checklist.titulo); }} className="press-effect h-7 w-7 p-0">
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openDeleteChecklist(checklist.id); }} className="press-effect text-destructive h-7 w-7 p-0">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
           {summaryByChecklist.size === 0 && !isLoading && <p className="px-4 py-6 text-center text-body text-muted-foreground">Nenhuma pergunta cadastrada.</p>}
         </div>
       </div>
@@ -294,8 +404,57 @@ export default function PerguntasPage() {
         </>
       )}
 
+      {/* Checklist Create/Edit Dialog */}
+      <Dialog open={checklistDialogOpen} onOpenChange={setChecklistDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{checklistDialogMode === "edit" ? "Editar Nome do Checklist" : "Novo Checklist"}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={e => { e.preventDefault(); upsertChecklist.mutate(); }} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Nome do Checklist</Label>
+              <Input value={newChecklistTitle} onChange={e => setNewChecklistTitle(e.target.value)} placeholder="Ex: Checklist de Instalação" required />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setChecklistDialogOpen(false)}>Cancelar</Button>
+              <Button type="submit" disabled={upsertChecklist.isPending} className="press-effect">
+                {upsertChecklist.isPending ? "Salvando..." : checklistDialogMode === "edit" ? "Salvar" : "Criar"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-
+      {/* Delete Checklist Confirmation Dialog */}
+      <Dialog open={deleteChecklistDialogOpen} onOpenChange={(open) => { if (!open) { setDeleteChecklistDialogOpen(false); setDeletePassword(""); setDeletePasswordError(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Excluir Checklist</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-body text-muted-foreground">
+              Esta ação é irreversível. Todas as perguntas associadas serão desvinculadas. Confirme sua senha para prosseguir.
+            </p>
+            <div className="space-y-1.5">
+              <Label>Senha</Label>
+              <Input
+                type="password"
+                value={deletePassword}
+                onChange={e => { setDeletePassword(e.target.value); setDeletePasswordError(""); }}
+                placeholder="Digite sua senha"
+                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleDeleteChecklistConfirm(); } }}
+              />
+              {deletePasswordError && <p className="text-caption text-destructive">{deletePasswordError}</p>}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setDeleteChecklistDialogOpen(false)}>Cancelar</Button>
+              <Button type="button" variant="destructive" onClick={handleDeleteChecklistConfirm} disabled={deleteChecklist.isPending} className="press-effect">
+                {deleteChecklist.isPending ? "Excluindo..." : "Excluir"}
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Question Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
