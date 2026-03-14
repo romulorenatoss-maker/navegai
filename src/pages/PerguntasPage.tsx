@@ -385,10 +385,11 @@ export default function PerguntasPage() {
                   <tr className="border-b border-border">
                     <th className="w-8 px-2 py-2"></th>
                     <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-2 py-2 w-8">#</th>
-                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Pergunta</th>
-                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Quem Avalia</th>
-                    <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Nota</th>
-                    <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Ações</th>
+                     <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Pergunta</th>
+                     <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Quem Avalia</th>
+                     <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Nota p/ Setor</th>
+                     <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Nota</th>
+                     <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Ações</th>
                   </tr>
                 </thead>
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
