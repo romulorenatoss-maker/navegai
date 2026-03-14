@@ -64,6 +64,7 @@ export function AppLayout() {
               onSignOut={handleSignOut}
               mobile
               onNavigate={() => setMobileOpen(false)}
+              isAdmin={isAdmin}
             />
           </SheetContent>
         </Sheet>
