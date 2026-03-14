@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { Eye, ChevronLeft, CheckCircle2, XCircle } from "lucide-react";
+import { Eye, CheckCircle2, XCircle, MessageSquare, Image as ImageIcon, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -30,7 +29,7 @@ export default function MinhasAvaliacoesPage() {
   });
 
   // Load evaluation details for selected OS
-  const { data: avalDetails = [] } = useQuery({
+  const { data: avalDetails = [], isLoading: detailLoading } = useQuery({
     queryKey: ["aval_detail", selectedAval?.id],
     queryFn: async () => {
       if (!selectedAval?.id) return [];
@@ -39,7 +38,7 @@ export default function MinhasAvaliacoesPage() {
         .select("id, avaliador_id, concluida, concluida_em, nota_final, tipo_avaliacao_id")
         .eq("ordem_servico_id", selectedAval.id)
         .eq("concluida", true);
-      if (!avals) return [];
+      if (!avals || avals.length === 0) return [];
 
       const result = [];
       for (const aval of avals) {
@@ -136,45 +135,113 @@ export default function MinhasAvaliacoesPage() {
             <DialogTitle>Avaliação — OS #{selectedAval?.numero_os}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Cliente info */}
             {selectedAval && (
               <div className="bg-muted/30 border border-border rounded-lg px-4 py-3 space-y-1">
                 <p className="text-sm text-foreground"><span className="font-medium text-muted-foreground">Cliente:</span> {selectedAval.cliente_nome || "—"}</p>
                 <p className="text-sm text-foreground"><span className="font-medium text-muted-foreground">CPF:</span> {selectedAval.cliente_cpf || "—"}</p>
               </div>
             )}
+
+            {/* Loading state */}
+            {detailLoading && (
+              <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span className="text-body">Carregando detalhes...</span>
+              </div>
+            )}
+
+            {/* No data state */}
+            {!detailLoading && avalDetails.length === 0 && (
+              <p className="text-center text-body text-muted-foreground py-6">Nenhuma avaliação encontrada para esta OS.</p>
+            )}
+
+            {/* Avaliações */}
             {avalDetails.map((aval: any) => (
               <div key={aval.id} className="border border-border rounded-lg overflow-hidden">
+                {/* Header with avaliador and nota */}
                 <div className="bg-muted/30 px-4 py-3 flex items-center justify-between">
                   <div>
                     <p className="text-body font-semibold text-foreground">{aval._ta_nome}</p>
                     <p className="text-caption text-muted-foreground">
-                      Avaliador: {aval._avaliador_nome}
-                      {aval.concluida_em && ` • Concluído em ${new Date(aval.concluida_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}`}
+                      Avaliador: <span className="font-medium text-foreground">{aval._avaliador_nome}</span>
+                      {aval.concluida_em && ` • ${new Date(aval.concluida_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}`}
                     </p>
                   </div>
                   {aval.nota_final != null && (
-                    <span className={cn("text-body font-bold font-tabular", aval.nota_final >= 80 ? "text-success" : aval.nota_final >= 60 ? "text-warning" : "text-destructive")}>
+                    <span className={cn("text-lg font-bold font-tabular", aval.nota_final >= 80 ? "text-success" : aval.nota_final >= 60 ? "text-warning" : "text-destructive")}>
                       {Number(aval.nota_final).toFixed(1)}%
                     </span>
                   )}
                 </div>
+
+                {/* Respostas */}
                 <div className="divide-y divide-border">
+                  {aval._respostas.length === 0 && (
+                    <p className="px-4 py-4 text-center text-caption text-muted-foreground">Sem respostas registradas.</p>
+                  )}
                   {aval._respostas.map((r: any, i: number) => (
-                    <div key={i} className="px-4 py-2.5 flex items-start gap-3">
-                      {r.resposta === "sim" ? <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" /> :
-                       r.resposta === "nao" ? <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" /> :
-                       <span className="w-4 h-4 rounded-full bg-muted shrink-0 mt-0.5" />}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-body text-foreground">{r.pergunta}</p>
-                        <p className="text-caption text-muted-foreground">Peso: {r.peso} • {r.target === "atendente" ? "Atendente" : r.target === "tecnico" ? "Técnico" : "Geral"}</p>
-                        {r.observacao && <p className="text-caption text-destructive mt-1">💬 {r.observacao}</p>}
+                    <div key={i} className="px-4 py-3">
+                      <div className="flex items-start gap-3">
+                        {r.resposta === "sim" ? <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" /> :
+                         r.resposta === "nao" ? <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" /> :
+                         <span className="w-4 h-4 rounded-full bg-muted shrink-0 mt-0.5" />}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground">{r.pergunta}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className={cn(
+                              "inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border",
+                              r.resposta === "sim" ? "border-success/40 bg-success/10 text-success" :
+                              r.resposta === "nao" ? "border-destructive/40 bg-destructive/10 text-destructive" :
+                              "border-muted-foreground/30 bg-muted text-muted-foreground"
+                            )}>
+                              {r.resposta === "sim" ? "SIM" : r.resposta === "nao" ? "NÃO" : "N/A"}
+                            </span>
+                            <span className="text-caption text-muted-foreground">Peso: {r.peso}</span>
+                            <span className="text-caption text-muted-foreground">• {r.target === "atendente" ? "Atendente" : r.target === "tecnico" ? "Técnico" : "Geral"}</span>
+                          </div>
+
+                          {/* Observação */}
+                          {r.observacao && (
+                            <div className="mt-2 bg-muted/50 border border-border rounded p-2">
+                              <p className="text-caption text-muted-foreground flex items-center gap-1 mb-0.5">
+                                <MessageSquare className="w-3 h-3" /> Observação:
+                              </p>
+                              <p className="text-sm text-foreground">{r.observacao}</p>
+                            </div>
+                          )}
+
+                          {/* Evidência (foto) */}
+                          {r.evidencia_url && (
+                            <div className="mt-2">
+                              <p className="text-caption text-muted-foreground flex items-center gap-1 mb-1">
+                                <ImageIcon className="w-3 h-3" /> Evidência:
+                              </p>
+                              <img
+                                src={r.evidencia_url}
+                                alt="Evidência"
+                                className="rounded-lg border border-border max-h-32 object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => window.open(r.evidencia_url, "_blank")}
+                              />
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
+
+                {/* Nota total da avaliação */}
+                {aval.nota_final != null && (
+                  <div className="border-t border-border bg-muted/20 px-4 py-3 flex items-center justify-between">
+                    <span className="text-sm font-medium text-muted-foreground">Nota Final</span>
+                    <span className={cn("text-lg font-bold font-tabular", aval.nota_final >= 80 ? "text-success" : aval.nota_final >= 60 ? "text-warning" : "text-destructive")}>
+                      {Number(aval.nota_final).toFixed(1)}%
+                    </span>
+                  </div>
+                )}
               </div>
             ))}
-            {avalDetails.length === 0 && <p className="text-center text-body text-muted-foreground py-6">Carregando detalhes...</p>}
           </div>
         </DialogContent>
       </Dialog>
