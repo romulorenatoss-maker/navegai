@@ -203,7 +203,7 @@ export default function PerguntasPage() {
     setEditing(p); setPergunta(p.pergunta); setTipoServicoId(p.tipo_servico_id || "");
     setTipoAvaliacaoId((p as any).tipo_avaliacao_id || "");
     setTargetEmployeeType((p as any).target_employee_type || "geral");
-    setAvaliadorId(p.avaliador_id || "");
+    // avaliadorId no longer used
     const tipo = tipos.find(t => t.id === p.tipo_servico_id);
     setSetorAvaliadoId(tipo?.setor_id || (p as any).setor_avaliado_id || "");
     setTipoAvaliado(p.tipo_avaliado); setPeso(String(p.peso)); setOrdem(String(p.ordem)); setPreviewAnswer(null);
