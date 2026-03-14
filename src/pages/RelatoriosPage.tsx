@@ -378,16 +378,7 @@ export default function RelatoriosPage() {
     }
   };
 
-  if (!isAdmin) {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <div className="text-center space-y-2">
-          <AlertTriangle className="w-10 h-10 text-warning mx-auto" />
-          <p className="text-body text-muted-foreground">Acesso restrito ao administrador.</p>
-        </div>
-      </div>
-    );
-  }
+  // Access is now controlled by permissoes_tela — no admin block needed
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
