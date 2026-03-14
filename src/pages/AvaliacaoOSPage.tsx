@@ -227,6 +227,42 @@ export default function AvaliacaoOSPage() {
 
   const selectedTipoServico = useMemo(() => tiposServico.find(t => t.id === tipoServicoId), [tiposServico, tipoServicoId]);
 
+  // Profiles filtered by sector for employee selection
+  const { data: atendimentoProfiles = [] } = useQuery({
+    queryKey: ["profiles_atendimento"],
+    queryFn: async () => {
+      // Find setores with "atendimento" or "atendente" in name
+      const { data: setores } = await supabase.from("setores").select("id, nome").eq("ativo", true);
+      const atendSetorIds = (setores || []).filter(s => {
+        const n = s.nome.toLowerCase();
+        return n.includes("atendimento") || n.includes("atendente");
+      }).map(s => s.id);
+      if (!atendSetorIds.length) return [];
+      const { data: links } = await supabase.from("colaborador_setores").select("profile_id").in("setor_id", atendSetorIds);
+      if (!links?.length) return [];
+      const ids = [...new Set(links.map(l => l.profile_id))];
+      return allProfiles.filter(p => ids.includes(p.id));
+    },
+    enabled: allProfiles.length > 0,
+  });
+
+  const { data: tecnicoProfiles = [] } = useQuery({
+    queryKey: ["profiles_tecnico"],
+    queryFn: async () => {
+      const { data: setores } = await supabase.from("setores").select("id, nome").eq("ativo", true);
+      const tecSetorIds = (setores || []).filter(s => {
+        const n = s.nome.toLowerCase();
+        return n.includes("técnico") || n.includes("tecnico");
+      }).map(s => s.id);
+      if (!tecSetorIds.length) return [];
+      const { data: links } = await supabase.from("colaborador_setores").select("profile_id").in("setor_id", tecSetorIds);
+      if (!links?.length) return [];
+      const ids = [...new Set(links.map(l => l.profile_id))];
+      return allProfiles.filter(p => ids.includes(p.id));
+    },
+    enabled: allProfiles.length > 0,
+  });
+
   const { data: profilesBySetor = [] } = useQuery({
     queryKey: ["profiles_by_setor", tipoServicoId],
     queryFn: async () => {
@@ -237,6 +273,61 @@ export default function AvaliacaoOSPage() {
       return allProfiles.filter(p => p.id !== profile?.id && ids.includes(p.id));
     },
     enabled: !!tipoServicoId,
+  });
+
+  // Questions grouped by sector for os_detail view
+  const { data: osDetailBySetor = { atendimento: [], tecnico: [] } } = useQuery({
+    queryKey: ["os_detail_by_setor", selectedOS?.id, view],
+    queryFn: async () => {
+      if (!selectedOS?.id || view !== "os_detail") return { atendimento: [], tecnico: [] };
+      const tsId = selectedOS.tipo_servico_id;
+      if (!tsId) return { atendimento: [], tecnico: [] };
+
+      // Get linked checklists
+      const { data: checklistLinks } = await (supabase as any).from("tipo_servico_checklists").select("checklist_id").eq("tipo_servico_id", tsId);
+      const checklistIds = (checklistLinks || []).map((l: any) => l.checklist_id);
+
+      // Get all questions
+      let pergQuery = supabase.from("perguntas_avaliacao")
+        .select("id, pergunta, peso, ordem, setor_avaliado_id, setores!perguntas_avaliacao_setor_avaliado_id_fkey(id, nome)")
+        .eq("ativo", true);
+      if (checklistIds.length > 0) {
+        pergQuery = (pergQuery as any).in("checklist_id", checklistIds);
+      } else {
+        pergQuery = pergQuery.or(`tipo_servico_id.eq.${tsId},tipo_servico_id.is.null`);
+      }
+      const { data: perguntas } = await pergQuery.order("ordem");
+      if (!perguntas?.length) return { atendimento: [], tecnico: [] };
+
+      // Get all answers for this OS
+      const { data: avals } = await supabase.from("avaliacoes").select("id, avaliador_id, tipo_avaliacao_id, concluida, nota_final").eq("ordem_servico_id", selectedOS.id);
+      const avalIds = (avals || []).map(a => a.id);
+      let respostas: any[] = [];
+      if (avalIds.length > 0) {
+        const { data: r } = await supabase.from("respostas_avaliacao").select("avaliacao_id, pergunta_id, resposta, observacao, evidencia_url").in("avaliacao_id", avalIds);
+        respostas = r || [];
+      }
+
+      // Build answer map: pergunta_id -> resposta
+      const answerMap: Record<string, any> = {};
+      respostas.forEach(r => { answerMap[r.pergunta_id] = r; });
+
+      // Split by sector
+      const atendimento: any[] = [];
+      const tecnico: any[] = [];
+      (perguntas || []).forEach((p: any) => {
+        const setorNome = (p.setores?.nome || "").toLowerCase();
+        const item = { ...p, _answer: answerMap[p.id] || null };
+        if (setorNome.includes("técnico") || setorNome.includes("tecnico")) {
+          tecnico.push(item);
+        } else {
+          atendimento.push(item);
+        }
+      });
+
+      return { atendimento, tecnico };
+    },
+    enabled: !!selectedOS?.id && view === "os_detail",
   });
 
   // Pending evaluations
