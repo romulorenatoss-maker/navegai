@@ -1568,14 +1568,18 @@ export default function AvaliacaoOSPage() {
             {formValidated && (
               <AnimatePresence>
                 <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                  {/* Found OS info */}
+                  {/* Found OS — locked fields + actions */}
                   {formFoundOS && (
-                    <div className="bg-success/5 border border-success/20 rounded-lg p-4">
-                      <div className="flex items-center gap-2 mb-2">
+                    <div className="bg-success/5 border border-success/20 rounded-lg p-4 space-y-4">
+                      <div className="flex items-center gap-2 mb-1">
                         <Check className="w-4 h-4 text-success" />
                         <span className="text-sm font-medium text-success">OS encontrada no sistema</span>
+                        <Lock className="w-3.5 h-3.5 text-muted-foreground ml-1" />
+                        <span className="text-caption text-muted-foreground">Campos bloqueados</span>
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+
+                      {/* Locked info grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                         <div>
                           <span className="text-muted-foreground">Nº OS:</span>
                           <p className="font-medium text-foreground">{formFoundOS.numero_os}</p>
@@ -1585,19 +1589,32 @@ export default function AvaliacaoOSPage() {
                           <p className="font-medium text-foreground">{formFoundOS.cliente_nome || "—"}</p>
                         </div>
                         <div>
+                          <span className="text-muted-foreground">CPF:</span>
+                          <p className="font-medium text-foreground">{formFoundOS.cliente_cpf || "—"}</p>
+                        </div>
+                        <div>
                           <span className="text-muted-foreground">Status:</span>
                           <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border", statusLabel[formFoundOS.status]?.badge)}>
                             {statusLabel[formFoundOS.status]?.text}
                           </span>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">CPF:</span>
-                          <p className="font-medium text-foreground">{formFoundOS.cliente_cpf || "—"}</p>
+                          <span className="text-muted-foreground">Tipo de Serviço:</span>
+                          <p className="font-medium text-foreground">{tiposServico.find(t => t.id === formFoundOS.tipo_servico_id)?.nome || "—"}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Atendente:</span>
+                          <p className="font-medium text-foreground">{allProfiles.find(p => p.id === formFoundOS.atendente_id)?.nome || "Não definido"}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Técnico:</span>
+                          <p className="font-medium text-foreground">{allProfiles.find(p => p.id === formFoundOS.tecnico_id)?.nome || "Não definido"}</p>
                         </div>
                       </div>
 
+                      {/* Pending evaluation shortcut */}
                       {formPendingAval && (
-                        <div className="mt-3 pt-3 border-t border-success/20">
+                        <div className="pt-3 border-t border-success/20">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <Clock className="w-4 h-4 text-warning" />
@@ -1610,18 +1627,24 @@ export default function AvaliacaoOSPage() {
                         </div>
                       )}
 
+                      {/* Actions */}
                       {!formPendingAval && (
-                        <div className="mt-3 pt-3 border-t border-success/20 flex gap-2">
+                        <div className="pt-3 border-t border-success/20 flex flex-wrap gap-2">
                           <Button size="sm" variant="outline" onClick={() => { setSelectedOS(formFoundOS); setView("os_detail"); }} className="press-effect">
                             <Eye className="w-4 h-4 mr-1" /> Ver Detalhes
                           </Button>
+                          {formFoundOS.status !== "concluida" && (
+                            <Button size="sm" onClick={() => { setSelectedOS(formFoundOS); setView("os_detail"); }} className="press-effect">
+                              Iniciar / Continuar Avaliação <ChevronRight className="w-4 h-4 ml-1" />
+                            </Button>
+                          )}
                         </div>
                       )}
                     </div>
                   )}
 
-                  {/* Setup section for new evaluation */}
-                  {(!formFoundOS || (!formPendingAval && formFoundOS.status !== "concluida")) && (
+                  {/* Setup section for NEW OS only (OS not found) */}
+                  {!formFoundOS && (
                     <div className="border border-border rounded-lg p-4 space-y-4">
                       <h3 className="text-body font-semibold text-foreground">Configurar Avaliação</h3>
 
