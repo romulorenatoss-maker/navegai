@@ -1052,9 +1052,10 @@ export default function AvaliacaoOSPage() {
               <Eye className="w-4 h-4 mr-2" /> Iniciar / Continuar Avaliação
             </Button>
           )}
-          {selectedOS.status !== "concluida" && isAdmin && (
-            <Button variant="destructive" onClick={() => promptDeleteOS(selectedOS.id, selectedOS.numero_os)} className="press-effect w-full sm:w-auto">
-              <Trash2 className="w-4 h-4 mr-2" /> Excluir OS
+          {isAdmin && (
+            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={() => promptDeleteOS(selectedOS.id, selectedOS.numero_os)}>
+              <Trash2 className="w-4 h-4 mr-1" /> Excluir OS
             </Button>
           )}
         </div>
