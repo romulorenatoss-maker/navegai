@@ -1,0 +1,161 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import type { Tables } from "@/integrations/supabase/types";
+
+type Profile = Tables<"profiles">;
+
+export default function ColaboradoresPage() {
+  const queryClient = useQueryClient();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<Profile | null>(null);
+  const [nome, setNome] = useState("");
+  const [email, setEmail] = useState("");
+  const [cargo, setCargo] = useState("atendente");
+  const [setorId, setSetorId] = useState("");
+
+  const { data: profiles = [], isLoading } = useQuery({
+    queryKey: ["profiles"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("*, setores(nome)").order("nome");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: setores = [] } = useQuery({
+    queryKey: ["setores"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("setores").select("*").eq("ativo", true).order("nome");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const update = useMutation({
+    mutationFn: async () => {
+      if (!editing) return;
+      const { error } = await supabase.from("profiles").update({
+        nome, cargo, setor_id: setorId || null,
+      }).eq("id", editing.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["profiles"] });
+      toast.success("Colaborador atualizado.");
+      closeDialog();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const toggleAtivo = useMutation({
+    mutationFn: async (p: Profile) => {
+      const { error } = await supabase.from("profiles").update({ ativo: !p.ativo }).eq("id", p.id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["profiles"] }),
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const openEdit = (p: Profile) => {
+    setEditing(p); setNome(p.nome); setEmail(p.email); setCargo(p.cargo || "atendente"); setSetorId(p.setor_id || "");
+    setDialogOpen(true);
+  };
+  const closeDialog = () => { setDialogOpen(false); setEditing(null); };
+
+  const cargoLabel: Record<string, string> = {
+    atendente: "Atendente", tecnico: "Técnico", executor: "Executor", avaliador: "Avaliador",
+  };
+
+  return (
+    <div className="p-6 max-w-5xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-section font-semibold text-foreground">Colaboradores</h1>
+          <p className="text-body text-muted-foreground">Cadastro dos colaboradores e executores. Novos colaboradores são criados ao fazer signup.</p>
+        </div>
+      </div>
+
+      <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Nome</th>
+              <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Email</th>
+              <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Cargo</th>
+              <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Setor</th>
+              <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Status</th>
+              <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Ações</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {isLoading ? (
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Carregando...</td></tr>
+            ) : profiles.length === 0 ? (
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhum colaborador cadastrado.</td></tr>
+            ) : profiles.map((p) => (
+              <tr key={p.id} className="hover:bg-muted/50 transition-colors">
+                <td className="px-4 py-3 text-body font-medium text-foreground">{p.nome}</td>
+                <td className="px-4 py-3 text-body text-muted-foreground">{p.email}</td>
+                <td className="px-4 py-3 text-body text-muted-foreground">{cargoLabel[p.cargo || ""] || p.cargo || "—"}</td>
+                <td className="px-4 py-3 text-body text-muted-foreground">{(p as any).setores?.nome || "—"}</td>
+                <td className="px-4 py-3">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${p.ativo ? "badge-complete" : "badge-expired"}`}>{p.ativo ? "Ativo" : "Inativo"}</span>
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <Button variant="ghost" size="sm" onClick={() => toggleAtivo.mutate(p)} className="press-effect">{p.ativo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}</Button>
+                    <Button variant="ghost" size="sm" onClick={() => openEdit(p)} className="press-effect"><Pencil className="w-4 h-4" /></Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Editar Colaborador</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); update.mutate(); }} className="space-y-4">
+            <div className="space-y-1.5"><Label>Nome</Label><Input value={nome} onChange={(e) => setNome(e.target.value)} required /></div>
+            <div className="space-y-1.5"><Label>Email</Label><Input value={email} disabled className="bg-muted" /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Cargo</Label>
+                <Select value={cargo} onValueChange={setCargo}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="atendente">Atendente</SelectItem>
+                    <SelectItem value="tecnico">Técnico</SelectItem>
+                    <SelectItem value="executor">Executor</SelectItem>
+                    <SelectItem value="avaliador">Avaliador</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Setor</Label>
+                <Select value={setorId} onValueChange={setSetorId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>{setores.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={closeDialog}>Cancelar</Button>
+              <Button type="submit" disabled={update.isPending} className="press-effect">{update.isPending ? "Salvando..." : "Salvar"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
