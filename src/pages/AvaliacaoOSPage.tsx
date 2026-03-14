@@ -1552,196 +1552,170 @@ export default function AvaliacaoOSPage() {
             <p className="text-body text-muted-foreground">Nenhuma pergunta cadastrada para esta combinação de serviço e avaliação.</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {/* Section: My Sector Questions */}
             {answerablePerguntas.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                   <Users className="w-4 h-4 text-primary" />
                   Perguntas do Meu Setor ({myAnsweredCount}/{answerablePerguntas.length})
                 </h3>
                 <div className="space-y-3">
-            {answerablePerguntas.map((p, i) => {
-              const answer = evalAnswers[p.id] || null;
-              const observation = evalObservations[p.id] || "";
-              const evidenciaUrl = evalEvidencias[p.id] || null;
-              const isUploading = uploadingEvidence === p.id;
-              return (
-                <motion.div
-                  key={p.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.03 }}
-                  className={cn(
-                    "bg-card border rounded-lg transition-colors",
-                    answer === "sim" ? "border-success/30" :
-                    answer === "nao" ? "border-destructive/30" :
-                    answer === "na" ? "border-muted-foreground/20" : "border-border"
-                  )}
-                >
-                  <div className="p-4">
-                    <div className="flex items-start gap-3 mb-3">
-                      <div className={cn(
-                        "flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0",
-                        answer ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                      )}>
-                        {answer ? <Check className="w-4 h-4" /> : String(i + 1).padStart(2, "0")}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm sm:text-body font-medium text-foreground leading-relaxed">{p.pergunta}</p>
-                        <p className="text-caption text-muted-foreground mt-0.5">Nota: {p.peso}</p>
-                      </div>
-                    </div>
-
-                    {isQuestionAnswerable(p.setor_avaliado_id) ? (
-                      <>
-                        <div className="ml-11">
-                          <SegmentedControl value={answer} onChange={v => handleAnswerChange(p.id, v)} disabled={isLocked} />
-                        </div>
-
-                        <AnimatePresence>
-                          {answer === "nao" && (
-                            <motion.div
-                              initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
-                              exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }}
-                              className="overflow-hidden"
-                            >
-                              <div className="ml-11 mt-3 bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-3">
-                                <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
-                                  <AlertTriangle className="w-3.5 h-3.5" /> Descreva a irregularidade encontrada
-                                </div>
-                                <Textarea
-                                  placeholder="Descreva o problema encontrado..."
-                                  value={observation}
-                                  onChange={e => handleObservationChange(p.id, e.target.value)}
-                                  disabled={isLocked}
-                                  className="bg-card min-h-[80px] text-sm"
-                                />
-
-                                {/* Evidence photo upload - required */}
-                                <div className="space-y-2">
+                  {answerablePerguntas.map((p, i) => {
+                    const answer = evalAnswers[p.id] || null;
+                    const observation = evalObservations[p.id] || "";
+                    const evidenciaUrl = evalEvidencias[p.id] || null;
+                    const isUploading = uploadingEvidence === p.id;
+                    return (
+                      <motion.div key={p.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+                        className={cn("bg-card border rounded-lg transition-colors",
+                          answer === "sim" ? "border-success/30" : answer === "nao" ? "border-destructive/30" : answer === "na" ? "border-muted-foreground/20" : "border-border"
+                        )}>
+                        <div className="p-4">
+                          <div className="flex items-start gap-3 mb-3">
+                            <div className={cn("flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0", answer ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
+                              {answer ? <Check className="w-4 h-4" /> : String(i + 1).padStart(2, "0")}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm sm:text-body font-medium text-foreground leading-relaxed">{p.pergunta}</p>
+                              <p className="text-caption text-muted-foreground mt-0.5">Nota: {p.peso}</p>
+                            </div>
+                          </div>
+                          <div className="ml-11">
+                            <SegmentedControl value={answer} onChange={v => handleAnswerChange(p.id, v)} disabled={isLocked} />
+                          </div>
+                          <AnimatePresence>
+                            {answer === "nao" && (
+                              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+                                <div className="ml-11 mt-3 bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-3">
                                   <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
-                                    <Camera className="w-3.5 h-3.5" /> Evidência fotográfica *
+                                    <AlertTriangle className="w-3.5 h-3.5" /> Descreva a irregularidade encontrada
                                   </div>
-
-                                  {evidenciaUrl ? (
-                                    <div className="relative inline-block">
-                                      <img
-                                        src={evidenciaUrl}
-                                        alt="Evidência"
-                                        className="rounded-lg border border-border max-h-40 object-cover cursor-pointer"
-                                        onClick={() => window.open(evidenciaUrl, "_blank")}
-                                      />
-                                      {!isLocked && (
-                                        <button
-                                          onClick={() => handleRemoveEvidence(p.id)}
-                                          className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-md hover:bg-destructive/90 transition-colors"
-                                        >
-                                          <X className="w-3.5 h-3.5" />
-                                        </button>
-                                      )}
+                                  <Textarea placeholder="Descreva o problema encontrado..." value={observation} onChange={e => handleObservationChange(p.id, e.target.value)} disabled={isLocked} className="bg-card min-h-[80px] text-sm" />
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
+                                      <Camera className="w-3.5 h-3.5" /> Evidência fotográfica *
                                     </div>
-                                  ) : (
-                                  <div className="flex gap-2">
-                                    <label className={cn(
-                                      "flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors text-sm",
-                                      isUploading ? "border-muted-foreground/30 bg-muted/30 cursor-wait" : "border-destructive/30 hover:border-destructive/50 hover:bg-destructive/5",
-                                      isLocked && "opacity-50 cursor-not-allowed"
-                                    )}>
-                                      {isUploading ? (
-                                        <><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> Enviando...</>
-                                      ) : (
-                                        <><ImageIcon className="w-4 h-4 text-destructive" /> Galeria</>
-                                      )}
-                                      <input
-                                        type="file"
-                                        accept="image/*"
-                                        className="hidden"
-                                        disabled={isLocked || isUploading}
-                                        onChange={e => {
-                                          const file = e.target.files?.[0];
-                                          if (file) handleEvidenceUpload(p.id, file);
-                                          e.target.value = "";
-                                        }}
-                                      />
-                                    </label>
-                                    <label className={cn(
-                                      "flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors text-sm",
-                                      isUploading ? "border-muted-foreground/30 bg-muted/30 cursor-wait" : "border-destructive/30 hover:border-destructive/50 hover:bg-destructive/5",
-                                      isLocked && "opacity-50 cursor-not-allowed"
-                                    )}>
-                                      {!isUploading && (
-                                        <><Camera className="w-4 h-4 text-destructive" /> Câmera</>
-                                      )}
-                                      <input
-                                        type="file"
-                                        accept="image/*"
-                                        capture="environment"
-                                        className="hidden"
-                                        disabled={isLocked || isUploading}
-                                        onChange={e => {
-                                          const file = e.target.files?.[0];
-                                          if (file) handleEvidenceUpload(p.id, file);
-                                          e.target.value = "";
-                                        }}
-                                      />
-                                    </label>
+                                    {evidenciaUrl ? (
+                                      <div className="relative inline-block">
+                                        <img src={evidenciaUrl} alt="Evidência" className="rounded-lg border border-border max-h-40 object-cover cursor-pointer" onClick={() => window.open(evidenciaUrl, "_blank")} />
+                                        {!isLocked && (
+                                          <button onClick={() => handleRemoveEvidence(p.id)} className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-md hover:bg-destructive/90 transition-colors">
+                                            <X className="w-3.5 h-3.5" />
+                                          </button>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <div className="flex gap-2">
+                                        <label className={cn("flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors text-sm", isUploading ? "border-muted-foreground/30 bg-muted/30 cursor-wait" : "border-destructive/30 hover:border-destructive/50 hover:bg-destructive/5", isLocked && "opacity-50 cursor-not-allowed")}>
+                                          {isUploading ? <><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> Enviando...</> : <><ImageIcon className="w-4 h-4 text-destructive" /> Galeria</>}
+                                          <input type="file" accept="image/*" className="hidden" disabled={isLocked || isUploading} onChange={e => { const file = e.target.files?.[0]; if (file) handleEvidenceUpload(p.id, file); e.target.value = ""; }} />
+                                        </label>
+                                        <label className={cn("flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors text-sm", isUploading ? "border-muted-foreground/30 bg-muted/30 cursor-wait" : "border-destructive/30 hover:border-destructive/50 hover:bg-destructive/5", isLocked && "opacity-50 cursor-not-allowed")}>
+                                          {!isUploading && <><Camera className="w-4 h-4 text-destructive" /> Câmera</>}
+                                          <input type="file" accept="image/*" capture="environment" className="hidden" disabled={isLocked || isUploading} onChange={e => { const file = e.target.files?.[0]; if (file) handleEvidenceUpload(p.id, file); e.target.value = ""; }} />
+                                        </label>
+                                      </div>
+                                    )}
                                   </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Section: Other Sector Questions */}
+            {pendingPerguntas.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Eye className="w-4 h-4 text-muted-foreground" />
+                  Perguntas de Outros Setores ({pendingPerguntas.filter(p => evalAnswers[p.id] != null).length}/{pendingPerguntas.length})
+                </h3>
+                <div className="space-y-3">
+                  {pendingPerguntas.map((p, i) => {
+                    const answer = evalAnswers[p.id] || null;
+                    const other = otherEvalAnswers[p.id];
+                    return (
+                      <div key={p.id} className={cn("bg-card border rounded-lg", answer ? "border-muted-foreground/20" : "border-warning/20")}>
+                        <div className="p-4">
+                          <div className="flex items-start gap-3 mb-2">
+                            <div className={cn("flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0", answer ? "bg-muted text-muted-foreground" : "bg-warning/10 text-warning")}>
+                              {answer ? <Check className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm sm:text-body font-medium text-foreground leading-relaxed">{p.pergunta}</p>
+                              <p className="text-caption text-muted-foreground mt-0.5">
+                                Nota: {p.peso} • Setor: <strong>{(p as any)._setor_nome || "—"}</strong>
+                              </p>
+                            </div>
+                          </div>
+                          <div className="ml-11 mt-1">
+                            {answer ? (
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <span className={cn("inline-flex items-center px-2.5 py-1 rounded text-sm font-semibold border",
+                                    answer === "sim" ? "border-success/40 bg-success/10 text-success" : answer === "nao" ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-muted-foreground/30 bg-muted text-muted-foreground"
+                                  )}>
+                                    {answer === "sim" ? "SIM" : answer === "nao" ? "NÃO" : "N/A"}
+                                  </span>
+                                  {other && (
+                                    <span className="text-caption text-muted-foreground">
+                                      por <strong className="text-foreground">{other.avaliador_nome}</strong>
+                                    </span>
                                   )}
                                 </div>
+                                {other?.observacao && (
+                                  <div className="bg-muted/50 border border-border rounded p-2">
+                                    <p className="text-caption text-muted-foreground flex items-center gap-1 mb-0.5"><MessageSquare className="w-3 h-3" /> Observação:</p>
+                                    <p className="text-sm text-foreground">{other.observacao}</p>
+                                  </div>
+                                )}
+                                {other?.evidencia_url && (
+                                  <img src={other.evidencia_url} alt="Evidência" className="rounded-lg border border-border max-h-32 object-cover cursor-pointer hover:opacity-80 transition-opacity" onClick={() => window.open(other.evidencia_url!, "_blank")} />
+                                )}
                               </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </>
-                    ) : (
-                      <div className="ml-11 mt-1">
-                        {otherEvalAnswers[p.id] ? (
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <span className={cn(
-                                "inline-flex items-center px-2.5 py-1 rounded text-sm font-semibold border",
-                                otherEvalAnswers[p.id].resposta === "sim" ? "border-success/40 bg-success/10 text-success" :
-                                otherEvalAnswers[p.id].resposta === "nao" ? "border-destructive/40 bg-destructive/10 text-destructive" :
-                                "border-muted-foreground/30 bg-muted text-muted-foreground"
-                              )}>
-                                {otherEvalAnswers[p.id].resposta === "sim" ? "SIM" : otherEvalAnswers[p.id].resposta === "nao" ? "NÃO" : "N/A"}
-                              </span>
-                              <span className="text-caption text-muted-foreground">
-                                por <strong className="text-foreground">{otherEvalAnswers[p.id].avaliador_nome}</strong>
-                              </span>
-                            </div>
-                            {otherEvalAnswers[p.id].observacao && (
-                              <div className="bg-muted/50 border border-border rounded p-2">
-                                <p className="text-caption text-muted-foreground flex items-center gap-1 mb-0.5">
-                                  <MessageSquare className="w-3 h-3" /> Observação:
-                                </p>
-                                <p className="text-sm text-foreground">{otherEvalAnswers[p.id].observacao}</p>
+                            ) : (
+                              <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-warning/5 border border-warning/20">
+                                <Clock className="w-4 h-4 text-warning shrink-0" />
+                                <span className="text-sm text-muted-foreground">
+                                  PENDENTE — aguardando avaliação do setor <strong className="text-foreground">{(p as any)._setor_nome || "responsável"}</strong>
+                                </span>
                               </div>
                             )}
-                            {otherEvalAnswers[p.id].evidencia_url && (
-                              <img
-                                src={otherEvalAnswers[p.id].evidencia_url!}
-                                alt="Evidência"
-                                className="rounded-lg border border-border max-h-32 object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                                onClick={() => window.open(otherEvalAnswers[p.id].evidencia_url!, "_blank")}
-                              />
-                            )}
                           </div>
-                        ) : (
-                          <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-warning/5 border border-warning/20">
-                            <Clock className="w-4 h-4 text-warning shrink-0" />
-                            <span className="text-sm text-muted-foreground">
-                              PENDENTE — aguardando avaliação do setor <strong className="text-foreground">{(p as any)._setor_nome || "responsável"}</strong>
-                            </span>
-                          </div>
-                        )}
+                        </div>
                       </div>
-                    )}
-                  </div>
-                </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Pendências Summary */}
+            {(() => {
+              const pendentes = evalPerguntas.filter(p => evalAnswers[p.id] == null);
+              if (pendentes.length === 0) return null;
+              return (
+                <div className="bg-warning/5 border border-warning/20 rounded-lg p-4">
+                  <h3 className="text-sm font-semibold text-warning mb-2 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" /> Pendências ({pendentes.length})
+                  </h3>
+                  <ul className="space-y-1">
+                    {pendentes.map(p => (
+                      <li key={p.id} className="text-caption text-muted-foreground">
+                        • {p.pergunta} <span className="text-warning">({(p as any)._setor_nome || "—"})</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               );
-            })}
+            })()}
           </div>
         )}
 
