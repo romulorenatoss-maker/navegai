@@ -2078,6 +2078,10 @@ export default function AvaliacaoOSPage() {
             </div>
           )}
         </div>
+
+        {/* Atendimento Section */}
+        <div className="bg-card border border-border rounded-lg shadow-card mb-4">
+          <div className="p-4 border-b border-border flex items-center gap-2 flex-wrap">
             <Users className="w-4 h-4 text-primary" />
             <h3 className="text-body font-semibold text-foreground">Atendimento</h3>
             <span className="text-caption text-muted-foreground ml-1">— {detailAtendenteNome || "Não definido"}</span>
