@@ -732,8 +732,8 @@ export default function AvaliacaoOSPage() {
   // Create OS from form + start evaluation
   const handleCreateAndStart = async () => {
     if (!profile) return;
+    if (!clienteId) { toast.error("Cliente é obrigatório. Valide o CPF primeiro."); return; }
     if (!tipoServicoId) { toast.error("Selecione o tipo de serviço."); return; }
-    // Each evaluator must select their sector's employee
     const needsAtendente = hasAtendimentoAccess || isAdmin;
     const needsTecnico = hasTecnicoAccess || isAdmin;
     if (needsAtendente && !atendenteId) { toast.error("Selecione o atendente avaliado."); return; }
@@ -742,29 +742,15 @@ export default function AvaliacaoOSPage() {
 
     try {
       const num = formOsNumero.trim();
-      const cpfD = formClienteCpf.replace(/\D/g, "");
       const nomeTr = formClienteNome.trim() || null;
-      const cpfTr = cpfD.length === 11 ? formClienteCpf.trim() : null;
-      let clienteId: string | null = null;
-
-      if (formFoundCliente) {
-        clienteId = formFoundCliente.id;
-      } else if (cpfTr) {
-        const { data: ex } = await supabase.from("clientes").select("id").eq("cpf", cpfTr).limit(1).single();
-        if (ex) clienteId = ex.id;
-        else { const { data: nc } = await supabase.from("clientes").insert({ nome: nomeTr || "Sem nome", cpf: cpfTr }).select("id").single(); if (nc) clienteId = nc.id; }
-      } else if (nomeTr) {
-        const { data: nc } = await supabase.from("clientes").insert({ nome: nomeTr, cpf: null }).select("id").single();
-        if (nc) clienteId = nc.id;
-      }
+      const cpfTr = formClienteCpf.trim() || null;
 
       let osId: string;
       if (formFoundOS) {
         osId = formFoundOS.id;
-        // Update OS with new employee assignments
         await supabase.from("ordens_servico").update({
           atendente_id: atendenteId || null, tecnico_id: tecnicoId || null,
-          tipo_servico_id: tipoServicoId,
+          tipo_servico_id: tipoServicoId, cliente_id: clienteId,
         } as any).eq("id", osId);
       } else {
         const { data: newOs, error: oe } = await supabase.from("ordens_servico").insert({
