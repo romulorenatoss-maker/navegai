@@ -302,6 +302,7 @@ export default function DesempenhoColaboradorPage() {
         tipo_avaliacao_nome: a.tipo_avaliacao_id ? taNames[a.tipo_avaliacao_id] || "—" : "—",
         nota_final: a.nota_final,
         concluida: a.concluida,
+        concluida_em: a.concluida_em,
         respostas: (respostas || [])
           .filter(r => r.avaliacao_id === a.id)
           .map(r => ({
