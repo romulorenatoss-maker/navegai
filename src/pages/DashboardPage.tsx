@@ -115,17 +115,9 @@ export default function DashboardPage() {
   const { profile, isAdmin } = useAuth();
 
   const now = new Date();
-  const [competenceMonth, setCompetenceMonth] = useState(format(now, "yyyy-MM"));
   const [startDate, setStartDate] = useState<Date | undefined>(startOfMonth(now));
   const [endDate, setEndDate] = useState<Date | undefined>(endOfMonth(now));
-
-  const handleCompetenceChange = (val: string) => {
-    setCompetenceMonth(val);
-    const [y, m] = val.split("-").map(Number);
-    const d = new Date(y, m - 1, 1);
-    setStartDate(startOfMonth(d));
-    setEndDate(endOfMonth(d));
-  };
+  const [searchTrigger, setSearchTrigger] = useState(0);
 
   // Data state
   const [allOS, setAllOS] = useState<OSWithProgress[]>([]);
