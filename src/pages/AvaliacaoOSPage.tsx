@@ -935,6 +935,23 @@ export default function AvaliacaoOSPage() {
     // Ensure os_perguntas are snapshotted
     await snapshotOsPerguntas(theOS.id, tsId);
 
+    // If OS is "concluida" but has incomplete data, reopen it
+    if (theOS.status === "concluida") {
+      const { data: osPerguntas } = await (supabase as any)
+        .from("os_perguntas").select("pergunta_id").eq("os_id", theOS.id);
+      const totalPerguntas = osPerguntas?.length || 0;
+      const { data: savedRespostas } = await supabase
+        .from("respostas_avaliacao").select("pergunta_id").eq("ordem_servico_id", theOS.id).not("resposta", "is", null);
+      const totalRespostas = savedRespostas?.length || 0;
+      
+      if (totalPerguntas === 0 || totalRespostas < totalPerguntas) {
+        // OS was prematurely concluded - reopen it
+        await supabase.from("ordens_servico").update({ status: "em_andamento", data_conclusao: null } as any).eq("id", theOS.id);
+        theOS.status = "em_andamento";
+        toast.info("OS reaberta — avaliação estava incompleta.");
+      }
+    }
+
     // Fetch existing evaluations for this OS
     const { data: existingAvals } = await supabase
       .from("avaliacoes")
