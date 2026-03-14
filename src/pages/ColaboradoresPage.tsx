@@ -203,15 +203,7 @@ export default function ColaboradoresPage() {
 
   const isSubmitting = create.isPending || update.isPending;
 
-  if (!isAdmin) {
-    return (
-      <div className="p-6 max-w-5xl mx-auto">
-        <div className="bg-card border border-border rounded-lg p-8 text-center">
-          <p className="text-body text-muted-foreground">Acesso restrito. Apenas administradores podem gerenciar colaboradores.</p>
-        </div>
-      </div>
-    );
-  }
+  // Access is now controlled by permissoes_tela — no admin block needed
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
