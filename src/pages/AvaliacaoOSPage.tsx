@@ -728,25 +728,49 @@ export default function AvaliacaoOSPage() {
               {/* Step 2: Employees */}
               {step === 2 && (
                 <div className="space-y-4">
-                  <p className="text-body text-muted-foreground">Selecione os funcionários que serão avaliados nesta OS.</p>
-                  <div className="space-y-1.5">
-                    <Label>Atendente *</Label>
-                    <Select value={atendenteId} onValueChange={setAtendenteId}>
-                      <SelectTrigger><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
-                      <SelectContent>
-                        {selectableProfiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Técnico *</Label>
-                    <Select value={tecnicoId} onValueChange={setTecnicoId}>
-                      <SelectTrigger><SelectValue placeholder="Selecione o técnico" /></SelectTrigger>
-                      <SelectContent>
-                        {selectableProfiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <p className="text-body text-muted-foreground">
+                    {isAtendimentoEvaluator
+                      ? "Selecione o atendente que será avaliado nesta OS."
+                      : "Selecione o técnico que será avaliado nesta OS."}
+                  </p>
+
+                  {isAtendimentoEvaluator ? (
+                    <div className="space-y-1.5">
+                      <Label>Atendente *</Label>
+                      {existingOsId && atendenteId ? (
+                        <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-md border border-border">
+                          <Check className="w-4 h-4 text-success" />
+                          <span className="text-body text-foreground">{allProfiles.find(p => p.id === atendenteId)?.nome || "—"}</span>
+                          <span className="text-caption text-muted-foreground ml-auto">Já selecionado</span>
+                        </div>
+                      ) : (
+                        <Select value={atendenteId} onValueChange={setAtendenteId}>
+                          <SelectTrigger><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
+                          <SelectContent>
+                            {profilesBySetor.map(p => <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <Label>Técnico *</Label>
+                      {existingOsId && tecnicoId ? (
+                        <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-md border border-border">
+                          <Check className="w-4 h-4 text-success" />
+                          <span className="text-body text-foreground">{allProfiles.find(p => p.id === tecnicoId)?.nome || "—"}</span>
+                          <span className="text-caption text-muted-foreground ml-auto">Já selecionado</span>
+                        </div>
+                      ) : (
+                        <Select value={tecnicoId} onValueChange={setTecnicoId}>
+                          <SelectTrigger><SelectValue placeholder="Selecione o técnico" /></SelectTrigger>
+                          <SelectContent>
+                            {profilesBySetor.map(p => <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
