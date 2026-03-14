@@ -1471,17 +1471,86 @@ export default function AvaliacaoOSPage() {
         <p className="text-sm sm:text-body text-muted-foreground">Informe os dados da OS para validar e iniciar a avaliação.</p>
       </div>
 
-      {/* Validation Form */}
+      {/* Step 1: CPF do Cliente */}
       <div className="bg-card border border-border rounded-lg shadow-card mb-6">
         <div className="p-4 border-b border-border">
           <h2 className="text-body font-semibold text-foreground flex items-center gap-2">
             <Search className="w-4 h-4 text-primary" />
-            Dados da OS
+            Etapa 1 — Identificação do Cliente
           </h2>
         </div>
         <div className="p-4 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
+              <Label>CPF do Cliente *</Label>
+              <Input
+                value={formClienteCpf}
+                onChange={e => { setFormClienteCpf(formatCpf(e.target.value)); if (cpfValidated) { setCpfValidated(false); setFormFoundCliente(null); setShowNewClienteForm(false); setClienteId(null); } }}
+                placeholder="000.000.000-00"
+                maxLength={14}
+                disabled={!!clienteId}
+                onKeyDown={e => e.key === "Enter" && !clienteId && handleCpfValidation()}
+              />
+              {formClienteCpf.replace(/\D/g, "").length === 11 && !isValidCpf(formClienteCpf) && (
+                <p className="text-caption text-destructive">CPF inválido</p>
+              )}
+            </div>
+            {clienteId && (
+              <div className="space-y-1.5">
+                <Label>Cliente</Label>
+                <div className="px-3 py-2 bg-success/5 border border-success/20 rounded-md text-body text-foreground flex items-center gap-2">
+                  <Check className="w-4 h-4 text-success shrink-0" />
+                  <span className="font-medium">{formClienteNome}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* New client form */}
+          {showNewClienteForm && !clienteId && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="border border-warning/30 bg-warning/5 rounded-lg p-4 space-y-3">
+              <p className="text-sm text-warning font-medium flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" /> Cliente não encontrado. Cadastre abaixo:
+              </p>
+              <div className="space-y-1.5">
+                <Label>Nome do Cliente *</Label>
+                <Input
+                  value={formClienteNome}
+                  onChange={e => setFormClienteNome(e.target.value)}
+                  placeholder="Nome completo do cliente"
+                />
+              </div>
+              <Button onClick={handleCreateCliente} disabled={!formClienteNome.trim()} size="sm" className="press-effect">
+                Cadastrar Cliente
+              </Button>
+            </motion.div>
+          )}
+
+          <div className="flex items-center gap-3">
+            {!clienteId && (
+              <Button onClick={handleCpfValidation} disabled={formClienteCpf.replace(/\D/g, "").length !== 11 || cpfValidating} className="press-effect">
+                {cpfValidating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
+                Buscar Cliente
+              </Button>
+            )}
+            {(cpfValidated || clienteId) && (
+              <Button variant="ghost" size="sm" onClick={resetForm}>Limpar</Button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Step 2: Número da OS (only after client identified) */}
+      {clienteId && (
+        <div className="bg-card border border-border rounded-lg shadow-card mb-6">
+          <div className="p-4 border-b border-border">
+            <h2 className="text-body font-semibold text-foreground flex items-center gap-2">
+              <Search className="w-4 h-4 text-primary" />
+              Etapa 2 — Número da OS
+            </h2>
+          </div>
+          <div className="p-4 space-y-4">
+            <div className="space-y-1.5 max-w-sm">
               <Label>Número da OS *</Label>
               <Input
                 value={formOsNumero}
@@ -1490,192 +1559,151 @@ export default function AvaliacaoOSPage() {
                 onKeyDown={e => e.key === "Enter" && handleValidate()}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label>Nome do Cliente</Label>
-              <Input
-                value={formClienteNome}
-                onChange={e => setFormClienteNome(e.target.value)}
-                placeholder="Nome completo"
-                disabled={!!formFoundOS}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>CPF do Cliente</Label>
-              <Input
-                value={formClienteCpf}
-                onChange={e => setFormClienteCpf(formatCpf(e.target.value))}
-                placeholder="000.000.000-00"
-                maxLength={14}
-                disabled={!!formFoundOS}
-              />
-              {formClienteCpf.replace(/\D/g, "").length === 11 && !isValidCpf(formClienteCpf) && (
-                <p className="text-caption text-destructive">CPF inválido</p>
-              )}
-            </div>
-          </div>
 
-          <div className="flex items-center gap-3">
             <Button onClick={() => handleValidate()} disabled={!formOsNumero.trim() || formValidating} className="press-effect">
               {formValidating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
-              Validar
+              Validar OS
             </Button>
+
+            {/* Validation Results */}
             {formValidated && (
-              <Button variant="ghost" size="sm" onClick={resetForm}>Limpar</Button>
-            )}
-          </div>
-
-          {/* Validation Results */}
-          {formValidated && (
-            <AnimatePresence>
-              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                {/* Found OS info */}
-                {formFoundOS && (
-                  <div className="bg-success/5 border border-success/20 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Check className="w-4 h-4 text-success" />
-                      <span className="text-sm font-medium text-success">OS encontrada no sistema</span>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Nº OS:</span>
-                        <p className="font-medium text-foreground">{formFoundOS.numero_os}</p>
+              <AnimatePresence>
+                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+                  {/* Found OS info */}
+                  {formFoundOS && (
+                    <div className="bg-success/5 border border-success/20 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Check className="w-4 h-4 text-success" />
+                        <span className="text-sm font-medium text-success">OS encontrada no sistema</span>
                       </div>
-                      <div>
-                        <span className="text-muted-foreground">Cliente:</span>
-                        <p className="font-medium text-foreground">{formFoundOS.cliente_nome || "—"}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Status:</span>
-                        <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border", statusLabel[formFoundOS.status]?.badge)}>
-                          {statusLabel[formFoundOS.status]?.text}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">CPF:</span>
-                        <p className="font-medium text-foreground">{formFoundOS.cliente_cpf || "—"}</p>
-                      </div>
-                    </div>
-
-                    {/* Pending evaluation shortcut */}
-                    {formPendingAval && (
-                      <div className="mt-3 pt-3 border-t border-success/20">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-warning" />
-                            <span className="text-sm font-medium text-warning">Avaliação pendente encontrada</span>
-                          </div>
-                          <Button size="sm" onClick={handleContinuePending} className="press-effect">
-                            Continuar Avaliação <ChevronRight className="w-4 h-4 ml-1" />
-                          </Button>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Nº OS:</span>
+                          <p className="font-medium text-foreground">{formFoundOS.numero_os}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Cliente:</span>
+                          <p className="font-medium text-foreground">{formFoundOS.cliente_nome || "—"}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Status:</span>
+                          <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border", statusLabel[formFoundOS.status]?.badge)}>
+                            {statusLabel[formFoundOS.status]?.text}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">CPF:</span>
+                          <p className="font-medium text-foreground">{formFoundOS.cliente_cpf || "—"}</p>
                         </div>
                       </div>
-                    )}
 
-                    {/* View OS detail */}
-                    {!formPendingAval && (
-                      <div className="mt-3 pt-3 border-t border-success/20 flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => { setSelectedOS(formFoundOS); setView("os_detail"); }} className="press-effect">
-                          <Eye className="w-4 h-4 mr-1" /> Ver Detalhes
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )}
+                      {formPendingAval && (
+                        <div className="mt-3 pt-3 border-t border-success/20">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-4 h-4 text-warning" />
+                              <span className="text-sm font-medium text-warning">Avaliação pendente encontrada</span>
+                            </div>
+                            <Button size="sm" onClick={handleContinuePending} className="press-effect">
+                              Continuar Avaliação <ChevronRight className="w-4 h-4 ml-1" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
 
-                {/* Found client info */}
-                {!formFoundOS && formFoundCliente && (
-                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
-                    <div className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-primary" />
-                      <span className="text-sm font-medium text-primary">Cliente encontrado: {formFoundCliente.nome}</span>
+                      {!formPendingAval && (
+                        <div className="mt-3 pt-3 border-t border-success/20 flex gap-2">
+                          <Button size="sm" variant="outline" onClick={() => { setSelectedOS(formFoundOS); setView("os_detail"); }} className="press-effect">
+                            <Eye className="w-4 h-4 mr-1" /> Ver Detalhes
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Setup section for new evaluation (when OS not found or no pending eval) */}
-                {(!formFoundOS || (!formPendingAval && formFoundOS.status !== "concluida")) && (
-                  <div className="border border-border rounded-lg p-4 space-y-4">
-                    <h3 className="text-body font-semibold text-foreground">Configurar Avaliação</h3>
+                  {/* Setup section for new evaluation */}
+                  {(!formFoundOS || (!formPendingAval && formFoundOS.status !== "concluida")) && (
+                    <div className="border border-border rounded-lg p-4 space-y-4">
+                      <h3 className="text-body font-semibold text-foreground">Configurar Avaliação</h3>
 
-                    {/* Tipo de Serviço */}
-                    <div className="space-y-2">
-                      <Label className="text-body font-medium">Tipo de Serviço *</Label>
-                      <div className="space-y-1 max-h-40 overflow-y-auto">
-                        {tiposServico.length === 0 ? (
-                          <p className="text-body text-muted-foreground text-center py-4">Nenhum tipo de serviço disponível.</p>
-                        ) : tiposServico.map((t) => (
-                          <button key={t.id} type="button" onClick={() => { setTipoServicoId(t.id); setSelectedTipoAvaliacaoId(""); }}
-                            className={cn("w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-left transition-all press-effect text-sm",
-                              tipoServicoId === t.id ? "bg-primary/10 border-primary text-primary" : "bg-card border-border hover:bg-muted/50")}>
-                            <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0",
-                              tipoServicoId === t.id ? "border-primary bg-primary" : "border-muted-foreground/30")}>
-                              {tipoServicoId === t.id && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
-                            </div>
-                            <span className="font-medium truncate">{t.nome}</span>
-                            <span className="text-caption text-muted-foreground ml-auto">{(t as any).setores?.nome || ""}</span>
-                          </button>
-                        ))}
+                      {/* Tipo de Serviço */}
+                      <div className="space-y-2">
+                        <Label className="text-body font-medium">Tipo de Serviço *</Label>
+                        <div className="space-y-1 max-h-40 overflow-y-auto">
+                          {tiposServico.length === 0 ? (
+                            <p className="text-body text-muted-foreground text-center py-4">Nenhum tipo de serviço disponível.</p>
+                          ) : tiposServico.map((t) => (
+                            <button key={t.id} type="button" onClick={() => { setTipoServicoId(t.id); setSelectedTipoAvaliacaoId(""); }}
+                              className={cn("w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-left transition-all press-effect text-sm",
+                                tipoServicoId === t.id ? "bg-primary/10 border-primary text-primary" : "bg-card border-border hover:bg-muted/50")}>
+                              <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0",
+                                tipoServicoId === t.id ? "border-primary bg-primary" : "border-muted-foreground/30")}>
+                                {tipoServicoId === t.id && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                              </div>
+                              <span className="font-medium truncate">{t.nome}</span>
+                              <span className="text-caption text-muted-foreground ml-auto">{(t as any).setores?.nome || ""}</span>
+                            </button>
+                          ))}
+                        </div>
                       </div>
+
+                      {/* Employee Selection - Sector-based */}
+                      {tipoServicoId && (
+                        <div className="space-y-3">
+                          {(hasAtendimentoAccess || isAdmin) ? (
+                            <div className="space-y-1.5">
+                              <Label>Atendente Avaliado *</Label>
+                              <Select value={atendenteId} onValueChange={setAtendenteId}>
+                                <SelectTrigger><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
+                                <SelectContent>
+                                  {allProfiles.filter(p => p.id !== profile?.id).map(p =>
+                                    <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          ) : atendenteId ? (
+                            <div className="space-y-1.5">
+                              <Label className="flex items-center gap-1.5">Atendente Avaliado <Lock className="w-3 h-3 text-muted-foreground" /></Label>
+                              <div className="px-3 py-2 bg-muted/50 border border-border rounded-md text-body text-foreground">
+                                {allProfiles.find(p => p.id === atendenteId)?.nome || "—"}
+                              </div>
+                            </div>
+                          ) : null}
+                          {(hasTecnicoAccess || isAdmin) ? (
+                            <div className="space-y-1.5">
+                              <Label>Técnico Avaliado *</Label>
+                              <Select value={tecnicoId} onValueChange={setTecnicoId}>
+                                <SelectTrigger><SelectValue placeholder="Selecione o técnico" /></SelectTrigger>
+                                <SelectContent>
+                                  {allProfiles.filter(p => p.id !== profile?.id).map(p =>
+                                    <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          ) : tecnicoId ? (
+                            <div className="space-y-1.5">
+                              <Label className="flex items-center gap-1.5">Técnico Avaliado <Lock className="w-3 h-3 text-muted-foreground" /></Label>
+                              <div className="px-3 py-2 bg-muted/50 border border-border rounded-md text-body text-foreground">
+                                {allProfiles.find(p => p.id === tecnicoId)?.nome || "—"}
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
+
+                      <Button onClick={handleCreateAndStart} disabled={!canCreateEval} className="w-full sm:w-auto press-effect">
+                        Iniciar Avaliação <ChevronRight className="w-4 h-4 ml-1" />
+                      </Button>
                     </div>
-
-                    {/* Employee Selection - Sector-based */}
-                    {tipoServicoId && (
-                      <div className="space-y-3">
-                        {/* Atendente: only editable by atendimento evaluators or admins */}
-                        {(hasAtendimentoAccess || isAdmin) ? (
-                          <div className="space-y-1.5">
-                            <Label>Atendente Avaliado *</Label>
-                            <Select value={atendenteId} onValueChange={setAtendenteId}>
-                              <SelectTrigger><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
-                              <SelectContent>
-                                {allProfiles.filter(p => p.id !== profile?.id).map(p =>
-                                  <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>
-                                )}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        ) : atendenteId ? (
-                          <div className="space-y-1.5">
-                            <Label className="flex items-center gap-1.5">Atendente Avaliado <Lock className="w-3 h-3 text-muted-foreground" /></Label>
-                            <div className="px-3 py-2 bg-muted/50 border border-border rounded-md text-body text-foreground">
-                              {allProfiles.find(p => p.id === atendenteId)?.nome || "—"}
-                            </div>
-                          </div>
-                        ) : null}
-                        {/* Técnico: only editable by técnico evaluators or admins */}
-                        {(hasTecnicoAccess || isAdmin) ? (
-                          <div className="space-y-1.5">
-                            <Label>Técnico Avaliado *</Label>
-                            <Select value={tecnicoId} onValueChange={setTecnicoId}>
-                              <SelectTrigger><SelectValue placeholder="Selecione o técnico" /></SelectTrigger>
-                              <SelectContent>
-                                {allProfiles.filter(p => p.id !== profile?.id).map(p =>
-                                  <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>
-                                )}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        ) : tecnicoId ? (
-                          <div className="space-y-1.5">
-                            <Label className="flex items-center gap-1.5">Técnico Avaliado <Lock className="w-3 h-3 text-muted-foreground" /></Label>
-                            <div className="px-3 py-2 bg-muted/50 border border-border rounded-md text-body text-foreground">
-                              {allProfiles.find(p => p.id === tecnicoId)?.nome || "—"}
-                            </div>
-                          </div>
-                        ) : null}
-                      </div>
-                    )}
-
-                    <Button onClick={handleCreateAndStart} disabled={!canCreateEval} className="w-full sm:w-auto press-effect">
-                      Iniciar Avaliação <ChevronRight className="w-4 h-4 ml-1" />
-                    </Button>
-                  </div>
-                )}
-              </motion.div>
-            </AnimatePresence>
-          )}
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Pending Evaluations */}
       {pendingAvaliacoes.length > 0 && (
