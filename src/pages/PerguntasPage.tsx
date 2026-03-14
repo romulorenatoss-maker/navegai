@@ -24,7 +24,8 @@ function calcPesoByAvaliador(perguntas: any[]): Map<string, { nome: string; tota
     map.set(key, current);
   }
   return map;
-}
+
+export default function PerguntasPage() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Pergunta | null>(null);
