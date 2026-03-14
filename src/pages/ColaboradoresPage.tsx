@@ -2,14 +2,16 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ShieldCheck } from "lucide-react";
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ShieldCheck, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
+import SessoesUsuarioTab from "@/components/SessoesUsuarioTab";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Profile = Tables<"profiles">;
@@ -26,6 +28,7 @@ export default function ColaboradoresPage() {
   const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [sessionViewOpen, setSessionViewOpen] = useState(false);
   const [editing, setEditing] = useState<Profile | null>(null);
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
@@ -307,6 +310,7 @@ export default function ColaboradoresPage() {
                       <div className="flex items-center justify-end gap-1">
                         <Button variant="ghost" size="sm" onClick={() => toggleAtivo.mutate(p)} className="press-effect">{p.ativo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}</Button>
                         <Button variant="ghost" size="sm" onClick={() => openEdit(p)} className="press-effect"><Pencil className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="sm" onClick={() => { setEditing(p); setSessionViewOpen(true); }} className="press-effect" title="Sessões"><Clock className="w-4 h-4" /></Button>
                         <Button variant="ghost" size="sm" onClick={() => remove.mutate(p.id)} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
                       </div>
                     </td>
@@ -418,6 +422,18 @@ export default function ColaboradoresPage() {
               <Button type="submit" disabled={isSubmitting} className="press-effect">{isSubmitting ? "Salvando..." : "Salvar"}</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Session history dialog */}
+      <Dialog open={sessionViewOpen} onOpenChange={(v) => { setSessionViewOpen(v); if (!v) setEditing(null); }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Sessões — {editing?.nome || ""}</DialogTitle>
+          </DialogHeader>
+          {editing && (
+            <SessoesUsuarioTab profileId={editing.id} userId={editing.user_id} />
+          )}
         </DialogContent>
       </Dialog>
     </div>

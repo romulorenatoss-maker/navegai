@@ -562,6 +562,47 @@ export type Database = {
           },
         ]
       }
+      sessoes_usuario: {
+        Row: {
+          created_at: string
+          duracao_segundos: number | null
+          id: string
+          login_at: string
+          logout_at: string | null
+          logout_reason: string | null
+          profile_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duracao_segundos?: number | null
+          id?: string
+          login_at?: string
+          logout_at?: string | null
+          logout_reason?: string | null
+          profile_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duracao_segundos?: number | null
+          id?: string
+          login_at?: string
+          logout_at?: string | null
+          logout_reason?: string | null
+          profile_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessoes_usuario_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       setores: {
         Row: {
           ativo: boolean
