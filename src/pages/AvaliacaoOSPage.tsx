@@ -1573,7 +1573,7 @@ export default function AvaliacaoOSPage() {
                                         accept="image/*"
                                         capture="environment"
                                         className="hidden"
-                                        disabled={evalFinalized || isUploading}
+                                        disabled={isLocked || isUploading}
                                         onChange={e => {
                                           const file = e.target.files?.[0];
                                           if (file) handleEvidenceUpload(p.id, file);
