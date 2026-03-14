@@ -207,6 +207,10 @@ export default function PerguntasPage() {
 
   const summaryByChecklist = useMemo(() => {
     const map = new Map<string, { nome: string; count: number; totalNota: number }>();
+    // Start with all checklists (even empty ones)
+    for (const c of checklists) {
+      map.set(c.id, { nome: c.titulo, count: 0, totalNota: 0 });
+    }
     for (const p of perguntas) {
       const key = p.checklist_id || "sem_checklist";
       const nome = (p as any)._checklist_titulo || "Sem Checklist";
@@ -216,7 +220,7 @@ export default function PerguntasPage() {
       map.set(key, cur);
     }
     return map;
-  }, [perguntas]);
+  }, [perguntas, checklists]);
 
   const hasFilter = filtroTipoServico !== null;
   const perguntasFiltradas = useMemo(() => {
