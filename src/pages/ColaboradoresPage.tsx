@@ -2,14 +2,16 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ShieldCheck } from "lucide-react";
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ShieldCheck, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
+import SessoesUsuarioTab from "@/components/SessoesUsuarioTab";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Profile = Tables<"profiles">;
