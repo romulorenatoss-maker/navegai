@@ -384,7 +384,18 @@ export default function AvaliacaoOSPage() {
                     </div>
                     <div className="space-y-1.5">
                       <Label>CPF do Cliente</Label>
-                      <Input value={clienteCpf} onChange={(e) => setClienteCpf(e.target.value)} placeholder="000.000.000-00" />
+                      <Input
+                        value={clienteCpf}
+                        onChange={(e) => setClienteCpf(formatCpf(e.target.value))}
+                        placeholder="000.000.000-00"
+                        maxLength={14}
+                      />
+                      {clienteCpf.replace(/\D/g, "").length === 11 && !isValidCpf(clienteCpf) && (
+                        <p className="text-caption text-destructive">CPF inválido</p>
+                      )}
+                      {clienteCpf.replace(/\D/g, "").length === 11 && isValidCpf(clienteCpf) && (
+                        <p className="text-caption text-success">CPF válido ✓</p>
+                      )}
                     </div>
                   </div>
                 </div>
