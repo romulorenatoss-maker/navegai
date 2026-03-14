@@ -1356,7 +1356,7 @@ export default function AvaliacaoOSPage() {
 
     doc.save(`avaliacao_os_${evalOsData.numero_os}.pdf`);
     toast.success("PDF gerado com sucesso!");
-  }, [evalOsData, evalPerguntas, evalAnswers, evalObservations, evalEvidencias, evalScore, evalTipoServicoNome, evalAtendenteNome, evalTecnicoNome, evalAnsweredCount, evalTotalScore, evalMaxScore]);
+  }, [evalOsData, evalPerguntas, evalAnswers, evalObservations, evalEvidencias, evalScore, evalTipoServicoNome, evalAtendenteNome, evalTecnicoNome, globalAnsweredCount, evalTotalScore, evalMaxScore]);
 
   // ===================== RENDER =====================
 
