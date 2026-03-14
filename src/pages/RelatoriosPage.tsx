@@ -236,7 +236,7 @@ export default function RelatoriosPage() {
     }
   };
 
-  // Export CSV
+  // Export CSV — columnar format with questions as headers
   const handleExportSelected = async () => {
     if (selected.size === 0) return;
     setExportLoading(true);
@@ -244,10 +244,10 @@ export default function RelatoriosPage() {
     try {
       const osIds = [...selected];
 
-      // Get OS data
+      // 1. Get OS data with colaborador_avaliado_id
       const { data: osData } = await supabase
         .from("ordens_servico")
-        .select("id, numero_os, status, created_at, cliente_nome, cliente_cpf, tipo_servico_id")
+        .select("id, numero_os, status, created_at, cliente_nome, cliente_cpf, tipo_servico_id, colaborador_avaliado_id")
         .in("id", osIds);
 
       if (!osData || osData.length === 0) {
@@ -256,7 +256,7 @@ export default function RelatoriosPage() {
         return;
       }
 
-      // Get tipo_servico names
+      // 2. Get tipo_servico names
       const tipoIds = [...new Set(osData.map((o) => o.tipo_servico_id).filter(Boolean))] as string[];
       let tipoNames: Record<string, string> = {};
       if (tipoIds.length > 0) {
@@ -264,112 +264,100 @@ export default function RelatoriosPage() {
         tipos?.forEach((t) => { tipoNames[t.id] = t.nome; });
       }
 
-      // Get avaliacoes
+      // 3. Get avaliacoes
       const { data: avaliacoes } = await supabase
         .from("avaliacoes")
-        .select("id, ordem_servico_id, avaliador_id, concluida, nota_final, tipo_avaliacao_id")
+        .select("id, ordem_servico_id, avaliador_id, concluida, nota_final, created_at")
         .in("ordem_servico_id", osIds);
 
       const avalIds = avaliacoes?.map((a) => a.id) || [];
 
-      // Get respostas
-      let respostas: any[] = [];
+      // 4. Get all respostas
+      let respostas: { avaliacao_id: string; pergunta_id: string; resposta: string | null }[] = [];
       if (avalIds.length > 0) {
         const { data } = await supabase
           .from("respostas_avaliacao")
-          .select("avaliacao_id, pergunta_id, resposta, observacao")
+          .select("avaliacao_id, pergunta_id, resposta")
           .in("avaliacao_id", avalIds);
         respostas = data || [];
       }
 
-      // Get perguntas
+      // 5. Get all perguntas that were answered, ordered by `ordem`
       const perguntaIds = [...new Set(respostas.map((r) => r.pergunta_id))];
-      let perguntaTextos: Record<string, string> = {};
+      let perguntas: { id: string; pergunta: string; ordem: number }[] = [];
       if (perguntaIds.length > 0) {
-        const { data: perguntas } = await supabase
+        const { data } = await supabase
           .from("perguntas_avaliacao")
-          .select("id, pergunta")
-          .in("id", perguntaIds);
-        perguntas?.forEach((p) => { perguntaTextos[p.id] = p.pergunta; });
+          .select("id, pergunta, ordem")
+          .in("id", perguntaIds)
+          .order("ordem");
+        perguntas = data || [];
       }
 
-      // Get avaliador names
-      const avaliadorIds = [...new Set(avaliacoes?.map((a) => a.avaliador_id) || [])];
-      let avaliadorNames: Record<string, string> = {};
-      if (avaliadorIds.length > 0) {
-        const { data: profiles } = await supabase.from("profiles").select("id, nome").in("id", avaliadorIds);
-        profiles?.forEach((p) => { avaliadorNames[p.id] = p.nome; });
+      // 6. Get profile names (avaliadores + colaboradores avaliados)
+      const profileIds = [
+        ...new Set([
+          ...(avaliacoes?.map((a) => a.avaliador_id) || []),
+          ...osData.map((o) => o.colaborador_avaliado_id).filter(Boolean) as string[],
+        ]),
+      ];
+      let profileNames: Record<string, string> = {};
+      if (profileIds.length > 0) {
+        const { data: profiles } = await supabase.from("profiles").select("id, nome").in("id", profileIds);
+        profiles?.forEach((p) => { profileNames[p.id] = p.nome; });
       }
 
-      // Get tipo_avaliacao names
-      const tipoAvalIds = [...new Set(avaliacoes?.map((a) => a.tipo_avaliacao_id).filter(Boolean) || [])] as string[];
-      let tipoAvalNames: Record<string, string> = {};
-      if (tipoAvalIds.length > 0) {
-        const { data: tiposAval } = await supabase.from("tipos_avaliacao").select("id, nome").in("id", tipoAvalIds);
-        tiposAval?.forEach((t) => { tipoAvalNames[t.id] = t.nome; });
-      }
+      // 7. Build answer map: respostas keyed by avaliacao_id -> pergunta_id
+      const answerMap: Record<string, Record<string, string>> = {};
+      respostas.forEach((r) => {
+        if (!answerMap[r.avaliacao_id]) answerMap[r.avaliacao_id] = {};
+        const val = r.resposta === "sim" ? "SIM" : r.resposta === "nao" ? "NÃO" : r.resposta === "na" ? "N/A" : "";
+        answerMap[r.avaliacao_id][r.pergunta_id] = val;
+      });
 
-      // Build CSV rows
-      const csvHeader = [
-        "Número OS", "Data Abertura", "Status", "Cliente", "CPF Cliente",
-        "Tipo Serviço", "Avaliador", "Tipo Avaliação", "Concluída", "Nota Final",
-        "Pergunta", "Resposta", "Observação"
-      ].join(";");
+      // 8. Build CSV with questions as columns
+      const fixedHeaders = [
+        "Número OS", "Nome Cliente", "CPF Cliente", "Data Avaliação",
+        "Avaliador", "Tipo Serviço", "Colaborador Avaliado", "Nota Final"
+      ];
+      const questionHeaders = perguntas.map((p) => p.pergunta);
+      const csvHeader = [...fixedHeaders, ...questionHeaders].map(escapeCSV).join(";");
 
       const csvRows: string[] = [];
       for (const os of osData) {
         const osAvals = avaliacoes?.filter((a) => a.ordem_servico_id === os.id) || [];
 
         if (osAvals.length === 0) {
-          csvRows.push([
+          // OS without evaluations — one row with empty answers
+          const row = [
             os.numero_os,
-            format(new Date(os.created_at), "dd/MM/yyyy HH:mm"),
-            statusText[os.status] || os.status,
             os.cliente_nome || "",
             os.cliente_cpf || "",
+            format(new Date(os.created_at), "dd/MM/yyyy"),
+            "",
             os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || "" : "",
-            "", "", "", "", "", "", ""
-          ].map(escapeCSV).join(";"));
+            os.colaborador_avaliado_id ? profileNames[os.colaborador_avaliado_id] || "" : "",
+            "",
+            ...perguntas.map(() => ""),
+          ];
+          csvRows.push(row.map(escapeCSV).join(";"));
           continue;
         }
 
         for (const aval of osAvals) {
-          const avalRespostas = respostas.filter((r) => r.avaliacao_id === aval.id);
-
-          if (avalRespostas.length === 0) {
-            csvRows.push([
-              os.numero_os,
-              format(new Date(os.created_at), "dd/MM/yyyy HH:mm"),
-              statusText[os.status] || os.status,
-              os.cliente_nome || "",
-              os.cliente_cpf || "",
-              os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || "" : "",
-              avaliadorNames[aval.avaliador_id] || "",
-              aval.tipo_avaliacao_id ? tipoAvalNames[aval.tipo_avaliacao_id] || "" : "",
-              aval.concluida ? "Sim" : "Não",
-              aval.nota_final != null ? aval.nota_final.toString().replace(".", ",") : "",
-              "", "", ""
-            ].map(escapeCSV).join(";"));
-            continue;
-          }
-
-          for (const resp of avalRespostas) {
-            csvRows.push([
-              os.numero_os,
-              format(new Date(os.created_at), "dd/MM/yyyy HH:mm"),
-              statusText[os.status] || os.status,
-              os.cliente_nome || "",
-              os.cliente_cpf || "",
-              os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || "" : "",
-              avaliadorNames[aval.avaliador_id] || "",
-              aval.tipo_avaliacao_id ? tipoAvalNames[aval.tipo_avaliacao_id] || "" : "",
-              aval.concluida ? "Sim" : "Não",
-              aval.nota_final != null ? aval.nota_final.toString().replace(".", ",") : "",
-              perguntaTextos[resp.pergunta_id] || "",
-              resp.resposta || "",
-              resp.observacao || ""
-            ].map(escapeCSV).join(";"));
-          }
+          const answers = answerMap[aval.id] || {};
+          const row = [
+            os.numero_os,
+            os.cliente_nome || "",
+            os.cliente_cpf || "",
+            format(new Date(aval.created_at), "dd/MM/yyyy"),
+            profileNames[aval.avaliador_id] || "",
+            os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || "" : "",
+            os.colaborador_avaliado_id ? profileNames[os.colaborador_avaliado_id] || "" : "",
+            aval.nota_final != null ? aval.nota_final.toString().replace(".", ",") : "",
+            ...perguntas.map((p) => answers[p.id] || ""),
+          ];
+          csvRows.push(row.map(escapeCSV).join(";"));
         }
       }
 
