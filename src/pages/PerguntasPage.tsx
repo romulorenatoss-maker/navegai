@@ -104,8 +104,17 @@ export default function PerguntasPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("perguntas_avaliacao")
-        .select("*, tipos_servico(nome), profiles!perguntas_avaliacao_avaliador_id_fkey(nome)")
+        .select("*, tipos_servico(nome), profiles!perguntas_avaliacao_avaliador_id_fkey(nome), setores!perguntas_avaliacao_setor_avaliado_id_fkey(nome)")
         .order("ordem");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: setores = [] } = useQuery({
+    queryKey: ["setores_ativos"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("setores").select("*").eq("ativo", true).order("nome");
       if (error) throw error;
       return data;
     },
