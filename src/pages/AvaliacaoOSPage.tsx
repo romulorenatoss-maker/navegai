@@ -55,7 +55,7 @@ const statusLabel: Record<string, { text: string; badge: string }> = {
 const STEPS = [
   { label: "Tipo de Serviço", description: "Selecione o tipo e avaliação" },
   { label: "Dados da OS", description: "Número, cliente e CPF" },
-  { label: "Funcionários", description: "Atendente e Técnico" },
+  { label: "Avaliado", description: "Selecione o funcionário" },
   { label: "Avaliação", description: "Responda as perguntas" },
 ];
 
