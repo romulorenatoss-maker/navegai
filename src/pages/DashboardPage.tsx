@@ -98,6 +98,7 @@ export default function DashboardPage() {
 
       const sorted = Object.entries(countMap)
         .map(([id, v]) => ({ cliente_id: id, cliente_nome: v.nome, os_count: v.count }))
+        .filter((c) => c.os_count > 2)
         .sort((a, b) => b.os_count - a.os_count)
         .slice(0, 10);
 
