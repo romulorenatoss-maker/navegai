@@ -2004,6 +2004,7 @@ export default function AvaliacaoOSPage() {
               <h2 className="text-subhead font-semibold text-foreground font-tabular">OS #{selectedOS.numero_os}</h2>
               <p className="text-body text-muted-foreground mt-1">{selectedOS.cliente_nome || "Sem cliente"}</p>
               {selectedOS.cliente_cpf && <p className="text-caption text-muted-foreground">CPF: {selectedOS.cliente_cpf}</p>}
+              <p className="text-caption text-muted-foreground mt-0.5">Criada em: {format(new Date(selectedOS.created_at), "dd/MM/yyyy HH:mm")}</p>
             </div>
             <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border", statusLabel[selectedOS.status]?.badge)}>
               {statusLabel[selectedOS.status]?.text}
@@ -2059,11 +2060,24 @@ export default function AvaliacaoOSPage() {
               )}
             </div>
           </div>
-        </div>
 
-        {/* Atendimento Section */}
-        <div className="bg-card border border-border rounded-lg shadow-card mb-4">
-          <div className="p-4 border-b border-border flex items-center gap-2 flex-wrap">
+          {/* Avaliadores com hora de conclusão */}
+          {osAvaliacoes.length > 0 && (
+            <div className="flex flex-col gap-1.5 mt-3 pt-3 border-t border-border">
+              <span className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Avaliadores</span>
+              {osAvaliacoes.map((aval: any, idx: number) => (
+                <div key={aval.id} className="flex items-center gap-2 text-sm flex-wrap">
+                  <span className="font-medium text-foreground">Avaliador {idx + 1}: {aval._avaliador_nome}</span>
+                  {aval.concluida_em ? (
+                    <span className="text-caption text-success">• Concluído em {format(new Date(aval.concluida_em), "dd/MM/yyyy HH:mm")}</span>
+                  ) : (
+                    <span className="text-caption text-warning">• Pendente</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
             <Users className="w-4 h-4 text-primary" />
             <h3 className="text-body font-semibold text-foreground">Atendimento</h3>
             <span className="text-caption text-muted-foreground ml-1">— {detailAtendenteNome || "Não definido"}</span>
