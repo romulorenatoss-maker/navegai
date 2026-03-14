@@ -275,7 +275,7 @@ export default function RelatoriosPage() {
     }
   };
 
-  // Export CSV — columnar format with questions as headers
+  // Export CSV — columnar format with questions as headers, showing scores
   const handleExportSelected = async () => {
     if (selected.size === 0) return;
     setExportLoading(true);
@@ -283,10 +283,10 @@ export default function RelatoriosPage() {
     try {
       const osIds = [...selected];
 
-      // 1. Get OS data with colaborador_avaliado_id
+      // 1. Get OS data
       const { data: osData } = await supabase
         .from("ordens_servico")
-        .select("id, numero_os, status, created_at, cliente_nome, cliente_cpf, tipo_servico_id, colaborador_avaliado_id")
+        .select("id, numero_os, status, created_at, cliente_nome, cliente_cpf, tipo_servico_id, colaborador_avaliado_id, tecnico_id, atendente_id")
         .in("id", osIds);
 
       if (!osData || osData.length === 0) {
@@ -295,49 +295,57 @@ export default function RelatoriosPage() {
         return;
       }
 
-      // 2. Get tipo_servico names
+      // 2. Parallel fetches
       const tipoIds = [...new Set(osData.map((o) => o.tipo_servico_id).filter(Boolean))] as string[];
-      let tipoNames: Record<string, string> = {};
-      if (tipoIds.length > 0) {
-        const { data: tipos } = await supabase.from("tipos_servico").select("id, nome").in("id", tipoIds);
-        tipos?.forEach((t) => { tipoNames[t.id] = t.nome; });
-      }
+      const [tiposRes, osPerguntasRes, respostasRes, avaliacoesRes] = await Promise.all([
+        tipoIds.length > 0
+          ? supabase.from("tipos_servico").select("id, nome").in("id", tipoIds)
+          : Promise.resolve({ data: [] }),
+        supabase.from("os_perguntas").select("os_id, pergunta_id").in("os_id", osIds),
+        supabase.from("respostas_avaliacao").select("ordem_servico_id, pergunta_id, resposta, avaliador_id").in("ordem_servico_id", osIds),
+        supabase.from("avaliacoes").select("id, ordem_servico_id, avaliador_id, nota_final, created_at").in("ordem_servico_id", osIds),
+      ]);
 
-      // 3. Get avaliacoes
-      const { data: avaliacoes } = await supabase
-        .from("avaliacoes")
-        .select("id, ordem_servico_id, avaliador_id, concluida, nota_final, created_at")
-        .in("ordem_servico_id", osIds);
+      const tipoNames: Record<string, string> = {};
+      (tiposRes.data || []).forEach((t: any) => { tipoNames[t.id] = t.nome; });
 
-      const avalIds = avaliacoes?.map((a) => a.id) || [];
-
-      // 4. Get all respostas
-      let respostas: { avaliacao_id: string; pergunta_id: string; resposta: string | null }[] = [];
-      if (avalIds.length > 0) {
-        const { data } = await supabase
-          .from("respostas_avaliacao")
-          .select("avaliacao_id, pergunta_id, resposta")
-          .in("avaliacao_id", avalIds);
-        respostas = data || [];
-      }
-
-      // 5. Get all perguntas that were answered, ordered by `ordem`
-      const perguntaIds = [...new Set(respostas.map((r) => r.pergunta_id))];
-      let perguntas: { id: string; pergunta: string; ordem: number }[] = [];
-      if (perguntaIds.length > 0) {
+      // 3. Get ALL perguntas linked to these OS (ordered)
+      const allPerguntaIds = [...new Set((osPerguntasRes.data || []).map((op: any) => op.pergunta_id))];
+      let perguntas: { id: string; pergunta: string; ordem: number; peso: number }[] = [];
+      if (allPerguntaIds.length > 0) {
         const { data } = await supabase
           .from("perguntas_avaliacao")
-          .select("id, pergunta, ordem")
-          .in("id", perguntaIds)
+          .select("id, pergunta, ordem, peso")
+          .in("id", allPerguntaIds)
           .order("ordem");
         perguntas = data || [];
       }
 
-      // 6. Get profile names (avaliadores + colaboradores avaliados)
+      const perguntaPeso: Record<string, number> = {};
+      perguntas.forEach((p) => { perguntaPeso[p.id] = p.peso; });
+
+      // 4. Build perguntas per OS
+      const perguntasByOS: Record<string, Set<string>> = {};
+      (osPerguntasRes.data || []).forEach((op: any) => {
+        if (!perguntasByOS[op.os_id]) perguntasByOS[op.os_id] = new Set();
+        perguntasByOS[op.os_id].add(op.pergunta_id);
+      });
+
+      // 5. Build respostas map: os_id -> pergunta_id -> resposta
+      const respostasByOS: Record<string, Record<string, string>> = {};
+      (respostasRes.data || []).forEach((r: any) => {
+        if (!r.ordem_servico_id) return;
+        if (!respostasByOS[r.ordem_servico_id]) respostasByOS[r.ordem_servico_id] = {};
+        if (r.resposta) respostasByOS[r.ordem_servico_id][r.pergunta_id] = r.resposta;
+      });
+
+      // 6. Get profile names
       const profileIds = [
         ...new Set([
-          ...(avaliacoes?.map((a) => a.avaliador_id) || []),
+          ...(avaliacoesRes.data?.map((a) => a.avaliador_id) || []),
           ...osData.map((o) => o.colaborador_avaliado_id).filter(Boolean) as string[],
+          ...osData.map((o) => o.tecnico_id).filter(Boolean) as string[],
+          ...osData.map((o) => o.atendente_id).filter(Boolean) as string[],
         ]),
       ];
       let profileNames: Record<string, string> = {};
@@ -346,58 +354,60 @@ export default function RelatoriosPage() {
         profiles?.forEach((p) => { profileNames[p.id] = p.nome; });
       }
 
-      // 7. Build answer map: respostas keyed by avaliacao_id -> pergunta_id
-      const answerMap: Record<string, Record<string, string>> = {};
-      respostas.forEach((r) => {
-        if (!answerMap[r.avaliacao_id]) answerMap[r.avaliacao_id] = {};
-        const val = r.resposta === "sim" ? "SIM" : r.resposta === "nao" ? "NÃO" : r.resposta === "na" ? "N/A" : "";
-        answerMap[r.avaliacao_id][r.pergunta_id] = val;
-      });
-
-      // 8. Build CSV with questions as columns
+      // 7. Build CSV — questions as columns with score values
       const fixedHeaders = [
         "Número OS", "Nome Cliente", "CPF Cliente", "Data Avaliação",
         "Avaliador", "Tipo Serviço", "Colaborador Avaliado", "Nota Final"
       ];
-      const questionHeaders = perguntas.map((p) => p.pergunta);
+      // Header shows "Pergunta (Peso: X)"
+      const questionHeaders = perguntas.map((p) => `${p.pergunta} (Peso: ${p.peso})`);
       const csvHeader = [...fixedHeaders, ...questionHeaders].map(escapeCSV).join(";");
 
       const csvRows: string[] = [];
       for (const os of osData) {
-        const osAvals = avaliacoes?.filter((a) => a.ordem_servico_id === os.id) || [];
+        const osAvals = avaliacoesRes.data?.filter((a) => a.ordem_servico_id === os.id) || [];
+        const osRespostas = respostasByOS[os.id] || {};
 
-        if (osAvals.length === 0) {
-          // OS without evaluations — one row with empty answers
-          const row = [
-            os.numero_os,
-            os.cliente_nome || "",
-            os.cliente_cpf || "",
-            format(new Date(os.created_at), "dd/MM/yyyy"),
-            "",
-            os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || "" : "",
-            os.colaborador_avaliado_id ? profileNames[os.colaborador_avaliado_id] || "" : "",
-            "",
-            ...perguntas.map(() => ""),
-          ];
-          csvRows.push(row.map(escapeCSV).join(";"));
-          continue;
+        // Calculate nota from responses
+        let totalPeso = 0;
+        let earnedPeso = 0;
+        const osPerguntaIds = perguntasByOS[os.id] || new Set();
+        for (const pid of osPerguntaIds) {
+          const resp = osRespostas[pid];
+          const peso = perguntaPeso[pid] || 1;
+          if (resp === "na" || !resp) continue;
+          totalPeso += peso;
+          if (resp === "sim") earnedPeso += peso;
         }
+        const calculatedNota = totalPeso > 0 ? ((earnedPeso / totalPeso) * 100) : null;
 
-        for (const aval of osAvals) {
-          const answers = answerMap[aval.id] || {};
-          const row = [
-            os.numero_os,
-            os.cliente_nome || "",
-            os.cliente_cpf || "",
-            format(new Date(aval.created_at), "dd/MM/yyyy"),
-            profileNames[aval.avaliador_id] || "",
-            os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || "" : "",
-            os.colaborador_avaliado_id ? profileNames[os.colaborador_avaliado_id] || "" : "",
-            aval.nota_final != null ? aval.nota_final.toString().replace(".", ",") : "",
-            ...perguntas.map((p) => answers[p.id] || ""),
-          ];
-          csvRows.push(row.map(escapeCSV).join(";"));
-        }
+        // Use avaliacao nota_final if available, otherwise calculated
+        const bestNota = osAvals.length > 0 && osAvals[0].nota_final != null
+          ? osAvals[0].nota_final
+          : calculatedNota;
+
+        const avaliadorNome = osAvals.length > 0 ? (profileNames[osAvals[0].avaliador_id] || "") : "";
+        const dataAval = osAvals.length > 0 ? format(new Date(osAvals[0].created_at), "dd/MM/yyyy") : format(new Date(os.created_at), "dd/MM/yyyy");
+
+        const row = [
+          os.numero_os,
+          os.cliente_nome || "",
+          os.cliente_cpf || "",
+          dataAval,
+          avaliadorNome,
+          os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || "" : "",
+          os.colaborador_avaliado_id ? profileNames[os.colaborador_avaliado_id] || "" : "",
+          bestNota != null ? bestNota.toFixed(2).replace(".", ",") : "",
+          ...perguntas.map((p) => {
+            const resp = osRespostas[p.id];
+            if (!resp) return "";
+            if (resp === "na") return "N/A";
+            if (resp === "sim") return p.peso.toString();
+            if (resp === "nao") return "0";
+            return "";
+          }),
+        ];
+        csvRows.push(row.map(escapeCSV).join(";"));
       }
 
       const csvContent = "\uFEFF" + csvHeader + "\n" + csvRows.join("\n");
