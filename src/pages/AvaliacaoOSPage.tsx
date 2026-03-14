@@ -776,6 +776,8 @@ export default function AvaliacaoOSPage() {
             {evalPerguntas.map((p, i) => {
               const answer = evalAnswers[p.id] || null;
               const observation = evalObservations[p.id] || "";
+              const evidenciaUrl = evalEvidencias[p.id] || null;
+              const isUploading = uploadingEvidence === p.id;
               return (
                 <motion.div
                   key={p.id}
@@ -814,7 +816,7 @@ export default function AvaliacaoOSPage() {
                           exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }}
                           className="overflow-hidden"
                         >
-                          <div className="ml-11 mt-3 bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-2">
+                          <div className="ml-11 mt-3 bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-3">
                             <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
                               <AlertTriangle className="w-3.5 h-3.5" /> Descreva a irregularidade encontrada
                             </div>
@@ -825,6 +827,56 @@ export default function AvaliacaoOSPage() {
                               disabled={evalFinalized}
                               className="bg-card min-h-[80px] text-sm"
                             />
+
+                            {/* Evidence photo upload - required */}
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
+                                <Camera className="w-3.5 h-3.5" /> Evidência fotográfica *
+                              </div>
+
+                              {evidenciaUrl ? (
+                                <div className="relative inline-block">
+                                  <img
+                                    src={evidenciaUrl}
+                                    alt="Evidência"
+                                    className="rounded-lg border border-border max-h-40 object-cover cursor-pointer"
+                                    onClick={() => window.open(evidenciaUrl, "_blank")}
+                                  />
+                                  {!evalFinalized && (
+                                    <button
+                                      onClick={() => handleRemoveEvidence(p.id)}
+                                      className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-md hover:bg-destructive/90 transition-colors"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
+                              ) : (
+                                <label className={cn(
+                                  "flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors text-sm",
+                                  isUploading ? "border-muted-foreground/30 bg-muted/30 cursor-wait" : "border-destructive/30 hover:border-destructive/50 hover:bg-destructive/5",
+                                  evalFinalized && "opacity-50 cursor-not-allowed"
+                                )}>
+                                  {isUploading ? (
+                                    <><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> Enviando...</>
+                                  ) : (
+                                    <><Camera className="w-4 h-4 text-destructive" /> Anexar foto da evidência</>
+                                  )}
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    capture="environment"
+                                    className="hidden"
+                                    disabled={evalFinalized || isUploading}
+                                    onChange={e => {
+                                      const file = e.target.files?.[0];
+                                      if (file) handleEvidenceUpload(p.id, file);
+                                      e.target.value = "";
+                                    }}
+                                  />
+                                </label>
+                              )}
+                            </div>
                           </div>
                         </motion.div>
                       )}
