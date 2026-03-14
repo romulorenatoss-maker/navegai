@@ -195,19 +195,19 @@ export default function DashboardPage() {
         .select("id, tipo_servico_id")
         .eq("ativo", true);
 
+      // FIX: Fetch responses by ordem_servico_id (shared across all evaluators)
       const answeredByOS: Record<string, Set<string>> = {};
-      if (avalIds.length > 0) {
+      if (osIds.length > 0) {
         const { data: allResp } = await supabase
           .from("respostas_avaliacao")
-          .select("avaliacao_id, pergunta_id")
-          .in("avaliacao_id", avalIds)
+          .select("ordem_servico_id, pergunta_id")
+          .in("ordem_servico_id", osIds)
           .not("resposta", "is", null);
         
-        allResp?.forEach((r) => {
-          const osId = avaliacoes?.find(a => a.id === r.avaliacao_id)?.ordem_servico_id;
-          if (osId) {
-            if (!answeredByOS[osId]) answeredByOS[osId] = new Set();
-            answeredByOS[osId].add(r.pergunta_id);
+        allResp?.forEach((r: any) => {
+          if (r.ordem_servico_id) {
+            if (!answeredByOS[r.ordem_servico_id]) answeredByOS[r.ordem_servico_id] = new Set();
+            answeredByOS[r.ordem_servico_id].add(r.pergunta_id);
           }
         });
       }
@@ -293,15 +293,16 @@ export default function DashboardPage() {
       const allPerguntas = perguntasRes.data || [];
       const allAvals = avalsRes.data || [];
 
-      const avalIds = allAvals.map(a => a.id);
+      // FIX: Fetch responses by ordem_servico_id (shared across all evaluators)
       let allRespostas: any[] = [];
-      if (avalIds.length > 0) {
+      if (osIds.length > 0) {
         const { data: resp } = await supabase
-          .from("respostas_avaliacao").select("avaliacao_id, pergunta_id, resposta")
-          .in("avaliacao_id", avalIds).not("resposta", "is", null);
+          .from("respostas_avaliacao").select("ordem_servico_id, pergunta_id, resposta")
+          .in("ordem_servico_id", osIds).not("resposta", "is", null);
         allRespostas = resp || [];
       }
-      const answeredSet = new Set(allRespostas.map(r => `${r.avaliacao_id}:${r.pergunta_id}`));
+      // Key: os_id:pergunta_id — one response per OS+question regardless of evaluator
+      const answeredSet = new Set(allRespostas.map((r: any) => `${r.ordem_servico_id}:${r.pergunta_id}`));
 
       const myPending: PendingOS[] = [];
       const otherPending: PendingOS[] = [];
@@ -316,12 +317,11 @@ export default function DashboardPage() {
         const myAval = allAvals.find(a => a.ordem_servico_id === os.id && a.avaliador_id === profile.id);
         const osAvals = allAvals.filter(a => a.ordem_servico_id === os.id);
 
-        const myUnanswered = myQuestions.filter(q => !myAval || !answeredSet.has(`${myAval.id}:${q.id}`));
+        // FIX: Check if question is answered for this OS (any evaluator)
+        const myUnanswered = myQuestions.filter(q => !answeredSet.has(`${os.id}:${q.id}`));
 
-        // Count unique questions answered by ANY evaluator for this OS
-        const uniqueAnswered = perguntasForOS.filter(q =>
-          osAvals.some(a => answeredSet.has(`${a.id}:${q.id}`))
-        ).length;
+        // Count unique questions answered for this OS
+        const uniqueAnswered = perguntasForOS.filter(q => answeredSet.has(`${os.id}:${q.id}`)).length;
         const progress = perguntasForOS.length > 0 ? Math.round((uniqueAnswered / perguntasForOS.length) * 100) : 0;
 
         // Resolve colaborador avaliado name
@@ -332,7 +332,7 @@ export default function DashboardPage() {
         const pendingSetorIds = new Set<string>();
         for (const q of perguntasForOS) {
           if (!q.setor_avaliado_id) continue;
-          const answered = osAvals.some(a => answeredSet.has(`${a.id}:${q.id}`));
+          const answered = answeredSet.has(`${os.id}:${q.id}`);
           if (!answered) pendingSetorIds.add(q.setor_avaliado_id);
         }
         const pendingSetorNames = [...pendingSetorIds].map(id => setoresMap[id] || "Sem setor");
@@ -353,7 +353,7 @@ export default function DashboardPage() {
           });
         } else if (otherQuestions.length > 0) {
           const otherUnanswered = otherQuestions.some(q =>
-            !osAvals.some(a => a.avaliador_id !== profile.id && answeredSet.has(`${a.id}:${q.id}`))
+            !answeredSet.has(`${os.id}:${q.id}`)
           );
           if (otherUnanswered) {
             // Find which other setor(s) are pending
@@ -380,7 +380,7 @@ export default function DashboardPage() {
 
           for (const q of perguntasForOS) {
             if (!q.setor_avaliado_id) continue;
-            const answered = osAvals.some(a => answeredSet.has(`${a.id}:${q.id}`));
+            const answered = answeredSet.has(`${os.id}:${q.id}`);
             if (!answered) {
               if (!sectorOSCount[q.setor_avaliado_id]) sectorOSCount[q.setor_avaliado_id] = new Set();
               sectorOSCount[q.setor_avaliado_id].add(os.id);
