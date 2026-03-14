@@ -91,6 +91,8 @@ export default function TiposServicoPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tipos_servico"] });
       queryClient.invalidateQueries({ queryKey: ["tsc_links"] });
+      queryClient.invalidateQueries({ queryKey: ["tsc_display"] });
+      queryClient.invalidateQueries({ queryKey: ["tipo_servico_breakdown"] });
       toast.success(editing ? "Tipo de serviço atualizado." : "Tipo de serviço criado.");
       closeDialog();
     },
@@ -218,32 +220,20 @@ function TipoRow({ t, onToggle, onEdit, onRemove }: { t: any; onToggle: () => vo
     },
   });
 
-  const checklistIds = (linkedChecklists || []).map((c: any) => c.id);
+  const checklistIds = (linkedChecklists || []).map((c: any) => c.id).sort();
 
-  // Fetch question breakdown from linked checklists
+  // Fetch question breakdown strictly from linked checklists
   const { data: breakdown } = useQuery<SectorBreakdown>({
-    queryKey: ["tipo_servico_breakdown", t.id, checklistIds],
+    queryKey: ["tipo_servico_breakdown", t.id, checklistIds.join(",")],
     queryFn: async () => {
       const result: SectorBreakdown = { totalPerguntas: 0, totalPontos: 0, atendimentoPerguntas: 0, atendimentoPontos: 0, tecnicoPerguntas: 0, tecnicoPontos: 0 };
+      if (checklistIds.length === 0) return result;
 
-      let perguntas: any[] | null = null;
-
-      if (checklistIds.length > 0) {
-        const { data } = await (supabase as any)
-          .from("perguntas_avaliacao")
-          .select("peso, setor_avaliado_id, setores!perguntas_avaliacao_setor_avaliado_id_fkey(nome)")
-          .eq("ativo", true)
-          .in("checklist_id", checklistIds);
-        perguntas = data;
-      } else {
-        // Fallback: load by tipo_servico_id
-        const { data } = await supabase
-          .from("perguntas_avaliacao")
-          .select("peso, setor_avaliado_id, setores!perguntas_avaliacao_setor_avaliado_id_fkey(nome)")
-          .eq("ativo", true)
-          .eq("tipo_servico_id", t.id);
-        perguntas = data;
-      }
+      const { data: perguntas } = await (supabase as any)
+        .from("perguntas_avaliacao")
+        .select("peso, setor_avaliado_id, setores!perguntas_avaliacao_setor_avaliado_id_fkey(nome)")
+        .eq("ativo", true)
+        .in("checklist_id", checklistIds);
 
       if (!perguntas) return result;
       for (const p of perguntas) {
