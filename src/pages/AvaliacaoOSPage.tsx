@@ -653,34 +653,80 @@ export default function AvaliacaoOSPage() {
     setDeleteLoading(true);
     try {
       // Verify password via re-authentication
+      const { data: authData } = await supabase.auth.getUser();
+      const authEmail = authData.user?.email || profile.email;
+      if (!authEmail) {
+        throw new Error("Não foi possível validar o usuário autenticado.");
+      }
+
       const { error: authError } = await supabase.auth.signInWithPassword({
-        email: profile.email,
+        email: authEmail,
         password: deletePassword,
       });
-      if (authError) { toast.error("Senha incorreta."); return; }
+      if (authError) {
+        toast.error("Senha incorreta.");
+        return;
+      }
 
-      // Delete all related data
-      const { data: avals } = await supabase.from("avaliacoes").select("id").eq("ordem_servico_id", deleteOsId);
-      if (avals) { for (const a of avals) { await supabase.from("respostas_avaliacao").delete().eq("avaliacao_id", a.id); } }
-      await supabase.from("avaliacoes").delete().eq("ordem_servico_id", deleteOsId);
-      await supabase.from("ordens_servico").delete().eq("id", deleteOsId);
+      // 1) Find all evaluations linked to the OS
+      const { data: avals, error: avalsError } = await supabase
+        .from("avaliacoes")
+        .select("id")
+        .eq("ordem_servico_id", deleteOsId);
+      if (avalsError) throw avalsError;
 
-      // Audit log - only OS number
-      await supabase.from("audit_logs").insert({
+      // 2) Delete respostas_avaliacao
+      if (avals?.length) {
+        const avalIds = avals.map((a) => a.id);
+        const { error: respostasError } = await supabase
+          .from("respostas_avaliacao")
+          .delete()
+          .in("avaliacao_id", avalIds);
+        if (respostasError) throw respostasError;
+      }
+
+      // 3) Delete inconsistências linked to OS
+      const { error: inconsistenciasError } = await supabase
+        .from("avaliacoes_inconsistencias")
+        .delete()
+        .eq("ordem_servico_id", deleteOsId);
+      if (inconsistenciasError) throw inconsistenciasError;
+
+      // 4) Delete avaliações
+      const { error: avaliacoesError } = await supabase
+        .from("avaliacoes")
+        .delete()
+        .eq("ordem_servico_id", deleteOsId);
+      if (avaliacoesError) throw avaliacoesError;
+
+      // 5) Delete OS
+      const { error: osError } = await supabase
+        .from("ordens_servico")
+        .delete()
+        .eq("id", deleteOsId);
+      if (osError) throw osError;
+
+      // 6) Audit log - only OS number
+      const { error: logError } = await supabase.from("audit_logs").insert({
         user_id: profile.user_id,
         acao: "exclusao_os",
         tabela: "ordens_servico",
         registro_id: deleteOsId,
         dados_anteriores: { numero_os: deleteOsNumero },
       } as any);
+      if (logError) {
+        console.warn("Falha ao registrar log de exclusão:", logError);
+      }
 
       toast.success(`OS #${deleteOsNumero} excluída com sucesso.`);
       setDeleteDialogOpen(false);
+      setDeletePassword("");
       setSelectedOS(null);
       setView("list");
+      backToList();
       refetchPending();
     } catch (err: any) {
-      toast.error("Erro ao excluir: " + err.message);
+      toast.error("Erro ao excluir: " + (err?.message || "falha desconhecida"));
     } finally {
       setDeleteLoading(false);
     }
