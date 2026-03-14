@@ -846,10 +846,8 @@ export default function AvaliacaoOSPage() {
     if (!profile) return;
     if (!clienteId) { toast.error("Cliente é obrigatório. Valide o CPF primeiro."); return; }
     if (!tipoServicoId) { toast.error("Selecione o tipo de serviço."); return; }
-    const needsAtendente = hasAtendimentoAccess || isAdmin;
-    const needsTecnico = hasTecnicoAccess || isAdmin;
-    if (needsAtendente && !atendenteId) { toast.error("Selecione o atendente avaliado."); return; }
-    if (needsTecnico && !tecnicoId) { toast.error("Selecione o técnico avaliado."); return; }
+    if ((hasAtendimentoAccess || isAdmin) && !atendenteId) { toast.error("Selecione o atendente avaliado."); return; }
+    if ((hasTecnicoAccess || isAdmin) && !tecnicoId) { toast.error("Selecione o técnico avaliado."); return; }
     if (!atendenteId && !tecnicoId) { toast.error("Selecione pelo menos um colaborador avaliado."); return; }
 
     try {
