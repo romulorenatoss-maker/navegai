@@ -246,7 +246,7 @@ export function useAvaliacaoOS() {
 
     const { error } = await supabase
       .from("avaliacoes")
-      .update({ concluida: true, nota_final: nota })
+      .update({ concluida: true, nota_final: nota, concluida_em: new Date().toISOString() })
       .eq("id", avaliacao.id);
 
     if (error) {
