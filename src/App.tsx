@@ -12,7 +12,7 @@ import AvaliacaoOSPage from "./pages/AvaliacaoOSPage";
 import SetoresPage from "./pages/SetoresPage";
 import ColaboradoresPage from "./pages/ColaboradoresPage";
 import TiposServicoPage from "./pages/TiposServicoPage";
-import TiposAvaliacaoPage from "./pages/TiposAvaliacaoPage";
+
 import PerguntasPage from "./pages/PerguntasPage";
 import ChecklistsCadastroPage from "./pages/ChecklistsCadastroPage";
 import ClientesPage from "./pages/ClientesPage";
@@ -50,7 +50,7 @@ const App = () => (
               <Route path="/cadastros/colaboradores" element={<ColaboradoresPage />} />
               <Route path="/cadastros/clientes" element={<ClientesPage />} />
               <Route path="/cadastros/servicos" element={<TiposServicoPage />} />
-              <Route path="/cadastros/tipos-avaliacao" element={<TiposAvaliacaoPage />} />
+              
               <Route path="/relatorios" element={<RelatoriosPage />} />
               <Route path="/desempenho" element={<DesempenhoColaboradorPage />} />
               <Route path="/auditoria" element={<PlaceholderPage title="Auditoria" description="Registro completo de todas as ações do sistema." />} />

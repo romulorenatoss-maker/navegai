@@ -23,14 +23,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
-// --- Types ---
-interface TipoAvaliacao {
-  id: string;
-  nome: string;
-  cargo_responsavel: string | null;
-  descricao: string | null;
-  ativo: boolean;
-}
+// TipoAvaliacao type removed - no longer used
 
 type Answer = "sim" | "nao" | "na" | null;
 
@@ -91,7 +84,7 @@ export default function AvaliacaoOSPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { profile, isAdmin, hasRole } = useAuth();
-  const showAllTipos = isAdmin;
+  
 
   // View modes
   const [view, setView] = useState<"list" | "os_detail" | "evaluation">("list");
@@ -115,7 +108,7 @@ export default function AvaliacaoOSPage() {
 
   // Setup state (after validation, for creating new OS)
   const [tipoServicoId, setTipoServicoId] = useState("");
-  const [selectedTipoAvaliacaoId, setSelectedTipoAvaliacaoId] = useState("");
+  
   const [atendenteId, setAtendenteId] = useState("");
   const [tecnicoId, setTecnicoId] = useState("");
 
@@ -140,44 +133,6 @@ export default function AvaliacaoOSPage() {
   const debounceTimers = useRef<Record<string, NodeJS.Timeout>>({});
 
   // --- Queries ---
-  const { data: tiposAvaliacao = [] } = useQuery({
-    queryKey: ["tipos_avaliacao"],
-    queryFn: async () => {
-      const { data } = await (supabase as any).from("tipos_avaliacao").select("*").eq("ativo", true).order("nome");
-      return (data || []) as TipoAvaliacao[];
-    },
-  });
-
-  const { data: tiposServico = [] } = useQuery({
-    queryKey: ["tipos_servico_aval", profile?.id, showAllTipos],
-    queryFn: async () => {
-      if (!profile?.id) return [];
-      if (showAllTipos) {
-        const { data } = await supabase.from("tipos_servico").select("*, setores:setor_id(nome)").eq("ativo", true).order("nome");
-        return data || [];
-      }
-      const { data: assignments } = await supabase.from("avaliador_tipos_servico").select("tipo_servico_id").eq("avaliador_id", profile.id);
-      if (!assignments?.length) return [];
-      const { data } = await supabase.from("tipos_servico").select("*, setores:setor_id(nome)").eq("ativo", true).in("id", assignments.map(a => a.tipo_servico_id)).order("nome");
-      return data || [];
-    },
-    enabled: !!profile?.id,
-  });
-
-  const { data: linkedTiposAvaliacao = [] } = useQuery({
-    queryKey: ["linked_ta", tipoServicoId],
-    queryFn: async () => {
-      if (!tipoServicoId) return [];
-      const { data: links } = await (supabase as any).from("tipo_servico_tipos_avaliacao").select("tipo_avaliacao_id").eq("tipo_servico_id", tipoServicoId);
-      if (links?.length) {
-        const { data } = await (supabase as any).from("tipos_avaliacao").select("*").in("id", links.map((l: any) => l.tipo_avaliacao_id)).eq("ativo", true);
-        return (data || []) as TipoAvaliacao[];
-      }
-      const { data: all } = await (supabase as any).from("tipos_avaliacao").select("*").eq("ativo", true);
-      return (all || []) as TipoAvaliacao[];
-    },
-    enabled: !!tipoServicoId,
-  });
 
   const { data: allProfiles = [] } = useQuery({
     queryKey: ["profiles_for_eval"],
@@ -216,18 +171,31 @@ export default function AvaliacaoOSPage() {
     return n.includes("técnico") || n.includes("tecnico");
   });
 
+  const { data: tiposServico = [] } = useQuery({
+    queryKey: ["tipos_servico_aval", profile?.id, isAdmin, evaluatorSetorIds.join(",")],
+    queryFn: async () => {
+      if (!profile?.id) return [];
+      if (isAdmin) {
+        const { data } = await supabase.from("tipos_servico").select("*, setores:setor_id(nome)").eq("ativo", true).order("nome");
+        return data || [];
+      }
+      // Filter by evaluator's sectors - show types with matching setor_id or null (global)
+      const { data } = await supabase.from("tipos_servico").select("*, setores:setor_id(nome)").eq("ativo", true).order("nome");
+      if (evaluatorSetorIds.length === 0) return data || [];
+      return (data || []).filter((t: any) => !t.setor_id || evaluatorSetorIds.includes(t.setor_id));
+    },
+    enabled: !!profile?.id,
+  });
+
   const isQuestionAnswerable = useCallback((setorAvaliadoId: string | null) => {
     if (isAdmin) return true;
     if (!setorAvaliadoId) return true;
     return evaluatorSetorIds.includes(setorAvaliadoId);
   }, [isAdmin, evaluatorSetorIds]);
 
-  const selectedTipoAvaliacao = useMemo(() => tiposAvaliacao.find(t => t.id === selectedTipoAvaliacaoId), [tiposAvaliacao, selectedTipoAvaliacaoId]);
   const isAtendimentoEvaluator = useMemo(() => {
-    if (hasAtendimentoAccess && !hasTecnicoAccess) return true;
-    const cargo = selectedTipoAvaliacao?.cargo_responsavel?.toLowerCase() || "";
-    return cargo.includes("atendente") || cargo.includes("atendimento");
-  }, [selectedTipoAvaliacao, hasAtendimentoAccess, hasTecnicoAccess]);
+    return hasAtendimentoAccess && !hasTecnicoAccess;
+  }, [hasAtendimentoAccess, hasTecnicoAccess]);
 
   const selectedTipoServico = useMemo(() => tiposServico.find(t => t.id === tipoServicoId), [tiposServico, tipoServicoId]);
 
@@ -404,17 +372,7 @@ export default function AvaliacaoOSPage() {
   });
 
   // OS Detail queries
-  const { data: osLinkedTA = [] } = useQuery({
-    queryKey: ["os_linked_ta", selectedOS?.tipo_servico_id],
-    queryFn: async () => {
-      if (!selectedOS?.tipo_servico_id) return [];
-      const { data: links } = await (supabase as any).from("tipo_servico_tipos_avaliacao").select("tipo_avaliacao_id").eq("tipo_servico_id", selectedOS.tipo_servico_id);
-      if (!links?.length) return [];
-      const { data } = await (supabase as any).from("tipos_avaliacao").select("*").in("id", links.map((l: any) => l.tipo_avaliacao_id));
-      return (data || []) as TipoAvaliacao[];
-    },
-    enabled: !!selectedOS?.tipo_servico_id,
-  });
+  // osLinkedTA removed - tipos_avaliacao no longer used
 
   const { data: osAvaliacoes = [], refetch: refetchOsAvaliacoes } = useQuery({
     queryKey: ["os_avaliacoes", selectedOS?.id],
@@ -527,18 +485,7 @@ export default function AvaliacaoOSPage() {
     enabled: !!evalOsId,
   });
 
-  // Auto-select tipo_avaliacao based on cargo/sector
-  useEffect(() => {
-    if (linkedTiposAvaliacao.length > 0) {
-      if (profile?.cargo) {
-        const match = linkedTiposAvaliacao.find(ta => ta.cargo_responsavel === profile.cargo);
-        if (match) { setSelectedTipoAvaliacaoId(match.id); return; }
-      }
-      if (!selectedTipoAvaliacaoId) {
-        setSelectedTipoAvaliacaoId(linkedTiposAvaliacao[0].id);
-      }
-    }
-  }, [linkedTiposAvaliacao, profile]);
+  // Auto-select tipo_avaliacao removed - no longer used
 
   // URL param: pre-fill OS number and optionally auto-open evaluation
   useEffect(() => {
@@ -575,7 +522,7 @@ export default function AvaliacaoOSPage() {
               .single();
 
             if (existingAval) {
-              if (existingAval.tipo_avaliacao_id) setSelectedTipoAvaliacaoId(existingAval.tipo_avaliacao_id);
+              // tipo_avaliacao_id no longer tracked
 
               if (existingAval.concluida && existingOS.status !== "concluida") {
                 await supabase
@@ -686,7 +633,7 @@ export default function AvaliacaoOSPage() {
 
           if (pendingAval) {
             setFormPendingAval(pendingAval);
-            if (pendingAval.tipo_avaliacao_id) setSelectedTipoAvaliacaoId(pendingAval.tipo_avaliacao_id);
+            // tipo_avaliacao_id no longer tracked
             toast.info("OS encontrada com avaliação pendente.");
           } else {
             toast.success("OS encontrada! Configure a avaliação abaixo.");
@@ -809,7 +756,7 @@ export default function AvaliacaoOSPage() {
     setEvalOsId(osId);
     setEvalAvaliacaoId(avaliacaoId);
     setTipoServicoId(osData.tipo_servico_id || "");
-    setSelectedTipoAvaliacaoId(aval.tipo_avaliacao_id as string || "");
+    // tipo_avaliacao_id no longer tracked
     setEvalFinalized(aval.concluida || false);
     setEvalScore(aval.nota_final as number | null);
 
@@ -991,37 +938,10 @@ export default function AvaliacaoOSPage() {
       return;
     }
 
-    // Try to find tipo_avaliacao via links, but allow fallback
-    const { data: links } = await (supabase as any)
-      .from("tipo_servico_tipos_avaliacao")
-      .select("tipo_avaliacao_id")
-      .eq("tipo_servico_id", tsId);
-
-    let myTaId: string | null = null;
-
-    if (links?.length) {
-      const taIds = links.map((l: any) => l.tipo_avaliacao_id);
-      const { data: tas } = await (supabase as any).from("tipos_avaliacao").select("*").in("id", taIds);
-
-      if (tas?.length) {
-        const doneIds = (existingAvals || []).map((a: any) => a.tipo_avaliacao_id);
-        let myTa: any = null;
-
-        if (isAdmin) {
-          const available = tas.filter((ta: any) => !doneIds.includes(ta.id));
-          myTa = available[0] || null;
-        } else {
-          myTa = tas.find((ta: any) => ta.cargo_responsavel === profile.cargo) || null;
-        }
-
-        if (myTa) myTaId = myTa.id;
-      }
-    }
-
     const { data: newAval, error } = await supabase.from("avaliacoes").insert({
       ordem_servico_id: theOS.id,
       avaliador_id: profile.id,
-      tipo_avaliacao_id: myTaId,
+      tipo_avaliacao_id: null,
       concluida: false,
     } as any).select("id").single();
 
@@ -1067,19 +987,9 @@ export default function AvaliacaoOSPage() {
       // Snapshot checklist questions into os_perguntas
       await snapshotOsPerguntas(osId, tipoServicoId);
 
-      // Auto-determine tipo_avaliacao_id from evaluator's cargo
-      let finalTipoAvaliacaoId = selectedTipoAvaliacaoId;
-      if (!finalTipoAvaliacaoId && profile.cargo) {
-        const match = linkedTiposAvaliacao.find(ta => ta.cargo_responsavel === profile.cargo);
-        if (match) finalTipoAvaliacaoId = match.id;
-      }
-      if (!finalTipoAvaliacaoId && linkedTiposAvaliacao.length > 0) {
-        finalTipoAvaliacaoId = linkedTiposAvaliacao[0].id;
-      }
-
-      // Create avaliacao
+      // Create avaliacao (tipo_avaliacao_id no longer used)
       const { data: newAval, error: ae } = await supabase.from("avaliacoes").insert({
-        ordem_servico_id: osId, avaliador_id: profile.id, tipo_avaliacao_id: finalTipoAvaliacaoId || null, concluida: false,
+        ordem_servico_id: osId, avaliador_id: profile.id, tipo_avaliacao_id: null, concluida: false,
       } as any).select("id").single();
       if (ae) throw ae;
 
@@ -1325,7 +1235,7 @@ export default function AvaliacaoOSPage() {
     setFormFoundOS(null);
     setFormPendingAval(null);
     setTipoServicoId("");
-    setSelectedTipoAvaliacaoId("");
+    // selectedTipoAvaliacaoId removed
     setAtendenteId("");
     setTecnicoId("");
   };
@@ -1370,8 +1280,8 @@ export default function AvaliacaoOSPage() {
   const tecnicoNome = allProfiles.find(p => p.id === (selectedOS as any)?.tecnico_id)?.nome;
   const evalAtendenteNome = allProfiles.find(p => p.id === evalOsData?.atendente_id)?.nome;
   const evalTecnicoNome = allProfiles.find(p => p.id === evalOsData?.tecnico_id)?.nome;
-  const selectedTipoNome = tiposAvaliacao.find(t => t.id === selectedTipoAvaliacaoId)?.nome;
   const evalTipoServicoNome = tiposServico.find(t => t.id === evalOsData?.tipo_servico_id)?.nome;
+  const selectedTipoNome = evalTipoServicoNome || tiposServico.find(t => t.id === tipoServicoId)?.nome;
 
   const canCreateEval = !!tipoServicoId && (
     isAdmin ? (!!atendenteId && !!tecnicoId) :
@@ -2281,7 +2191,7 @@ export default function AvaliacaoOSPage() {
 
           if (pendingAval) {
             setFormPendingAval(pendingAval);
-            if (pendingAval.tipo_avaliacao_id) setSelectedTipoAvaliacaoId(pendingAval.tipo_avaliacao_id);
+            // tipo_avaliacao_id no longer tracked
             toast.info("Avaliação pendente encontrada. Abrindo...");
             // Open directly
             setCpfValidating(false);
@@ -2508,7 +2418,7 @@ export default function AvaliacaoOSPage() {
                   {tiposServico.length === 0 ? (
                     <p className="text-body text-muted-foreground text-center py-4">Nenhum tipo de serviço disponível.</p>
                   ) : tiposServico.map((t) => (
-                    <button key={t.id} type="button" onClick={() => { setTipoServicoId(t.id); setSelectedTipoAvaliacaoId(""); }}
+                    <button key={t.id} type="button" onClick={() => { setTipoServicoId(t.id); }}
                       className={cn("w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-left transition-all press-effect text-sm",
                         tipoServicoId === t.id ? "bg-primary/10 border-primary text-primary" : "bg-card border-border hover:bg-muted/50")}>
                       <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0",
@@ -2599,7 +2509,7 @@ export default function AvaliacaoOSPage() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-body font-medium text-primary font-tabular">OS #{a.ordens_servico?.numero_os}</span>
-                    <Badge variant="outline" className="text-[10px] hidden sm:inline-flex">{a._ta_nome}</Badge>
+                    <Badge variant="outline" className="text-[10px] hidden sm:inline-flex">{a._ts_nome}</Badge>
                   </div>
                   <p className="text-caption text-muted-foreground truncate">{a.ordens_servico?.cliente_nome || "Sem cliente"}</p>
                 </div>
