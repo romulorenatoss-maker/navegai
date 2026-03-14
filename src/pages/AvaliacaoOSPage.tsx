@@ -130,6 +130,7 @@ export default function AvaliacaoOSPage() {
   const [deleteOsNumero, setDeleteOsNumero] = useState<string>("");
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const debounceTimers = useRef<Record<string, NodeJS.Timeout>>({});
 
   // --- Queries ---
