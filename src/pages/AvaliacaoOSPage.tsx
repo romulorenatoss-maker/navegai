@@ -845,7 +845,7 @@ export default function AvaliacaoOSPage() {
             </motion.div>
           </AnimatePresence>
 
-          <DialogFooter className="flex justify-between sm:justify-between gap-2 mt-2">
+          <DialogFooter className="flex flex-row justify-between gap-2 mt-2">
             <div>
               {step > 0 && !wizardFinalized && !existingOsId && (
                 <Button type="button" variant="outline" onClick={() => setStep(step - 1)}>
