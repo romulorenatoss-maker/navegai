@@ -2,7 +2,8 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Filter, AlertTriangle, Camera, FileVideo, FileText } from "lucide-react";
+import { Plus, Pencil, Trash2, AlertTriangle, Camera, FileVideo, FileText } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,8 +31,8 @@ export default function PerguntasPage() {
   // Preview state
   const [previewAnswer, setPreviewAnswer] = useState<PreviewAnswer>(null);
 
-  // Filter state
-  const [filtroTipoServico, setFiltroTipoServico] = useState("todos");
+  // Filter state - multi-select
+  const [filtrosTipoServico, setFiltrosTipoServico] = useState<Set<string>>(new Set());
 
   const { data: perguntas = [], isLoading } = useQuery({
     queryKey: ["perguntas_avaliacao"],
@@ -77,17 +78,29 @@ export default function PerguntasPage() {
     return map;
   }, [perguntas]);
 
-  // Filtered questions
+  // Filtered questions based on multi-select
+  const hasFilters = filtrosTipoServico.size > 0;
   const perguntasFiltradas = useMemo(() => {
-    if (filtroTipoServico === "todos") return perguntas;
-    if (filtroTipoServico === "global") return perguntas.filter((p) => !p.tipo_servico_id);
-    return perguntas.filter((p) => p.tipo_servico_id === filtroTipoServico);
-  }, [perguntas, filtroTipoServico]);
+    if (!hasFilters) return perguntas;
+    return perguntas.filter((p) => {
+      const key = p.tipo_servico_id || "global";
+      return filtrosTipoServico.has(key);
+    });
+  }, [perguntas, filtrosTipoServico, hasFilters]);
 
   const somaPesoFiltrado = useMemo(
     () => perguntasFiltradas.reduce((acc, p) => acc + p.peso, 0),
     [perguntasFiltradas]
   );
+
+  const toggleFiltro = (key: string) => {
+    setFiltrosTipoServico((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   const upsert = useMutation({
     mutationFn: async () => {
@@ -144,50 +157,55 @@ export default function PerguntasPage() {
         <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Nova Pergunta</Button>
       </div>
 
-      {/* Summary cards by tipo_servico */}
+      {/* Filter checkboxes */}
       {perguntas.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
-          {Array.from(summaryByTipo.entries()).map(([key, val]) => (
-            <button
-              key={key}
-              onClick={() => setFiltroTipoServico(key === filtroTipoServico ? "todos" : key)}
-              className={`bg-card border rounded-lg px-4 py-3 shadow-card text-left transition-all hover:shadow-md press-effect ${
-                filtroTipoServico === key ? "border-primary ring-1 ring-primary" : "border-border"
-              }`}
-            >
-              <p className="text-body font-semibold text-foreground truncate">{val.nome}</p>
-              <div className="flex items-center gap-3 mt-1">
-                <span className="text-caption text-muted-foreground">{val.count} pergunta{val.count !== 1 ? "s" : ""}</span>
-                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-caption font-bold border font-tabular ${
-                  val.totalPeso >= 100 ? "badge-complete" : val.totalPeso >= 50 ? "badge-active" : "badge-pending"
-                }`}>
-                  {val.totalPeso} pts
-                </span>
-              </div>
-            </button>
-          ))}
+        <div className="bg-card border border-border rounded-lg p-4 shadow-card mb-4">
+          <p className="text-caption text-muted-foreground uppercase tracking-wider mb-2">Filtrar por Tipo de Serviço</p>
+          <div className="flex flex-wrap gap-3">
+            {Array.from(summaryByTipo.entries()).map(([key, val]) => (
+              <label
+                key={key}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md border cursor-pointer transition-all press-effect ${
+                  filtrosTipoServico.has(key) ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:bg-muted/50"
+                }`}
+              >
+                <Checkbox
+                  checked={filtrosTipoServico.has(key)}
+                  onCheckedChange={() => toggleFiltro(key)}
+                />
+                <span className="text-body font-medium text-foreground">{val.nome}</span>
+                <span className="text-caption text-muted-foreground">({val.count})</span>
+              </label>
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Filter bar */}
-      <div className="flex items-center gap-3 mb-4">
-        <Filter className="w-4 h-4 text-muted-foreground" />
-        <Select value={filtroTipoServico} onValueChange={setFiltroTipoServico}>
-          <SelectTrigger className="w-64">
-            <SelectValue placeholder="Filtrar por tipo de serviço" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos os tipos</SelectItem>
-            <SelectItem value="global">Global (sem tipo)</SelectItem>
-            {tipos.map((t) => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        {filtroTipoServico !== "todos" && (
-          <span className="text-caption text-muted-foreground">
-            {perguntasFiltradas.length} pergunta{perguntasFiltradas.length !== 1 ? "s" : ""} • Soma total: <span className="font-bold text-foreground">{somaPesoFiltrado} pts</span>
-          </span>
-        )}
-      </div>
+      {/* Summary cards - only when filters are selected */}
+      {hasFilters && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
+          {Array.from(summaryByTipo.entries())
+            .filter(([key]) => filtrosTipoServico.has(key))
+            .map(([key, val]) => (
+              <div key={key} className="bg-card border border-primary/30 rounded-lg px-4 py-3 shadow-card">
+                <p className="text-body font-semibold text-foreground truncate">{val.nome}</p>
+                <div className="flex items-center gap-3 mt-1">
+                  <span className="text-caption text-muted-foreground">{val.count} pergunta{val.count !== 1 ? "s" : ""}</span>
+                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-caption font-bold border font-tabular ${
+                    val.totalPeso >= 100 ? "badge-complete" : val.totalPeso >= 50 ? "badge-active" : "badge-pending"
+                  }`}>
+                    {val.totalPeso} pts
+                  </span>
+                </div>
+              </div>
+            ))}
+          <div className="bg-muted/30 border border-border rounded-lg px-4 py-3 flex items-center justify-center">
+            <span className="text-body font-semibold text-foreground">
+              Total: {somaPesoFiltrado} pts ({perguntasFiltradas.length} perguntas)
+            </span>
+          </div>
+        </div>
+      )}
 
       <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
         <div className="overflow-x-auto">
