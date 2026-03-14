@@ -210,6 +210,7 @@ interface SectorBreakdown {
 }
 
 function TipoRow({ t, onToggle, onEdit, onRemove }: { t: any; onToggle: () => void; onEdit: () => void; onRemove: () => void }) {
+  const { isAdmin } = useAuth();
   // Fetch linked checklists
   const { data: linkedChecklists, isLoading: loadingChecklists } = useQuery({
     queryKey: ["tsc_display", t.id],
