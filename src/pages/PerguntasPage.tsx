@@ -281,7 +281,7 @@ export default function PerguntasPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Tipo de Serviço</Label>
-                <Select value={tipoServicoId} onValueChange={setTipoServicoId}>
+                <Select value={tipoServicoId} onValueChange={(v) => { setTipoServicoId(v); if (!editing) setOrdem(String(getNextOrdem(v === "todos" ? "" : v))); }}>
                   <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todos">Todos</SelectItem>
