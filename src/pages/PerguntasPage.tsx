@@ -348,21 +348,9 @@ export default function PerguntasPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Avaliador Responsável</Label>
-                <Select value={avaliadorId} onValueChange={setAvaliadorId}>
-                  <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos os avaliadores</SelectItem>
-                    {avaliadores.map(a => <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Peso</Label>
-                <Input type="number" min={1} max={100} value={peso} onChange={e => setPeso(e.target.value)} required />
-              </div>
+            <div className="space-y-1.5">
+              <Label>Peso</Label>
+              <Input type="number" min={1} max={100} value={peso} onChange={e => setPeso(e.target.value)} required />
             </div>
 
             {/* Preview */}
