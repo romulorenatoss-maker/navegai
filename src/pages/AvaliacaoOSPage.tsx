@@ -747,19 +747,9 @@ export default function AvaliacaoOSPage() {
   }, [evalOsId, evalAvaliacaoId, profile, evaluatorSetorIds]);
 
   const handleAnswerChange = useCallback((perguntaId: string, answer: Answer) => {
-    setEvalAnswers(prev => {
-      const updated = { ...prev, [perguntaId]: answer };
-      // Check if all answerable questions are now answered - auto-finalize
-      const answerable = evalPerguntas.filter(p => isQuestionAnswerable(p.setor_avaliado_id));
-      const allAnswered = answerable.every(p => updated[p.id] != null);
-      if (allAnswered && !evalFinalized && answerable.length > 0) {
-        // Delay to let auto-save complete first
-        setTimeout(() => handleAutoFinalize(), 1500);
-      }
-      return updated;
-    });
+    setEvalAnswers(prev => ({ ...prev, [perguntaId]: answer }));
     autoSaveAnswer(perguntaId, answer);
-  }, [autoSaveAnswer, evalPerguntas, isQuestionAnswerable, evalFinalized]);
+  }, [autoSaveAnswer]);
 
   const handleObservationChange = useCallback((perguntaId: string, text: string) => {
     setEvalObservations(prev => ({ ...prev, [perguntaId]: text }));
