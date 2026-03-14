@@ -257,7 +257,6 @@ export function useAvaliacaoOS() {
       } as any,
       { onConflict: "ordem_servico_id,pergunta_id" }
     );
-    );
   };
 
   const concludeAvaliacao = async () => {
