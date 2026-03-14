@@ -51,6 +51,7 @@ export type Database = {
         Row: {
           avaliador_id: string
           concluida: boolean
+          concluida_em: string | null
           created_at: string
           id: string
           nota_final: number | null
@@ -62,6 +63,7 @@ export type Database = {
         Insert: {
           avaliador_id: string
           concluida?: boolean
+          concluida_em?: string | null
           created_at?: string
           id?: string
           nota_final?: number | null
@@ -73,6 +75,7 @@ export type Database = {
         Update: {
           avaliador_id?: string
           concluida?: boolean
+          concluida_em?: string | null
           created_at?: string
           id?: string
           nota_final?: number | null

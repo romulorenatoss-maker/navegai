@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 // --- Types ---
 interface TipoAvaliacao {
@@ -419,7 +420,7 @@ export default function AvaliacaoOSPage() {
     queryKey: ["os_avaliacoes", selectedOS?.id],
     queryFn: async () => {
       if (!selectedOS?.id) return [];
-      const { data } = await supabase.from("avaliacoes").select("id, avaliador_id, concluida, nota_final, tipo_avaliacao_id, created_at").eq("ordem_servico_id", selectedOS.id);
+      const { data } = await supabase.from("avaliacoes").select("id, avaliador_id, concluida, concluida_em, nota_final, tipo_avaliacao_id, created_at").eq("ordem_servico_id", selectedOS.id);
       if (!data) return [];
       const ids = [...new Set(data.map(a => a.avaliador_id))];
       let nameMap: Record<string, string> = {};
@@ -438,7 +439,7 @@ export default function AvaliacaoOSPage() {
     queryFn: async () => {
       if (!selectedOS?.id || view !== "os_detail") return [];
       const { data: avals } = await supabase.from("avaliacoes")
-        .select("id, avaliador_id, tipo_avaliacao_id, concluida, nota_final")
+        .select("id, avaliador_id, tipo_avaliacao_id, concluida, concluida_em, nota_final")
         .eq("ordem_servico_id", selectedOS.id);
       if (!avals?.length) return [];
 
@@ -486,6 +487,7 @@ export default function AvaliacaoOSPage() {
           avaliador_nome: avaliadorNames[a.avaliador_id] || "—",
           tipo_avaliacao_nome: a.tipo_avaliacao_id ? taNames[a.tipo_avaliacao_id] || "—" : "—",
           concluida: a.concluida,
+          concluida_em: a.concluida_em,
           nota_final: a.nota_final,
           respostas: avalRespostas,
         };
@@ -2045,10 +2047,17 @@ export default function AvaliacaoOSPage() {
 
         {/* Atendimento Section */}
         <div className="bg-card border border-border rounded-lg shadow-card mb-4">
-          <div className="p-4 border-b border-border flex items-center gap-2">
+          <div className="p-4 border-b border-border flex items-center gap-2 flex-wrap">
             <Users className="w-4 h-4 text-primary" />
             <h3 className="text-body font-semibold text-foreground">Atendimento</h3>
             <span className="text-caption text-muted-foreground ml-1">— {detailAtendenteNome || "Não definido"}</span>
+            {(() => {
+              const avalAtend = osAvaliacoes.find((a: any) => a.avaliador_id === selectedOS.atendente_id);
+              if (avalAtend?.concluida_em) {
+                return <span className="text-caption text-muted-foreground ml-2">• Concluído em {format(new Date(avalAtend.concluida_em), "dd/MM/yyyy HH:mm")}</span>;
+              }
+              return null;
+            })()}
             {atendScore.max > 0 && (
               <span className={cn("ml-auto text-body font-bold font-tabular",
                 atendScore.pct >= 80 ? "text-success" : atendScore.pct >= 60 ? "text-warning" : "text-destructive"
@@ -2063,10 +2072,17 @@ export default function AvaliacaoOSPage() {
 
         {/* Técnico Section */}
         <div className="bg-card border border-border rounded-lg shadow-card mb-4">
-          <div className="p-4 border-b border-border flex items-center gap-2">
+          <div className="p-4 border-b border-border flex items-center gap-2 flex-wrap">
             <Users className="w-4 h-4 text-primary" />
             <h3 className="text-body font-semibold text-foreground">Técnico</h3>
             <span className="text-caption text-muted-foreground ml-1">— {detailTecnicoNome || "Não definido"}</span>
+            {(() => {
+              const avalTec = osAvaliacoes.find((a: any) => a.avaliador_id === selectedOS.tecnico_id);
+              if (avalTec?.concluida_em) {
+                return <span className="text-caption text-muted-foreground ml-2">• Concluído em {format(new Date(avalTec.concluida_em), "dd/MM/yyyy HH:mm")}</span>;
+              }
+              return null;
+            })()}
             {tecScore.max > 0 && (
               <span className={cn("ml-auto text-body font-bold font-tabular",
                 tecScore.pct >= 80 ? "text-success" : tecScore.pct >= 60 ? "text-warning" : "text-destructive"

@@ -113,7 +113,7 @@ export default function DesempenhoColaboradorPage() {
       const tsIds = [...new Set(osData.map(o => o.tipo_servico_id).filter(Boolean))] as string[];
 
       const [avalsRes, tsRes] = await Promise.all([
-        supabase.from("avaliacoes").select("id, ordem_servico_id, nota_final, concluida, created_at, tipo_avaliacao_id")
+        supabase.from("avaliacoes").select("id, ordem_servico_id, nota_final, concluida, concluida_em, created_at, tipo_avaliacao_id")
           .in("ordem_servico_id", osIds).eq("concluida", true),
         tsIds.length > 0 ? supabase.from("tipos_servico").select("id, nome").in("id", tsIds) : { data: [] },
       ]);
@@ -142,6 +142,7 @@ export default function DesempenhoColaboradorPage() {
             nota_final: a.nota_final,
             tipo_avaliacao: taMap[a.tipo_avaliacao_id || ""] || "—",
             created_at: a.created_at,
+            concluida_em: a.concluida_em,
           })),
         };
       });
@@ -264,7 +265,7 @@ export default function DesempenhoColaboradorPage() {
     queryFn: async () => {
       if (!selectedOsId) return null;
       const { data: avals } = await supabase.from("avaliacoes")
-        .select("id, avaliador_id, tipo_avaliacao_id, nota_final, concluida")
+        .select("id, avaliador_id, tipo_avaliacao_id, nota_final, concluida, concluida_em")
         .eq("ordem_servico_id", selectedOsId);
       if (!avals?.length) return null;
 
@@ -301,6 +302,7 @@ export default function DesempenhoColaboradorPage() {
         tipo_avaliacao_nome: a.tipo_avaliacao_id ? taNames[a.tipo_avaliacao_id] || "—" : "—",
         nota_final: a.nota_final,
         concluida: a.concluida,
+        concluida_em: a.concluida_em,
         respostas: (respostas || [])
           .filter(r => r.avaliacao_id === a.id)
           .map(r => ({
@@ -668,8 +670,11 @@ export default function DesempenhoColaboradorPage() {
               <div className="p-4 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className={cn("w-3 h-3 rounded-full shrink-0", evalDetail.concluida ? "bg-success" : "bg-warning")} />
-                  <h3 className="text-body font-semibold text-foreground">{evalDetail.tipo_avaliacao_nome}</h3>
-                  <span className="text-caption text-muted-foreground">— {evalDetail.avaliador_nome}</span>
+                   <h3 className="text-body font-semibold text-foreground">{evalDetail.tipo_avaliacao_nome}</h3>
+                   <span className="text-caption text-muted-foreground">— {evalDetail.avaliador_nome}</span>
+                   {evalDetail.concluida_em && (
+                     <span className="text-caption text-muted-foreground ml-1">• {format(new Date(evalDetail.concluida_em), "dd/MM/yyyy HH:mm")}</span>
+                   )}
                 </div>
                 {evalDetail.nota_final != null && (
                   <span className={cn("text-body font-bold font-tabular",

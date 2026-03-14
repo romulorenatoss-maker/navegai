@@ -324,7 +324,7 @@ export default function RelatoriosPage() {
           : Promise.resolve({ data: [] }),
         supabase.from("os_perguntas").select("os_id, pergunta_id").in("os_id", osIds),
         supabase.from("respostas_avaliacao").select("ordem_servico_id, pergunta_id, resposta, avaliador_id").in("ordem_servico_id", osIds),
-        supabase.from("avaliacoes").select("id, ordem_servico_id, avaliador_id, nota_final, created_at").in("ordem_servico_id", osIds),
+        supabase.from("avaliacoes").select("id, ordem_servico_id, avaliador_id, nota_final, concluida_em, created_at").in("ordem_servico_id", osIds),
       ]);
 
       const tipoNames: Record<string, string> = {};
@@ -378,7 +378,7 @@ export default function RelatoriosPage() {
       // 7. Build CSV — questions as columns with score values
       const fixedHeaders = [
         "Número OS", "Nome Cliente", "CPF Cliente", "Data Avaliação",
-        "Avaliador", "Tipo Serviço", "Colaborador Avaliado", "Nota Final"
+        "Avaliador", "Tipo Serviço", "Colaborador Avaliado", "Hora Conclusão", "Nota Final"
       ];
       // Header shows "Pergunta (Peso: X)"
       const questionHeaders = perguntas.map((p) => `${p.pergunta} (Peso: ${p.peso})`);
@@ -409,6 +409,9 @@ export default function RelatoriosPage() {
 
         const avaliadorNome = osAvals.length > 0 ? (profileNames[osAvals[0].avaliador_id] || "") : "";
         const dataAval = osAvals.length > 0 ? format(new Date(osAvals[0].created_at), "dd/MM/yyyy") : format(new Date(os.created_at), "dd/MM/yyyy");
+        const horaConclusao = osAvals.length > 0 && osAvals[0].concluida_em
+          ? format(new Date(osAvals[0].concluida_em), "dd/MM/yyyy HH:mm")
+          : "";
 
         const row = [
           os.numero_os,
@@ -418,6 +421,7 @@ export default function RelatoriosPage() {
           avaliadorNome,
           os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || "" : "",
           os.colaborador_avaliado_id ? profileNames[os.colaborador_avaliado_id] || "" : "",
+          horaConclusao,
           bestNota != null ? bestNota.toFixed(2).replace(".", ",") : "",
           ...perguntas.map((p) => {
             const resp = osRespostas[p.id];
