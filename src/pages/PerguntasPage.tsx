@@ -337,8 +337,8 @@ export default function PerguntasPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Peso</Label>
-              <Input type="number" min={1} max={100} value={peso} onChange={e => setPeso(e.target.value)} required />
+              <Label>Nota</Label>
+              <Input type="number" min={1} max={100} value={peso} onChange={e => { const v = e.target.value.replace(/\D/g, ''); setPeso(v); }} onKeyDown={e => { if (!/[0-9]/.test(e.key) && !['Backspace','Delete','Tab','ArrowLeft','ArrowRight','Home','End'].includes(e.key)) e.preventDefault(); }} required inputMode="numeric" pattern="[0-9]*" />
             </div>
 
             {/* Preview */}
