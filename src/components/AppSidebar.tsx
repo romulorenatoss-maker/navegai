@@ -61,19 +61,22 @@ interface AppSidebarProps {
   mobile?: boolean;
   onNavigate?: () => void;
   isAdmin?: boolean;
+  allowedScreens?: string[];
 }
 
-export function AppSidebar({ userName = "Usuário", onSignOut, mobile, onNavigate, isAdmin = false }: AppSidebarProps) {
+export function AppSidebar({ userName = "Usuário", onSignOut, mobile, onNavigate, isAdmin = false, allowedScreens = [] }: AppSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
 
   const isCollapsed = mobile ? false : collapsed;
   const width = mobile ? "100%" : isCollapsed ? 64 : 240;
 
-  // Filter sections and items based on role
+  // Admins see everything. Non-admins see only screens from permissoes_tela.
   const navSections = allNavSections
     .map((section) => {
-      const filteredItems = section.items.filter((item) => isAdmin || !item.adminOnly);
+      const filteredItems = section.items.filter((item) =>
+        isAdmin || allowedScreens.includes(item.to)
+      );
       return { ...section, items: filteredItems };
     })
     .filter((section) => section.items.length > 0);
