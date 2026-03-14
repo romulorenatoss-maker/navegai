@@ -1232,7 +1232,7 @@ export default function AvaliacaoOSPage() {
   );
 
   // --- PDF Generation ---
-  const canExport = evalOsData?.status === "concluida";
+  const canExport = evalFinalized || evalOsData?.status === "concluida";
   const generatePDF = useCallback(() => {
     if (!evalOsData) return;
     if (evalOsData.status !== "concluida") {
