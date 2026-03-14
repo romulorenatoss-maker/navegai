@@ -4,9 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Search, Plus, User, FileText } from "lucide-react";
+import { Search, Plus, User, FileText, Pencil, Trash2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -18,6 +18,17 @@ export default function ClientesPage() {
   const [showNew, setShowNew] = useState(false);
   const [newNome, setNewNome] = useState("");
   const [newCpf, setNewCpf] = useState("");
+
+  // Edit state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editNome, setEditNome] = useState("");
+  const [editCpf, setEditCpf] = useState("");
+
+  // Delete state
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const { data: clientes = [], refetch } = useQuery({
     queryKey: ["clientes"],
@@ -79,6 +90,50 @@ export default function ClientesPage() {
     refetch();
   };
 
+  const openEdit = () => {
+    if (!selectedCliente) return;
+    setEditNome(selectedCliente.nome);
+    setEditCpf(selectedCliente.cpf || "");
+    setEditOpen(true);
+  };
+
+  const handleEdit = async () => {
+    if (!selectedId || !editNome.trim()) { toast.error("Nome obrigatório"); return; }
+    const { error } = await supabase.from("clientes").update({ nome: editNome.trim(), cpf: editCpf.trim() || null }).eq("id", selectedId);
+    if (error) { toast.error("Erro: " + error.message); return; }
+    toast.success("Cliente atualizado!");
+    setEditOpen(false);
+    refetch();
+  };
+
+  const openDelete = () => {
+    setDeletePassword("");
+    setDeleteError("");
+    setDeleteOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deletePassword.trim()) { setDeleteError("Informe sua senha."); return; }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.email) { setDeleteError("Erro ao verificar usuário."); return; }
+    const { error: authErr } = await supabase.auth.signInWithPassword({ email: user.email, password: deletePassword });
+    if (authErr) { setDeleteError("Senha incorreta."); return; }
+
+    setDeleteLoading(true);
+    try {
+      const { error } = await supabase.from("clientes").delete().eq("id", selectedId!);
+      if (error) throw error;
+      toast.success("Cliente excluído.");
+      setDeleteOpen(false);
+      setSearchParams({});
+      refetch();
+    } catch (err: any) {
+      toast.error("Erro: " + err.message);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   const statusBadge: Record<string, string> = {
     aberta: "badge-pending",
     em_andamento: "badge-active",
@@ -108,12 +163,7 @@ export default function ClientesPage() {
           <div className="p-3 border-b border-border">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome ou CPF..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
+              <Input placeholder="Buscar por nome ou CPF..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
             </div>
           </div>
           <div className="max-h-[60vh] overflow-y-auto divide-y divide-border">
@@ -141,9 +191,17 @@ export default function ClientesPage() {
                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                   <User className="w-5 h-5 text-primary" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <h2 className="text-body font-semibold text-foreground">{selectedCliente.nome}</h2>
                   <p className="text-caption text-muted-foreground">{selectedCliente.cpf || "Sem CPF"}</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="sm" onClick={openEdit} className="press-effect">
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={openDelete} className="press-effect text-destructive">
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
                 </div>
               </div>
 
@@ -170,11 +228,7 @@ export default function ClientesPage() {
                             ? (concluidas.reduce((s: number, a: any) => s + (a.nota_final || 0), 0) / concluidas.length)
                             : null;
                           return (
-                            <tr
-                              key={os.id}
-                              className="hover:bg-muted/50 transition-colors cursor-pointer"
-                              onClick={() => navigate(`/avaliacoes/pesquisa?os=${os.numero_os}`)}
-                            >
+                            <tr key={os.id} className="hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate(`/avaliacoes/pesquisa?os=${os.numero_os}`)}>
                               <td className="px-3 py-2 text-body font-medium text-primary underline underline-offset-2 font-tabular">{os.numero_os}</td>
                               <td className="px-3 py-2">
                                 <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${statusBadge[os.status]}`}>
@@ -197,11 +251,7 @@ export default function ClientesPage() {
                           );
                         })}
                         {osDoCliente.length === 0 && (
-                          <tr>
-                            <td colSpan={4} className="px-3 py-8 text-center text-body text-muted-foreground">
-                              Nenhuma OS vinculada a este cliente.
-                            </td>
-                          </tr>
+                          <tr><td colSpan={4} className="px-3 py-8 text-center text-body text-muted-foreground">Nenhuma OS vinculada a este cliente.</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -221,22 +271,63 @@ export default function ClientesPage() {
       {/* Dialog novo cliente */}
       <Dialog open={showNew} onOpenChange={setShowNew}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Novo Cliente</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Novo Cliente</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div>
-              <Label>Nome *</Label>
-              <Input value={newNome} onChange={(e) => setNewNome(e.target.value)} placeholder="Nome do cliente" />
-            </div>
-            <div>
-              <Label>CPF</Label>
-              <Input value={newCpf} onChange={(e) => setNewCpf(e.target.value)} placeholder="000.000.000-00" />
-            </div>
+            <div><Label>Nome *</Label><Input value={newNome} onChange={(e) => setNewNome(e.target.value)} placeholder="Nome do cliente" /></div>
+            <div><Label>CPF</Label><Input value={newCpf} onChange={(e) => setNewCpf(e.target.value)} placeholder="000.000.000-00" /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNew(false)}>Cancelar</Button>
             <Button onClick={handleCreate}>Criar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog editar cliente */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Editar Cliente</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div><Label>Nome *</Label><Input value={editNome} onChange={(e) => setEditNome(e.target.value)} /></div>
+            <div><Label>CPF</Label><Input value={editCpf} onChange={(e) => setEditCpf(e.target.value)} placeholder="000.000.000-00" /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
+            <Button onClick={handleEdit} className="press-effect">Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog excluir cliente */}
+      <Dialog open={deleteOpen} onOpenChange={(open) => { if (!deleteLoading) setDeleteOpen(open); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Lock className="w-5 h-5" /> Excluir Cliente
+            </DialogTitle>
+            <DialogDescription>
+              Esta ação é irreversível. O cliente <strong>{selectedCliente?.nome}</strong> será removido permanentemente. Confirme sua senha.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label>Senha</Label>
+              <Input
+                type="password"
+                placeholder="Digite sua senha"
+                value={deletePassword}
+                onChange={e => { setDeletePassword(e.target.value); setDeleteError(""); }}
+                onKeyDown={e => e.key === "Enter" && handleDelete()}
+                autoFocus
+              />
+              {deleteError && <p className="text-caption text-destructive">{deleteError}</p>}
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={deleteLoading}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleteLoading || !deletePassword.trim()} className="press-effect">
+              {deleteLoading ? "Excluindo..." : "Excluir"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
