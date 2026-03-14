@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, AlertTriangle, Loader2, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
