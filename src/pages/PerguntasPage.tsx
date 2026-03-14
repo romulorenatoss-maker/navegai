@@ -349,7 +349,7 @@ export default function PerguntasPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <p className="text-body font-medium text-foreground">{pergunta}</p>
-                      <p className="text-caption text-muted-foreground">Peso: {peso}</p>
+                      <p className="text-caption text-muted-foreground">Nota: {peso}</p>
                     </div>
                     <div className="flex bg-muted rounded-md p-0.5 gap-0.5 shrink-0">
                       {([
