@@ -242,10 +242,12 @@ export default function AvaliacaoOSPage() {
         return n.includes("atendimento") || n.includes("atendente");
       }).map(s => s.id);
       if (!atendSetorIds.length) return avaliadoProfiles;
+      // Check colaborador_setores junction table
       const { data: links } = await supabase.from("colaborador_setores").select("profile_id").in("setor_id", atendSetorIds);
-      if (!links?.length) return [];
-      const ids = [...new Set(links.map(l => l.profile_id))];
-      return avaliadoProfiles.filter(p => ids.includes(p.id));
+      const linkedIds = new Set(links?.map(l => l.profile_id) || []);
+      // Also check legacy setor_id on profile
+      const result = avaliadoProfiles.filter(p => linkedIds.has(p.id) || (p.setor_id && atendSetorIds.includes(p.setor_id)));
+      return result;
     },
     enabled: avaliadoProfiles.length > 0,
   });
@@ -261,9 +263,9 @@ export default function AvaliacaoOSPage() {
       }).map(s => s.id);
       if (!tecSetorIds.length) return avaliadoProfiles;
       const { data: links } = await supabase.from("colaborador_setores").select("profile_id").in("setor_id", tecSetorIds);
-      if (!links?.length) return [];
-      const ids = [...new Set(links.map(l => l.profile_id))];
-      return avaliadoProfiles.filter(p => ids.includes(p.id));
+      const linkedIds = new Set(links?.map(l => l.profile_id) || []);
+      const result = avaliadoProfiles.filter(p => linkedIds.has(p.id) || (p.setor_id && tecSetorIds.includes(p.setor_id)));
+      return result;
     },
     enabled: avaliadoProfiles.length > 0,
   });
@@ -2027,28 +2029,40 @@ export default function AvaliacaoOSPage() {
                 <div className="space-y-3">
                   {(hasAtendimentoAccess || isAdmin) && (
                     <div className="space-y-1.5">
-                      <Label>Atendente Avaliado {(hasAtendimentoAccess || isAdmin) ? "*" : ""}</Label>
-                      <Select value={atendenteId} onValueChange={setAtendenteId}>
-                        <SelectTrigger><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
-                        <SelectContent>
-                          {atendimentoProfiles.filter(p => p.id !== profile?.id).map(p =>
-                            <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
+                      <Label>Atendente Avaliado *</Label>
+                      {atendimentoProfiles.filter(p => p.id !== profile?.id).length === 0 ? (
+                        <p className="text-caption text-warning bg-warning/10 border border-warning/20 rounded-lg px-3 py-2">
+                          Nenhum colaborador com cargo "Avaliado" encontrado no setor Atendimento. Cadastre colaboradores avaliados nesse setor.
+                        </p>
+                      ) : (
+                        <Select value={atendenteId} onValueChange={setAtendenteId}>
+                          <SelectTrigger><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
+                          <SelectContent>
+                            {atendimentoProfiles.filter(p => p.id !== profile?.id).map(p =>
+                              <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
                   )}
                   {(hasTecnicoAccess || isAdmin) && (
                     <div className="space-y-1.5">
-                      <Label>Técnico Avaliado {(hasTecnicoAccess || isAdmin) ? "*" : ""}</Label>
-                      <Select value={tecnicoId} onValueChange={setTecnicoId}>
-                        <SelectTrigger><SelectValue placeholder="Selecione o técnico" /></SelectTrigger>
-                        <SelectContent>
-                          {tecnicoProfiles.filter(p => p.id !== profile?.id).map(p =>
-                            <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
+                      <Label>Técnico Avaliado *</Label>
+                      {tecnicoProfiles.filter(p => p.id !== profile?.id).length === 0 ? (
+                        <p className="text-caption text-warning bg-warning/10 border border-warning/20 rounded-lg px-3 py-2">
+                          Nenhum colaborador com cargo "Avaliado" encontrado no setor Técnico. Cadastre colaboradores avaliados nesse setor.
+                        </p>
+                      ) : (
+                        <Select value={tecnicoId} onValueChange={setTecnicoId}>
+                          <SelectTrigger><SelectValue placeholder="Selecione o técnico" /></SelectTrigger>
+                          <SelectContent>
+                            {tecnicoProfiles.filter(p => p.id !== profile?.id).map(p =>
+                              <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
                   )}
                 </div>
