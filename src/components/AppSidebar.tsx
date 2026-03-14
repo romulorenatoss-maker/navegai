@@ -63,16 +63,26 @@ interface AppSidebarProps {
 function NavDropdown({ section, onNavigate }: { section: typeof allNavSections[0]; onNavigate?: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const location = useLocation();
   const hasActive = section.items.some(item => location.pathname === item.to);
 
   useEffect(() => {
+    if (!open) return;
     const handleClick = (e: MouseEvent) => {
+      // Don't close if clicking the toggle button itself (let onClick handle it)
+      if (buttonRef.current?.contains(e.target as Node)) return;
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
+    // Use setTimeout to avoid the current click from immediately closing
+    const timer = setTimeout(() => {
+      document.addEventListener("mousedown", handleClick);
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("mousedown", handleClick);
+    };
+  }, [open]);
 
   // Single item sections (like Dashboard) render as direct link
   if (section.items.length === 1) {
@@ -98,7 +108,8 @@ function NavDropdown({ section, onNavigate }: { section: typeof allNavSections[0
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={() => setOpen(!open)}
+        ref={buttonRef}
+        onClick={() => setOpen(prev => !prev)}
         className={cn(
           "flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap",
           hasActive
