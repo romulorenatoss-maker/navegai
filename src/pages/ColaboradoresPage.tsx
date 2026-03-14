@@ -38,7 +38,20 @@ export default function ColaboradoresPage() {
     queryFn: async () => {
       const { data, error } = await supabase.from("profiles").select("*, setores(nome)").order("nome");
       if (error) throw error;
-      return data;
+      // Load multi-setor data for all profiles
+      const { data: allSetorLinks } = await supabase
+        .from("colaborador_setores")
+        .select("profile_id, setores(nome)");
+      const setorMap = new Map<string, string[]>();
+      allSetorLinks?.forEach((link: any) => {
+        const list = setorMap.get(link.profile_id) || [];
+        if (link.setores?.nome) list.push(link.setores.nome);
+        setorMap.set(link.profile_id, list);
+      });
+      return data.map((p: any) => ({
+        ...p,
+        _setoresNomes: setorMap.get(p.id) || (p.setores?.nome ? [p.setores.nome] : []),
+      }));
     },
   });
 
@@ -89,10 +102,18 @@ export default function ColaboradoresPage() {
   };
 
   const saveSetores = async (profileId: string) => {
-    await supabase.from("colaborador_setores").delete().eq("profile_id", profileId);
+    const { error: delError } = await supabase.from("colaborador_setores").delete().eq("profile_id", profileId);
+    if (delError) {
+      console.error("Erro ao limpar setores:", delError.message);
+      throw new Error("Erro ao salvar setores: " + delError.message);
+    }
     if (selectedSetores.length > 0) {
       const rows = selectedSetores.map((sid) => ({ profile_id: profileId, setor_id: sid }));
-      await supabase.from("colaborador_setores").insert(rows);
+      const { error: insError } = await supabase.from("colaborador_setores").insert(rows);
+      if (insError) {
+        console.error("Erro ao inserir setores:", insError.message);
+        throw new Error("Erro ao salvar setores: " + insError.message);
+      }
     }
     // Also update the legacy setor_id field with the first setor for backward compat
     await supabase.from("profiles").update({ setor_id: selectedSetores[0] || null }).eq("id", profileId);
@@ -267,7 +288,7 @@ export default function ColaboradoresPage() {
                         {cfg.label}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-body text-muted-foreground">{(p as any).setores?.nome || "—"}</td>
+                    <td className="px-4 py-3 text-body text-muted-foreground">{(p as any)._setoresNomes?.length > 0 ? (p as any)._setoresNomes.join(" / ") : "—"}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${p.ativo ? "badge-complete" : "badge-expired"}`}>{p.ativo ? "Ativo" : "Inativo"}</span>
                     </td>
