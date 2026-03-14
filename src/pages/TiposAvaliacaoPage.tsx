@@ -79,7 +79,7 @@ export default function TiposAvaliacaoPage() {
           <h1 className="text-section font-semibold text-foreground">Tipos de Avaliação</h1>
           <p className="text-body text-muted-foreground">Defina os tipos de avaliação (ex: Atendimento, Técnico, Qualidade).</p>
         </div>
-        <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Novo Tipo</Button>
+        {isAdmin && <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Novo Tipo</Button>}
       </div>
 
       <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
