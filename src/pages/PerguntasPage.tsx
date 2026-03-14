@@ -375,14 +375,15 @@ export default function PerguntasPage() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Tipo de Avaliado</Label>
-                <Select value={tipoAvaliado} onValueChange={setTipoAvaliado}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Label>Setor Avaliado</Label>
+                <Select value={setorAvaliadoId} onValueChange={setSetorAvaliadoId}>
+                  <SelectTrigger><SelectValue placeholder="Todos os setores" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="atendente">Atendente</SelectItem>
-                    <SelectItem value="tecnico">Técnico</SelectItem>
+                    <SelectItem value="todos">Todos os setores</SelectItem>
+                    {setores.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                <p className="text-caption text-muted-foreground">Selecione o setor que será avaliado por esta pergunta.</p>
               </div>
             </div>
             <div className="space-y-1.5">
