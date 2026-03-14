@@ -847,10 +847,10 @@ export default function AvaliacaoOSPage() {
     const otherMap: typeof otherEvalAnswers = {};
 
     // Get evaluator names for "other" answers
-    const avaliadorIds = [...new Set((allRespostas || []).map(r => (r as any).avaliador_id).filter(Boolean))];
+    const avaliadorIds = [...new Set((allRespostas || []).map((r: any) => r.avaliador_id).filter(Boolean))] as string[];
     let profileNames: Record<string, string> = {};
     if (avaliadorIds.length > 0) {
-      const { data: profiles } = await supabase.from("profiles").select("id, nome").in("id", avaliadorIds);
+      const { data: profiles } = await supabase.from("profiles").select("id, nome").in("id", avaliadorIds as string[]);
       profiles?.forEach(p => { profileNames[p.id] = p.nome; });
     }
 
