@@ -179,6 +179,83 @@ export default function AvaliacaoOSPage() {
     enabled: !!profile?.id,
   });
 
+  // Generate month options (last 12 months)
+  const monthOptions = useMemo(() => {
+    const months: { value: string; label: string }[] = [];
+    const now = new Date();
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({
+        value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+        label: format(d, "MMMM yyyy", { locale: ptBR }),
+      });
+    }
+    return months;
+  }, []);
+
+  // Filtered OS query
+  const hasActiveFilter = !!filterDateFrom || !!filterDateTo || !!filterMonth || filterStatus !== "todos";
+
+  const { data: filteredOS = [], isFetching: filterLoading } = useQuery({
+    queryKey: ["filtered_os", filterDateFrom?.toISOString(), filterDateTo?.toISOString(), filterMonth, filterStatus],
+    queryFn: async () => {
+      let query = supabase
+        .from("ordens_servico")
+        .select("id, numero_os, status, created_at, data_abertura, cliente_nome, colaborador_avaliado_id, tipo_servico_id")
+        .order("data_abertura", { ascending: false });
+
+      // Date range filter
+      if (filterDateFrom) {
+        query = query.gte("data_abertura", filterDateFrom.toISOString());
+      }
+      if (filterDateTo) {
+        const endOfDay = new Date(filterDateTo);
+        endOfDay.setHours(23, 59, 59, 999);
+        query = query.lte("data_abertura", endOfDay.toISOString());
+      }
+
+      // Month filter (overrides date range if set)
+      if (filterMonth) {
+        const [year, month] = filterMonth.split("-").map(Number);
+        const start = new Date(year, month - 1, 1);
+        const end = new Date(year, month, 0, 23, 59, 59, 999);
+        query = query.gte("data_abertura", start.toISOString()).lte("data_abertura", end.toISOString());
+      }
+
+      // Status filter
+      if (filterStatus && filterStatus !== "todos") {
+        query = query.eq("status", filterStatus);
+      }
+
+      const { data, error } = await query.limit(200);
+      if (error) throw error;
+
+      // Get collaborator names
+      const colabIds = [...new Set((data || []).map((o) => o.colaborador_avaliado_id).filter(Boolean))];
+      let colabMap: Record<string, string> = {};
+      if (colabIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, nome")
+          .in("id", colabIds);
+        profiles?.forEach((p) => { colabMap[p.id] = p.nome; });
+      }
+
+      return (data || []).map((o) => ({
+        ...o,
+        _colaborador_nome: o.colaborador_avaliado_id ? (colabMap[o.colaborador_avaliado_id] || "—") : "—",
+      }));
+    },
+    enabled: hasActiveFilter,
+  });
+
+  const clearFilters = () => {
+    setFilterDateFrom(undefined);
+    setFilterDateTo(undefined);
+    setFilterMonth("");
+    setFilterStatus("todos");
+  };
+
   // Fetch tipos de serviço: all for admin/gestor, only assigned for avaliador
   const { data: tiposDoAvaliador = [] } = useQuery({
     queryKey: ["tipos_servico_do_avaliador", profile?.id, showAllTipos],
