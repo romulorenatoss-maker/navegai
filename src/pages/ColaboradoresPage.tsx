@@ -29,7 +29,7 @@ export default function ColaboradoresPage() {
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [cargo, setCargo] = useState("atendente");
-  const [setorId, setSetorId] = useState("");
+  const [selectedSetores, setSelectedSetores] = useState<string[]>([]);
   const [senha, setSenha] = useState("");
   const [selectedTiposServico, setSelectedTiposServico] = useState<string[]>([]);
 
@@ -60,9 +60,19 @@ export default function ColaboradoresPage() {
     },
   });
 
-  // Load assigned tipos when editing an avaliador
+  // Load assigned tipos and setores when editing
   useEffect(() => {
-    if (editing && cargo === "avaliador") {
+    if (!editing) return;
+    // Load setores
+    supabase
+      .from("colaborador_setores")
+      .select("setor_id")
+      .eq("profile_id", editing.id)
+      .then(({ data }) => {
+        setSelectedSetores(data?.map((d) => d.setor_id) || []);
+      });
+    // Load tipos if avaliador
+    if (cargo === "avaliador") {
       supabase
         .from("avaliador_tipos_servico")
         .select("tipo_servico_id")
@@ -78,10 +88,18 @@ export default function ColaboradoresPage() {
     if (error) console.error("Erro ao sincronizar role:", error.message);
   };
 
+  const saveSetores = async (profileId: string) => {
+    await supabase.from("colaborador_setores").delete().eq("profile_id", profileId);
+    if (selectedSetores.length > 0) {
+      const rows = selectedSetores.map((sid) => ({ profile_id: profileId, setor_id: sid }));
+      await supabase.from("colaborador_setores").insert(rows);
+    }
+    // Also update the legacy setor_id field with the first setor for backward compat
+    await supabase.from("profiles").update({ setor_id: selectedSetores[0] || null }).eq("id", profileId);
+  };
+
   const saveTiposServico = async (profileId: string) => {
-    // Delete existing
     await supabase.from("avaliador_tipos_servico").delete().eq("avaliador_id", profileId);
-    // Insert new
     if (selectedTiposServico.length > 0) {
       const rows = selectedTiposServico.map((tid) => ({
         avaliador_id: profileId,
@@ -105,20 +123,21 @@ export default function ColaboradoresPage() {
 
       const { error: updateError } = await supabase
         .from("profiles")
-        .update({ cargo, setor_id: setorId || null })
+        .update({ cargo, setor_id: selectedSetores[0] || null })
         .eq("user_id", authData.user.id);
       if (updateError) throw updateError;
 
       await syncRole(authData.user.id, cargo);
 
-      // Save tipos de serviço if avaliador
-      if (cargo === "avaliador") {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("user_id", authData.user.id)
-          .single();
-        if (profile) await saveTiposServico(profile.id);
+      const { data: createdProfile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("user_id", authData.user.id)
+        .single();
+
+      if (createdProfile) {
+        await saveSetores(createdProfile.id);
+        if (cargo === "avaliador") await saveTiposServico(createdProfile.id);
       }
     },
     onSuccess: () => {
@@ -133,11 +152,12 @@ export default function ColaboradoresPage() {
     mutationFn: async () => {
       if (!editing) return;
       const { error } = await supabase.from("profiles").update({
-        nome, cargo, setor_id: setorId || null,
+        nome, cargo, setor_id: selectedSetores[0] || null,
       }).eq("id", editing.id);
       if (error) throw error;
 
       await syncRole(editing.user_id, cargo);
+      await saveSetores(editing.id);
 
       // Save tipos de serviço if avaliador
       if (cargo === "avaliador") {
@@ -177,12 +197,12 @@ export default function ColaboradoresPage() {
   });
 
   const openCreate = () => {
-    setEditing(null); setNome(""); setEmail(""); setCargo("atendente"); setSetorId(""); setSenha("");
+    setEditing(null); setNome(""); setEmail(""); setCargo("atendente"); setSelectedSetores([]); setSenha("");
     setSelectedTiposServico([]);
     setDialogOpen(true);
   };
   const openEdit = (p: Profile) => {
-    setEditing(p); setNome(p.nome); setEmail(p.email); setCargo(p.cargo || "atendente"); setSetorId(p.setor_id || "");
+    setEditing(p); setNome(p.nome); setEmail(p.email); setCargo(p.cargo || "atendente"); setSelectedSetores([]);
     setSelectedTiposServico([]);
     setDialogOpen(true);
   };
@@ -295,12 +315,25 @@ export default function ColaboradoresPage() {
               </Select>
               <p className="text-caption text-muted-foreground">{cargoConfig[cargo]?.description || ""}</p>
             </div>
-            <div className="space-y-1.5">
-              <Label>Setor</Label>
-              <Select value={setorId} onValueChange={setSetorId}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>{setores.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
-              </Select>
+            <div className="space-y-2">
+              <Label>Setores</Label>
+              <p className="text-caption text-muted-foreground">Selecione os setores deste colaborador.</p>
+              <div className="border border-border rounded-lg p-3 space-y-2 max-h-40 overflow-y-auto">
+                {setores.length === 0 ? (
+                  <p className="text-caption text-muted-foreground text-center py-2">Nenhum setor cadastrado.</p>
+                ) : setores.map((s) => (
+                  <label key={s.id} className="flex items-center gap-3 py-1.5 px-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors">
+                    <Checkbox
+                      checked={selectedSetores.includes(s.id)}
+                      onCheckedChange={() => setSelectedSetores((prev) => prev.includes(s.id) ? prev.filter((x) => x !== s.id) : [...prev, s.id])}
+                    />
+                    <span className="text-body font-medium text-foreground">{s.nome}</span>
+                  </label>
+                ))}
+              </div>
+              {selectedSetores.length > 0 && (
+                <p className="text-caption text-muted-foreground">{selectedSetores.length} setor(es) selecionado(s)</p>
+              )}
             </div>
 
             {/* Tipos de Serviço para Avaliador */}

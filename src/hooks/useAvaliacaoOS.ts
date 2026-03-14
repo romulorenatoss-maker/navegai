@@ -148,15 +148,23 @@ export function useAvaliacaoOS() {
       .eq("id", osId)
       .single();
 
-    // Get evaluated collaborator's setor
-    let setorId: string | null = null;
+    // Get evaluated collaborator's setores (multi-setor)
+    let setorIds: string[] = [];
     if (osData?.colaborador_avaliado_id) {
-      const { data: colabProfile } = await supabase
-        .from("profiles")
+      const { data: setorLinks } = await supabase
+        .from("colaborador_setores")
         .select("setor_id")
-        .eq("id", osData.colaborador_avaliado_id)
-        .single();
-      setorId = colabProfile?.setor_id || null;
+        .eq("profile_id", osData.colaborador_avaliado_id);
+      setorIds = setorLinks?.map((l) => l.setor_id) || [];
+      // Fallback to legacy setor_id
+      if (setorIds.length === 0) {
+        const { data: colabProfile } = await supabase
+          .from("profiles")
+          .select("setor_id")
+          .eq("id", osData.colaborador_avaliado_id)
+          .single();
+        if (colabProfile?.setor_id) setorIds = [colabProfile.setor_id];
+      }
     }
 
     // Build query with filters
@@ -169,12 +177,12 @@ export function useAvaliacaoOS() {
     // Filter by tipo_servico: matching OR null (global questions)
     if (osData?.tipo_servico_id) {
       query = query.or(`tipo_servico_id.eq.${osData.tipo_servico_id},tipo_servico_id.is.null`);
-    } else if (setorId) {
-      // No tipo_servico on OS, but avaliado has a setor — get tipos_servico for that setor
+    } else if (setorIds.length > 0) {
+      // No tipo_servico on OS, but avaliado has setores — get tipos_servico for those setores
       const { data: tiposDoSetor } = await supabase
         .from("tipos_servico")
         .select("id")
-        .eq("setor_id", setorId);
+        .in("setor_id", setorIds);
       
       if (tiposDoSetor && tiposDoSetor.length > 0) {
         const tipoIds = tiposDoSetor.map(t => `tipo_servico_id.eq.${t.id}`).join(",");
