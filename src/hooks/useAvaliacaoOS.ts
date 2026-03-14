@@ -39,10 +39,9 @@ export function useAvaliacaoOS() {
   const [avaliacao, setAvaliacao] = useState<AvaliacaoData | null>(null);
   const [questions, setQuestions] = useState<QuestionState[]>([]);
 
-  const searchOS = async (query: string) => {
+  const searchOS = async (query: string, autoCreate = false) => {
     setLoading(true);
     try {
-      // Search existing OS
       const { data: existing } = await supabase
         .from("ordens_servico")
         .select("*")
@@ -56,7 +55,15 @@ export function useAvaliacaoOS() {
         return;
       }
 
-      // OS doesn't exist, create it
+      if (!autoCreate) {
+        toast.info("Nenhuma OS encontrada com esse número.");
+        setOs(null);
+        setAvaliacao(null);
+        setQuestions([]);
+        return;
+      }
+
+      // Create new OS
       const { data: newOs, error } = await supabase
         .from("ordens_servico")
         .insert({ numero_os: query, cliente_nome: null, cliente_cpf: null })
@@ -66,8 +73,9 @@ export function useAvaliacaoOS() {
       if (error) throw error;
       setOs(newOs as OSData);
       await loadOrCreateAvaliacao(newOs.id);
+      toast.success("OS criada com sucesso!");
     } catch (err: any) {
-      toast.error("Erro ao buscar OS: " + err.message);
+      toast.error("Erro ao buscar/criar OS: " + err.message);
     } finally {
       setLoading(false);
     }

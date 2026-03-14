@@ -54,7 +54,11 @@ export default function AvaliacaoOSPage() {
   } = useAvaliacaoOS();
 
   const handleSearch = () => {
-    if (searchQuery.trim()) searchOS(searchQuery.trim());
+    if (searchQuery.trim()) searchOS(searchQuery.trim(), false);
+  };
+
+  const handleCreate = () => {
+    if (searchQuery.trim()) searchOS(searchQuery.trim(), true);
   };
 
   const isCompleted = avaliacao?.concluida === true;
