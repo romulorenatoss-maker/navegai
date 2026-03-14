@@ -1055,7 +1055,13 @@ export default function AvaliacaoOSPage() {
       try { if (evalOsId) await detectInconsistencies(evalOsId); } catch (e) { console.warn("Inconsistency detection error:", e); }
       try { if (evalAvaliacaoId && evalOsId) await detectLinkedInconsistencies(evalAvaliacaoId, evalOsId); } catch (e) { console.warn("Linked inconsistency detection error:", e); }
       refetchPending();
-      setTimeout(() => navigate("/"), 1500);
+      // Only navigate away if OS is fully concluded
+      if (evalOsId) {
+        const { data: updatedOsFinal } = await supabase.from("ordens_servico").select("status").eq("id", evalOsId).single();
+        if (updatedOsFinal?.status === "concluida") {
+          setTimeout(() => navigate("/"), 1500);
+        }
+      }
     } catch (err: any) {
       toast.error("Erro: " + err.message);
     } finally {
@@ -1244,7 +1250,7 @@ export default function AvaliacaoOSPage() {
   const globalAnsweredCount = evalPerguntas.filter(p => evalAnswers[p.id] != null).length;
   const globalProgressPercent = evalPerguntas.length > 0 ? Math.round((globalAnsweredCount / evalPerguntas.length) * 100) : 0;
   const isLocked = isOsFullyConcluded || (evalFinalized && !isEditing);
-  const canEdit = evalFinalized && !isOsFullyConcluded;
+  const canEdit = !isOsFullyConcluded && (evalFinalized || isEditing);
   // My sector progress
   const myAnsweredCount = answerablePerguntas.filter(p => evalAnswers[p.id] != null).length;
   const myProgressPercent = answerablePerguntas.length > 0 ? Math.round((myAnsweredCount / answerablePerguntas.length) * 100) : 0;
@@ -1255,7 +1261,7 @@ export default function AvaliacaoOSPage() {
   // Auto-finalize when all answerable questions are answered
   const autoFinalizeTriggered = useRef(false);
   useEffect(() => {
-    if (evalFinalized || isOsFullyConcluded || evalSubmitting || autoFinalizeTriggered.current) return;
+    if (evalFinalized || isOsFullyConcluded || evalSubmitting || autoFinalizeTriggered.current || isEditing) return;
     if (answerablePerguntas.length === 0) return;
     const allAnswered = answerablePerguntas.every(p => evalAnswers[p.id] != null);
     if (!allAnswered) return;
@@ -1838,7 +1844,18 @@ export default function AvaliacaoOSPage() {
                 {isEditing && (
                   <Button size="sm" onClick={handleSaveEditing} disabled={evalSubmitting} className="press-effect h-8 text-xs px-3">
                     {evalSubmitting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Save className="w-3 h-3 mr-1" />}
-                    Salvar
+                    Salvar Alterações
+                  </Button>
+                )}
+                {!isLocked && !isEditing && !evalFinalized && (
+                  <Button size="sm" onClick={handleFinalizeEvaluation} disabled={evalSubmitting} className="press-effect h-8 text-xs px-3">
+                    {evalSubmitting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Check className="w-3 h-3 mr-1" />}
+                    Concluir
+                  </Button>
+                )}
+                {canEdit && !isEditing && (
+                  <Button size="sm" variant="outline" onClick={handleStartEditing} className="press-effect h-8 text-xs px-3">
+                    <Pencil className="w-3 h-3 mr-1" /> Alterar
                   </Button>
                 )}
                 {evalFinalized && !isEditing && (
