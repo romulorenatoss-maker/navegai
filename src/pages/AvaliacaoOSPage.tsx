@@ -125,6 +125,7 @@ export default function AvaliacaoOSPage() {
   const [evalAnswers, setEvalAnswers] = useState<Record<string, Answer>>({});
   const [evalObservations, setEvalObservations] = useState<Record<string, string>>({});
   const [evalEvidencias, setEvalEvidencias] = useState<Record<string, string>>({});
+  const [otherEvalAnswers, setOtherEvalAnswers] = useState<Record<string, { resposta: string; observacao: string | null; evidencia_url: string | null; avaliador_nome: string }>>({});
   const [uploadingEvidence, setUploadingEvidence] = useState<string | null>(null);
   const [evalFinalized, setEvalFinalized] = useState(false);
   const [evalScore, setEvalScore] = useState<number | null>(null);
@@ -809,6 +810,7 @@ export default function AvaliacaoOSPage() {
     setEvalFinalized(aval.concluida || false);
     setEvalScore(aval.nota_final as number | null);
 
+    // Load MY answers
     const { data: respostas } = await supabase.from("respostas_avaliacao").select("pergunta_id, resposta, observacao, evidencia_url").eq("avaliacao_id", avaliacaoId);
     const ans: Record<string, Answer> = {};
     const obs: Record<string, string> = {};
@@ -821,6 +823,41 @@ export default function AvaliacaoOSPage() {
     setEvalAnswers(ans);
     setEvalObservations(obs);
     setEvalEvidencias(evid);
+
+    // Load OTHER evaluators' answers for the same OS
+    const { data: otherAvals } = await supabase
+      .from("avaliacoes")
+      .select("id, avaliador_id")
+      .eq("ordem_servico_id", osId)
+      .neq("id", avaliacaoId);
+
+    if (otherAvals?.length) {
+      const otherAvalIds = otherAvals.map(a => a.id);
+      const avaliadorIds = [...new Set(otherAvals.map(a => a.avaliador_id))];
+      const [otherRespRes, profilesRes] = await Promise.all([
+        supabase.from("respostas_avaliacao").select("avaliacao_id, pergunta_id, resposta, observacao, evidencia_url").in("avaliacao_id", otherAvalIds).not("resposta", "is", null),
+        supabase.from("profiles").select("id, nome").in("id", avaliadorIds),
+      ]);
+      const profileNames: Record<string, string> = {};
+      profilesRes.data?.forEach(p => { profileNames[p.id] = p.nome; });
+      const avalAvaliadorMap: Record<string, string> = {};
+      otherAvals.forEach(a => { avalAvaliadorMap[a.id] = a.avaliador_id; });
+
+      const otherMap: typeof otherEvalAnswers = {};
+      otherRespRes.data?.forEach(r => {
+        const avaliadorId = avalAvaliadorMap[r.avaliacao_id];
+        otherMap[r.pergunta_id] = {
+          resposta: r.resposta!,
+          observacao: r.observacao,
+          evidencia_url: r.evidencia_url,
+          avaliador_nome: profileNames[avaliadorId] || "Avaliador",
+        };
+      });
+      setOtherEvalAnswers(otherMap);
+    } else {
+      setOtherEvalAnswers({});
+    }
+
     setView("evaluation");
   };
 
@@ -1195,7 +1232,7 @@ export default function AvaliacaoOSPage() {
   );
 
   // --- PDF Generation ---
-  const canExport = evalOsData?.status === "concluida";
+  const canExport = evalFinalized || evalOsData?.status === "concluida";
   const generatePDF = useCallback(() => {
     if (!evalOsData) return;
     if (evalOsData.status !== "concluida") {
@@ -1552,12 +1589,46 @@ export default function AvaliacaoOSPage() {
                       </>
                     ) : (
                       <div className="ml-11 mt-1">
-                        <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-warning/5 border border-warning/20">
-                          <Clock className="w-4 h-4 text-warning shrink-0" />
-                          <span className="text-sm text-muted-foreground">
-                            PENDENTE — aguardando avaliação do setor <strong className="text-foreground">{(p as any)._setor_nome || "responsável"}</strong>
-                          </span>
-                        </div>
+                        {otherEvalAnswers[p.id] ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className={cn(
+                                "inline-flex items-center px-2.5 py-1 rounded text-sm font-semibold border",
+                                otherEvalAnswers[p.id].resposta === "sim" ? "border-success/40 bg-success/10 text-success" :
+                                otherEvalAnswers[p.id].resposta === "nao" ? "border-destructive/40 bg-destructive/10 text-destructive" :
+                                "border-muted-foreground/30 bg-muted text-muted-foreground"
+                              )}>
+                                {otherEvalAnswers[p.id].resposta === "sim" ? "SIM" : otherEvalAnswers[p.id].resposta === "nao" ? "NÃO" : "N/A"}
+                              </span>
+                              <span className="text-caption text-muted-foreground">
+                                por <strong className="text-foreground">{otherEvalAnswers[p.id].avaliador_nome}</strong>
+                              </span>
+                            </div>
+                            {otherEvalAnswers[p.id].observacao && (
+                              <div className="bg-muted/50 border border-border rounded p-2">
+                                <p className="text-caption text-muted-foreground flex items-center gap-1 mb-0.5">
+                                  <MessageSquare className="w-3 h-3" /> Observação:
+                                </p>
+                                <p className="text-sm text-foreground">{otherEvalAnswers[p.id].observacao}</p>
+                              </div>
+                            )}
+                            {otherEvalAnswers[p.id].evidencia_url && (
+                              <img
+                                src={otherEvalAnswers[p.id].evidencia_url!}
+                                alt="Evidência"
+                                className="rounded-lg border border-border max-h-32 object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => window.open(otherEvalAnswers[p.id].evidencia_url!, "_blank")}
+                              />
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-warning/5 border border-warning/20">
+                            <Clock className="w-4 h-4 text-warning shrink-0" />
+                            <span className="text-sm text-muted-foreground">
+                              PENDENTE — aguardando avaliação do setor <strong className="text-foreground">{(p as any)._setor_nome || "responsável"}</strong>
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1586,6 +1657,11 @@ export default function AvaliacaoOSPage() {
                 )}
               </div>
               <div className="flex items-center gap-1.5">
+                {evalFinalized && (
+                  <Button size="sm" variant="outline" onClick={generatePDF} className="press-effect h-8 text-xs px-3">
+                    <Download className="w-3 h-3 mr-1" /> PDF
+                  </Button>
+                )}
                 {!evalFinalized && (
                   <Button size="sm" onClick={handleFinalizeEvaluation} disabled={evalProgressPercent < 100 || evalSubmitting} className="press-effect h-8 text-xs px-3">
                     {evalSubmitting && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
