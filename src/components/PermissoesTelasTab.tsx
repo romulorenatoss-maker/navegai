@@ -33,7 +33,6 @@ export default function PermissoesTelasTab({ profileId, isAdminProfile }: Props)
   useEffect(() => {
     if (permissoes) {
       setSelected(new Set(permissoes));
-      setDirty(false);
     }
   }, [permissoes]);
 
@@ -44,7 +43,6 @@ export default function PermissoesTelasTab({ profileId, isAdminProfile }: Props)
       else next.add(path);
       return next;
     });
-    setDirty(true);
   };
 
   const toggleGroup = (paths: string[]) => {
@@ -57,25 +55,20 @@ export default function PermissoesTelasTab({ profileId, isAdminProfile }: Props)
       });
       return next;
     });
-    setDirty(true);
   };
 
   const selectAll = () => {
     setSelected(new Set(ALL_SCREENS.map((s) => s.path)));
-    setDirty(true);
   };
 
   const deselectAll = () => {
     setSelected(new Set());
-    setDirty(true);
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Delete existing
       await supabase.from("permissoes_tela").delete().eq("profile_id", profileId);
-      // Insert new
       if (selected.size > 0) {
         const rows = Array.from(selected).map((path) => ({
           profile_id: profileId,
@@ -86,7 +79,6 @@ export default function PermissoesTelasTab({ profileId, isAdminProfile }: Props)
       }
       toast.success("Permissões salvas com sucesso.");
       queryClient.invalidateQueries({ queryKey: ["permissoes_tela", profileId] });
-      setDirty(false);
     } catch (err: any) {
       toast.error("Erro ao salvar: " + (err?.message || "falha"));
     } finally {
