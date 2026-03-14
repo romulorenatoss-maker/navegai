@@ -221,7 +221,7 @@ export default function DashboardPage() {
     };
 
     fetch();
-  }, [startDate, endDate]);
+  }, [searchTrigger]);
 
   // Fetch pending OS by sector for current evaluator
   useEffect(() => {
