@@ -231,15 +231,14 @@ export default function AvaliacaoOSPage() {
 
   // Profiles filtered by sector for employee selection
   const { data: atendimentoProfiles = [] } = useQuery({
-    queryKey: ["profiles_atendimento"],
+    queryKey: ["profiles_atendimento", allProfiles.length],
     queryFn: async () => {
-      // Find setores with "atendimento" or "atendente" in name
       const { data: setores } = await supabase.from("setores").select("id, nome").eq("ativo", true);
       const atendSetorIds = (setores || []).filter(s => {
         const n = s.nome.toLowerCase();
         return n.includes("atendimento") || n.includes("atendente");
       }).map(s => s.id);
-      if (!atendSetorIds.length) return [];
+      if (!atendSetorIds.length) return allProfiles;
       const { data: links } = await supabase.from("colaborador_setores").select("profile_id").in("setor_id", atendSetorIds);
       if (!links?.length) return [];
       const ids = [...new Set(links.map(l => l.profile_id))];
@@ -249,14 +248,14 @@ export default function AvaliacaoOSPage() {
   });
 
   const { data: tecnicoProfiles = [] } = useQuery({
-    queryKey: ["profiles_tecnico"],
+    queryKey: ["profiles_tecnico", allProfiles.length],
     queryFn: async () => {
       const { data: setores } = await supabase.from("setores").select("id, nome").eq("ativo", true);
       const tecSetorIds = (setores || []).filter(s => {
         const n = s.nome.toLowerCase();
         return n.includes("técnico") || n.includes("tecnico");
       }).map(s => s.id);
-      if (!tecSetorIds.length) return [];
+      if (!tecSetorIds.length) return allProfiles;
       const { data: links } = await supabase.from("colaborador_setores").select("profile_id").in("setor_id", tecSetorIds);
       if (!links?.length) return [];
       const ids = [...new Set(links.map(l => l.profile_id))];
