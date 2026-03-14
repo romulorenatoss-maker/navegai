@@ -678,6 +678,12 @@ export default function DesempenhoColaboradorPage() {
           <DialogHeader>
             <DialogTitle>Detalhes da Avaliação</DialogTitle>
           </DialogHeader>
+          {osDetailInfo && (
+            <div className="bg-muted/30 border border-border rounded-lg px-4 py-3 mb-2 space-y-1">
+              <p className="text-sm text-foreground"><span className="font-medium text-muted-foreground">Cliente:</span> {osDetailInfo.cliente_nome || "—"}</p>
+              <p className="text-sm text-foreground"><span className="font-medium text-muted-foreground">CPF:</span> {osDetailInfo.cliente_cpf || "—"}</p>
+            </div>
+          )}
           {osDetail?.map((evalDetail: any) => (
             <div key={evalDetail.id} className="border border-border rounded-lg mb-4">
               <div className="p-4 border-b border-border flex items-center justify-between">

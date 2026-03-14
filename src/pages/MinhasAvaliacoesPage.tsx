@@ -136,6 +136,11 @@ export default function MinhasAvaliacoesPage() {
             <DialogTitle>Avaliação — OS #{selectedAval?.numero_os}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {selectedAval && (
+              <div className="bg-muted/30 border border-border rounded-lg px-4 py-3 space-y-1">
+                <p className="text-sm text-foreground"><span className="font-medium text-muted-foreground">Cliente:</span> {selectedAval.cliente_nome || "—"}</p>
+              </div>
+            )}
             {avalDetails.map((aval: any) => (
               <div key={aval.id} className="border border-border rounded-lg overflow-hidden">
                 <div className="bg-muted/30 px-4 py-3 flex items-center justify-between">
