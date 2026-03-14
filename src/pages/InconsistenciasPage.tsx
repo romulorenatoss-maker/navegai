@@ -55,10 +55,10 @@ export default function InconsistenciasPage() {
       if (!data || data.length === 0) return [];
 
       // Enrich with OS numbers, question texts, sector names
-      const osIds = [...new Set(data.map((d: any) => d.ordem_servico_id))];
-      const perguntaIds = [...new Set(data.map((d: any) => d.pergunta_id))];
-      const setorIds = [...new Set(data.filter((d: any) => d.setor_responsavel_id).map((d: any) => d.setor_responsavel_id))];
-      const taIds = [...new Set(data.filter((d: any) => d.tipo_avaliacao_responsavel_id).map((d: any) => d.tipo_avaliacao_responsavel_id))];
+      const osIds = [...new Set(data.map((d: any) => d.ordem_servico_id))] as string[];
+      const perguntaIds = [...new Set(data.map((d: any) => d.pergunta_id))] as string[];
+      const setorIds = [...new Set(data.filter((d: any) => d.setor_responsavel_id).map((d: any) => d.setor_responsavel_id))] as string[];
+      const taIds = [...new Set(data.filter((d: any) => d.tipo_avaliacao_responsavel_id).map((d: any) => d.tipo_avaliacao_responsavel_id))] as string[];
 
       const [osRes, pergRes, setorRes, taRes] = await Promise.all([
         supabase.from("ordens_servico").select("id, numero_os").in("id", osIds),
