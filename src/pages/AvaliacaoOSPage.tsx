@@ -398,17 +398,32 @@ export default function AvaliacaoOSPage() {
     enabled: !!selectedOS?.id && view === "os_detail",
   });
 
-  // Questions for evaluation view
+  // Questions for evaluation view - loads by checklist_id if available, else by tipo_servico_id
   const { data: evalPerguntas = [] } = useQuery({
     queryKey: ["eval_perguntas_v2", tipoServicoId],
     queryFn: async () => {
       if (!tipoServicoId) return [];
-      const { data } = await supabase
+      // Check if service type has a checklist_id
+      const { data: tipoServico } = await (supabase as any)
+        .from("tipos_servico")
+        .select("checklist_id")
+        .eq("id", tipoServicoId)
+        .single();
+      
+      let query = supabase
         .from("perguntas_avaliacao")
         .select("id, pergunta, peso, ordem, target_employee_type, setor_avaliado_id, setores!perguntas_avaliacao_setor_avaliado_id_fkey(nome)")
-        .eq("ativo", true)
-        .or(`tipo_servico_id.eq.${tipoServicoId},tipo_servico_id.is.null`)
-        .order("ordem");
+        .eq("ativo", true);
+
+      if (tipoServico?.checklist_id) {
+        // Load questions associated with the checklist
+        query = (query as any).eq("checklist_id", tipoServico.checklist_id);
+      } else {
+        // Fallback: load by tipo_servico_id
+        query = query.or(`tipo_servico_id.eq.${tipoServicoId},tipo_servico_id.is.null`);
+      }
+
+      const { data } = await query.order("ordem");
       return (data || []).map((p: any) => ({
         ...p,
         target_employee_type: p.target_employee_type || "geral",
