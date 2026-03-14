@@ -245,17 +245,17 @@ export default function PerguntasPage() {
 
   const upsert = useMutation({
     mutationFn: async () => {
-      const resolvedTipoId = tipoServicoId === "todos" || !tipoServicoId ? null : tipoServicoId;
       const resolvedChecklistId = checklistId === "none" || !checklistId ? null : checklistId;
-      const computedOrdem = editing ? parseInt(ordem) : getNextOrdem(resolvedTipoId || "");
+      const computedOrdem = editing ? parseInt(ordem) : getNextOrdem("");
       const payload = {
         pergunta,
-        tipo_servico_id: resolvedTipoId,
+        tipo_servico_id: null,
         tipo_avaliacao_id: null,
         checklist_id: resolvedChecklistId,
         target_employee_type: targetEmployeeType,
         avaliador_id: null,
         setor_avaliado_id: setorAvaliadoId === "todos" || !setorAvaliadoId ? null : setorAvaliadoId,
+        setor_nota_id: setorNotaId === "none" || !setorNotaId ? null : setorNotaId,
         tipo_avaliado: tipoAvaliado,
         peso: Math.min(100, Math.max(1, parseInt(peso) || 1)),
         ordem: computedOrdem,
