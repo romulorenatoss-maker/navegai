@@ -95,6 +95,42 @@ export type Database = {
           },
         ]
       }
+      avaliador_tipos_servico: {
+        Row: {
+          avaliador_id: string
+          created_at: string
+          id: string
+          tipo_servico_id: string
+        }
+        Insert: {
+          avaliador_id: string
+          created_at?: string
+          id?: string
+          tipo_servico_id: string
+        }
+        Update: {
+          avaliador_id?: string
+          created_at?: string
+          id?: string
+          tipo_servico_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avaliador_tipos_servico_avaliador_id_fkey"
+            columns: ["avaliador_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avaliador_tipos_servico_tipo_servico_id_fkey"
+            columns: ["tipo_servico_id"]
+            isOneToOne: false
+            referencedRelation: "tipos_servico"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       checklist_itens: {
         Row: {
           checklist_id: string
