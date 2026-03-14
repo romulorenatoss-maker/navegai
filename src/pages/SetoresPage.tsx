@@ -82,9 +82,11 @@ export default function SetoresPage() {
           <h1 className="text-section font-semibold text-foreground">Setores</h1>
           <p className="text-body text-muted-foreground">Gerencie os setores da organização.</p>
         </div>
-        <Button onClick={openCreate} className="press-effect">
-          <Plus className="w-4 h-4 mr-2" /> Novo Setor
-        </Button>
+        {isAdmin && (
+          <Button onClick={openCreate} className="press-effect">
+            <Plus className="w-4 h-4 mr-2" /> Novo Setor
+          </Button>
+        )}
       </div>
 
       <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
