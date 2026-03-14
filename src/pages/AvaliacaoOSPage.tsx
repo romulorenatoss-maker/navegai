@@ -94,6 +94,30 @@ export default function AvaliacaoOSPage() {
   const [clienteNome, setClienteNome] = useState("");
   const [clienteCpf, setClienteCpf] = useState("");
   const [colaboradorId, setColaboradorId] = useState("");
+  const [cpfClienteEncontrado, setCpfClienteEncontrado] = useState<string | null>(null);
+
+  // Auto-fill client name when CPF is found in DB
+  useEffect(() => {
+    const cpfDigits = clienteCpf.replace(/\D/g, "");
+    if (cpfDigits.length === 11 && isValidCpf(cpfDigits)) {
+      supabase
+        .from("clientes")
+        .select("id, nome")
+        .eq("cpf", clienteCpf.trim())
+        .limit(1)
+        .single()
+        .then(({ data }) => {
+          if (data) {
+            setClienteNome(data.nome);
+            setCpfClienteEncontrado(data.nome);
+          } else {
+            setCpfClienteEncontrado(null);
+          }
+        });
+    } else {
+      setCpfClienteEncontrado(null);
+    }
+  }, [clienteCpf]);
 
   const {
     loading, os, avaliacao, questions,
