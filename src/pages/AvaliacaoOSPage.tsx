@@ -86,6 +86,7 @@ function isValidCpf(cpf: string): boolean {
 // --- Main Component ---
 export default function AvaliacaoOSPage() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { profile, isAdmin, hasRole } = useAuth();
   const showAllTipos = isAdmin || hasRole("gestor");
 
