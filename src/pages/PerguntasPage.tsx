@@ -125,14 +125,14 @@ export default function PerguntasPage() {
   });
 
   const openCreate = () => {
-    setEditing(null); setPergunta(""); setTipoServicoId(""); setAvaliadorId(""); setTipoAvaliado("atendente"); setPeso("1"); setOrdem(String(perguntas.length));
+    setEditing(null); setPergunta(""); setTipoServicoId(""); setAvaliadorId(""); setTipoAvaliado("atendente"); setPeso("1"); setOrdem(String(perguntas.length)); setPreviewAnswer(null);
     setDialogOpen(true);
   };
   const openEdit = (p: Pergunta) => {
-    setEditing(p); setPergunta(p.pergunta); setTipoServicoId(p.tipo_servico_id || ""); setAvaliadorId(p.avaliador_id || ""); setTipoAvaliado(p.tipo_avaliado); setPeso(String(p.peso)); setOrdem(String(p.ordem));
+    setEditing(p); setPergunta(p.pergunta); setTipoServicoId(p.tipo_servico_id || ""); setAvaliadorId(p.avaliador_id || ""); setTipoAvaliado(p.tipo_avaliado); setPeso(String(p.peso)); setOrdem(String(p.ordem)); setPreviewAnswer(null);
     setDialogOpen(true);
   };
-  const closeDialog = () => { setDialogOpen(false); setEditing(null); };
+  const closeDialog = () => { setDialogOpen(false); setEditing(null); setPreviewAnswer(null); };
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
