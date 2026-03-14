@@ -1569,30 +1569,30 @@ export default function AvaliacaoOSPage() {
 
         {/* Sticky bottom bar - always visible for admin delete or when not finalized */}
         {evalPerguntas.length > 0 && (
-          <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur border-t border-border p-3 sm:p-4 z-30">
-            <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 text-sm">
-                <Progress value={evalProgressPercent} className="h-2 w-24 sm:w-32" />
+          <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur border-t border-border px-3 py-2 z-30">
+            <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs">
+                <Progress value={evalProgressPercent} className="h-1.5 w-20 sm:w-28" />
                 <span className="font-medium text-foreground font-tabular">{evalProgressPercent}%</span>
                 {!evalFinalized && autoSaving && (
-                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <span className="text-muted-foreground flex items-center gap-1">
                     <Loader2 className="w-3 h-3 animate-spin" /> Salvando
                   </span>
                 )}
                 {!evalFinalized && !autoSaving && evalAnsweredCount > 0 && (
-                  <span className="text-xs text-success flex items-center gap-1">
+                  <span className="text-success flex items-center gap-1">
                     <Check className="w-3 h-3" /> Salvo
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 {!evalFinalized && (
-                  <Button onClick={handleFinalizeEvaluation} disabled={evalProgressPercent < 100 || evalSubmitting} className="press-effect">
-                    {evalSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    Finalizar Avaliação
+                  <Button size="sm" onClick={handleFinalizeEvaluation} disabled={evalProgressPercent < 100 || evalSubmitting} className="press-effect h-8 text-xs px-3">
+                    {evalSubmitting && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
+                    Finalizar
                   </Button>
                 )}
-                <Button variant="outline" onClick={backToList} className="press-effect">
+                <Button variant="outline" size="sm" onClick={backToList} className="press-effect h-8 text-xs px-3">
                   {evalFinalized ? "Fechar" : "Sair"}
                 </Button>
               </div>
