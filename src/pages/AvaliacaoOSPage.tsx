@@ -398,28 +398,37 @@ export default function AvaliacaoOSPage() {
 
   // Questions for evaluation view
   const { data: evalPerguntas = [] } = useQuery({
-    queryKey: ["eval_perguntas", tipoServicoId, selectedTipoAvaliacaoId],
+    queryKey: ["eval_perguntas_v2", tipoServicoId],
     queryFn: async () => {
-      if (!tipoServicoId || !selectedTipoAvaliacaoId) return [];
+      if (!tipoServicoId) return [];
       const { data } = await supabase
         .from("perguntas_avaliacao")
-        .select("id, pergunta, peso, ordem, target_employee_type")
+        .select("id, pergunta, peso, ordem, target_employee_type, setor_avaliado_id, setores!perguntas_avaliacao_setor_avaliado_id_fkey(nome)")
         .eq("ativo", true)
         .or(`tipo_servico_id.eq.${tipoServicoId},tipo_servico_id.is.null`)
-        .or(`tipo_avaliacao_id.eq.${selectedTipoAvaliacaoId},tipo_avaliacao_id.is.null`)
         .order("ordem");
-      return (data || []).map((p: any) => ({ ...p, target_employee_type: p.target_employee_type || "geral" }));
+      return (data || []).map((p: any) => ({
+        ...p,
+        target_employee_type: p.target_employee_type || "geral",
+        setor_avaliado_id: p.setor_avaliado_id || null,
+        _setor_nome: p.setores?.nome || null,
+      }));
     },
-    enabled: !!tipoServicoId && !!selectedTipoAvaliacaoId,
+    enabled: !!tipoServicoId,
   });
 
-  // Auto-select tipo_avaliacao for non-admins
+  // Auto-select tipo_avaliacao based on cargo/sector
   useEffect(() => {
-    if (!isAdmin && profile?.cargo && linkedTiposAvaliacao.length > 0) {
-      const match = linkedTiposAvaliacao.find(ta => ta.cargo_responsavel === profile.cargo);
-      if (match) setSelectedTipoAvaliacaoId(match.id);
+    if (linkedTiposAvaliacao.length > 0) {
+      if (profile?.cargo) {
+        const match = linkedTiposAvaliacao.find(ta => ta.cargo_responsavel === profile.cargo);
+        if (match) { setSelectedTipoAvaliacaoId(match.id); return; }
+      }
+      if (!selectedTipoAvaliacaoId) {
+        setSelectedTipoAvaliacaoId(linkedTiposAvaliacao[0].id);
+      }
     }
-  }, [linkedTiposAvaliacao, profile, isAdmin]);
+  }, [linkedTiposAvaliacao, profile]);
 
   // URL param search
   useEffect(() => {
