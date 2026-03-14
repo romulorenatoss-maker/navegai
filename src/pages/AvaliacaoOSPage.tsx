@@ -1538,51 +1538,31 @@ export default function AvaliacaoOSPage() {
                       </div>
                     </div>
 
-                    {/* Tipo de Avaliação */}
-                    {tipoServicoId && linkedTiposAvaliacao.length > 0 && (
-                      <div className="space-y-2">
-                        <Label className="text-body font-medium">Tipo de Avaliação *</Label>
-                        {isAdmin ? (
-                          <div className="space-y-1">
-                            {linkedTiposAvaliacao.map(ta => (
-                              <button key={ta.id} type="button" onClick={() => setSelectedTipoAvaliacaoId(ta.id)}
-                                className={cn("w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-left transition-all press-effect text-sm",
-                                  selectedTipoAvaliacaoId === ta.id ? "bg-primary/10 border-primary" : "bg-card border-border hover:bg-muted/50")}>
-                                <div className={cn("w-4 h-4 rounded-full border-2 shrink-0",
-                                  selectedTipoAvaliacaoId === ta.id ? "border-primary bg-primary" : "border-muted-foreground/30")} />
-                                <span className="font-medium">{ta.nome}</span>
-                                <span className="text-caption text-muted-foreground ml-auto">{ta.cargo_responsavel || "—"}</span>
-                              </button>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-body text-foreground bg-muted/50 px-3 py-2 rounded-md">
-                            {selectedTipoNome || "Nenhum tipo de avaliação corresponde ao seu cargo."}
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Employee Selection */}
-                    {tipoServicoId && selectedTipoAvaliacaoId && (
-                      <div className="space-y-2">
-                        {isAtendimentoEvaluator ? (
+                    {/* Employee Selection - Sector-based */}
+                    {tipoServicoId && (
+                      <div className="space-y-3">
+                        {(hasAtendimentoAccess || isAdmin) && (
                           <div className="space-y-1.5">
-                            <Label>Atendente Avaliado *</Label>
-                            <Select value={atendenteId} onValueChange={setAtendenteId}>
+                            <Label>Atendente Avaliado {hasAtendimentoAccess ? "*" : ""}</Label>
+                            <Select value={atendenteId} onValueChange={setAtendenteId} disabled={!hasAtendimentoAccess && !isAdmin}>
                               <SelectTrigger><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
                               <SelectContent>
-                                {profilesBySetor.map(p => <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>)}
+                                {allProfiles.filter(p => p.id !== profile?.id).map(p =>
+                                  <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>
+                                )}
                               </SelectContent>
                             </Select>
                           </div>
-                        ) : (
+                        )}
+                        {(hasTecnicoAccess || isAdmin) && (
                           <div className="space-y-1.5">
-                            <Label>Técnico Avaliado *</Label>
-                            <Select value={tecnicoId} onValueChange={setTecnicoId}>
+                            <Label>Técnico Avaliado {hasTecnicoAccess ? "*" : ""}</Label>
+                            <Select value={tecnicoId} onValueChange={setTecnicoId} disabled={!hasTecnicoAccess && !isAdmin}>
                               <SelectTrigger><SelectValue placeholder="Selecione o técnico" /></SelectTrigger>
                               <SelectContent>
-                                {profilesBySetor.map(p => <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>)}
+                                {allProfiles.filter(p => p.id !== profile?.id).map(p =>
+                                  <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>
+                                )}
                               </SelectContent>
                             </Select>
                           </div>
