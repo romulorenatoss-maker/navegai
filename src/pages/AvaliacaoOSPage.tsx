@@ -835,53 +835,46 @@ export default function AvaliacaoOSPage() {
     setEvalFinalized(aval.concluida || false);
     setEvalScore(aval.nota_final as number | null);
 
-    // Load MY answers
-    const { data: respostas } = await supabase.from("respostas_avaliacao").select("pergunta_id, resposta, observacao, evidencia_url").eq("avaliacao_id", avaliacaoId);
+    // Load ALL responses for this OS (shared across all evaluators)
+    const { data: allRespostas } = await supabase
+      .from("respostas_avaliacao")
+      .select("pergunta_id, resposta, observacao, evidencia_url, avaliador_id")
+      .eq("ordem_servico_id" as any, osId);
+
     const ans: Record<string, Answer> = {};
     const obs: Record<string, string> = {};
     const evid: Record<string, string> = {};
-    respostas?.forEach(r => {
+    const otherMap: typeof otherEvalAnswers = {};
+
+    // Get evaluator names for "other" answers
+    const avaliadorIds = [...new Set((allRespostas || []).map(r => (r as any).avaliador_id).filter(Boolean))];
+    let profileNames: Record<string, string> = {};
+    if (avaliadorIds.length > 0) {
+      const { data: profiles } = await supabase.from("profiles").select("id, nome").in("id", avaliadorIds);
+      profiles?.forEach(p => { profileNames[p.id] = p.nome; });
+    }
+
+    (allRespostas || []).forEach((r: any) => {
+      // All responses are loaded into the main answer maps
       if (r.resposta) ans[r.pergunta_id] = r.resposta as Answer;
       if (r.observacao) obs[r.pergunta_id] = r.observacao;
       if (r.evidencia_url) evid[r.pergunta_id] = r.evidencia_url;
+
+      // Track "other evaluator" info for display purposes
+      if (r.avaliador_id && r.avaliador_id !== profile?.id && r.resposta) {
+        otherMap[r.pergunta_id] = {
+          resposta: r.resposta,
+          observacao: r.observacao,
+          evidencia_url: r.evidencia_url,
+          avaliador_nome: profileNames[r.avaliador_id] || "Avaliador",
+        };
+      }
     });
+
     setEvalAnswers(ans);
     setEvalObservations(obs);
     setEvalEvidencias(evid);
-
-    // Load OTHER evaluators' answers for the same OS
-    const { data: otherAvals } = await supabase
-      .from("avaliacoes")
-      .select("id, avaliador_id")
-      .eq("ordem_servico_id", osId)
-      .neq("id", avaliacaoId);
-
-    if (otherAvals?.length) {
-      const otherAvalIds = otherAvals.map(a => a.id);
-      const avaliadorIds = [...new Set(otherAvals.map(a => a.avaliador_id))];
-      const [otherRespRes, profilesRes] = await Promise.all([
-        supabase.from("respostas_avaliacao").select("avaliacao_id, pergunta_id, resposta, observacao, evidencia_url").in("avaliacao_id", otherAvalIds).not("resposta", "is", null),
-        supabase.from("profiles").select("id, nome").in("id", avaliadorIds),
-      ]);
-      const profileNames: Record<string, string> = {};
-      profilesRes.data?.forEach(p => { profileNames[p.id] = p.nome; });
-      const avalAvaliadorMap: Record<string, string> = {};
-      otherAvals.forEach(a => { avalAvaliadorMap[a.id] = a.avaliador_id; });
-
-      const otherMap: typeof otherEvalAnswers = {};
-      otherRespRes.data?.forEach(r => {
-        const avaliadorId = avalAvaliadorMap[r.avaliacao_id];
-        otherMap[r.pergunta_id] = {
-          resposta: r.resposta!,
-          observacao: r.observacao,
-          evidencia_url: r.evidencia_url,
-          avaliador_nome: profileNames[avaliadorId] || "Avaliador",
-        };
-      });
-      setOtherEvalAnswers(otherMap);
-    } else {
-      setOtherEvalAnswers({});
-    }
+    setOtherEvalAnswers(otherMap);
 
     setView("evaluation");
   };
