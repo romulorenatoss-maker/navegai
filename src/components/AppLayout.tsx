@@ -90,9 +90,20 @@ export function AppLayout() {
         />
       </aside>
 
-      <main className="flex-1 min-w-0">
-        <Outlet />
-      </main>
+      <div className="flex-1 min-w-0 flex flex-col">
+        <header className="sticky top-0 z-30 flex items-center justify-end h-12 px-6 bg-background border-b border-border shrink-0">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <User className="w-4 h-4" />
+            <span className="font-medium">{userNameDisplay}</span>
+            {userCargoDisplay && (
+              <span className="text-xs text-muted-foreground/60">· {userCargoDisplay}</span>
+            )}
+          </div>
+        </header>
+        <main className="flex-1 min-w-0">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }
