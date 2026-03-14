@@ -366,7 +366,16 @@ export default function PerguntasPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Tipo de Serviço</Label>
-                <Select value={tipoServicoId} onValueChange={setTipoServicoId}>
+                <Select value={tipoServicoId} onValueChange={(val) => {
+                  setTipoServicoId(val);
+                  // Auto-set setor from tipo_servico
+                  const tipo = tipos.find((t) => t.id === val);
+                  if (tipo?.setor_id) {
+                    setSetorAvaliadoId(tipo.setor_id);
+                  } else if (val === "todos") {
+                    setSetorAvaliadoId("");
+                  }
+                }}>
                   <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todos">Todos</SelectItem>
@@ -376,14 +385,14 @@ export default function PerguntasPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Setor Avaliado</Label>
-                <Select value={setorAvaliadoId} onValueChange={setSetorAvaliadoId}>
+                <Select value={setorAvaliadoId} onValueChange={setSetorAvaliadoId} disabled={!!tipos.find((t) => t.id === tipoServicoId)?.setor_id}>
                   <SelectTrigger><SelectValue placeholder="Todos os setores" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todos">Todos os setores</SelectItem>
                     {setores.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <p className="text-caption text-muted-foreground">Selecione o setor que será avaliado por esta pergunta.</p>
+                <p className="text-caption text-muted-foreground">Definido automaticamente pelo tipo de serviço.</p>
               </div>
             </div>
             <div className="space-y-1.5">
