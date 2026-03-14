@@ -150,9 +150,36 @@ export default function AvaliacaoOSPage() {
   const { data: allProfiles = [] } = useQuery({
     queryKey: ["profiles_for_eval"],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("id, nome, cargo, email").eq("ativo", true).order("nome");
+      const { data } = await supabase.from("profiles").select("id, nome, cargo, email, setor_id").eq("ativo", true).order("nome");
       return data || [];
     },
+  });
+
+  // Determine which employee field this evaluator manages based on tipo_avaliacao
+  const selectedTipoAvaliacao = useMemo(() => tiposAvaliacao.find(t => t.id === selectedTipoAvaliacaoId), [tiposAvaliacao, selectedTipoAvaliacaoId]);
+  const isAtendimentoEvaluator = useMemo(() => {
+    const cargo = selectedTipoAvaliacao?.cargo_responsavel?.toLowerCase() || "";
+    return cargo.includes("atendente") || cargo.includes("atendimento");
+  }, [selectedTipoAvaliacao]);
+
+  // Get setor_id from selected tipo_servico to filter employees
+  const selectedTipoServico = useMemo(() => tiposServico.find(t => t.id === tipoServicoId), [tiposServico, tipoServicoId]);
+
+  // Filter profiles by relevant sector using colaborador_setores
+  const { data: profilesBySetor = [] } = useQuery({
+    queryKey: ["profiles_by_setor", tipoServicoId, selectedTipoAvaliacaoId],
+    queryFn: async () => {
+      if (!selectedTipoServico?.setor_id) return allProfiles.filter(p => p.id !== profile?.id);
+      // Get all profiles linked to the service type's sector
+      const { data: links } = await supabase.from("colaborador_setores").select("profile_id").eq("setor_id", selectedTipoServico.setor_id);
+      if (!links?.length) {
+        // Fallback: filter by legacy setor_id on profile
+        return allProfiles.filter(p => p.id !== profile?.id && p.setor_id === selectedTipoServico.setor_id);
+      }
+      const ids = links.map(l => l.profile_id);
+      return allProfiles.filter(p => p.id !== profile?.id && ids.includes(p.id));
+    },
+    enabled: !!tipoServicoId && !!selectedTipoAvaliacaoId,
   });
 
   const selectableProfiles = useMemo(() => allProfiles.filter(p => p.id !== profile?.id), [allProfiles, profile]);
