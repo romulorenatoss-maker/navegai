@@ -77,21 +77,18 @@ export default function AvaliacaoOSPage() {
     concludeAvaliacao, answeredCount, totalScore, maxScore,
   } = useAvaliacaoOS();
 
-  // Fetch tipos de serviço that the current evaluator has questions for
+  // Fetch tipos de serviço assigned to this evaluator via junction table
   const { data: tiposDoAvaliador = [] } = useQuery({
     queryKey: ["tipos_servico_do_avaliador", profile?.id],
     queryFn: async () => {
       if (!profile?.id) return [];
-      // Get distinct tipo_servico_ids from questions assigned to this evaluator (or all)
-      const { data: perguntas } = await supabase
-        .from("perguntas_avaliacao")
+      const { data: assignments } = await supabase
+        .from("avaliador_tipos_servico")
         .select("tipo_servico_id")
-        .eq("ativo", true)
-        .or(`avaliador_id.eq.${profile.id},avaliador_id.is.null`);
+        .eq("avaliador_id", profile.id);
 
-      if (!perguntas) return [];
-      const tipoIds = [...new Set(perguntas.map((p) => p.tipo_servico_id).filter(Boolean))];
-      if (tipoIds.length === 0) return [];
+      if (!assignments || assignments.length === 0) return [];
+      const tipoIds = assignments.map((a) => a.tipo_servico_id);
 
       const { data: tipos } = await supabase
         .from("tipos_servico")
