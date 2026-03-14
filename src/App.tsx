@@ -19,6 +19,7 @@ import ClientesPage from "./pages/ClientesPage";
 import MinhasAvaliacoesPage from "./pages/MinhasAvaliacoesPage";
 import InconsistenciasPage from "./pages/InconsistenciasPage";
 import InconsistenciasVinculadasPage from "./pages/InconsistenciasVinculadasPage";
+import PlaceholderPage from "./pages/PlaceholderPage";
 import RelatoriosPage from "./pages/RelatoriosPage";
 import DesempenhoColaboradorPage from "./pages/DesempenhoColaboradorPage";
 import NotFound from "./pages/NotFound";
