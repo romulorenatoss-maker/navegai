@@ -245,11 +245,11 @@ export default function PerguntasPage() {
   );
 
   const openCreate = () => {
-    setEditing(null); setPergunta(""); setTipoServicoId(""); setAvaliadorId(""); setTipoAvaliado("atendente"); setPeso("1"); setOrdem("0"); setPreviewAnswer(null);
+    setEditing(null); setPergunta(""); setTipoServicoId(""); setAvaliadorId(""); setSetorAvaliadoId(""); setTipoAvaliado("atendente"); setPeso("1"); setOrdem("0"); setPreviewAnswer(null);
     setDialogOpen(true);
   };
   const openEdit = (p: Pergunta) => {
-    setEditing(p); setPergunta(p.pergunta); setTipoServicoId(p.tipo_servico_id || ""); setAvaliadorId(p.avaliador_id || ""); setTipoAvaliado(p.tipo_avaliado); setPeso(String(p.peso)); setOrdem(String(p.ordem)); setPreviewAnswer(null);
+    setEditing(p); setPergunta(p.pergunta); setTipoServicoId(p.tipo_servico_id || ""); setAvaliadorId(p.avaliador_id || ""); setSetorAvaliadoId((p as any).setor_avaliado_id || ""); setTipoAvaliado(p.tipo_avaliado); setPeso(String(p.peso)); setOrdem(String(p.ordem)); setPreviewAnswer(null);
     setDialogOpen(true);
   };
   const closeDialog = () => { setDialogOpen(false); setEditing(null); setPreviewAnswer(null); };
