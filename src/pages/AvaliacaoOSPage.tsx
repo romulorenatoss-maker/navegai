@@ -1041,33 +1041,13 @@ export default function AvaliacaoOSPage() {
       setEvalFinalized(true);
       toast.success(`Avaliação do seu setor concluída! Nota: ${nota.toFixed(1)}%`);
       
-      // Check if ALL questions have SAVED responses in the database (not just local state)
+      // OS completion is handled by the database trigger (check_os_completion)
+      // which verifies BOTH all avaliacoes are concluded AND all os_perguntas have responses
+      // Re-fetch OS status to show updated info
       if (evalOsId) {
-        const { data: osPerguntas } = await (supabase as any)
-          .from("os_perguntas")
-          .select("pergunta_id")
-          .eq("os_id", evalOsId);
-        const totalOsPerguntas = osPerguntas?.length || 0;
-
-        const { data: savedRespostas } = await supabase
-          .from("respostas_avaliacao")
-          .select("pergunta_id")
-          .eq("ordem_servico_id", evalOsId)
-          .not("resposta", "is", null);
-        const totalSaved = savedRespostas?.length || 0;
-
-        if (totalOsPerguntas > 0 && totalSaved >= totalOsPerguntas) {
-          // Also check that ALL evaluators have finalized
-          const { data: allAvals } = await supabase
-            .from("avaliacoes")
-            .select("id, concluida")
-            .eq("ordem_servico_id", evalOsId);
-          const allConcluded = allAvals && allAvals.length > 0 && allAvals.every(a => a.concluida);
-          
-          if (allConcluded) {
-            await supabase.from("ordens_servico").update({ status: "concluida", data_conclusao: new Date().toISOString() } as any).eq("id", evalOsId);
-            toast.success("Todas as avaliações finalizadas! OS concluída.");
-          }
+        const { data: updatedOs } = await supabase.from("ordens_servico").select("status").eq("id", evalOsId).single();
+        if (updatedOs?.status === "concluida") {
+          toast.success("Todas as avaliações finalizadas! OS concluída.");
         }
       }
       
