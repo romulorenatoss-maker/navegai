@@ -294,22 +294,8 @@ export default function PerguntasPage() {
         </>
       )}
 
-      {/* Checklist Name Dialog */}
-      <Dialog open={checklistDialogOpen} onOpenChange={setChecklistDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Novo Pacote de Checklist</DialogTitle></DialogHeader>
-          <form onSubmit={e => { e.preventDefault(); createChecklist.mutate(); }} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Nome do Checklist</Label>
-              <Input value={newChecklistTitle} onChange={e => setNewChecklistTitle(e.target.value)} placeholder="Ex: Checklist de Instalação" required />
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setChecklistDialogOpen(false)}>Cancelar</Button>
-              <Button type="submit" disabled={createChecklist.isPending} className="press-effect">{createChecklist.isPending ? "Criando..." : "Criar"}</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+
+
 
       {/* Question Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
