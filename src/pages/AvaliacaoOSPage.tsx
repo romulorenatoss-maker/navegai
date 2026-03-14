@@ -1146,6 +1146,33 @@ export default function AvaliacaoOSPage() {
               )}
             </div>
 
+            {/* Colaboradores do setor que receberão a nota */}
+            {setorColaboradores.length > 0 && (
+              <div className="bg-card border border-border rounded-lg p-4 shadow-card mb-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Users className="w-4 h-4 text-primary" />
+                  <h3 className="text-body font-semibold text-foreground">Colaboradores vinculados ao setor</h3>
+                  <span className="text-caption text-muted-foreground ml-auto">{setorColaboradores.length} pessoa(s)</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {setorColaboradores.map((c: any) => (
+                    <div
+                      key={c.id}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-caption font-medium ${
+                        c.id === os?.colaborador_avaliado_id
+                          ? "bg-primary/10 border-primary text-primary"
+                          : "bg-muted/50 border-border text-foreground"
+                      }`}
+                    >
+                      <span>{c.nome}</span>
+                      {c.cargo && <span className="text-muted-foreground">• {c.cargo}</span>}
+                      {c.id === os?.colaborador_avaliado_id && <span className="text-primary font-bold">(Avaliado)</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {isCompleted && (
               <div className="bg-card border border-success/30 rounded-lg p-4 shadow-card mb-4">
                 <p className="text-body font-medium text-success">
