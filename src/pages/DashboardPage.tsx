@@ -336,7 +336,7 @@ export default function DashboardPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-body text-muted-foreground font-tabular">
-                    {new Date(item.created_at).toLocaleDateString("pt-BR")}
+                    {new Date(item.created_at).toLocaleDateString("pt-BR")} {new Date(item.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                   </td>
                 </tr>
               ))}
