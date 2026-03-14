@@ -223,9 +223,34 @@ export type Database = {
           },
         ]
       }
+      clientes: {
+        Row: {
+          cpf: string | null
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          cpf?: string | null
+          created_at?: string
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          cpf?: string | null
+          created_at?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ordens_servico: {
         Row: {
           cliente_cpf: string | null
+          cliente_id: string | null
           cliente_nome: string | null
           colaborador_avaliado_id: string | null
           created_at: string
@@ -239,6 +264,7 @@ export type Database = {
         }
         Insert: {
           cliente_cpf?: string | null
+          cliente_id?: string | null
           cliente_nome?: string | null
           colaborador_avaliado_id?: string | null
           created_at?: string
@@ -252,6 +278,7 @@ export type Database = {
         }
         Update: {
           cliente_cpf?: string | null
+          cliente_id?: string | null
           cliente_nome?: string | null
           colaborador_avaliado_id?: string | null
           created_at?: string
@@ -264,6 +291,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "ordens_servico_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ordens_servico_colaborador_avaliado_id_fkey"
             columns: ["colaborador_avaliado_id"]
