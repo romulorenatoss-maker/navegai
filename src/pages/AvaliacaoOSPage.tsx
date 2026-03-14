@@ -445,7 +445,11 @@ export default function AvaliacaoOSPage() {
                         <p className="text-caption text-destructive">CPF inválido</p>
                       )}
                       {clienteCpf.replace(/\D/g, "").length === 11 && isValidCpf(clienteCpf) && (
-                        <p className="text-caption text-success">CPF válido ✓</p>
+                        <p className="text-caption text-success">
+                          {cpfClienteEncontrado
+                            ? `✓ Cliente encontrado: ${cpfClienteEncontrado}`
+                            : "CPF válido ✓ (novo cliente)"}
+                        </p>
                       )}
                     </div>
                   </div>
