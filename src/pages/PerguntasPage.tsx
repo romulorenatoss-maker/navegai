@@ -22,11 +22,7 @@ import { CSS } from "@dnd-kit/utilities";
 type Pergunta = Tables<"perguntas_avaliacao">;
 type PreviewAnswer = "sim" | "nao" | "na" | null;
 
-interface TipoAvaliacao {
-  id: string;
-  nome: string;
-  cargo_responsavel: string | null;
-}
+// TipoAvaliacao interface removed - evaluator assignment now uses sectors
 
 function SortableRow({ p, index, onEdit, onRemove }: { p: any; index: number; onEdit: (p: Pergunta) => void; onRemove: (id: string) => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.id });
