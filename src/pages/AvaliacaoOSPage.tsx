@@ -706,9 +706,19 @@ export default function AvaliacaoOSPage() {
         osId = newOs.id;
       }
 
+      // Auto-determine tipo_avaliacao_id from evaluator's cargo
+      let finalTipoAvaliacaoId = selectedTipoAvaliacaoId;
+      if (!finalTipoAvaliacaoId && profile.cargo) {
+        const match = linkedTiposAvaliacao.find(ta => ta.cargo_responsavel === profile.cargo);
+        if (match) finalTipoAvaliacaoId = match.id;
+      }
+      if (!finalTipoAvaliacaoId && linkedTiposAvaliacao.length > 0) {
+        finalTipoAvaliacaoId = linkedTiposAvaliacao[0].id;
+      }
+
       // Create avaliacao
       const { data: newAval, error: ae } = await supabase.from("avaliacoes").insert({
-        ordem_servico_id: osId, avaliador_id: profile.id, tipo_avaliacao_id: selectedTipoAvaliacaoId, concluida: false,
+        ordem_servico_id: osId, avaliador_id: profile.id, tipo_avaliacao_id: finalTipoAvaliacaoId || null, concluida: false,
       } as any).select("id").single();
       if (ae) throw ae;
 
