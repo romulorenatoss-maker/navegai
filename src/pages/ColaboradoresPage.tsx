@@ -186,7 +186,7 @@ export default function ColaboradoresPage() {
   });
 
   const openCreate = () => {
-    setEditing(null); setNome(""); setEmail(""); setCargo("atendente"); setSelectedSetores([]); setSenha("");
+    setEditing(null); setNome(""); setEmail(""); setCargo("avaliado"); setSelectedSetores([]); setSenha("");
     setDialogOpen(true);
   };
   const openEdit = (p: Profile) => {
