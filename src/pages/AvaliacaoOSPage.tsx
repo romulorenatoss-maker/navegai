@@ -1429,16 +1429,16 @@ export default function AvaliacaoOSPage() {
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 mt-3 pt-3 border-t border-border flex-wrap">
               <div className="flex items-center gap-2 text-sm">
                 <span className="text-muted-foreground">Atendente:</span>
-                {isEditing && (hasAtendimentoAccess || isAdmin) ? (
+                {isEditing ? (
                   <Select value={evalOsData.atendente_id || atendenteId || ""} onValueChange={async (val) => {
                     setAtendenteId(val);
                     await supabase.from("ordens_servico").update({ atendente_id: val } as any).eq("id", evalOsData.id);
                     setEvalOsData({ ...evalOsData, atendente_id: val });
                     toast.success("Atendente atualizado!");
                   }}>
-                    <SelectTrigger className="h-8 w-[200px]"><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                    <SelectTrigger className="h-8 w-[200px]"><SelectValue placeholder="Selecionar atendente" /></SelectTrigger>
                     <SelectContent>
-                      {atendimentoProfiles.filter(p => p.id !== profile?.id).map(p =>
+                      {atendimentoProfiles.map(p =>
                         <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
                       )}
                     </SelectContent>
@@ -1449,16 +1449,16 @@ export default function AvaliacaoOSPage() {
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <span className="text-muted-foreground">Técnico:</span>
-                {isEditing && (hasTecnicoAccess || isAdmin) ? (
+                {isEditing ? (
                   <Select value={evalOsData.tecnico_id || tecnicoId || ""} onValueChange={async (val) => {
                     setTecnicoId(val);
                     await supabase.from("ordens_servico").update({ tecnico_id: val } as any).eq("id", evalOsData.id);
                     setEvalOsData({ ...evalOsData, tecnico_id: val });
                     toast.success("Técnico atualizado!");
                   }}>
-                    <SelectTrigger className="h-8 w-[200px]"><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                    <SelectTrigger className="h-8 w-[200px]"><SelectValue placeholder="Selecionar técnico" /></SelectTrigger>
                     <SelectContent>
-                      {tecnicoProfiles.filter(p => p.id !== profile?.id).map(p =>
+                      {tecnicoProfiles.map(p =>
                         <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
                       )}
                     </SelectContent>
