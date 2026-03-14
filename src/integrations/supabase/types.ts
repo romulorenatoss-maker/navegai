@@ -105,6 +105,71 @@ export type Database = {
           },
         ]
       }
+      avaliacoes_inconsistencias: {
+        Row: {
+          created_at: string
+          detectada_em: string
+          id: string
+          ordem_servico_id: string
+          pergunta_id: string
+          resolvida: boolean
+          respostas_por_avaliador: Json
+          setor_responsavel_id: string | null
+          tipo_avaliacao_responsavel_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          detectada_em?: string
+          id?: string
+          ordem_servico_id: string
+          pergunta_id: string
+          resolvida?: boolean
+          respostas_por_avaliador?: Json
+          setor_responsavel_id?: string | null
+          tipo_avaliacao_responsavel_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          detectada_em?: string
+          id?: string
+          ordem_servico_id?: string
+          pergunta_id?: string
+          resolvida?: boolean
+          respostas_por_avaliador?: Json
+          setor_responsavel_id?: string | null
+          tipo_avaliacao_responsavel_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avaliacoes_inconsistencias_ordem_servico_id_fkey"
+            columns: ["ordem_servico_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avaliacoes_inconsistencias_pergunta_id_fkey"
+            columns: ["pergunta_id"]
+            isOneToOne: false
+            referencedRelation: "perguntas_avaliacao"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avaliacoes_inconsistencias_setor_responsavel_id_fkey"
+            columns: ["setor_responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avaliacoes_inconsistencias_tipo_avaliacao_responsavel_id_fkey"
+            columns: ["tipo_avaliacao_responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "tipos_avaliacao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       avaliador_tipos_servico: {
         Row: {
           avaliador_id: string
@@ -523,6 +588,7 @@ export type Database = {
           created_at: string
           evidencia_url: string | null
           id: string
+          is_audit_only: boolean
           observacao: string | null
           pergunta_id: string
           resposta: string | null
@@ -532,6 +598,7 @@ export type Database = {
           created_at?: string
           evidencia_url?: string | null
           id?: string
+          is_audit_only?: boolean
           observacao?: string | null
           pergunta_id: string
           resposta?: string | null
@@ -541,6 +608,7 @@ export type Database = {
           created_at?: string
           evidencia_url?: string | null
           id?: string
+          is_audit_only?: boolean
           observacao?: string | null
           pergunta_id?: string
           resposta?: string | null
