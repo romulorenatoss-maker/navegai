@@ -137,7 +137,6 @@ export default function ColaboradoresPage() {
 
       if (createdProfile) {
         await saveSetores(createdProfile.id);
-        if (cargo === "avaliador") await saveTiposServico(createdProfile.id);
       }
     },
     onSuccess: () => {
