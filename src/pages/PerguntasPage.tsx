@@ -32,7 +32,7 @@ function SortableRow({ p, index, onEdit, onRemove }: { p: any; index: number; on
       <td className="px-2 py-3 w-8"><button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-foreground"><GripVertical className="w-4 h-4" /></button></td>
       <td className="px-2 py-3 text-caption text-muted-foreground font-tabular w-8">{String(index + 1).padStart(2, "0")}</td>
       <td className="px-4 py-3 text-body font-medium text-foreground">{p.pergunta}</td>
-      <td className="px-4 py-3 text-body text-muted-foreground">{p._tipo_avaliacao_nome || "Todos"}</td>
+      <td className="px-4 py-3 text-body text-muted-foreground">{p.setores?.nome || "Todos"}</td>
       
       <td className="px-4 py-3 text-center text-body font-semibold text-foreground font-tabular">{p.peso}</td>
       <td className="px-4 py-3 text-right">
