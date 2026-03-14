@@ -183,6 +183,7 @@ export default function PerguntasPage() {
         pergunta,
         tipo_servico_id: resolvedTipoId,
         avaliador_id: avaliadorId === "todos" || !avaliadorId ? null : avaliadorId,
+        setor_avaliado_id: setorAvaliadoId === "todos" || !setorAvaliadoId ? null : setorAvaliadoId,
         tipo_avaliado: tipoAvaliado,
         peso: Math.min(100, Math.max(1, parseInt(peso) || 1)),
         ordem: computedOrdem,
