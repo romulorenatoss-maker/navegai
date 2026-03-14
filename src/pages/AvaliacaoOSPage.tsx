@@ -1750,6 +1750,17 @@ export default function AvaliacaoOSPage() {
         if (existingOS.atendente_id) setAtendenteId(existingOS.atendente_id);
         if (existingOS.tecnico_id) setTecnicoId(existingOS.tecnico_id);
 
+        // Update OS with client data if missing
+        if (cliente && (!existingOS.cliente_nome || !existingOS.cliente_cpf || !existingOS.cliente_id)) {
+          await supabase.from("ordens_servico").update({
+            cliente_nome: cliente.nome,
+            cliente_cpf: cliente.cpf,
+            cliente_id: cliente.id,
+          } as any).eq("id", existingOS.id);
+          existingOS.cliente_nome = cliente.nome;
+          existingOS.cliente_cpf = cliente.cpf;
+        }
+
         // Check for pending evaluation — if found, open it directly
         if (profile) {
           const { data: pendingAval } = await supabase
