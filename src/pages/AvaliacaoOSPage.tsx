@@ -372,17 +372,7 @@ export default function AvaliacaoOSPage() {
   });
 
   // OS Detail queries
-  const { data: osLinkedTA = [] } = useQuery({
-    queryKey: ["os_linked_ta", selectedOS?.tipo_servico_id],
-    queryFn: async () => {
-      if (!selectedOS?.tipo_servico_id) return [];
-      const { data: links } = await (supabase as any).from("tipo_servico_tipos_avaliacao").select("tipo_avaliacao_id").eq("tipo_servico_id", selectedOS.tipo_servico_id);
-      if (!links?.length) return [];
-      const { data } = await (supabase as any).from("tipos_avaliacao").select("*").in("id", links.map((l: any) => l.tipo_avaliacao_id));
-      return (data || []) as TipoAvaliacao[];
-    },
-    enabled: !!selectedOS?.tipo_servico_id,
-  });
+  // osLinkedTA removed - tipos_avaliacao no longer used
 
   const { data: osAvaliacoes = [], refetch: refetchOsAvaliacoes } = useQuery({
     queryKey: ["os_avaliacoes", selectedOS?.id],
