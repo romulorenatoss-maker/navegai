@@ -1848,10 +1848,10 @@ export default function AvaliacaoOSPage() {
               </Button>
               {/* Warning if employee not set */}
               {(hasTecnicoAccess && !selectedOS.tecnico_id) && (
-                <p className="text-caption text-warning flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> Selecione o técnico avaliado acima antes de iniciar.</p>
+                <p className="text-caption text-warning flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> Selecione o técnico avaliado acima antes de concluir.</p>
               )}
               {(hasAtendimentoAccess && !selectedOS.atendente_id) && (
-                <p className="text-caption text-warning flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> Selecione o atendente avaliado acima antes de iniciar.</p>
+                <p className="text-caption text-warning flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> Selecione o atendente avaliado acima antes de concluir.</p>
               )}
             </>
           )}
