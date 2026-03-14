@@ -217,8 +217,7 @@ export default function DashboardPage() {
 
   const cards = [
     { label: "Total de OS", value: stats.total, icon: ClipboardCheck, color: "text-primary" },
-    { label: "Abertas", value: stats.abertas, icon: FolderOpen, color: "text-warning" },
-    { label: "Em Andamento", value: stats.em_andamento, icon: Clock, color: "text-primary" },
+    { label: "Em Andamento", value: stats.em_andamento, icon: Clock, color: "text-warning" },
     { label: "Concluídas", value: stats.concluidas, icon: CheckCircle2, color: "text-success" },
   ];
 
