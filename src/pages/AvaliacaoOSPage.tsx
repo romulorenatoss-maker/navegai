@@ -1055,7 +1055,13 @@ export default function AvaliacaoOSPage() {
       try { if (evalOsId) await detectInconsistencies(evalOsId); } catch (e) { console.warn("Inconsistency detection error:", e); }
       try { if (evalAvaliacaoId && evalOsId) await detectLinkedInconsistencies(evalAvaliacaoId, evalOsId); } catch (e) { console.warn("Linked inconsistency detection error:", e); }
       refetchPending();
-      setTimeout(() => navigate("/"), 1500);
+      // Only navigate away if OS is fully concluded
+      if (evalOsId) {
+        const { data: updatedOsFinal } = await supabase.from("ordens_servico").select("status").eq("id", evalOsId).single();
+        if (updatedOsFinal?.status === "concluida") {
+          setTimeout(() => navigate("/"), 1500);
+        }
+      }
     } catch (err: any) {
       toast.error("Erro: " + err.message);
     } finally {
