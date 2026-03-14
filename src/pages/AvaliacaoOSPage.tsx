@@ -110,6 +110,13 @@ export default function AvaliacaoOSPage() {
   const [wizardScore, setWizardScore] = useState<number | null>(null);
   const [wizardSubmitting, setWizardSubmitting] = useState(false);
 
+  // Filter state
+  const [filterDateFrom, setFilterDateFrom] = useState<Date | undefined>();
+  const [filterDateTo, setFilterDateTo] = useState<Date | undefined>();
+  const [filterMonth, setFilterMonth] = useState<string>("");
+  const [filterStatus, setFilterStatus] = useState<string>("todos");
+  const [showFilters, setShowFilters] = useState(false);
+
   // Auto-fill client name when CPF is found in DB
   useEffect(() => {
     const cpfDigits = clienteCpf.replace(/\D/g, "");
