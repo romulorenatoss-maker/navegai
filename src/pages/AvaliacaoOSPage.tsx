@@ -1741,7 +1741,7 @@ export default function AvaliacaoOSPage() {
                   </Button>
                 )}
                 {!isLocked && (
-                  <Button size="sm" onClick={handleFinalizeEvaluation} disabled={evalProgressPercent < 100 || evalSubmitting} className="press-effect h-8 text-xs px-3">
+                  <Button size="sm" onClick={handleFinalizeEvaluation} disabled={myProgressPercent < 100 || evalSubmitting} className="press-effect h-8 text-xs px-3">
                     {evalSubmitting && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
                     Finalizar
                   </Button>
