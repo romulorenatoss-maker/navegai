@@ -380,7 +380,7 @@ export default function DashboardPage() {
 
           for (const q of perguntasForOS) {
             if (!q.setor_avaliado_id) continue;
-            const answered = osAvals.some(a => answeredSet.has(`${a.id}:${q.id}`));
+            const answered = answeredSet.has(`${os.id}:${q.id}`);
             if (!answered) {
               if (!sectorOSCount[q.setor_avaliado_id]) sectorOSCount[q.setor_avaliado_id] = new Set();
               sectorOSCount[q.setor_avaliado_id].add(os.id);
