@@ -1419,7 +1419,7 @@ export default function AvaliacaoOSPage() {
               <span className="text-caption text-muted-foreground font-tabular">({globalAnsweredCount}/{evalPerguntas.length} perguntas)</span>
             </div>
           </div>
-          <Progress value={evalProgressPercent} className="h-3" />
+          <Progress value={globalProgressPercent} className="h-3" />
           {evalMaxScore > 0 && (
             <div className="flex items-center justify-between mt-2 text-caption text-muted-foreground">
               <span>Pontuação parcial</span>
