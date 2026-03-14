@@ -12,7 +12,7 @@ import AvaliacaoOSPage from "./pages/AvaliacaoOSPage";
 import SetoresPage from "./pages/SetoresPage";
 import ColaboradoresPage from "./pages/ColaboradoresPage";
 import TiposServicoPage from "./pages/TiposServicoPage";
-import TiposAvaliacaoPage from "./pages/TiposAvaliacaoPage";
+
 import PerguntasPage from "./pages/PerguntasPage";
 import ChecklistsCadastroPage from "./pages/ChecklistsCadastroPage";
 import ClientesPage from "./pages/ClientesPage";
