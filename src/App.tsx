@@ -17,6 +17,7 @@ import PerguntasPage from "./pages/PerguntasPage";
 import ChecklistsCadastroPage from "./pages/ChecklistsCadastroPage";
 import ClientesPage from "./pages/ClientesPage";
 import MinhasAvaliacoesPage from "./pages/MinhasAvaliacoesPage";
+import InconsistenciasPage from "./pages/InconsistenciasPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 
