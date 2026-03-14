@@ -143,7 +143,7 @@ export default function AvaliacaoOSPage() {
   const {
     loading, os, avaliacao, questions,
     searchOS, updateAnswer, updateObservation,
-    concludeAvaliacao, answeredCount, totalScore, maxScore,
+    concludeAvaliacao, answeredCount, totalScore, maxScore, clearOS,
   } = useAvaliacaoOS();
 
   // Fetch collaborators from the evaluated collaborator's sector
