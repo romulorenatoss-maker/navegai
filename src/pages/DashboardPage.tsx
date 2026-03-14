@@ -207,6 +207,24 @@ export default function DashboardPage() {
         .select("id, tipo_servico_id")
         .eq("ativo", true);
 
+      // Build a set of answered pergunta_ids per OS (across all evaluators)
+      const answeredByOS: Record<string, Set<string>> = {};
+      if (avalIds.length > 0) {
+        const { data: allResp } = await supabase
+          .from("respostas_avaliacao")
+          .select("avaliacao_id, pergunta_id")
+          .in("avaliacao_id", avalIds)
+          .not("resposta", "is", null);
+        
+        allResp?.forEach((r) => {
+          const osId = avaliacoes?.find(a => a.id === r.avaliacao_id)?.ordem_servico_id;
+          if (osId) {
+            if (!answeredByOS[osId]) answeredByOS[osId] = new Set();
+            answeredByOS[osId].add(r.pergunta_id);
+          }
+        });
+      }
+
       // Build OS with progress and computed status
       const result: OSWithProgress[] = osData.map((os) => {
         const osAvals = avaliacoes?.filter((a) => a.ordem_servico_id === os.id) || [];
@@ -217,8 +235,9 @@ export default function DashboardPage() {
         ) || [];
         const totalPerguntas = perguntasForOS.length;
         
-        // Total answered across all avaliacoes for this OS
-        const totalRespondidas = osAvals.reduce((sum, a) => sum + (respostasMap[a.id] || 0), 0);
+        // Count unique questions answered (any evaluator) for this OS
+        const osAnswered = answeredByOS[os.id] || new Set();
+        const totalRespondidas = perguntasForOS.filter(p => osAnswered.has(p.id)).length;
         
         const progress = totalPerguntas > 0 ? Math.round((totalRespondidas / totalPerguntas) * 100) : 0;
 
