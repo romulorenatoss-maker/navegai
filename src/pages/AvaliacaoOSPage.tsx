@@ -2589,7 +2589,7 @@ export default function AvaliacaoOSPage() {
                   <span className="text-caption font-medium text-foreground font-tabular w-8 text-right">{a._progress}%</span>
                 </div>
                 <Badge variant={a._progress > 0 ? "default" : "secondary"} className="text-[10px] w-fit">
-                  {a._progress > 0 ? "Parcial" : "Aberta"}
+                  {a._progress >= 100 ? "Aguardando Conclusão" : a._progress > 0 ? "Parcial" : "Aberta"}
                 </Badge>
                 <ChevronRight className="w-4 h-4 text-muted-foreground hidden sm:block" />
               </button>
