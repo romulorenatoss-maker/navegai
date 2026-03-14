@@ -317,7 +317,7 @@ export default function DashboardPage() {
         const myAval = allAvals.find(a => a.ordem_servico_id === os.id && a.avaliador_id === profile.id);
         const osAvals = allAvals.filter(a => a.ordem_servico_id === os.id);
 
-        // FIX: Check if question is answered for this OS (any evaluator)
+        // Check if question is answered for this OS (any evaluator)
         const myUnanswered = myQuestions.filter(q => !answeredSet.has(`${os.id}:${q.id}`));
 
         // Count unique questions answered for this OS
@@ -337,14 +337,17 @@ export default function DashboardPage() {
         }
         const pendingSetorNames = [...pendingSetorIds].map(id => setoresMap[id] || "Sem setor");
 
-        if (progress >= 100 && osAvals.every(a => a.concluida)) {
+        // If my avaliacao is concluded, my part is done regardless of unanswered questions
+        const myPartDone = myAval?.concluida === true || myUnanswered.length === 0;
+
+        if (progress >= 100 && osAvals.length > 0 && osAvals.every(a => a.concluida)) {
           completed.push({
             os_id: os.id, numero_os: os.numero_os, cliente_nome: os.cliente_nome,
             tipo_servico_nome: os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || null : null,
             colaborador_avaliado_nome: colabNome, pending_count: 0, progress: 100,
             setor_pendente_nome: null,
           });
-        } else if (myUnanswered.length > 0) {
+        } else if (!myPartDone) {
           myPending.push({
             os_id: os.id, numero_os: os.numero_os, cliente_nome: os.cliente_nome,
             tipo_servico_nome: os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || null : null,
