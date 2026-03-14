@@ -5,7 +5,7 @@ import { detectLinkedInconsistencies } from "@/hooks/useLinkedInconsistencyDetec
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, AlertTriangle, Loader2, ChevronRight, ChevronLeft,
-  Check, Clock, Trash2, Eye, Users, MessageSquare, Camera, X, Image as ImageIcon, Lock, Download
+  Check, Clock, Trash2, Eye, Users, MessageSquare, Camera, X, Image as ImageIcon, Lock, Download, Pencil, Save
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import { Input } from "@/components/ui/input";
@@ -130,6 +130,7 @@ export default function AvaliacaoOSPage() {
   const [deleteOsNumero, setDeleteOsNumero] = useState<string>("");
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const debounceTimers = useRef<Record<string, NodeJS.Timeout>>({});
 
   // --- Queries ---
@@ -1197,6 +1198,24 @@ export default function AvaliacaoOSPage() {
     setEvalFinalized(false);
     setEvalScore(null);
     autoFinalizeTriggered.current = false;
+    setIsEditing(false);
+  };
+
+  const handleStartEditing = async () => {
+    if (!evalAvaliacaoId) return;
+    // Reopen the evaluation in the database
+    await supabase.from("avaliacoes").update({ concluida: false, nota_final: null } as any).eq("id", evalAvaliacaoId);
+    setEvalFinalized(false);
+    setEvalScore(null);
+    setIsEditing(true);
+    autoFinalizeTriggered.current = true; // Prevent auto-finalize while editing
+    toast.info("Modo de edição ativado. Altere os dados e clique em Salvar.");
+  };
+
+  const handleSaveEditing = async () => {
+    setIsEditing(false);
+    // Re-finalize the evaluation
+    await handleFinalizeEvaluation();
   };
 
   const resetForm = () => {
@@ -1224,8 +1243,8 @@ export default function AvaliacaoOSPage() {
   // Global progress: ALL questions answered across ALL evaluators
   const globalAnsweredCount = evalPerguntas.filter(p => evalAnswers[p.id] != null).length;
   const globalProgressPercent = evalPerguntas.length > 0 ? Math.round((globalAnsweredCount / evalPerguntas.length) * 100) : 0;
-  const isLocked = isOsFullyConcluded || evalFinalized;
-  
+  const isLocked = isOsFullyConcluded || (evalFinalized && !isEditing);
+  const canEdit = evalFinalized && !isOsFullyConcluded;
   // My sector progress
   const myAnsweredCount = answerablePerguntas.filter(p => evalAnswers[p.id] != null).length;
   const myProgressPercent = answerablePerguntas.length > 0 ? Math.round((myAnsweredCount / answerablePerguntas.length) * 100) : 0;
@@ -1386,27 +1405,68 @@ export default function AvaliacaoOSPage() {
                 {evalTipoServicoNome && <p className="text-caption text-muted-foreground mt-0.5">Serviço: {evalTipoServicoNome}</p>}
                 <p className="text-caption text-muted-foreground mt-0.5">Criada em: {format(new Date(evalOsData.created_at), "dd/MM/yyyy HH:mm")}</p>
               </div>
-              {autoSaving && (
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
-                  <Loader2 className="w-3 h-3 animate-spin" /> Salvando...
-                </div>
-              )}
+              <div className="flex items-center gap-2 shrink-0">
+                {autoSaving && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Loader2 className="w-3 h-3 animate-spin" /> Salvando...
+                  </div>
+                )}
+                {canEdit && !isEditing && (
+                  <Button size="sm" variant="outline" onClick={handleStartEditing} className="press-effect h-8 text-xs px-3">
+                    <Pencil className="w-3 h-3 mr-1" /> Alterar
+                  </Button>
+                )}
+                {isEditing && (
+                  <Button size="sm" onClick={handleSaveEditing} disabled={evalSubmitting} className="press-effect h-8 text-xs px-3">
+                    {evalSubmitting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Save className="w-3 h-3 mr-1" />}
+                    Salvar
+                  </Button>
+                )}
+              </div>
             </div>
 
             {/* Assigned employees + avaliadores info */}
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 mt-3 pt-3 border-t border-border flex-wrap">
-              {evalOsData.atendente_id && (
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">Atendente:</span>
-                  <span className="font-medium text-foreground">{evalAtendenteNome || "—"}</span>
-                </div>
-              )}
-              {evalOsData.tecnico_id && (
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">Técnico:</span>
-                  <span className="font-medium text-foreground">{evalTecnicoNome || "—"}</span>
-                </div>
-              )}
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground">Atendente:</span>
+                {isEditing && (hasAtendimentoAccess || isAdmin) ? (
+                  <Select value={evalOsData.atendente_id || atendenteId || ""} onValueChange={async (val) => {
+                    setAtendenteId(val);
+                    await supabase.from("ordens_servico").update({ atendente_id: val } as any).eq("id", evalOsData.id);
+                    setEvalOsData({ ...evalOsData, atendente_id: val });
+                    toast.success("Atendente atualizado!");
+                  }}>
+                    <SelectTrigger className="h-8 w-[200px]"><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                    <SelectContent>
+                      {atendimentoProfiles.filter(p => p.id !== profile?.id).map(p =>
+                        <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <span className="font-medium text-foreground">{evalAtendenteNome || "Não definido"}</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground">Técnico:</span>
+                {isEditing && (hasTecnicoAccess || isAdmin) ? (
+                  <Select value={evalOsData.tecnico_id || tecnicoId || ""} onValueChange={async (val) => {
+                    setTecnicoId(val);
+                    await supabase.from("ordens_servico").update({ tecnico_id: val } as any).eq("id", evalOsData.id);
+                    setEvalOsData({ ...evalOsData, tecnico_id: val });
+                    toast.success("Técnico atualizado!");
+                  }}>
+                    <SelectTrigger className="h-8 w-[200px]"><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                    <SelectContent>
+                      {tecnicoProfiles.filter(p => p.id !== profile?.id).map(p =>
+                        <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <span className="font-medium text-foreground">{evalTecnicoNome || "Não definido"}</span>
+                )}
+              </div>
             </div>
 
             {/* Avaliadores com hora de conclusão */}
@@ -1463,8 +1523,26 @@ export default function AvaliacaoOSPage() {
           )}
         </div>
 
+        {/* Editing mode banner */}
+        {isEditing && (
+          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+            className="bg-warning/5 border-2 border-warning/20 rounded-lg p-4 mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Pencil className="w-5 h-5 text-warning" />
+              <div>
+                <p className="text-sm font-semibold text-foreground">Modo de Edição</p>
+                <p className="text-caption text-muted-foreground">Altere os avaliados e respostas. Clique em Salvar quando terminar.</p>
+              </div>
+            </div>
+            <Button size="sm" onClick={handleSaveEditing} disabled={evalSubmitting} className="press-effect">
+              {evalSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+              Salvar
+            </Button>
+          </motion.div>
+        )}
+
         {/* Finalized state */}
-        {evalFinalized && (
+        {evalFinalized && !isEditing && (
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
             className="bg-success/5 border-2 border-success/20 rounded-lg p-6 mb-4 text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-success/10 mb-3">
@@ -1473,7 +1551,12 @@ export default function AvaliacaoOSPage() {
             <h2 className="text-xl font-bold text-foreground">Avaliação Concluída!</h2>
             <p className="text-3xl font-bold text-primary font-tabular mt-2">{evalScore?.toFixed(1)}%</p>
             <p className="text-sm text-muted-foreground mt-1">{globalAnsweredCount} perguntas respondidas</p>
-            <Button onClick={generatePDF} variant="outline" className="mt-4 press-effect" disabled={!canExport}>
+            {canEdit && (
+              <Button onClick={handleStartEditing} variant="outline" className="mt-3 press-effect">
+                <Pencil className="w-4 h-4 mr-2" /> Alterar Avaliação
+              </Button>
+            )}
+            <Button onClick={generatePDF} variant="outline" className="mt-3 ml-2 press-effect" disabled={!canExport}>
               <Download className="w-4 h-4 mr-2" /> Baixar PDF da Avaliação
             </Button>
             {!canExport && (
@@ -1747,7 +1830,18 @@ export default function AvaliacaoOSPage() {
                 )}
               </div>
               <div className="flex items-center gap-1.5">
-                {evalFinalized && (
+                {canEdit && !isEditing && (
+                  <Button size="sm" variant="outline" onClick={handleStartEditing} className="press-effect h-8 text-xs px-3">
+                    <Pencil className="w-3 h-3 mr-1" /> Alterar
+                  </Button>
+                )}
+                {isEditing && (
+                  <Button size="sm" onClick={handleSaveEditing} disabled={evalSubmitting} className="press-effect h-8 text-xs px-3">
+                    {evalSubmitting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Save className="w-3 h-3 mr-1" />}
+                    Salvar
+                  </Button>
+                )}
+                {evalFinalized && !isEditing && (
                   <Button size="sm" variant="outline" onClick={generatePDF} className="press-effect h-8 text-xs px-3">
                     <Download className="w-3 h-3 mr-1" /> PDF
                   </Button>
