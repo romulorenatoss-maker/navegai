@@ -99,15 +99,19 @@ export default function AvaliacaoOSPage() {
   const [view, setView] = useState<"list" | "os_detail" | "evaluation">("list");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOS, setSelectedOS] = useState<any | null>(null);
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
-  // Wizard state (steps 0-2 only)
-  const [step, setStep] = useState(0);
+  // Inline form state (replaces wizard)
+  const [formOsNumero, setFormOsNumero] = useState("");
+  const [formClienteNome, setFormClienteNome] = useState("");
+  const [formClienteCpf, setFormClienteCpf] = useState("");
+  const [formValidating, setFormValidating] = useState(false);
+  const [formValidated, setFormValidated] = useState(false);
+  const [formFoundOS, setFormFoundOS] = useState<any | null>(null);
+  const [formFoundCliente, setFormFoundCliente] = useState<any | null>(null);
+
+  // Setup state (shown after validation for new OS)
   const [tipoServicoId, setTipoServicoId] = useState("");
   const [selectedTipoAvaliacaoId, setSelectedTipoAvaliacaoId] = useState("");
-  const [newOsNumero, setNewOsNumero] = useState("");
-  const [clienteNome, setClienteNome] = useState("");
-  const [clienteCpf, setClienteCpf] = useState("");
   const [atendenteId, setAtendenteId] = useState("");
   const [tecnicoId, setTecnicoId] = useState("");
   const [cpfClienteEncontrado, setCpfClienteEncontrado] = useState<string | null>(null);
