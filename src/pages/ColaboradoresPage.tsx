@@ -20,9 +20,7 @@ type Profile = Tables<"profiles">;
 const cargoConfig: Record<string, { label: string; badge: string; description: string }> = {
   administrador: { label: "Administrador", badge: "badge-complete", description: "Acesso total ao sistema" },
   avaliador: { label: "Avaliador", badge: "badge-active", description: "Executa avaliações de OS" },
-  executor: { label: "Executor", badge: "badge-pending", description: "Realiza checklists operacionais" },
-  atendente: { label: "Atendente", badge: "badge-expired", description: "Atendimento ao cliente" },
-  tecnico: { label: "Técnico", badge: "badge-expired", description: "Suporte técnico" },
+  avaliado: { label: "Avaliado", badge: "badge-pending", description: "Recebe avaliações de OS" },
 };
 
 export default function ColaboradoresPage() {
@@ -35,7 +33,7 @@ export default function ColaboradoresPage() {
   const [editing, setEditing] = useState<Profile | null>(null);
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
-  const [cargo, setCargo] = useState("atendente");
+  const [cargo, setCargo] = useState("avaliado");
   const [selectedSetores, setSelectedSetores] = useState<string[]>([]);
   const [senha, setSenha] = useState("");
   
@@ -188,11 +186,11 @@ export default function ColaboradoresPage() {
   });
 
   const openCreate = () => {
-    setEditing(null); setNome(""); setEmail(""); setCargo("atendente"); setSelectedSetores([]); setSenha("");
+    setEditing(null); setNome(""); setEmail(""); setCargo("avaliado"); setSelectedSetores([]); setSenha("");
     setDialogOpen(true);
   };
   const openEdit = (p: Profile) => {
-    setEditing(p); setNome(p.nome); setEmail(p.email); setCargo(p.cargo || "atendente"); setSelectedSetores([]);
+    setEditing(p); setNome(p.nome); setEmail(p.email); setCargo(p.cargo || "avaliado"); setSelectedSetores([]);
     setDialogOpen(true);
   };
   const closeDialog = () => { setDialogOpen(false); setEditing(null); };

@@ -90,7 +90,7 @@ export default function AvaliacaoOSPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { profile, isAdmin, hasRole } = useAuth();
-  const showAllTipos = isAdmin || hasRole("gestor");
+  const showAllTipos = isAdmin;
 
   // View modes
   const [view, setView] = useState<"list" | "os_detail" | "evaluation">("list");
@@ -229,39 +229,43 @@ export default function AvaliacaoOSPage() {
 
   const selectedTipoServico = useMemo(() => tiposServico.find(t => t.id === tipoServicoId), [tiposServico, tipoServicoId]);
 
-  // Profiles filtered by sector for employee selection
+  // Profiles filtered by role=avaliado + sector for employee selection
+  const avaliadoProfiles = useMemo(() => allProfiles.filter(p => p.cargo === "avaliado"), [allProfiles]);
+
   const { data: atendimentoProfiles = [] } = useQuery({
-    queryKey: ["profiles_atendimento", allProfiles.length],
+    queryKey: ["profiles_atendimento", avaliadoProfiles.length],
     queryFn: async () => {
+      if (!avaliadoProfiles.length) return [];
       const { data: setores } = await supabase.from("setores").select("id, nome").eq("ativo", true);
       const atendSetorIds = (setores || []).filter(s => {
         const n = s.nome.toLowerCase();
         return n.includes("atendimento") || n.includes("atendente");
       }).map(s => s.id);
-      if (!atendSetorIds.length) return allProfiles;
+      if (!atendSetorIds.length) return avaliadoProfiles;
       const { data: links } = await supabase.from("colaborador_setores").select("profile_id").in("setor_id", atendSetorIds);
       if (!links?.length) return [];
       const ids = [...new Set(links.map(l => l.profile_id))];
-      return allProfiles.filter(p => ids.includes(p.id));
+      return avaliadoProfiles.filter(p => ids.includes(p.id));
     },
-    enabled: allProfiles.length > 0,
+    enabled: avaliadoProfiles.length > 0,
   });
 
   const { data: tecnicoProfiles = [] } = useQuery({
-    queryKey: ["profiles_tecnico", allProfiles.length],
+    queryKey: ["profiles_tecnico", avaliadoProfiles.length],
     queryFn: async () => {
+      if (!avaliadoProfiles.length) return [];
       const { data: setores } = await supabase.from("setores").select("id, nome").eq("ativo", true);
       const tecSetorIds = (setores || []).filter(s => {
         const n = s.nome.toLowerCase();
         return n.includes("técnico") || n.includes("tecnico");
       }).map(s => s.id);
-      if (!tecSetorIds.length) return allProfiles;
+      if (!tecSetorIds.length) return avaliadoProfiles;
       const { data: links } = await supabase.from("colaborador_setores").select("profile_id").in("setor_id", tecSetorIds);
       if (!links?.length) return [];
       const ids = [...new Set(links.map(l => l.profile_id))];
-      return allProfiles.filter(p => ids.includes(p.id));
+      return avaliadoProfiles.filter(p => ids.includes(p.id));
     },
-    enabled: allProfiles.length > 0,
+    enabled: avaliadoProfiles.length > 0,
   });
 
   const { data: profilesBySetor = [] } = useQuery({
