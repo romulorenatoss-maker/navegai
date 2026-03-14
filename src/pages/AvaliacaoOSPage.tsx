@@ -55,7 +55,7 @@ const statusLabel: Record<string, { text: string; badge: string }> = {
 const STEPS = [
   { label: "Tipo de Serviço", description: "Selecione o tipo e avaliação" },
   { label: "Dados da OS", description: "Número, cliente e CPF" },
-  { label: "Funcionários", description: "Atendente e Técnico" },
+  { label: "Avaliado", description: "Selecione o funcionário" },
   { label: "Avaliação", description: "Responda as perguntas" },
 ];
 
@@ -150,9 +150,36 @@ export default function AvaliacaoOSPage() {
   const { data: allProfiles = [] } = useQuery({
     queryKey: ["profiles_for_eval"],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("id, nome, cargo, email").eq("ativo", true).order("nome");
+      const { data } = await supabase.from("profiles").select("id, nome, cargo, email, setor_id").eq("ativo", true).order("nome");
       return data || [];
     },
+  });
+
+  // Determine which employee field this evaluator manages based on tipo_avaliacao
+  const selectedTipoAvaliacao = useMemo(() => tiposAvaliacao.find(t => t.id === selectedTipoAvaliacaoId), [tiposAvaliacao, selectedTipoAvaliacaoId]);
+  const isAtendimentoEvaluator = useMemo(() => {
+    const cargo = selectedTipoAvaliacao?.cargo_responsavel?.toLowerCase() || "";
+    return cargo.includes("atendente") || cargo.includes("atendimento");
+  }, [selectedTipoAvaliacao]);
+
+  // Get setor_id from selected tipo_servico to filter employees
+  const selectedTipoServico = useMemo(() => tiposServico.find(t => t.id === tipoServicoId), [tiposServico, tipoServicoId]);
+
+  // Filter profiles by relevant sector using colaborador_setores
+  const { data: profilesBySetor = [] } = useQuery({
+    queryKey: ["profiles_by_setor", tipoServicoId, selectedTipoAvaliacaoId],
+    queryFn: async () => {
+      if (!selectedTipoServico?.setor_id) return allProfiles.filter(p => p.id !== profile?.id);
+      // Get all profiles linked to the service type's sector
+      const { data: links } = await supabase.from("colaborador_setores").select("profile_id").eq("setor_id", selectedTipoServico.setor_id);
+      if (!links?.length) {
+        // Fallback: filter by legacy setor_id on profile
+        return allProfiles.filter(p => p.id !== profile?.id && p.setor_id === selectedTipoServico.setor_id);
+      }
+      const ids = links.map(l => l.profile_id);
+      return allProfiles.filter(p => p.id !== profile?.id && ids.includes(p.id));
+    },
+    enabled: !!tipoServicoId && !!selectedTipoAvaliacaoId,
   });
 
   const selectableProfiles = useMemo(() => allProfiles.filter(p => p.id !== profile?.id), [allProfiles, profile]);
@@ -364,7 +391,11 @@ export default function AvaliacaoOSPage() {
       if (d.length === 11 && !isValidCpf(d)) return false;
       return true;
     }
-    if (s === 2) return !!atendenteId && !!tecnicoId;
+    if (s === 2) {
+      // Only require the field this evaluator is responsible for
+      if (isAtendimentoEvaluator) return !!atendenteId;
+      return !!tecnicoId;
+    }
     if (s === 3) return previewPerguntas.length > 0 && previewPerguntas.every(p => wizardAnswers[p.id] != null);
     return false;
   };
@@ -697,25 +728,49 @@ export default function AvaliacaoOSPage() {
               {/* Step 2: Employees */}
               {step === 2 && (
                 <div className="space-y-4">
-                  <p className="text-body text-muted-foreground">Selecione os funcionários que serão avaliados nesta OS.</p>
-                  <div className="space-y-1.5">
-                    <Label>Atendente *</Label>
-                    <Select value={atendenteId} onValueChange={setAtendenteId}>
-                      <SelectTrigger><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
-                      <SelectContent>
-                        {selectableProfiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Técnico *</Label>
-                    <Select value={tecnicoId} onValueChange={setTecnicoId}>
-                      <SelectTrigger><SelectValue placeholder="Selecione o técnico" /></SelectTrigger>
-                      <SelectContent>
-                        {selectableProfiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <p className="text-body text-muted-foreground">
+                    {isAtendimentoEvaluator
+                      ? "Selecione o atendente que será avaliado nesta OS."
+                      : "Selecione o técnico que será avaliado nesta OS."}
+                  </p>
+
+                  {isAtendimentoEvaluator ? (
+                    <div className="space-y-1.5">
+                      <Label>Atendente *</Label>
+                      {existingOsId && atendenteId ? (
+                        <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-md border border-border">
+                          <Check className="w-4 h-4 text-success" />
+                          <span className="text-body text-foreground">{allProfiles.find(p => p.id === atendenteId)?.nome || "—"}</span>
+                          <span className="text-caption text-muted-foreground ml-auto">Já selecionado</span>
+                        </div>
+                      ) : (
+                        <Select value={atendenteId} onValueChange={setAtendenteId}>
+                          <SelectTrigger><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
+                          <SelectContent>
+                            {profilesBySetor.map(p => <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <Label>Técnico *</Label>
+                      {existingOsId && tecnicoId ? (
+                        <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-md border border-border">
+                          <Check className="w-4 h-4 text-success" />
+                          <span className="text-body text-foreground">{allProfiles.find(p => p.id === tecnicoId)?.nome || "—"}</span>
+                          <span className="text-caption text-muted-foreground ml-auto">Já selecionado</span>
+                        </div>
+                      ) : (
+                        <Select value={tecnicoId} onValueChange={setTecnicoId}>
+                          <SelectTrigger><SelectValue placeholder="Selecione o técnico" /></SelectTrigger>
+                          <SelectContent>
+                            {profilesBySetor.map(p => <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -755,12 +810,7 @@ export default function AvaliacaoOSPage() {
                                   <span className="text-caption text-muted-foreground font-tabular mt-0.5 w-5 shrink-0">{String(i + 1).padStart(2, "0")}</span>
                                   <div>
                                     <p className="text-body font-medium text-foreground">{p.pergunta}</p>
-                                    <p className="text-caption text-muted-foreground">
-                                      Peso: {p.peso} •
-                                      {p.target_employee_type === "atendente" && " Aplica-se ao Atendente"}
-                                      {p.target_employee_type === "tecnico" && " Aplica-se ao Técnico"}
-                                      {p.target_employee_type === "geral" && " Aplica-se a ambos"}
-                                    </p>
+                                    <p className="text-caption text-muted-foreground">Peso: {p.peso}</p>
                                   </div>
                                 </div>
                                 <SegmentedControl value={wizardAnswers[p.id] || null} onChange={v => setWizardAnswers(prev => ({ ...prev, [p.id]: v }))} />
