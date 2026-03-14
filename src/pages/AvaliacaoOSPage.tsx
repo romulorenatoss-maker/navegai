@@ -1385,7 +1385,7 @@ export default function AvaliacaoOSPage() {
                 <span className="text-muted-foreground">Técnico:</span>
                 {evalOsData.tecnico_id ? (
                   <span className="font-medium text-foreground">{evalTecnicoNome || "Não definido"}</span>
-                ) : (hasTecnicoAccess || isAdmin) && !evalFinalized ? (
+                ) : (hasTecnicoAccess || isAdmin) && !isLocked ? (
                   <Select value={tecnicoId} onValueChange={async (val) => {
                     setTecnicoId(val);
                     await supabase.from("ordens_servico").update({ tecnico_id: val } as any).eq("id", evalOsData.id);
