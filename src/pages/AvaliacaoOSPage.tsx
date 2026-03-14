@@ -1476,6 +1476,7 @@ export default function AvaliacaoOSPage() {
                 </div>
                 <p className="text-body text-muted-foreground mt-1">{evalOsData.cliente_nome || "Sem cliente"}</p>
                 {evalTipoServicoNome && <p className="text-caption text-muted-foreground mt-0.5">Serviço: {evalTipoServicoNome}</p>}
+                <p className="text-caption text-muted-foreground mt-0.5">Criada em: {format(new Date(evalOsData.created_at), "dd/MM/yyyy HH:mm")}</p>
               </div>
               {autoSaving && (
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
@@ -1484,21 +1485,36 @@ export default function AvaliacaoOSPage() {
               )}
             </div>
 
-            {/* Show assigned employees as read-only info if they exist */}
-            {(evalOsData.atendente_id || evalOsData.tecnico_id) && (
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 mt-3 pt-3 border-t border-border">
-                {evalOsData.atendente_id && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-muted-foreground">Atendente:</span>
-                    <span className="font-medium text-foreground">{evalAtendenteNome || "—"}</span>
+            {/* Assigned employees + avaliadores info */}
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 mt-3 pt-3 border-t border-border flex-wrap">
+              {evalOsData.atendente_id && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground">Atendente:</span>
+                  <span className="font-medium text-foreground">{evalAtendenteNome || "—"}</span>
+                </div>
+              )}
+              {evalOsData.tecnico_id && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground">Técnico:</span>
+                  <span className="font-medium text-foreground">{evalTecnicoNome || "—"}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Avaliadores com hora de conclusão */}
+            {osAvaliacoes.length > 0 && (
+              <div className="flex flex-col gap-1.5 mt-3 pt-3 border-t border-border">
+                <span className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Avaliadores</span>
+                {osAvaliacoes.map((aval: any, idx: number) => (
+                  <div key={aval.id} className="flex items-center gap-2 text-sm flex-wrap">
+                    <span className="font-medium text-foreground">Avaliador {idx + 1}: {aval._avaliador_nome}</span>
+                    {aval.concluida_em ? (
+                      <span className="text-caption text-success">• Concluído em {format(new Date(aval.concluida_em), "dd/MM/yyyy HH:mm")}</span>
+                    ) : (
+                      <span className="text-caption text-warning">• Pendente</span>
+                    )}
                   </div>
-                )}
-                {evalOsData.tecnico_id && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-muted-foreground">Técnico:</span>
-                    <span className="font-medium text-foreground">{evalTecnicoNome || "—"}</span>
-                  </div>
-                )}
+                ))}
               </div>
             )}
           </div>
