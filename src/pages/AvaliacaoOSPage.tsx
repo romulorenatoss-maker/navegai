@@ -620,7 +620,14 @@ export default function AvaliacaoOSPage() {
 
       {/* Wizard Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className={step === 3 ? "max-w-2xl" : "max-w-lg"}>
+        <DialogContent className={cn(
+          "max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto",
+          "w-full sm:w-auto",
+          "h-full sm:h-auto",
+          "rounded-none sm:rounded-lg",
+          "top-0 left-0 translate-x-0 translate-y-0 sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%]",
+          step === 3 ? "sm:max-w-2xl" : "sm:max-w-lg"
+        )}>
           <DialogHeader>
             <DialogTitle>
               {existingOsId ? `Avaliação — OS #${newOsNumero}` : "Criar Nova OS"}
