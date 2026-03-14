@@ -726,30 +726,47 @@ export default function AvaliacaoOSPage() {
     }
   };
 
-  // --- Auto-save logic ---
+  // --- Auto-save logic (now uses ordem_servico_id) ---
   const autoSaveAnswer = useCallback(async (perguntaId: string, answer: Answer) => {
-    if (!evalAvaliacaoId) return;
+    if (!evalOsId || !profile) return;
     setAutoSaving(true);
     try {
+      // Find evaluator's setor
+      const setorId = evaluatorSetorIds[0] || null;
       await supabase.from("respostas_avaliacao").upsert(
-        { avaliacao_id: evalAvaliacaoId, pergunta_id: perguntaId, resposta: answer },
-        { onConflict: "avaliacao_id,pergunta_id" }
+        { 
+          ordem_servico_id: evalOsId, 
+          pergunta_id: perguntaId, 
+          resposta: answer,
+          avaliador_id: profile.id,
+          avaliador_setor_id: setorId,
+          avaliacao_id: evalAvaliacaoId,
+        } as any,
+        { onConflict: "ordem_servico_id,pergunta_id" }
       );
     } catch (e) { console.warn("Auto-save answer error:", e); }
     finally { setAutoSaving(false); }
-  }, [evalAvaliacaoId]);
+  }, [evalOsId, evalAvaliacaoId, profile, evaluatorSetorIds]);
 
   const autoSaveObservation = useCallback(async (perguntaId: string, observation: string) => {
-    if (!evalAvaliacaoId) return;
+    if (!evalOsId || !profile) return;
     setAutoSaving(true);
     try {
+      const setorId = evaluatorSetorIds[0] || null;
       await supabase.from("respostas_avaliacao").upsert(
-        { avaliacao_id: evalAvaliacaoId, pergunta_id: perguntaId, observacao: observation },
-        { onConflict: "avaliacao_id,pergunta_id" }
+        { 
+          ordem_servico_id: evalOsId, 
+          pergunta_id: perguntaId, 
+          observacao: observation,
+          avaliador_id: profile.id,
+          avaliador_setor_id: setorId,
+          avaliacao_id: evalAvaliacaoId,
+        } as any,
+        { onConflict: "ordem_servico_id,pergunta_id" }
       );
     } catch (e) { console.warn("Auto-save observation error:", e); }
     finally { setAutoSaving(false); }
-  }, [evalAvaliacaoId]);
+  }, [evalOsId, evalAvaliacaoId, profile, evaluatorSetorIds]);
 
   const handleAnswerChange = useCallback((perguntaId: string, answer: Answer) => {
     setEvalAnswers(prev => ({ ...prev, [perguntaId]: answer }));
@@ -763,19 +780,27 @@ export default function AvaliacaoOSPage() {
   }, [autoSaveObservation]);
 
   const handleEvidenceUpload = useCallback(async (perguntaId: string, file: File) => {
-    if (!evalAvaliacaoId) return;
+    if (!evalOsId || !profile) return;
     setUploadingEvidence(perguntaId);
     try {
       const ext = file.name.split(".").pop() || "jpg";
-      const path = `${evalAvaliacaoId}/${perguntaId}.${ext}`;
+      const path = `${evalOsId}/${perguntaId}.${ext}`;
       const { error: uploadErr } = await supabase.storage.from("evidencias").upload(path, file, { upsert: true });
       if (uploadErr) throw uploadErr;
       const { data: urlData } = supabase.storage.from("evidencias").getPublicUrl(path);
       const url = urlData.publicUrl;
       setEvalEvidencias(prev => ({ ...prev, [perguntaId]: url }));
+      const setorId = evaluatorSetorIds[0] || null;
       await supabase.from("respostas_avaliacao").upsert(
-        { avaliacao_id: evalAvaliacaoId, pergunta_id: perguntaId, evidencia_url: url },
-        { onConflict: "avaliacao_id,pergunta_id" }
+        { 
+          ordem_servico_id: evalOsId, 
+          pergunta_id: perguntaId, 
+          evidencia_url: url,
+          avaliador_id: profile.id,
+          avaliador_setor_id: setorId,
+          avaliacao_id: evalAvaliacaoId,
+        } as any,
+        { onConflict: "ordem_servico_id,pergunta_id" }
       );
       toast.success("Evidência anexada!");
     } catch (e: any) {
@@ -783,16 +808,16 @@ export default function AvaliacaoOSPage() {
     } finally {
       setUploadingEvidence(null);
     }
-  }, [evalAvaliacaoId]);
+  }, [evalOsId, evalAvaliacaoId, profile, evaluatorSetorIds]);
 
   const handleRemoveEvidence = useCallback(async (perguntaId: string) => {
-    if (!evalAvaliacaoId) return;
+    if (!evalOsId) return;
     setEvalEvidencias(prev => { const n = { ...prev }; delete n[perguntaId]; return n; });
     await supabase.from("respostas_avaliacao").upsert(
-      { avaliacao_id: evalAvaliacaoId, pergunta_id: perguntaId, evidencia_url: null },
-      { onConflict: "avaliacao_id,pergunta_id" }
+      { ordem_servico_id: evalOsId, pergunta_id: perguntaId, evidencia_url: null } as any,
+      { onConflict: "ordem_servico_id,pergunta_id" }
     );
-  }, [evalAvaliacaoId]);
+  }, [evalOsId]);
 
   // --- Handlers ---
   const openEvaluation = async (avaliacaoId: string, osId: string) => {
@@ -810,53 +835,46 @@ export default function AvaliacaoOSPage() {
     setEvalFinalized(aval.concluida || false);
     setEvalScore(aval.nota_final as number | null);
 
-    // Load MY answers
-    const { data: respostas } = await supabase.from("respostas_avaliacao").select("pergunta_id, resposta, observacao, evidencia_url").eq("avaliacao_id", avaliacaoId);
+    // Load ALL responses for this OS (shared across all evaluators)
+    const { data: allRespostas } = await (supabase as any)
+      .from("respostas_avaliacao")
+      .select("pergunta_id, resposta, observacao, evidencia_url, avaliador_id")
+      .eq("ordem_servico_id", osId);
+
     const ans: Record<string, Answer> = {};
     const obs: Record<string, string> = {};
     const evid: Record<string, string> = {};
-    respostas?.forEach(r => {
+    const otherMap: typeof otherEvalAnswers = {};
+
+    // Get evaluator names for "other" answers
+    const avaliadorIds = [...new Set((allRespostas || []).map((r: any) => r.avaliador_id).filter(Boolean))] as string[];
+    let profileNames: Record<string, string> = {};
+    if (avaliadorIds.length > 0) {
+      const { data: profiles } = await supabase.from("profiles").select("id, nome").in("id", avaliadorIds as string[]);
+      profiles?.forEach(p => { profileNames[p.id] = p.nome; });
+    }
+
+    (allRespostas || []).forEach((r: any) => {
+      // All responses are loaded into the main answer maps
       if (r.resposta) ans[r.pergunta_id] = r.resposta as Answer;
       if (r.observacao) obs[r.pergunta_id] = r.observacao;
       if (r.evidencia_url) evid[r.pergunta_id] = r.evidencia_url;
+
+      // Track "other evaluator" info for display purposes
+      if (r.avaliador_id && r.avaliador_id !== profile?.id && r.resposta) {
+        otherMap[r.pergunta_id] = {
+          resposta: r.resposta,
+          observacao: r.observacao,
+          evidencia_url: r.evidencia_url,
+          avaliador_nome: profileNames[r.avaliador_id] || "Avaliador",
+        };
+      }
     });
+
     setEvalAnswers(ans);
     setEvalObservations(obs);
     setEvalEvidencias(evid);
-
-    // Load OTHER evaluators' answers for the same OS
-    const { data: otherAvals } = await supabase
-      .from("avaliacoes")
-      .select("id, avaliador_id")
-      .eq("ordem_servico_id", osId)
-      .neq("id", avaliacaoId);
-
-    if (otherAvals?.length) {
-      const otherAvalIds = otherAvals.map(a => a.id);
-      const avaliadorIds = [...new Set(otherAvals.map(a => a.avaliador_id))];
-      const [otherRespRes, profilesRes] = await Promise.all([
-        supabase.from("respostas_avaliacao").select("avaliacao_id, pergunta_id, resposta, observacao, evidencia_url").in("avaliacao_id", otherAvalIds).not("resposta", "is", null),
-        supabase.from("profiles").select("id, nome").in("id", avaliadorIds),
-      ]);
-      const profileNames: Record<string, string> = {};
-      profilesRes.data?.forEach(p => { profileNames[p.id] = p.nome; });
-      const avalAvaliadorMap: Record<string, string> = {};
-      otherAvals.forEach(a => { avalAvaliadorMap[a.id] = a.avaliador_id; });
-
-      const otherMap: typeof otherEvalAnswers = {};
-      otherRespRes.data?.forEach(r => {
-        const avaliadorId = avalAvaliadorMap[r.avaliacao_id];
-        otherMap[r.pergunta_id] = {
-          resposta: r.resposta!,
-          observacao: r.observacao,
-          evidencia_url: r.evidencia_url,
-          avaliador_nome: profileNames[avaliadorId] || "Avaliador",
-        };
-      });
-      setOtherEvalAnswers(otherMap);
-    } else {
-      setOtherEvalAnswers({});
-    }
+    setOtherEvalAnswers(otherMap);
 
     setView("evaluation");
   };
@@ -1051,9 +1069,18 @@ export default function AvaliacaoOSPage() {
       await supabase.from("avaliacoes").update({ concluida: true, nota_final: nota }).eq("id", evalAvaliacaoId);
       setEvalScore(nota);
       setEvalFinalized(true);
-      toast.success(`Avaliação concluída! Nota: ${nota.toFixed(1)}%`);
-      try { await detectInconsistencies(evalOsId); } catch (e) { console.warn("Inconsistency detection error:", e); }
-      try { await detectLinkedInconsistencies(evalAvaliacaoId, evalOsId); } catch (e) { console.warn("Linked inconsistency detection error:", e); }
+      toast.success(`Avaliação do seu setor concluída! Nota: ${nota.toFixed(1)}%`);
+      
+      // Check if ALL questions across all sectors are now answered (global progress = 100%)
+      const allAnswered = evalPerguntas.every(p => evalAnswers[p.id] != null);
+      if (allAnswered && evalOsId) {
+        // Mark OS as concluded
+        await supabase.from("ordens_servico").update({ status: "concluida", data_conclusao: new Date().toISOString() } as any).eq("id", evalOsId);
+        toast.success("Todas as perguntas respondidas! OS concluída.");
+      }
+      
+      try { if (evalOsId) await detectInconsistencies(evalOsId); } catch (e) { console.warn("Inconsistency detection error:", e); }
+      try { if (evalAvaliacaoId && evalOsId) await detectLinkedInconsistencies(evalAvaliacaoId, evalOsId); } catch (e) { console.warn("Linked inconsistency detection error:", e); }
       refetchPending();
       setTimeout(() => navigate("/"), 1500);
     } catch (err: any) {
@@ -1218,13 +1245,20 @@ export default function AvaliacaoOSPage() {
 
   // --- Computed ---
   const isOsFullyConcluded = evalOsData?.status === "concluida";
-  const isLocked = isOsFullyConcluded; // Only lock when OS is fully concluded by all sectors
   const answerablePerguntas = useMemo(() => evalPerguntas.filter(p => isQuestionAnswerable(p.setor_avaliado_id)), [evalPerguntas, isQuestionAnswerable]);
   const pendingPerguntas = useMemo(() => evalPerguntas.filter(p => !isQuestionAnswerable(p.setor_avaliado_id)), [evalPerguntas, isQuestionAnswerable]);
-  const evalAnsweredCount = answerablePerguntas.filter(p => evalAnswers[p.id] != null).length;
-  const evalProgressPercent = answerablePerguntas.length > 0 ? Math.round((evalAnsweredCount / answerablePerguntas.length) * 100) : 0;
-  const evalTotalScore = answerablePerguntas.reduce((a, p) => evalAnswers[p.id] === "sim" ? a + p.peso : a, 0);
-  const evalMaxScore = answerablePerguntas.reduce((a, p) => evalAnswers[p.id] !== "na" && evalAnswers[p.id] != null ? a + p.peso : a, 0);
+  
+  // Global progress: ALL questions answered across ALL evaluators
+  const globalAnsweredCount = evalPerguntas.filter(p => evalAnswers[p.id] != null).length;
+  const globalProgressPercent = evalPerguntas.length > 0 ? Math.round((globalAnsweredCount / evalPerguntas.length) * 100) : 0;
+  const isLocked = isOsFullyConcluded || globalProgressPercent === 100;
+  
+  // My sector progress
+  const myAnsweredCount = answerablePerguntas.filter(p => evalAnswers[p.id] != null).length;
+  const myProgressPercent = answerablePerguntas.length > 0 ? Math.round((myAnsweredCount / answerablePerguntas.length) * 100) : 0;
+  
+  const evalTotalScore = evalPerguntas.reduce((a, p) => evalAnswers[p.id] === "sim" ? a + p.peso : a, 0);
+  const evalMaxScore = evalPerguntas.reduce((a, p) => evalAnswers[p.id] !== "na" && evalAnswers[p.id] != null ? a + p.peso : a, 0);
 
   const atendenteNome = allProfiles.find(p => p.id === (selectedOS as any)?.atendente_id)?.nome;
   const tecnicoNome = allProfiles.find(p => p.id === (selectedOS as any)?.tecnico_id)?.nome;
@@ -1324,14 +1358,14 @@ export default function AvaliacaoOSPage() {
     addLine();
     addText("Resumo", 12, "bold");
     addText(`Total de perguntas: ${evalPerguntas.length}`, 10);
-    addText(`Respondidas: ${evalAnsweredCount}`, 10);
+    addText(`Respondidas: ${globalAnsweredCount}`, 10);
     if (evalMaxScore > 0) {
       addText(`Pontuação: ${evalTotalScore}/${evalMaxScore} pts (${((evalTotalScore / evalMaxScore) * 100).toFixed(1)}%)`, 10, "bold");
     }
 
     doc.save(`avaliacao_os_${evalOsData.numero_os}.pdf`);
     toast.success("PDF gerado com sucesso!");
-  }, [evalOsData, evalPerguntas, evalAnswers, evalObservations, evalEvidencias, evalScore, evalTipoServicoNome, evalAtendenteNome, evalTecnicoNome, evalAnsweredCount, evalTotalScore, evalMaxScore]);
+  }, [evalOsData, evalPerguntas, evalAnswers, evalObservations, evalEvidencias, evalScore, evalTipoServicoNome, evalAtendenteNome, evalTecnicoNome, globalAnsweredCount, evalTotalScore, evalMaxScore]);
 
   // ===================== RENDER =====================
 
@@ -1388,13 +1422,25 @@ export default function AvaliacaoOSPage() {
         {/* Progress Bar */}
         <div className="bg-card border border-border rounded-lg shadow-card mb-4 p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-foreground">Progresso da Avaliação</span>
+            <span className="text-sm font-medium text-foreground">Progresso Global da OS</span>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-foreground font-tabular">{evalProgressPercent}%</span>
-              <span className="text-caption text-muted-foreground font-tabular">({evalAnsweredCount}/{evalPerguntas.length} perguntas)</span>
+              <span className="text-sm font-bold text-foreground font-tabular">{globalProgressPercent}%</span>
+              <span className="text-caption text-muted-foreground font-tabular">({globalAnsweredCount}/{evalPerguntas.length} perguntas)</span>
             </div>
           </div>
-          <Progress value={evalProgressPercent} className="h-3" />
+          <Progress value={globalProgressPercent} className="h-3" />
+          
+          {/* My sector progress */}
+          {answerablePerguntas.length < evalPerguntas.length && (
+            <div className="mt-3 pt-3 border-t border-border">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-caption text-muted-foreground">Meu setor</span>
+                <span className="text-caption font-medium text-foreground font-tabular">{myProgressPercent}% ({myAnsweredCount}/{answerablePerguntas.length})</span>
+              </div>
+              <Progress value={myProgressPercent} className="h-2" />
+            </div>
+          )}
+          
           {evalMaxScore > 0 && (
             <div className="flex items-center justify-between mt-2 text-caption text-muted-foreground">
               <span>Pontuação parcial</span>
@@ -1417,7 +1463,7 @@ export default function AvaliacaoOSPage() {
             </div>
             <h2 className="text-xl font-bold text-foreground">Avaliação Concluída!</h2>
             <p className="text-3xl font-bold text-primary font-tabular mt-2">{evalScore?.toFixed(1)}%</p>
-            <p className="text-sm text-muted-foreground mt-1">{evalAnsweredCount} perguntas respondidas</p>
+            <p className="text-sm text-muted-foreground mt-1">{globalAnsweredCount} perguntas respondidas</p>
             <Button onClick={generatePDF} variant="outline" className="mt-4 press-effect" disabled={!canExport}>
               <Download className="w-4 h-4 mr-2" /> Baixar PDF da Avaliação
             </Button>
@@ -1500,194 +1546,176 @@ export default function AvaliacaoOSPage() {
           </div>
         )}
 
-        {/* Questions List */}
+        {/* Questions List - Separated by Sector */}
         {evalPerguntas.length === 0 ? (
           <div className="bg-card border border-border rounded-lg p-8 text-center">
             <p className="text-body text-muted-foreground">Nenhuma pergunta cadastrada para esta combinação de serviço e avaliação.</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {evalPerguntas.map((p, i) => {
-              const answer = evalAnswers[p.id] || null;
-              const observation = evalObservations[p.id] || "";
-              const evidenciaUrl = evalEvidencias[p.id] || null;
-              const isUploading = uploadingEvidence === p.id;
-              return (
-                <motion.div
-                  key={p.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.03 }}
-                  className={cn(
-                    "bg-card border rounded-lg transition-colors",
-                    answer === "sim" ? "border-success/30" :
-                    answer === "nao" ? "border-destructive/30" :
-                    answer === "na" ? "border-muted-foreground/20" : "border-border"
-                  )}
-                >
-                  <div className="p-4">
-                    <div className="flex items-start gap-3 mb-3">
-                      <div className={cn(
-                        "flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0",
-                        answer ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                      )}>
-                        {answer ? <Check className="w-4 h-4" /> : String(i + 1).padStart(2, "0")}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm sm:text-body font-medium text-foreground leading-relaxed">{p.pergunta}</p>
-                        <p className="text-caption text-muted-foreground mt-0.5">Nota: {p.peso}</p>
-                      </div>
-                    </div>
-
-                    {isQuestionAnswerable(p.setor_avaliado_id) ? (
-                      <>
-                        <div className="ml-11">
-                          <SegmentedControl value={answer} onChange={v => handleAnswerChange(p.id, v)} disabled={isLocked} />
-                        </div>
-
-                        <AnimatePresence>
-                          {answer === "nao" && (
-                            <motion.div
-                              initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
-                              exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }}
-                              className="overflow-hidden"
-                            >
-                              <div className="ml-11 mt-3 bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-3">
-                                <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
-                                  <AlertTriangle className="w-3.5 h-3.5" /> Descreva a irregularidade encontrada
-                                </div>
-                                <Textarea
-                                  placeholder="Descreva o problema encontrado..."
-                                  value={observation}
-                                  onChange={e => handleObservationChange(p.id, e.target.value)}
-                                  disabled={isLocked}
-                                  className="bg-card min-h-[80px] text-sm"
-                                />
-
-                                {/* Evidence photo upload - required */}
-                                <div className="space-y-2">
+          <div className="space-y-6">
+            {/* Section: My Sector Questions */}
+            {answerablePerguntas.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-primary" />
+                  Perguntas do Meu Setor ({myAnsweredCount}/{answerablePerguntas.length})
+                </h3>
+                <div className="space-y-3">
+                  {answerablePerguntas.map((p, i) => {
+                    const answer = evalAnswers[p.id] || null;
+                    const observation = evalObservations[p.id] || "";
+                    const evidenciaUrl = evalEvidencias[p.id] || null;
+                    const isUploading = uploadingEvidence === p.id;
+                    return (
+                      <motion.div key={p.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+                        className={cn("bg-card border rounded-lg transition-colors",
+                          answer === "sim" ? "border-success/30" : answer === "nao" ? "border-destructive/30" : answer === "na" ? "border-muted-foreground/20" : "border-border"
+                        )}>
+                        <div className="p-4">
+                          <div className="flex items-start gap-3 mb-3">
+                            <div className={cn("flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0", answer ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
+                              {answer ? <Check className="w-4 h-4" /> : String(i + 1).padStart(2, "0")}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm sm:text-body font-medium text-foreground leading-relaxed">{p.pergunta}</p>
+                              <p className="text-caption text-muted-foreground mt-0.5">Nota: {p.peso}</p>
+                            </div>
+                          </div>
+                          <div className="ml-11">
+                            <SegmentedControl value={answer} onChange={v => handleAnswerChange(p.id, v)} disabled={isLocked} />
+                          </div>
+                          <AnimatePresence>
+                            {answer === "nao" && (
+                              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+                                <div className="ml-11 mt-3 bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-3">
                                   <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
-                                    <Camera className="w-3.5 h-3.5" /> Evidência fotográfica *
+                                    <AlertTriangle className="w-3.5 h-3.5" /> Descreva a irregularidade encontrada
                                   </div>
-
-                                  {evidenciaUrl ? (
-                                    <div className="relative inline-block">
-                                      <img
-                                        src={evidenciaUrl}
-                                        alt="Evidência"
-                                        className="rounded-lg border border-border max-h-40 object-cover cursor-pointer"
-                                        onClick={() => window.open(evidenciaUrl, "_blank")}
-                                      />
-                                      {!isLocked && (
-                                        <button
-                                          onClick={() => handleRemoveEvidence(p.id)}
-                                          className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-md hover:bg-destructive/90 transition-colors"
-                                        >
-                                          <X className="w-3.5 h-3.5" />
-                                        </button>
-                                      )}
+                                  <Textarea placeholder="Descreva o problema encontrado..." value={observation} onChange={e => handleObservationChange(p.id, e.target.value)} disabled={isLocked} className="bg-card min-h-[80px] text-sm" />
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
+                                      <Camera className="w-3.5 h-3.5" /> Evidência fotográfica *
                                     </div>
-                                  ) : (
-                                  <div className="flex gap-2">
-                                    <label className={cn(
-                                      "flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors text-sm",
-                                      isUploading ? "border-muted-foreground/30 bg-muted/30 cursor-wait" : "border-destructive/30 hover:border-destructive/50 hover:bg-destructive/5",
-                                      isLocked && "opacity-50 cursor-not-allowed"
-                                    )}>
-                                      {isUploading ? (
-                                        <><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> Enviando...</>
-                                      ) : (
-                                        <><ImageIcon className="w-4 h-4 text-destructive" /> Galeria</>
-                                      )}
-                                      <input
-                                        type="file"
-                                        accept="image/*"
-                                        className="hidden"
-                                        disabled={isLocked || isUploading}
-                                        onChange={e => {
-                                          const file = e.target.files?.[0];
-                                          if (file) handleEvidenceUpload(p.id, file);
-                                          e.target.value = "";
-                                        }}
-                                      />
-                                    </label>
-                                    <label className={cn(
-                                      "flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors text-sm",
-                                      isUploading ? "border-muted-foreground/30 bg-muted/30 cursor-wait" : "border-destructive/30 hover:border-destructive/50 hover:bg-destructive/5",
-                                      isLocked && "opacity-50 cursor-not-allowed"
-                                    )}>
-                                      {!isUploading && (
-                                        <><Camera className="w-4 h-4 text-destructive" /> Câmera</>
-                                      )}
-                                      <input
-                                        type="file"
-                                        accept="image/*"
-                                        capture="environment"
-                                        className="hidden"
-                                        disabled={isLocked || isUploading}
-                                        onChange={e => {
-                                          const file = e.target.files?.[0];
-                                          if (file) handleEvidenceUpload(p.id, file);
-                                          e.target.value = "";
-                                        }}
-                                      />
-                                    </label>
+                                    {evidenciaUrl ? (
+                                      <div className="relative inline-block">
+                                        <img src={evidenciaUrl} alt="Evidência" className="rounded-lg border border-border max-h-40 object-cover cursor-pointer" onClick={() => window.open(evidenciaUrl, "_blank")} />
+                                        {!isLocked && (
+                                          <button onClick={() => handleRemoveEvidence(p.id)} className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-md hover:bg-destructive/90 transition-colors">
+                                            <X className="w-3.5 h-3.5" />
+                                          </button>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <div className="flex gap-2">
+                                        <label className={cn("flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors text-sm", isUploading ? "border-muted-foreground/30 bg-muted/30 cursor-wait" : "border-destructive/30 hover:border-destructive/50 hover:bg-destructive/5", isLocked && "opacity-50 cursor-not-allowed")}>
+                                          {isUploading ? <><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> Enviando...</> : <><ImageIcon className="w-4 h-4 text-destructive" /> Galeria</>}
+                                          <input type="file" accept="image/*" className="hidden" disabled={isLocked || isUploading} onChange={e => { const file = e.target.files?.[0]; if (file) handleEvidenceUpload(p.id, file); e.target.value = ""; }} />
+                                        </label>
+                                        <label className={cn("flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors text-sm", isUploading ? "border-muted-foreground/30 bg-muted/30 cursor-wait" : "border-destructive/30 hover:border-destructive/50 hover:bg-destructive/5", isLocked && "opacity-50 cursor-not-allowed")}>
+                                          {!isUploading && <><Camera className="w-4 h-4 text-destructive" /> Câmera</>}
+                                          <input type="file" accept="image/*" capture="environment" className="hidden" disabled={isLocked || isUploading} onChange={e => { const file = e.target.files?.[0]; if (file) handleEvidenceUpload(p.id, file); e.target.value = ""; }} />
+                                        </label>
+                                      </div>
+                                    )}
                                   </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Section: Other Sector Questions */}
+            {pendingPerguntas.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Eye className="w-4 h-4 text-muted-foreground" />
+                  Perguntas de Outros Setores ({pendingPerguntas.filter(p => evalAnswers[p.id] != null).length}/{pendingPerguntas.length})
+                </h3>
+                <div className="space-y-3">
+                  {pendingPerguntas.map((p, i) => {
+                    const answer = evalAnswers[p.id] || null;
+                    const other = otherEvalAnswers[p.id];
+                    return (
+                      <div key={p.id} className={cn("bg-card border rounded-lg", answer ? "border-muted-foreground/20" : "border-warning/20")}>
+                        <div className="p-4">
+                          <div className="flex items-start gap-3 mb-2">
+                            <div className={cn("flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0", answer ? "bg-muted text-muted-foreground" : "bg-warning/10 text-warning")}>
+                              {answer ? <Check className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm sm:text-body font-medium text-foreground leading-relaxed">{p.pergunta}</p>
+                              <p className="text-caption text-muted-foreground mt-0.5">
+                                Nota: {p.peso} • Setor: <strong>{(p as any)._setor_nome || "—"}</strong>
+                              </p>
+                            </div>
+                          </div>
+                          <div className="ml-11 mt-1">
+                            {answer ? (
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <span className={cn("inline-flex items-center px-2.5 py-1 rounded text-sm font-semibold border",
+                                    answer === "sim" ? "border-success/40 bg-success/10 text-success" : answer === "nao" ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-muted-foreground/30 bg-muted text-muted-foreground"
+                                  )}>
+                                    {answer === "sim" ? "SIM" : answer === "nao" ? "NÃO" : "N/A"}
+                                  </span>
+                                  {other && (
+                                    <span className="text-caption text-muted-foreground">
+                                      por <strong className="text-foreground">{other.avaliador_nome}</strong>
+                                    </span>
                                   )}
                                 </div>
+                                {other?.observacao && (
+                                  <div className="bg-muted/50 border border-border rounded p-2">
+                                    <p className="text-caption text-muted-foreground flex items-center gap-1 mb-0.5"><MessageSquare className="w-3 h-3" /> Observação:</p>
+                                    <p className="text-sm text-foreground">{other.observacao}</p>
+                                  </div>
+                                )}
+                                {other?.evidencia_url && (
+                                  <img src={other.evidencia_url} alt="Evidência" className="rounded-lg border border-border max-h-32 object-cover cursor-pointer hover:opacity-80 transition-opacity" onClick={() => window.open(other.evidencia_url!, "_blank")} />
+                                )}
                               </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </>
-                    ) : (
-                      <div className="ml-11 mt-1">
-                        {otherEvalAnswers[p.id] ? (
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <span className={cn(
-                                "inline-flex items-center px-2.5 py-1 rounded text-sm font-semibold border",
-                                otherEvalAnswers[p.id].resposta === "sim" ? "border-success/40 bg-success/10 text-success" :
-                                otherEvalAnswers[p.id].resposta === "nao" ? "border-destructive/40 bg-destructive/10 text-destructive" :
-                                "border-muted-foreground/30 bg-muted text-muted-foreground"
-                              )}>
-                                {otherEvalAnswers[p.id].resposta === "sim" ? "SIM" : otherEvalAnswers[p.id].resposta === "nao" ? "NÃO" : "N/A"}
-                              </span>
-                              <span className="text-caption text-muted-foreground">
-                                por <strong className="text-foreground">{otherEvalAnswers[p.id].avaliador_nome}</strong>
-                              </span>
-                            </div>
-                            {otherEvalAnswers[p.id].observacao && (
-                              <div className="bg-muted/50 border border-border rounded p-2">
-                                <p className="text-caption text-muted-foreground flex items-center gap-1 mb-0.5">
-                                  <MessageSquare className="w-3 h-3" /> Observação:
-                                </p>
-                                <p className="text-sm text-foreground">{otherEvalAnswers[p.id].observacao}</p>
+                            ) : (
+                              <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-warning/5 border border-warning/20">
+                                <Clock className="w-4 h-4 text-warning shrink-0" />
+                                <span className="text-sm text-muted-foreground">
+                                  PENDENTE — aguardando avaliação do setor <strong className="text-foreground">{(p as any)._setor_nome || "responsável"}</strong>
+                                </span>
                               </div>
                             )}
-                            {otherEvalAnswers[p.id].evidencia_url && (
-                              <img
-                                src={otherEvalAnswers[p.id].evidencia_url!}
-                                alt="Evidência"
-                                className="rounded-lg border border-border max-h-32 object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                                onClick={() => window.open(otherEvalAnswers[p.id].evidencia_url!, "_blank")}
-                              />
-                            )}
                           </div>
-                        ) : (
-                          <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-warning/5 border border-warning/20">
-                            <Clock className="w-4 h-4 text-warning shrink-0" />
-                            <span className="text-sm text-muted-foreground">
-                              PENDENTE — aguardando avaliação do setor <strong className="text-foreground">{(p as any)._setor_nome || "responsável"}</strong>
-                            </span>
-                          </div>
-                        )}
+                        </div>
                       </div>
-                    )}
-                  </div>
-                </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Pendências Summary */}
+            {(() => {
+              const pendentes = evalPerguntas.filter(p => evalAnswers[p.id] == null);
+              if (pendentes.length === 0) return null;
+              return (
+                <div className="bg-warning/5 border border-warning/20 rounded-lg p-4">
+                  <h3 className="text-sm font-semibold text-warning mb-2 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" /> Pendências ({pendentes.length})
+                  </h3>
+                  <ul className="space-y-1">
+                    {pendentes.map(p => (
+                      <li key={p.id} className="text-caption text-muted-foreground">
+                        • {p.pergunta} <span className="text-warning">({(p as any)._setor_nome || "—"})</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               );
-            })}
+            })()}
           </div>
         )}
 
@@ -1696,14 +1724,14 @@ export default function AvaliacaoOSPage() {
           <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur border-t border-border px-3 py-2 z-30">
             <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-xs">
-                <Progress value={evalProgressPercent} className="h-1.5 w-20 sm:w-28" />
-                <span className="font-medium text-foreground font-tabular">{evalProgressPercent}%</span>
+                <Progress value={globalProgressPercent} className="h-1.5 w-20 sm:w-28" />
+                <span className="font-medium text-foreground font-tabular">{globalProgressPercent}%</span>
                 {!isLocked && autoSaving && (
                   <span className="text-muted-foreground flex items-center gap-1">
                     <Loader2 className="w-3 h-3 animate-spin" /> Salvando
                   </span>
                 )}
-                {!isLocked && !autoSaving && evalAnsweredCount > 0 && (
+                {!isLocked && !autoSaving && globalAnsweredCount > 0 && (
                   <span className="text-success flex items-center gap-1">
                     <Check className="w-3 h-3" /> Salvo
                   </span>
@@ -1716,7 +1744,7 @@ export default function AvaliacaoOSPage() {
                   </Button>
                 )}
                 {!isLocked && (
-                  <Button size="sm" onClick={handleFinalizeEvaluation} disabled={evalProgressPercent < 100 || evalSubmitting} className="press-effect h-8 text-xs px-3">
+                  <Button size="sm" onClick={handleFinalizeEvaluation} disabled={myProgressPercent < 100 || evalSubmitting} className="press-effect h-8 text-xs px-3">
                     {evalSubmitting && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
                     Finalizar
                   </Button>

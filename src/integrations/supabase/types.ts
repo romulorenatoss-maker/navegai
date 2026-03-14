@@ -698,32 +698,41 @@ export type Database = {
       }
       respostas_avaliacao: {
         Row: {
-          avaliacao_id: string
+          avaliacao_id: string | null
+          avaliador_id: string | null
+          avaliador_setor_id: string | null
           created_at: string
           evidencia_url: string | null
           id: string
           is_audit_only: boolean
           observacao: string | null
+          ordem_servico_id: string | null
           pergunta_id: string
           resposta: string | null
         }
         Insert: {
-          avaliacao_id: string
+          avaliacao_id?: string | null
+          avaliador_id?: string | null
+          avaliador_setor_id?: string | null
           created_at?: string
           evidencia_url?: string | null
           id?: string
           is_audit_only?: boolean
           observacao?: string | null
+          ordem_servico_id?: string | null
           pergunta_id: string
           resposta?: string | null
         }
         Update: {
-          avaliacao_id?: string
+          avaliacao_id?: string | null
+          avaliador_id?: string | null
+          avaliador_setor_id?: string | null
           created_at?: string
           evidencia_url?: string | null
           id?: string
           is_audit_only?: boolean
           observacao?: string | null
+          ordem_servico_id?: string | null
           pergunta_id?: string
           resposta?: string | null
         }
@@ -733,6 +742,27 @@ export type Database = {
             columns: ["avaliacao_id"]
             isOneToOne: false
             referencedRelation: "avaliacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "respostas_avaliacao_avaliador_id_fkey"
+            columns: ["avaliador_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "respostas_avaliacao_avaliador_setor_id_fkey"
+            columns: ["avaliador_setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "respostas_avaliacao_ordem_servico_id_fkey"
+            columns: ["ordem_servico_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
             referencedColumns: ["id"]
           },
           {
