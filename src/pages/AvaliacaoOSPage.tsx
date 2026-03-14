@@ -668,7 +668,8 @@ export default function AvaliacaoOSPage() {
   // Create OS from form + start evaluation
   const handleCreateAndStart = async () => {
     if (!profile) return;
-    if (!tipoServicoId || !selectedTipoAvaliacaoId) { toast.error("Selecione tipo de serviço e avaliação."); return; }
+    if (!tipoServicoId) { toast.error("Selecione o tipo de serviço."); return; }
+    if (!atendenteId && !tecnicoId) { toast.error("Selecione pelo menos um colaborador avaliado."); return; }
 
     try {
       const num = formOsNumero.trim();
