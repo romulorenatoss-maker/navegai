@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,20 +11,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import type { Tables } from "@/integrations/supabase/types";
 
 type Pergunta = Tables<"perguntas_avaliacao">;
-
-// Group questions by evaluator and sum weights
-function calcPesoByAvaliador(perguntas: any[]): Map<string, { nome: string; total: number; count: number }> {
-  const map = new Map<string, { nome: string; total: number; count: number }>();
-  for (const p of perguntas) {
-    const key = p.avaliador_id || "todos";
-    const nome = (p as any).profiles?.nome || "Todos";
-    const current = map.get(key) || { nome, total: 0, count: 0 };
-    current.total += p.peso;
-    current.count += 1;
-    map.set(key, current);
-  }
-  return map;
-}
 
 export default function PerguntasPage() {
   const queryClient = useQueryClient();
@@ -36,6 +22,9 @@ export default function PerguntasPage() {
   const [tipoAvaliado, setTipoAvaliado] = useState("atendente");
   const [peso, setPeso] = useState("1");
   const [ordem, setOrdem] = useState("0");
+
+  // Filter state
+  const [filtroTipoServico, setFiltroTipoServico] = useState("todos");
 
   const { data: perguntas = [], isLoading } = useQuery({
     queryKey: ["perguntas_avaliacao"],
@@ -67,6 +56,32 @@ export default function PerguntasPage() {
     },
   });
 
+  // Summary cards grouped by tipo_servico
+  const summaryByTipo = useMemo(() => {
+    const map = new Map<string, { nome: string; count: number; totalPeso: number }>();
+    for (const p of perguntas) {
+      const key = p.tipo_servico_id || "global";
+      const nome = (p as any).tipos_servico?.nome || "Global (todos)";
+      const current = map.get(key) || { nome, count: 0, totalPeso: 0 };
+      current.count += 1;
+      current.totalPeso += p.peso;
+      map.set(key, current);
+    }
+    return map;
+  }, [perguntas]);
+
+  // Filtered questions
+  const perguntasFiltradas = useMemo(() => {
+    if (filtroTipoServico === "todos") return perguntas;
+    if (filtroTipoServico === "global") return perguntas.filter((p) => !p.tipo_servico_id);
+    return perguntas.filter((p) => p.tipo_servico_id === filtroTipoServico);
+  }, [perguntas, filtroTipoServico]);
+
+  const somaPesoFiltrado = useMemo(
+    () => perguntasFiltradas.reduce((acc, p) => acc + p.peso, 0),
+    [perguntasFiltradas]
+  );
+
   const upsert = useMutation({
     mutationFn: async () => {
       const payload = {
@@ -74,7 +89,7 @@ export default function PerguntasPage() {
         tipo_servico_id: tipoServicoId || null,
         avaliador_id: avaliadorId || null,
         tipo_avaliado: tipoAvaliado,
-        peso: parseInt(peso),
+        peso: Math.min(100, Math.max(1, parseInt(peso) || 1)),
         ordem: parseInt(ordem),
       };
       if (editing) {
@@ -122,20 +137,50 @@ export default function PerguntasPage() {
         <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Nova Pergunta</Button>
       </div>
 
-      {/* Weight summary by evaluator */}
+      {/* Summary cards by tipo_servico */}
       {perguntas.length > 0 && (
-        <div className="flex flex-wrap gap-3 mb-4">
-          {Array.from(calcPesoByAvaliador(perguntas).entries()).map(([key, val]) => (
-            <div key={key} className="bg-card border border-border rounded-lg px-4 py-2.5 shadow-card flex items-center gap-3">
-              <span className="text-body font-medium text-foreground">{val.nome}</span>
-              <span className="text-caption text-muted-foreground">{val.count} perguntas</span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-caption font-semibold border badge-active font-tabular">
-                Peso total: {val.total}
-              </span>
-            </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
+          {Array.from(summaryByTipo.entries()).map(([key, val]) => (
+            <button
+              key={key}
+              onClick={() => setFiltroTipoServico(key === filtroTipoServico ? "todos" : key)}
+              className={`bg-card border rounded-lg px-4 py-3 shadow-card text-left transition-all hover:shadow-md press-effect ${
+                filtroTipoServico === key ? "border-primary ring-1 ring-primary" : "border-border"
+              }`}
+            >
+              <p className="text-body font-semibold text-foreground truncate">{val.nome}</p>
+              <div className="flex items-center gap-3 mt-1">
+                <span className="text-caption text-muted-foreground">{val.count} pergunta{val.count !== 1 ? "s" : ""}</span>
+                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-caption font-bold border font-tabular ${
+                  val.totalPeso >= 100 ? "badge-complete" : val.totalPeso >= 50 ? "badge-active" : "badge-pending"
+                }`}>
+                  {val.totalPeso} pts
+                </span>
+              </div>
+            </button>
           ))}
         </div>
       )}
+
+      {/* Filter bar */}
+      <div className="flex items-center gap-3 mb-4">
+        <Filter className="w-4 h-4 text-muted-foreground" />
+        <Select value={filtroTipoServico} onValueChange={setFiltroTipoServico}>
+          <SelectTrigger className="w-64">
+            <SelectValue placeholder="Filtrar por tipo de serviço" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos os tipos</SelectItem>
+            <SelectItem value="global">Global (sem tipo)</SelectItem>
+            {tipos.map((t) => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {filtroTipoServico !== "todos" && (
+          <span className="text-caption text-muted-foreground">
+            {perguntasFiltradas.length} pergunta{perguntasFiltradas.length !== 1 ? "s" : ""} • Soma total: <span className="font-bold text-foreground">{somaPesoFiltrado} pts</span>
+          </span>
+        )}
+      </div>
 
       <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
         <div className="overflow-x-auto">
@@ -145,7 +190,7 @@ export default function PerguntasPage() {
                 <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 w-8">#</th>
                 <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Pergunta</th>
                 <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Avaliador</th>
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Serviço</th>
+                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Tipo Serviço</th>
                 <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Avaliado</th>
                 <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Peso</th>
                 <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Ações</th>
@@ -154,20 +199,20 @@ export default function PerguntasPage() {
             <tbody className="divide-y divide-border">
               {isLoading ? (
                 <tr><td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">Carregando...</td></tr>
-              ) : perguntas.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhuma pergunta cadastrada.</td></tr>
-              ) : perguntas.map((p, i) => (
+              ) : perguntasFiltradas.length === 0 ? (
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhuma pergunta encontrada.</td></tr>
+              ) : perguntasFiltradas.map((p, i) => (
                 <tr key={p.id} className="hover:bg-muted/50 transition-colors">
                   <td className="px-4 py-3 text-caption text-muted-foreground font-tabular">{String(i + 1).padStart(2, "0")}</td>
                   <td className="px-4 py-3 text-body font-medium text-foreground">{p.pergunta}</td>
                   <td className="px-4 py-3 text-body text-muted-foreground">{(p as any).profiles?.nome || "Todos"}</td>
-                  <td className="px-4 py-3 text-body text-muted-foreground">{(p as any).tipos_servico?.nome || "—"}</td>
+                  <td className="px-4 py-3 text-body text-muted-foreground">{(p as any).tipos_servico?.nome || "Global"}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${p.tipo_avaliado === "atendente" ? "badge-active" : "badge-pending"}`}>
                       {p.tipo_avaliado}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-center text-body font-medium text-foreground font-tabular">{p.peso}</td>
+                  <td className="px-4 py-3 text-center text-body font-semibold text-foreground font-tabular">{p.peso}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <Button variant="ghost" size="sm" onClick={() => openEdit(p)} className="press-effect"><Pencil className="w-4 h-4" /></Button>
@@ -177,12 +222,14 @@ export default function PerguntasPage() {
                 </tr>
               ))}
             </tbody>
-            {perguntas.length > 0 && (
+            {perguntasFiltradas.length > 0 && (
               <tfoot>
-                <tr className="border-t border-border bg-muted/30">
-                  <td colSpan={5} className="px-4 py-3 text-body font-semibold text-foreground text-right">Peso Total Geral:</td>
-                  <td className="px-4 py-3 text-center text-body font-bold text-primary font-tabular">
-                    {perguntas.reduce((acc, p) => acc + p.peso, 0)}
+                <tr className="border-t-2 border-primary/20 bg-muted/30">
+                  <td colSpan={5} className="px-4 py-3 text-body font-semibold text-foreground text-right">
+                    Soma Total ({perguntasFiltradas.length} perguntas):
+                  </td>
+                  <td className="px-4 py-3 text-center text-subhead font-bold text-primary font-tabular">
+                    {somaPesoFiltrado}
                   </td>
                   <td></td>
                 </tr>
@@ -231,8 +278,14 @@ export default function PerguntasPage() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5"><Label>Peso (1-10)</Label><Input type="number" min={1} max={10} value={peso} onChange={(e) => setPeso(e.target.value)} required /></div>
-              <div className="space-y-1.5"><Label>Ordem</Label><Input type="number" min={0} value={ordem} onChange={(e) => setOrdem(e.target.value)} required /></div>
+              <div className="space-y-1.5">
+                <Label>Peso</Label>
+                <Input type="number" min={1} max={100} value={peso} onChange={(e) => setPeso(e.target.value)} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Ordem</Label>
+                <Input type="number" min={0} value={ordem} onChange={(e) => setOrdem(e.target.value)} required />
+              </div>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={closeDialog}>Cancelar</Button>
