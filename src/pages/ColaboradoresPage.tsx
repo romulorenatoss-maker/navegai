@@ -190,7 +190,7 @@ export default function ColaboradoresPage() {
     setDialogOpen(true);
   };
   const openEdit = (p: Profile) => {
-    setEditing(p); setNome(p.nome); setEmail(p.email); setCargo(p.cargo || "atendente"); setSelectedSetores([]);
+    setEditing(p); setNome(p.nome); setEmail(p.email); setCargo(p.cargo || "avaliado"); setSelectedSetores([]);
     setDialogOpen(true);
   };
   const closeDialog = () => { setDialogOpen(false); setEditing(null); };
