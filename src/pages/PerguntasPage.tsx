@@ -2,12 +2,14 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Filter } from "lucide-react";
+import { Plus, Pencil, Trash2, Filter, AlertTriangle, Camera, FileVideo, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AnimatePresence, motion } from "framer-motion";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Pergunta = Tables<"perguntas_avaliacao">;
