@@ -451,9 +451,10 @@ export default function DashboardPage() {
       if (!osInPeriod?.length) { setTecnicoMedias([]); setSetorMedias([]); return; }
 
       const osIds = osInPeriod.map(o => o.id);
+      // Fetch avaliacoes WITH avaliador_id to determine sector
       const { data: avaliacoes } = await supabase
         .from("avaliacoes")
-        .select("nota_final, ordem_servico_id")
+        .select("nota_final, ordem_servico_id, avaliador_id")
         .in("ordem_servico_id", osIds)
         .eq("concluida", true)
         .not("nota_final", "is", null);
@@ -463,44 +464,72 @@ export default function DashboardPage() {
       const osMap: Record<string, typeof osInPeriod[0]> = {};
       osInPeriod.forEach(o => { osMap[o.id] = o; });
 
-      const tecMap: Record<string, { notas: number[] }> = {};
+      // Get all avaliador IDs to resolve their sectors
+      const avaliadorIds = [...new Set(avaliacoes.map((a: any) => a.avaliador_id))];
+      const [avaliadorSetorLinksRes, avaliadorProfilesRes, setoresRes] = await Promise.all([
+        supabase.from("colaborador_setores").select("profile_id, setor_id").in("profile_id", avaliadorIds),
+        supabase.from("profiles").select("id, setor_id").in("id", avaliadorIds),
+        supabase.from("setores").select("id, nome").eq("ativo", true),
+      ]);
+
+      const setorNames: Record<string, string> = {};
+      (setoresRes.data || []).forEach(s => { setorNames[s.id] = s.nome; });
+
+      // Build avaliador → setor map
+      const avaliadorSetorMap: Record<string, string | null> = {};
+      (avaliadorProfilesRes.data || []).forEach(p => { avaliadorSetorMap[p.id] = p.setor_id; });
+      (avaliadorSetorLinksRes.data || []).forEach(l => { avaliadorSetorMap[l.profile_id] = l.setor_id; });
+
+      // Find setor IDs by name for mapping
+      const setorIdByName: Record<string, string> = {};
+      (setoresRes.data || []).forEach(s => { setorIdByName[s.nome.toLowerCase()] = s.id; });
+
+      // Map each avaliacao score to the correct evaluated employee based on avaliador's sector
+      const employeeScores: Record<string, { notas: number[] }> = {};
       avaliacoes.forEach((a: any) => {
         const os = osMap[a.ordem_servico_id];
-        if (!os) return;
-        const colabId = os.colaborador_avaliado_id || os.tecnico_id || os.atendente_id;
-        if (!colabId || a.nota_final == null) return;
-        if (!tecMap[colabId]) tecMap[colabId] = { notas: [] };
-        tecMap[colabId].notas.push(a.nota_final);
+        if (!os || a.nota_final == null) return;
+
+        const avaliadorSetor = avaliadorSetorMap[a.avaliador_id];
+        const avaliadorSetorNome = avaliadorSetor ? (setorNames[avaliadorSetor] || "").toLowerCase() : "";
+
+        let targetColabId: string | null = null;
+        if (avaliadorSetorNome.includes("atendimento") && os.atendente_id) {
+          targetColabId = os.atendente_id;
+        } else if (avaliadorSetorNome.includes("cnico") && os.tecnico_id) {
+          // "técnico" or "tecnico"
+          targetColabId = os.tecnico_id;
+        } else {
+          // Fallback: use colaborador_avaliado_id or whichever is available
+          targetColabId = os.colaborador_avaliado_id || os.tecnico_id || os.atendente_id;
+        }
+
+        if (!targetColabId) return;
+        if (!employeeScores[targetColabId]) employeeScores[targetColabId] = { notas: [] };
+        employeeScores[targetColabId].notas.push(a.nota_final);
       });
 
-      const colabIds = Object.keys(tecMap);
+      const colabIds = Object.keys(employeeScores);
       if (colabIds.length === 0) { setTecnicoMedias([]); setSetorMedias([]); return; }
 
-      const { data: profiles } = await supabase.from("profiles").select("id, nome, setor_id").in("id", colabIds);
-      const { data: setorLinks } = await supabase.from("colaborador_setores").select("profile_id, setor_id").in("profile_id", colabIds);
+      // Fetch evaluated employee profiles and their sectors
+      const [profilesRes, colabSetorLinksRes] = await Promise.all([
+        supabase.from("profiles").select("id, nome, setor_id").in("id", colabIds),
+        supabase.from("colaborador_setores").select("profile_id, setor_id").in("profile_id", colabIds),
+      ]);
 
       const profileSetores: Record<string, string[]> = {};
-      setorLinks?.forEach((l) => {
+      (colabSetorLinksRes.data || []).forEach((l) => {
         if (!profileSetores[l.profile_id]) profileSetores[l.profile_id] = [];
         profileSetores[l.profile_id].push(l.setor_id);
       });
-      profiles?.forEach((p) => {
+      (profilesRes.data || []).forEach((p) => {
         if (!profileSetores[p.id] && p.setor_id) profileSetores[p.id] = [p.setor_id];
       });
 
-      const allSetorIds = new Set<string>();
-      profiles?.forEach((p) => { if (p.setor_id) allSetorIds.add(p.setor_id); });
-      setorLinks?.forEach((l) => allSetorIds.add(l.setor_id));
-
-      let setorNames: Record<string, string> = {};
-      if (allSetorIds.size > 0) {
-        const { data: setores } = await supabase.from("setores").select("id, nome").in("id", [...allSetorIds]);
-        setores?.forEach((s) => { setorNames[s.id] = s.nome; });
-      }
-
       const tecMedias: TecnicoMedia[] = [];
-      profiles?.forEach((p) => {
-        const entry = tecMap[p.id];
+      (profilesRes.data || []).forEach((p) => {
+        const entry = employeeScores[p.id];
         if (entry) {
           const avg = entry.notas.reduce((a, b) => a + b, 0) / entry.notas.length;
           const pSetores = profileSetores[p.id] || [];
@@ -511,19 +540,20 @@ export default function DashboardPage() {
       tecMedias.sort((a, b) => b.media - a.media);
       setTecnicoMedias(tecMedias);
 
-      const setorScoreMap: Record<string, { nome: string; notas: number[] }> = {};
-      Object.entries(tecMap).forEach(([profileId, entry]) => {
-        const setores = profileSetores[profileId] || [];
-        setores.forEach((setorId) => {
-          if (!setorScoreMap[setorId]) setorScoreMap[setorId] = { nome: setorNames[setorId] || "Sem setor", notas: [] };
-          setorScoreMap[setorId].notas.push(...entry.notas);
+      // Sector averages: average of each employee's individual average within the sector
+      const setorEmployeeAvgs: Record<string, { nome: string; avgs: number[] }> = {};
+      tecMedias.forEach(t => {
+        const pSetores = profileSetores[t.profile_id] || [];
+        pSetores.forEach(setorId => {
+          if (!setorEmployeeAvgs[setorId]) setorEmployeeAvgs[setorId] = { nome: setorNames[setorId] || "Sem setor", avgs: [] };
+          setorEmployeeAvgs[setorId].avgs.push(t.media);
         });
       });
 
-      const sMedias: SetorMedia[] = Object.entries(setorScoreMap).map(([id, v]) => ({
+      const sMedias: SetorMedia[] = Object.entries(setorEmployeeAvgs).map(([id, v]) => ({
         setor_id: id, setor_nome: v.nome,
-        media: v.notas.reduce((a, b) => a + b, 0) / v.notas.length,
-        total_avaliacoes: v.notas.length,
+        media: v.avgs.reduce((a, b) => a + b, 0) / v.avgs.length,
+        total_avaliacoes: tecMedias.filter(t => (profileSetores[t.profile_id] || []).includes(id)).reduce((acc, t) => acc + t.total_avaliacoes, 0),
       }));
       sMedias.sort((a, b) => b.media - a.media);
       setSetorMedias(sMedias);
