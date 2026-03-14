@@ -48,12 +48,21 @@ const statusLabel: Record<string, { text: string; badge: string }> = {
 };
 
 export default function AvaliacaoOSPage() {
+  const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const {
     loading, os, avaliacao, questions,
     searchOS, updateAnswer, updateObservation,
     concludeAvaliacao, answeredCount, totalScore, maxScore,
   } = useAvaliacaoOS();
+
+  useEffect(() => {
+    const osParam = searchParams.get("os");
+    if (osParam) {
+      setSearchQuery(osParam);
+      searchOS(osParam, false);
+    }
+  }, []);
 
   const handleSearch = () => {
     if (searchQuery.trim()) searchOS(searchQuery.trim(), false);
