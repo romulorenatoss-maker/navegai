@@ -91,6 +91,8 @@ export default function TiposServicoPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tipos_servico"] });
       queryClient.invalidateQueries({ queryKey: ["tsc_links"] });
+      queryClient.invalidateQueries({ queryKey: ["tsc_display"] });
+      queryClient.invalidateQueries({ queryKey: ["tipo_servico_breakdown"] });
       toast.success(editing ? "Tipo de serviço atualizado." : "Tipo de serviço criado.");
       closeDialog();
     },
