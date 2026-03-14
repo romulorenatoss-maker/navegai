@@ -1491,7 +1491,7 @@ export default function AvaliacaoOSPage() {
                     {isQuestionAnswerable(p.setor_avaliado_id) ? (
                       <>
                         <div className="ml-11">
-                          <SegmentedControl value={answer} onChange={v => handleAnswerChange(p.id, v)} disabled={evalFinalized} />
+                          <SegmentedControl value={answer} onChange={v => handleAnswerChange(p.id, v)} disabled={isLocked} />
                         </div>
 
                         <AnimatePresence>
