@@ -474,8 +474,8 @@ export default function DashboardPage() {
   };
 
   const cards = [
-    { label: "Pendentes", value: osAbertas.length, icon: ClipboardCheck, color: "text-warning", filter: "aberta" as const },
-    { label: "Em Andamento", value: osEmAndamento.length, icon: Clock, color: "text-primary", filter: "em_andamento" as const },
+    { label: "Total de OS", value: allOS.length, icon: ClipboardCheck, color: "text-foreground", filter: "all" as const },
+    { label: "Em Andamento", value: osEmAndamento.length + osAbertas.length, icon: Clock, color: "text-primary", filter: "em_andamento" as const },
     { label: "Concluídas", value: osConcluidas.length, icon: CheckCircle2, color: "text-success", filter: "concluida" as const },
   ];
 
