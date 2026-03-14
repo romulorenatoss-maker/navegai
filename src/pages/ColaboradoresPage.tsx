@@ -197,12 +197,12 @@ export default function ColaboradoresPage() {
   });
 
   const openCreate = () => {
-    setEditing(null); setNome(""); setEmail(""); setCargo("atendente"); setSetorId(""); setSenha("");
+    setEditing(null); setNome(""); setEmail(""); setCargo("atendente"); setSelectedSetores([]); setSenha("");
     setSelectedTiposServico([]);
     setDialogOpen(true);
   };
   const openEdit = (p: Profile) => {
-    setEditing(p); setNome(p.nome); setEmail(p.email); setCargo(p.cargo || "atendente"); setSetorId(p.setor_id || "");
+    setEditing(p); setNome(p.nome); setEmail(p.email); setCargo(p.cargo || "atendente"); setSelectedSetores([]);
     setSelectedTiposServico([]);
     setDialogOpen(true);
   };
