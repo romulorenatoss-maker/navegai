@@ -74,18 +74,6 @@ interface SectorPending {
 }
 
 // --- Helpers ---
-function getCompetenceMonths(): { value: string; label: string }[] {
-  const months = [];
-  const now = new Date();
-  for (let i = 0; i < 12; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push({
-      value: format(d, "yyyy-MM"),
-      label: format(d, "MMMM yyyy", { locale: ptBR }),
-    });
-  }
-  return months;
-}
 
 function getScoreColor(score: number): string {
   if (score >= 80) return "text-success";
