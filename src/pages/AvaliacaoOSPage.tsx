@@ -643,7 +643,7 @@ export default function AvaliacaoOSPage() {
                   i <= step ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
                   {i < step ? <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : i + 1}
                 </div>
-                <div className="hidden md:block min-w-0">
+                <div className="hidden sm:block min-w-0 max-w-[80px] lg:max-w-none">
                   <p className={cn("text-caption font-medium truncate", i === step ? "text-foreground" : "text-muted-foreground")}>{s.label}</p>
                 </div>
                 {i < STEPS.length - 1 && <div className={cn("flex-1 h-px mx-0.5 sm:mx-1 min-w-2", i < step ? "bg-primary" : "bg-border")} />}
