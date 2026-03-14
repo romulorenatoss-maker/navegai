@@ -261,14 +261,21 @@ export default function DesempenhoColaboradorPage() {
   });
 
   // OS Detail dialog
-  const { data: osDetail } = useQuery({
+  const { data: osDetailData } = useQuery({
     queryKey: ["perf_os_detail", selectedOsId],
     queryFn: async () => {
       if (!selectedOsId) return null;
+
+      // Fetch OS info for cliente_nome/cpf
+      const { data: osInfo } = await supabase.from("ordens_servico")
+        .select("cliente_nome, cliente_cpf, numero_os")
+        .eq("id", selectedOsId)
+        .single();
+
       const { data: avals } = await supabase.from("avaliacoes")
         .select("id, avaliador_id, tipo_avaliacao_id, nota_final, concluida, concluida_em")
         .eq("ordem_servico_id", selectedOsId);
-      if (!avals?.length) return null;
+      if (!avals?.length) return { osInfo, avaliacoes: [] };
 
       const avalIds = avals.map(a => a.id);
       const { data: respostas } = await supabase.from("respostas_avaliacao")
@@ -297,26 +304,31 @@ export default function DesempenhoColaboradorPage() {
         tas?.forEach(t => { taNames[t.id] = t.nome; });
       }
 
-      return avals.map(a => ({
-        id: a.id,
-        avaliador_nome: avaliadorNames[a.avaliador_id] || "—",
-        tipo_avaliacao_nome: a.tipo_avaliacao_id ? taNames[a.tipo_avaliacao_id] || "—" : "—",
-        nota_final: a.nota_final,
-        concluida: a.concluida,
-        concluida_em: a.concluida_em,
-        respostas: (respostas || [])
-          .filter(r => r.avaliacao_id === a.id)
-          .map(r => ({
-            ...r,
-            pergunta: perguntaMap[r.pergunta_id]?.pergunta || "—",
-            peso: perguntaMap[r.pergunta_id]?.peso || 0,
-            ordem: perguntaMap[r.pergunta_id]?.ordem || 0,
-          }))
-          .sort((x, y) => x.ordem - y.ordem),
-      }));
+      return {
+        osInfo,
+        avaliacoes: avals.map(a => ({
+          id: a.id,
+          avaliador_nome: avaliadorNames[a.avaliador_id] || "—",
+          tipo_avaliacao_nome: a.tipo_avaliacao_id ? taNames[a.tipo_avaliacao_id] || "—" : "—",
+          nota_final: a.nota_final,
+          concluida: a.concluida,
+          concluida_em: a.concluida_em,
+          respostas: (respostas || [])
+            .filter(r => r.avaliacao_id === a.id)
+            .map(r => ({
+              ...r,
+              pergunta: perguntaMap[r.pergunta_id]?.pergunta || "—",
+              peso: perguntaMap[r.pergunta_id]?.peso || 0,
+              ordem: perguntaMap[r.pergunta_id]?.ordem || 0,
+            }))
+            .sort((x, y) => x.ordem - y.ordem),
+        })),
+      };
     },
     enabled: !!selectedOsId,
   });
+  const osDetail = osDetailData?.avaliacoes;
+  const osDetailInfo = osDetailData?.osInfo;
 
   // Delete OS handler
   const promptDeleteOS = (osId: string, osNumero: string) => {
