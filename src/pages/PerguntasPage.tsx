@@ -157,112 +157,102 @@ export default function PerguntasPage() {
         <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Nova Pergunta</Button>
       </div>
 
-      {/* Filter checkboxes */}
-      {perguntas.length > 0 && (
-        <div className="bg-card border border-border rounded-lg p-4 shadow-card mb-4">
-          <p className="text-caption text-muted-foreground uppercase tracking-wider mb-2">Filtrar por Tipo de Serviço</p>
-          <div className="flex flex-wrap gap-3">
-            {Array.from(summaryByTipo.entries()).map(([key, val]) => (
-              <label
-                key={key}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md border cursor-pointer transition-all press-effect ${
-                  filtrosTipoServico.has(key) ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:bg-muted/50"
-                }`}
-              >
-                <Checkbox
-                  checked={filtrosTipoServico.has(key)}
-                  onCheckedChange={() => toggleFiltro(key)}
-                />
-                <span className="text-body font-medium text-foreground">{val.nome}</span>
-                <span className="text-caption text-muted-foreground">({val.count})</span>
-              </label>
-            ))}
-          </div>
+      {/* Filter list with checkboxes */}
+      <div className="bg-card border border-border rounded-lg shadow-card mb-4">
+        <div className="px-4 py-3 border-b border-border">
+          <p className="text-caption text-muted-foreground uppercase tracking-wider font-medium">Tipos de Serviço</p>
         </div>
-      )}
-
-      {/* Summary cards - only when filters are selected */}
-      {hasFilters && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
-          {Array.from(summaryByTipo.entries())
-            .filter(([key]) => filtrosTipoServico.has(key))
-            .map(([key, val]) => (
-              <div key={key} className="bg-card border border-primary/30 rounded-lg px-4 py-3 shadow-card">
-                <p className="text-body font-semibold text-foreground truncate">{val.nome}</p>
-                <div className="flex items-center gap-3 mt-1">
-                  <span className="text-caption text-muted-foreground">{val.count} pergunta{val.count !== 1 ? "s" : ""}</span>
-                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-caption font-bold border font-tabular ${
-                    val.totalPeso >= 100 ? "badge-complete" : val.totalPeso >= 50 ? "badge-active" : "badge-pending"
-                  }`}>
-                    {val.totalPeso} pts
-                  </span>
-                </div>
-              </div>
-            ))}
-          <div className="bg-muted/30 border border-border rounded-lg px-4 py-3 flex items-center justify-center">
-            <span className="text-body font-semibold text-foreground">
-              Total: {somaPesoFiltrado} pts ({perguntasFiltradas.length} perguntas)
-            </span>
-          </div>
-        </div>
-      )}
-
-      <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 w-8">#</th>
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Pergunta</th>
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Avaliador</th>
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Tipo Serviço</th>
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Avaliado</th>
-                <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Peso</th>
-                <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {isLoading ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">Carregando...</td></tr>
-              ) : perguntasFiltradas.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhuma pergunta encontrada.</td></tr>
-              ) : perguntasFiltradas.map((p, i) => (
-                <tr key={p.id} className="hover:bg-muted/50 transition-colors">
-                  <td className="px-4 py-3 text-caption text-muted-foreground font-tabular">{String(i + 1).padStart(2, "0")}</td>
-                  <td className="px-4 py-3 text-body font-medium text-foreground">{p.pergunta}</td>
-                  <td className="px-4 py-3 text-body text-muted-foreground">{(p as any).profiles?.nome || "Todos"}</td>
-                  <td className="px-4 py-3 text-body text-muted-foreground">{(p as any).tipos_servico?.nome || "Global"}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${p.tipo_avaliado === "atendente" ? "badge-active" : "badge-pending"}`}>
-                      {p.tipo_avaliado}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-center text-body font-semibold text-foreground font-tabular">{p.peso}</td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(p)} className="press-effect"><Pencil className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="sm" onClick={() => remove.mutate(p.id)} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            {perguntasFiltradas.length > 0 && (
-              <tfoot>
-                <tr className="border-t-2 border-primary/20 bg-muted/30">
-                  <td colSpan={5} className="px-4 py-3 text-body font-semibold text-foreground text-right">
-                    Soma Total ({perguntasFiltradas.length} perguntas):
-                  </td>
-                  <td className="px-4 py-3 text-center text-subhead font-bold text-primary font-tabular">
-                    {somaPesoFiltrado}
-                  </td>
-                  <td></td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
+        <div className="divide-y divide-border">
+          {Array.from(summaryByTipo.entries()).map(([key, val]) => (
+            <label
+              key={key}
+              className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors ${
+                filtrosTipoServico.has(key) ? "bg-primary/5" : "hover:bg-muted/50"
+              }`}
+            >
+              <Checkbox
+                checked={filtrosTipoServico.has(key)}
+                onCheckedChange={() => toggleFiltro(key)}
+              />
+              <span className="text-body font-medium text-foreground flex-1">{val.nome}</span>
+              <span className="text-caption text-muted-foreground font-tabular">{val.count} pergunta{val.count !== 1 ? "s" : ""}</span>
+              <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-caption font-bold border font-tabular ${
+                val.totalPeso >= 100 ? "badge-complete" : val.totalPeso >= 50 ? "badge-active" : "badge-pending"
+              }`}>
+                {val.totalPeso} pts
+              </span>
+            </label>
+          ))}
+          {summaryByTipo.size === 0 && !isLoading && (
+            <p className="px-4 py-6 text-center text-body text-muted-foreground">Nenhuma pergunta cadastrada.</p>
+          )}
         </div>
       </div>
+
+      {/* Questions table - only when filters selected */}
+      {hasFilters && (
+        <>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-body font-medium text-foreground">
+              {perguntasFiltradas.length} pergunta{perguntasFiltradas.length !== 1 ? "s" : ""} • <span className="text-primary font-bold">{somaPesoFiltrado} pts</span>
+            </p>
+          </div>
+          <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 w-8">#</th>
+                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Pergunta</th>
+                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Avaliador</th>
+                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Tipo Serviço</th>
+                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Avaliado</th>
+                    <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Peso</th>
+                    <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {perguntasFiltradas.length === 0 ? (
+                    <tr><td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhuma pergunta encontrada.</td></tr>
+                  ) : perguntasFiltradas.map((p, i) => (
+                    <tr key={p.id} className="hover:bg-muted/50 transition-colors">
+                      <td className="px-4 py-3 text-caption text-muted-foreground font-tabular">{String(i + 1).padStart(2, "0")}</td>
+                      <td className="px-4 py-3 text-body font-medium text-foreground">{p.pergunta}</td>
+                      <td className="px-4 py-3 text-body text-muted-foreground">{(p as any).profiles?.nome || "Todos"}</td>
+                      <td className="px-4 py-3 text-body text-muted-foreground">{(p as any).tipos_servico?.nome || "Global"}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${p.tipo_avaliado === "atendente" ? "badge-active" : "badge-pending"}`}>
+                          {p.tipo_avaliado}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center text-body font-semibold text-foreground font-tabular">{p.peso}</td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => openEdit(p)} className="press-effect"><Pencil className="w-4 h-4" /></Button>
+                          <Button variant="ghost" size="sm" onClick={() => remove.mutate(p.id)} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                {perguntasFiltradas.length > 0 && (
+                  <tfoot>
+                    <tr className="border-t-2 border-primary/20 bg-muted/30">
+                      <td colSpan={5} className="px-4 py-3 text-body font-semibold text-foreground text-right">
+                        Soma Total ({perguntasFiltradas.length} perguntas):
+                      </td>
+                      <td className="px-4 py-3 text-center text-subhead font-bold text-primary font-tabular">
+                        {somaPesoFiltrado}
+                      </td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+          </div>
+        </>
+      )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
