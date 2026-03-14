@@ -37,7 +37,7 @@ function SortableRow({ p, index, onEdit, onRemove }: { p: any; index: number; on
       <td className="px-2 py-3 text-caption text-muted-foreground font-tabular w-8">{String(index + 1).padStart(2, "0")}</td>
       <td className="px-4 py-3 text-body font-medium text-foreground">{p.pergunta}</td>
       <td className="px-4 py-3 text-body text-muted-foreground">{p._tipo_avaliacao_nome || "Todos"}</td>
-      <td className="px-4 py-3 text-body text-muted-foreground capitalize">{p.target_employee_type || "geral"}</td>
+      
       <td className="px-4 py-3 text-center text-body font-semibold text-foreground font-tabular">{p.peso}</td>
       <td className="px-4 py-3 text-right">
         <div className="flex items-center justify-end gap-1">
@@ -257,7 +257,7 @@ export default function PerguntasPage() {
                     <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-2 py-2 w-8">#</th>
                     <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Pergunta</th>
                     <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Tipo Avaliação</th>
-                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Aplica-se a</th>
+                    
                     <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Peso</th>
                     <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Ações</th>
                   </tr>
@@ -325,18 +325,6 @@ export default function PerguntasPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Aplica-se a (Funcionário)</Label>
-                <Select value={targetEmployeeType} onValueChange={setTargetEmployeeType}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="geral">Geral (ambos)</SelectItem>
-                    <SelectItem value="atendente">Atendente</SelectItem>
-                    <SelectItem value="tecnico">Técnico</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-caption text-muted-foreground">Define a quem a pontuação se aplica.</p>
-              </div>
-              <div className="space-y-1.5">
                 <Label>Setor Avaliado</Label>
                 <Select value={setorAvaliadoId} onValueChange={setSetorAvaliadoId}>
                   <SelectTrigger><SelectValue placeholder="Todos os setores" /></SelectTrigger>
@@ -361,7 +349,7 @@ export default function PerguntasPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <p className="text-body font-medium text-foreground">{pergunta}</p>
-                      <p className="text-caption text-muted-foreground">Peso: {peso} • Aplica-se: {targetEmployeeType}</p>
+                      <p className="text-caption text-muted-foreground">Peso: {peso}</p>
                     </div>
                     <div className="flex bg-muted rounded-md p-0.5 gap-0.5 shrink-0">
                       {([
