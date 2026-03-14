@@ -902,7 +902,7 @@ export default function AvaliacaoOSPage() {
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className={step === 3 ? "max-w-2xl" : "max-w-lg"}>
           <DialogHeader>
-            <DialogTitle>Criar Nova Ordem de Serviço</DialogTitle>
+            <DialogTitle>{existingAvaliacaoId ? `Continuar Avaliação — OS #${newOsNumero}` : "Criar Nova Ordem de Serviço"}</DialogTitle>
           </DialogHeader>
 
           {/* Stepper */}
