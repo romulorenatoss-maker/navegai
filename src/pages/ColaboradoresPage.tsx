@@ -82,18 +82,8 @@ export default function ColaboradoresPage() {
       .eq("profile_id", editing.id)
       .then(({ data }) => {
         setSelectedSetores(data?.map((d) => d.setor_id) || []);
-      });
-    // Load tipos if avaliador
-    if (cargo === "avaliador") {
-      supabase
-        .from("avaliador_tipos_servico")
-        .select("tipo_servico_id")
-        .eq("avaliador_id", editing.id)
-        .then(({ data }) => {
-          setSelectedTiposServico(data?.map((d) => d.tipo_servico_id) || []);
-        });
-    }
-  }, [editing, cargo]);
+    });
+  }, [editing]);
 
   const syncRole = async (userId: string, cargo: string) => {
     const { error } = await supabase.rpc("sync_user_role", { _user_id: userId, _cargo: cargo });
