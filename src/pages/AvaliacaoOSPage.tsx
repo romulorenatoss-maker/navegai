@@ -155,20 +155,7 @@ export default function AvaliacaoOSPage() {
     enabled: !!profile?.id,
   });
 
-  const { data: linkedTiposAvaliacao = [] } = useQuery({
-    queryKey: ["linked_ta", tipoServicoId],
-    queryFn: async () => {
-      if (!tipoServicoId) return [];
-      const { data: links } = await (supabase as any).from("tipo_servico_tipos_avaliacao").select("tipo_avaliacao_id").eq("tipo_servico_id", tipoServicoId);
-      if (links?.length) {
-        const { data } = await (supabase as any).from("tipos_avaliacao").select("*").in("id", links.map((l: any) => l.tipo_avaliacao_id)).eq("ativo", true);
-        return (data || []) as TipoAvaliacao[];
-      }
-      const { data: all } = await (supabase as any).from("tipos_avaliacao").select("*").eq("ativo", true);
-      return (all || []) as TipoAvaliacao[];
-    },
-    enabled: !!tipoServicoId,
-  });
+  // linkedTiposAvaliacao removed - no longer used
 
   const { data: allProfiles = [] } = useQuery({
     queryKey: ["profiles_for_eval"],
