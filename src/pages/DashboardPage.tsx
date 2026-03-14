@@ -44,6 +44,7 @@ interface TecnicoMedia {
   nome: string;
   media: number;
   total_avaliacoes: number;
+  setor_nome: string;
 }
 
 interface SetorMedia {
