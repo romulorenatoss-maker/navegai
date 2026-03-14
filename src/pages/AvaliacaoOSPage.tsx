@@ -638,16 +638,52 @@ export default function AvaliacaoOSPage() {
     }
   };
 
-  const handleDeleteOS = async (osId: string) => {
-    if (!confirm("Excluir esta OS e todas as avaliações vinculadas?")) return;
-    const { data: avals } = await supabase.from("avaliacoes").select("id").eq("ordem_servico_id", osId);
-    if (avals) { for (const a of avals) { await supabase.from("respostas_avaliacao").delete().eq("avaliacao_id", a.id); } }
-    await supabase.from("avaliacoes").delete().eq("ordem_servico_id", osId);
-    await supabase.from("ordens_servico").delete().eq("id", osId);
-    toast.success("OS excluída.");
-    setSelectedOS(null);
-    setView("list");
-    refetchPending();
+  const promptDeleteOS = (osId: string, osNumero: string) => {
+    if (!isAdmin) { toast.error("Apenas administradores podem excluir OS."); return; }
+    setDeleteOsId(osId);
+    setDeleteOsNumero(osNumero);
+    setDeletePassword("");
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDeleteOS = async () => {
+    if (!deleteOsId || !profile) return;
+    if (!deletePassword.trim()) { toast.error("Informe sua senha."); return; }
+
+    setDeleteLoading(true);
+    try {
+      // Verify password via re-authentication
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: profile.email,
+        password: deletePassword,
+      });
+      if (authError) { toast.error("Senha incorreta."); return; }
+
+      // Delete all related data
+      const { data: avals } = await supabase.from("avaliacoes").select("id").eq("ordem_servico_id", deleteOsId);
+      if (avals) { for (const a of avals) { await supabase.from("respostas_avaliacao").delete().eq("avaliacao_id", a.id); } }
+      await supabase.from("avaliacoes").delete().eq("ordem_servico_id", deleteOsId);
+      await supabase.from("ordens_servico").delete().eq("id", deleteOsId);
+
+      // Audit log - only OS number
+      await supabase.from("audit_logs").insert({
+        user_id: profile.user_id,
+        acao: "exclusao_os",
+        tabela: "ordens_servico",
+        registro_id: deleteOsId,
+        dados_anteriores: { numero_os: deleteOsNumero },
+      } as any);
+
+      toast.success(`OS #${deleteOsNumero} excluída com sucesso.`);
+      setDeleteDialogOpen(false);
+      setSelectedOS(null);
+      setView("list");
+      refetchPending();
+    } catch (err: any) {
+      toast.error("Erro ao excluir: " + err.message);
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   const backToList = () => {
