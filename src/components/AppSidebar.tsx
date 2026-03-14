@@ -10,47 +10,42 @@ import {
 const allNavSections = [
   {
     title: "Principal",
-    adminOnly: false,
     items: [
-      { to: "/", icon: LayoutDashboard, label: "Dashboard", adminOnly: false },
+      { to: "/", icon: LayoutDashboard, label: "Dashboard" },
     ],
   },
   {
     title: "Avaliações",
-    adminOnly: false,
     items: [
-      { to: "/avaliacoes/pesquisa", icon: FileSearch, label: "Pesquisa de OS", adminOnly: false },
-      { to: "/avaliacoes/minhas", icon: Star, label: "Minhas Avaliações", adminOnly: false },
-      { to: "/avaliacoes/inconsistencias", icon: AlertTriangle, label: "Inconsistências", adminOnly: false },
-      { to: "/avaliacoes/inconsistencias-vinculadas", icon: Link2, label: "Incons. Vinculadas", adminOnly: false },
+      { to: "/avaliacoes/pesquisa", icon: FileSearch, label: "Pesquisa de OS" },
+      { to: "/avaliacoes/minhas", icon: Star, label: "Minhas Avaliações" },
+      { to: "/avaliacoes/inconsistencias", icon: AlertTriangle, label: "Inconsistências" },
+      { to: "/avaliacoes/inconsistencias-vinculadas", icon: Link2, label: "Incons. Vinculadas" },
     ],
   },
   {
     title: "Checklists",
-    adminOnly: true,
     items: [
-      { to: "/checklists/cadastro", icon: ListChecks, label: "Cadastro", adminOnly: true },
-      { to: "/checklists/execucao", icon: PlayCircle, label: "Execução", adminOnly: true },
-      { to: "/checklists/gestao", icon: FolderKanban, label: "Gestão", adminOnly: true },
-      { to: "/avaliacoes/perguntas", icon: HelpCircle, label: "Perguntas", adminOnly: true },
+      { to: "/checklists/cadastro", icon: ListChecks, label: "Cadastro" },
+      { to: "/checklists/execucao", icon: PlayCircle, label: "Execução" },
+      { to: "/checklists/gestao", icon: FolderKanban, label: "Gestão" },
+      { to: "/avaliacoes/perguntas", icon: HelpCircle, label: "Perguntas" },
     ],
   },
   {
     title: "Cadastros",
-    adminOnly: false,
     items: [
-      { to: "/cadastros/setores", icon: Building2, label: "Setores", adminOnly: true },
-      { to: "/cadastros/colaboradores", icon: Users, label: "Colaboradores", adminOnly: true },
-      { to: "/cadastros/clientes", icon: ClipboardCheck, label: "Clientes", adminOnly: false },
-      { to: "/cadastros/servicos", icon: Wrench, label: "Serviços", adminOnly: true },
-      { to: "/cadastros/tipos-avaliacao", icon: ClipboardList, label: "Tipos Avaliação", adminOnly: true },
+      { to: "/cadastros/setores", icon: Building2, label: "Setores" },
+      { to: "/cadastros/colaboradores", icon: Users, label: "Colaboradores" },
+      { to: "/cadastros/clientes", icon: ClipboardCheck, label: "Clientes" },
+      { to: "/cadastros/servicos", icon: Wrench, label: "Serviços" },
+      { to: "/cadastros/tipos-avaliacao", icon: ClipboardList, label: "Tipos Avaliação" },
     ],
   },
   {
     title: "Sistema",
-    adminOnly: true,
     items: [
-      { to: "/relatorios", icon: BarChart3, label: "Relatórios", adminOnly: true },
+      { to: "/relatorios", icon: BarChart3, label: "Relatórios" },
     ],
   },
 ];
