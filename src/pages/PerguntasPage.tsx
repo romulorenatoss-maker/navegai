@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, AlertTriangle, Camera, FileVideo, FileText, GripVertical } from "lucide-react";
+import { Plus, Pencil, Trash2, AlertTriangle, Camera, FileVideo, FileText, GripVertical, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,8 +22,6 @@ import { CSS } from "@dnd-kit/utilities";
 type Pergunta = Tables<"perguntas_avaliacao">;
 type PreviewAnswer = "sim" | "nao" | "na" | null;
 
-// TipoAvaliacao interface removed - evaluator assignment now uses sectors
-
 function SortableRow({ p, index, onEdit, onRemove }: { p: any; index: number; onEdit: (p: Pergunta) => void; onRemove: (id: string) => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
@@ -33,7 +31,6 @@ function SortableRow({ p, index, onEdit, onRemove }: { p: any; index: number; on
       <td className="px-2 py-3 text-caption text-muted-foreground font-tabular w-8">{String(index + 1).padStart(2, "0")}</td>
       <td className="px-4 py-3 text-body font-medium text-foreground">{p.pergunta}</td>
       <td className="px-4 py-3 text-body text-muted-foreground">{p.setores?.nome || "Todos"}</td>
-      
       <td className="px-4 py-3 text-center text-body font-semibold text-foreground font-tabular">{p.peso}</td>
       <td className="px-4 py-3 text-right">
         <div className="flex items-center justify-end gap-1">
@@ -48,12 +45,14 @@ function SortableRow({ p, index, onEdit, onRemove }: { p: any; index: number; on
 export default function PerguntasPage() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
+  const [newChecklistTitle, setNewChecklistTitle] = useState("");
   const [editing, setEditing] = useState<Pergunta | null>(null);
   const [pergunta, setPergunta] = useState("");
+  const [checklistId, setChecklistId] = useState("");
   const [tipoServicoId, setTipoServicoId] = useState("");
-  const [tipoAvaliacaoId, setTipoAvaliacaoId] = useState(""); // kept for payload compatibility
+  const [tipoAvaliacaoId, setTipoAvaliacaoId] = useState("");
   const [targetEmployeeType, setTargetEmployeeType] = useState("geral");
-  // avaliadorId removed - evaluator access is determined by their sector
   const [setorAvaliadoId, setSetorAvaliadoId] = useState("");
   const [tipoAvaliado, setTipoAvaliado] = useState("atendente");
   const [peso, setPeso] = useState("1");
@@ -66,22 +65,25 @@ export default function PerguntasPage() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  // Checklists query
+  const { data: checklists = [] } = useQuery({
+    queryKey: ["checklists_all"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("checklists").select("id, titulo").eq("ativo", true).order("titulo");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   const { data: perguntas = [], isLoading } = useQuery({
     queryKey: ["perguntas_avaliacao"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("perguntas_avaliacao")
-        .select("*, tipos_servico(nome), setores!perguntas_avaliacao_setor_avaliado_id_fkey(nome)")
+        .select("*, tipos_servico(nome), setores!perguntas_avaliacao_setor_avaliado_id_fkey(nome), checklists!perguntas_avaliacao_checklist_id_fkey(titulo)")
         .order("ordem");
       if (error) throw error;
-      // Load tipo_avaliacao names
-      const taIds = [...new Set((data || []).map((p: any) => p.tipo_avaliacao_id).filter(Boolean))];
-      let taMap: Record<string, string> = {};
-      if (taIds.length > 0) {
-        const { data: tas } = await (supabase as any).from("tipos_avaliacao").select("id, nome").in("id", taIds);
-        tas?.forEach((t: any) => { taMap[t.id] = t.nome; });
-      }
-      return (data || []).map((p: any) => ({ ...p, _tipo_avaliacao_nome: taMap[p.tipo_avaliacao_id] || null }));
+      return (data || []).map((p: any) => ({ ...p, _checklist_titulo: p.checklists?.titulo || null }));
     },
   });
 
@@ -95,19 +97,15 @@ export default function PerguntasPage() {
     queryFn: async () => { const { data } = await supabase.from("tipos_servico").select("*").eq("ativo", true).order("nome"); return data || []; },
   });
 
-  // Query sectors that have evaluator users
   const { data: setoresComAvaliadores = [] } = useQuery({
     queryKey: ["setores_com_avaliadores"],
     queryFn: async () => {
-      // Get user_ids with 'avaliador' role
       const { data: avaliadorRoles } = await supabase.from("user_roles").select("user_id").eq("role", "avaliador");
       if (!avaliadorRoles?.length) return setores;
       const avaliadorUserIds = avaliadorRoles.map(r => r.user_id);
-      // Get profile_ids for those users
       const { data: profiles } = await supabase.from("profiles").select("id").in("user_id", avaliadorUserIds);
       if (!profiles?.length) return setores;
       const profileIds = profiles.map(p => p.id);
-      // Get distinct setor_ids from colaborador_setores
       const { data: colabSetores } = await supabase.from("colaborador_setores").select("setor_id").in("profile_id", profileIds);
       if (!colabSetores?.length) return setores;
       const setorIds = [...new Set(colabSetores.map(cs => cs.setor_id))];
@@ -116,7 +114,36 @@ export default function PerguntasPage() {
     enabled: setores.length > 0,
   });
 
-  // avaliadores query removed - no longer needed for question form
+  // Checklist CRUD
+  const createChecklist = useMutation({
+    mutationFn: async () => {
+      if (!newChecklistTitle.trim()) throw new Error("Informe o título do checklist.");
+      const { error } = await supabase.from("checklists").insert({ titulo: newChecklistTitle.trim() } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["checklists_all"] });
+      toast.success("Checklist criado.");
+      setNewChecklistTitle("");
+      setChecklistDialogOpen(false);
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const deleteChecklist = useMutation({
+    mutationFn: async (id: string) => {
+      // Unlink questions first
+      await (supabase as any).from("perguntas_avaliacao").update({ checklist_id: null }).eq("checklist_id", id);
+      const { error } = await supabase.from("checklists").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["checklists_all"] });
+      queryClient.invalidateQueries({ queryKey: ["perguntas_avaliacao"] });
+      toast.success("Checklist excluído.");
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
 
   const summaryByTipo = useMemo(() => {
     const map = new Map<string, { nome: string; count: number; totalNota: number }>();
@@ -148,12 +175,13 @@ export default function PerguntasPage() {
   const upsert = useMutation({
     mutationFn: async () => {
       const resolvedTipoId = tipoServicoId === "todos" || !tipoServicoId ? null : tipoServicoId;
-      const resolvedTaId = null; // tipo_avaliacao no longer used - sector determines who evaluates
+      const resolvedChecklistId = checklistId === "none" || !checklistId ? null : checklistId;
       const computedOrdem = editing ? parseInt(ordem) : getNextOrdem(resolvedTipoId || "");
       const payload = {
         pergunta,
         tipo_servico_id: resolvedTipoId,
-        tipo_avaliacao_id: resolvedTaId,
+        tipo_avaliacao_id: null,
+        checklist_id: resolvedChecklistId,
         target_employee_type: targetEmployeeType,
         avaliador_id: null,
         setor_avaliado_id: setorAvaliadoId === "todos" || !setorAvaliadoId ? null : setorAvaliadoId,
@@ -204,21 +232,30 @@ export default function PerguntasPage() {
   }, [perguntasFiltradas, reorderMutation]);
 
   const openCreate = () => {
-    setEditing(null); setPergunta(""); setTipoServicoId(""); setTipoAvaliacaoId(""); setTargetEmployeeType("geral");
+    setEditing(null); setPergunta(""); setChecklistId(""); setTipoServicoId(""); setTipoAvaliacaoId(""); setTargetEmployeeType("geral");
     setSetorAvaliadoId(""); setTipoAvaliado("atendente"); setPeso("1"); setOrdem("0"); setPreviewAnswer(null);
     setDialogOpen(true);
   };
   const openEdit = (p: Pergunta) => {
-    setEditing(p); setPergunta(p.pergunta); setTipoServicoId(p.tipo_servico_id || "");
+    setEditing(p); setPergunta(p.pergunta); setChecklistId(p.checklist_id || "");
+    setTipoServicoId(p.tipo_servico_id || "");
     setTipoAvaliacaoId((p as any).tipo_avaliacao_id || "");
     setTargetEmployeeType((p as any).target_employee_type || "geral");
-    // avaliadorId no longer used
     const tipo = tipos.find(t => t.id === p.tipo_servico_id);
     setSetorAvaliadoId(tipo?.setor_id || (p as any).setor_avaliado_id || "");
     setTipoAvaliado(p.tipo_avaliado); setPeso(String(p.peso)); setOrdem(String(p.ordem)); setPreviewAnswer(null);
     setDialogOpen(true);
   };
   const closeDialog = () => { setDialogOpen(false); setEditing(null); setPreviewAnswer(null); };
+
+  // Count questions per checklist
+  const checklistCounts = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const p of perguntas) {
+      if (p.checklist_id) map[p.checklist_id] = (map[p.checklist_id] || 0) + 1;
+    }
+    return map;
+  }, [perguntas]);
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -227,8 +264,36 @@ export default function PerguntasPage() {
           <h1 className="text-section font-semibold text-foreground">Perguntas de Avaliação</h1>
           <p className="text-body text-muted-foreground">Cadastro e ordenação de perguntas por tipo de serviço e avaliação.</p>
         </div>
-        <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Nova Pergunta</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setChecklistDialogOpen(true)} className="press-effect">
+            <Package className="w-4 h-4 mr-2" /> Checklist
+          </Button>
+          <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Nova Pergunta</Button>
+        </div>
       </div>
+
+      {/* Checklist packages summary */}
+      {checklists.length > 0 && (
+        <div className="bg-card border border-border rounded-lg shadow-card mb-4">
+          <div className="px-4 py-3 border-b border-border">
+            <p className="text-caption text-muted-foreground uppercase tracking-wider font-medium">Pacotes de Checklist</p>
+          </div>
+          <div className="divide-y divide-border">
+            {checklists.map(c => (
+              <div key={c.id} className="flex items-center justify-between px-4 py-2.5">
+                <div className="flex items-center gap-2">
+                  <Package className="w-4 h-4 text-primary" />
+                  <span className="text-body font-medium text-foreground">{c.titulo}</span>
+                  <span className="text-caption text-muted-foreground font-tabular">{checklistCounts[c.id] || 0} pergunta{(checklistCounts[c.id] || 0) !== 1 ? "s" : ""}</span>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => deleteChecklist.mutate(c.id)} className="press-effect text-destructive">
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Filter by tipo_servico */}
       <div className="bg-card border border-border rounded-lg shadow-card mb-4">
@@ -266,7 +331,6 @@ export default function PerguntasPage() {
                     <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-2 py-2 w-8">#</th>
                     <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Pergunta</th>
                     <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Quem Avalia</th>
-                    
                     <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Nota</th>
                     <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Ações</th>
                   </tr>
@@ -275,7 +339,7 @@ export default function PerguntasPage() {
                   <SortableContext items={perguntasFiltradas.map(p => p.id)} strategy={verticalListSortingStrategy}>
                     <tbody>
                       {perguntasFiltradas.length === 0 ? (
-                        <tr><td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhuma pergunta encontrada.</td></tr>
+                        <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhuma pergunta encontrada.</td></tr>
                       ) : perguntasFiltradas.map((p, i) => (
                         <SortableRow key={p.id} p={p} index={i} onEdit={openEdit} onRemove={id => remove.mutate(id)} />
                       ))}
@@ -285,7 +349,7 @@ export default function PerguntasPage() {
                 {perguntasFiltradas.length > 0 && (
                   <tfoot>
                     <tr className="border-t-2 border-primary/20 bg-muted/30">
-                      <td colSpan={5} className="px-4 py-3 text-body font-semibold text-foreground text-right">Soma Total:</td>
+                      <td colSpan={4} className="px-4 py-3 text-body font-semibold text-foreground text-right">Soma Total:</td>
                       <td className="px-4 py-3 text-center text-subhead font-bold text-primary font-tabular">{somaPesoFiltrado}</td>
                       <td></td>
                     </tr>
@@ -297,13 +361,44 @@ export default function PerguntasPage() {
         </>
       )}
 
+      {/* Checklist Name Dialog */}
+      <Dialog open={checklistDialogOpen} onOpenChange={setChecklistDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Novo Pacote de Checklist</DialogTitle></DialogHeader>
+          <form onSubmit={e => { e.preventDefault(); createChecklist.mutate(); }} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Nome do Checklist</Label>
+              <Input value={newChecklistTitle} onChange={e => setNewChecklistTitle(e.target.value)} placeholder="Ex: Checklist de Instalação" required />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setChecklistDialogOpen(false)}>Cancelar</Button>
+              <Button type="submit" disabled={createChecklist.isPending} className="press-effect">{createChecklist.isPending ? "Criando..." : "Criar"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Question Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "Editar Pergunta" : "Nova Pergunta"}</DialogTitle></DialogHeader>
           <form onSubmit={e => { e.preventDefault(); upsert.mutate(); }} className="space-y-4">
+            {/* 1. Checklist Name */}
+            <div className="space-y-1.5">
+              <Label>Pacote de Checklist</Label>
+              <Select value={checklistId} onValueChange={setChecklistId}>
+                <SelectTrigger><SelectValue placeholder="Selecione um checklist" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {checklists.map(c => <SelectItem key={c.id} value={c.id}>{c.titulo}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-1.5"><Label>Pergunta</Label><Input value={pergunta} onChange={e => setPergunta(e.target.value)} required /></div>
 
             <div className="grid grid-cols-2 gap-4">
+              {/* 2. Service Type */}
               <div className="space-y-1.5">
                 <Label>Tipo de Serviço</Label>
                 <Select value={tipoServicoId} onValueChange={val => {
@@ -319,6 +414,7 @@ export default function PerguntasPage() {
                   </SelectContent>
                 </Select>
               </div>
+              {/* 3. Who Evaluates */}
               <div className="space-y-1.5">
                 <Label>Quem Avalia (Setor)</Label>
                 <Select value={setorAvaliadoId} onValueChange={setSetorAvaliadoId}>
@@ -332,7 +428,7 @@ export default function PerguntasPage() {
               </div>
             </div>
 
-
+            {/* 4. Score */}
             <div className="space-y-1.5">
               <Label>Nota</Label>
               <Input type="number" min={1} max={100} value={peso} onChange={e => { const v = e.target.value.replace(/\D/g, ''); setPeso(v); }} onKeyDown={e => { if (!/[0-9]/.test(e.key) && !['Backspace','Delete','Tab','ArrowLeft','ArrowRight','Home','End'].includes(e.key)) e.preventDefault(); }} required inputMode="numeric" pattern="[0-9]*" />
