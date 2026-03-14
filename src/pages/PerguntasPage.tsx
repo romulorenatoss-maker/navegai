@@ -137,8 +137,16 @@ export default function PerguntasPage() {
     onError: (err: any) => toast.error(err.message),
   });
 
+  const getNextOrdem = (tipoId: string) => {
+    const related = perguntas.filter((p) =>
+      tipoId ? p.tipo_servico_id === tipoId : !p.tipo_servico_id
+    );
+    if (related.length === 0) return 1;
+    return Math.max(...related.map((p) => p.ordem)) + 1;
+  };
+
   const openCreate = () => {
-    setEditing(null); setPergunta(""); setTipoServicoId(""); setAvaliadorId(""); setTipoAvaliado("atendente"); setPeso("1"); setOrdem(String(perguntas.length)); setPreviewAnswer(null);
+    setEditing(null); setPergunta(""); setTipoServicoId(""); setAvaliadorId(""); setTipoAvaliado("atendente"); setPeso("1"); setOrdem(String(getNextOrdem(""))); setPreviewAnswer(null);
     setDialogOpen(true);
   };
   const openEdit = (p: Pergunta) => {
