@@ -525,6 +525,21 @@ export default function PerguntasPage() {
               <Input type="number" min={1} max={100} value={peso} onChange={e => { const v = e.target.value.replace(/\D/g, ''); setPeso(v); }} onKeyDown={e => { if (!/[0-9]/.test(e.key) && !['Backspace','Delete','Tab','ArrowLeft','ArrowRight','Home','End'].includes(e.key)) e.preventDefault(); }} required inputMode="numeric" pattern="[0-9]*" />
             </div>
 
+            {/* 5. Linked Inconsistency Question */}
+            <div className="space-y-1.5">
+              <Label>Pergunta Vinculada (Inconsistência)</Label>
+              <Select value={linkedInconsistencyId} onValueChange={setLinkedInconsistencyId}>
+                <SelectTrigger><SelectValue placeholder="Nenhuma" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhuma</SelectItem>
+                  {perguntas
+                    .filter(p => p.id !== editing?.id && (checklistId && checklistId !== "none" ? p.checklist_id === checklistId : true))
+                    .map(p => <SelectItem key={p.id} value={p.id}>{p.pergunta}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="text-caption text-muted-foreground">Se as respostas divergirem na mesma OS, uma inconsistência será registrada.</p>
+            </div>
+
             {/* Preview */}
             {pergunta && (
               <div className="space-y-2">
