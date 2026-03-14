@@ -518,7 +518,7 @@ export default function PerguntasPage() {
                   <SelectTrigger><SelectValue placeholder="Todos os setores" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todos">Todos os setores</SelectItem>
-                    {setoresComAvaliadores.map(s => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+                    {setores.map(s => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 <p className="text-caption text-muted-foreground">Setor responsável por responder esta pergunta.</p>
