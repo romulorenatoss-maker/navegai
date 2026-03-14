@@ -5,7 +5,7 @@ import { detectLinkedInconsistencies } from "@/hooks/useLinkedInconsistencyDetec
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, AlertTriangle, Loader2, ChevronRight, ChevronLeft,
-  Check, Clock, Trash2, Eye, Users, MessageSquare, Camera, X, Image as ImageIcon, Lock, Download
+  Check, Clock, Trash2, Eye, Users, MessageSquare, Camera, X, Image as ImageIcon, Lock, Download, Pencil, Save
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import { Input } from "@/components/ui/input";
