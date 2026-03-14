@@ -227,6 +227,42 @@ export default function AvaliacaoOSPage() {
 
   const selectedTipoServico = useMemo(() => tiposServico.find(t => t.id === tipoServicoId), [tiposServico, tipoServicoId]);
 
+  // Profiles filtered by sector for employee selection
+  const { data: atendimentoProfiles = [] } = useQuery({
+    queryKey: ["profiles_atendimento"],
+    queryFn: async () => {
+      // Find setores with "atendimento" or "atendente" in name
+      const { data: setores } = await supabase.from("setores").select("id, nome").eq("ativo", true);
+      const atendSetorIds = (setores || []).filter(s => {
+        const n = s.nome.toLowerCase();
+        return n.includes("atendimento") || n.includes("atendente");
+      }).map(s => s.id);
+      if (!atendSetorIds.length) return [];
+      const { data: links } = await supabase.from("colaborador_setores").select("profile_id").in("setor_id", atendSetorIds);
+      if (!links?.length) return [];
+      const ids = [...new Set(links.map(l => l.profile_id))];
+      return allProfiles.filter(p => ids.includes(p.id));
+    },
+    enabled: allProfiles.length > 0,
+  });
+
+  const { data: tecnicoProfiles = [] } = useQuery({
+    queryKey: ["profiles_tecnico"],
+    queryFn: async () => {
+      const { data: setores } = await supabase.from("setores").select("id, nome").eq("ativo", true);
+      const tecSetorIds = (setores || []).filter(s => {
+        const n = s.nome.toLowerCase();
+        return n.includes("técnico") || n.includes("tecnico");
+      }).map(s => s.id);
+      if (!tecSetorIds.length) return [];
+      const { data: links } = await supabase.from("colaborador_setores").select("profile_id").in("setor_id", tecSetorIds);
+      if (!links?.length) return [];
+      const ids = [...new Set(links.map(l => l.profile_id))];
+      return allProfiles.filter(p => ids.includes(p.id));
+    },
+    enabled: allProfiles.length > 0,
+  });
+
   const { data: profilesBySetor = [] } = useQuery({
     queryKey: ["profiles_by_setor", tipoServicoId],
     queryFn: async () => {
@@ -237,6 +273,61 @@ export default function AvaliacaoOSPage() {
       return allProfiles.filter(p => p.id !== profile?.id && ids.includes(p.id));
     },
     enabled: !!tipoServicoId,
+  });
+
+  // Questions grouped by sector for os_detail view
+  const { data: osDetailBySetor = { atendimento: [], tecnico: [] } } = useQuery({
+    queryKey: ["os_detail_by_setor", selectedOS?.id, view],
+    queryFn: async () => {
+      if (!selectedOS?.id || view !== "os_detail") return { atendimento: [], tecnico: [] };
+      const tsId = selectedOS.tipo_servico_id;
+      if (!tsId) return { atendimento: [], tecnico: [] };
+
+      // Get linked checklists
+      const { data: checklistLinks } = await (supabase as any).from("tipo_servico_checklists").select("checklist_id").eq("tipo_servico_id", tsId);
+      const checklistIds = (checklistLinks || []).map((l: any) => l.checklist_id);
+
+      // Get all questions
+      let pergQuery = supabase.from("perguntas_avaliacao")
+        .select("id, pergunta, peso, ordem, setor_avaliado_id, setores!perguntas_avaliacao_setor_avaliado_id_fkey(id, nome)")
+        .eq("ativo", true);
+      if (checklistIds.length > 0) {
+        pergQuery = (pergQuery as any).in("checklist_id", checklistIds);
+      } else {
+        pergQuery = pergQuery.or(`tipo_servico_id.eq.${tsId},tipo_servico_id.is.null`);
+      }
+      const { data: perguntas } = await pergQuery.order("ordem");
+      if (!perguntas?.length) return { atendimento: [], tecnico: [] };
+
+      // Get all answers for this OS
+      const { data: avals } = await supabase.from("avaliacoes").select("id, avaliador_id, tipo_avaliacao_id, concluida, nota_final").eq("ordem_servico_id", selectedOS.id);
+      const avalIds = (avals || []).map(a => a.id);
+      let respostas: any[] = [];
+      if (avalIds.length > 0) {
+        const { data: r } = await supabase.from("respostas_avaliacao").select("avaliacao_id, pergunta_id, resposta, observacao, evidencia_url").in("avaliacao_id", avalIds);
+        respostas = r || [];
+      }
+
+      // Build answer map: pergunta_id -> resposta
+      const answerMap: Record<string, any> = {};
+      respostas.forEach(r => { answerMap[r.pergunta_id] = r; });
+
+      // Split by sector
+      const atendimento: any[] = [];
+      const tecnico: any[] = [];
+      (perguntas || []).forEach((p: any) => {
+        const setorNome = (p.setores?.nome || "").toLowerCase();
+        const item = { ...p, _answer: answerMap[p.id] || null };
+        if (setorNome.includes("técnico") || setorNome.includes("tecnico")) {
+          tecnico.push(item);
+        } else {
+          atendimento.push(item);
+        }
+      });
+
+      return { atendimento, tecnico };
+    },
+    enabled: !!selectedOS?.id && view === "os_detail",
   });
 
   // Pending evaluations
@@ -1297,136 +1388,178 @@ export default function AvaliacaoOSPage() {
 
   // --- OS Detail View ---
   if (view === "os_detail" && selectedOS) {
+    const detailAtendenteNome = allProfiles.find(p => p.id === selectedOS.atendente_id)?.nome;
+    const detailTecnicoNome = allProfiles.find(p => p.id === selectedOS.tecnico_id)?.nome;
+    const detailTipoServicoNome = tiposServico.find(t => t.id === selectedOS.tipo_servico_id)?.nome;
+
+    // Calculate scores per sector
+    const calcScore = (questions: any[]) => {
+      let scored = 0, max = 0, answered = 0;
+      questions.forEach(q => {
+        const ans = q._answer;
+        if (ans?.resposta) {
+          answered++;
+          if (ans.resposta !== "na") {
+            max += q.peso;
+            if (ans.resposta === "sim") scored += q.peso;
+          }
+        }
+      });
+      const pct = max > 0 ? (scored / max) * 100 : 0;
+      return { scored, max, answered, total: questions.length, pct };
+    };
+    const atendScore = calcScore(osDetailBySetor.atendimento);
+    const tecScore = calcScore(osDetailBySetor.tecnico);
+
+    const renderQuestionList = (questions: any[]) => (
+      <div className="divide-y divide-border">
+        {questions.length === 0 ? (
+          <p className="px-4 py-4 text-caption text-muted-foreground text-center">Nenhuma pergunta neste setor.</p>
+        ) : questions.map((q: any, idx: number) => {
+          const ans = q._answer;
+          return (
+            <div key={q.id} className="px-4 py-3">
+              <div className="flex items-start gap-3">
+                <span className="text-caption font-medium text-muted-foreground font-tabular w-6 shrink-0 pt-0.5">
+                  {String(idx + 1).padStart(2, "0")}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground">{q.pergunta}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    {ans?.resposta ? (
+                      <span className={cn(
+                        "inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border",
+                        ans.resposta === "sim" ? "border-success/40 bg-success/10 text-success" :
+                        ans.resposta === "nao" ? "border-destructive/40 bg-destructive/10 text-destructive" :
+                        "border-muted-foreground/30 bg-muted text-muted-foreground"
+                      )}>
+                        {ans.resposta === "sim" ? "SIM" : ans.resposta === "nao" ? "NÃO" : "N/A"}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border border-warning/40 bg-warning/10 text-warning">
+                        PENDENTE
+                      </span>
+                    )}
+                    <span className="text-caption text-muted-foreground">Nota: {q.peso}</span>
+                  </div>
+                  {ans?.observacao && (
+                    <div className="mt-2 bg-muted/50 border border-border rounded p-2">
+                      <p className="text-caption text-muted-foreground flex items-center gap-1 mb-0.5">
+                        <MessageSquare className="w-3 h-3" /> Observação:
+                      </p>
+                      <p className="text-sm text-foreground">{ans.observacao}</p>
+                    </div>
+                  )}
+                  {ans?.evidencia_url && (
+                    <div className="mt-2">
+                      <img src={ans.evidencia_url} alt="Evidência"
+                        className="rounded-lg border border-border max-h-32 object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => window.open(ans.evidencia_url, "_blank")} />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+
+    const renderScoreBadge = (score: { pct: number; scored: number; max: number; answered: number; total: number }) => (
+      <div className="px-4 py-3 bg-muted/30 border-t border-border flex items-center justify-between">
+        <span className="text-caption text-muted-foreground">
+          {score.answered}/{score.total} respondidas • {score.scored}/{score.max} pts
+        </span>
+        {score.max > 0 && (
+          <span className={cn("text-body font-bold font-tabular",
+            score.pct >= 80 ? "text-success" : score.pct >= 60 ? "text-warning" : "text-destructive"
+          )}>
+            {score.pct.toFixed(1)}%
+          </span>
+        )}
+      </div>
+    );
+
     return (
       <div className="p-4 sm:p-6 max-w-4xl mx-auto">
         <Button variant="ghost" size="sm" className="mb-3 press-effect" onClick={backToList}>
           <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
         </Button>
 
+        {/* OS Header */}
         <div className="bg-card border border-border rounded-lg p-4 shadow-card mb-4">
           <div className="flex items-start justify-between">
             <div>
               <h2 className="text-subhead font-semibold text-foreground font-tabular">OS #{selectedOS.numero_os}</h2>
               <p className="text-body text-muted-foreground mt-1">{selectedOS.cliente_nome || "Sem cliente"}</p>
-              <div className="flex flex-col sm:flex-row gap-1 sm:gap-4 mt-2 text-caption text-muted-foreground">
-                <span>Atendente: <strong className="text-foreground">{atendenteNome || "Não definido"}</strong></span>
-                <span>Técnico: <strong className="text-foreground">{tecnicoNome || "Não definido"}</strong></span>
-              </div>
+              {selectedOS.cliente_cpf && <p className="text-caption text-muted-foreground">CPF: {selectedOS.cliente_cpf}</p>}
             </div>
             <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border", statusLabel[selectedOS.status]?.badge)}>
               {statusLabel[selectedOS.status]?.text}
             </span>
           </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3 pt-3 border-t border-border text-sm">
+            <div>
+              <span className="text-muted-foreground">Tipo de Serviço:</span>
+              <p className="font-medium text-foreground">{detailTipoServicoNome || "—"}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Atendente:</span>
+              <p className="font-medium text-foreground">{detailAtendenteNome || "Não definido"}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Técnico:</span>
+              <p className="font-medium text-foreground">{detailTecnicoNome || "Não definido"}</p>
+            </div>
+          </div>
         </div>
 
+        {/* Atendimento Section */}
         <div className="bg-card border border-border rounded-lg shadow-card mb-4">
           <div className="p-4 border-b border-border flex items-center gap-2">
             <Users className="w-4 h-4 text-primary" />
-            <h3 className="text-body font-semibold text-foreground">Avaliações por Tipo</h3>
+            <h3 className="text-body font-semibold text-foreground">Atendimento</h3>
+            <span className="text-caption text-muted-foreground ml-1">— {detailAtendenteNome || "Não definido"}</span>
+            {atendScore.max > 0 && (
+              <span className={cn("ml-auto text-body font-bold font-tabular",
+                atendScore.pct >= 80 ? "text-success" : atendScore.pct >= 60 ? "text-warning" : "text-destructive"
+              )}>
+                {atendScore.pct.toFixed(1)}%
+              </span>
+            )}
           </div>
-          <div className="divide-y divide-border">
-            {osLinkedTA.length === 0 ? (
-              <p className="px-4 py-6 text-center text-body text-muted-foreground">Nenhum tipo de avaliação configurado para este serviço.</p>
-            ) : osLinkedTA.map((ta) => {
-              const aval = osAvaliacoes.find((a: any) => a.tipo_avaliacao_id === ta.id);
-              return (
-                <div key={ta.id} className="px-4 py-3 flex items-center gap-3">
-                  <div className={cn("w-3 h-3 rounded-full shrink-0", aval?.concluida ? "bg-success" : aval ? "bg-warning" : "bg-muted-foreground/30")} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-body font-medium text-foreground">{ta.nome}</p>
-                    {aval && <p className="text-caption text-muted-foreground">{(aval as any)._avaliador_nome}</p>}
-                  </div>
-                  {aval?.concluida && aval.nota_final != null && (
-                    <span className={cn("text-body font-bold font-tabular", aval.nota_final >= 80 ? "text-success" : aval.nota_final >= 60 ? "text-warning" : "text-destructive")}>
-                      {Number(aval.nota_final).toFixed(1)}%
-                    </span>
-                  )}
-                  {aval && !aval.concluida && <span className="text-caption text-warning font-medium">Em andamento</span>}
-                  {!aval && <span className="text-caption text-muted-foreground">Pendente</span>}
-                </div>
-              );
-            })}
-          </div>
+          {renderQuestionList(osDetailBySetor.atendimento)}
+          {renderScoreBadge(atendScore)}
         </div>
 
-        {/* Detailed Answers by Evaluator */}
-        {osDetailAnswers.length > 0 && (
-          <div className="space-y-4">
-            {osDetailAnswers.map((evalDetail: any) => (
-              <div key={evalDetail.id} className="bg-card border border-border rounded-lg shadow-card">
-                <div className="p-4 border-b border-border flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className={cn("w-3 h-3 rounded-full shrink-0", evalDetail.concluida ? "bg-success" : "bg-warning")} />
-                    <h3 className="text-body font-semibold text-foreground">{evalDetail.tipo_avaliacao_nome}</h3>
-                    <span className="text-caption text-muted-foreground">— {evalDetail.avaliador_nome}</span>
-                  </div>
-                  {evalDetail.concluida && evalDetail.nota_final != null && (
-                    <span className={cn("text-body font-bold font-tabular",
-                      evalDetail.nota_final >= 80 ? "text-success" : evalDetail.nota_final >= 60 ? "text-warning" : "text-destructive"
-                    )}>
-                      {Number(evalDetail.nota_final).toFixed(1)}%
-                    </span>
-                  )}
-                </div>
-                <div className="divide-y divide-border">
-                  {evalDetail.respostas.length === 0 ? (
-                    <p className="px-4 py-4 text-caption text-muted-foreground text-center">Nenhuma resposta registrada.</p>
-                  ) : evalDetail.respostas.map((resp: any, idx: number) => (
-                    <div key={resp.pergunta_id} className="px-4 py-3">
-                      <div className="flex items-start gap-3">
-                        <span className="text-caption font-medium text-muted-foreground font-tabular w-6 shrink-0 pt-0.5">
-                          {String(idx + 1).padStart(2, "0")}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground">{resp.pergunta}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className={cn(
-                              "inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border",
-                              resp.resposta === "sim" ? "border-success/40 bg-success/10 text-success" :
-                              resp.resposta === "nao" ? "border-destructive/40 bg-destructive/10 text-destructive" :
-                              "border-muted-foreground/30 bg-muted text-muted-foreground"
-                            )}>
-                              {resp.resposta === "sim" ? "SIM" : resp.resposta === "nao" ? "NÃO" : "N/A"}
-                            </span>
-                            <span className="text-caption text-muted-foreground">Nota: {resp.peso}</span>
-                          </div>
-                          {resp.observacao && (
-                            <div className="mt-2 bg-muted/50 border border-border rounded p-2">
-                              <p className="text-caption text-muted-foreground flex items-center gap-1 mb-0.5">
-                                <MessageSquare className="w-3 h-3" /> Observação:
-                              </p>
-                              <p className="text-sm text-foreground">{resp.observacao}</p>
-                            </div>
-                          )}
-                          {resp.evidencia_url && (
-                            <div className="mt-2">
-                              <img
-                                src={resp.evidencia_url}
-                                alt="Evidência"
-                                className="rounded-lg border border-border max-h-32 object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                                onClick={() => window.open(resp.evidencia_url, "_blank")}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+        {/* Técnico Section */}
+        <div className="bg-card border border-border rounded-lg shadow-card mb-4">
+          <div className="p-4 border-b border-border flex items-center gap-2">
+            <Users className="w-4 h-4 text-primary" />
+            <h3 className="text-body font-semibold text-foreground">Técnico</h3>
+            <span className="text-caption text-muted-foreground ml-1">— {detailTecnicoNome || "Não definido"}</span>
+            {tecScore.max > 0 && (
+              <span className={cn("ml-auto text-body font-bold font-tabular",
+                tecScore.pct >= 80 ? "text-success" : tecScore.pct >= 60 ? "text-warning" : "text-destructive"
+              )}>
+                {tecScore.pct.toFixed(1)}%
+              </span>
+            )}
           </div>
-        )}
+          {renderQuestionList(osDetailBySetor.tecnico)}
+          {renderScoreBadge(tecScore)}
+        </div>
 
+        {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-2 mt-4">
           {selectedOS.status !== "concluida" && (
-            <Button onClick={startMyEvaluation} className="press-effect w-full sm:w-auto">
+            <Button onClick={() => startMyEvaluation(selectedOS)} className="press-effect w-full sm:w-auto">
               <Eye className="w-4 h-4 mr-2" /> Iniciar / Continuar Avaliação
             </Button>
           )}
         </div>
 
-        {/* Delete OS Password Confirmation Dialog (os_detail view) */}
+        {/* Delete OS Dialog */}
         <Dialog open={deleteDialogOpen} onOpenChange={(open) => { if (!deleteLoading) setDeleteDialogOpen(open); }}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
@@ -1434,26 +1567,18 @@ export default function AvaliacaoOSPage() {
                 <Lock className="w-5 h-5" /> Confirmar Exclusão
               </DialogTitle>
               <DialogDescription>
-                Você está prestes a excluir a <strong>OS #{deleteOsNumero}</strong> e todos os dados vinculados (avaliações, respostas e evidências). Esta ação é irreversível.
+                Você está prestes a excluir a <strong>OS #{deleteOsNumero}</strong> e todos os dados vinculados. Esta ação é irreversível.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3 py-2">
               <div className="space-y-1.5">
                 <Label>Digite sua senha para confirmar</Label>
-                <Input
-                  type="password"
-                  placeholder="Sua senha de acesso"
-                  value={deletePassword}
-                  onChange={e => setDeletePassword(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && handleConfirmDeleteOS()}
-                  autoFocus
-                />
+                <Input type="password" placeholder="Sua senha de acesso" value={deletePassword}
+                  onChange={e => setDeletePassword(e.target.value)} onKeyDown={e => e.key === "Enter" && handleConfirmDeleteOS()} autoFocus />
               </div>
             </div>
             <DialogFooter className="gap-2">
-              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleteLoading}>
-                Cancelar
-              </Button>
+              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleteLoading}>Cancelar</Button>
               <Button variant="destructive" onClick={handleConfirmDeleteOS} disabled={deleteLoading || !deletePassword.trim()}>
                 {deleteLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
                 Excluir OS
@@ -1681,7 +1806,7 @@ export default function AvaliacaoOSPage() {
                               <Select value={atendenteId} onValueChange={setAtendenteId}>
                                 <SelectTrigger><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
                                 <SelectContent>
-                                  {allProfiles.filter(p => p.id !== profile?.id).map(p =>
+                                  {atendimentoProfiles.filter(p => p.id !== profile?.id).map(p =>
                                     <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>
                                   )}
                                 </SelectContent>
@@ -1701,7 +1826,7 @@ export default function AvaliacaoOSPage() {
                               <Select value={tecnicoId} onValueChange={setTecnicoId}>
                                 <SelectTrigger><SelectValue placeholder="Selecione o técnico" /></SelectTrigger>
                                 <SelectContent>
-                                  {allProfiles.filter(p => p.id !== profile?.id).map(p =>
+                                  {tecnicoProfiles.filter(p => p.id !== profile?.id).map(p =>
                                     <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>
                                   )}
                                 </SelectContent>
