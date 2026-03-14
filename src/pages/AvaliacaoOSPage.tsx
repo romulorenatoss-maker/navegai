@@ -890,10 +890,12 @@ export default function AvaliacaoOSPage() {
   };
 
   // --- Computed ---
-  const evalAnsweredCount = evalPerguntas.filter(p => evalAnswers[p.id] != null).length;
-  const evalProgressPercent = evalPerguntas.length > 0 ? Math.round((evalAnsweredCount / evalPerguntas.length) * 100) : 0;
-  const evalTotalScore = evalPerguntas.reduce((a, p) => evalAnswers[p.id] === "sim" ? a + p.peso : a, 0);
-  const evalMaxScore = evalPerguntas.reduce((a, p) => evalAnswers[p.id] !== "na" && evalAnswers[p.id] != null ? a + p.peso : a, 0);
+  const answerablePerguntas = useMemo(() => evalPerguntas.filter(p => isQuestionAnswerable(p.setor_avaliado_id)), [evalPerguntas, isQuestionAnswerable]);
+  const pendingPerguntas = useMemo(() => evalPerguntas.filter(p => !isQuestionAnswerable(p.setor_avaliado_id)), [evalPerguntas, isQuestionAnswerable]);
+  const evalAnsweredCount = answerablePerguntas.filter(p => evalAnswers[p.id] != null).length;
+  const evalProgressPercent = answerablePerguntas.length > 0 ? Math.round((evalAnsweredCount / answerablePerguntas.length) * 100) : 0;
+  const evalTotalScore = answerablePerguntas.reduce((a, p) => evalAnswers[p.id] === "sim" ? a + p.peso : a, 0);
+  const evalMaxScore = answerablePerguntas.reduce((a, p) => evalAnswers[p.id] !== "na" && evalAnswers[p.id] != null ? a + p.peso : a, 0);
 
   const atendenteNome = allProfiles.find(p => p.id === (selectedOS as any)?.atendente_id)?.nome;
   const tecnicoNome = allProfiles.find(p => p.id === (selectedOS as any)?.tecnico_id)?.nome;
@@ -902,7 +904,7 @@ export default function AvaliacaoOSPage() {
   const selectedTipoNome = tiposAvaliacao.find(t => t.id === selectedTipoAvaliacaoId)?.nome;
   const evalTipoServicoNome = tiposServico.find(t => t.id === evalOsData?.tipo_servico_id)?.nome;
 
-  const canCreateEval = !!tipoServicoId && !!selectedTipoAvaliacaoId && (isAtendimentoEvaluator ? !!atendenteId : !!tecnicoId);
+  const canCreateEval = !!tipoServicoId && (!!atendenteId || !!tecnicoId);
 
   // ===================== RENDER =====================
 
