@@ -125,6 +125,7 @@ export default function AvaliacaoOSPage() {
   const [evalAnswers, setEvalAnswers] = useState<Record<string, Answer>>({});
   const [evalObservations, setEvalObservations] = useState<Record<string, string>>({});
   const [evalEvidencias, setEvalEvidencias] = useState<Record<string, string>>({});
+  const [otherEvalAnswers, setOtherEvalAnswers] = useState<Record<string, { resposta: string; observacao: string | null; evidencia_url: string | null; avaliador_nome: string }>>({});
   const [uploadingEvidence, setUploadingEvidence] = useState<string | null>(null);
   const [evalFinalized, setEvalFinalized] = useState(false);
   const [evalScore, setEvalScore] = useState<number | null>(null);
