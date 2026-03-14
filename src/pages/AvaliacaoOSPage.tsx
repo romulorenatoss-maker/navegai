@@ -687,9 +687,10 @@ export default function AvaliacaoOSPage() {
     await openEvaluation(formPendingAval.id, formFoundOS.id);
   };
 
-  const startMyEvaluation = async () => {
-    if (!selectedOS || !profile) return;
-    const tsId = selectedOS.tipo_servico_id;
+  const startMyEvaluation = async (osOverride?: any) => {
+    const theOS = osOverride || selectedOS;
+    if (!theOS || !profile) return;
+    const tsId = theOS.tipo_servico_id;
     if (!tsId) { toast.error("OS sem tipo de serviço."); return; }
 
     const { data: links } = await (supabase as any).from("tipo_servico_tipos_avaliacao").select("tipo_avaliacao_id").eq("tipo_servico_id", tsId);
@@ -699,7 +700,9 @@ export default function AvaliacaoOSPage() {
     const { data: tas } = await (supabase as any).from("tipos_avaliacao").select("*").in("id", taIds);
     if (!tas?.length) { toast.error("Tipos de avaliação não encontrados."); return; }
 
-    const doneIds = osAvaliacoes.map((a: any) => a.tipo_avaliacao_id);
+    // Fetch existing evaluations for this OS directly
+    const { data: existingAvals } = await supabase.from("avaliacoes").select("id, avaliador_id, concluida, tipo_avaliacao_id").eq("ordem_servico_id", theOS.id);
+    const doneIds = (existingAvals || []).map((a: any) => a.tipo_avaliacao_id);
     let myTa: any = null;
 
     if (isAdmin) {
@@ -710,21 +713,21 @@ export default function AvaliacaoOSPage() {
       myTa = tas.find((ta: any) => ta.cargo_responsavel === profile.cargo);
       if (!myTa) { toast.error("Você não tem avaliação para esta OS (cargo: " + profile.cargo + ")."); return; }
       if (doneIds.includes(myTa.id)) {
-        const myAval = osAvaliacoes.find((a: any) => a.tipo_avaliacao_id === myTa.id && a.avaliador_id === profile.id);
+        const myAval = (existingAvals || []).find((a: any) => a.tipo_avaliacao_id === myTa.id && a.avaliador_id === profile.id);
         if (myAval?.concluida) { toast.info("Sua avaliação já foi concluída."); return; }
       }
     }
 
-    const existingAval = osAvaliacoes.find((a: any) => a.tipo_avaliacao_id === myTa.id && a.avaliador_id === profile.id);
+    const existingAval = (existingAvals || []).find((a: any) => a.tipo_avaliacao_id === myTa.id && a.avaliador_id === profile.id);
     if (existingAval) {
-      await openEvaluation(existingAval.id, selectedOS.id);
+      await openEvaluation(existingAval.id, theOS.id);
     } else {
       const { data: newAval, error } = await supabase.from("avaliacoes").insert({
-        ordem_servico_id: selectedOS.id, avaliador_id: profile.id, tipo_avaliacao_id: myTa.id, concluida: false,
+        ordem_servico_id: theOS.id, avaliador_id: profile.id, tipo_avaliacao_id: myTa.id, concluida: false,
       } as any).select("id").single();
       if (error) { toast.error("Erro ao criar avaliação: " + error.message); return; }
-      await supabase.from("ordens_servico").update({ status: "em_andamento" } as any).eq("id", selectedOS.id).eq("status", "aberta");
-      await openEvaluation(newAval.id, selectedOS.id);
+      await supabase.from("ordens_servico").update({ status: "em_andamento" } as any).eq("id", theOS.id).eq("status", "aberta");
+      await openEvaluation(newAval.id, theOS.id);
     }
   };
 
