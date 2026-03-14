@@ -3,14 +3,13 @@ import { useSearchParams } from "react-router-dom";
 import { detectInconsistencies, markAuditOnlyAndCalculateScore } from "@/hooks/useInconsistencyDetection";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Search, AlertTriangle, Loader2, Plus, ChevronRight, ChevronLeft,
-  Check, Clock, Trash2, Eye, Users, Save, MessageSquare, Image as ImageIcon
+  Search, AlertTriangle, Loader2, ChevronRight, ChevronLeft,
+  Check, Clock, Trash2, Eye, Users, MessageSquare
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -60,12 +59,6 @@ const statusLabel: Record<string, { text: string; badge: string }> = {
   concluida: { text: "Concluída", badge: "badge-complete" },
 };
 
-const STEPS = [
-  { label: "Tipo de Serviço", description: "Selecione o tipo e avaliação" },
-  { label: "Dados da OS", description: "Número, cliente e CPF" },
-  { label: "Avaliado", description: "Selecione o funcionário" },
-];
-
 function formatCpf(value: string): string {
   const digits = value.replace(/\D/g, "").slice(0, 11);
   if (digits.length <= 3) return digits;
@@ -95,12 +88,11 @@ export default function AvaliacaoOSPage() {
   const { profile, isAdmin, hasRole } = useAuth();
   const showAllTipos = isAdmin || hasRole("gestor");
 
-  // View modes: "list" | "os_detail" | "evaluation"
+  // View modes
   const [view, setView] = useState<"list" | "os_detail" | "evaluation">("list");
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedOS, setSelectedOS] = useState<any | null>(null);
 
-  // Inline form state (replaces wizard)
+  // Inline validation form
   const [formOsNumero, setFormOsNumero] = useState("");
   const [formClienteNome, setFormClienteNome] = useState("");
   const [formClienteCpf, setFormClienteCpf] = useState("");
@@ -108,13 +100,13 @@ export default function AvaliacaoOSPage() {
   const [formValidated, setFormValidated] = useState(false);
   const [formFoundOS, setFormFoundOS] = useState<any | null>(null);
   const [formFoundCliente, setFormFoundCliente] = useState<any | null>(null);
+  const [formPendingAval, setFormPendingAval] = useState<any | null>(null);
 
-  // Setup state (shown after validation for new OS)
+  // Setup state (after validation, for creating new OS)
   const [tipoServicoId, setTipoServicoId] = useState("");
   const [selectedTipoAvaliacaoId, setSelectedTipoAvaliacaoId] = useState("");
   const [atendenteId, setAtendenteId] = useState("");
   const [tecnicoId, setTecnicoId] = useState("");
-  const [cpfClienteEncontrado, setCpfClienteEncontrado] = useState<string | null>(null);
 
   // Evaluation state (full-page)
   const [evalAvaliacaoId, setEvalAvaliacaoId] = useState<string | null>(null);
@@ -196,7 +188,7 @@ export default function AvaliacaoOSPage() {
     enabled: !!tipoServicoId && !!selectedTipoAvaliacaoId,
   });
 
-  // Pending evaluations with progress
+  // Pending evaluations
   const { data: pendingAvaliacoes = [], refetch: refetchPending } = useQuery({
     queryKey: ["pending_aval_v3", profile?.id],
     queryFn: async () => {
@@ -209,7 +201,6 @@ export default function AvaliacaoOSPage() {
         .order("created_at", { ascending: false });
       if (!avals) return [];
 
-      // Get tipo_avaliacao names
       const taIds = [...new Set(avals.map((a: any) => a.tipo_avaliacao_id).filter(Boolean))];
       let taMap: Record<string, string> = {};
       if (taIds.length > 0) {
@@ -217,7 +208,6 @@ export default function AvaliacaoOSPage() {
         tas?.forEach((t: any) => { taMap[t.id] = t.nome; });
       }
 
-      // Get tipo_servico names
       const tsIds = [...new Set(avals.map((a: any) => a.ordens_servico?.tipo_servico_id).filter(Boolean))] as string[];
       let tsMap: Record<string, string> = {};
       if (tsIds.length > 0) {
@@ -225,7 +215,6 @@ export default function AvaliacaoOSPage() {
         tss?.forEach(t => { tsMap[t.id] = t.nome; });
       }
 
-      // Get answer counts for progress
       const avalIds = avals.map(a => a.id);
       const { data: respostas } = await supabase
         .from("respostas_avaliacao")
@@ -237,7 +226,6 @@ export default function AvaliacaoOSPage() {
         if (r.resposta) answeredMap[r.avaliacao_id] = (answeredMap[r.avaliacao_id] || 0) + 1;
       });
 
-      // Get total question counts per avaliacao
       const totalMap: Record<string, number> = {};
       for (const a of avals) {
         const os = a.ordens_servico as any;
@@ -320,15 +308,6 @@ export default function AvaliacaoOSPage() {
     enabled: !!tipoServicoId && !!selectedTipoAvaliacaoId,
   });
 
-  // Auto-fill CPF
-  useEffect(() => {
-    const d = clienteCpf.replace(/\D/g, "");
-    if (d.length === 11 && isValidCpf(d)) {
-      supabase.from("clientes").select("id, nome").eq("cpf", clienteCpf.trim()).limit(1).single()
-        .then(({ data }) => { if (data) { setClienteNome(data.nome); setCpfClienteEncontrado(data.nome); } else setCpfClienteEncontrado(null); });
-    } else setCpfClienteEncontrado(null);
-  }, [clienteCpf]);
-
   // Auto-select tipo_avaliacao for non-admins
   useEffect(() => {
     if (!isAdmin && profile?.cargo && linkedTiposAvaliacao.length > 0) {
@@ -341,11 +320,87 @@ export default function AvaliacaoOSPage() {
   useEffect(() => {
     const os = searchParams.get("os");
     if (os) {
-      setSearchQuery(os);
-      supabase.from("ordens_servico").select("*").eq("numero_os", os).limit(1).single()
-        .then(({ data }) => { if (data) { setSelectedOS(data); setView("os_detail"); } });
+      setFormOsNumero(os);
+      handleValidate(os);
     }
   }, []);
+
+  // --- Validate OS/Client ---
+  const handleValidate = async (overrideOs?: string) => {
+    const num = (overrideOs || formOsNumero).trim();
+    if (!num) { toast.error("Informe o número da OS."); return; }
+
+    setFormValidating(true);
+    setFormValidated(false);
+    setFormFoundOS(null);
+    setFormFoundCliente(null);
+    setFormPendingAval(null);
+
+    try {
+      // 1. Check if OS exists
+      const { data: existingOS } = await supabase
+        .from("ordens_servico")
+        .select("*")
+        .eq("numero_os", num)
+        .limit(1)
+        .single();
+
+      if (existingOS) {
+        setFormFoundOS(existingOS);
+        setFormClienteNome(existingOS.cliente_nome || "");
+        setFormClienteCpf(existingOS.cliente_cpf ? formatCpf(existingOS.cliente_cpf) : "");
+        if (existingOS.tipo_servico_id) setTipoServicoId(existingOS.tipo_servico_id);
+        if (existingOS.atendente_id) setAtendenteId(existingOS.atendente_id);
+        if (existingOS.tecnico_id) setTecnicoId(existingOS.tecnico_id);
+
+        // Check if there's a pending evaluation for current user
+        if (profile) {
+          const { data: pendingAval } = await supabase
+            .from("avaliacoes")
+            .select("id, tipo_avaliacao_id, concluida, nota_final")
+            .eq("ordem_servico_id", existingOS.id)
+            .eq("avaliador_id", profile.id)
+            .eq("concluida", false)
+            .limit(1)
+            .single();
+
+          if (pendingAval) {
+            setFormPendingAval(pendingAval);
+            if (pendingAval.tipo_avaliacao_id) setSelectedTipoAvaliacaoId(pendingAval.tipo_avaliacao_id);
+            toast.info("OS encontrada com avaliação pendente. Clique em 'Continuar Avaliação'.");
+          } else {
+            toast.success("OS encontrada! Configure a avaliação abaixo.");
+          }
+        }
+      } else {
+        // 2. Check if client exists by CPF
+        const cpfDigits = formClienteCpf.replace(/\D/g, "");
+        if (cpfDigits.length === 11 && isValidCpf(cpfDigits)) {
+          const { data: cliente } = await supabase
+            .from("clientes")
+            .select("id, nome, cpf")
+            .eq("cpf", formClienteCpf.trim())
+            .limit(1)
+            .single();
+          if (cliente) {
+            setFormFoundCliente(cliente);
+            setFormClienteNome(cliente.nome);
+            toast.info(`Cliente encontrado: ${cliente.nome}. OS não encontrada, preencha os dados para criar.`);
+          } else {
+            toast.info("OS e cliente não encontrados. Preencha os dados para criar.");
+          }
+        } else {
+          toast.info("OS não encontrada. Preencha os dados para criar.");
+        }
+      }
+
+      setFormValidated(true);
+    } catch (err: any) {
+      toast.error("Erro na validação: " + err.message);
+    } finally {
+      setFormValidating(false);
+    }
+  };
 
   // --- Auto-save logic ---
   const autoSaveAnswer = useCallback(async (perguntaId: string, answer: Answer) => {
@@ -379,33 +434,15 @@ export default function AvaliacaoOSPage() {
 
   const handleObservationChange = useCallback((perguntaId: string, text: string) => {
     setEvalObservations(prev => ({ ...prev, [perguntaId]: text }));
-    // Debounce observation saves
     if (debounceTimers.current[perguntaId]) clearTimeout(debounceTimers.current[perguntaId]);
     debounceTimers.current[perguntaId] = setTimeout(() => autoSaveObservation(perguntaId, text), 800);
   }, [autoSaveObservation]);
 
   // --- Handlers ---
-  const handleSearch = async () => {
-    const q = searchQuery.trim();
-    if (!q) return;
-    const { data } = await supabase.from("ordens_servico").select("*").eq("numero_os", q).limit(1).single();
-    if (data) { setSelectedOS(data); setView("os_detail"); }
-    else { toast.info("Nenhuma OS encontrada."); setSelectedOS(null); }
-  };
-
-  const openCreateDialog = () => {
-    setStep(0); setTipoServicoId(""); setSelectedTipoAvaliacaoId("");
-    setNewOsNumero(""); setClienteNome(""); setClienteCpf("");
-    setAtendenteId(""); setTecnicoId("");
-    setCreateDialogOpen(true);
-  };
-
   const openEvaluation = async (avaliacaoId: string, osId: string) => {
-    // Load OS data
     const { data: osData } = await supabase.from("ordens_servico").select("*").eq("id", osId).single();
     if (!osData) return;
 
-    // Load avaliacao details
     const { data: aval } = await supabase.from("avaliacoes").select("tipo_avaliacao_id, concluida, nota_final").eq("id", avaliacaoId).single();
     if (!aval) return;
 
@@ -417,7 +454,6 @@ export default function AvaliacaoOSPage() {
     setEvalFinalized(aval.concluida || false);
     setEvalScore(aval.nota_final as number | null);
 
-    // Load existing answers
     const { data: respostas } = await supabase.from("respostas_avaliacao").select("pergunta_id, resposta, observacao").eq("avaliacao_id", avaliacaoId);
     const ans: Record<string, Answer> = {};
     const obs: Record<string, string> = {};
@@ -429,6 +465,11 @@ export default function AvaliacaoOSPage() {
 
   const openPendingEvaluation = async (pending: any) => {
     await openEvaluation(pending.id, pending.ordem_servico_id);
+  };
+
+  const handleContinuePending = async () => {
+    if (!formPendingAval || !formFoundOS) return;
+    await openEvaluation(formPendingAval.id, formFoundOS.id);
   };
 
   const startMyEvaluation = async () => {
@@ -459,37 +500,34 @@ export default function AvaliacaoOSPage() {
       }
     }
 
-    // Check if avaliacao already exists
     const existingAval = osAvaliacoes.find((a: any) => a.tipo_avaliacao_id === myTa.id && a.avaliador_id === profile.id);
     if (existingAval) {
       await openEvaluation(existingAval.id, selectedOS.id);
     } else {
-      // Create new avaliacao
       const { data: newAval, error } = await supabase.from("avaliacoes").insert({
-        ordem_servico_id: selectedOS.id,
-        avaliador_id: profile.id,
-        tipo_avaliacao_id: myTa.id,
-        concluida: false,
+        ordem_servico_id: selectedOS.id, avaliador_id: profile.id, tipo_avaliacao_id: myTa.id, concluida: false,
       } as any).select("id").single();
       if (error) { toast.error("Erro ao criar avaliação: " + error.message); return; }
-
-      // Update OS status to em_andamento
       await supabase.from("ordens_servico").update({ status: "em_andamento" } as any).eq("id", selectedOS.id).eq("status", "aberta");
-
       await openEvaluation(newAval.id, selectedOS.id);
     }
   };
 
-  // After wizard completes (step 2), create OS + avaliacao, then open full-page evaluation
-  const handleWizardComplete = async () => {
+  // Create OS from form + start evaluation
+  const handleCreateAndStart = async () => {
     if (!profile) return;
+    if (!tipoServicoId || !selectedTipoAvaliacaoId) { toast.error("Selecione tipo de serviço e avaliação."); return; }
+
     try {
-      const num = newOsNumero.trim();
-      const cpfD = clienteCpf.replace(/\D/g, "");
-      const nomeTr = clienteNome.trim() || null;
-      const cpfTr = cpfD.length === 11 ? clienteCpf.trim() : null;
+      const num = formOsNumero.trim();
+      const cpfD = formClienteCpf.replace(/\D/g, "");
+      const nomeTr = formClienteNome.trim() || null;
+      const cpfTr = cpfD.length === 11 ? formClienteCpf.trim() : null;
       let clienteId: string | null = null;
-      if (cpfTr) {
+
+      if (formFoundCliente) {
+        clienteId = formFoundCliente.id;
+      } else if (cpfTr) {
         const { data: ex } = await supabase.from("clientes").select("id").eq("cpf", cpfTr).limit(1).single();
         if (ex) clienteId = ex.id;
         else { const { data: nc } = await supabase.from("clientes").insert({ nome: nomeTr || "Sem nome", cpf: cpfTr }).select("id").single(); if (nc) clienteId = nc.id; }
@@ -499,11 +537,12 @@ export default function AvaliacaoOSPage() {
       }
 
       let osId: string;
-      const { data: exOS } = await supabase.from("ordens_servico").select("id").eq("numero_os", num).limit(1).single();
-      if (exOS) {
-        osId = exOS.id;
+      if (formFoundOS) {
+        osId = formFoundOS.id;
+        // Update OS with new employee assignments
         await supabase.from("ordens_servico").update({
           atendente_id: atendenteId || null, tecnico_id: tecnicoId || null,
+          tipo_servico_id: tipoServicoId,
         } as any).eq("id", osId);
       } else {
         const { data: newOs, error: oe } = await supabase.from("ordens_servico").insert({
@@ -520,8 +559,7 @@ export default function AvaliacaoOSPage() {
       } as any).select("id").single();
       if (ae) throw ae;
 
-      setCreateDialogOpen(false);
-      toast.success("OS criada! Iniciando avaliação...");
+      toast.success("Avaliação criada! Iniciando...");
       await openEvaluation(newAval.id, osId);
     } catch (err: any) {
       toast.error("Erro: " + err.message);
@@ -543,7 +581,6 @@ export default function AvaliacaoOSPage() {
       setEvalScore(nota);
       setEvalFinalized(true);
       toast.success(`Avaliação concluída! Nota: ${nota.toFixed(1)}%`);
-
       try { await detectInconsistencies(evalOsId); } catch (e) { console.warn("Inconsistency detection error:", e); }
       refetchPending();
     } catch (err: any) {
@@ -577,23 +614,21 @@ export default function AvaliacaoOSPage() {
     setEvalScore(null);
   };
 
-  // --- Computed ---
-  const canAdvance = (s: number) => {
-    if (s === 0) return !!tipoServicoId && !!selectedTipoAvaliacaoId;
-    if (s === 1) {
-      if (!newOsNumero.trim()) return false;
-      const d = clienteCpf.replace(/\D/g, "");
-      if (d.length > 0 && d.length < 11) return false;
-      if (d.length === 11 && !isValidCpf(d)) return false;
-      return true;
-    }
-    if (s === 2) {
-      if (isAtendimentoEvaluator) return !!atendenteId;
-      return !!tecnicoId;
-    }
-    return false;
+  const resetForm = () => {
+    setFormOsNumero("");
+    setFormClienteNome("");
+    setFormClienteCpf("");
+    setFormValidated(false);
+    setFormFoundOS(null);
+    setFormFoundCliente(null);
+    setFormPendingAval(null);
+    setTipoServicoId("");
+    setSelectedTipoAvaliacaoId("");
+    setAtendenteId("");
+    setTecnicoId("");
   };
 
+  // --- Computed ---
   const evalAnsweredCount = evalPerguntas.filter(p => evalAnswers[p.id] != null).length;
   const evalProgressPercent = evalPerguntas.length > 0 ? Math.round((evalAnsweredCount / evalPerguntas.length) * 100) : 0;
   const evalTotalScore = evalPerguntas.reduce((a, p) => evalAnswers[p.id] === "sim" ? a + p.peso : a, 0);
@@ -606,13 +641,14 @@ export default function AvaliacaoOSPage() {
   const selectedTipoNome = tiposAvaliacao.find(t => t.id === selectedTipoAvaliacaoId)?.nome;
   const evalTipoServicoNome = tiposServico.find(t => t.id === evalOsData?.tipo_servico_id)?.nome;
 
+  const canCreateEval = !!tipoServicoId && !!selectedTipoAvaliacaoId && (isAtendimentoEvaluator ? !!atendenteId : !!tecnicoId);
+
   // ===================== RENDER =====================
 
   // --- Full-Page Evaluation View ---
   if (view === "evaluation" && evalOsData) {
     return (
       <div className="p-4 sm:p-6 max-w-4xl mx-auto pb-24">
-        {/* Back button */}
         <Button variant="ghost" size="sm" className="mb-3 press-effect" onClick={backToList}>
           <ChevronLeft className="w-4 h-4 mr-1" /> Voltar para lista
         </Button>
@@ -634,13 +670,11 @@ export default function AvaliacaoOSPage() {
               </div>
               {autoSaving && (
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  Salvando...
+                  <Loader2 className="w-3 h-3 animate-spin" /> Salvando...
                 </div>
               )}
             </div>
 
-            {/* Evaluated employees */}
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 mt-3 pt-3 border-t border-border">
               <div className="flex items-center gap-2 text-sm">
                 <span className="text-muted-foreground">Atendente:</span>
@@ -667,8 +701,8 @@ export default function AvaliacaoOSPage() {
           {evalMaxScore > 0 && (
             <div className="flex items-center justify-between mt-2 text-caption text-muted-foreground">
               <span>Pontuação parcial</span>
-              <span className={cn("font-bold font-tabular", 
-                evalMaxScore > 0 && (evalTotalScore / evalMaxScore) * 100 >= 80 ? "text-success" : 
+              <span className={cn("font-bold font-tabular",
+                evalMaxScore > 0 && (evalTotalScore / evalMaxScore) * 100 >= 80 ? "text-success" :
                 evalMaxScore > 0 && (evalTotalScore / evalMaxScore) * 100 >= 60 ? "text-warning" : "text-destructive"
               )}>
                 {evalTotalScore}/{evalMaxScore} pts ({evalMaxScore > 0 ? ((evalTotalScore / evalMaxScore) * 100).toFixed(1) : 0}%)
@@ -714,7 +748,6 @@ export default function AvaliacaoOSPage() {
                   )}
                 >
                   <div className="p-4">
-                    {/* Question header */}
                     <div className="flex items-start gap-3 mb-3">
                       <div className={cn(
                         "flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0",
@@ -728,29 +761,20 @@ export default function AvaliacaoOSPage() {
                       </div>
                     </div>
 
-                    {/* Answer buttons - full width on mobile */}
                     <div className="ml-11">
-                      <SegmentedControl
-                        value={answer}
-                        onChange={v => handleAnswerChange(p.id, v)}
-                        disabled={evalFinalized}
-                      />
+                      <SegmentedControl value={answer} onChange={v => handleAnswerChange(p.id, v)} disabled={evalFinalized} />
                     </div>
 
-                    {/* Observation for "nao" answers */}
                     <AnimatePresence>
                       {answer === "nao" && (
                         <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.2 }}
+                          initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }}
                           className="overflow-hidden"
                         >
                           <div className="ml-11 mt-3 bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-2">
                             <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
-                              <AlertTriangle className="w-3.5 h-3.5" />
-                              Descreva a irregularidade encontrada
+                              <AlertTriangle className="w-3.5 h-3.5" /> Descreva a irregularidade encontrada
                             </div>
                             <Textarea
                               placeholder="Descreva o problema encontrado..."
@@ -788,11 +812,7 @@ export default function AvaliacaoOSPage() {
                   </span>
                 )}
               </div>
-              <Button
-                onClick={handleFinalizeEvaluation}
-                disabled={evalProgressPercent < 100 || evalSubmitting}
-                className="press-effect"
-              >
+              <Button onClick={handleFinalizeEvaluation} disabled={evalProgressPercent < 100 || evalSubmitting} className="press-effect">
                 {evalSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Finalizar Avaliação
               </Button>
@@ -827,7 +847,6 @@ export default function AvaliacaoOSPage() {
           </div>
         </div>
 
-        {/* Evaluation Types Status */}
         <div className="bg-card border border-border rounded-lg shadow-card mb-4">
           <div className="p-4 border-b border-border flex items-center gap-2">
             <Users className="w-4 h-4 text-primary" />
@@ -858,7 +877,6 @@ export default function AvaliacaoOSPage() {
           </div>
         </div>
 
-        {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-2">
           {selectedOS.status !== "concluida" && (
             <Button onClick={startMyEvaluation} className="press-effect w-full sm:w-auto">
@@ -875,29 +893,225 @@ export default function AvaliacaoOSPage() {
     );
   }
 
-  // --- List View (Default) ---
+  // --- List View (Default) - New Flow ---
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto">
       <div className="mb-4 sm:mb-6">
         <h1 className="text-lg sm:text-section font-semibold text-foreground">Avaliação de OS</h1>
-        <p className="text-sm sm:text-body text-muted-foreground">Busque uma OS ou crie uma nova.</p>
+        <p className="text-sm sm:text-body text-muted-foreground">Informe os dados da OS para validar e iniciar a avaliação.</p>
       </div>
 
-      {/* Search */}
-      <div className="bg-card border border-border rounded-lg p-3 sm:p-4 shadow-card mb-4 sm:mb-6">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex-1">
-            <Label htmlFor="os-search" className="text-body font-medium mb-1.5 block">Número da OS</Label>
-            <Input id="os-search" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Ex: 12345" className="h-10" onKeyDown={e => e.key === "Enter" && handleSearch()} />
+      {/* Validation Form */}
+      <div className="bg-card border border-border rounded-lg shadow-card mb-6">
+        <div className="p-4 border-b border-border">
+          <h2 className="text-body font-semibold text-foreground flex items-center gap-2">
+            <Search className="w-4 h-4 text-primary" />
+            Dados da OS
+          </h2>
+        </div>
+        <div className="p-4 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="space-y-1.5">
+              <Label>Número da OS *</Label>
+              <Input
+                value={formOsNumero}
+                onChange={e => { setFormOsNumero(e.target.value.replace(/\D/g, "")); setFormValidated(false); }}
+                placeholder="Ex: 12345"
+                onKeyDown={e => e.key === "Enter" && handleValidate()}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Nome do Cliente</Label>
+              <Input
+                value={formClienteNome}
+                onChange={e => setFormClienteNome(e.target.value)}
+                placeholder="Nome completo"
+                disabled={!!formFoundOS}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>CPF do Cliente</Label>
+              <Input
+                value={formClienteCpf}
+                onChange={e => setFormClienteCpf(formatCpf(e.target.value))}
+                placeholder="000.000.000-00"
+                maxLength={14}
+                disabled={!!formFoundOS}
+              />
+              {formClienteCpf.replace(/\D/g, "").length === 11 && !isValidCpf(formClienteCpf) && (
+                <p className="text-caption text-destructive">CPF inválido</p>
+              )}
+            </div>
           </div>
-          <div className="flex items-end gap-2">
-            <Button onClick={handleSearch} variant="outline" className="h-10 flex-1 sm:flex-none press-effect"><Search className="w-4 h-4 mr-2" /> Buscar</Button>
-            <Button onClick={openCreateDialog} className="h-10 flex-1 sm:flex-none press-effect"><Plus className="w-4 h-4 mr-2" /> Criar OS</Button>
+
+          <div className="flex items-center gap-3">
+            <Button onClick={() => handleValidate()} disabled={!formOsNumero.trim() || formValidating} className="press-effect">
+              {formValidating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
+              Validar
+            </Button>
+            {formValidated && (
+              <Button variant="ghost" size="sm" onClick={resetForm}>Limpar</Button>
+            )}
           </div>
+
+          {/* Validation Results */}
+          {formValidated && (
+            <AnimatePresence>
+              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+                {/* Found OS info */}
+                {formFoundOS && (
+                  <div className="bg-success/5 border border-success/20 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Check className="w-4 h-4 text-success" />
+                      <span className="text-sm font-medium text-success">OS encontrada no sistema</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Nº OS:</span>
+                        <p className="font-medium text-foreground">{formFoundOS.numero_os}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Cliente:</span>
+                        <p className="font-medium text-foreground">{formFoundOS.cliente_nome || "—"}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Status:</span>
+                        <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border", statusLabel[formFoundOS.status]?.badge)}>
+                          {statusLabel[formFoundOS.status]?.text}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">CPF:</span>
+                        <p className="font-medium text-foreground">{formFoundOS.cliente_cpf || "—"}</p>
+                      </div>
+                    </div>
+
+                    {/* Pending evaluation shortcut */}
+                    {formPendingAval && (
+                      <div className="mt-3 pt-3 border-t border-success/20">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-warning" />
+                            <span className="text-sm font-medium text-warning">Avaliação pendente encontrada</span>
+                          </div>
+                          <Button size="sm" onClick={handleContinuePending} className="press-effect">
+                            Continuar Avaliação <ChevronRight className="w-4 h-4 ml-1" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* View OS detail */}
+                    {!formPendingAval && (
+                      <div className="mt-3 pt-3 border-t border-success/20 flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => { setSelectedOS(formFoundOS); setView("os_detail"); }} className="press-effect">
+                          <Eye className="w-4 h-4 mr-1" /> Ver Detalhes
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Found client info */}
+                {!formFoundOS && formFoundCliente && (
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                    <div className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-medium text-primary">Cliente encontrado: {formFoundCliente.nome}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Setup section for new evaluation (when OS not found or no pending eval) */}
+                {(!formFoundOS || (!formPendingAval && formFoundOS.status !== "concluida")) && (
+                  <div className="border border-border rounded-lg p-4 space-y-4">
+                    <h3 className="text-body font-semibold text-foreground">Configurar Avaliação</h3>
+
+                    {/* Tipo de Serviço */}
+                    <div className="space-y-2">
+                      <Label className="text-body font-medium">Tipo de Serviço *</Label>
+                      <div className="space-y-1 max-h-40 overflow-y-auto">
+                        {tiposServico.length === 0 ? (
+                          <p className="text-body text-muted-foreground text-center py-4">Nenhum tipo de serviço disponível.</p>
+                        ) : tiposServico.map((t) => (
+                          <button key={t.id} type="button" onClick={() => { setTipoServicoId(t.id); setSelectedTipoAvaliacaoId(""); }}
+                            className={cn("w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-left transition-all press-effect text-sm",
+                              tipoServicoId === t.id ? "bg-primary/10 border-primary text-primary" : "bg-card border-border hover:bg-muted/50")}>
+                            <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0",
+                              tipoServicoId === t.id ? "border-primary bg-primary" : "border-muted-foreground/30")}>
+                              {tipoServicoId === t.id && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                            </div>
+                            <span className="font-medium truncate">{t.nome}</span>
+                            <span className="text-caption text-muted-foreground ml-auto">{(t as any).setores?.nome || ""}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Tipo de Avaliação */}
+                    {tipoServicoId && linkedTiposAvaliacao.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-body font-medium">Tipo de Avaliação *</Label>
+                        {isAdmin ? (
+                          <div className="space-y-1">
+                            {linkedTiposAvaliacao.map(ta => (
+                              <button key={ta.id} type="button" onClick={() => setSelectedTipoAvaliacaoId(ta.id)}
+                                className={cn("w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-left transition-all press-effect text-sm",
+                                  selectedTipoAvaliacaoId === ta.id ? "bg-primary/10 border-primary" : "bg-card border-border hover:bg-muted/50")}>
+                                <div className={cn("w-4 h-4 rounded-full border-2 shrink-0",
+                                  selectedTipoAvaliacaoId === ta.id ? "border-primary bg-primary" : "border-muted-foreground/30")} />
+                                <span className="font-medium">{ta.nome}</span>
+                                <span className="text-caption text-muted-foreground ml-auto">{ta.cargo_responsavel || "—"}</span>
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-body text-foreground bg-muted/50 px-3 py-2 rounded-md">
+                            {selectedTipoNome || "Nenhum tipo de avaliação corresponde ao seu cargo."}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Employee Selection */}
+                    {tipoServicoId && selectedTipoAvaliacaoId && (
+                      <div className="space-y-2">
+                        {isAtendimentoEvaluator ? (
+                          <div className="space-y-1.5">
+                            <Label>Atendente Avaliado *</Label>
+                            <Select value={atendenteId} onValueChange={setAtendenteId}>
+                              <SelectTrigger><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
+                              <SelectContent>
+                                {profilesBySetor.map(p => <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5">
+                            <Label>Técnico Avaliado *</Label>
+                            <Select value={tecnicoId} onValueChange={setTecnicoId}>
+                              <SelectTrigger><SelectValue placeholder="Selecione o técnico" /></SelectTrigger>
+                              <SelectContent>
+                                {profilesBySetor.map(p => <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <Button onClick={handleCreateAndStart} disabled={!canCreateEval} className="w-full sm:w-auto press-effect">
+                      Iniciar Avaliação <ChevronRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  </div>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          )}
         </div>
       </div>
 
-      {/* Pending Evaluations - Enhanced */}
+      {/* Pending Evaluations */}
       {pendingAvaliacoes.length > 0 && (
         <div className="bg-card border border-border rounded-lg shadow-card mb-6">
           <div className="p-4 border-b border-border flex items-center gap-2">
@@ -906,7 +1120,6 @@ export default function AvaliacaoOSPage() {
             <Badge variant="secondary" className="ml-auto text-xs">{pendingAvaliacoes.length}</Badge>
           </div>
 
-          {/* Table header */}
           <div className="hidden sm:grid grid-cols-[1fr_120px_100px_80px_32px] gap-2 px-4 py-2 text-caption font-medium text-muted-foreground border-b border-border bg-muted/30">
             <span>OS / Cliente</span>
             <span>Tipo Serviço</span>
@@ -918,12 +1131,9 @@ export default function AvaliacaoOSPage() {
           <div className="divide-y divide-border">
             {pendingAvaliacoes.map((a: any) => (
               <button
-                key={a.id}
-                type="button"
-                onClick={() => openPendingEvaluation(a)}
+                key={a.id} type="button" onClick={() => openPendingEvaluation(a)}
                 className="w-full flex flex-col sm:grid sm:grid-cols-[1fr_120px_100px_80px_32px] sm:items-center gap-1 sm:gap-2 px-4 py-3 text-left hover:bg-muted/50 transition-colors press-effect"
               >
-                {/* OS info */}
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-body font-medium text-primary font-tabular">OS #{a.ordens_servico?.numero_os}</span>
@@ -931,195 +1141,20 @@ export default function AvaliacaoOSPage() {
                   </div>
                   <p className="text-caption text-muted-foreground truncate">{a.ordens_servico?.cliente_nome || "Sem cliente"}</p>
                 </div>
-
-                {/* Service type */}
                 <span className="text-caption text-muted-foreground truncate hidden sm:block">{a._ts_nome}</span>
-
-                {/* Progress */}
                 <div className="flex items-center gap-2">
                   <Progress value={a._progress} className="h-2 flex-1 sm:w-16" />
                   <span className="text-caption font-medium text-foreground font-tabular w-8 text-right">{a._progress}%</span>
                 </div>
-
-                {/* Status */}
                 <Badge variant={a._progress > 0 ? "default" : "secondary"} className="text-[10px] w-fit">
                   {a._progress > 0 ? "Parcial" : "Aberta"}
                 </Badge>
-
                 <ChevronRight className="w-4 h-4 text-muted-foreground hidden sm:block" />
               </button>
             ))}
           </div>
         </div>
       )}
-
-      {/* Create OS Wizard Dialog (Steps 0-2 only) */}
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className={cn(
-          "max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden",
-          "w-full max-w-full h-full sm:h-auto",
-          "rounded-none sm:rounded-lg",
-          "top-0 left-0 translate-x-0 translate-y-0 sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%]",
-          "sm:max-w-lg"
-        )}>
-          <DialogHeader>
-            <DialogTitle>Criar Nova OS</DialogTitle>
-          </DialogHeader>
-
-          {/* Stepper */}
-          <div className="flex items-center gap-1 mb-4 overflow-hidden">
-            {STEPS.map((s, i) => (
-              <div key={i} className="flex items-center gap-1 flex-1 min-w-0">
-                <div className={cn("flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full text-[10px] sm:text-caption font-bold shrink-0 transition-colors",
-                  i <= step ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
-                  {i < step ? <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : i + 1}
-                </div>
-                <div className="hidden sm:block min-w-0 max-w-[80px] lg:max-w-none">
-                  <p className={cn("text-caption font-medium truncate", i === step ? "text-foreground" : "text-muted-foreground")}>{s.label}</p>
-                </div>
-                {i < STEPS.length - 1 && <div className={cn("flex-1 h-px mx-0.5 sm:mx-1 min-w-2", i < step ? "bg-primary" : "bg-border")} />}
-              </div>
-            ))}
-          </div>
-
-          <AnimatePresence mode="wait">
-            <motion.div key={step} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
-
-              {/* Step 0: Service Type + Evaluation Type */}
-              {step === 0 && (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <p className="text-body text-muted-foreground">Selecione o tipo de serviço:</p>
-                    <div className="space-y-1 max-h-48 overflow-y-auto">
-                      {tiposServico.length === 0 ? (
-                        <p className="text-body text-muted-foreground text-center py-6">Nenhum tipo de serviço disponível.</p>
-                      ) : tiposServico.map((t) => (
-                        <button key={t.id} type="button" onClick={() => { setTipoServicoId(t.id); setSelectedTipoAvaliacaoId(""); }}
-                          className={cn("w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-all press-effect",
-                            tipoServicoId === t.id ? "bg-primary/10 border-primary text-primary" : "bg-card border-border hover:bg-muted/50")}>
-                          <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0",
-                            tipoServicoId === t.id ? "border-primary bg-primary" : "border-muted-foreground/30")}>
-                            {tipoServicoId === t.id && <Check className="w-3 h-3 text-primary-foreground" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-body font-medium truncate">{t.nome}</p>
-                            <p className="text-caption text-muted-foreground">{(t as any).setores?.nome || "Sem setor"}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {tipoServicoId && linkedTiposAvaliacao.length > 0 && (
-                    <div className="space-y-2">
-                      <Label className="text-body font-medium">Tipo de Avaliação</Label>
-                      {isAdmin ? (
-                        <div className="space-y-1">
-                          {linkedTiposAvaliacao.map(ta => (
-                            <button key={ta.id} type="button" onClick={() => setSelectedTipoAvaliacaoId(ta.id)}
-                              className={cn("w-full flex items-center gap-3 px-4 py-2 rounded-lg border text-left transition-all press-effect",
-                                selectedTipoAvaliacaoId === ta.id ? "bg-primary/10 border-primary" : "bg-card border-border hover:bg-muted/50")}>
-                              <div className={cn("w-4 h-4 rounded-full border-2 shrink-0",
-                                selectedTipoAvaliacaoId === ta.id ? "border-primary bg-primary" : "border-muted-foreground/30")} />
-                              <span className="text-body font-medium">{ta.nome}</span>
-                              <span className="text-caption text-muted-foreground ml-auto">{ta.cargo_responsavel || "—"}</span>
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-body text-foreground bg-muted/50 px-3 py-2 rounded-md">
-                          {selectedTipoNome || "Nenhum tipo de avaliação corresponde ao seu cargo."}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                  {tipoServicoId && linkedTiposAvaliacao.length === 0 && (
-                    <p className="text-caption text-destructive">Nenhum tipo de avaliação vinculado a este serviço.</p>
-                  )}
-                </div>
-              )}
-
-              {/* Step 1: OS Data */}
-              {step === 1 && (
-                <div className="space-y-4">
-                  <div className="space-y-1.5">
-                    <Label>Número da OS *</Label>
-                    <Input value={newOsNumero} onChange={e => setNewOsNumero(e.target.value.replace(/\D/g, ""))} placeholder="Apenas números" autoFocus />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label>Nome do Cliente</Label>
-                      <Input value={clienteNome} onChange={e => setClienteNome(e.target.value)} placeholder="Nome completo" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>CPF do Cliente</Label>
-                      <Input value={clienteCpf} onChange={e => setClienteCpf(formatCpf(e.target.value))} placeholder="000.000.000-00" maxLength={14} />
-                      {clienteCpf.replace(/\D/g, "").length === 11 && !isValidCpf(clienteCpf) && <p className="text-caption text-destructive">CPF inválido</p>}
-                      {clienteCpf.replace(/\D/g, "").length === 11 && isValidCpf(clienteCpf) && (
-                        <p className="text-caption text-success">{cpfClienteEncontrado ? `✓ ${cpfClienteEncontrado}` : "CPF válido ✓"}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Step 2: Employees */}
-              {step === 2 && (
-                <div className="space-y-4">
-                  <p className="text-body text-muted-foreground">
-                    {isAtendimentoEvaluator
-                      ? "Selecione o atendente que será avaliado nesta OS."
-                      : "Selecione o técnico que será avaliado nesta OS."}
-                  </p>
-                  {isAtendimentoEvaluator ? (
-                    <div className="space-y-1.5">
-                      <Label>Atendente *</Label>
-                      <Select value={atendenteId} onValueChange={setAtendenteId}>
-                        <SelectTrigger><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
-                        <SelectContent>
-                          {profilesBySetor.map(p => <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  ) : (
-                    <div className="space-y-1.5">
-                      <Label>Técnico *</Label>
-                      <Select value={tecnicoId} onValueChange={setTecnicoId}>
-                        <SelectTrigger><SelectValue placeholder="Selecione o técnico" /></SelectTrigger>
-                        <SelectContent>
-                          {profilesBySetor.map(p => <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                </div>
-              )}
-            </motion.div>
-          </AnimatePresence>
-
-          <DialogFooter className="flex flex-row justify-between gap-2 mt-2">
-            <div>
-              {step > 0 && (
-                <Button type="button" variant="outline" onClick={() => setStep(step - 1)}>
-                  <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
-                </Button>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Button type="button" variant="ghost" onClick={() => setCreateDialogOpen(false)}>Cancelar</Button>
-              {step < 2 ? (
-                <Button type="button" onClick={() => setStep(step + 1)} disabled={!canAdvance(step)} className="press-effect">
-                  Próximo <ChevronRight className="w-4 h-4 ml-1" />
-                </Button>
-              ) : (
-                <Button type="button" onClick={handleWizardComplete} disabled={!canAdvance(2)} className="press-effect">
-                  Iniciar Avaliação <ChevronRight className="w-4 h-4 ml-1" />
-                </Button>
-              )}
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
