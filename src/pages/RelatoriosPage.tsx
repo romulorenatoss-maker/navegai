@@ -68,6 +68,33 @@ export default function RelatoriosPage() {
   const [startDate, setStartDate] = useState<Date | undefined>(startOfMonth(now));
   const [endDate, setEndDate] = useState<Date | undefined>(endOfMonth(now));
 
+  // Advanced filters
+  const [filterStatus, setFilterStatus] = useState<string>("todos");
+  const [filterSetor, setFilterSetor] = useState<string>("todos");
+  const [filterAvaliador, setFilterAvaliador] = useState<string>("todos");
+  const [filterAvaliado, setFilterAvaliado] = useState<string>("todos");
+  const [filterCliente, setFilterCliente] = useState("");
+
+  // Filter options (loaded from DB)
+  const [setores, setSetores] = useState<{ id: string; nome: string }[]>([]);
+  const [avaliadores, setAvaliadores] = useState<{ id: string; nome: string }[]>([]);
+  const [avaliados, setAvaliados] = useState<{ id: string; nome: string }[]>([]);
+
+  // Load filter options on mount
+  useEffect(() => {
+    const loadFilterOptions = async () => {
+      const [setoresRes, profilesRes] = await Promise.all([
+        supabase.from("setores").select("id, nome").eq("ativo", true).order("nome"),
+        supabase.from("profiles").select("id, nome, cargo").eq("ativo", true).order("nome"),
+      ]);
+      setSetores(setoresRes.data || []);
+      const profiles = profilesRes.data || [];
+      setAvaliadores(profiles.filter((p) => p.cargo === "administrador" || p.cargo === "avaliador"));
+      setAvaliados(profiles);
+    };
+    loadFilterOptions();
+  }, []);
+
   const handleCompetenceChange = (val: string) => {
     setCompetenceMonth(val);
   };
@@ -75,7 +102,6 @@ export default function RelatoriosPage() {
   const handleFilterModeChange = (mode: FilterMode) => {
     setFilterMode(mode);
     if (mode === "competencia") {
-      // Reset dates to match current competence month
       const [y, m] = competenceMonth.split("-").map(Number);
       const d = new Date(y, m - 1, 1);
       setStartDate(startOfMonth(d));
