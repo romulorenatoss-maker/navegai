@@ -1125,10 +1125,8 @@ export default function AvaliacaoOSPage() {
               className="mb-3 press-effect"
               onClick={() => {
                 setSearchQuery("");
-                // Reset OS state by searching empty
-                window.location.hash = "";
-                // Clear the loaded OS by resetting hook state
-                searchOS("__clear__", false);
+                clearOS();
+                refetchPending();
               }}
             >
               <ChevronLeft className="w-4 h-4 mr-1" /> Voltar para lista
