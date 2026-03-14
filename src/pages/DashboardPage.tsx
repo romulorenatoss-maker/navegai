@@ -230,7 +230,7 @@ export default function DashboardPage() {
     fetch();
   }, [startDate, endDate]);
 
-  // Fetch ranking + scores (independent of period filter)
+  // Fetch ranking + scores (respects date filters)
   useEffect(() => {
     const fetchRanking = async () => {
       const sixtyDaysAgo = new Date();
@@ -256,23 +256,55 @@ export default function DashboardPage() {
     };
 
     const fetchScores = async () => {
+      const from = startDate ? startDate.toISOString() : startOfMonth(now).toISOString();
+      const to = endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString();
+
+      // Get OS in the period
+      const { data: osInPeriod } = await supabase
+        .from("ordens_servico")
+        .select("id, tecnico_id, atendente_id, colaborador_avaliado_id, tipo_servico_id")
+        .gte("created_at", from)
+        .lte("created_at", to);
+
+      if (!osInPeriod?.length) {
+        setTecnicoMedias([]);
+        setSetorMedias([]);
+        return;
+      }
+
+      const osIds = osInPeriod.map(o => o.id);
       const { data: avaliacoes } = await supabase
         .from("avaliacoes")
-        .select("nota_final, ordens_servico:ordem_servico_id(colaborador_avaliado_id, tipo_servico_id)")
+        .select("nota_final, ordem_servico_id")
+        .in("ordem_servico_id", osIds)
         .eq("concluida", true)
         .not("nota_final", "is", null);
-      if (!avaliacoes || avaliacoes.length === 0) return;
+
+      if (!avaliacoes?.length) {
+        setTecnicoMedias([]);
+        setSetorMedias([]);
+        return;
+      }
+
+      const osMap: Record<string, typeof osInPeriod[0]> = {};
+      osInPeriod.forEach(o => { osMap[o.id] = o; });
 
       const tecMap: Record<string, { notas: number[] }> = {};
       avaliacoes.forEach((a: any) => {
-        const colabId = a.ordens_servico?.colaborador_avaliado_id;
+        const os = osMap[a.ordem_servico_id];
+        if (!os) return;
+        const colabId = os.colaborador_avaliado_id || os.tecnico_id || os.atendente_id;
         if (!colabId || a.nota_final == null) return;
         if (!tecMap[colabId]) tecMap[colabId] = { notas: [] };
         tecMap[colabId].notas.push(a.nota_final);
       });
 
       const colabIds = Object.keys(tecMap);
-      if (colabIds.length === 0) return;
+      if (colabIds.length === 0) {
+        setTecnicoMedias([]);
+        setSetorMedias([]);
+        return;
+      }
 
       const { data: profiles } = await supabase.from("profiles").select("id, nome, setor_id").in("id", colabIds);
       const { data: setorLinks } = await supabase.from("colaborador_setores").select("profile_id, setor_id").in("profile_id", colabIds);
@@ -327,7 +359,7 @@ export default function DashboardPage() {
 
     fetchRanking();
     fetchScores();
-  }, []);
+  }, [startDate, endDate]);
 
   // Split OS by status
   const osAbertas = useMemo(() => allOS.filter((o) => o.status === "aberta"), [allOS]);
@@ -500,52 +532,57 @@ export default function DashboardPage() {
         </motion.div>
       )}
 
-      {/* Score averages */}
-      {(tecnicoMedias.length > 0 || setorMedias.length > 0) && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {tecnicoMedias.length > 0 && (
-            <motion.div variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
-              <div className="p-4 border-b border-border flex items-center gap-2">
-                <Users className="w-4 h-4 text-primary" />
-                <h2 className="text-body font-semibold text-foreground">Média por Colaborador</h2>
-              </div>
-              <div className="divide-y divide-border">
-                {tecnicoMedias.map((t) => (
-                  <div key={t.profile_id} className="px-4 py-3 flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-body font-medium text-foreground truncate">{t.nome}</p>
-                      <p className="text-caption text-muted-foreground">{t.total_avaliacoes} avaliação(ões)</p>
-                    </div>
-                    <div className={`px-3 py-1 rounded-lg ${getScoreBg(t.media)}`}>
-                      <span className={`text-body font-bold font-tabular ${getScoreColor(t.media)}`}>{t.media.toFixed(1)}%</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
-          {setorMedias.length > 0 && (
-            <motion.div variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
-              <div className="p-4 border-b border-border flex items-center gap-2">
+      {/* Score averages - by sector */}
+      {setorMedias.length > 0 && (
+        <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {setorMedias.map((s) => (
+            <motion.div key={s.setor_id} variants={itemVariants}
+              className="bg-card border border-border rounded-lg p-4 shadow-card">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-caption text-muted-foreground font-medium uppercase tracking-wider">Média {s.setor_nome}</span>
                 <BarChart3 className="w-4 h-4 text-primary" />
-                <h2 className="text-body font-semibold text-foreground">Média por Setor</h2>
               </div>
-              <div className="divide-y divide-border">
-                {setorMedias.map((s) => (
-                  <div key={s.setor_id} className="px-4 py-3 flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-body font-medium text-foreground truncate">{s.setor_nome}</p>
-                      <p className="text-caption text-muted-foreground">{s.total_avaliacoes} avaliação(ões)</p>
-                    </div>
-                    <div className={`px-3 py-1 rounded-lg ${getScoreBg(s.media)}`}>
-                      <span className={`text-body font-bold font-tabular ${getScoreColor(s.media)}`}>{s.media.toFixed(1)}%</span>
-                    </div>
-                  </div>
-                ))}
+              <div className={cn("inline-flex px-3 py-1 rounded-lg", getScoreBg(s.media))}>
+                <span className={cn("text-section font-bold font-tabular", getScoreColor(s.media))}>{s.media.toFixed(1)}%</span>
               </div>
+              <p className="text-caption text-muted-foreground mt-1">{s.total_avaliacoes} avaliação(ões)</p>
             </motion.div>
-          )}
+          ))}
+        </motion.div>
+      )}
+
+      {/* Employee Rankings by Sector */}
+      {tecnicoMedias.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Group employees by sector */}
+          {(() => {
+            // We need to split tecnicoMedias by sector
+            // For now show all as a single ranked list - clickable to performance page
+            return (
+              <motion.div variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card lg:col-span-2">
+                <div className="p-4 border-b border-border flex items-center gap-2">
+                  <Users className="w-4 h-4 text-primary" />
+                  <h2 className="text-body font-semibold text-foreground">Ranking de Colaboradores</h2>
+                </div>
+                <div className="divide-y divide-border">
+                  {tecnicoMedias.map((t, i) => (
+                    <div key={t.profile_id}
+                      className="px-4 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => navigate(`/desempenho?id=${t.profile_id}`)}>
+                      <span className="text-caption font-medium text-muted-foreground font-tabular w-6">{i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-body font-medium text-primary underline underline-offset-2 truncate">{t.nome}</p>
+                        <p className="text-caption text-muted-foreground">{t.total_avaliacoes} avaliação(ões)</p>
+                      </div>
+                      <div className={cn("px-3 py-1 rounded-lg", getScoreBg(t.media))}>
+                        <span className={cn("text-body font-bold font-tabular", getScoreColor(t.media))}>{t.media.toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            );
+          })()}
         </div>
       )}
 
