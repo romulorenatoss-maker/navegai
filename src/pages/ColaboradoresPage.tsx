@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import SessoesUsuarioTab from "@/components/SessoesUsuarioTab";
+import ColaboradorDetailDialog from "@/components/ColaboradorDetailDialog";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Profile = Tables<"profiles">;
