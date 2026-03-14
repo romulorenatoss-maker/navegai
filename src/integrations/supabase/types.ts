@@ -241,6 +241,45 @@ export type Database = {
           },
         ]
       }
+      checklist_perguntas: {
+        Row: {
+          checklist_id: string
+          created_at: string
+          id: string
+          ordem: number
+          pergunta_id: string
+        }
+        Insert: {
+          checklist_id: string
+          created_at?: string
+          id?: string
+          ordem?: number
+          pergunta_id: string
+        }
+        Update: {
+          checklist_id?: string
+          created_at?: string
+          id?: string
+          ordem?: number
+          pergunta_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_perguntas_checklist_id_fkey"
+            columns: ["checklist_id"]
+            isOneToOne: false
+            referencedRelation: "checklists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_perguntas_pergunta_id_fkey"
+            columns: ["pergunta_id"]
+            isOneToOne: false
+            referencedRelation: "perguntas_avaliacao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       checklists: {
         Row: {
           ativo: boolean

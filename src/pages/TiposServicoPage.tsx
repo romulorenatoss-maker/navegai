@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import type { Tables } from "@/integrations/supabase/types";
+import ChecklistTemplateManager from "@/components/ChecklistTemplateManager";
 
 type TipoServico = Tables<"tipos_servico">;
 
@@ -161,7 +162,7 @@ export default function TiposServicoPage() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "Editar Tipo de Serviço" : "Novo Tipo de Serviço"}</DialogTitle></DialogHeader>
           <form onSubmit={e => { e.preventDefault(); upsert.mutate(); }} className="space-y-4">
             <div className="space-y-1.5"><Label>Nome</Label><Input value={nome} onChange={e => setNome(e.target.value)} required /></div>
@@ -196,6 +197,9 @@ export default function TiposServicoPage() {
                 </div>
               )}
             </div>
+
+            {/* Checklist Templates */}
+            <ChecklistTemplateManager tipoServicoId={editing?.id || null} />
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={closeDialog}>Cancelar</Button>
