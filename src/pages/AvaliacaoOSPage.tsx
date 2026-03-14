@@ -1807,7 +1807,18 @@ export default function AvaliacaoOSPage() {
                 )}
               </div>
               <div className="flex items-center gap-1.5">
-                {evalFinalized && (
+                {canEdit && !isEditing && (
+                  <Button size="sm" variant="outline" onClick={handleStartEditing} className="press-effect h-8 text-xs px-3">
+                    <Pencil className="w-3 h-3 mr-1" /> Alterar
+                  </Button>
+                )}
+                {isEditing && (
+                  <Button size="sm" onClick={handleSaveEditing} disabled={evalSubmitting} className="press-effect h-8 text-xs px-3">
+                    {evalSubmitting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Save className="w-3 h-3 mr-1" />}
+                    Salvar
+                  </Button>
+                )}
+                {evalFinalized && !isEditing && (
                   <Button size="sm" variant="outline" onClick={generatePDF} className="press-effect h-8 text-xs px-3">
                     <Download className="w-3 h-3 mr-1" /> PDF
                   </Button>
