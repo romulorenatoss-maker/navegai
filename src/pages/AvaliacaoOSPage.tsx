@@ -54,7 +54,11 @@ export default function AvaliacaoOSPage() {
   } = useAvaliacaoOS();
 
   const handleSearch = () => {
-    if (searchQuery.trim()) searchOS(searchQuery.trim());
+    if (searchQuery.trim()) searchOS(searchQuery.trim(), false);
+  };
+
+  const handleCreate = () => {
+    if (searchQuery.trim()) searchOS(searchQuery.trim(), true);
   };
 
   const isCompleted = avaliacao?.concluida === true;
@@ -87,7 +91,7 @@ export default function AvaliacaoOSPage() {
               {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
               Buscar
             </Button>
-            <Button onClick={handleSearch} className="h-10 press-effect" disabled={loading || !searchQuery.trim()}>
+            <Button onClick={handleCreate} className="h-10 press-effect" disabled={loading || !searchQuery.trim()}>
               {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
               Criar OS
             </Button>
