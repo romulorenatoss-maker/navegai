@@ -1792,7 +1792,7 @@ export default function AvaliacaoOSPage() {
                               <Select value={tecnicoId} onValueChange={setTecnicoId}>
                                 <SelectTrigger><SelectValue placeholder="Selecione o técnico" /></SelectTrigger>
                                 <SelectContent>
-                                  {allProfiles.filter(p => p.id !== profile?.id).map(p =>
+                                  {tecnicoProfiles.filter(p => p.id !== profile?.id).map(p =>
                                     <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>
                                   )}
                                 </SelectContent>
