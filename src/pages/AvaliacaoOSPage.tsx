@@ -499,23 +499,23 @@ export default function AvaliacaoOSPage() {
   const selectedTipoNome = tiposAvaliacao.find(t => t.id === selectedTipoAvaliacaoId)?.nome;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-section font-semibold text-foreground">Avaliação de OS</h1>
-        <p className="text-body text-muted-foreground">Busque uma OS ou crie uma nova. Cada OS pode ter múltiplos avaliadores.</p>
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto">
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-lg sm:text-section font-semibold text-foreground">Avaliação de OS</h1>
+        <p className="text-sm sm:text-body text-muted-foreground">Busque uma OS ou crie uma nova.</p>
       </div>
 
       {/* Search */}
       {!selectedOS && (
-        <div className="bg-card border border-border rounded-lg p-4 shadow-card mb-6">
-          <div className="flex gap-3">
+        <div className="bg-card border border-border rounded-lg p-3 sm:p-4 shadow-card mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1">
               <Label htmlFor="os-search" className="text-body font-medium mb-1.5 block">Número da OS</Label>
               <Input id="os-search" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Ex: 12345" className="h-10" onKeyDown={e => e.key === "Enter" && handleSearch()} />
             </div>
             <div className="flex items-end gap-2">
-              <Button onClick={handleSearch} variant="outline" className="h-10 press-effect"><Search className="w-4 h-4 mr-2" /> Buscar</Button>
-              <Button onClick={openCreateDialog} className="h-10 press-effect"><Plus className="w-4 h-4 mr-2" /> Criar OS</Button>
+              <Button onClick={handleSearch} variant="outline" className="h-10 flex-1 sm:flex-none press-effect"><Search className="w-4 h-4 mr-2" /> Buscar</Button>
+              <Button onClick={openCreateDialog} className="h-10 flex-1 sm:flex-none press-effect"><Plus className="w-4 h-4 mr-2" /> Criar OS</Button>
             </div>
           </div>
         </div>
@@ -560,7 +560,7 @@ export default function AvaliacaoOSPage() {
               <div>
                 <h2 className="text-subhead font-semibold text-foreground font-tabular">OS #{selectedOS.numero_os}</h2>
                 <p className="text-body text-muted-foreground mt-1">{selectedOS.cliente_nome || "Sem cliente"}</p>
-                <div className="flex gap-4 mt-2 text-caption text-muted-foreground">
+                <div className="flex flex-col sm:flex-row gap-1 sm:gap-4 mt-2 text-caption text-muted-foreground">
                   <span>Atendente: <strong className="text-foreground">{atendenteNome || "Não definido"}</strong></span>
                   <span>Técnico: <strong className="text-foreground">{tecnicoNome || "Não definido"}</strong></span>
                 </div>
@@ -603,14 +603,14 @@ export default function AvaliacaoOSPage() {
           </div>
 
           {/* Actions */}
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             {selectedOS.status !== "concluida" && (
-              <Button onClick={startMyEvaluation} className="press-effect">
-                <Eye className="w-4 h-4 mr-2" /> Iniciar / Continuar Minha Avaliação
+              <Button onClick={startMyEvaluation} className="press-effect w-full sm:w-auto">
+                <Eye className="w-4 h-4 mr-2" /> Iniciar / Continuar
               </Button>
             )}
             {selectedOS.status !== "concluida" && isAdmin && (
-              <Button variant="destructive" onClick={() => handleDeleteOS(selectedOS.id)} className="press-effect">
+              <Button variant="destructive" onClick={() => handleDeleteOS(selectedOS.id)} className="press-effect w-full sm:w-auto">
                 <Trash2 className="w-4 h-4 mr-2" /> Excluir OS
               </Button>
             )}
@@ -620,7 +620,14 @@ export default function AvaliacaoOSPage() {
 
       {/* Wizard Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className={step === 3 ? "max-w-2xl" : "max-w-lg"}>
+        <DialogContent className={cn(
+          "max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden",
+          "w-full max-w-full",
+          "h-full sm:h-auto",
+          "rounded-none sm:rounded-lg",
+          "top-0 left-0 translate-x-0 translate-y-0 sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%]",
+          step === 3 ? "sm:max-w-2xl" : "sm:max-w-lg"
+        )}>
           <DialogHeader>
             <DialogTitle>
               {existingOsId ? `Avaliação — OS #${newOsNumero}` : "Criar Nova OS"}
@@ -629,17 +636,17 @@ export default function AvaliacaoOSPage() {
           </DialogHeader>
 
           {/* Stepper */}
-          <div className="flex items-center gap-1 mb-4">
+          <div className="flex items-center gap-1 mb-4 overflow-hidden">
             {STEPS.map((s, i) => (
-              <div key={i} className="flex items-center gap-1 flex-1">
-                <div className={cn("flex items-center justify-center w-7 h-7 rounded-full text-caption font-bold shrink-0 transition-colors",
+              <div key={i} className="flex items-center gap-1 flex-1 min-w-0">
+                <div className={cn("flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full text-[10px] sm:text-caption font-bold shrink-0 transition-colors",
                   i <= step ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
-                  {i < step ? <Check className="w-3.5 h-3.5" /> : i + 1}
+                  {i < step ? <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : i + 1}
                 </div>
-                <div className="hidden sm:block min-w-0">
+                <div className="hidden sm:block min-w-0 max-w-[80px] lg:max-w-none">
                   <p className={cn("text-caption font-medium truncate", i === step ? "text-foreground" : "text-muted-foreground")}>{s.label}</p>
                 </div>
-                {i < STEPS.length - 1 && <div className={cn("flex-1 h-px mx-1", i < step ? "bg-primary" : "bg-border")} />}
+                {i < STEPS.length - 1 && <div className={cn("flex-1 h-px mx-0.5 sm:mx-1 min-w-2", i < step ? "bg-primary" : "bg-border")} />}
               </div>
             ))}
           </div>
@@ -838,7 +845,7 @@ export default function AvaliacaoOSPage() {
             </motion.div>
           </AnimatePresence>
 
-          <DialogFooter className="flex justify-between sm:justify-between gap-2 mt-2">
+          <DialogFooter className="flex flex-row justify-between gap-2 mt-2">
             <div>
               {step > 0 && !wizardFinalized && !existingOsId && (
                 <Button type="button" variant="outline" onClick={() => setStep(step - 1)}>
