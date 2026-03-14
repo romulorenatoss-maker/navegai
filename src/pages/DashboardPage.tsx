@@ -141,6 +141,14 @@ export default function DashboardPage() {
   const [pendingMySector, setPendingMySector] = useState<PendingOS[]>([]);
   const [pendingOtherSector, setPendingOtherSector] = useState<PendingOS[]>([]);
 
+  // Admin: pending count per sector
+  interface SectorPending {
+    setor_id: string;
+    setor_nome: string;
+    pending_count: number;
+  }
+  const [sectorPendingSummary, setSectorPendingSummary] = useState<SectorPending[]>([]);
+
   // Fetch OS with progress
   useEffect(() => {
     const fetch = async () => {
