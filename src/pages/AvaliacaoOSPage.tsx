@@ -1811,11 +1811,11 @@ export default function AvaliacaoOSPage() {
                 </div>
                 <div>
                   <span className="text-muted-foreground">Cliente:</span>
-                  <p className="font-medium text-foreground">{formFoundOS.cliente_nome || "—"}</p>
+                  <p className="font-medium text-foreground">{formFoundCliente?.nome || formFoundOS.cliente_nome || "—"}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">CPF:</span>
-                  <p className="font-medium text-foreground">{formFoundOS.cliente_cpf || "—"}</p>
+                  <p className="font-medium text-foreground">{formFoundCliente?.cpf || formFoundOS.cliente_cpf || formClienteCpf || "—"}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Status:</span>
