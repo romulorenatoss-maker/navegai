@@ -357,38 +357,37 @@ export default function AvaliacaoOSPage() {
         tss?.forEach(t => { tsMap[t.id] = t.nome; });
       }
 
-      const avalIds = avals.map(a => a.id);
-      const { data: respostas } = await supabase
-        .from("respostas_avaliacao")
-        .select("avaliacao_id, resposta")
-        .in("avaliacao_id", avalIds);
+      // Get OS IDs for fetching os_perguntas counts
+      const osIds = [...new Set(avals.map((a: any) => a.ordem_servico_id))];
 
-      const answeredMap: Record<string, number> = {};
-      respostas?.forEach(r => {
-        if (r.resposta) answeredMap[r.avaliacao_id] = (answeredMap[r.avaliacao_id] || 0) + 1;
+      // Fetch os_perguntas counts per OS
+      const { data: osPerguntas } = await (supabase as any)
+        .from("os_perguntas")
+        .select("os_id, pergunta_id")
+        .in("os_id", osIds);
+      
+      const totalByOS: Record<string, number> = {};
+      (osPerguntas || []).forEach((op: any) => {
+        totalByOS[op.os_id] = (totalByOS[op.os_id] || 0) + 1;
       });
 
-      const totalMap: Record<string, number> = {};
-      for (const a of avals) {
-        const os = a.ordens_servico as any;
-        if (!os?.tipo_servico_id || !a.tipo_avaliacao_id) continue;
-        const key = `${os.tipo_servico_id}_${a.tipo_avaliacao_id}`;
-        if (totalMap[key] === undefined) {
-          const { count } = await supabase
-            .from("perguntas_avaliacao")
-            .select("id", { count: "exact", head: true })
-            .eq("ativo", true)
-            .or(`tipo_servico_id.eq.${os.tipo_servico_id},tipo_servico_id.is.null`)
-            .or(`tipo_avaliacao_id.eq.${a.tipo_avaliacao_id},tipo_avaliacao_id.is.null`);
-          totalMap[key] = count || 0;
-        }
-      }
+      // Fetch responses per OS (shared)
+      const { data: respostas } = await supabase
+        .from("respostas_avaliacao")
+        .select("ordem_servico_id, pergunta_id")
+        .in("ordem_servico_id", osIds)
+        .not("resposta", "is", null);
+
+      const answeredByOS: Record<string, Set<string>> = {};
+      respostas?.forEach((r: any) => {
+        if (!answeredByOS[r.ordem_servico_id]) answeredByOS[r.ordem_servico_id] = new Set();
+        answeredByOS[r.ordem_servico_id].add(r.pergunta_id);
+      });
 
       return avals.map((a: any) => {
         const os = a.ordens_servico as any;
-        const key = `${os?.tipo_servico_id}_${a.tipo_avaliacao_id}`;
-        const answered = answeredMap[a.id] || 0;
-        const total = totalMap[key] || 0;
+        const total = totalByOS[a.ordem_servico_id] || 0;
+        const answered = answeredByOS[a.ordem_servico_id]?.size || 0;
         const progress = total > 0 ? Math.round((answered / total) * 100) : 0;
         return {
           ...a,
