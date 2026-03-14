@@ -20,7 +20,7 @@ export default function MinhasAvaliacoesPage() {
       if (!profile?.id) return [];
       const { data } = await supabase
         .from("ordens_servico")
-        .select("id, numero_os, cliente_nome, status, created_at, tipo_servico_id, atendente_id, tecnico_id")
+        .select("id, numero_os, cliente_nome, cliente_cpf, status, created_at, tipo_servico_id, atendente_id, tecnico_id")
         .eq("status", "concluida")
         .or(`atendente_id.eq.${profile.id},tecnico_id.eq.${profile.id}`)
         .order("created_at", { ascending: false });
