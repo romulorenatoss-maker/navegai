@@ -245,7 +245,7 @@ export default function PerguntasPage() {
   const upsert = useMutation({
     mutationFn: async () => {
       const resolvedChecklistId = checklistId === "none" || !checklistId ? null : checklistId;
-      const computedOrdem = editing ? parseInt(ordem) : getNextOrdem("");
+      const computedOrdem = editing ? parseInt(ordem) : getNextOrdem();
       const payload = {
         pergunta,
         tipo_servico_id: null,
