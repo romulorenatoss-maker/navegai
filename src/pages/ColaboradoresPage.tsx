@@ -30,6 +30,8 @@ export default function ColaboradoresPage() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [sessionViewOpen, setSessionViewOpen] = useState(false);
+  const [detailViewOpen, setDetailViewOpen] = useState(false);
+  const [detailProfile, setDetailProfile] = useState<Profile | null>(null);
   const [editing, setEditing] = useState<Profile | null>(null);
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
