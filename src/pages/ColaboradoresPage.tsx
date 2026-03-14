@@ -123,20 +123,21 @@ export default function ColaboradoresPage() {
 
       const { error: updateError } = await supabase
         .from("profiles")
-        .update({ cargo, setor_id: setorId || null })
+        .update({ cargo, setor_id: selectedSetores[0] || null })
         .eq("user_id", authData.user.id);
       if (updateError) throw updateError;
 
       await syncRole(authData.user.id, cargo);
 
-      // Save tipos de serviço if avaliador
-      if (cargo === "avaliador") {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("user_id", authData.user.id)
-          .single();
-        if (profile) await saveTiposServico(profile.id);
+      const { data: createdProfile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("user_id", authData.user.id)
+        .single();
+
+      if (createdProfile) {
+        await saveSetores(createdProfile.id);
+        if (cargo === "avaliador") await saveTiposServico(createdProfile.id);
       }
     },
     onSuccess: () => {
