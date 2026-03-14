@@ -636,17 +636,17 @@ export default function AvaliacaoOSPage() {
           </DialogHeader>
 
           {/* Stepper */}
-          <div className="flex items-center gap-1 mb-4">
+          <div className="flex items-center gap-1 mb-4 overflow-hidden">
             {STEPS.map((s, i) => (
-              <div key={i} className="flex items-center gap-1 flex-1">
-                <div className={cn("flex items-center justify-center w-7 h-7 rounded-full text-caption font-bold shrink-0 transition-colors",
+              <div key={i} className="flex items-center gap-1 flex-1 min-w-0">
+                <div className={cn("flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 rounded-full text-[10px] sm:text-caption font-bold shrink-0 transition-colors",
                   i <= step ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
-                  {i < step ? <Check className="w-3.5 h-3.5" /> : i + 1}
+                  {i < step ? <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : i + 1}
                 </div>
-                <div className="hidden sm:block min-w-0">
+                <div className="hidden md:block min-w-0">
                   <p className={cn("text-caption font-medium truncate", i === step ? "text-foreground" : "text-muted-foreground")}>{s.label}</p>
                 </div>
-                {i < STEPS.length - 1 && <div className={cn("flex-1 h-px mx-1", i < step ? "bg-primary" : "bg-border")} />}
+                {i < STEPS.length - 1 && <div className={cn("flex-1 h-px mx-0.5 sm:mx-1 min-w-2", i < step ? "bg-primary" : "bg-border")} />}
               </div>
             ))}
           </div>
