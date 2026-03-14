@@ -631,6 +631,8 @@ export default function AvaliacaoOSPage() {
       toast.success(`Avaliação concluída! Nota: ${nota.toFixed(1)}%`);
       try { await detectInconsistencies(evalOsId); } catch (e) { console.warn("Inconsistency detection error:", e); }
       refetchPending();
+      // Navigate back to dashboard after finalizing
+      setTimeout(() => navigate("/"), 1500);
     } catch (err: any) {
       toast.error("Erro: " + err.message);
     } finally {
