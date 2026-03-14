@@ -401,6 +401,43 @@ export default function AvaliacaoOSPage() {
     setWizardFinalized(false);
     setWizardScore(null);
     setWizardSubmitting(false);
+    setExistingAvaliacaoId(null);
+    setExistingOsId(null);
+    setCreateDialogOpen(true);
+  };
+
+  const openPendingInWizard = async (pending: any) => {
+    const osData = pending.ordens_servico;
+    if (!osData) return;
+
+    // Pre-fill wizard state from existing OS
+    setTipoServicoId(osData.tipo_servico_id || "");
+    setNewOsNumero(osData.numero_os || "");
+    setClienteNome(osData.cliente_nome || "");
+    setClienteCpf("");
+    setColaboradorId(osData.colaborador_avaliado_id || "");
+    setExistingAvaliacaoId(pending.id);
+    setExistingOsId(pending.ordem_servico_id);
+    setWizardFinalized(false);
+    setWizardScore(null);
+    setWizardSubmitting(false);
+
+    // Load existing respostas
+    const { data: respostas } = await supabase
+      .from("respostas_avaliacao")
+      .select("pergunta_id, resposta, observacao")
+      .eq("avaliacao_id", pending.id);
+
+    const answers: Record<string, Answer> = {};
+    const observations: Record<string, string> = {};
+    respostas?.forEach((r) => {
+      if (r.resposta) answers[r.pergunta_id] = r.resposta as Answer;
+      if (r.observacao) observations[r.pergunta_id] = r.observacao;
+    });
+    setWizardAnswers(answers);
+    setWizardObservations(observations);
+
+    setStep(3);
     setCreateDialogOpen(true);
   };
 
