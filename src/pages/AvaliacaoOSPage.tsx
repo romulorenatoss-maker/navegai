@@ -938,6 +938,20 @@ export default function AvaliacaoOSPage() {
 
   const handleFinalizeEvaluation = async () => {
     if (!evalAvaliacaoId || !evalOsId) return;
+
+    // Check that employee selections are set based on evaluator's sector
+    const currentOsData = evalOsData;
+    if (currentOsData) {
+      if (hasTecnicoAccess && !currentOsData.tecnico_id) {
+        toast.error("Selecione o técnico avaliado antes de finalizar.");
+        return;
+      }
+      if (hasAtendimentoAccess && !currentOsData.atendente_id) {
+        toast.error("Selecione o atendente avaliado antes de finalizar.");
+        return;
+      }
+    }
+
     // Only check answerable questions (evaluator's sector)
     const answerableQuestions = evalPerguntas.filter(p => isQuestionAnswerable(p.setor_avaliado_id));
     const unanswered = answerableQuestions.filter(p => evalAnswers[p.id] == null);
