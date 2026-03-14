@@ -90,7 +90,7 @@ export default function AvaliacaoOSPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { profile, isAdmin, hasRole } = useAuth();
-  const showAllTipos = isAdmin || hasRole("gestor");
+  const showAllTipos = isAdmin;
 
   // View modes
   const [view, setView] = useState<"list" | "os_detail" | "evaluation">("list");

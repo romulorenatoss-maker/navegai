@@ -20,9 +20,7 @@ type Profile = Tables<"profiles">;
 const cargoConfig: Record<string, { label: string; badge: string; description: string }> = {
   administrador: { label: "Administrador", badge: "badge-complete", description: "Acesso total ao sistema" },
   avaliador: { label: "Avaliador", badge: "badge-active", description: "Executa avaliações de OS" },
-  executor: { label: "Executor", badge: "badge-pending", description: "Realiza checklists operacionais" },
-  atendente: { label: "Atendente", badge: "badge-expired", description: "Atendimento ao cliente" },
-  tecnico: { label: "Técnico", badge: "badge-expired", description: "Suporte técnico" },
+  avaliado: { label: "Avaliado", badge: "badge-pending", description: "Recebe avaliações de OS" },
 };
 
 export default function ColaboradoresPage() {
