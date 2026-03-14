@@ -231,9 +231,11 @@ export default function AvaliacaoOSPage() {
 
   // Profiles filtered by role=avaliado + sector for employee selection
   const avaliadoProfiles = useMemo(() => allProfiles.filter(p => p.cargo === "avaliado"), [allProfiles]);
+  // Create a hash of avaliado ids+setors to bust cache when profiles change
+  const avaliadoHash = useMemo(() => avaliadoProfiles.map(p => `${p.id}_${p.setor_id}`).join(","), [avaliadoProfiles]);
 
   const { data: atendimentoProfiles = [] } = useQuery({
-    queryKey: ["profiles_atendimento", avaliadoProfiles.length],
+    queryKey: ["profiles_atendimento", avaliadoHash],
     queryFn: async () => {
       if (!avaliadoProfiles.length) return [];
       const { data: setores } = await supabase.from("setores").select("id, nome").eq("ativo", true);
@@ -242,18 +244,15 @@ export default function AvaliacaoOSPage() {
         return n.includes("atendimento") || n.includes("atendente");
       }).map(s => s.id);
       if (!atendSetorIds.length) return avaliadoProfiles;
-      // Check colaborador_setores junction table
       const { data: links } = await supabase.from("colaborador_setores").select("profile_id").in("setor_id", atendSetorIds);
       const linkedIds = new Set(links?.map(l => l.profile_id) || []);
-      // Also check legacy setor_id on profile
-      const result = avaliadoProfiles.filter(p => linkedIds.has(p.id) || (p.setor_id && atendSetorIds.includes(p.setor_id)));
-      return result;
+      return avaliadoProfiles.filter(p => linkedIds.has(p.id) || (p.setor_id && atendSetorIds.includes(p.setor_id)));
     },
     enabled: avaliadoProfiles.length > 0,
   });
 
   const { data: tecnicoProfiles = [] } = useQuery({
-    queryKey: ["profiles_tecnico", avaliadoProfiles.length],
+    queryKey: ["profiles_tecnico", avaliadoHash],
     queryFn: async () => {
       if (!avaliadoProfiles.length) return [];
       const { data: setores } = await supabase.from("setores").select("id, nome").eq("ativo", true);
@@ -264,8 +263,7 @@ export default function AvaliacaoOSPage() {
       if (!tecSetorIds.length) return avaliadoProfiles;
       const { data: links } = await supabase.from("colaborador_setores").select("profile_id").in("setor_id", tecSetorIds);
       const linkedIds = new Set(links?.map(l => l.profile_id) || []);
-      const result = avaliadoProfiles.filter(p => linkedIds.has(p.id) || (p.setor_id && tecSetorIds.includes(p.setor_id)));
-      return result;
+      return avaliadoProfiles.filter(p => linkedIds.has(p.id) || (p.setor_id && tecSetorIds.includes(p.setor_id)));
     },
     enabled: avaliadoProfiles.length > 0,
   });
