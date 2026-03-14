@@ -324,7 +324,7 @@ export default function RelatoriosPage() {
           : Promise.resolve({ data: [] }),
         supabase.from("os_perguntas").select("os_id, pergunta_id").in("os_id", osIds),
         supabase.from("respostas_avaliacao").select("ordem_servico_id, pergunta_id, resposta, avaliador_id").in("ordem_servico_id", osIds),
-        supabase.from("avaliacoes").select("id, ordem_servico_id, avaliador_id, nota_final, created_at").in("ordem_servico_id", osIds),
+        supabase.from("avaliacoes").select("id, ordem_servico_id, avaliador_id, nota_final, concluida_em, created_at").in("ordem_servico_id", osIds),
       ]);
 
       const tipoNames: Record<string, string> = {};
