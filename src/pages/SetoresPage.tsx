@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 type Setor = Tables<"setores">;
 
 export default function SetoresPage() {
+  const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Setor | null>(null);
