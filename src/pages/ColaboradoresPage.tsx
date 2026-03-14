@@ -38,7 +38,20 @@ export default function ColaboradoresPage() {
     queryFn: async () => {
       const { data, error } = await supabase.from("profiles").select("*, setores(nome)").order("nome");
       if (error) throw error;
-      return data;
+      // Load multi-setor data for all profiles
+      const { data: allSetorLinks } = await supabase
+        .from("colaborador_setores")
+        .select("profile_id, setores(nome)");
+      const setorMap = new Map<string, string[]>();
+      allSetorLinks?.forEach((link: any) => {
+        const list = setorMap.get(link.profile_id) || [];
+        if (link.setores?.nome) list.push(link.setores.nome);
+        setorMap.set(link.profile_id, list);
+      });
+      return data.map((p: any) => ({
+        ...p,
+        _setoresNomes: setorMap.get(p.id) || (p.setores?.nome ? [p.setores.nome] : []),
+      }));
     },
   });
 
