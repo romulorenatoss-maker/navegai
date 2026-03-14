@@ -88,10 +88,18 @@ export default function ColaboradoresPage() {
     if (error) console.error("Erro ao sincronizar role:", error.message);
   };
 
+  const saveSetores = async (profileId: string) => {
+    await supabase.from("colaborador_setores").delete().eq("profile_id", profileId);
+    if (selectedSetores.length > 0) {
+      const rows = selectedSetores.map((sid) => ({ profile_id: profileId, setor_id: sid }));
+      await supabase.from("colaborador_setores").insert(rows);
+    }
+    // Also update the legacy setor_id field with the first setor for backward compat
+    await supabase.from("profiles").update({ setor_id: selectedSetores[0] || null }).eq("id", profileId);
+  };
+
   const saveTiposServico = async (profileId: string) => {
-    // Delete existing
     await supabase.from("avaliador_tipos_servico").delete().eq("avaliador_id", profileId);
-    // Insert new
     if (selectedTiposServico.length > 0) {
       const rows = selectedTiposServico.map((tid) => ({
         avaliador_id: profileId,
