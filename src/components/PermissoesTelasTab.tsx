@@ -17,7 +17,6 @@ export default function PermissoesTelasTab({ profileId, isAdminProfile }: Props)
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
-  const [dirty, setDirty] = useState(false);
 
   const { data: permissoes, isLoading } = useQuery({
     queryKey: ["permissoes_tela", profileId],
