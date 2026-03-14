@@ -325,7 +325,19 @@ export default function ColaboradoresPage() {
                   <label key={s.id} className="flex items-center gap-3 py-1.5 px-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors">
                     <Checkbox
                       checked={selectedSetores.includes(s.id)}
-                      onCheckedChange={() => setSelectedSetores((prev) => prev.includes(s.id) ? prev.filter((x) => x !== s.id) : [...prev, s.id])}
+                      onCheckedChange={() => {
+                        setSelectedSetores((prev) => {
+                          const next = prev.includes(s.id) ? prev.filter((x) => x !== s.id) : [...prev, s.id];
+                          // Remove tipos that no longer belong to any selected setor
+                          setSelectedTiposServico((prevTipos) =>
+                            prevTipos.filter((tid) => {
+                              const tipo = tiposServico.find((t) => t.id === tid);
+                              return tipo?.setor_id && next.includes(tipo.setor_id);
+                            })
+                          );
+                          return next;
+                        });
+                      }}
                     />
                     <span className="text-body font-medium text-foreground">{s.nome}</span>
                   </label>
