@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ClipboardCheck, Clock, CheckCircle2, FolderOpen, Trophy, Users, BarChart3 } from "lucide-react";
+import { ClipboardCheck, Clock, CheckCircle2, Trophy, Users, BarChart3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface OSStats {
