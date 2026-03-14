@@ -421,6 +421,13 @@ export default function DashboardPage() {
     };
 
     const fetchScores = async () => {
+      // Scores only make sense for concluded OS
+      if (statusFilter === "aberta" || statusFilter === "em_andamento") {
+        setTecnicoMedias([]);
+        setSetorMedias([]);
+        return;
+      }
+
       const from = startDate ? startDate.toISOString() : startOfMonth(now).toISOString();
       const to = endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString();
 
