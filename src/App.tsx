@@ -12,9 +12,11 @@ import AvaliacaoOSPage from "./pages/AvaliacaoOSPage";
 import SetoresPage from "./pages/SetoresPage";
 import ColaboradoresPage from "./pages/ColaboradoresPage";
 import TiposServicoPage from "./pages/TiposServicoPage";
+import TiposAvaliacaoPage from "./pages/TiposAvaliacaoPage";
 import PerguntasPage from "./pages/PerguntasPage";
 import ChecklistsCadastroPage from "./pages/ChecklistsCadastroPage";
 import ClientesPage from "./pages/ClientesPage";
+import MinhasAvaliacoesPage from "./pages/MinhasAvaliacoesPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 
@@ -33,6 +35,7 @@ const App = () => (
               <Route path="/" element={<DashboardPage />} />
               <Route path="/avaliacoes/pesquisa" element={<AvaliacaoOSPage />} />
               <Route path="/avaliacoes/perguntas" element={<PerguntasPage />} />
+              <Route path="/avaliacoes/minhas" element={<MinhasAvaliacoesPage />} />
               <Route path="/checklists/cadastro" element={<ChecklistsCadastroPage />} />
               <Route path="/checklists/execucao" element={<PlaceholderPage title="Execução de Checklist" description="Painel de tarefas do executor." />} />
               <Route path="/checklists/gestao" element={<PlaceholderPage title="Gestão de Checklists" description="Acompanhe todas as tarefas geradas pelos checklists." />} />
@@ -41,6 +44,7 @@ const App = () => (
               <Route path="/cadastros/colaboradores" element={<ColaboradoresPage />} />
               <Route path="/cadastros/clientes" element={<ClientesPage />} />
               <Route path="/cadastros/servicos" element={<TiposServicoPage />} />
+              <Route path="/cadastros/tipos-avaliacao" element={<TiposAvaliacaoPage />} />
               <Route path="/relatorios" element={<PlaceholderPage title="Relatórios" description="Relatórios de desempenho, avaliações e tarefas." />} />
               <Route path="/auditoria" element={<PlaceholderPage title="Auditoria" description="Registro completo de todas as ações do sistema." />} />
               <Route path="/configuracoes" element={<PlaceholderPage title="Configurações" description="Configurações gerais do sistema." />} />
