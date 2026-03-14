@@ -834,9 +834,31 @@ export default function AvaliacaoOSPage() {
         .eq("ordem_servico_id", deleteOsId);
       if (avalsError) throw avalsError;
 
-      // 2) Delete respostas_avaliacao
+      // 2) Delete evidências from storage + respostas_avaliacao
       if (avals?.length) {
         const avalIds = avals.map((a) => a.id);
+
+        // Fetch evidencias before deleting
+        const { data: respostasComEvidencia } = await supabase
+          .from("respostas_avaliacao")
+          .select("evidencia_url")
+          .in("avaliacao_id", avalIds)
+          .not("evidencia_url", "is", null);
+
+        if (respostasComEvidencia?.length) {
+          const paths = respostasComEvidencia
+            .map((r) => r.evidencia_url)
+            .filter(Boolean)
+            .map((url) => {
+              const parts = url!.split("/evidencias/");
+              return parts.length > 1 ? parts[1] : null;
+            })
+            .filter(Boolean) as string[];
+          if (paths.length > 0) {
+            await supabase.storage.from("evidencias").remove(paths);
+          }
+        }
+
         const { error: respostasError } = await supabase
           .from("respostas_avaliacao")
           .delete()
