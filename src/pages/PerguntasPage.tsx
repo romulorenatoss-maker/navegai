@@ -145,11 +145,11 @@ export default function PerguntasPage() {
     onError: (err: any) => toast.error(err.message),
   });
 
-  const summaryByTipo = useMemo(() => {
+  const summaryByChecklist = useMemo(() => {
     const map = new Map<string, { nome: string; count: number; totalNota: number }>();
     for (const p of perguntas) {
-      const key = p.tipo_servico_id || "global";
-      const nome = (p as any).tipos_servico?.nome || "Global (todos)";
+      const key = p.checklist_id || "sem_checklist";
+      const nome = (p as any)._checklist_titulo || "Sem Checklist";
       const cur = map.get(key) || { nome, count: 0, totalNota: 0 };
       cur.count += 1;
       cur.totalNota += p.peso;
