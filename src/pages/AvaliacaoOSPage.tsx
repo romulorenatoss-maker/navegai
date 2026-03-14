@@ -664,6 +664,202 @@ export default function AvaliacaoOSPage() {
         </div>
       )}
 
+      {/* Filters */}
+      {!os && (
+        <div className="bg-card border border-border rounded-lg shadow-card mb-6">
+          <button
+            type="button"
+            onClick={() => setShowFilters(!showFilters)}
+            className="w-full p-4 flex items-center gap-2 text-left hover:bg-muted/30 transition-colors"
+          >
+            <Filter className="w-4 h-4 text-primary" />
+            <span className="text-body font-semibold text-foreground">Filtros de Pesquisa</span>
+            {hasActiveFilter && (
+              <span className="text-caption bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Ativo</span>
+            )}
+            <ChevronRight className={`w-4 h-4 text-muted-foreground ml-auto transition-transform ${showFilters ? "rotate-90" : ""}`} />
+          </button>
+
+          <AnimatePresence>
+            {showFilters && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="px-4 pb-4 space-y-4 border-t border-border pt-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Date From */}
+                    <div className="space-y-1.5">
+                      <Label className="text-caption">Data Início</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn("w-full justify-start text-left font-normal h-10", !filterDateFrom && "text-muted-foreground")}
+                          >
+                            <CalendarIcon className="w-4 h-4 mr-2" />
+                            {filterDateFrom ? format(filterDateFrom, "dd/MM/yyyy") : "Selecione"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={filterDateFrom}
+                            onSelect={(d) => { setFilterDateFrom(d); setFilterMonth(""); }}
+                            locale={ptBR}
+                            initialFocus
+                            className={cn("p-3 pointer-events-auto")}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                    {/* Date To */}
+                    <div className="space-y-1.5">
+                      <Label className="text-caption">Data Fim</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn("w-full justify-start text-left font-normal h-10", !filterDateTo && "text-muted-foreground")}
+                          >
+                            <CalendarIcon className="w-4 h-4 mr-2" />
+                            {filterDateTo ? format(filterDateTo, "dd/MM/yyyy") : "Selecione"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={filterDateTo}
+                            onSelect={(d) => { setFilterDateTo(d); setFilterMonth(""); }}
+                            locale={ptBR}
+                            initialFocus
+                            className={cn("p-3 pointer-events-auto")}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                    {/* Month */}
+                    <div className="space-y-1.5">
+                      <Label className="text-caption">Mês de Competência</Label>
+                      <Select
+                        value={filterMonth}
+                        onValueChange={(v) => {
+                          setFilterMonth(v);
+                          setFilterDateFrom(undefined);
+                          setFilterDateTo(undefined);
+                        }}
+                      >
+                        <SelectTrigger className="h-10">
+                          <SelectValue placeholder="Selecione o mês" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {monthOptions.map((m) => (
+                            <SelectItem key={m.value} value={m.value}>
+                              {m.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Status */}
+                    <div className="space-y-1.5">
+                      <Label className="text-caption">Status</Label>
+                      <Select value={filterStatus} onValueChange={setFilterStatus}>
+                        <SelectTrigger className="h-10">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="todos">Todos</SelectItem>
+                          <SelectItem value="aberta">Aberta</SelectItem>
+                          <SelectItem value="em_andamento">Em Andamento</SelectItem>
+                          <SelectItem value="concluida">Concluída</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {hasActiveFilter && (
+                    <div className="flex justify-end">
+                      <Button variant="ghost" size="sm" onClick={clearFilters} className="text-caption">
+                        <X className="w-3.5 h-3.5 mr-1" /> Limpar filtros
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+
+      {/* Filtered Results */}
+      {!os && hasActiveFilter && (
+        <div className="bg-card border border-border rounded-lg shadow-card mb-6">
+          <div className="p-4 border-b border-border flex items-center gap-2">
+            <Search className="w-4 h-4 text-primary" />
+            <h2 className="text-body font-semibold text-foreground">Resultados</h2>
+            <span className="text-caption bg-muted text-foreground px-2 py-0.5 rounded-full font-medium font-tabular ml-auto">
+              {filterLoading ? "..." : `${filteredOS.length} resultado(s)`}
+            </span>
+          </div>
+          {filterLoading ? (
+            <div className="p-8 text-center">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mx-auto" />
+            </div>
+          ) : filteredOS.length === 0 ? (
+            <div className="p-8 text-center text-body text-muted-foreground">
+              Nenhuma OS encontrada com os filtros selecionados.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">OS</th>
+                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Cliente</th>
+                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Avaliado</th>
+                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Status</th>
+                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Data</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filteredOS.map((item: any) => (
+                    <tr
+                      key={item.id}
+                      className="hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => {
+                        setSearchQuery(item.numero_os);
+                        searchOS(item.numero_os, false);
+                      }}
+                    >
+                      <td className="px-4 py-3 text-body font-medium text-primary underline underline-offset-2 font-tabular">{item.numero_os}</td>
+                      <td className="px-4 py-3 text-body text-muted-foreground">{item.cliente_nome || "—"}</td>
+                      <td className="px-4 py-3 text-body text-muted-foreground">{item._colaborador_nome}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${
+                          item.status === "aberta" ? "badge-pending" : item.status === "em_andamento" ? "badge-active" : "badge-complete"
+                        }`}>
+                          {item.status === "aberta" ? "Aberta" : item.status === "em_andamento" ? "Em andamento" : "Concluída"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-body text-muted-foreground font-tabular">
+                        {new Date(item.data_abertura).toLocaleDateString("pt-BR")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Create OS Wizard Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className={step === 3 ? "max-w-2xl" : "max-w-lg"}>
