@@ -57,6 +57,30 @@ const STEPS = [
   { label: "Avaliado", description: "Colaborador a avaliar" },
 ];
 
+function formatCpf(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+  if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+}
+
+function isValidCpf(cpf: string): boolean {
+  const digits = cpf.replace(/\D/g, "");
+  if (digits.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(digits)) return false;
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += parseInt(digits[i]) * (10 - i);
+  let check = 11 - (sum % 11);
+  if (check >= 10) check = 0;
+  if (parseInt(digits[9]) !== check) return false;
+  sum = 0;
+  for (let i = 0; i < 10; i++) sum += parseInt(digits[i]) * (11 - i);
+  check = 11 - (sum % 11);
+  if (check >= 10) check = 0;
+  return parseInt(digits[10]) === check;
+}
+
 export default function AvaliacaoOSPage() {
   const [searchParams] = useSearchParams();
   const { profile } = useAuth();
@@ -171,18 +195,57 @@ export default function AvaliacaoOSPage() {
     setCreateDialogOpen(true);
   };
 
-  const handleCreateOS = () => {
+  const handleCreateOS = async () => {
     const num = newOsNumero.trim();
     if (!num) { toast.error("Informe o número da OS."); return; }
     if (!/^\d+$/.test(num)) { toast.error("O número da OS deve conter apenas dígitos."); return; }
     if (!tipoServicoId) { toast.error("Selecione o tipo de serviço."); return; }
     if (!colaboradorId) { toast.error("Selecione o colaborador avaliado."); return; }
 
+    const cpfDigits = clienteCpf.replace(/\D/g, "");
+    if (cpfDigits.length > 0 && !isValidCpf(cpfDigits)) {
+      toast.error("CPF inválido. Verifique os dígitos.");
+      return;
+    }
+
+    // Auto-create/link client if CPF or name provided
+    let clienteId: string | null = null;
+    const nomeTrimmed = clienteNome.trim() || null;
+    const cpfTrimmed = cpfDigits.length === 11 ? clienteCpf.trim() : null;
+
+    if (nomeTrimmed || cpfTrimmed) {
+      // Try to find existing client by CPF first
+      if (cpfTrimmed) {
+        const { data: existing } = await supabase
+          .from("clientes")
+          .select("id")
+          .eq("cpf", cpfTrimmed)
+          .limit(1)
+          .single();
+        if (existing) {
+          clienteId = existing.id;
+        }
+      }
+
+      // If not found, create new client
+      if (!clienteId) {
+        const { data: newCliente, error: cErr } = await supabase
+          .from("clientes")
+          .insert({ nome: nomeTrimmed || "Sem nome", cpf: cpfTrimmed })
+          .select("id")
+          .single();
+        if (!cErr && newCliente) {
+          clienteId = newCliente.id;
+        }
+      }
+    }
+
     searchOS(num, true, {
-      cliente_nome: clienteNome.trim() || null,
-      cliente_cpf: clienteCpf.trim() || null,
+      cliente_nome: nomeTrimmed,
+      cliente_cpf: cpfTrimmed,
       tipo_servico_id: tipoServicoId,
       colaborador_avaliado_id: colaboradorId,
+      cliente_id: clienteId,
     });
     setCreateDialogOpen(false);
     setSearchQuery(num);
@@ -190,7 +253,13 @@ export default function AvaliacaoOSPage() {
 
   const canAdvance = (s: number) => {
     if (s === 0) return !!tipoServicoId;
-    if (s === 1) return !!newOsNumero.trim();
+    if (s === 1) {
+      if (!newOsNumero.trim()) return false;
+      const cpfDigits = clienteCpf.replace(/\D/g, "");
+      if (cpfDigits.length > 0 && cpfDigits.length < 11) return false;
+      if (cpfDigits.length === 11 && !isValidCpf(cpfDigits)) return false;
+      return true;
+    }
     if (s === 2) return !!colaboradorId;
     return false;
   };
@@ -321,7 +390,18 @@ export default function AvaliacaoOSPage() {
                     </div>
                     <div className="space-y-1.5">
                       <Label>CPF do Cliente</Label>
-                      <Input value={clienteCpf} onChange={(e) => setClienteCpf(e.target.value)} placeholder="000.000.000-00" />
+                      <Input
+                        value={clienteCpf}
+                        onChange={(e) => setClienteCpf(formatCpf(e.target.value))}
+                        placeholder="000.000.000-00"
+                        maxLength={14}
+                      />
+                      {clienteCpf.replace(/\D/g, "").length === 11 && !isValidCpf(clienteCpf) && (
+                        <p className="text-caption text-destructive">CPF inválido</p>
+                      )}
+                      {clienteCpf.replace(/\D/g, "").length === 11 && isValidCpf(clienteCpf) && (
+                        <p className="text-caption text-success">CPF válido ✓</p>
+                      )}
                     </div>
                   </div>
                 </div>
