@@ -148,15 +148,23 @@ export function useAvaliacaoOS() {
       .eq("id", osId)
       .single();
 
-    // Get evaluated collaborator's setor
-    let setorId: string | null = null;
+    // Get evaluated collaborator's setores (multi-setor)
+    let setorIds: string[] = [];
     if (osData?.colaborador_avaliado_id) {
-      const { data: colabProfile } = await supabase
-        .from("profiles")
+      const { data: setorLinks } = await supabase
+        .from("colaborador_setores")
         .select("setor_id")
-        .eq("id", osData.colaborador_avaliado_id)
-        .single();
-      setorId = colabProfile?.setor_id || null;
+        .eq("profile_id", osData.colaborador_avaliado_id);
+      setorIds = setorLinks?.map((l) => l.setor_id) || [];
+      // Fallback to legacy setor_id
+      if (setorIds.length === 0) {
+        const { data: colabProfile } = await supabase
+          .from("profiles")
+          .select("setor_id")
+          .eq("id", osData.colaborador_avaliado_id)
+          .single();
+        if (colabProfile?.setor_id) setorIds = [colabProfile.setor_id];
+      }
     }
 
     // Build query with filters
