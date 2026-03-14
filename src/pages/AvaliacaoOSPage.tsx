@@ -133,6 +133,39 @@ export default function AvaliacaoOSPage() {
     concludeAvaliacao, answeredCount, totalScore, maxScore,
   } = useAvaliacaoOS();
 
+  // Fetch pending (non-concluded) evaluations for current user
+  const { data: pendingAvaliacoes = [], refetch: refetchPending } = useQuery({
+    queryKey: ["pending_avaliacoes", profile?.id],
+    queryFn: async () => {
+      if (!profile?.id) return [];
+      const { data: avals } = await supabase
+        .from("avaliacoes")
+        .select("id, ordem_servico_id, concluida, nota_final, created_at, ordens_servico:ordem_servico_id(numero_os, cliente_nome, status, tipo_servico_id, colaborador_avaliado_id)")
+        .eq("avaliador_id", profile.id)
+        .eq("concluida", false)
+        .order("created_at", { ascending: false });
+      
+      if (!avals) return [];
+      
+      // Get collaborator names
+      const colabIds = [...new Set(avals.map((a: any) => a.ordens_servico?.colaborador_avaliado_id).filter(Boolean))];
+      let colabMap: Record<string, string> = {};
+      if (colabIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, nome")
+          .in("id", colabIds);
+        profiles?.forEach((p) => { colabMap[p.id] = p.nome; });
+      }
+
+      return avals.map((a: any) => ({
+        ...a,
+        _colaborador_nome: colabMap[a.ordens_servico?.colaborador_avaliado_id] || "—",
+      }));
+    },
+    enabled: !!profile?.id,
+  });
+
   // Fetch tipos de serviço: all for admin/gestor, only assigned for avaliador
   const { data: tiposDoAvaliador = [] } = useQuery({
     queryKey: ["tipos_servico_do_avaliador", profile?.id, showAllTipos],
