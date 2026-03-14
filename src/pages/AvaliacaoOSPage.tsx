@@ -1728,7 +1728,7 @@ export default function AvaliacaoOSPage() {
                     <Loader2 className="w-3 h-3 animate-spin" /> Salvando
                   </span>
                 )}
-                {!isLocked && !autoSaving && evalAnsweredCount > 0 && (
+                {!isLocked && !autoSaving && globalAnsweredCount > 0 && (
                   <span className="text-success flex items-center gap-1">
                     <Check className="w-3 h-3" /> Salvo
                   </span>
