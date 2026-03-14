@@ -94,14 +94,20 @@ export default function AvaliacaoOSPage() {
   const [view, setView] = useState<"list" | "os_detail" | "evaluation">("list");
   const [selectedOS, setSelectedOS] = useState<any | null>(null);
 
-  // Inline validation form
-  const [formOsNumero, setFormOsNumero] = useState("");
-  const [formClienteNome, setFormClienteNome] = useState("");
+  // Step 1: CPF validation
   const [formClienteCpf, setFormClienteCpf] = useState("");
+  const [formClienteNome, setFormClienteNome] = useState("");
+  const [cpfValidating, setCpfValidating] = useState(false);
+  const [cpfValidated, setCpfValidated] = useState(false);
+  const [formFoundCliente, setFormFoundCliente] = useState<any | null>(null);
+  const [showNewClienteForm, setShowNewClienteForm] = useState(false);
+  const [clienteId, setClienteId] = useState<string | null>(null);
+
+  // Step 2: OS validation
+  const [formOsNumero, setFormOsNumero] = useState("");
   const [formValidating, setFormValidating] = useState(false);
   const [formValidated, setFormValidated] = useState(false);
   const [formFoundOS, setFormFoundOS] = useState<any | null>(null);
-  const [formFoundCliente, setFormFoundCliente] = useState<any | null>(null);
   const [formPendingAval, setFormPendingAval] = useState<any | null>(null);
 
   // Setup state (after validation, for creating new OS)
@@ -459,16 +465,67 @@ export default function AvaliacaoOSPage() {
     }
   }, [linkedTiposAvaliacao, profile]);
 
-  // URL param search
+  // URL param: pre-fill OS number
   useEffect(() => {
     const os = searchParams.get("os");
     if (os) {
       setFormOsNumero(os);
-      handleValidate(os);
     }
   }, []);
 
-  // --- Validate OS/Client ---
+  // --- Step 1: Validate CPF ---
+  const handleCpfValidation = async () => {
+    const cpfDigits = formClienteCpf.replace(/\D/g, "");
+    if (cpfDigits.length !== 11) { toast.error("Informe um CPF completo."); return; }
+    if (!isValidCpf(cpfDigits)) { toast.error("CPF inválido."); return; }
+
+    setCpfValidating(true);
+    try {
+      const { data: cliente } = await supabase
+        .from("clientes")
+        .select("id, nome, cpf")
+        .eq("cpf", formClienteCpf.trim())
+        .limit(1)
+        .single();
+
+      if (cliente) {
+        setFormFoundCliente(cliente);
+        setFormClienteNome(cliente.nome);
+        setClienteId(cliente.id);
+        setShowNewClienteForm(false);
+        toast.success(`Cliente encontrado: ${cliente.nome}`);
+      } else {
+        setFormFoundCliente(null);
+        setShowNewClienteForm(true);
+        setClienteId(null);
+        toast.info("Cliente não encontrado. Preencha o nome para cadastrar.");
+      }
+      setCpfValidated(true);
+    } catch (err: any) {
+      toast.error("Erro ao buscar cliente: " + err.message);
+    } finally {
+      setCpfValidating(false);
+    }
+  };
+
+  // --- Create new client from form ---
+  const handleCreateCliente = async () => {
+    const nome = formClienteNome.trim();
+    if (!nome) { toast.error("Informe o nome do cliente."); return; }
+    const cpfTr = formClienteCpf.trim();
+    try {
+      const { data: nc, error } = await supabase.from("clientes").insert({ nome, cpf: cpfTr }).select("id, nome, cpf").single();
+      if (error) throw error;
+      setFormFoundCliente(nc);
+      setClienteId(nc!.id);
+      setShowNewClienteForm(false);
+      toast.success("Cliente cadastrado com sucesso!");
+    } catch (err: any) {
+      toast.error("Erro ao cadastrar cliente: " + err.message);
+    }
+  };
+
+  // --- Step 2: Validate OS ---
   const handleValidate = async (overrideOs?: string) => {
     const num = (overrideOs || formOsNumero).trim();
     if (!num) { toast.error("Informe o número da OS."); return; }
@@ -476,11 +533,9 @@ export default function AvaliacaoOSPage() {
     setFormValidating(true);
     setFormValidated(false);
     setFormFoundOS(null);
-    setFormFoundCliente(null);
     setFormPendingAval(null);
 
     try {
-      // 1. Check if OS exists
       const { data: existingOS } = await supabase
         .from("ordens_servico")
         .select("*")
@@ -490,13 +545,10 @@ export default function AvaliacaoOSPage() {
 
       if (existingOS) {
         setFormFoundOS(existingOS);
-        setFormClienteNome(existingOS.cliente_nome || "");
-        setFormClienteCpf(existingOS.cliente_cpf ? formatCpf(existingOS.cliente_cpf) : "");
         if (existingOS.tipo_servico_id) setTipoServicoId(existingOS.tipo_servico_id);
         if (existingOS.atendente_id) setAtendenteId(existingOS.atendente_id);
         if (existingOS.tecnico_id) setTecnicoId(existingOS.tecnico_id);
 
-        // Check if there's a pending evaluation for current user
         if (profile) {
           const { data: pendingAval } = await supabase
             .from("avaliacoes")
@@ -510,31 +562,13 @@ export default function AvaliacaoOSPage() {
           if (pendingAval) {
             setFormPendingAval(pendingAval);
             if (pendingAval.tipo_avaliacao_id) setSelectedTipoAvaliacaoId(pendingAval.tipo_avaliacao_id);
-            toast.info("OS encontrada com avaliação pendente. Clique em 'Continuar Avaliação'.");
+            toast.info("OS encontrada com avaliação pendente.");
           } else {
             toast.success("OS encontrada! Configure a avaliação abaixo.");
           }
         }
       } else {
-        // 2. Check if client exists by CPF
-        const cpfDigits = formClienteCpf.replace(/\D/g, "");
-        if (cpfDigits.length === 11 && isValidCpf(cpfDigits)) {
-          const { data: cliente } = await supabase
-            .from("clientes")
-            .select("id, nome, cpf")
-            .eq("cpf", formClienteCpf.trim())
-            .limit(1)
-            .single();
-          if (cliente) {
-            setFormFoundCliente(cliente);
-            setFormClienteNome(cliente.nome);
-            toast.info(`Cliente encontrado: ${cliente.nome}. OS não encontrada, preencha os dados para criar.`);
-          } else {
-            toast.info("OS e cliente não encontrados. Preencha os dados para criar.");
-          }
-        } else {
-          toast.info("OS não encontrada. Preencha os dados para criar.");
-        }
+        toast.info("OS não encontrada. Preencha os dados para criar.");
       }
 
       setFormValidated(true);
@@ -697,8 +731,8 @@ export default function AvaliacaoOSPage() {
   // Create OS from form + start evaluation
   const handleCreateAndStart = async () => {
     if (!profile) return;
+    if (!clienteId) { toast.error("Cliente é obrigatório. Valide o CPF primeiro."); return; }
     if (!tipoServicoId) { toast.error("Selecione o tipo de serviço."); return; }
-    // Each evaluator must select their sector's employee
     const needsAtendente = hasAtendimentoAccess || isAdmin;
     const needsTecnico = hasTecnicoAccess || isAdmin;
     if (needsAtendente && !atendenteId) { toast.error("Selecione o atendente avaliado."); return; }
@@ -707,29 +741,15 @@ export default function AvaliacaoOSPage() {
 
     try {
       const num = formOsNumero.trim();
-      const cpfD = formClienteCpf.replace(/\D/g, "");
       const nomeTr = formClienteNome.trim() || null;
-      const cpfTr = cpfD.length === 11 ? formClienteCpf.trim() : null;
-      let clienteId: string | null = null;
-
-      if (formFoundCliente) {
-        clienteId = formFoundCliente.id;
-      } else if (cpfTr) {
-        const { data: ex } = await supabase.from("clientes").select("id").eq("cpf", cpfTr).limit(1).single();
-        if (ex) clienteId = ex.id;
-        else { const { data: nc } = await supabase.from("clientes").insert({ nome: nomeTr || "Sem nome", cpf: cpfTr }).select("id").single(); if (nc) clienteId = nc.id; }
-      } else if (nomeTr) {
-        const { data: nc } = await supabase.from("clientes").insert({ nome: nomeTr, cpf: null }).select("id").single();
-        if (nc) clienteId = nc.id;
-      }
+      const cpfTr = formClienteCpf.trim() || null;
 
       let osId: string;
       if (formFoundOS) {
         osId = formFoundOS.id;
-        // Update OS with new employee assignments
         await supabase.from("ordens_servico").update({
           atendente_id: atendenteId || null, tecnico_id: tecnicoId || null,
-          tipo_servico_id: tipoServicoId,
+          tipo_servico_id: tipoServicoId, cliente_id: clienteId,
         } as any).eq("id", osId);
       } else {
         const { data: newOs, error: oe } = await supabase.from("ordens_servico").insert({
@@ -932,12 +952,15 @@ export default function AvaliacaoOSPage() {
   };
 
   const resetForm = () => {
-    setFormOsNumero("");
-    setFormClienteNome("");
     setFormClienteCpf("");
+    setFormClienteNome("");
+    setCpfValidated(false);
+    setFormFoundCliente(null);
+    setShowNewClienteForm(false);
+    setClienteId(null);
+    setFormOsNumero("");
     setFormValidated(false);
     setFormFoundOS(null);
-    setFormFoundCliente(null);
     setFormPendingAval(null);
     setTipoServicoId("");
     setSelectedTipoAvaliacaoId("");
@@ -1447,17 +1470,86 @@ export default function AvaliacaoOSPage() {
         <p className="text-sm sm:text-body text-muted-foreground">Informe os dados da OS para validar e iniciar a avaliação.</p>
       </div>
 
-      {/* Validation Form */}
+      {/* Step 1: CPF do Cliente */}
       <div className="bg-card border border-border rounded-lg shadow-card mb-6">
         <div className="p-4 border-b border-border">
           <h2 className="text-body font-semibold text-foreground flex items-center gap-2">
             <Search className="w-4 h-4 text-primary" />
-            Dados da OS
+            Etapa 1 — Identificação do Cliente
           </h2>
         </div>
         <div className="p-4 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
+              <Label>CPF do Cliente *</Label>
+              <Input
+                value={formClienteCpf}
+                onChange={e => { setFormClienteCpf(formatCpf(e.target.value)); if (cpfValidated) { setCpfValidated(false); setFormFoundCliente(null); setShowNewClienteForm(false); setClienteId(null); } }}
+                placeholder="000.000.000-00"
+                maxLength={14}
+                disabled={!!clienteId}
+                onKeyDown={e => e.key === "Enter" && !clienteId && handleCpfValidation()}
+              />
+              {formClienteCpf.replace(/\D/g, "").length === 11 && !isValidCpf(formClienteCpf) && (
+                <p className="text-caption text-destructive">CPF inválido</p>
+              )}
+            </div>
+            {clienteId && (
+              <div className="space-y-1.5">
+                <Label>Cliente</Label>
+                <div className="px-3 py-2 bg-success/5 border border-success/20 rounded-md text-body text-foreground flex items-center gap-2">
+                  <Check className="w-4 h-4 text-success shrink-0" />
+                  <span className="font-medium">{formClienteNome}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* New client form */}
+          {showNewClienteForm && !clienteId && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="border border-warning/30 bg-warning/5 rounded-lg p-4 space-y-3">
+              <p className="text-sm text-warning font-medium flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" /> Cliente não encontrado. Cadastre abaixo:
+              </p>
+              <div className="space-y-1.5">
+                <Label>Nome do Cliente *</Label>
+                <Input
+                  value={formClienteNome}
+                  onChange={e => setFormClienteNome(e.target.value)}
+                  placeholder="Nome completo do cliente"
+                />
+              </div>
+              <Button onClick={handleCreateCliente} disabled={!formClienteNome.trim()} size="sm" className="press-effect">
+                Cadastrar Cliente
+              </Button>
+            </motion.div>
+          )}
+
+          <div className="flex items-center gap-3">
+            {!clienteId && (
+              <Button onClick={handleCpfValidation} disabled={formClienteCpf.replace(/\D/g, "").length !== 11 || cpfValidating} className="press-effect">
+                {cpfValidating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
+                Buscar Cliente
+              </Button>
+            )}
+            {(cpfValidated || clienteId) && (
+              <Button variant="ghost" size="sm" onClick={resetForm}>Limpar</Button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Step 2: Número da OS (only after client identified) */}
+      {clienteId && (
+        <div className="bg-card border border-border rounded-lg shadow-card mb-6">
+          <div className="p-4 border-b border-border">
+            <h2 className="text-body font-semibold text-foreground flex items-center gap-2">
+              <Search className="w-4 h-4 text-primary" />
+              Etapa 2 — Número da OS
+            </h2>
+          </div>
+          <div className="p-4 space-y-4">
+            <div className="space-y-1.5 max-w-sm">
               <Label>Número da OS *</Label>
               <Input
                 value={formOsNumero}
@@ -1466,192 +1558,151 @@ export default function AvaliacaoOSPage() {
                 onKeyDown={e => e.key === "Enter" && handleValidate()}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label>Nome do Cliente</Label>
-              <Input
-                value={formClienteNome}
-                onChange={e => setFormClienteNome(e.target.value)}
-                placeholder="Nome completo"
-                disabled={!!formFoundOS}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>CPF do Cliente</Label>
-              <Input
-                value={formClienteCpf}
-                onChange={e => setFormClienteCpf(formatCpf(e.target.value))}
-                placeholder="000.000.000-00"
-                maxLength={14}
-                disabled={!!formFoundOS}
-              />
-              {formClienteCpf.replace(/\D/g, "").length === 11 && !isValidCpf(formClienteCpf) && (
-                <p className="text-caption text-destructive">CPF inválido</p>
-              )}
-            </div>
-          </div>
 
-          <div className="flex items-center gap-3">
             <Button onClick={() => handleValidate()} disabled={!formOsNumero.trim() || formValidating} className="press-effect">
               {formValidating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
-              Validar
+              Validar OS
             </Button>
+
+            {/* Validation Results */}
             {formValidated && (
-              <Button variant="ghost" size="sm" onClick={resetForm}>Limpar</Button>
-            )}
-          </div>
-
-          {/* Validation Results */}
-          {formValidated && (
-            <AnimatePresence>
-              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                {/* Found OS info */}
-                {formFoundOS && (
-                  <div className="bg-success/5 border border-success/20 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Check className="w-4 h-4 text-success" />
-                      <span className="text-sm font-medium text-success">OS encontrada no sistema</span>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Nº OS:</span>
-                        <p className="font-medium text-foreground">{formFoundOS.numero_os}</p>
+              <AnimatePresence>
+                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+                  {/* Found OS info */}
+                  {formFoundOS && (
+                    <div className="bg-success/5 border border-success/20 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Check className="w-4 h-4 text-success" />
+                        <span className="text-sm font-medium text-success">OS encontrada no sistema</span>
                       </div>
-                      <div>
-                        <span className="text-muted-foreground">Cliente:</span>
-                        <p className="font-medium text-foreground">{formFoundOS.cliente_nome || "—"}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Status:</span>
-                        <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border", statusLabel[formFoundOS.status]?.badge)}>
-                          {statusLabel[formFoundOS.status]?.text}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">CPF:</span>
-                        <p className="font-medium text-foreground">{formFoundOS.cliente_cpf || "—"}</p>
-                      </div>
-                    </div>
-
-                    {/* Pending evaluation shortcut */}
-                    {formPendingAval && (
-                      <div className="mt-3 pt-3 border-t border-success/20">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-warning" />
-                            <span className="text-sm font-medium text-warning">Avaliação pendente encontrada</span>
-                          </div>
-                          <Button size="sm" onClick={handleContinuePending} className="press-effect">
-                            Continuar Avaliação <ChevronRight className="w-4 h-4 ml-1" />
-                          </Button>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Nº OS:</span>
+                          <p className="font-medium text-foreground">{formFoundOS.numero_os}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Cliente:</span>
+                          <p className="font-medium text-foreground">{formFoundOS.cliente_nome || "—"}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Status:</span>
+                          <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border", statusLabel[formFoundOS.status]?.badge)}>
+                            {statusLabel[formFoundOS.status]?.text}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">CPF:</span>
+                          <p className="font-medium text-foreground">{formFoundOS.cliente_cpf || "—"}</p>
                         </div>
                       </div>
-                    )}
 
-                    {/* View OS detail */}
-                    {!formPendingAval && (
-                      <div className="mt-3 pt-3 border-t border-success/20 flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => { setSelectedOS(formFoundOS); setView("os_detail"); }} className="press-effect">
-                          <Eye className="w-4 h-4 mr-1" /> Ver Detalhes
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )}
+                      {formPendingAval && (
+                        <div className="mt-3 pt-3 border-t border-success/20">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-4 h-4 text-warning" />
+                              <span className="text-sm font-medium text-warning">Avaliação pendente encontrada</span>
+                            </div>
+                            <Button size="sm" onClick={handleContinuePending} className="press-effect">
+                              Continuar Avaliação <ChevronRight className="w-4 h-4 ml-1" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
 
-                {/* Found client info */}
-                {!formFoundOS && formFoundCliente && (
-                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
-                    <div className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-primary" />
-                      <span className="text-sm font-medium text-primary">Cliente encontrado: {formFoundCliente.nome}</span>
+                      {!formPendingAval && (
+                        <div className="mt-3 pt-3 border-t border-success/20 flex gap-2">
+                          <Button size="sm" variant="outline" onClick={() => { setSelectedOS(formFoundOS); setView("os_detail"); }} className="press-effect">
+                            <Eye className="w-4 h-4 mr-1" /> Ver Detalhes
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Setup section for new evaluation (when OS not found or no pending eval) */}
-                {(!formFoundOS || (!formPendingAval && formFoundOS.status !== "concluida")) && (
-                  <div className="border border-border rounded-lg p-4 space-y-4">
-                    <h3 className="text-body font-semibold text-foreground">Configurar Avaliação</h3>
+                  {/* Setup section for new evaluation */}
+                  {(!formFoundOS || (!formPendingAval && formFoundOS.status !== "concluida")) && (
+                    <div className="border border-border rounded-lg p-4 space-y-4">
+                      <h3 className="text-body font-semibold text-foreground">Configurar Avaliação</h3>
 
-                    {/* Tipo de Serviço */}
-                    <div className="space-y-2">
-                      <Label className="text-body font-medium">Tipo de Serviço *</Label>
-                      <div className="space-y-1 max-h-40 overflow-y-auto">
-                        {tiposServico.length === 0 ? (
-                          <p className="text-body text-muted-foreground text-center py-4">Nenhum tipo de serviço disponível.</p>
-                        ) : tiposServico.map((t) => (
-                          <button key={t.id} type="button" onClick={() => { setTipoServicoId(t.id); setSelectedTipoAvaliacaoId(""); }}
-                            className={cn("w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-left transition-all press-effect text-sm",
-                              tipoServicoId === t.id ? "bg-primary/10 border-primary text-primary" : "bg-card border-border hover:bg-muted/50")}>
-                            <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0",
-                              tipoServicoId === t.id ? "border-primary bg-primary" : "border-muted-foreground/30")}>
-                              {tipoServicoId === t.id && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
-                            </div>
-                            <span className="font-medium truncate">{t.nome}</span>
-                            <span className="text-caption text-muted-foreground ml-auto">{(t as any).setores?.nome || ""}</span>
-                          </button>
-                        ))}
+                      {/* Tipo de Serviço */}
+                      <div className="space-y-2">
+                        <Label className="text-body font-medium">Tipo de Serviço *</Label>
+                        <div className="space-y-1 max-h-40 overflow-y-auto">
+                          {tiposServico.length === 0 ? (
+                            <p className="text-body text-muted-foreground text-center py-4">Nenhum tipo de serviço disponível.</p>
+                          ) : tiposServico.map((t) => (
+                            <button key={t.id} type="button" onClick={() => { setTipoServicoId(t.id); setSelectedTipoAvaliacaoId(""); }}
+                              className={cn("w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-left transition-all press-effect text-sm",
+                                tipoServicoId === t.id ? "bg-primary/10 border-primary text-primary" : "bg-card border-border hover:bg-muted/50")}>
+                              <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0",
+                                tipoServicoId === t.id ? "border-primary bg-primary" : "border-muted-foreground/30")}>
+                                {tipoServicoId === t.id && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                              </div>
+                              <span className="font-medium truncate">{t.nome}</span>
+                              <span className="text-caption text-muted-foreground ml-auto">{(t as any).setores?.nome || ""}</span>
+                            </button>
+                          ))}
+                        </div>
                       </div>
+
+                      {/* Employee Selection - Sector-based */}
+                      {tipoServicoId && (
+                        <div className="space-y-3">
+                          {(hasAtendimentoAccess || isAdmin) ? (
+                            <div className="space-y-1.5">
+                              <Label>Atendente Avaliado *</Label>
+                              <Select value={atendenteId} onValueChange={setAtendenteId}>
+                                <SelectTrigger><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
+                                <SelectContent>
+                                  {allProfiles.filter(p => p.id !== profile?.id).map(p =>
+                                    <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          ) : atendenteId ? (
+                            <div className="space-y-1.5">
+                              <Label className="flex items-center gap-1.5">Atendente Avaliado <Lock className="w-3 h-3 text-muted-foreground" /></Label>
+                              <div className="px-3 py-2 bg-muted/50 border border-border rounded-md text-body text-foreground">
+                                {allProfiles.find(p => p.id === atendenteId)?.nome || "—"}
+                              </div>
+                            </div>
+                          ) : null}
+                          {(hasTecnicoAccess || isAdmin) ? (
+                            <div className="space-y-1.5">
+                              <Label>Técnico Avaliado *</Label>
+                              <Select value={tecnicoId} onValueChange={setTecnicoId}>
+                                <SelectTrigger><SelectValue placeholder="Selecione o técnico" /></SelectTrigger>
+                                <SelectContent>
+                                  {allProfiles.filter(p => p.id !== profile?.id).map(p =>
+                                    <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          ) : tecnicoId ? (
+                            <div className="space-y-1.5">
+                              <Label className="flex items-center gap-1.5">Técnico Avaliado <Lock className="w-3 h-3 text-muted-foreground" /></Label>
+                              <div className="px-3 py-2 bg-muted/50 border border-border rounded-md text-body text-foreground">
+                                {allProfiles.find(p => p.id === tecnicoId)?.nome || "—"}
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
+
+                      <Button onClick={handleCreateAndStart} disabled={!canCreateEval} className="w-full sm:w-auto press-effect">
+                        Iniciar Avaliação <ChevronRight className="w-4 h-4 ml-1" />
+                      </Button>
                     </div>
-
-                    {/* Employee Selection - Sector-based */}
-                    {tipoServicoId && (
-                      <div className="space-y-3">
-                        {/* Atendente: only editable by atendimento evaluators or admins */}
-                        {(hasAtendimentoAccess || isAdmin) ? (
-                          <div className="space-y-1.5">
-                            <Label>Atendente Avaliado *</Label>
-                            <Select value={atendenteId} onValueChange={setAtendenteId}>
-                              <SelectTrigger><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
-                              <SelectContent>
-                                {allProfiles.filter(p => p.id !== profile?.id).map(p =>
-                                  <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>
-                                )}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        ) : atendenteId ? (
-                          <div className="space-y-1.5">
-                            <Label className="flex items-center gap-1.5">Atendente Avaliado <Lock className="w-3 h-3 text-muted-foreground" /></Label>
-                            <div className="px-3 py-2 bg-muted/50 border border-border rounded-md text-body text-foreground">
-                              {allProfiles.find(p => p.id === atendenteId)?.nome || "—"}
-                            </div>
-                          </div>
-                        ) : null}
-                        {/* Técnico: only editable by técnico evaluators or admins */}
-                        {(hasTecnicoAccess || isAdmin) ? (
-                          <div className="space-y-1.5">
-                            <Label>Técnico Avaliado *</Label>
-                            <Select value={tecnicoId} onValueChange={setTecnicoId}>
-                              <SelectTrigger><SelectValue placeholder="Selecione o técnico" /></SelectTrigger>
-                              <SelectContent>
-                                {allProfiles.filter(p => p.id !== profile?.id).map(p =>
-                                  <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>
-                                )}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        ) : tecnicoId ? (
-                          <div className="space-y-1.5">
-                            <Label className="flex items-center gap-1.5">Técnico Avaliado <Lock className="w-3 h-3 text-muted-foreground" /></Label>
-                            <div className="px-3 py-2 bg-muted/50 border border-border rounded-md text-body text-foreground">
-                              {allProfiles.find(p => p.id === tecnicoId)?.nome || "—"}
-                            </div>
-                          </div>
-                        ) : null}
-                      </div>
-                    )}
-
-                    <Button onClick={handleCreateAndStart} disabled={!canCreateEval} className="w-full sm:w-auto press-effect">
-                      Iniciar Avaliação <ChevronRight className="w-4 h-4 ml-1" />
-                    </Button>
-                  </div>
-                )}
-              </motion.div>
-            </AnimatePresence>
-          )}
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Pending Evaluations */}
       {pendingAvaliacoes.length > 0 && (
