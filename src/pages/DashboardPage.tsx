@@ -185,23 +185,37 @@ export default function DashboardPage() {
         .select("id, tipo_servico_id")
         .eq("ativo", true);
 
-      // Build OS with progress
+      // Build OS with progress and computed status
       const result: OSWithProgress[] = osData.map((os) => {
         const osAvals = avaliacoes?.filter((a) => a.ordem_servico_id === os.id) || [];
         
-        // Total perguntas for this OS's tipo_servico (or all if no tipo)
+        // Total perguntas for this OS's tipo_servico (matching or global)
         const perguntasForOS = allPerguntas?.filter(
           (p) => !p.tipo_servico_id || p.tipo_servico_id === os.tipo_servico_id
         ) || [];
-        const totalPerguntas = perguntasForOS.length * Math.max(osAvals.length, 1);
+        const totalPerguntas = perguntasForOS.length;
         
-        // Total answered across all avaliacoes
+        // Total answered across all avaliacoes for this OS
         const totalRespondidas = osAvals.reduce((sum, a) => sum + (respostasMap[a.id] || 0), 0);
         
         const progress = totalPerguntas > 0 ? Math.round((totalRespondidas / totalPerguntas) * 100) : 0;
 
+        // Compute status dynamically:
+        // OPEN: no evaluator answered any question
+        // IN_PROGRESS: at least one answer exists but not all evaluators completed
+        // COMPLETED: all evaluators completed their evaluation
+        let computedStatus: string;
+        if (osAvals.length === 0 || totalRespondidas === 0) {
+          computedStatus = "aberta";
+        } else if (osAvals.length > 0 && osAvals.every((a) => a.concluida)) {
+          computedStatus = "concluida";
+        } else {
+          computedStatus = "em_andamento";
+        }
+
         return {
           ...os,
+          status: computedStatus,
           tipo_servico_nome: os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || null : null,
           total_perguntas: totalPerguntas,
           total_respondidas: totalRespondidas,
