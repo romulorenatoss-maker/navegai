@@ -21,7 +21,6 @@ const allNavSections = [
       { to: "/cadastros/colaboradores", icon: Users, label: "Colaboradores" },
       { to: "/cadastros/clientes", icon: ClipboardCheck, label: "Clientes" },
       { to: "/cadastros/servicos", icon: Wrench, label: "Tipos de Serviço" },
-      { to: "/cadastros/tipos-avaliacao", icon: ClipboardList, label: "Tipos de Avaliação" },
     ],
   },
   {

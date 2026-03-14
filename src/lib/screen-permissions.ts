@@ -15,7 +15,6 @@ export const ALL_SCREENS: ScreenDef[] = [
   { path: "/cadastros/colaboradores", label: "Colaboradores", group: "Cadastros" },
   { path: "/cadastros/clientes", label: "Clientes", group: "Cadastros" },
   { path: "/cadastros/servicos", label: "Tipos de Serviço", group: "Cadastros" },
-  { path: "/cadastros/tipos-avaliacao", label: "Tipos de Avaliação", group: "Cadastros" },
   // Perguntas & Checklists
   { path: "/avaliacoes/perguntas", label: "Perguntas", group: "Perguntas & Checklists" },
   { path: "/checklists/cadastro", label: "Cadastro de Checklists", group: "Perguntas & Checklists" },
