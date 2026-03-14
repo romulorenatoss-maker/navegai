@@ -470,17 +470,8 @@ export default function DashboardPage() {
         respostasByOS[r.ordem_servico_id][r.pergunta_id] = r.resposta;
       });
 
-      // Find OS with 100% progress (all questions answered)
-      const completedOsIds: string[] = [];
-      for (const osId of osIds) {
-        const osPerguntaIds = perguntasByOS[osId] || [];
-        if (osPerguntaIds.length === 0) continue;
-        const osRespostas = respostasByOS[osId] || {};
-        const answered = osPerguntaIds.filter(pid => osRespostas[pid]).length;
-        if (answered >= osPerguntaIds.length) completedOsIds.push(osId);
-      }
-
-      if (completedOsIds.length === 0) { setTecnicoMedias([]); setSetorMedias([]); return; }
+      // All OS here already have status = 'concluida', use them directly
+      const completedOsIds = osIds;
 
       // Fetch pergunta details (peso, setor_avaliado_id) for all relevant perguntas
       const allPerguntaIds = [...new Set(completedOsIds.flatMap(osId => perguntasByOS[osId] || []))];
