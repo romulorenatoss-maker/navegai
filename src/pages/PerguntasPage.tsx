@@ -56,6 +56,7 @@ export default function PerguntasPage() {
   const [peso, setPeso] = useState("1");
   const [ordem, setOrdem] = useState("0");
   const [previewAnswer, setPreviewAnswer] = useState<PreviewAnswer>(null);
+  const [linkedInconsistencyId, setLinkedInconsistencyId] = useState("");
   const [filtroTipoServico, setFiltroTipoServico] = useState<string | null>(null);
 
   // Checklist CRUD state
