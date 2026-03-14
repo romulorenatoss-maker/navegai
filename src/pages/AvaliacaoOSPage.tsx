@@ -1546,14 +1546,22 @@ export default function AvaliacaoOSPage() {
           </div>
         )}
 
-        {/* Questions List */}
+        {/* Questions List - Separated by Sector */}
         {evalPerguntas.length === 0 ? (
           <div className="bg-card border border-border rounded-lg p-8 text-center">
             <p className="text-body text-muted-foreground">Nenhuma pergunta cadastrada para esta combinação de serviço e avaliação.</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {evalPerguntas.map((p, i) => {
+          <div className="space-y-4">
+            {/* Section: My Sector Questions */}
+            {answerablePerguntas.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-primary" />
+                  Perguntas do Meu Setor ({myAnsweredCount}/{answerablePerguntas.length})
+                </h3>
+                <div className="space-y-3">
+            {answerablePerguntas.map((p, i) => {
               const answer = evalAnswers[p.id] || null;
               const observation = evalObservations[p.id] || "";
               const evidenciaUrl = evalEvidencias[p.id] || null;
