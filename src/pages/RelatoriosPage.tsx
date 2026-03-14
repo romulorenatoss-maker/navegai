@@ -409,6 +409,9 @@ export default function RelatoriosPage() {
 
         const avaliadorNome = osAvals.length > 0 ? (profileNames[osAvals[0].avaliador_id] || "") : "";
         const dataAval = osAvals.length > 0 ? format(new Date(osAvals[0].created_at), "dd/MM/yyyy") : format(new Date(os.created_at), "dd/MM/yyyy");
+        const horaConclusao = osAvals.length > 0 && osAvals[0].concluida_em
+          ? format(new Date(osAvals[0].concluida_em), "dd/MM/yyyy HH:mm")
+          : "";
 
         const row = [
           os.numero_os,
@@ -418,6 +421,7 @@ export default function RelatoriosPage() {
           avaliadorNome,
           os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || "" : "",
           os.colaborador_avaliado_id ? profileNames[os.colaborador_avaliado_id] || "" : "",
+          horaConclusao,
           bestNota != null ? bestNota.toFixed(2).replace(".", ",") : "",
           ...perguntas.map((p) => {
             const resp = osRespostas[p.id];
