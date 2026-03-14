@@ -1250,7 +1250,7 @@ export default function AvaliacaoOSPage() {
   const globalAnsweredCount = evalPerguntas.filter(p => evalAnswers[p.id] != null).length;
   const globalProgressPercent = evalPerguntas.length > 0 ? Math.round((globalAnsweredCount / evalPerguntas.length) * 100) : 0;
   const isLocked = isOsFullyConcluded || (evalFinalized && !isEditing);
-  const canEdit = evalFinalized && !isOsFullyConcluded;
+  const canEdit = !isOsFullyConcluded && (evalFinalized || isEditing);
   // My sector progress
   const myAnsweredCount = answerablePerguntas.filter(p => evalAnswers[p.id] != null).length;
   const myProgressPercent = answerablePerguntas.length > 0 ? Math.round((myAnsweredCount / answerablePerguntas.length) * 100) : 0;
