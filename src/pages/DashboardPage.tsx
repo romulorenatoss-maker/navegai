@@ -141,6 +141,14 @@ export default function DashboardPage() {
   const [pendingMySector, setPendingMySector] = useState<PendingOS[]>([]);
   const [pendingOtherSector, setPendingOtherSector] = useState<PendingOS[]>([]);
 
+  // Admin: pending count per sector
+  interface SectorPending {
+    setor_id: string;
+    setor_nome: string;
+    pending_count: number;
+  }
+  const [sectorPendingSummary, setSectorPendingSummary] = useState<SectorPending[]>([]);
+
   // Fetch OS with progress
   useEffect(() => {
     const fetch = async () => {
@@ -214,14 +222,14 @@ export default function DashboardPage() {
         
         const progress = totalPerguntas > 0 ? Math.round((totalRespondidas / totalPerguntas) * 100) : 0;
 
-        // Compute status dynamically:
-        // OPEN: no evaluator answered any question
-        // IN_PROGRESS: at least one answer exists but not all evaluators completed
-        // COMPLETED: all evaluators completed their evaluation
+        // Compute status dynamically based on progress:
+        // ABERTA: no answers at all
+        // EM_ANDAMENTO: has answers but progress < 100%
+        // CONCLUÍDA: progress = 100% (all questions answered by all evaluators)
         let computedStatus: string;
-        if (osAvals.length === 0 || totalRespondidas === 0) {
+        if (totalRespondidas === 0) {
           computedStatus = "aberta";
-        } else if (osAvals.length > 0 && osAvals.every((a) => a.concluida)) {
+        } else if (progress >= 100 && osAvals.length > 0 && osAvals.every((a) => a.concluida)) {
           computedStatus = "concluida";
         } else {
           computedStatus = "em_andamento";
@@ -317,6 +325,54 @@ export default function DashboardPage() {
           if (otherUnanswered) otherPending.push(pendingItem);
         }
       }
+
+      // Admin: calculate pending by sector
+      if (isAdmin) {
+        // Get all setores
+        const { data: setoresData } = await supabase.from("setores").select("id, nome").eq("ativo", true);
+        const setoresMap: Record<string, string> = {};
+        setoresData?.forEach(s => { setoresMap[s.id] = s.nome; });
+
+        const sectorCount: Record<string, number> = {};
+        for (const os of openOS) {
+          const perguntasForOS = allPerguntas.filter(p => !p.tipo_servico_id || p.tipo_servico_id === os.tipo_servico_id);
+          const osAvals = allAvals.filter(a => a.ordem_servico_id === os.id);
+
+          for (const q of perguntasForOS) {
+            if (!q.setor_avaliado_id) continue;
+            const answered = osAvals.some(a => answeredSet.has(`${a.id}:${q.id}`));
+            if (!answered) {
+              sectorCount[q.setor_avaliado_id] = (sectorCount[q.setor_avaliado_id] || 0) + 1;
+            }
+          }
+        }
+
+        // Deduplicate: count OS per sector (not questions)
+        const sectorOSCount: Record<string, Set<string>> = {};
+        for (const os of openOS) {
+          const perguntasForOS = allPerguntas.filter(p => !p.tipo_servico_id || p.tipo_servico_id === os.tipo_servico_id);
+          const osAvals = allAvals.filter(a => a.ordem_servico_id === os.id);
+
+          for (const q of perguntasForOS) {
+            if (!q.setor_avaliado_id) continue;
+            const answered = osAvals.some(a => answeredSet.has(`${a.id}:${q.id}`));
+            if (!answered) {
+              if (!sectorOSCount[q.setor_avaliado_id]) sectorOSCount[q.setor_avaliado_id] = new Set();
+              sectorOSCount[q.setor_avaliado_id].add(os.id);
+            }
+          }
+        }
+
+        const summary: SectorPending[] = Object.entries(sectorOSCount)
+          .map(([setorId, osSet]) => ({
+            setor_id: setorId,
+            setor_nome: setoresMap[setorId] || "Sem setor",
+            pending_count: osSet.size,
+          }))
+          .sort((a, b) => b.pending_count - a.pending_count);
+        setSectorPendingSummary(summary);
+      }
+
       setPendingMySector(myPending);
       setPendingOtherSector(otherPending);
     };
@@ -562,8 +618,31 @@ export default function DashboardPage() {
         ))}
       </motion.div>
 
-      {/* Pending Sections - My Sector & Other Sector */}
-      {(pendingMySector.length > 0 || pendingOtherSector.length > 0) && (
+      {/* Admin: Pending by Sector */}
+      {isAdmin && sectorPendingSummary.length > 0 && (
+        <motion.div variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
+          <div className="p-4 border-b border-border flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-warning" />
+            <h2 className="text-body font-semibold text-foreground">Pendências por Setor</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-4">
+            {sectorPendingSummary.map(s => (
+              <div key={s.setor_id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
+                <span className="text-body font-medium text-foreground">{s.setor_nome}</span>
+                <span className={cn(
+                  "text-body font-bold font-tabular px-2 py-0.5 rounded",
+                  s.pending_count > 3 ? "bg-destructive/10 text-destructive" :
+                  s.pending_count > 1 ? "bg-warning/10 text-warning" :
+                  "bg-primary/10 text-primary"
+                )}>{s.pending_count} OS</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Pending Sections - My Sector & Other Sector (for evaluators) */}
+      {!isAdmin && (pendingMySector.length > 0 || pendingOtherSector.length > 0) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Pending - My Sector */}
           <motion.div variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
