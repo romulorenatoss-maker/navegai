@@ -195,18 +195,57 @@ export default function AvaliacaoOSPage() {
     setCreateDialogOpen(true);
   };
 
-  const handleCreateOS = () => {
+  const handleCreateOS = async () => {
     const num = newOsNumero.trim();
     if (!num) { toast.error("Informe o número da OS."); return; }
     if (!/^\d+$/.test(num)) { toast.error("O número da OS deve conter apenas dígitos."); return; }
     if (!tipoServicoId) { toast.error("Selecione o tipo de serviço."); return; }
     if (!colaboradorId) { toast.error("Selecione o colaborador avaliado."); return; }
 
+    const cpfDigits = clienteCpf.replace(/\D/g, "");
+    if (cpfDigits.length > 0 && !isValidCpf(cpfDigits)) {
+      toast.error("CPF inválido. Verifique os dígitos.");
+      return;
+    }
+
+    // Auto-create/link client if CPF or name provided
+    let clienteId: string | null = null;
+    const nomeTrimmed = clienteNome.trim() || null;
+    const cpfTrimmed = cpfDigits.length === 11 ? clienteCpf.trim() : null;
+
+    if (nomeTrimmed || cpfTrimmed) {
+      // Try to find existing client by CPF first
+      if (cpfTrimmed) {
+        const { data: existing } = await supabase
+          .from("clientes")
+          .select("id")
+          .eq("cpf", cpfTrimmed)
+          .limit(1)
+          .single();
+        if (existing) {
+          clienteId = existing.id;
+        }
+      }
+
+      // If not found, create new client
+      if (!clienteId) {
+        const { data: newCliente, error: cErr } = await supabase
+          .from("clientes")
+          .insert({ nome: nomeTrimmed || "Sem nome", cpf: cpfTrimmed })
+          .select("id")
+          .single();
+        if (!cErr && newCliente) {
+          clienteId = newCliente.id;
+        }
+      }
+    }
+
     searchOS(num, true, {
-      cliente_nome: clienteNome.trim() || null,
-      cliente_cpf: clienteCpf.trim() || null,
+      cliente_nome: nomeTrimmed,
+      cliente_cpf: cpfTrimmed,
       tipo_servico_id: tipoServicoId,
       colaborador_avaliado_id: colaboradorId,
+      cliente_id: clienteId,
     });
     setCreateDialogOpen(false);
     setSearchQuery(num);
