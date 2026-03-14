@@ -240,7 +240,7 @@ export default function DashboardPage() {
         <p className="text-body text-muted-foreground">Visão geral das Ordens de Serviço</p>
       </div>
 
-      <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         {cards.map((card) => (
           <motion.div key={card.label} variants={itemVariants} className="bg-card border border-border rounded-lg p-4 shadow-card">
             <div className="flex items-center justify-between mb-3">
