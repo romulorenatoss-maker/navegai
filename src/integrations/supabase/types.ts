@@ -994,6 +994,10 @@ export type Database = {
         Args: { _cargo: string; _user_id: string }
         Returns: undefined
       }
+      user_has_avaliacao_on_os: {
+        Args: { _os_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "avaliador" | "executor" | "gestor" | "avaliado"
