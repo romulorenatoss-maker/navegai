@@ -71,14 +71,6 @@ export default function ColaboradoresPage() {
     },
   });
 
-  const { data: tiposServico = [] } = useQuery({
-    queryKey: ["tipos_servico_all"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("tipos_servico").select("*, setores:setor_id(nome)").eq("ativo", true).order("nome");
-      if (error) throw error;
-      return data;
-    },
-  });
 
   // Load assigned tipos and setores when editing
   useEffect(() => {
