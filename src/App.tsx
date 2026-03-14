@@ -14,6 +14,7 @@ import ColaboradoresPage from "./pages/ColaboradoresPage";
 import TiposServicoPage from "./pages/TiposServicoPage";
 import PerguntasPage from "./pages/PerguntasPage";
 import ChecklistsCadastroPage from "./pages/ChecklistsCadastroPage";
+import ClientesPage from "./pages/ClientesPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 
@@ -38,6 +39,7 @@ const App = () => (
               <Route path="/cadastros/setores" element={<SetoresPage />} />
               <Route path="/cadastros/avaliadores" element={<ColaboradoresPage />} />
               <Route path="/cadastros/colaboradores" element={<ColaboradoresPage />} />
+              <Route path="/cadastros/clientes" element={<ClientesPage />} />
               <Route path="/cadastros/servicos" element={<TiposServicoPage />} />
               <Route path="/relatorios" element={<PlaceholderPage title="Relatórios" description="Relatórios de desempenho, avaliações e tarefas." />} />
               <Route path="/auditoria" element={<PlaceholderPage title="Auditoria" description="Registro completo de todas as ações do sistema." />} />

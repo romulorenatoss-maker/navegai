@@ -46,8 +46,8 @@ const navSections = [
     title: "Cadastros",
     items: [
       { to: "/cadastros/setores", icon: Building2, label: "Setores" },
-      
       { to: "/cadastros/colaboradores", icon: Users, label: "Colaboradores" },
+      { to: "/cadastros/clientes", icon: ClipboardCheck, label: "Clientes" },
       { to: "/cadastros/servicos", icon: Wrench, label: "Serviços" },
     ],
   },
