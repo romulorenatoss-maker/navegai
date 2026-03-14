@@ -1083,12 +1083,6 @@ export default function AvaliacaoOSPage() {
                 )}
               </div>
               <div className="flex items-center gap-2">
-                {isAdmin && (
-                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs"
-                    onClick={() => promptDeleteOS(evalOsId!, evalOsData.numero_os)}>
-                    <Trash2 className="w-3.5 h-3.5 mr-1" /> Excluir
-                  </Button>
-                )}
                 {!evalFinalized && (
                   <Button onClick={handleFinalizeEvaluation} disabled={evalProgressPercent < 100 || evalSubmitting} className="press-effect">
                     {evalSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -1266,12 +1260,6 @@ export default function AvaliacaoOSPage() {
           {selectedOS.status !== "concluida" && (
             <Button onClick={startMyEvaluation} className="press-effect w-full sm:w-auto">
               <Eye className="w-4 h-4 mr-2" /> Iniciar / Continuar Avaliação
-            </Button>
-          )}
-          {isAdmin && (
-            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10"
-              onClick={() => promptDeleteOS(selectedOS.id, selectedOS.numero_os)}>
-              <Trash2 className="w-4 h-4 mr-1" /> Excluir OS
             </Button>
           )}
         </div>
