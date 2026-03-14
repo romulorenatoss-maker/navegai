@@ -398,29 +398,41 @@ export default function AvaliacaoOSPage() {
     enabled: !!selectedOS?.id && view === "os_detail",
   });
 
-  // Questions for evaluation view - loads by checklist_id if available, else by tipo_servico_id
+  // Questions for evaluation view - loads from linked checklists or fallback to tipo_servico_id
   const { data: evalPerguntas = [] } = useQuery({
-    queryKey: ["eval_perguntas_v2", tipoServicoId],
+    queryKey: ["eval_perguntas_v3", tipoServicoId],
     queryFn: async () => {
       if (!tipoServicoId) return [];
-      // Check if service type has a checklist_id
-      const { data: tipoServico } = await (supabase as any)
-        .from("tipos_servico")
+      
+      // Get linked checklists via junction table
+      const { data: checklistLinks } = await (supabase as any)
+        .from("tipo_servico_checklists")
         .select("checklist_id")
-        .eq("id", tipoServicoId)
-        .single();
+        .eq("tipo_servico_id", tipoServicoId);
+      
+      const checklistIds = (checklistLinks || []).map((l: any) => l.checklist_id);
       
       let query = supabase
         .from("perguntas_avaliacao")
         .select("id, pergunta, peso, ordem, target_employee_type, setor_avaliado_id, setores!perguntas_avaliacao_setor_avaliado_id_fkey(nome)")
         .eq("ativo", true);
 
-      if (tipoServico?.checklist_id) {
-        // Load questions associated with the checklist
-        query = (query as any).eq("checklist_id", tipoServico.checklist_id);
+      if (checklistIds.length > 0) {
+        // Load questions from all linked checklists
+        query = (query as any).in("checklist_id", checklistIds);
       } else {
-        // Fallback: load by tipo_servico_id
-        query = query.or(`tipo_servico_id.eq.${tipoServicoId},tipo_servico_id.is.null`);
+        // Fallback: load by tipo_servico_id or checklist_id on service type
+        const { data: tipoServico } = await (supabase as any)
+          .from("tipos_servico")
+          .select("checklist_id")
+          .eq("id", tipoServicoId)
+          .single();
+        
+        if (tipoServico?.checklist_id) {
+          query = (query as any).eq("checklist_id", tipoServico.checklist_id);
+        } else {
+          query = query.or(`tipo_servico_id.eq.${tipoServicoId},tipo_servico_id.is.null`);
+        }
       }
 
       const { data } = await query.order("ordem");
