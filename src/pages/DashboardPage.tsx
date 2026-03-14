@@ -353,7 +353,7 @@ export default function DashboardPage() {
           });
         } else if (otherQuestions.length > 0) {
           const otherUnanswered = otherQuestions.some(q =>
-            !osAvals.some(a => a.avaliador_id !== profile.id && answeredSet.has(`${a.id}:${q.id}`))
+            !answeredSet.has(`${os.id}:${q.id}`)
           );
           if (otherUnanswered) {
             // Find which other setor(s) are pending
