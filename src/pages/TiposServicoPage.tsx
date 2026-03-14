@@ -150,9 +150,9 @@ export default function TiposServicoPage() {
           </thead>
           <tbody className="divide-y divide-border">
             {isLoading ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-body text-muted-foreground">Carregando...</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Carregando...</td></tr>
             ) : tipos.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhum tipo cadastrado.</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhum tipo cadastrado.</td></tr>
             ) : tipos.map((t) => (
               <TipoRow key={t.id} t={t} onToggle={() => toggleAtivo.mutate(t)} onEdit={() => openEdit(t)} onRemove={() => remove.mutate(t.id)} />
             ))}
