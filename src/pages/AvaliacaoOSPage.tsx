@@ -300,6 +300,68 @@ export default function AvaliacaoOSPage() {
     enabled: !!selectedOS?.id,
   });
 
+  // Detailed answers for OS detail view (all evaluations)
+  const { data: osDetailAnswers = [] } = useQuery({
+    queryKey: ["os_detail_answers", selectedOS?.id, view],
+    queryFn: async () => {
+      if (!selectedOS?.id || view !== "os_detail") return [];
+      const { data: avals } = await supabase.from("avaliacoes")
+        .select("id, avaliador_id, tipo_avaliacao_id, concluida, nota_final")
+        .eq("ordem_servico_id", selectedOS.id);
+      if (!avals?.length) return [];
+
+      const avalIds = avals.map(a => a.id);
+      const { data: respostas } = await supabase.from("respostas_avaliacao")
+        .select("avaliacao_id, pergunta_id, resposta, observacao, evidencia_url")
+        .in("avaliacao_id", avalIds);
+
+      const perguntaIds = [...new Set(respostas?.map(r => r.pergunta_id) || [])];
+      let perguntaMap: Record<string, { pergunta: string; peso: number; ordem: number }> = {};
+      if (perguntaIds.length > 0) {
+        const { data: perguntas } = await supabase.from("perguntas_avaliacao")
+          .select("id, pergunta, peso, ordem")
+          .in("id", perguntaIds)
+          .order("ordem");
+        perguntas?.forEach(p => { perguntaMap[p.id] = { pergunta: p.pergunta, peso: p.peso, ordem: p.ordem }; });
+      }
+
+      const avaliadorIds = [...new Set(avals.map(a => a.avaliador_id))];
+      let avaliadorNames: Record<string, string> = {};
+      if (avaliadorIds.length > 0) {
+        const { data: profiles } = await supabase.from("profiles").select("id, nome").in("id", avaliadorIds);
+        profiles?.forEach(p => { avaliadorNames[p.id] = p.nome; });
+      }
+
+      const taIds = [...new Set(avals.map(a => a.tipo_avaliacao_id).filter(Boolean))] as string[];
+      let taNames: Record<string, string> = {};
+      if (taIds.length > 0) {
+        const { data: tas } = await supabase.from("tipos_avaliacao").select("id, nome").in("id", taIds);
+        tas?.forEach(t => { taNames[t.id] = t.nome; });
+      }
+
+      return avals.map(a => {
+        const avalRespostas = (respostas || [])
+          .filter(r => r.avaliacao_id === a.id)
+          .map(r => ({
+            ...r,
+            pergunta: perguntaMap[r.pergunta_id]?.pergunta || "—",
+            peso: perguntaMap[r.pergunta_id]?.peso || 0,
+            ordem: perguntaMap[r.pergunta_id]?.ordem || 0,
+          }))
+          .sort((x, y) => x.ordem - y.ordem);
+        return {
+          id: a.id,
+          avaliador_nome: avaliadorNames[a.avaliador_id] || "—",
+          tipo_avaliacao_nome: a.tipo_avaliacao_id ? taNames[a.tipo_avaliacao_id] || "—" : "—",
+          concluida: a.concluida,
+          nota_final: a.nota_final,
+          respostas: avalRespostas,
+        };
+      });
+    },
+    enabled: !!selectedOS?.id && view === "os_detail",
+  });
+
   // Questions for evaluation view
   const { data: evalPerguntas = [] } = useQuery({
     queryKey: ["eval_perguntas", tipoServicoId, selectedTipoAvaliacaoId],
@@ -1131,7 +1193,76 @@ export default function AvaliacaoOSPage() {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2">
+        {/* Detailed Answers by Evaluator */}
+        {osDetailAnswers.length > 0 && (
+          <div className="space-y-4">
+            {osDetailAnswers.map((evalDetail: any) => (
+              <div key={evalDetail.id} className="bg-card border border-border rounded-lg shadow-card">
+                <div className="p-4 border-b border-border flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={cn("w-3 h-3 rounded-full shrink-0", evalDetail.concluida ? "bg-success" : "bg-warning")} />
+                    <h3 className="text-body font-semibold text-foreground">{evalDetail.tipo_avaliacao_nome}</h3>
+                    <span className="text-caption text-muted-foreground">— {evalDetail.avaliador_nome}</span>
+                  </div>
+                  {evalDetail.concluida && evalDetail.nota_final != null && (
+                    <span className={cn("text-body font-bold font-tabular",
+                      evalDetail.nota_final >= 80 ? "text-success" : evalDetail.nota_final >= 60 ? "text-warning" : "text-destructive"
+                    )}>
+                      {Number(evalDetail.nota_final).toFixed(1)}%
+                    </span>
+                  )}
+                </div>
+                <div className="divide-y divide-border">
+                  {evalDetail.respostas.length === 0 ? (
+                    <p className="px-4 py-4 text-caption text-muted-foreground text-center">Nenhuma resposta registrada.</p>
+                  ) : evalDetail.respostas.map((resp: any, idx: number) => (
+                    <div key={resp.pergunta_id} className="px-4 py-3">
+                      <div className="flex items-start gap-3">
+                        <span className="text-caption font-medium text-muted-foreground font-tabular w-6 shrink-0 pt-0.5">
+                          {String(idx + 1).padStart(2, "0")}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground">{resp.pergunta}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className={cn(
+                              "inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border",
+                              resp.resposta === "sim" ? "border-success/40 bg-success/10 text-success" :
+                              resp.resposta === "nao" ? "border-destructive/40 bg-destructive/10 text-destructive" :
+                              "border-muted-foreground/30 bg-muted text-muted-foreground"
+                            )}>
+                              {resp.resposta === "sim" ? "SIM" : resp.resposta === "nao" ? "NÃO" : "N/A"}
+                            </span>
+                            <span className="text-caption text-muted-foreground">Nota: {resp.peso}</span>
+                          </div>
+                          {resp.observacao && (
+                            <div className="mt-2 bg-muted/50 border border-border rounded p-2">
+                              <p className="text-caption text-muted-foreground flex items-center gap-1 mb-0.5">
+                                <MessageSquare className="w-3 h-3" /> Observação:
+                              </p>
+                              <p className="text-sm text-foreground">{resp.observacao}</p>
+                            </div>
+                          )}
+                          {resp.evidencia_url && (
+                            <div className="mt-2">
+                              <img
+                                src={resp.evidencia_url}
+                                alt="Evidência"
+                                className="rounded-lg border border-border max-h-32 object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => window.open(resp.evidencia_url, "_blank")}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex flex-col sm:flex-row gap-2 mt-4">
           {selectedOS.status !== "concluida" && (
             <Button onClick={startMyEvaluation} className="press-effect w-full sm:w-auto">
               <Eye className="w-4 h-4 mr-2" /> Iniciar / Continuar Avaliação
