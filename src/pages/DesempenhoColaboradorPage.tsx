@@ -142,6 +142,7 @@ export default function DesempenhoColaboradorPage() {
             nota_final: a.nota_final,
             tipo_avaliacao: taMap[a.tipo_avaliacao_id || ""] || "—",
             created_at: a.created_at,
+            concluida_em: a.concluida_em,
           })),
         };
       });
