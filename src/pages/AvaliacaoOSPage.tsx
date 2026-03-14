@@ -419,7 +419,7 @@ export default function AvaliacaoOSPage() {
     queryKey: ["os_avaliacoes", selectedOS?.id],
     queryFn: async () => {
       if (!selectedOS?.id) return [];
-      const { data } = await supabase.from("avaliacoes").select("id, avaliador_id, concluida, nota_final, tipo_avaliacao_id, created_at").eq("ordem_servico_id", selectedOS.id);
+      const { data } = await supabase.from("avaliacoes").select("id, avaliador_id, concluida, concluida_em, nota_final, tipo_avaliacao_id, created_at").eq("ordem_servico_id", selectedOS.id);
       if (!data) return [];
       const ids = [...new Set(data.map(a => a.avaliador_id))];
       let nameMap: Record<string, string> = {};
