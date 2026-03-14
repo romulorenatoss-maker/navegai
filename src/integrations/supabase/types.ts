@@ -488,6 +488,7 @@ export type Database = {
         Row: {
           ativo: boolean
           avaliador_id: string | null
+          checklist_id: string | null
           correlacao_pergunta_id: string | null
           created_at: string
           id: string
@@ -504,6 +505,7 @@ export type Database = {
         Insert: {
           ativo?: boolean
           avaliador_id?: string | null
+          checklist_id?: string | null
           correlacao_pergunta_id?: string | null
           created_at?: string
           id?: string
@@ -520,6 +522,7 @@ export type Database = {
         Update: {
           ativo?: boolean
           avaliador_id?: string | null
+          checklist_id?: string | null
           correlacao_pergunta_id?: string | null
           created_at?: string
           id?: string
@@ -539,6 +542,13 @@ export type Database = {
             columns: ["avaliador_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "perguntas_avaliacao_checklist_id_fkey"
+            columns: ["checklist_id"]
+            isOneToOne: false
+            referencedRelation: "checklists"
             referencedColumns: ["id"]
           },
           {
@@ -803,6 +813,7 @@ export type Database = {
       tipos_servico: {
         Row: {
           ativo: boolean
+          checklist_id: string | null
           created_at: string
           descricao: string | null
           id: string
@@ -812,6 +823,7 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean
+          checklist_id?: string | null
           created_at?: string
           descricao?: string | null
           id?: string
@@ -821,6 +833,7 @@ export type Database = {
         }
         Update: {
           ativo?: boolean
+          checklist_id?: string | null
           created_at?: string
           descricao?: string | null
           id?: string
@@ -829,6 +842,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tipos_servico_checklist_id_fkey"
+            columns: ["checklist_id"]
+            isOneToOne: false
+            referencedRelation: "checklists"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tipos_servico_setor_id_fkey"
             columns: ["setor_id"]
