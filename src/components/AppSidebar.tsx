@@ -61,7 +61,12 @@ const navSections = [
   },
 ];
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  userName?: string;
+  onSignOut?: () => void;
+}
+
+export function AppSidebar({ userName = "Usuário", onSignOut }: AppSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
 
@@ -155,7 +160,7 @@ export function AppSidebar() {
           {collapsed ? <ChevronRight className="w-4 h-4 shrink-0 mx-auto" /> : <ChevronLeft className="w-4 h-4 shrink-0" />}
           {!collapsed && <span>Recolher</span>}
         </button>
-        <button className="w-full flex items-center gap-3 px-2 py-2 rounded-md text-body text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors press-effect">
+        <button onClick={onSignOut} className="w-full flex items-center gap-3 px-2 py-2 rounded-md text-body text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors press-effect">
           <LogOut className="w-4 h-4 shrink-0" />
           {!collapsed && <span>Sair</span>}
         </button>
