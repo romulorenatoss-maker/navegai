@@ -846,10 +846,8 @@ export default function AvaliacaoOSPage() {
     if (!profile) return;
     if (!clienteId) { toast.error("Cliente é obrigatório. Valide o CPF primeiro."); return; }
     if (!tipoServicoId) { toast.error("Selecione o tipo de serviço."); return; }
-    const needsAtendente = hasAtendimentoAccess || isAdmin;
-    const needsTecnico = hasTecnicoAccess || isAdmin;
-    if (needsAtendente && !atendenteId) { toast.error("Selecione o atendente avaliado."); return; }
-    if (needsTecnico && !tecnicoId) { toast.error("Selecione o técnico avaliado."); return; }
+    if ((hasAtendimentoAccess || isAdmin) && !atendenteId) { toast.error("Selecione o atendente avaliado."); return; }
+    if ((hasTecnicoAccess || isAdmin) && !tecnicoId) { toast.error("Selecione o técnico avaliado."); return; }
     if (!atendenteId && !tecnicoId) { toast.error("Selecione pelo menos um colaborador avaliado."); return; }
 
     try {
@@ -1097,7 +1095,12 @@ export default function AvaliacaoOSPage() {
   const selectedTipoNome = tiposAvaliacao.find(t => t.id === selectedTipoAvaliacaoId)?.nome;
   const evalTipoServicoNome = tiposServico.find(t => t.id === evalOsData?.tipo_servico_id)?.nome;
 
-  const canCreateEval = !!tipoServicoId && (!!atendenteId || !!tecnicoId);
+  const canCreateEval = !!tipoServicoId && (
+    isAdmin ? (!!atendenteId && !!tecnicoId) :
+    hasAtendimentoAccess ? !!atendenteId :
+    hasTecnicoAccess ? !!tecnicoId :
+    (!!atendenteId || !!tecnicoId)
+  );
 
   // --- PDF Generation ---
   const generatePDF = useCallback(() => {
@@ -1936,11 +1939,45 @@ export default function AvaliacaoOSPage() {
                 </div>
                 <div>
                   <span className="text-muted-foreground">Atendente:</span>
-                  <p className="font-medium text-foreground">{allProfiles.find(p => p.id === formFoundOS.atendente_id)?.nome || "Não definido"}</p>
+                  {formFoundOS.atendente_id ? (
+                    <p className="font-medium text-foreground">{allProfiles.find(p => p.id === formFoundOS.atendente_id)?.nome || "—"}</p>
+                  ) : (hasAtendimentoAccess || isAdmin) ? (
+                    <Select value={atendenteId} onValueChange={async (val) => {
+                      setAtendenteId(val);
+                      await supabase.from("ordens_servico").update({ atendente_id: val } as any).eq("id", formFoundOS.id);
+                      setFormFoundOS({ ...formFoundOS, atendente_id: val });
+                    }}>
+                      <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                      <SelectContent>
+                        {atendimentoProfiles.filter(p => p.id !== profile?.id).map(p =>
+                          <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="font-medium text-muted-foreground italic">Pendente</p>
+                  )}
                 </div>
                 <div>
                   <span className="text-muted-foreground">Técnico:</span>
-                  <p className="font-medium text-foreground">{allProfiles.find(p => p.id === formFoundOS.tecnico_id)?.nome || "Não definido"}</p>
+                  {formFoundOS.tecnico_id ? (
+                    <p className="font-medium text-foreground">{allProfiles.find(p => p.id === formFoundOS.tecnico_id)?.nome || "—"}</p>
+                  ) : (hasTecnicoAccess || isAdmin) ? (
+                    <Select value={tecnicoId} onValueChange={async (val) => {
+                      setTecnicoId(val);
+                      await supabase.from("ordens_servico").update({ tecnico_id: val } as any).eq("id", formFoundOS.id);
+                      setFormFoundOS({ ...formFoundOS, tecnico_id: val });
+                    }}>
+                      <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                      <SelectContent>
+                        {tecnicoProfiles.filter(p => p.id !== profile?.id).map(p =>
+                          <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="font-medium text-muted-foreground italic">Pendente</p>
+                  )}
                 </div>
               </div>
 
@@ -1988,32 +2025,32 @@ export default function AvaliacaoOSPage() {
 
               {tipoServicoId && (
                 <div className="space-y-3">
-                  {(hasAtendimentoAccess || isAdmin) ? (
+                  {(hasAtendimentoAccess || isAdmin) && (
                     <div className="space-y-1.5">
-                      <Label>Atendente Avaliado *</Label>
+                      <Label>Atendente Avaliado {(hasAtendimentoAccess || isAdmin) ? "*" : ""}</Label>
                       <Select value={atendenteId} onValueChange={setAtendenteId}>
                         <SelectTrigger><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
                         <SelectContent>
                           {atendimentoProfiles.filter(p => p.id !== profile?.id).map(p =>
-                            <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>
+                            <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
                           )}
                         </SelectContent>
                       </Select>
                     </div>
-                  ) : null}
-                  {(hasTecnicoAccess || isAdmin) ? (
+                  )}
+                  {(hasTecnicoAccess || isAdmin) && (
                     <div className="space-y-1.5">
-                      <Label>Técnico Avaliado *</Label>
+                      <Label>Técnico Avaliado {(hasTecnicoAccess || isAdmin) ? "*" : ""}</Label>
                       <Select value={tecnicoId} onValueChange={setTecnicoId}>
                         <SelectTrigger><SelectValue placeholder="Selecione o técnico" /></SelectTrigger>
                         <SelectContent>
                           {tecnicoProfiles.filter(p => p.id !== profile?.id).map(p =>
-                            <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo || "—"})</SelectItem>
+                            <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
                           )}
                         </SelectContent>
                       </Select>
                     </div>
-                  ) : null}
+                  )}
                 </div>
               )}
 
