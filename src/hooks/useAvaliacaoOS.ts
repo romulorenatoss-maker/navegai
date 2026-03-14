@@ -32,6 +32,13 @@ export interface AvaliacaoData {
   nota_final: number | null;
 }
 
+export interface CreateOSExtras {
+  cliente_nome?: string | null;
+  cliente_cpf?: string | null;
+  tipo_servico_id?: string | null;
+  colaborador_avaliado_id?: string | null;
+}
+
 export function useAvaliacaoOS() {
   const { profile } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -39,19 +46,23 @@ export function useAvaliacaoOS() {
   const [avaliacao, setAvaliacao] = useState<AvaliacaoData | null>(null);
   const [questions, setQuestions] = useState<QuestionState[]>([]);
 
-  const searchOS = async (query: string, autoCreate = false) => {
+  const searchOS = async (query: string, autoCreate = false, extras?: CreateOSExtras) => {
     setLoading(true);
     try {
+      // Search existing OS by numero_os only
       const { data: existing } = await supabase
         .from("ordens_servico")
         .select("*")
-        .or(`numero_os.eq.${query},cliente_cpf.eq.${query},cliente_nome.ilike.%${query}%`)
+        .eq("numero_os", query)
         .limit(1)
         .single();
 
       if (existing) {
         setOs(existing as OSData);
         await loadOrCreateAvaliacao(existing.id);
+        if (autoCreate) {
+          toast.info("OS já existe. Abrindo avaliação existente.");
+        }
         return;
       }
 
@@ -63,10 +74,16 @@ export function useAvaliacaoOS() {
         return;
       }
 
-      // Create new OS
+      // Create new OS with extras
       const { data: newOs, error } = await supabase
         .from("ordens_servico")
-        .insert({ numero_os: query, cliente_nome: null, cliente_cpf: null })
+        .insert({
+          numero_os: query,
+          cliente_nome: extras?.cliente_nome || null,
+          cliente_cpf: extras?.cliente_cpf || null,
+          tipo_servico_id: extras?.tipo_servico_id || null,
+          colaborador_avaliado_id: extras?.colaborador_avaliado_id || null,
+        })
         .select()
         .single();
 
@@ -84,7 +101,6 @@ export function useAvaliacaoOS() {
   const loadOrCreateAvaliacao = async (osId: string) => {
     if (!profile) return;
 
-    // Check if avaliacao exists for this evaluator
     const { data: existingAval } = await supabase
       .from("avaliacoes")
       .select("*")
@@ -101,7 +117,6 @@ export function useAvaliacaoOS() {
       return;
     }
 
-    // Create new avaliacao
     const { data: newAval, error } = await supabase
       .from("avaliacoes")
       .insert({ ordem_servico_id: osId, avaliador_id: profile.id })
@@ -113,7 +128,6 @@ export function useAvaliacaoOS() {
       return;
     }
 
-    // Update OS status to em_andamento
     await supabase
       .from("ordens_servico")
       .update({ status: "em_andamento" })
@@ -125,7 +139,6 @@ export function useAvaliacaoOS() {
   };
 
   const loadQuestions = async (avaliacaoId: string, profileId: string) => {
-    // Get questions assigned to this evaluator
     const { data: perguntas } = await supabase
       .from("perguntas_avaliacao")
       .select("*")
@@ -135,7 +148,6 @@ export function useAvaliacaoOS() {
 
     if (!perguntas) return;
 
-    // Get existing answers
     const { data: respostas } = await supabase
       .from("respostas_avaliacao")
       .select("*")
