@@ -437,12 +437,16 @@ export default function AvaliacaoOSPage() {
         osId = existingOsId;
         await supabase.from("ordens_servico").update({ atendente_id: atendenteId || null, tecnico_id: tecnicoId || null } as any).eq("id", osId);
         const { data: newAval, error: ae } = await supabase.from("avaliacoes").insert({
-          ordem_servico_id: osId, avaliador_id: profile!.id, tipo_avaliacao_id: selectedTipoAvaliacaoId, concluida: true, nota_final: nota,
+          ordem_servico_id: osId, avaliador_id: profile!.id, tipo_avaliacao_id: selectedTipoAvaliacaoId, concluida: false, nota_final: null,
         } as any).select("id").single();
         if (ae) throw ae;
         avalId = newAval.id;
         const respostas = previewPerguntas.map(p => ({ avaliacao_id: avalId, pergunta_id: p.id, resposta: wizardAnswers[p.id], observacao: wizardObservations[p.id] || null }));
         await supabase.from("respostas_avaliacao").insert(respostas);
+        // Calculate score based on responsible sector
+        const scoreResult = await markAuditOnlyAndCalculateScore(avalId, selectedTipoAvaliacaoId, previewPerguntas, wizardAnswers);
+        nota = scoreResult.nota;
+        await supabase.from("avaliacoes").update({ concluida: true, nota_final: nota }).eq("id", avalId);
       } else {
         const num = newOsNumero.trim();
         const cpfD = clienteCpf.replace(/\D/g, "");
