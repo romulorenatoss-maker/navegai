@@ -45,8 +45,6 @@ function SortableRow({ p, index, onEdit, onRemove }: { p: any; index: number; on
 export default function PerguntasPage() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
-  const [newChecklistTitle, setNewChecklistTitle] = useState("");
   const [editing, setEditing] = useState<Pergunta | null>(null);
   const [pergunta, setPergunta] = useState("");
   const [checklistId, setChecklistId] = useState("");
