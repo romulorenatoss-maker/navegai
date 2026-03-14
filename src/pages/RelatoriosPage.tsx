@@ -143,7 +143,7 @@ export default function RelatoriosPage() {
 
     const { data: osData } = await supabase
       .from("ordens_servico")
-      .select("id, numero_os, status, created_at, cliente_nome, tipo_servico_id")
+      .select("id, numero_os, status, created_at, cliente_nome, tipo_servico_id, colaborador_avaliado_id")
       .gte("created_at", from)
       .lte("created_at", to)
       .order("created_at", { ascending: false });
