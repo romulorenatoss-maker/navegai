@@ -267,7 +267,7 @@ function TipoRow({ t, onToggle, onEdit, onRemove }: { t: any; onToggle: () => vo
         {t.descricao && <div className="text-caption text-muted-foreground">{t.descricao}</div>}
       </td>
       <td className="px-4 py-3 text-caption text-muted-foreground">
-        {linkedChecklists.length > 0 ? linkedChecklists.map((c: any) => c.titulo).join(", ") : "—"}
+        {(linkedChecklists || []).length > 0 ? (linkedChecklists || []).map((c: any) => c.titulo).join(", ") : "—"}
       </td>
       <td className="px-4 py-3">
         <div className="text-body font-medium text-foreground">{b.totalPerguntas}</div>
