@@ -51,7 +51,7 @@ export default function PerguntasPage() {
   const [editing, setEditing] = useState<Pergunta | null>(null);
   const [pergunta, setPergunta] = useState("");
   const [tipoServicoId, setTipoServicoId] = useState("");
-  const [tipoAvaliacaoId, setTipoAvaliacaoId] = useState("");
+  const [tipoAvaliacaoId, setTipoAvaliacaoId] = useState(""); // kept for payload compatibility
   const [targetEmployeeType, setTargetEmployeeType] = useState("geral");
   // avaliadorId removed - evaluator access is determined by their sector
   const [setorAvaliadoId, setSetorAvaliadoId] = useState("");
