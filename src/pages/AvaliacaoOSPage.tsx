@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, AlertTriangle, Loader2, Plus } from "lucide-react";
+import { Search, AlertTriangle, Loader2, Plus, ListChecks } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useAvaliacaoOS, Answer } from "@/hooks/useAvaliacaoOS";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 const SegmentedControl = ({
@@ -53,6 +54,7 @@ const statusLabel: Record<string, { text: string; badge: string }> = {
 
 export default function AvaliacaoOSPage() {
   const [searchParams] = useSearchParams();
+  const { profile } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newOsNumero, setNewOsNumero] = useState("");
@@ -83,6 +85,47 @@ export default function AvaliacaoOSPage() {
       if (error) throw error;
       return data;
     },
+  });
+
+  // Preview questions that will be linked to the current evaluator based on selected tipo_servico and colaborador
+  const { data: previewPerguntas = [] } = useQuery({
+    queryKey: ["preview_perguntas", tipoServicoId, colaboradorId, profile?.id],
+    queryFn: async () => {
+      if (!profile?.id) return [];
+      
+      let query = supabase
+        .from("perguntas_avaliacao")
+        .select("id, pergunta, peso, ordem, tipo_servico_id")
+        .eq("ativo", true)
+        .or(`avaliador_id.eq.${profile.id},avaliador_id.is.null`);
+
+      if (tipoServicoId) {
+        query = query.or(`tipo_servico_id.eq.${tipoServicoId},tipo_servico_id.is.null`);
+      } else if (colaboradorId) {
+        // Get setor from colaborador, then tipos from that setor
+        const { data: colabProfile } = await supabase
+          .from("profiles")
+          .select("setor_id")
+          .eq("id", colaboradorId)
+          .single();
+        
+        if (colabProfile?.setor_id) {
+          const { data: tiposDoSetor } = await supabase
+            .from("tipos_servico")
+            .select("id")
+            .eq("setor_id", colabProfile.setor_id);
+          
+          if (tiposDoSetor && tiposDoSetor.length > 0) {
+            const tipoIds = tiposDoSetor.map(t => `tipo_servico_id.eq.${t.id}`).join(",");
+            query = query.or(`${tipoIds},tipo_servico_id.is.null`);
+          }
+        }
+      }
+
+      const { data } = await query.order("ordem");
+      return data || [];
+    },
+    enabled: createDialogOpen && !!profile?.id && (!!tipoServicoId || !!colaboradorId),
   });
 
   useEffect(() => {
@@ -206,6 +249,24 @@ export default function AvaliacaoOSPage() {
                 </SelectContent>
               </Select>
             </div>
+            {/* Preview of linked questions */}
+            {previewPerguntas.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1.5">
+                  <ListChecks className="w-4 h-4 text-primary" />
+                  Perguntas vinculadas ({previewPerguntas.length})
+                </Label>
+                <div className="bg-muted/50 rounded-lg border border-border p-3 max-h-40 overflow-y-auto space-y-1">
+                  {previewPerguntas.map((p, i) => (
+                    <div key={p.id} className="flex items-start gap-2 text-caption">
+                      <span className="text-muted-foreground font-tabular w-5 shrink-0">{String(i + 1).padStart(2, "0")}</span>
+                      <span className="text-foreground flex-1">{p.pergunta}</span>
+                      <span className="text-muted-foreground shrink-0">Peso: {p.peso}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancelar</Button>
               <Button type="submit" className="press-effect">Criar e Avaliar</Button>

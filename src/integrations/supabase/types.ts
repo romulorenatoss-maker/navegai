@@ -507,7 +507,12 @@ export type Database = {
     Enums: {
       app_role: "admin" | "avaliador" | "executor" | "gestor"
       os_status: "aberta" | "em_andamento" | "concluida"
-      recorrencia_tipo: "diaria" | "semanal" | "mensal" | "personalizada"
+      recorrencia_tipo:
+        | "diaria"
+        | "semanal"
+        | "mensal"
+        | "personalizada"
+        | "quando_criada"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -637,7 +642,13 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "avaliador", "executor", "gestor"],
       os_status: ["aberta", "em_andamento", "concluida"],
-      recorrencia_tipo: ["diaria", "semanal", "mensal", "personalizada"],
+      recorrencia_tipo: [
+        "diaria",
+        "semanal",
+        "mensal",
+        "personalizada",
+        "quando_criada",
+      ],
     },
   },
 } as const

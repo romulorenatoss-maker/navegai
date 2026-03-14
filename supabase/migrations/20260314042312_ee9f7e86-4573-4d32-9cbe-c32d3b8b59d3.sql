@@ -1,0 +1,1 @@
+ALTER TYPE public.recorrencia_tipo ADD VALUE IF NOT EXISTS 'quando_criada';
