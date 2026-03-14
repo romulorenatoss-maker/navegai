@@ -291,6 +291,12 @@ export function useAvaliacaoOS() {
     0
   );
 
+  const clearOS = () => {
+    setOs(null);
+    setAvaliacao(null);
+    setQuestions([]);
+  };
+
   return {
     loading,
     os,
@@ -303,5 +309,6 @@ export function useAvaliacaoOS() {
     answeredCount,
     totalScore,
     maxScore,
+    clearOS,
   };
 }
