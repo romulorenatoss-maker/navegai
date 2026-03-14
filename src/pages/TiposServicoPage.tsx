@@ -162,7 +162,7 @@ export default function TiposServicoPage() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "Editar Tipo de Serviço" : "Novo Tipo de Serviço"}</DialogTitle></DialogHeader>
           <form onSubmit={e => { e.preventDefault(); upsert.mutate(); }} className="space-y-4">
             <div className="space-y-1.5"><Label>Nome</Label><Input value={nome} onChange={e => setNome(e.target.value)} required /></div>
