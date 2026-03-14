@@ -938,37 +938,10 @@ export default function AvaliacaoOSPage() {
       return;
     }
 
-    // Try to find tipo_avaliacao via links, but allow fallback
-    const { data: links } = await (supabase as any)
-      .from("tipo_servico_tipos_avaliacao")
-      .select("tipo_avaliacao_id")
-      .eq("tipo_servico_id", tsId);
-
-    let myTaId: string | null = null;
-
-    if (links?.length) {
-      const taIds = links.map((l: any) => l.tipo_avaliacao_id);
-      const { data: tas } = await (supabase as any).from("tipos_avaliacao").select("*").in("id", taIds);
-
-      if (tas?.length) {
-        const doneIds = (existingAvals || []).map((a: any) => a.tipo_avaliacao_id);
-        let myTa: any = null;
-
-        if (isAdmin) {
-          const available = tas.filter((ta: any) => !doneIds.includes(ta.id));
-          myTa = available[0] || null;
-        } else {
-          myTa = tas.find((ta: any) => ta.cargo_responsavel === profile.cargo) || null;
-        }
-
-        if (myTa) myTaId = myTa.id;
-      }
-    }
-
     const { data: newAval, error } = await supabase.from("avaliacoes").insert({
       ordem_servico_id: theOS.id,
       avaliador_id: profile.id,
-      tipo_avaliacao_id: myTaId,
+      tipo_avaliacao_id: null,
       concluida: false,
     } as any).select("id").single();
 
