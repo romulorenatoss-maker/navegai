@@ -731,24 +731,35 @@ export default function AvaliacaoOSPage() {
 
   const handleFinalizeEvaluation = async () => {
     if (!evalAvaliacaoId || !evalOsId) return;
-    const unanswered = evalPerguntas.filter(p => evalAnswers[p.id] == null);
-    if (unanswered.length > 0) { toast.error("Responda todas as perguntas antes de concluir."); return; }
-    const missingObs = evalPerguntas.filter(p => evalAnswers[p.id] === "nao" && !(evalObservations[p.id]?.trim()));
+    // Only check answerable questions (evaluator's sector)
+    const answerableQuestions = evalPerguntas.filter(p => isQuestionAnswerable(p.setor_avaliado_id));
+    const unanswered = answerableQuestions.filter(p => evalAnswers[p.id] == null);
+    if (unanswered.length > 0) { toast.error("Responda todas as perguntas do seu setor antes de concluir."); return; }
+    const missingObs = answerableQuestions.filter(p => evalAnswers[p.id] === "nao" && !(evalObservations[p.id]?.trim()));
     if (missingObs.length > 0) { toast.error("Descreva a irregularidade para itens reprovados."); return; }
-    const missingEvidence = evalPerguntas.filter(p => evalAnswers[p.id] === "nao" && !evalEvidencias[p.id]);
+    const missingEvidence = answerableQuestions.filter(p => evalAnswers[p.id] === "nao" && !evalEvidencias[p.id]);
     if (missingEvidence.length > 0) { toast.error("Anexe a evidência fotográfica para todos os itens reprovados."); return; }
 
     setEvalSubmitting(true);
     try {
-      const scoreResult = await markAuditOnlyAndCalculateScore(evalAvaliacaoId, selectedTipoAvaliacaoId, evalPerguntas, evalAnswers);
-      const nota = scoreResult.nota;
+      // Calculate score only from answerable questions
+      let totalWeight = 0;
+      let earnedWeight = 0;
+      for (const p of answerableQuestions) {
+        const answer = evalAnswers[p.id];
+        if (answer !== "na" && answer != null) {
+          totalWeight += p.peso;
+          if (answer === "sim") earnedWeight += p.peso;
+        }
+      }
+      const nota = totalWeight > 0 ? (earnedWeight / totalWeight) * 100 : 0;
+
       await supabase.from("avaliacoes").update({ concluida: true, nota_final: nota }).eq("id", evalAvaliacaoId);
       setEvalScore(nota);
       setEvalFinalized(true);
       toast.success(`Avaliação concluída! Nota: ${nota.toFixed(1)}%`);
       try { await detectInconsistencies(evalOsId); } catch (e) { console.warn("Inconsistency detection error:", e); }
       refetchPending();
-      // Navigate back to dashboard after finalizing
       setTimeout(() => navigate("/"), 1500);
     } catch (err: any) {
       toast.error("Erro: " + err.message);
