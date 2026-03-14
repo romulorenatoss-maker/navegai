@@ -20,6 +20,7 @@ interface TipoAvaliacao {
 }
 
 export default function TiposAvaliacaoPage() {
+  const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<TipoAvaliacao | null>(null);
