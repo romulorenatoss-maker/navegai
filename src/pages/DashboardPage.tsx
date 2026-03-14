@@ -187,18 +187,6 @@ export default function DashboardPage() {
         .in("ordem_servico_id", osIds);
 
       const avalIds = avaliacoes?.map((a) => a.id) || [];
-      let respostasMap: Record<string, number> = {}; // avaliacao_id -> count of answered
-      if (avalIds.length > 0) {
-        const { data: respostas } = await supabase
-          .from("respostas_avaliacao")
-          .select("avaliacao_id, resposta")
-          .in("avaliacao_id", avalIds)
-          .not("resposta", "is", null);
-
-        respostas?.forEach((r) => {
-          respostasMap[r.avaliacao_id] = (respostasMap[r.avaliacao_id] || 0) + 1;
-        });
-      }
 
       // 4. Get total questions per OS (via perguntas linked to tipo_servico or general)
       // For progress: count respostas answered vs perguntas_avaliacao linked to the OS's tipo_servico
@@ -206,6 +194,24 @@ export default function DashboardPage() {
         .from("perguntas_avaliacao")
         .select("id, tipo_servico_id")
         .eq("ativo", true);
+
+      // Build a set of answered pergunta_ids per OS (across all evaluators)
+      const answeredByOS: Record<string, Set<string>> = {};
+      if (avalIds.length > 0) {
+        const { data: allResp } = await supabase
+          .from("respostas_avaliacao")
+          .select("avaliacao_id, pergunta_id")
+          .in("avaliacao_id", avalIds)
+          .not("resposta", "is", null);
+        
+        allResp?.forEach((r) => {
+          const osId = avaliacoes?.find(a => a.id === r.avaliacao_id)?.ordem_servico_id;
+          if (osId) {
+            if (!answeredByOS[osId]) answeredByOS[osId] = new Set();
+            answeredByOS[osId].add(r.pergunta_id);
+          }
+        });
+      }
 
       // Build OS with progress and computed status
       const result: OSWithProgress[] = osData.map((os) => {
@@ -217,8 +223,9 @@ export default function DashboardPage() {
         ) || [];
         const totalPerguntas = perguntasForOS.length;
         
-        // Total answered across all avaliacoes for this OS
-        const totalRespondidas = osAvals.reduce((sum, a) => sum + (respostasMap[a.id] || 0), 0);
+        // Count unique questions answered (any evaluator) for this OS
+        const osAnswered = answeredByOS[os.id] || new Set();
+        const totalRespondidas = perguntasForOS.filter(p => osAnswered.has(p.id)).length;
         
         const progress = totalPerguntas > 0 ? Math.round((totalRespondidas / totalPerguntas) * 100) : 0;
 
@@ -306,10 +313,11 @@ export default function DashboardPage() {
 
         const myUnanswered = myQuestions.filter(q => !myAval || !answeredSet.has(`${myAval.id}:${q.id}`));
 
-        const totalAnswered = osAvals.reduce((sum, a) => {
-          return sum + perguntasForOS.filter(q => answeredSet.has(`${a.id}:${q.id}`)).length;
-        }, 0);
-        const progress = perguntasForOS.length > 0 ? Math.round((totalAnswered / perguntasForOS.length) * 100) : 0;
+        // Count unique questions answered by ANY evaluator for this OS
+        const uniqueAnswered = perguntasForOS.filter(q =>
+          osAvals.some(a => answeredSet.has(`${a.id}:${q.id}`))
+        ).length;
+        const progress = perguntasForOS.length > 0 ? Math.round((uniqueAnswered / perguntasForOS.length) * 100) : 0;
 
         const pendingItem: PendingOS = {
           os_id: os.id, numero_os: os.numero_os, cliente_nome: os.cliente_nome,
