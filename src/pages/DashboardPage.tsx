@@ -565,7 +565,7 @@ export default function DashboardPage() {
 
     fetchRanking();
     fetchScores();
-  }, [startDate, endDate]);
+  }, [searchTrigger]);
 
   // Split OS by status
   const osAbertas = useMemo(() => allOS.filter((o) => o.status === "aberta"), [allOS]);
