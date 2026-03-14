@@ -148,7 +148,13 @@ export default function PerguntasPage() {
   // Checklist delete mutation
   const deleteChecklist = useMutation({
     mutationFn: async (id: string) => {
+      // Unlink questions
       await (supabase as any).from("perguntas_avaliacao").update({ checklist_id: null }).eq("checklist_id", id);
+      // Remove related junction/item records
+      await supabase.from("checklist_perguntas").delete().eq("checklist_id", id);
+      await supabase.from("checklist_itens").delete().eq("checklist_id", id);
+      await (supabase as any).from("tipo_servico_checklists").delete().eq("checklist_id", id);
+      // Delete checklist
       const { error } = await supabase.from("checklists").delete().eq("id", id);
       if (error) throw error;
     },
