@@ -79,7 +79,7 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen bg-background">
-      <AppSidebar userName={userNameDisplay} onSignOut={handleSignOut} isAdmin={isAdmin} />
+      <AppSidebar userName={userNameDisplay} onSignOut={handleSignOut} isAdmin={isAdmin} allowedScreens={allowedScreens} />
       {/* Top bar desktop */}
       <div className="ml-[240px] transition-all duration-200">
         <header className="sticky top-0 z-30 flex items-center justify-end h-12 px-6 bg-card border-b border-border">
