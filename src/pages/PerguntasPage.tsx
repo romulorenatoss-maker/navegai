@@ -336,18 +336,6 @@ export default function PerguntasPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Setor Avaliado</Label>
-                <Select value={setorAvaliadoId} onValueChange={setSetorAvaliadoId}>
-                  <SelectTrigger><SelectValue placeholder="Todos os setores" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos os setores</SelectItem>
-                    {setores.map(s => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
 
             <div className="space-y-1.5">
               <Label>Nota</Label>
