@@ -195,19 +195,19 @@ export default function DashboardPage() {
         .select("id, tipo_servico_id")
         .eq("ativo", true);
 
+      // FIX: Fetch responses by ordem_servico_id (shared across all evaluators)
       const answeredByOS: Record<string, Set<string>> = {};
-      if (avalIds.length > 0) {
+      if (osIds.length > 0) {
         const { data: allResp } = await supabase
           .from("respostas_avaliacao")
-          .select("avaliacao_id, pergunta_id")
-          .in("avaliacao_id", avalIds)
+          .select("ordem_servico_id, pergunta_id")
+          .in("ordem_servico_id", osIds)
           .not("resposta", "is", null);
         
-        allResp?.forEach((r) => {
-          const osId = avaliacoes?.find(a => a.id === r.avaliacao_id)?.ordem_servico_id;
-          if (osId) {
-            if (!answeredByOS[osId]) answeredByOS[osId] = new Set();
-            answeredByOS[osId].add(r.pergunta_id);
+        allResp?.forEach((r: any) => {
+          if (r.ordem_servico_id) {
+            if (!answeredByOS[r.ordem_servico_id]) answeredByOS[r.ordem_servico_id] = new Set();
+            answeredByOS[r.ordem_servico_id].add(r.pergunta_id);
           }
         });
       }
