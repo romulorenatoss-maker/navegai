@@ -456,12 +456,18 @@ export default function AvaliacaoOSPage() {
     setEvalFinalized(aval.concluida || false);
     setEvalScore(aval.nota_final as number | null);
 
-    const { data: respostas } = await supabase.from("respostas_avaliacao").select("pergunta_id, resposta, observacao").eq("avaliacao_id", avaliacaoId);
+    const { data: respostas } = await supabase.from("respostas_avaliacao").select("pergunta_id, resposta, observacao, evidencia_url").eq("avaliacao_id", avaliacaoId);
     const ans: Record<string, Answer> = {};
     const obs: Record<string, string> = {};
-    respostas?.forEach(r => { if (r.resposta) ans[r.pergunta_id] = r.resposta as Answer; if (r.observacao) obs[r.pergunta_id] = r.observacao; });
+    const evid: Record<string, string> = {};
+    respostas?.forEach(r => {
+      if (r.resposta) ans[r.pergunta_id] = r.resposta as Answer;
+      if (r.observacao) obs[r.pergunta_id] = r.observacao;
+      if (r.evidencia_url) evid[r.pergunta_id] = r.evidencia_url;
+    });
     setEvalAnswers(ans);
     setEvalObservations(obs);
+    setEvalEvidencias(evid);
     setView("evaluation");
   };
 
