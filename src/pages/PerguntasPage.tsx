@@ -31,8 +31,8 @@ export default function PerguntasPage() {
   // Preview state
   const [previewAnswer, setPreviewAnswer] = useState<PreviewAnswer>(null);
 
-  // Filter state
-  const [filtroTipoServico, setFiltroTipoServico] = useState("todos");
+  // Filter state - multi-select
+  const [filtrosTipoServico, setFiltrosTipoServico] = useState<Set<string>>(new Set());
 
   const { data: perguntas = [], isLoading } = useQuery({
     queryKey: ["perguntas_avaliacao"],
