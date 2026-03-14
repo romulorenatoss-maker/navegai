@@ -220,25 +220,15 @@ export default function DashboardPage() {
       }
 
       const result: OSWithProgress[] = osData.map((os) => {
-        const osAvals = avaliacoes?.filter((a) => a.ordem_servico_id === os.id) || [];
         const osPerguntaIds = perguntasByOS[os.id] || [];
         const totalPerguntas = osPerguntaIds.length;
         const osAnswered = answeredByOS[os.id] || new Set();
         const totalRespondidas = osPerguntaIds.filter(pid => osAnswered.has(pid)).length;
         const progress = totalPerguntas > 0 ? Math.round((totalRespondidas / totalPerguntas) * 100) : 0;
 
-        let computedStatus: string;
-        if (totalRespondidas === 0) {
-          computedStatus = "aberta";
-        } else if (progress >= 100) {
-          computedStatus = "concluida";
-        } else {
-          computedStatus = "em_andamento";
-        }
-
         return {
           ...os,
-          status: computedStatus,
+          status: os.status,
           tipo_servico_nome: os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || null : null,
           total_perguntas: totalPerguntas,
           total_respondidas: totalRespondidas,

@@ -194,28 +194,13 @@ export default function RelatoriosPage() {
       avaliadorByOS[a.ordem_servico_id].add(a.avaliador_id);
     });
 
-    let results = osData.map((os) => {
-      const totalPerguntas = perguntaCountByOS[os.id] || 0;
-      const totalRespondidas = answeredByOS[os.id]?.size || 0;
-      const progress = totalPerguntas > 0 ? (totalRespondidas / totalPerguntas) * 100 : 0;
-
-      let computedStatus: string;
-      if (totalRespondidas === 0) {
-        computedStatus = "aberta";
-      } else if (progress >= 100) {
-        computedStatus = "concluida";
-      } else {
-        computedStatus = "em_andamento";
-      }
-
-      return {
-        ...os,
-        status: computedStatus,
-        tipo_servico_nome: os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || null : null,
-        setor_id: os.tipo_servico_id ? tipoSetorMap[os.tipo_servico_id] || null : null,
-        avaliador_ids: avaliadorByOS[os.id] || new Set<string>(),
-      };
-    });
+    let results = osData.map((os) => ({
+      ...os,
+      status: os.status,
+      tipo_servico_nome: os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || null : null,
+      setor_id: os.tipo_servico_id ? tipoSetorMap[os.tipo_servico_id] || null : null,
+      avaliador_ids: avaliadorByOS[os.id] || new Set<string>(),
+    }));
 
     // Apply client-side filters
     if (filterStatus !== "todos") {
