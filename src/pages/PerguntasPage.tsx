@@ -27,6 +27,9 @@ export default function PerguntasPage() {
   const [peso, setPeso] = useState("1");
   const [ordem, setOrdem] = useState("0");
 
+  // Preview state
+  const [previewAnswer, setPreviewAnswer] = useState<PreviewAnswer>(null);
+
   // Filter state
   const [filtroTipoServico, setFiltroTipoServico] = useState("todos");
 
