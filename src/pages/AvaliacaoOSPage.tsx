@@ -1045,6 +1045,9 @@ export default function AvaliacaoOSPage() {
         osId = newOs.id;
       }
 
+      // Snapshot checklist questions into os_perguntas
+      await snapshotOsPerguntas(osId, tipoServicoId);
+
       // Auto-determine tipo_avaliacao_id from evaluator's cargo
       let finalTipoAvaliacaoId = selectedTipoAvaliacaoId;
       if (!finalTipoAvaliacaoId && profile.cargo) {
