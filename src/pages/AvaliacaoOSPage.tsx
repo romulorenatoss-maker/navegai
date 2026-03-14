@@ -391,7 +391,11 @@ export default function AvaliacaoOSPage() {
       if (d.length === 11 && !isValidCpf(d)) return false;
       return true;
     }
-    if (s === 2) return !!atendenteId && !!tecnicoId;
+    if (s === 2) {
+      // Only require the field this evaluator is responsible for
+      if (isAtendimentoEvaluator) return !!atendenteId;
+      return !!tecnicoId;
+    }
     if (s === 3) return previewPerguntas.length > 0 && previewPerguntas.every(p => wizardAnswers[p.id] != null);
     return false;
   };
