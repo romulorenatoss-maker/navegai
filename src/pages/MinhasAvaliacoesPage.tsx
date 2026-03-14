@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Eye, CheckCircle2, XCircle, MessageSquare, Image as ImageIcon, Loader2, CalendarIcon, Search } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchNotasPorSetor, calcularMediaColaborador } from "@/hooks/useNotasPorSetor";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
