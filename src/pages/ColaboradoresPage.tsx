@@ -315,12 +315,25 @@ export default function ColaboradoresPage() {
               </Select>
               <p className="text-caption text-muted-foreground">{cargoConfig[cargo]?.description || ""}</p>
             </div>
-            <div className="space-y-1.5">
-              <Label>Setor</Label>
-              <Select value={setorId} onValueChange={setSetorId}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>{setores.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
-              </Select>
+            <div className="space-y-2">
+              <Label>Setores</Label>
+              <p className="text-caption text-muted-foreground">Selecione os setores deste colaborador.</p>
+              <div className="border border-border rounded-lg p-3 space-y-2 max-h-40 overflow-y-auto">
+                {setores.length === 0 ? (
+                  <p className="text-caption text-muted-foreground text-center py-2">Nenhum setor cadastrado.</p>
+                ) : setores.map((s) => (
+                  <label key={s.id} className="flex items-center gap-3 py-1.5 px-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors">
+                    <Checkbox
+                      checked={selectedSetores.includes(s.id)}
+                      onCheckedChange={() => setSelectedSetores((prev) => prev.includes(s.id) ? prev.filter((x) => x !== s.id) : [...prev, s.id])}
+                    />
+                    <span className="text-body font-medium text-foreground">{s.nome}</span>
+                  </label>
+                ))}
+              </div>
+              {selectedSetores.length > 0 && (
+                <p className="text-caption text-muted-foreground">{selectedSetores.length} setor(es) selecionado(s)</p>
+              )}
             </div>
 
             {/* Tipos de Serviço para Avaliador */}
