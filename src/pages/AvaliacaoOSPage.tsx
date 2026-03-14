@@ -335,7 +335,130 @@ export default function AvaliacaoOSPage() {
       return true;
     }
     if (s === 2) return !!colaboradorId;
+    if (s === 3) return previewPerguntas.length > 0 && previewPerguntas.every((p) => wizardAnswers[p.id] != null);
     return false;
+  };
+
+  const wizardAnsweredCount = previewPerguntas.filter((p) => wizardAnswers[p.id] != null).length;
+  const wizardTotalScore = previewPerguntas.reduce((acc, p) => (wizardAnswers[p.id] === "sim" ? acc + p.peso : acc), 0);
+  const wizardMaxScore = previewPerguntas.reduce((acc, p) => (wizardAnswers[p.id] !== "na" && wizardAnswers[p.id] != null ? acc + p.peso : acc), 0);
+
+  const handleFinalizeWizard = async () => {
+    if (!canAdvance(3)) {
+      toast.error("Responda todas as perguntas antes de finalizar.");
+      return;
+    }
+
+    // Check for "nao" answers without observations
+    const missingObs = previewPerguntas.filter(
+      (p) => wizardAnswers[p.id] === "nao" && !(wizardObservations[p.id]?.trim())
+    );
+    if (missingObs.length > 0) {
+      toast.error("Descreva a irregularidade para todos os itens reprovados.");
+      return;
+    }
+
+    setWizardSubmitting(true);
+    try {
+      const num = newOsNumero.trim();
+      const cpfDigits = clienteCpf.replace(/\D/g, "");
+      const nomeTrimmed = clienteNome.trim() || null;
+      const cpfTrimmed = cpfDigits.length === 11 ? clienteCpf.trim() : null;
+
+      // Handle client
+      let clienteId: string | null = null;
+      if (cpfTrimmed) {
+        const { data: existing } = await supabase
+          .from("clientes")
+          .select("id")
+          .eq("cpf", cpfTrimmed)
+          .limit(1)
+          .single();
+        if (existing) {
+          clienteId = existing.id;
+        } else {
+          const { data: newCliente } = await supabase
+            .from("clientes")
+            .insert({ nome: nomeTrimmed || "Sem nome", cpf: cpfTrimmed })
+            .select("id")
+            .single();
+          if (newCliente) clienteId = newCliente.id;
+        }
+      } else if (nomeTrimmed) {
+        const { data: newCliente } = await supabase
+          .from("clientes")
+          .insert({ nome: nomeTrimmed, cpf: null })
+          .select("id")
+          .single();
+        if (newCliente) clienteId = newCliente.id;
+      }
+
+      // Check if OS exists
+      const { data: existingOS } = await supabase
+        .from("ordens_servico")
+        .select("id")
+        .eq("numero_os", num)
+        .limit(1)
+        .single();
+
+      let osId: string;
+      if (existingOS) {
+        osId = existingOS.id;
+      } else {
+        const { data: newOs, error: osErr } = await supabase
+          .from("ordens_servico")
+          .insert({
+            numero_os: num,
+            cliente_nome: nomeTrimmed,
+            cliente_cpf: cpfTrimmed,
+            tipo_servico_id: tipoServicoId,
+            colaborador_avaliado_id: colaboradorId,
+            cliente_id: clienteId,
+          })
+          .select("id")
+          .single();
+        if (osErr) throw osErr;
+        osId = newOs.id;
+      }
+
+      // Create avaliacao
+      const nota = wizardMaxScore > 0 ? (wizardTotalScore / wizardMaxScore) * 100 : 0;
+      const { data: newAval, error: avalErr } = await supabase
+        .from("avaliacoes")
+        .insert({
+          ordem_servico_id: osId,
+          avaliador_id: profile!.id,
+          concluida: true,
+          nota_final: nota,
+        })
+        .select("id")
+        .single();
+      if (avalErr) throw avalErr;
+
+      // Insert all respostas
+      const respostas = previewPerguntas.map((p) => ({
+        avaliacao_id: newAval.id,
+        pergunta_id: p.id,
+        resposta: wizardAnswers[p.id],
+        observacao: wizardObservations[p.id] || null,
+      }));
+      const { error: respErr } = await supabase.from("respostas_avaliacao").insert(respostas);
+      if (respErr) throw respErr;
+
+      // Update OS status
+      await supabase
+        .from("ordens_servico")
+        .update({ status: "concluida", data_conclusao: new Date().toISOString() })
+        .eq("id", osId);
+
+      setWizardScore(nota);
+      setWizardFinalized(true);
+      toast.success(`Avaliação concluída! Nota: ${nota.toFixed(1)}%`);
+    } catch (err: any) {
+      toast.error("Erro ao finalizar: " + err.message);
+    } finally {
+      setWizardSubmitting(false);
+    }
   };
 
   const isCompleted = avaliacao?.concluida === true;
