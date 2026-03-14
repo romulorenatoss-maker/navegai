@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -34,18 +33,6 @@ function getScoreBg(score: number) {
   return "bg-destructive/10";
 }
 
-function getCompetenceMonths() {
-  const months = [];
-  const now = new Date();
-  for (let i = 0; i < 12; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push({
-      value: format(d, "yyyy-MM"),
-      label: format(d, "MMMM yyyy", { locale: ptBR }),
-    });
-  }
-  return months;
-}
 
 export default function DesempenhoColaboradorPage() {
   const [searchParams] = useSearchParams();
@@ -58,9 +45,11 @@ export default function DesempenhoColaboradorPage() {
   const targetProfileId = canViewAll && profileIdParam ? profileIdParam : profile?.id;
 
   const now = new Date();
-  const [competenceMonth, setCompetenceMonth] = useState(format(now, "yyyy-MM"));
   const [startDate, setStartDate] = useState<Date | undefined>(startOfMonth(now));
   const [endDate, setEndDate] = useState<Date | undefined>(endOfMonth(now));
+  // Applied filters (only update on "Buscar" click)
+  const [appliedStart, setAppliedStart] = useState<Date | undefined>(startOfMonth(now));
+  const [appliedEnd, setAppliedEnd] = useState<Date | undefined>(endOfMonth(now));
   const [selectedOsId, setSelectedOsId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("desempenho");
 
@@ -71,15 +60,10 @@ export default function DesempenhoColaboradorPage() {
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const handleCompetenceChange = (val: string) => {
-    setCompetenceMonth(val);
-    const [y, m] = val.split("-").map(Number);
-    const d = new Date(y, m - 1, 1);
-    setStartDate(startOfMonth(d));
-    setEndDate(endOfMonth(d));
+  const handleBuscar = () => {
+    setAppliedStart(startDate);
+    setAppliedEnd(endDate);
   };
-
-  const competenceMonths = useMemo(() => getCompetenceMonths(), []);
 
   // Employee profile
   const { data: targetProfile } = useQuery({
@@ -94,11 +78,11 @@ export default function DesempenhoColaboradorPage() {
 
   // Evaluations where this employee was evaluated
   const { data: evaluations = [], refetch: refetchEvaluations } = useQuery({
-    queryKey: ["perf_evals", targetProfileId, startDate?.toISOString(), endDate?.toISOString()],
+    queryKey: ["perf_evals", targetProfileId, appliedStart?.toISOString(), appliedEnd?.toISOString()],
     queryFn: async () => {
       if (!targetProfileId) return [];
-      const from = startDate?.toISOString() || startOfMonth(now).toISOString();
-      const to = endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString();
+      const from = appliedStart?.toISOString() || startOfMonth(now).toISOString();
+      const to = appliedEnd ? endOfMonth(appliedEnd).toISOString() : endOfMonth(now).toISOString();
 
       const { data: osData } = await supabase
         .from("ordens_servico")
@@ -186,11 +170,11 @@ export default function DesempenhoColaboradorPage() {
 
   // Average score using SQL function (per-sector calculation)
   const { data: notasPorSetorData = [] } = useQuery({
-    queryKey: ["perf_notas_setor", targetProfileId, startDate?.toISOString(), endDate?.toISOString()],
+    queryKey: ["perf_notas_setor", targetProfileId, appliedStart?.toISOString(), appliedEnd?.toISOString()],
     queryFn: async () => {
       if (!targetProfileId) return [];
-      const from = startDate?.toISOString() || startOfMonth(now).toISOString();
-      const to = endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString();
+      const from = appliedStart?.toISOString() || startOfMonth(now).toISOString();
+      const to = appliedEnd ? endOfMonth(appliedEnd).toISOString() : endOfMonth(now).toISOString();
       return fetchNotasPorSetor(from, to);
     },
     enabled: !!targetProfileId,
@@ -203,11 +187,11 @@ export default function DesempenhoColaboradorPage() {
 
   // Most frequent errors
   const { data: frequentErrors = [] } = useQuery({
-    queryKey: ["perf_errors", targetProfileId, startDate?.toISOString(), endDate?.toISOString()],
+    queryKey: ["perf_errors", targetProfileId, appliedStart?.toISOString(), appliedEnd?.toISOString()],
     queryFn: async () => {
       if (!targetProfileId) return [];
-      const from = startDate?.toISOString() || startOfMonth(now).toISOString();
-      const to = endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString();
+      const from = appliedStart?.toISOString() || startOfMonth(now).toISOString();
+      const to = appliedEnd ? endOfMonth(appliedEnd).toISOString() : endOfMonth(now).toISOString();
 
       const { data: osData } = await supabase
         .from("ordens_servico")
@@ -483,17 +467,6 @@ export default function DesempenhoColaboradorPage() {
               <span className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Filtros</span>
             </div>
             <div className="flex flex-wrap gap-4 items-end">
-              <div className="flex flex-col gap-1.5 min-w-[200px]">
-                <label className="text-caption font-medium text-muted-foreground">Mês de Competência</label>
-                <Select value={competenceMonth} onValueChange={handleCompetenceChange}>
-                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {competenceMonths.map(m => (
-                      <SelectItem key={m.value} value={m.value} className="capitalize">{m.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-caption font-medium text-muted-foreground">Data Início</label>
                 <Popover>
@@ -522,6 +495,9 @@ export default function DesempenhoColaboradorPage() {
                   </PopoverContent>
                 </Popover>
               </div>
+              <Button onClick={handleBuscar} className="h-9">
+                <Filter className="w-4 h-4 mr-1.5" /> Buscar
+              </Button>
             </div>
           </div>
 
