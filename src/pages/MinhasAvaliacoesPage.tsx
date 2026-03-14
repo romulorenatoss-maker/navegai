@@ -109,6 +109,41 @@ export default function MinhasAvaliacoesPage() {
         <p className="text-body text-muted-foreground">Visualize as avaliações concluídas onde você foi avaliado.</p>
       </div>
 
+      {/* Filtro de datas */}
+      <div className="flex flex-wrap items-end gap-3 mb-4">
+        <div>
+          <label className="text-caption font-medium text-muted-foreground mb-1 block">Data Início</label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={cn("w-[160px] justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
+                <CalendarIcon className="w-4 h-4 mr-2" />
+                {startDate ? format(startDate, "dd/MM/yyyy") : "Selecionar"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar mode="single" selected={startDate} onSelect={setStartDate} locale={ptBR} initialFocus className="p-3 pointer-events-auto" />
+            </PopoverContent>
+          </Popover>
+        </div>
+        <div>
+          <label className="text-caption font-medium text-muted-foreground mb-1 block">Data Fim</label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={cn("w-[160px] justify-start text-left font-normal", !endDate && "text-muted-foreground")}>
+                <CalendarIcon className="w-4 h-4 mr-2" />
+                {endDate ? format(endDate, "dd/MM/yyyy") : "Selecionar"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar mode="single" selected={endDate} onSelect={setEndDate} locale={ptBR} initialFocus className="p-3 pointer-events-auto" />
+            </PopoverContent>
+          </Popover>
+        </div>
+        <Button onClick={() => setSearchTrigger(p => p + 1)} className="press-effect">
+          <Search className="w-4 h-4 mr-2" /> Buscar
+        </Button>
+      </div>
+
       <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
         <table className="w-full">
           <thead>
