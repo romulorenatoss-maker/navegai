@@ -249,6 +249,24 @@ export default function AvaliacaoOSPage() {
                 </SelectContent>
               </Select>
             </div>
+            {/* Preview of linked questions */}
+            {previewPerguntas.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1.5">
+                  <ListChecks className="w-4 h-4 text-primary" />
+                  Perguntas vinculadas ({previewPerguntas.length})
+                </Label>
+                <div className="bg-muted/50 rounded-lg border border-border p-3 max-h-40 overflow-y-auto space-y-1">
+                  {previewPerguntas.map((p, i) => (
+                    <div key={p.id} className="flex items-start gap-2 text-caption">
+                      <span className="text-muted-foreground font-tabular w-5 shrink-0">{String(i + 1).padStart(2, "0")}</span>
+                      <span className="text-foreground flex-1">{p.pergunta}</span>
+                      <span className="text-muted-foreground shrink-0">Peso: {p.peso}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancelar</Button>
               <Button type="submit" className="press-effect">Criar e Avaliar</Button>
