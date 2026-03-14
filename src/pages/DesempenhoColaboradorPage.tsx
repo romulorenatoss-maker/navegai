@@ -545,17 +545,15 @@ export default function DesempenhoColaboradorPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {evaluations.map(ev => {
-                    const bestScore = ev.avaliacoes.length > 0
-                      ? ev.avaliacoes.reduce((best, a) => (a.nota_final || 0) > (best || 0) ? a.nota_final : best, 0 as number | null)
-                      : null;
+                    const osNota = targetProfileId ? calcularNotaPorOS(notasPorSetorData, targetProfileId, ev.os_id) : null;
                     return (
                       <tr key={ev.os_id} className="hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setSelectedOsId(ev.os_id)}>
                         <td className="px-4 py-3 text-body font-medium text-primary underline underline-offset-2 font-tabular">{ev.numero_os}</td>
                         <td className="px-4 py-3 text-body text-muted-foreground">{format(new Date(ev.created_at), "dd/MM/yyyy")}</td>
                         <td className="px-4 py-3 text-body text-muted-foreground">{ev.tipo_servico}</td>
                         <td className="px-4 py-3">
-                          {bestScore != null ? (
-                            <span className={cn("font-bold font-tabular", getScoreColor(bestScore))}>{Number(bestScore).toFixed(1)}%</span>
+                          {osNota != null ? (
+                            <span className={cn("font-bold font-tabular", getScoreColor(osNota))}>{osNota.toFixed(1)}%</span>
                           ) : "—"}
                         </td>
                         <td className="px-4 py-3">
