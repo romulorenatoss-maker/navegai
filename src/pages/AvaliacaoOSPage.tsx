@@ -594,6 +594,35 @@ export default function AvaliacaoOSPage() {
         <p className="text-body text-muted-foreground">Busque uma OS existente ou crie uma nova para iniciar a avaliação.</p>
       </div>
 
+      {/* Filters - above search */}
+      {!os && (
+        <FilterSection
+          showFilters={showFilters}
+          setShowFilters={setShowFilters}
+          hasActiveFilter={hasActiveFilter}
+          filterDateFrom={filterDateFrom}
+          setFilterDateFrom={setFilterDateFrom}
+          filterDateTo={filterDateTo}
+          setFilterDateTo={setFilterDateTo}
+          filterMonth={filterMonth}
+          setFilterMonth={setFilterMonth}
+          filterStatus={filterStatus}
+          setFilterStatus={setFilterStatus}
+          monthOptions={monthOptions}
+          clearFilters={clearFilters}
+        />
+      )}
+
+      {/* Filtered Results */}
+      {!os && hasActiveFilter && (
+        <FilteredResults
+          filterLoading={filterLoading}
+          filteredOS={filteredOS}
+          setSearchQuery={setSearchQuery}
+          searchOS={searchOS}
+        />
+      )}
+
       {/* Search */}
       <div className="bg-card border border-border rounded-lg p-4 shadow-card mb-6">
         <div className="flex gap-3">
