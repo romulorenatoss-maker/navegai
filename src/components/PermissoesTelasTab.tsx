@@ -160,7 +160,7 @@ export default function PermissoesTelasTab({ profileId, isAdminProfile }: Props)
       </div>
 
       <div className="flex justify-end pt-2">
-        <Button onClick={handleSave} disabled={saving || !dirty} className="press-effect">
+        <Button onClick={handleSave} disabled={saving} className="press-effect">
           {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
           Salvar Permissões
         </Button>
