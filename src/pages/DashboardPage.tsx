@@ -187,18 +187,6 @@ export default function DashboardPage() {
         .in("ordem_servico_id", osIds);
 
       const avalIds = avaliacoes?.map((a) => a.id) || [];
-      let respostasMap: Record<string, number> = {}; // avaliacao_id -> count of answered
-      if (avalIds.length > 0) {
-        const { data: respostas } = await supabase
-          .from("respostas_avaliacao")
-          .select("avaliacao_id, resposta")
-          .in("avaliacao_id", avalIds)
-          .not("resposta", "is", null);
-
-        respostas?.forEach((r) => {
-          respostasMap[r.avaliacao_id] = (respostasMap[r.avaliacao_id] || 0) + 1;
-        });
-      }
 
       // 4. Get total questions per OS (via perguntas linked to tipo_servico or general)
       // For progress: count respostas answered vs perguntas_avaliacao linked to the OS's tipo_servico
