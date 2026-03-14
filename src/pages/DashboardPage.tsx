@@ -280,12 +280,13 @@ export default function DashboardPage() {
         if (o.tecnico_id) profileIdsToResolve.add(o.tecnico_id);
       });
 
-      const [tiposRes, perguntasRes, avalsRes, setoresRes, profilesRes] = await Promise.all([
+      const [tiposRes, osPerguntasRes, avalsRes, setoresRes, profilesRes, respostasRes] = await Promise.all([
         tipoIds.length > 0 ? supabase.from("tipos_servico").select("id, nome").in("id", tipoIds) : { data: [] },
-        supabase.from("perguntas_avaliacao").select("id, tipo_servico_id, setor_avaliado_id").eq("ativo", true),
+        (supabase as any).from("os_perguntas").select("os_id, pergunta_id").in("os_id", osIds),
         supabase.from("avaliacoes").select("id, ordem_servico_id, avaliador_id, concluida").in("ordem_servico_id", osIds),
         supabase.from("setores").select("id, nome").eq("ativo", true),
         profileIdsToResolve.size > 0 ? supabase.from("profiles").select("id, nome").in("id", [...profileIdsToResolve]) : { data: [] },
+        supabase.from("respostas_avaliacao").select("ordem_servico_id, pergunta_id").in("ordem_servico_id", osIds).not("resposta", "is", null),
       ]);
 
       const tipoNames: Record<string, string> = {};
@@ -295,54 +296,60 @@ export default function DashboardPage() {
       const profileNames: Record<string, string> = {};
       (profilesRes.data as any[])?.forEach((p: any) => { profileNames[p.id] = p.nome; });
 
-      const allPerguntas = perguntasRes.data || [];
-      const allAvals = avalsRes.data || [];
+      // Build os_perguntas map per OS
+      const perguntasByOS: Record<string, string[]> = {};
+      ((osPerguntasRes as any).data || []).forEach((op: any) => {
+        if (!perguntasByOS[op.os_id]) perguntasByOS[op.os_id] = [];
+        perguntasByOS[op.os_id].push(op.pergunta_id);
+      });
 
-      // FIX: Fetch responses by ordem_servico_id (shared across all evaluators)
-      let allRespostas: any[] = [];
-      if (osIds.length > 0) {
-        const { data: resp } = await supabase
-          .from("respostas_avaliacao").select("ordem_servico_id, pergunta_id, resposta")
-          .in("ordem_servico_id", osIds).not("resposta", "is", null);
-        allRespostas = resp || [];
+      // Get setor_avaliado_id for all pergunta_ids in os_perguntas
+      const allPerguntaIds = [...new Set(Object.values(perguntasByOS).flat())];
+      let perguntaSetorMap: Record<string, string | null> = {};
+      if (allPerguntaIds.length > 0) {
+        const { data: perguntasData } = await supabase
+          .from("perguntas_avaliacao")
+          .select("id, setor_avaliado_id")
+          .in("id", allPerguntaIds);
+        (perguntasData || []).forEach(p => { perguntaSetorMap[p.id] = p.setor_avaliado_id; });
       }
-      // Key: os_id:pergunta_id — one response per OS+question regardless of evaluator
-      const answeredSet = new Set(allRespostas.map((r: any) => `${r.ordem_servico_id}:${r.pergunta_id}`));
+
+      const allAvals = avalsRes.data || [];
+      const answeredSet = new Set(((respostasRes as any).data || []).map((r: any) => `${r.ordem_servico_id}:${r.pergunta_id}`));
 
       const myPending: PendingOS[] = [];
       const otherPending: PendingOS[] = [];
       const completed: PendingOS[] = [];
 
       for (const os of openOS) {
-        const perguntasForOS = allPerguntas.filter(p => !p.tipo_servico_id || p.tipo_servico_id === os.tipo_servico_id);
-        if (perguntasForOS.length === 0) continue;
+        const osPerguntaIds = perguntasByOS[os.id] || [];
+        if (osPerguntaIds.length === 0) continue;
 
-        const myQuestions = isAdmin ? perguntasForOS : perguntasForOS.filter(p => !p.setor_avaliado_id || mySetorIds.includes(p.setor_avaliado_id));
-        const otherQuestions = isAdmin ? [] : perguntasForOS.filter(p => p.setor_avaliado_id && !mySetorIds.includes(p.setor_avaliado_id));
+        const myQuestions = isAdmin ? osPerguntaIds : osPerguntaIds.filter(pid => {
+          const setorId = perguntaSetorMap[pid];
+          return !setorId || mySetorIds.includes(setorId);
+        });
+        const otherQuestions = isAdmin ? [] : osPerguntaIds.filter(pid => {
+          const setorId = perguntaSetorMap[pid];
+          return setorId && !mySetorIds.includes(setorId);
+        });
         const myAval = allAvals.find(a => a.ordem_servico_id === os.id && a.avaliador_id === profile.id);
         const osAvals = allAvals.filter(a => a.ordem_servico_id === os.id);
 
-        // Check if question is answered for this OS (any evaluator)
-        const myUnanswered = myQuestions.filter(q => !answeredSet.has(`${os.id}:${q.id}`));
+        const myUnanswered = myQuestions.filter(pid => !answeredSet.has(`${os.id}:${pid}`));
+        const uniqueAnswered = osPerguntaIds.filter(pid => answeredSet.has(`${os.id}:${pid}`)).length;
+        const progress = osPerguntaIds.length > 0 ? Math.round((uniqueAnswered / osPerguntaIds.length) * 100) : 0;
 
-        // Count unique questions answered for this OS
-        const uniqueAnswered = perguntasForOS.filter(q => answeredSet.has(`${os.id}:${q.id}`)).length;
-        const progress = perguntasForOS.length > 0 ? Math.round((uniqueAnswered / perguntasForOS.length) * 100) : 0;
-
-        // Resolve colaborador avaliado name
         const colabId = os.colaborador_avaliado_id || os.atendente_id || os.tecnico_id;
         const colabNome = colabId ? profileNames[colabId] || null : null;
 
-        // Find which setores still have unanswered questions
         const pendingSetorIds = new Set<string>();
-        for (const q of perguntasForOS) {
-          if (!q.setor_avaliado_id) continue;
-          const answered = answeredSet.has(`${os.id}:${q.id}`);
-          if (!answered) pendingSetorIds.add(q.setor_avaliado_id);
+        for (const pid of osPerguntaIds) {
+          const setorId = perguntaSetorMap[pid];
+          if (!setorId) continue;
+          if (!answeredSet.has(`${os.id}:${pid}`)) pendingSetorIds.add(setorId);
         }
-        const pendingSetorNames = [...pendingSetorIds].map(id => setoresMap[id] || "Sem setor");
 
-        // If my avaliacao is concluded, my part is done regardless of unanswered questions
         const myPartDone = myAval?.concluida === true || myUnanswered.length === 0;
 
         if (progress >= 100 && osAvals.length > 0 && osAvals.every(a => a.concluida)) {
@@ -360,15 +367,11 @@ export default function DashboardPage() {
             setor_pendente_nome: null,
           });
         } else if (otherQuestions.length > 0) {
-          const otherUnanswered = otherQuestions.some(q =>
-            !answeredSet.has(`${os.id}:${q.id}`)
-          );
+          const otherUnanswered = otherQuestions.some(pid => !answeredSet.has(`${os.id}:${pid}`));
           if (otherUnanswered) {
-            // Find which other setor(s) are pending
             const otherPendingSetores = [...pendingSetorIds]
               .filter(id => !mySetorIds.includes(id))
               .map(id => setoresMap[id] || "Sem setor");
-
             otherPending.push({
               os_id: os.id, numero_os: os.numero_os, cliente_nome: os.cliente_nome,
               tipo_servico_nome: os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || null : null,
@@ -383,19 +386,16 @@ export default function DashboardPage() {
       if (isAdmin) {
         const sectorOSCount: Record<string, Set<string>> = {};
         for (const os of openOS.filter(o => o.status !== "concluida")) {
-          const perguntasForOS = allPerguntas.filter(p => !p.tipo_servico_id || p.tipo_servico_id === os.tipo_servico_id);
-          const osAvals = allAvals.filter(a => a.ordem_servico_id === os.id);
-
-          for (const q of perguntasForOS) {
-            if (!q.setor_avaliado_id) continue;
-            const answered = answeredSet.has(`${os.id}:${q.id}`);
-            if (!answered) {
-              if (!sectorOSCount[q.setor_avaliado_id]) sectorOSCount[q.setor_avaliado_id] = new Set();
-              sectorOSCount[q.setor_avaliado_id].add(os.id);
+          const osPerguntaIds = perguntasByOS[os.id] || [];
+          for (const pid of osPerguntaIds) {
+            const setorId = perguntaSetorMap[pid];
+            if (!setorId) continue;
+            if (!answeredSet.has(`${os.id}:${pid}`)) {
+              if (!sectorOSCount[setorId]) sectorOSCount[setorId] = new Set();
+              sectorOSCount[setorId].add(os.id);
             }
           }
         }
-
         const summary: SectorPending[] = Object.entries(sectorOSCount)
           .map(([setorId, osSet]) => ({
             setor_id: setorId,
