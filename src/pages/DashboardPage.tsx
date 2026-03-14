@@ -214,14 +214,14 @@ export default function DashboardPage() {
         
         const progress = totalPerguntas > 0 ? Math.round((totalRespondidas / totalPerguntas) * 100) : 0;
 
-        // Compute status dynamically:
-        // OPEN: no evaluator answered any question
-        // IN_PROGRESS: at least one answer exists but not all evaluators completed
-        // COMPLETED: all evaluators completed their evaluation
+        // Compute status dynamically based on progress:
+        // ABERTA: no answers at all
+        // EM_ANDAMENTO: has answers but progress < 100%
+        // CONCLUÍDA: progress = 100% (all questions answered by all evaluators)
         let computedStatus: string;
-        if (osAvals.length === 0 || totalRespondidas === 0) {
+        if (totalRespondidas === 0) {
           computedStatus = "aberta";
-        } else if (osAvals.length > 0 && osAvals.every((a) => a.concluida)) {
+        } else if (progress >= 100 && osAvals.length > 0 && osAvals.every((a) => a.concluida)) {
           computedStatus = "concluida";
         } else {
           computedStatus = "em_andamento";
