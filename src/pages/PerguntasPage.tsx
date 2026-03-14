@@ -304,17 +304,15 @@ export default function PerguntasPage() {
   }, [perguntasFiltradas, reorderMutation]);
 
   const openCreate = () => {
-    setEditing(null); setPergunta(""); setChecklistId(""); setTipoServicoId(""); setTipoAvaliacaoId(""); setTargetEmployeeType("geral");
+    setEditing(null); setPergunta(""); setChecklistId(""); setSetorNotaId(""); setTargetEmployeeType("geral");
     setSetorAvaliadoId(""); setTipoAvaliado("atendente"); setPeso("1"); setOrdem("0"); setPreviewAnswer(null); setLinkedInconsistencyId("");
     setDialogOpen(true);
   };
   const openEdit = (p: Pergunta) => {
     setEditing(p); setPergunta(p.pergunta); setChecklistId(p.checklist_id || "");
-    setTipoServicoId(p.tipo_servico_id || "");
-    setTipoAvaliacaoId((p as any).tipo_avaliacao_id || "");
+    setSetorNotaId((p as any).setor_nota_id || "");
     setTargetEmployeeType((p as any).target_employee_type || "geral");
-    const tipo = tipos.find(t => t.id === p.tipo_servico_id);
-    setSetorAvaliadoId(tipo?.setor_id || (p as any).setor_avaliado_id || "");
+    setSetorAvaliadoId((p as any).setor_avaliado_id || "");
     setTipoAvaliado(p.tipo_avaliado); setPeso(String(p.peso)); setOrdem(String(p.ordem)); setPreviewAnswer(null);
     setLinkedInconsistencyId((p as any).correlacao_pergunta_id || "");
     setDialogOpen(true);
