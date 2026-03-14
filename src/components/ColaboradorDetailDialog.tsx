@@ -302,6 +302,9 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
               <TabsTrigger value="dados" className="flex items-center gap-1.5">
                 <User className="w-4 h-4" /> Dados
               </TabsTrigger>
+              <TabsTrigger value="permissoes" className="flex items-center gap-1.5">
+                <Shield className="w-4 h-4" /> Permissões
+              </TabsTrigger>
               <TabsTrigger value="os" className="flex items-center gap-1.5">
                 <FileText className="w-4 h-4" /> Ordens de Serviço
                 {osList.length > 0 && (
