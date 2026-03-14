@@ -253,7 +253,13 @@ export default function AvaliacaoOSPage() {
 
   const canAdvance = (s: number) => {
     if (s === 0) return !!tipoServicoId;
-    if (s === 1) return !!newOsNumero.trim();
+    if (s === 1) {
+      if (!newOsNumero.trim()) return false;
+      const cpfDigits = clienteCpf.replace(/\D/g, "");
+      if (cpfDigits.length > 0 && cpfDigits.length < 11) return false;
+      if (cpfDigits.length === 11 && !isValidCpf(cpfDigits)) return false;
+      return true;
+    }
     if (s === 2) return !!colaboradorId;
     return false;
   };
