@@ -37,7 +37,7 @@ function SortableRow({ p, index, onEdit, onRemove }: { p: any; index: number; on
       <td className="px-2 py-3 text-caption text-muted-foreground font-tabular w-8">{String(index + 1).padStart(2, "0")}</td>
       <td className="px-4 py-3 text-body font-medium text-foreground">{p.pergunta}</td>
       <td className="px-4 py-3 text-body text-muted-foreground">{p._tipo_avaliacao_nome || "Todos"}</td>
-      <td className="px-4 py-3 text-body text-muted-foreground capitalize">{p.target_employee_type || "geral"}</td>
+      
       <td className="px-4 py-3 text-center text-body font-semibold text-foreground font-tabular">{p.peso}</td>
       <td className="px-4 py-3 text-right">
         <div className="flex items-center justify-end gap-1">
