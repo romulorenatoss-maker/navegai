@@ -94,6 +94,30 @@ export default function AvaliacaoOSPage() {
   const [clienteNome, setClienteNome] = useState("");
   const [clienteCpf, setClienteCpf] = useState("");
   const [colaboradorId, setColaboradorId] = useState("");
+  const [cpfClienteEncontrado, setCpfClienteEncontrado] = useState<string | null>(null);
+
+  // Auto-fill client name when CPF is found in DB
+  useEffect(() => {
+    const cpfDigits = clienteCpf.replace(/\D/g, "");
+    if (cpfDigits.length === 11 && isValidCpf(cpfDigits)) {
+      supabase
+        .from("clientes")
+        .select("id, nome")
+        .eq("cpf", clienteCpf.trim())
+        .limit(1)
+        .single()
+        .then(({ data }) => {
+          if (data) {
+            setClienteNome(data.nome);
+            setCpfClienteEncontrado(data.nome);
+          } else {
+            setCpfClienteEncontrado(null);
+          }
+        });
+    } else {
+      setCpfClienteEncontrado(null);
+    }
+  }, [clienteCpf]);
 
   const {
     loading, os, avaliacao, questions,
@@ -208,36 +232,57 @@ export default function AvaliacaoOSPage() {
       return;
     }
 
-    // Auto-create/link client if CPF or name provided
+    // Auto-link client by CPF (never create duplicate)
     let clienteId: string | null = null;
     const nomeTrimmed = clienteNome.trim() || null;
     const cpfTrimmed = cpfDigits.length === 11 ? clienteCpf.trim() : null;
 
-    if (nomeTrimmed || cpfTrimmed) {
-      // Try to find existing client by CPF first
-      if (cpfTrimmed) {
-        const { data: existing } = await supabase
-          .from("clientes")
-          .select("id")
-          .eq("cpf", cpfTrimmed)
-          .limit(1)
-          .single();
-        if (existing) {
-          clienteId = existing.id;
-        }
-      }
-
-      // If not found, create new client
-      if (!clienteId) {
-        const { data: newCliente, error: cErr } = await supabase
+    if (cpfTrimmed) {
+      const { data: existing } = await supabase
+        .from("clientes")
+        .select("id, nome")
+        .eq("cpf", cpfTrimmed)
+        .limit(1)
+        .single();
+      if (existing) {
+        clienteId = existing.id;
+      } else {
+        // CPF not in DB — create new client
+        const { data: newCliente } = await supabase
           .from("clientes")
           .insert({ nome: nomeTrimmed || "Sem nome", cpf: cpfTrimmed })
           .select("id")
           .single();
-        if (!cErr && newCliente) {
-          clienteId = newCliente.id;
-        }
+        if (newCliente) clienteId = newCliente.id;
       }
+    } else if (nomeTrimmed) {
+      // No CPF, just name — create client without CPF
+      const { data: newCliente } = await supabase
+        .from("clientes")
+        .insert({ nome: nomeTrimmed, cpf: null })
+        .select("id")
+        .single();
+      if (newCliente) clienteId = newCliente.id;
+    }
+
+    // Check if OS already exists — if so, just open it
+    const { data: existingOS } = await supabase
+      .from("ordens_servico")
+      .select("id, status")
+      .eq("numero_os", num)
+      .limit(1)
+      .single();
+
+    if (existingOS) {
+      if (existingOS.status !== "concluida") {
+        toast.info("OS já existe e está em andamento. Abrindo para continuar avaliação.");
+      } else {
+        toast.info("OS já existe e está concluída.");
+      }
+      setCreateDialogOpen(false);
+      setSearchQuery(num);
+      searchOS(num, false);
+      return;
     }
 
     searchOS(num, true, {
@@ -400,7 +445,11 @@ export default function AvaliacaoOSPage() {
                         <p className="text-caption text-destructive">CPF inválido</p>
                       )}
                       {clienteCpf.replace(/\D/g, "").length === 11 && isValidCpf(clienteCpf) && (
-                        <p className="text-caption text-success">CPF válido ✓</p>
+                        <p className="text-caption text-success">
+                          {cpfClienteEncontrado
+                            ? `✓ Cliente encontrado: ${cpfClienteEncontrado}`
+                            : "CPF válido ✓ (novo cliente)"}
+                        </p>
                       )}
                     </div>
                   </div>
