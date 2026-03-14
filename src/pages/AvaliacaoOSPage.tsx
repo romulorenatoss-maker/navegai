@@ -23,14 +23,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
-// --- Types ---
-interface TipoAvaliacao {
-  id: string;
-  nome: string;
-  cargo_responsavel: string | null;
-  descricao: string | null;
-  ativo: boolean;
-}
+// TipoAvaliacao type removed - no longer used
 
 type Answer = "sim" | "nao" | "na" | null;
 
