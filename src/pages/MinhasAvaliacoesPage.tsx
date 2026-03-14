@@ -36,7 +36,7 @@ export default function MinhasAvaliacoesPage() {
       if (!selectedAval?.id) return [];
       const { data: avals } = await supabase
         .from("avaliacoes")
-        .select("id, avaliador_id, concluida, nota_final, tipo_avaliacao_id")
+        .select("id, avaliador_id, concluida, concluida_em, nota_final, tipo_avaliacao_id")
         .eq("ordem_servico_id", selectedAval.id)
         .eq("concluida", true);
       if (!avals) return [];
