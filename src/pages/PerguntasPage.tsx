@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, AlertTriangle, Camera, FileVideo, FileText, GripVertical, Package } from "lucide-react";
+import { Plus, Pencil, Trash2, AlertTriangle, Camera, FileVideo, FileText, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,8 +45,6 @@ function SortableRow({ p, index, onEdit, onRemove }: { p: any; index: number; on
 export default function PerguntasPage() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [checklistDialogOpen, setChecklistDialogOpen] = useState(false);
-  const [newChecklistTitle, setNewChecklistTitle] = useState("");
   const [editing, setEditing] = useState<Pergunta | null>(null);
   const [pergunta, setPergunta] = useState("");
   const [checklistId, setChecklistId] = useState("");
@@ -114,42 +112,14 @@ export default function PerguntasPage() {
     enabled: setores.length > 0,
   });
 
-  // Checklist CRUD
-  const createChecklist = useMutation({
-    mutationFn: async () => {
-      if (!newChecklistTitle.trim()) throw new Error("Informe o título do checklist.");
-      const { error } = await supabase.from("checklists").insert({ titulo: newChecklistTitle.trim() } as any);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["checklists_all"] });
-      toast.success("Checklist criado.");
-      setNewChecklistTitle("");
-      setChecklistDialogOpen(false);
-    },
-    onError: (err: any) => toast.error(err.message),
-  });
 
-  const deleteChecklist = useMutation({
-    mutationFn: async (id: string) => {
-      // Unlink questions first
-      await (supabase as any).from("perguntas_avaliacao").update({ checklist_id: null }).eq("checklist_id", id);
-      const { error } = await supabase.from("checklists").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["checklists_all"] });
-      queryClient.invalidateQueries({ queryKey: ["perguntas_avaliacao"] });
-      toast.success("Checklist excluído.");
-    },
-    onError: (err: any) => toast.error(err.message),
-  });
 
-  const summaryByTipo = useMemo(() => {
+
+  const summaryByChecklist = useMemo(() => {
     const map = new Map<string, { nome: string; count: number; totalNota: number }>();
     for (const p of perguntas) {
-      const key = p.tipo_servico_id || "global";
-      const nome = (p as any).tipos_servico?.nome || "Global (todos)";
+      const key = p.checklist_id || "sem_checklist";
+      const nome = (p as any)._checklist_titulo || "Sem Checklist";
       const cur = map.get(key) || { nome, count: 0, totalNota: 0 };
       cur.count += 1;
       cur.totalNota += p.peso;
@@ -161,7 +131,7 @@ export default function PerguntasPage() {
   const hasFilter = filtroTipoServico !== null;
   const perguntasFiltradas = useMemo(() => {
     if (!hasFilter) return [];
-    return perguntas.filter(p => (p.tipo_servico_id || "global") === filtroTipoServico).sort((a, b) => a.ordem - b.ordem);
+    return perguntas.filter(p => (p.checklist_id || "sem_checklist") === filtroTipoServico).sort((a, b) => a.ordem - b.ordem);
   }, [perguntas, filtroTipoServico, hasFilter]);
 
   const somaPesoFiltrado = useMemo(() => perguntasFiltradas.reduce((a, p) => a + p.peso, 0), [perguntasFiltradas]);
@@ -248,60 +218,23 @@ export default function PerguntasPage() {
   };
   const closeDialog = () => { setDialogOpen(false); setEditing(null); setPreviewAnswer(null); };
 
-  // Count questions per checklist
-  const checklistCounts = useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const p of perguntas) {
-      if (p.checklist_id) map[p.checklist_id] = (map[p.checklist_id] || 0) + 1;
-    }
-    return map;
-  }, [perguntas]);
-
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-section font-semibold text-foreground">Perguntas de Avaliação</h1>
-          <p className="text-body text-muted-foreground">Cadastro e ordenação de perguntas por tipo de serviço e avaliação.</p>
+          <p className="text-body text-muted-foreground">Cadastro e ordenação de perguntas por checklist e avaliação.</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setChecklistDialogOpen(true)} className="press-effect">
-            <Package className="w-4 h-4 mr-2" /> Checklist
-          </Button>
-          <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Nova Pergunta</Button>
-        </div>
+        <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Nova Pergunta</Button>
       </div>
 
-      {/* Checklist packages summary */}
-      {checklists.length > 0 && (
-        <div className="bg-card border border-border rounded-lg shadow-card mb-4">
-          <div className="px-4 py-3 border-b border-border">
-            <p className="text-caption text-muted-foreground uppercase tracking-wider font-medium">Pacotes de Checklist</p>
-          </div>
-          <div className="divide-y divide-border">
-            {checklists.map(c => (
-              <div key={c.id} className="flex items-center justify-between px-4 py-2.5">
-                <div className="flex items-center gap-2">
-                  <Package className="w-4 h-4 text-primary" />
-                  <span className="text-body font-medium text-foreground">{c.titulo}</span>
-                  <span className="text-caption text-muted-foreground font-tabular">{checklistCounts[c.id] || 0} pergunta{(checklistCounts[c.id] || 0) !== 1 ? "s" : ""}</span>
-                </div>
-                <Button variant="ghost" size="sm" onClick={() => deleteChecklist.mutate(c.id)} className="press-effect text-destructive">
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Filter by tipo_servico */}
+      {/* Filter by checklist title */}
       <div className="bg-card border border-border rounded-lg shadow-card mb-4">
         <div className="px-4 py-3 border-b border-border">
-          <p className="text-caption text-muted-foreground uppercase tracking-wider font-medium">Filtrar por Tipo de Serviço</p>
+          <p className="text-caption text-muted-foreground uppercase tracking-wider font-medium">Filtrar por Título</p>
         </div>
         <div className="divide-y divide-border">
-          {Array.from(summaryByTipo.entries()).map(([key, val]) => (
+          {Array.from(summaryByChecklist.entries()).map(([key, val]) => (
             <button key={key} type="button" onClick={() => setFiltroTipoServico(prev => prev === key ? null : key)}
               className={`flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors ${
                 filtroTipoServico === key ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/50"}`}>
@@ -311,7 +244,7 @@ export default function PerguntasPage() {
                 val.totalNota >= 100 ? "badge-complete" : val.totalNota >= 50 ? "badge-active" : "badge-pending"}`}>{val.totalNota} pts</span>
             </button>
           ))}
-          {summaryByTipo.size === 0 && !isLoading && <p className="px-4 py-6 text-center text-body text-muted-foreground">Nenhuma pergunta cadastrada.</p>}
+          {summaryByChecklist.size === 0 && !isLoading && <p className="px-4 py-6 text-center text-body text-muted-foreground">Nenhuma pergunta cadastrada.</p>}
         </div>
       </div>
 
@@ -361,22 +294,8 @@ export default function PerguntasPage() {
         </>
       )}
 
-      {/* Checklist Name Dialog */}
-      <Dialog open={checklistDialogOpen} onOpenChange={setChecklistDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Novo Pacote de Checklist</DialogTitle></DialogHeader>
-          <form onSubmit={e => { e.preventDefault(); createChecklist.mutate(); }} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>Nome do Checklist</Label>
-              <Input value={newChecklistTitle} onChange={e => setNewChecklistTitle(e.target.value)} placeholder="Ex: Checklist de Instalação" required />
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setChecklistDialogOpen(false)}>Cancelar</Button>
-              <Button type="submit" disabled={createChecklist.isPending} className="press-effect">{createChecklist.isPending ? "Criando..." : "Criar"}</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+
+
 
       {/* Question Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
