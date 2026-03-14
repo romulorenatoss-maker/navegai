@@ -322,17 +322,9 @@ export default function ColaboradoresPage() {
                     <Checkbox
                       checked={selectedSetores.includes(s.id)}
                       onCheckedChange={() => {
-                        setSelectedSetores((prev) => {
-                          const next = prev.includes(s.id) ? prev.filter((x) => x !== s.id) : [...prev, s.id];
-                          // Remove tipos that no longer belong to any selected setor
-                          setSelectedTiposServico((prevTipos) =>
-                            prevTipos.filter((tid) => {
-                              const tipo = tiposServico.find((t) => t.id === tid);
-                              return tipo?.setor_id && next.includes(tipo.setor_id);
-                            })
-                          );
-                          return next;
-                        });
+                        setSelectedSetores((prev) =>
+                          prev.includes(s.id) ? prev.filter((x) => x !== s.id) : [...prev, s.id]
+                        );
                       }}
                     />
                     <span className="text-body font-medium text-foreground">{s.nome}</span>
