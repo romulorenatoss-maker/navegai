@@ -1844,7 +1844,18 @@ export default function AvaliacaoOSPage() {
                 {isEditing && (
                   <Button size="sm" onClick={handleSaveEditing} disabled={evalSubmitting} className="press-effect h-8 text-xs px-3">
                     {evalSubmitting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Save className="w-3 h-3 mr-1" />}
-                    Salvar
+                    Salvar Alterações
+                  </Button>
+                )}
+                {!isLocked && !isEditing && !evalFinalized && (
+                  <Button size="sm" onClick={handleFinalizeEvaluation} disabled={evalSubmitting} className="press-effect h-8 text-xs px-3">
+                    {evalSubmitting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Check className="w-3 h-3 mr-1" />}
+                    Concluir
+                  </Button>
+                )}
+                {canEdit && !isEditing && (
+                  <Button size="sm" variant="outline" onClick={handleStartEditing} className="press-effect h-8 text-xs px-3">
+                    <Pencil className="w-3 h-3 mr-1" /> Alterar
                   </Button>
                 )}
                 {evalFinalized && !isEditing && (
