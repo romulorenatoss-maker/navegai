@@ -60,9 +60,19 @@ export default function ColaboradoresPage() {
     },
   });
 
-  // Load assigned tipos when editing an avaliador
+  // Load assigned tipos and setores when editing
   useEffect(() => {
-    if (editing && cargo === "avaliador") {
+    if (!editing) return;
+    // Load setores
+    supabase
+      .from("colaborador_setores")
+      .select("setor_id")
+      .eq("profile_id", editing.id)
+      .then(({ data }) => {
+        setSelectedSetores(data?.map((d) => d.setor_id) || []);
+      });
+    // Load tipos if avaliador
+    if (cargo === "avaliador") {
       supabase
         .from("avaliador_tipos_servico")
         .select("tipo_servico_id")
