@@ -196,10 +196,12 @@ export function useAvaliacaoOS() {
 
     if (!perguntas) return;
 
+    // FIX: Load responses by ordem_servico_id (shared across all evaluators)
+    // instead of avaliacao_id (per evaluator) to see cross-sector answers
     const { data: respostas } = await supabase
       .from("respostas_avaliacao")
       .select("*")
-      .eq("avaliacao_id", avaliacaoId);
+      .eq("ordem_servico_id", osId);
 
     const respostasMap = new Map(respostas?.map((r) => [r.pergunta_id, r]) || []);
 
