@@ -242,10 +242,12 @@ export default function AvaliacaoOSPage() {
         return n.includes("atendimento") || n.includes("atendente");
       }).map(s => s.id);
       if (!atendSetorIds.length) return avaliadoProfiles;
+      // Check colaborador_setores junction table
       const { data: links } = await supabase.from("colaborador_setores").select("profile_id").in("setor_id", atendSetorIds);
-      if (!links?.length) return [];
-      const ids = [...new Set(links.map(l => l.profile_id))];
-      return avaliadoProfiles.filter(p => ids.includes(p.id));
+      const linkedIds = new Set(links?.map(l => l.profile_id) || []);
+      // Also check legacy setor_id on profile
+      const result = avaliadoProfiles.filter(p => linkedIds.has(p.id) || (p.setor_id && atendSetorIds.includes(p.setor_id)));
+      return result;
     },
     enabled: avaliadoProfiles.length > 0,
   });
@@ -261,9 +263,9 @@ export default function AvaliacaoOSPage() {
       }).map(s => s.id);
       if (!tecSetorIds.length) return avaliadoProfiles;
       const { data: links } = await supabase.from("colaborador_setores").select("profile_id").in("setor_id", tecSetorIds);
-      if (!links?.length) return [];
-      const ids = [...new Set(links.map(l => l.profile_id))];
-      return avaliadoProfiles.filter(p => ids.includes(p.id));
+      const linkedIds = new Set(links?.map(l => l.profile_id) || []);
+      const result = avaliadoProfiles.filter(p => linkedIds.has(p.id) || (p.setor_id && tecSetorIds.includes(p.setor_id)));
+      return result;
     },
     enabled: avaliadoProfiles.length > 0,
   });
