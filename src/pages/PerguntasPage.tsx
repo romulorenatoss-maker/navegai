@@ -110,7 +110,7 @@ export default function PerguntasPage() {
   // avaliadores query removed - no longer needed for question form
 
   const summaryByTipo = useMemo(() => {
-    const map = new Map<string, { nome: string; count: number; totalPeso: number }>();
+    const map = new Map<string, { nome: string; count: number; totalNota: number }>();
     for (const p of perguntas) {
       const key = p.tipo_servico_id || "global";
       const nome = (p as any).tipos_servico?.nome || "Global (todos)";
