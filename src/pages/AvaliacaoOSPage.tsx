@@ -698,6 +698,11 @@ export default function AvaliacaoOSPage() {
   const handleCreateAndStart = async () => {
     if (!profile) return;
     if (!tipoServicoId) { toast.error("Selecione o tipo de serviço."); return; }
+    // Each evaluator must select their sector's employee
+    const needsAtendente = hasAtendimentoAccess || isAdmin;
+    const needsTecnico = hasTecnicoAccess || isAdmin;
+    if (needsAtendente && !atendenteId) { toast.error("Selecione o atendente avaliado."); return; }
+    if (needsTecnico && !tecnicoId) { toast.error("Selecione o técnico avaliado."); return; }
     if (!atendenteId && !tecnicoId) { toast.error("Selecione pelo menos um colaborador avaliado."); return; }
 
     try {
@@ -1592,10 +1597,11 @@ export default function AvaliacaoOSPage() {
                     {/* Employee Selection - Sector-based */}
                     {tipoServicoId && (
                       <div className="space-y-3">
-                        {(hasAtendimentoAccess || isAdmin) && (
+                        {/* Atendente: only editable by atendimento evaluators or admins */}
+                        {(hasAtendimentoAccess || isAdmin) ? (
                           <div className="space-y-1.5">
-                            <Label>Atendente Avaliado {hasAtendimentoAccess ? "*" : ""}</Label>
-                            <Select value={atendenteId} onValueChange={setAtendenteId} disabled={!hasAtendimentoAccess && !isAdmin}>
+                            <Label>Atendente Avaliado *</Label>
+                            <Select value={atendenteId} onValueChange={setAtendenteId}>
                               <SelectTrigger><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
                               <SelectContent>
                                 {allProfiles.filter(p => p.id !== profile?.id).map(p =>
@@ -1604,11 +1610,19 @@ export default function AvaliacaoOSPage() {
                               </SelectContent>
                             </Select>
                           </div>
-                        )}
-                        {(hasTecnicoAccess || isAdmin) && (
+                        ) : atendenteId ? (
                           <div className="space-y-1.5">
-                            <Label>Técnico Avaliado {hasTecnicoAccess ? "*" : ""}</Label>
-                            <Select value={tecnicoId} onValueChange={setTecnicoId} disabled={!hasTecnicoAccess && !isAdmin}>
+                            <Label className="flex items-center gap-1.5">Atendente Avaliado <Lock className="w-3 h-3 text-muted-foreground" /></Label>
+                            <div className="px-3 py-2 bg-muted/50 border border-border rounded-md text-body text-foreground">
+                              {allProfiles.find(p => p.id === atendenteId)?.nome || "—"}
+                            </div>
+                          </div>
+                        ) : null}
+                        {/* Técnico: only editable by técnico evaluators or admins */}
+                        {(hasTecnicoAccess || isAdmin) ? (
+                          <div className="space-y-1.5">
+                            <Label>Técnico Avaliado *</Label>
+                            <Select value={tecnicoId} onValueChange={setTecnicoId}>
                               <SelectTrigger><SelectValue placeholder="Selecione o técnico" /></SelectTrigger>
                               <SelectContent>
                                 {allProfiles.filter(p => p.id !== profile?.id).map(p =>
@@ -1617,7 +1631,14 @@ export default function AvaliacaoOSPage() {
                               </SelectContent>
                             </Select>
                           </div>
-                        )}
+                        ) : tecnicoId ? (
+                          <div className="space-y-1.5">
+                            <Label className="flex items-center gap-1.5">Técnico Avaliado <Lock className="w-3 h-3 text-muted-foreground" /></Label>
+                            <div className="px-3 py-2 bg-muted/50 border border-border rounded-md text-body text-foreground">
+                              {allProfiles.find(p => p.id === tecnicoId)?.nome || "—"}
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
                     )}
 
