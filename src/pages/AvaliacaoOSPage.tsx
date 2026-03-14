@@ -810,12 +810,7 @@ export default function AvaliacaoOSPage() {
                                   <span className="text-caption text-muted-foreground font-tabular mt-0.5 w-5 shrink-0">{String(i + 1).padStart(2, "0")}</span>
                                   <div>
                                     <p className="text-body font-medium text-foreground">{p.pergunta}</p>
-                                    <p className="text-caption text-muted-foreground">
-                                      Peso: {p.peso} •
-                                      {p.target_employee_type === "atendente" && " Aplica-se ao Atendente"}
-                                      {p.target_employee_type === "tecnico" && " Aplica-se ao Técnico"}
-                                      {p.target_employee_type === "geral" && " Aplica-se a ambos"}
-                                    </p>
+                                    <p className="text-caption text-muted-foreground">Peso: {p.peso}</p>
                                   </div>
                                 </div>
                                 <SegmentedControl value={wizardAnswers[p.id] || null} onChange={v => setWizardAnswers(prev => ({ ...prev, [p.id]: v }))} />
