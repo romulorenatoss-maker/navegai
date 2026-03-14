@@ -240,6 +240,11 @@ export default function AvaliacaoOSPage() {
     setClienteNome("");
     setClienteCpf("");
     setColaboradorId("");
+    setWizardAnswers({});
+    setWizardObservations({});
+    setWizardFinalized(false);
+    setWizardScore(null);
+    setWizardSubmitting(false);
     setCreateDialogOpen(true);
   };
 
