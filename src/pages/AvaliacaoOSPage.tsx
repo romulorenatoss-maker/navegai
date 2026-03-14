@@ -1527,7 +1527,7 @@ export default function AvaliacaoOSPage() {
                                         className="rounded-lg border border-border max-h-40 object-cover cursor-pointer"
                                         onClick={() => window.open(evidenciaUrl, "_blank")}
                                       />
-                                      {!evalFinalized && (
+                                      {!isLocked && (
                                         <button
                                           onClick={() => handleRemoveEvidence(p.id)}
                                           className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-md hover:bg-destructive/90 transition-colors"
