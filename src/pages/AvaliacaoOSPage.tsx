@@ -177,16 +177,50 @@ export default function AvaliacaoOSPage() {
     },
   });
 
+  // Evaluator's sectors
+  const { data: evaluatorSetores = [] } = useQuery({
+    queryKey: ["evaluator_setores", profile?.id],
+    queryFn: async () => {
+      if (!profile?.id) return [];
+      const { data: links } = await supabase
+        .from("colaborador_setores")
+        .select("setor_id, setores:setor_id(id, nome)")
+        .eq("profile_id", profile.id);
+      if (links?.length) return links.map((l: any) => l.setores).filter(Boolean);
+      if (profile.setor_id) {
+        const { data } = await supabase.from("setores").select("id, nome").eq("id", profile.setor_id).single();
+        return data ? [data] : [];
+      }
+      return [];
+    },
+    enabled: !!profile?.id,
+  });
+
+  const evaluatorSetorIds = useMemo(() => evaluatorSetores.map((s: any) => s.id), [evaluatorSetores]);
+  const hasAtendimentoAccess = isAdmin || evaluatorSetores.some((s: any) => {
+    const n = (s.nome || "").toLowerCase();
+    return n.includes("atendimento") || n.includes("atendente");
+  });
+  const hasTecnicoAccess = isAdmin || evaluatorSetores.some((s: any) => {
+    const n = (s.nome || "").toLowerCase();
+    return n.includes("técnico") || n.includes("tecnico");
+  });
+
+  const isQuestionAnswerable = useCallback((setorAvaliadoId: string | null) => {
+    if (isAdmin) return true;
+    if (!setorAvaliadoId) return true;
+    return evaluatorSetorIds.includes(setorAvaliadoId);
+  }, [isAdmin, evaluatorSetorIds]);
+
   const selectedTipoAvaliacao = useMemo(() => tiposAvaliacao.find(t => t.id === selectedTipoAvaliacaoId), [tiposAvaliacao, selectedTipoAvaliacaoId]);
   const isAtendimentoEvaluator = useMemo(() => {
+    if (hasAtendimentoAccess && !hasTecnicoAccess) return true;
     const cargo = selectedTipoAvaliacao?.cargo_responsavel?.toLowerCase() || "";
     return cargo.includes("atendente") || cargo.includes("atendimento");
-  }, [selectedTipoAvaliacao]);
-
-  const selectedTipoServico = useMemo(() => tiposServico.find(t => t.id === tipoServicoId), [tiposServico, tipoServicoId]);
+  }, [selectedTipoAvaliacao, hasAtendimentoAccess, hasTecnicoAccess]);
 
   const { data: profilesBySetor = [] } = useQuery({
-    queryKey: ["profiles_by_setor", tipoServicoId, selectedTipoAvaliacaoId],
+    queryKey: ["profiles_by_setor", tipoServicoId],
     queryFn: async () => {
       if (!selectedTipoServico?.setor_id) return allProfiles.filter(p => p.id !== profile?.id);
       const { data: links } = await supabase.from("colaborador_setores").select("profile_id").eq("setor_id", selectedTipoServico.setor_id);
@@ -194,7 +228,7 @@ export default function AvaliacaoOSPage() {
       const ids = links.map(l => l.profile_id);
       return allProfiles.filter(p => p.id !== profile?.id && ids.includes(p.id));
     },
-    enabled: !!tipoServicoId && !!selectedTipoAvaliacaoId,
+    enabled: !!tipoServicoId,
   });
 
   // Pending evaluations
