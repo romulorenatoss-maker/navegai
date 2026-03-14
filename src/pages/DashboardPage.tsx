@@ -190,12 +190,19 @@ export default function DashboardPage() {
 
       const avalIds = avaliacoes?.map((a) => a.id) || [];
 
-      const { data: allPerguntas } = await supabase
-        .from("perguntas_avaliacao")
-        .select("id, tipo_servico_id")
-        .eq("ativo", true);
+      // Fetch os_perguntas for all OS in period
+      const { data: osPerguntas } = await (supabase as any)
+        .from("os_perguntas")
+        .select("os_id, pergunta_id")
+        .in("os_id", osIds);
 
-      // FIX: Fetch responses by ordem_servico_id (shared across all evaluators)
+      const perguntasByOS: Record<string, string[]> = {};
+      (osPerguntas || []).forEach((op: any) => {
+        if (!perguntasByOS[op.os_id]) perguntasByOS[op.os_id] = [];
+        perguntasByOS[op.os_id].push(op.pergunta_id);
+      });
+
+      // Fetch responses by ordem_servico_id (shared across all evaluators)
       const answeredByOS: Record<string, Set<string>> = {};
       if (osIds.length > 0) {
         const { data: allResp } = await supabase
@@ -214,12 +221,10 @@ export default function DashboardPage() {
 
       const result: OSWithProgress[] = osData.map((os) => {
         const osAvals = avaliacoes?.filter((a) => a.ordem_servico_id === os.id) || [];
-        const perguntasForOS = allPerguntas?.filter(
-          (p) => !p.tipo_servico_id || p.tipo_servico_id === os.tipo_servico_id
-        ) || [];
-        const totalPerguntas = perguntasForOS.length;
+        const osPerguntaIds = perguntasByOS[os.id] || [];
+        const totalPerguntas = osPerguntaIds.length;
         const osAnswered = answeredByOS[os.id] || new Set();
-        const totalRespondidas = perguntasForOS.filter(p => osAnswered.has(p.id)).length;
+        const totalRespondidas = osPerguntaIds.filter(pid => osAnswered.has(pid)).length;
         const progress = totalPerguntas > 0 ? Math.round((totalRespondidas / totalPerguntas) * 100) : 0;
 
         let computedStatus: string;
