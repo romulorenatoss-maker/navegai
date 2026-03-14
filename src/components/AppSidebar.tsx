@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, ClipboardCheck, FileSearch, ListChecks, PlayCircle, FolderKanban,
-  BarChart3, Shield, Settings, ChevronLeft, ChevronRight, Building2, Users,
-  HelpCircle, Wrench, LogOut, Star, ClipboardList, AlertTriangle, Link2,
+  BarChart3, Building2, Users, HelpCircle, Wrench, LogOut, Star, ClipboardList,
+  AlertTriangle, Link2, ChevronDown, Menu, X,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const allNavSections = [
   {
@@ -59,50 +59,97 @@ interface AppSidebarProps {
   allowedScreens?: string[];
 }
 
-export function AppSidebar({ userName = "Usuário", onSignOut, mobile, onNavigate, isAdmin = false, allowedScreens = [] }: AppSidebarProps) {
-  const [collapsed, setCollapsed] = useState(false);
+// Desktop dropdown menu item
+function NavDropdown({ section, onNavigate }: { section: typeof allNavSections[0]; onNavigate?: () => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
   const location = useLocation();
+  const hasActive = section.items.some(item => location.pathname === item.to);
 
-  const isCollapsed = mobile ? false : collapsed;
-  const width = mobile ? "100%" : isCollapsed ? 64 : 240;
+  // Single item sections (like Dashboard) render as direct link
+  if (section.items.length === 1) {
+    const item = section.items[0];
+    const isActive = location.pathname === item.to;
+    return (
+      <NavLink
+        to={item.to}
+        onClick={onNavigate}
+        className={cn(
+          "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap",
+          isActive
+            ? "bg-sidebar-accent text-sidebar-accent-foreground"
+            : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+        )}
+      >
+        <item.icon className="w-4 h-4" />
+        {item.label}
+      </NavLink>
+    );
+  }
 
-  // Admins see everything. Non-admins see only screens from permissoes_tela.
-  const navSections = allNavSections
-    .map((section) => {
-      const filteredItems = section.items.filter((item) =>
-        isAdmin || allowedScreens.includes(item.to)
-      );
-      return { ...section, items: filteredItems };
-    })
-    .filter((section) => section.items.length > 0);
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   return (
-    <motion.aside
-      animate={mobile ? undefined : { width }}
-      transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
-      className={`${mobile ? "h-full w-full" : "h-screen fixed left-0 top-0 z-40"} bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border`}
-    >
-      {!mobile && (
-        <div className="h-14 flex items-center px-4 border-b border-sidebar-border shrink-0">
-          <AnimatePresence mode="wait">
-            {!isCollapsed && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 overflow-hidden">
-                <div className="w-7 h-7 rounded-md bg-sidebar-primary flex items-center justify-center">
-                  <span className="text-sidebar-primary-foreground text-xs font-bold">N</span>
-                </div>
-                <span className="font-semibold text-body whitespace-nowrap">Nexus Ops</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          {isCollapsed && (
-            <div className="w-7 h-7 rounded-md bg-sidebar-primary flex items-center justify-center mx-auto">
-              <span className="text-sidebar-primary-foreground text-xs font-bold">N</span>
-            </div>
-          )}
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className={cn(
+          "flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap",
+          hasActive
+            ? "bg-sidebar-accent text-sidebar-accent-foreground"
+            : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+        )}
+      >
+        {section.title}
+        <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 w-56 bg-popover border border-border rounded-lg shadow-lg py-1 z-50">
+          {section.items.map(item => {
+            const isActive = location.pathname === item.to;
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                onClick={() => { setOpen(false); onNavigate?.(); }}
+                className={cn(
+                  "flex items-center gap-2.5 px-3 py-2 text-sm transition-colors",
+                  isActive
+                    ? "bg-accent text-accent-foreground font-medium"
+                    : "text-popover-foreground hover:bg-accent/50"
+                )}
+              >
+                <item.icon className="w-4 h-4 shrink-0" />
+                {item.label}
+              </NavLink>
+            );
+          })}
         </div>
       )}
+    </div>
+  );
+}
 
-      {mobile && (
+export function AppSidebar({ userName = "Usuário", onSignOut, mobile, onNavigate, isAdmin = false, allowedScreens = [] }: AppSidebarProps) {
+  const location = useLocation();
+
+  const navSections = allNavSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => isAdmin || allowedScreens.includes(item.to)),
+    }))
+    .filter((section) => section.items.length > 0);
+
+  // Mobile: vertical list
+  if (mobile) {
+    return (
+      <div className="h-full bg-sidebar text-sidebar-foreground flex flex-col">
         <div className="h-14 flex items-center px-4 border-b border-sidebar-border shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-md bg-sidebar-primary flex items-center justify-center">
@@ -111,56 +158,53 @@ export function AppSidebar({ userName = "Usuário", onSignOut, mobile, onNavigat
             <span className="font-semibold text-body whitespace-nowrap">Nexus Ops</span>
           </div>
         </div>
-      )}
-
-      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
-        {navSections.map((section) => (
-          <div key={section.title}>
-            <AnimatePresence>
-              {!isCollapsed && (
-                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-caption text-sidebar-muted uppercase tracking-wider px-2 mb-1">
-                  {section.title}
-                </motion.p>
-              )}
-            </AnimatePresence>
-            <div className="space-y-0.5">
-              {section.items.map((item) => {
-                const isActive = location.pathname === item.to;
-                return (
-                  <NavLink key={item.to} to={item.to}
-                    onClick={onNavigate}
-                    className={`flex items-center gap-3 px-2 py-2 rounded-md text-body transition-colors duration-150 press-effect ${
-                      isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                    }`}
-                    title={isCollapsed ? item.label : undefined}>
-                    <item.icon className="w-4 h-4 shrink-0" />
-                    <AnimatePresence>
-                      {!isCollapsed && (
-                        <motion.span initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: "auto" }} exit={{ opacity: 0, width: 0 }} className="whitespace-nowrap overflow-hidden">
-                          {item.label}
-                        </motion.span>
+        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
+          {navSections.map((section) => (
+            <div key={section.title}>
+              <p className="text-caption text-sidebar-muted uppercase tracking-wider px-2 mb-1">{section.title}</p>
+              <div className="space-y-0.5">
+                {section.items.map((item) => {
+                  const isActive = location.pathname === item.to;
+                  return (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      onClick={onNavigate}
+                      className={cn(
+                        "flex items-center gap-3 px-2 py-2 rounded-md text-body transition-colors",
+                        isActive
+                          ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                       )}
-                    </AnimatePresence>
-                  </NavLink>
-                );
-              })}
+                    >
+                      <item.icon className="w-4 h-4 shrink-0" />
+                      <span>{item.label}</span>
+                    </NavLink>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
-      </nav>
-
-      <div className="border-t border-sidebar-border p-2 shrink-0 space-y-1">
-        {!mobile && (
-          <button onClick={() => setCollapsed(!collapsed)} className="w-full flex items-center gap-3 px-2 py-2 rounded-md text-body text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors press-effect">
-            {isCollapsed ? <ChevronRight className="w-4 h-4 shrink-0 mx-auto" /> : <ChevronLeft className="w-4 h-4 shrink-0" />}
-            {!isCollapsed && <span>Recolher</span>}
+          ))}
+        </nav>
+        <div className="border-t border-sidebar-border p-2 shrink-0">
+          <button
+            onClick={() => { onSignOut?.(); onNavigate?.(); }}
+            className="w-full flex items-center gap-3 px-2 py-2 rounded-md text-body text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors"
+          >
+            <LogOut className="w-4 h-4 shrink-0" />
+            <span>Sair</span>
           </button>
-        )}
-        <button onClick={() => { onSignOut?.(); onNavigate?.(); }} className="w-full flex items-center gap-3 px-2 py-2 rounded-md text-body text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors press-effect">
-          <LogOut className="w-4 h-4 shrink-0" />
-          {!isCollapsed && <span>Sair</span>}
-        </button>
+        </div>
       </div>
-    </motion.aside>
+    );
+  }
+
+  // Desktop: horizontal nav bar
+  return (
+    <nav className="flex items-center gap-1 overflow-x-auto">
+      {navSections.map((section) => (
+        <NavDropdown key={section.title} section={section} onNavigate={onNavigate} />
+      ))}
+    </nav>
   );
 }
