@@ -621,7 +621,7 @@ export default function AvaliacaoOSPage() {
       {/* Wizard Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className={cn(
-          "max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto",
+          "max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden",
           "w-full sm:w-auto",
           "h-full sm:h-auto",
           "rounded-none sm:rounded-lg",
