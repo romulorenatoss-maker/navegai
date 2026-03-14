@@ -20,7 +20,7 @@ export default function MinhasAvaliacoesPage() {
       if (!profile?.id) return [];
       const { data } = await supabase
         .from("ordens_servico")
-        .select("id, numero_os, cliente_nome, status, created_at, tipo_servico_id, atendente_id, tecnico_id")
+        .select("id, numero_os, cliente_nome, cliente_cpf, status, created_at, tipo_servico_id, atendente_id, tecnico_id")
         .eq("status", "concluida")
         .or(`atendente_id.eq.${profile.id},tecnico_id.eq.${profile.id}`)
         .order("created_at", { ascending: false });
@@ -136,6 +136,12 @@ export default function MinhasAvaliacoesPage() {
             <DialogTitle>Avaliação — OS #{selectedAval?.numero_os}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {selectedAval && (
+              <div className="bg-muted/30 border border-border rounded-lg px-4 py-3 space-y-1">
+                <p className="text-sm text-foreground"><span className="font-medium text-muted-foreground">Cliente:</span> {selectedAval.cliente_nome || "—"}</p>
+                <p className="text-sm text-foreground"><span className="font-medium text-muted-foreground">CPF:</span> {selectedAval.cliente_cpf || "—"}</p>
+              </div>
+            )}
             {avalDetails.map((aval: any) => (
               <div key={aval.id} className="border border-border rounded-lg overflow-hidden">
                 <div className="bg-muted/30 px-4 py-3 flex items-center justify-between">
