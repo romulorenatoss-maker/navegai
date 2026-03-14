@@ -31,7 +31,6 @@ const navSections = [
     title: "Avaliações",
     items: [
       { to: "/avaliacoes/pesquisa", icon: FileSearch, label: "Pesquisa de OS" },
-      { to: "/avaliacoes/perguntas", icon: HelpCircle, label: "Perguntas" },
     ],
   },
   {
@@ -40,6 +39,7 @@ const navSections = [
       { to: "/checklists/cadastro", icon: ListChecks, label: "Cadastro" },
       { to: "/checklists/execucao", icon: PlayCircle, label: "Execução" },
       { to: "/checklists/gestao", icon: FolderKanban, label: "Gestão" },
+      { to: "/avaliacoes/perguntas", icon: HelpCircle, label: "Perguntas" },
     ],
   },
   {
