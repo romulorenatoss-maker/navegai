@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ClipboardCheck, Clock, CheckCircle2, Trophy, Users, BarChart3,
-  CalendarIcon, Filter
+  CalendarIcon, Filter, AlertCircle, Hourglass
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -105,6 +106,7 @@ const statusText: Record<string, string> = {
 // --- Main ---
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { profile, isAdmin } = useAuth();
 
   // Filter state — default to current month
   const now = new Date();
@@ -127,6 +129,17 @@ export default function DashboardPage() {
   const [ranking, setRanking] = useState<ClienteRanking[]>([]);
   const [tecnicoMedias, setTecnicoMedias] = useState<TecnicoMedia[]>([]);
   const [setorMedias, setSetorMedias] = useState<SetorMedia[]>([]);
+
+  // Pending sections
+  interface PendingOS {
+    os_id: string;
+    numero_os: string;
+    cliente_nome: string | null;
+    tipo_servico_nome: string | null;
+    progress: number;
+  }
+  const [pendingMySector, setPendingMySector] = useState<PendingOS[]>([]);
+  const [pendingOtherSector, setPendingOtherSector] = useState<PendingOS[]>([]);
 
   // Fetch OS with progress
   useEffect(() => {
@@ -230,6 +243,85 @@ export default function DashboardPage() {
 
     fetch();
   }, [startDate, endDate]);
+
+  // Fetch pending OS by sector for current evaluator
+  useEffect(() => {
+    if (!profile) return;
+    const fetchPending = async () => {
+      const { data: sectorLinks } = await supabase
+        .from("colaborador_setores").select("setor_id").eq("profile_id", profile.id);
+      let mySetorIds = sectorLinks?.map(l => l.setor_id) || [];
+      if (mySetorIds.length === 0 && profile.setor_id) mySetorIds = [profile.setor_id];
+      if (mySetorIds.length === 0 && !isAdmin) { setPendingMySector([]); setPendingOtherSector([]); return; }
+
+      const { data: openOS } = await supabase
+        .from("ordens_servico")
+        .select("id, numero_os, cliente_nome, tipo_servico_id, status")
+        .in("status", ["aberta", "em_andamento"]);
+      if (!openOS?.length) { setPendingMySector([]); setPendingOtherSector([]); return; }
+
+      const osIds = openOS.map(o => o.id);
+      const tipoIds = [...new Set(openOS.map(o => o.tipo_servico_id).filter(Boolean))] as string[];
+
+      const [tiposRes, perguntasRes, avalsRes] = await Promise.all([
+        tipoIds.length > 0 ? supabase.from("tipos_servico").select("id, nome").in("id", tipoIds) : { data: [] },
+        supabase.from("perguntas_avaliacao").select("id, tipo_servico_id, setor_avaliado_id").eq("ativo", true),
+        supabase.from("avaliacoes").select("id, ordem_servico_id, avaliador_id, concluida").in("ordem_servico_id", osIds),
+      ]);
+
+      const tipoNames: Record<string, string> = {};
+      (tiposRes.data as any[])?.forEach((t: any) => { tipoNames[t.id] = t.nome; });
+      const allPerguntas = perguntasRes.data || [];
+      const allAvals = avalsRes.data || [];
+
+      const avalIds = allAvals.map(a => a.id);
+      let allRespostas: any[] = [];
+      if (avalIds.length > 0) {
+        const { data: resp } = await supabase
+          .from("respostas_avaliacao").select("avaliacao_id, pergunta_id, resposta")
+          .in("avaliacao_id", avalIds).not("resposta", "is", null);
+        allRespostas = resp || [];
+      }
+      const answeredSet = new Set(allRespostas.map(r => `${r.avaliacao_id}:${r.pergunta_id}`));
+
+      const myPending: PendingOS[] = [];
+      const otherPending: PendingOS[] = [];
+
+      for (const os of openOS) {
+        const perguntasForOS = allPerguntas.filter(p => !p.tipo_servico_id || p.tipo_servico_id === os.tipo_servico_id);
+        if (perguntasForOS.length === 0) continue;
+
+        const myQuestions = isAdmin ? perguntasForOS : perguntasForOS.filter(p => !p.setor_avaliado_id || mySetorIds.includes(p.setor_avaliado_id));
+        const otherQuestions = isAdmin ? [] : perguntasForOS.filter(p => p.setor_avaliado_id && !mySetorIds.includes(p.setor_avaliado_id));
+        const myAval = allAvals.find(a => a.ordem_servico_id === os.id && a.avaliador_id === profile.id);
+        const osAvals = allAvals.filter(a => a.ordem_servico_id === os.id);
+
+        const myUnanswered = myQuestions.filter(q => !myAval || !answeredSet.has(`${myAval.id}:${q.id}`));
+
+        const totalAnswered = osAvals.reduce((sum, a) => {
+          return sum + perguntasForOS.filter(q => answeredSet.has(`${a.id}:${q.id}`)).length;
+        }, 0);
+        const progress = perguntasForOS.length > 0 ? Math.round((totalAnswered / perguntasForOS.length) * 100) : 0;
+
+        const pendingItem: PendingOS = {
+          os_id: os.id, numero_os: os.numero_os, cliente_nome: os.cliente_nome,
+          tipo_servico_nome: os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || null : null, progress,
+        };
+
+        if (myUnanswered.length > 0) {
+          myPending.push(pendingItem);
+        } else if (otherQuestions.length > 0) {
+          const otherUnanswered = otherQuestions.some(q =>
+            !osAvals.some(a => a.avaliador_id !== profile.id && answeredSet.has(`${a.id}:${q.id}`))
+          );
+          if (otherUnanswered) otherPending.push(pendingItem);
+        }
+      }
+      setPendingMySector(myPending);
+      setPendingOtherSector(otherPending);
+    };
+    fetchPending();
+  }, [profile, isAdmin, startDate, endDate]);
 
   // Fetch ranking + scores (respects date filters)
   useEffect(() => {
@@ -468,6 +560,63 @@ export default function DashboardPage() {
           </motion.div>
         ))}
       </motion.div>
+
+      {/* Pending Sections - My Sector & Other Sector */}
+      {(pendingMySector.length > 0 || pendingOtherSector.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Pending - My Sector */}
+          <motion.div variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
+            <div className="p-4 border-b border-border flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-warning" />
+              <h2 className="text-body font-semibold text-foreground">Pendente – Meu Setor</h2>
+              <span className="text-caption text-muted-foreground">({pendingMySector.length})</span>
+            </div>
+            <div className="divide-y divide-border">
+              {pendingMySector.length > 0 ? pendingMySector.map(item => (
+                <div key={item.os_id} className="px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer flex items-center gap-3"
+                  onClick={() => navigate(`/avaliacoes/pesquisa?os=${item.numero_os}&mode=eval`)}>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-body font-medium text-primary underline underline-offset-2 font-tabular">OS #{item.numero_os}</p>
+                    <p className="text-caption text-muted-foreground truncate">{item.cliente_nome || "—"} · {item.tipo_servico_nome || "—"}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Progress value={item.progress} className="h-2 w-16" />
+                    <span className="text-caption font-medium font-tabular text-muted-foreground w-10 text-right">{item.progress}%</span>
+                  </div>
+                </div>
+              )) : (
+                <p className="px-4 py-6 text-center text-caption text-muted-foreground">Nenhuma pendência no seu setor.</p>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Pending - Other Sector */}
+          <motion.div variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
+            <div className="p-4 border-b border-border flex items-center gap-2">
+              <Hourglass className="w-4 h-4 text-muted-foreground" />
+              <h2 className="text-body font-semibold text-foreground">Pendente – Outro Setor</h2>
+              <span className="text-caption text-muted-foreground">({pendingOtherSector.length})</span>
+            </div>
+            <div className="divide-y divide-border">
+              {pendingOtherSector.length > 0 ? pendingOtherSector.map(item => (
+                <div key={item.os_id} className="px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer flex items-center gap-3"
+                  onClick={() => navigate(`/avaliacoes/pesquisa?os=${item.numero_os}&mode=eval`)}>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-body font-medium text-foreground font-tabular">OS #{item.numero_os}</p>
+                    <p className="text-caption text-muted-foreground truncate">{item.cliente_nome || "—"} · {item.tipo_servico_nome || "—"}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Progress value={item.progress} className="h-2 w-16" />
+                    <span className="text-caption font-medium font-tabular text-muted-foreground w-10 text-right">{item.progress}%</span>
+                  </div>
+                </div>
+              )) : (
+                <p className="px-4 py-6 text-center text-caption text-muted-foreground">Nenhuma OS aguardando outro setor.</p>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* Single OS Table */}
       {loading ? (

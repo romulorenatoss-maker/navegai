@@ -1145,8 +1145,13 @@ export default function AvaliacaoOSPage() {
   );
 
   // --- PDF Generation ---
+  const canExport = evalOsData?.status === "concluida";
   const generatePDF = useCallback(() => {
     if (!evalOsData) return;
+    if (evalOsData.status !== "concluida") {
+      toast.error("Avaliação ainda não concluída. Exportação indisponível.");
+      return;
+    }
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 15;
@@ -1310,9 +1315,12 @@ export default function AvaliacaoOSPage() {
             <h2 className="text-xl font-bold text-foreground">Avaliação Concluída!</h2>
             <p className="text-3xl font-bold text-primary font-tabular mt-2">{evalScore?.toFixed(1)}%</p>
             <p className="text-sm text-muted-foreground mt-1">{evalAnsweredCount} perguntas respondidas</p>
-            <Button onClick={generatePDF} variant="outline" className="mt-4 press-effect">
+            <Button onClick={generatePDF} variant="outline" className="mt-4 press-effect" disabled={!canExport}>
               <Download className="w-4 h-4 mr-2" /> Baixar PDF da Avaliação
             </Button>
+            {!canExport && (
+              <p className="text-xs text-muted-foreground mt-2">Exportação disponível apenas quando a OS estiver concluída por todos os setores.</p>
+            )}
           </motion.div>
         )}
 
