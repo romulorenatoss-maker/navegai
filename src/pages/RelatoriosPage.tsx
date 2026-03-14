@@ -28,6 +28,7 @@ interface OSRow {
   cliente_nome: string | null;
   tipo_servico_id: string | null;
   tipo_servico_nome: string | null;
+  colaborador_avaliado_id: string | null;
 }
 
 // --- Helpers ---
