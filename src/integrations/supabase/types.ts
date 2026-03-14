@@ -95,6 +95,98 @@ export type Database = {
           },
         ]
       }
+      checklist_itens: {
+        Row: {
+          checklist_id: string
+          created_at: string
+          descricao: string
+          id: string
+          obrigatorio: boolean
+          ordem: number
+        }
+        Insert: {
+          checklist_id: string
+          created_at?: string
+          descricao: string
+          id?: string
+          obrigatorio?: boolean
+          ordem?: number
+        }
+        Update: {
+          checklist_id?: string
+          created_at?: string
+          descricao?: string
+          id?: string
+          obrigatorio?: boolean
+          ordem?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_itens_checklist_id_fkey"
+            columns: ["checklist_id"]
+            isOneToOne: false
+            referencedRelation: "checklists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklists: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          descricao: string | null
+          id: string
+          prazo_horas: number | null
+          recorrencia: Database["public"]["Enums"]["recorrencia_tipo"]
+          recorrencia_dias: number[] | null
+          setor_id: string | null
+          tipo_servico_id: string | null
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          prazo_horas?: number | null
+          recorrencia?: Database["public"]["Enums"]["recorrencia_tipo"]
+          recorrencia_dias?: number[] | null
+          setor_id?: string | null
+          tipo_servico_id?: string | null
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          prazo_horas?: number | null
+          recorrencia?: Database["public"]["Enums"]["recorrencia_tipo"]
+          recorrencia_dias?: number[] | null
+          setor_id?: string | null
+          tipo_servico_id?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklists_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklists_tipo_servico_id_fkey"
+            columns: ["tipo_servico_id"]
+            isOneToOne: false
+            referencedRelation: "tipos_servico"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ordens_servico: {
         Row: {
           cliente_cpf: string | null
@@ -415,6 +507,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "avaliador" | "executor" | "gestor"
       os_status: "aberta" | "em_andamento" | "concluida"
+      recorrencia_tipo: "diaria" | "semanal" | "mensal" | "personalizada"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -544,6 +637,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "avaliador", "executor", "gestor"],
       os_status: ["aberta", "em_andamento", "concluida"],
+      recorrencia_tipo: ["diaria", "semanal", "mensal", "personalizada"],
     },
   },
 } as const
