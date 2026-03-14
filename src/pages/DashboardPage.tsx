@@ -74,18 +74,6 @@ interface SectorPending {
 }
 
 // --- Helpers ---
-function getCompetenceMonths(): { value: string; label: string }[] {
-  const months = [];
-  const now = new Date();
-  for (let i = 0; i < 12; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push({
-      value: format(d, "yyyy-MM"),
-      label: format(d, "MMMM yyyy", { locale: ptBR }),
-    });
-  }
-  return months;
-}
 
 function getScoreColor(score: number): string {
   if (score >= 80) return "text-success";
@@ -127,17 +115,9 @@ export default function DashboardPage() {
   const { profile, isAdmin } = useAuth();
 
   const now = new Date();
-  const [competenceMonth, setCompetenceMonth] = useState(format(now, "yyyy-MM"));
   const [startDate, setStartDate] = useState<Date | undefined>(startOfMonth(now));
   const [endDate, setEndDate] = useState<Date | undefined>(endOfMonth(now));
-
-  const handleCompetenceChange = (val: string) => {
-    setCompetenceMonth(val);
-    const [y, m] = val.split("-").map(Number);
-    const d = new Date(y, m - 1, 1);
-    setStartDate(startOfMonth(d));
-    setEndDate(endOfMonth(d));
-  };
+  const [searchTrigger, setSearchTrigger] = useState(0);
 
   // Data state
   const [allOS, setAllOS] = useState<OSWithProgress[]>([]);
@@ -241,7 +221,7 @@ export default function DashboardPage() {
     };
 
     fetch();
-  }, [startDate, endDate]);
+  }, [searchTrigger]);
 
   // Fetch pending OS by sector for current evaluator
   useEffect(() => {
@@ -401,7 +381,7 @@ export default function DashboardPage() {
       setCompletedOS(completed.slice(0, 20)); // limit to last 20
     };
     fetchPending();
-  }, [profile, isAdmin, startDate, endDate]);
+  }, [profile, isAdmin, searchTrigger]);
 
   // Fetch ranking + scores
   useEffect(() => {
@@ -585,7 +565,7 @@ export default function DashboardPage() {
 
     fetchRanking();
     fetchScores();
-  }, [startDate, endDate]);
+  }, [searchTrigger]);
 
   // Split OS by status
   const osAbertas = useMemo(() => allOS.filter((o) => o.status === "aberta"), [allOS]);
@@ -610,7 +590,7 @@ export default function DashboardPage() {
     { label: "Concluídas", value: osConcluidas.length, icon: CheckCircle2, color: "text-success", filter: "concluida" as const },
   ];
 
-  const competenceMonths = useMemo(() => getCompetenceMonths(), []);
+  
 
   // --- Section toggle state ---
   const [showCompleted, setShowCompleted] = useState(false);
@@ -630,17 +610,6 @@ export default function DashboardPage() {
           <span className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Filtros</span>
         </div>
         <div className="flex flex-wrap gap-4 items-end">
-          <div className="flex flex-col gap-1.5 min-w-[200px]">
-            <label className="text-caption font-medium text-muted-foreground">Mês de Competência</label>
-            <Select value={competenceMonth} onValueChange={handleCompetenceChange}>
-              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {competenceMonths.map((m) => (
-                  <SelectItem key={m.value} value={m.value} className="capitalize">{m.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-caption font-medium text-muted-foreground">Data Início</label>
             <Popover>
@@ -669,6 +638,21 @@ export default function DashboardPage() {
               </PopoverContent>
             </Popover>
           </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-caption font-medium text-muted-foreground">Status</label>
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+              <SelectTrigger className="h-9 w-[160px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="aberta">Aberta</SelectItem>
+                <SelectItem value="em_andamento">Em Andamento</SelectItem>
+                <SelectItem value="concluida">Concluída</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={() => setSearchTrigger(prev => prev + 1)} className="h-9">
+            <Filter className="w-4 h-4 mr-2" /> Buscar
+          </Button>
         </div>
       </div>
 
