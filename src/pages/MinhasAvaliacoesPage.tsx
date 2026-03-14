@@ -42,6 +42,25 @@ export default function MinhasAvaliacoesPage() {
     enabled: !!profile?.id,
   });
 
+  // Calculate average score for all filtered OS
+  const { data: notaMedia } = useQuery({
+    queryKey: ["minhas_avaliacoes_media", minhasOS.map(o => o.id).join(",")],
+    queryFn: async () => {
+      if (minhasOS.length === 0) return null;
+      const osIds = minhasOS.map(o => o.id);
+      const { data } = await supabase
+        .from("avaliacoes")
+        .select("nota_final")
+        .in("ordem_servico_id", osIds)
+        .eq("concluida", true)
+        .not("nota_final", "is", null);
+      if (!data || data.length === 0) return null;
+      const sum = data.reduce((acc, a) => acc + Number(a.nota_final), 0);
+      return sum / data.length;
+    },
+    enabled: minhasOS.length > 0,
+  });
+
   // Load evaluation details for selected OS
   const { data: avalDetails = [], isLoading: detailLoading } = useQuery({
     queryKey: ["aval_detail", selectedAval?.id],
