@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { detectInconsistencies, markAuditOnlyAndCalculateScore } from "@/hooks/useInconsistencyDetection";
 import { motion, AnimatePresence } from "framer-motion";
 import {
