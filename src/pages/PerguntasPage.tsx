@@ -304,7 +304,7 @@ export default function PerguntasPage() {
 
   const openCreate = () => {
     setEditing(null); setPergunta(""); setChecklistId(""); setTipoServicoId(""); setTipoAvaliacaoId(""); setTargetEmployeeType("geral");
-    setSetorAvaliadoId(""); setTipoAvaliado("atendente"); setPeso("1"); setOrdem("0"); setPreviewAnswer(null);
+    setSetorAvaliadoId(""); setTipoAvaliado("atendente"); setPeso("1"); setOrdem("0"); setPreviewAnswer(null); setLinkedInconsistencyId("");
     setDialogOpen(true);
   };
   const openEdit = (p: Pergunta) => {
