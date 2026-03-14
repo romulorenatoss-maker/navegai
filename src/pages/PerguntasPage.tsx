@@ -46,6 +46,7 @@ function SortableRow({ p, index, onEdit, onRemove, isAdmin }: { p: any; index: n
 }
 
 export default function PerguntasPage() {
+  const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Pergunta | null>(null);
