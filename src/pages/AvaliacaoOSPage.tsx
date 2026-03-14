@@ -132,14 +132,7 @@ export default function AvaliacaoOSPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const debounceTimers = useRef<Record<string, NodeJS.Timeout>>({});
 
-  // --- Queries ---
-  const { data: tiposAvaliacao = [] } = useQuery({
-    queryKey: ["tipos_avaliacao"],
-    queryFn: async () => {
-      const { data } = await (supabase as any).from("tipos_avaliacao").select("*").eq("ativo", true).order("nome");
-      return (data || []) as TipoAvaliacao[];
-    },
-  });
+  // tiposAvaliacao removed - no longer used
 
   const { data: tiposServico = [] } = useQuery({
     queryKey: ["tipos_servico_aval", profile?.id, showAllTipos],
