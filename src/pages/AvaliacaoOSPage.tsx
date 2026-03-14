@@ -795,20 +795,6 @@ export default function AvaliacaoOSPage() {
         </div>
       )}
 
-
-
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="overflow-hidden"
-              >
-                <div className="px-4 pb-4 space-y-4 border-t border-border pt-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {/* Date From */}
-                    <div className="space-y-1.5">
-                      <Label className="text-caption">Data Início</Label>
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button
