@@ -112,6 +112,13 @@ export default function TiposServicoPage() {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
+      // Check if referenced by ordens_servico
+      const { count } = await supabase.from("ordens_servico").select("id", { count: "exact", head: true }).eq("tipo_servico_id", id);
+      if (count && count > 0) throw new Error("Não é possível excluir: existem Ordens de Serviço vinculadas a este tipo de serviço.");
+      // Clean up junction tables
+      await (supabase as any).from("tipo_servico_checklists").delete().eq("tipo_servico_id", id);
+      await (supabase as any).from("tipo_servico_tipos_avaliacao").delete().eq("tipo_servico_id", id);
+      await supabase.from("avaliador_tipos_servico").delete().eq("tipo_servico_id", id);
       const { error } = await supabase.from("tipos_servico").delete().eq("id", id);
       if (error) throw error;
     },
