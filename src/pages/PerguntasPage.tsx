@@ -86,6 +86,7 @@ export default function PerguntasPage() {
   const [pergunta, setPergunta] = useState("");
   const [tipoServicoId, setTipoServicoId] = useState("");
   const [avaliadorId, setAvaliadorId] = useState("");
+  const [setorAvaliadoId, setSetorAvaliadoId] = useState("");
   const [tipoAvaliado, setTipoAvaliado] = useState("atendente");
   const [peso, setPeso] = useState("1");
   const [ordem, setOrdem] = useState("0");
