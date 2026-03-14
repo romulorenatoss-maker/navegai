@@ -120,6 +120,21 @@ function calcPesoByAvaliador(perguntas: any[]): Map<string, { nome: string; tota
         <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Nova Pergunta</Button>
       </div>
 
+      {/* Weight summary by evaluator */}
+      {perguntas.length > 0 && (
+        <div className="flex flex-wrap gap-3 mb-4">
+          {Array.from(calcPesoByAvaliador(perguntas).entries()).map(([key, val]) => (
+            <div key={key} className="bg-card border border-border rounded-lg px-4 py-2.5 shadow-card flex items-center gap-3">
+              <span className="text-body font-medium text-foreground">{val.nome}</span>
+              <span className="text-caption text-muted-foreground">{val.count} perguntas</span>
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-caption font-semibold border badge-active font-tabular">
+                Peso total: {val.total}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -160,6 +175,17 @@ function calcPesoByAvaliador(perguntas: any[]): Map<string, { nome: string; tota
                 </tr>
               ))}
             </tbody>
+            {perguntas.length > 0 && (
+              <tfoot>
+                <tr className="border-t border-border bg-muted/30">
+                  <td colSpan={5} className="px-4 py-3 text-body font-semibold text-foreground text-right">Peso Total Geral:</td>
+                  <td className="px-4 py-3 text-center text-body font-bold text-primary font-tabular">
+                    {perguntas.reduce((acc, p) => acc + p.peso, 0)}
+                  </td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       </div>
