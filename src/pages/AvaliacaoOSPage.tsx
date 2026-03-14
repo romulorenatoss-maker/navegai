@@ -2046,10 +2046,17 @@ export default function AvaliacaoOSPage() {
 
         {/* Atendimento Section */}
         <div className="bg-card border border-border rounded-lg shadow-card mb-4">
-          <div className="p-4 border-b border-border flex items-center gap-2">
+          <div className="p-4 border-b border-border flex items-center gap-2 flex-wrap">
             <Users className="w-4 h-4 text-primary" />
             <h3 className="text-body font-semibold text-foreground">Atendimento</h3>
             <span className="text-caption text-muted-foreground ml-1">— {detailAtendenteNome || "Não definido"}</span>
+            {(() => {
+              const avalAtend = osAvaliacoes.find((a: any) => a.avaliador_id === selectedOS.atendente_id);
+              if (avalAtend?.concluida_em) {
+                return <span className="text-caption text-muted-foreground ml-2">• Concluído em {format(new Date(avalAtend.concluida_em), "dd/MM/yyyy HH:mm")}</span>;
+              }
+              return null;
+            })()}
             {atendScore.max > 0 && (
               <span className={cn("ml-auto text-body font-bold font-tabular",
                 atendScore.pct >= 80 ? "text-success" : atendScore.pct >= 60 ? "text-warning" : "text-destructive"
