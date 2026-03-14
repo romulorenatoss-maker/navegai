@@ -1346,6 +1346,25 @@ export default function AvaliacaoOSPage() {
   const evalTotalScore = evalPerguntas.reduce((a, p) => evalAnswers[p.id] === "sim" ? a + p.peso : a, 0);
   const evalMaxScore = evalPerguntas.reduce((a, p) => evalAnswers[p.id] !== "na" && evalAnswers[p.id] != null ? a + p.peso : a, 0);
 
+  // Auto-finalize when all answerable questions are answered
+  const autoFinalizeTriggered = useRef(false);
+  useEffect(() => {
+    if (evalFinalized || isOsFullyConcluded || evalSubmitting || autoFinalizeTriggered.current) return;
+    if (answerablePerguntas.length === 0) return;
+    const allAnswered = answerablePerguntas.every(p => evalAnswers[p.id] != null);
+    if (!allAnswered) return;
+    // Check "nao" answers have observations and evidence
+    const missingObs = answerablePerguntas.some(p => evalAnswers[p.id] === "nao" && !(evalObservations[p.id]?.trim()));
+    const missingEvidence = answerablePerguntas.some(p => evalAnswers[p.id] === "nao" && !evalEvidencias[p.id]);
+    if (missingObs || missingEvidence) return;
+    // Delay to let auto-save finish
+    autoFinalizeTriggered.current = true;
+    const timer = setTimeout(() => {
+      handleFinalizeEvaluation();
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [evalAnswers, answerablePerguntas, evalFinalized, isOsFullyConcluded, evalSubmitting, evalObservations, evalEvidencias]);
+
   const atendenteNome = allProfiles.find(p => p.id === (selectedOS as any)?.atendente_id)?.nome;
   const tecnicoNome = allProfiles.find(p => p.id === (selectedOS as any)?.tecnico_id)?.nome;
   const evalAtendenteNome = allProfiles.find(p => p.id === evalOsData?.atendente_id)?.nome;
