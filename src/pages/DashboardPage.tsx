@@ -381,7 +381,7 @@ export default function DashboardPage() {
       setCompletedOS(completed.slice(0, 20)); // limit to last 20
     };
     fetchPending();
-  }, [profile, isAdmin, startDate, endDate]);
+  }, [profile, isAdmin, searchTrigger]);
 
   // Fetch ranking + scores
   useEffect(() => {
