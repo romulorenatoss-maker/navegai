@@ -300,6 +300,68 @@ export default function AvaliacaoOSPage() {
     enabled: !!selectedOS?.id,
   });
 
+  // Detailed answers for OS detail view (all evaluations)
+  const { data: osDetailAnswers = [] } = useQuery({
+    queryKey: ["os_detail_answers", selectedOS?.id, view],
+    queryFn: async () => {
+      if (!selectedOS?.id || view !== "os_detail") return [];
+      const { data: avals } = await supabase.from("avaliacoes")
+        .select("id, avaliador_id, tipo_avaliacao_id, concluida, nota_final")
+        .eq("ordem_servico_id", selectedOS.id);
+      if (!avals?.length) return [];
+
+      const avalIds = avals.map(a => a.id);
+      const { data: respostas } = await supabase.from("respostas_avaliacao")
+        .select("avaliacao_id, pergunta_id, resposta, observacao, evidencia_url")
+        .in("avaliacao_id", avalIds);
+
+      const perguntaIds = [...new Set(respostas?.map(r => r.pergunta_id) || [])];
+      let perguntaMap: Record<string, { pergunta: string; peso: number; ordem: number }> = {};
+      if (perguntaIds.length > 0) {
+        const { data: perguntas } = await supabase.from("perguntas_avaliacao")
+          .select("id, pergunta, peso, ordem")
+          .in("id", perguntaIds)
+          .order("ordem");
+        perguntas?.forEach(p => { perguntaMap[p.id] = { pergunta: p.pergunta, peso: p.peso, ordem: p.ordem }; });
+      }
+
+      const avaliadorIds = [...new Set(avals.map(a => a.avaliador_id))];
+      let avaliadorNames: Record<string, string> = {};
+      if (avaliadorIds.length > 0) {
+        const { data: profiles } = await supabase.from("profiles").select("id, nome").in("id", avaliadorIds);
+        profiles?.forEach(p => { avaliadorNames[p.id] = p.nome; });
+      }
+
+      const taIds = [...new Set(avals.map(a => a.tipo_avaliacao_id).filter(Boolean))] as string[];
+      let taNames: Record<string, string> = {};
+      if (taIds.length > 0) {
+        const { data: tas } = await supabase.from("tipos_avaliacao").select("id, nome").in("id", taIds);
+        tas?.forEach(t => { taNames[t.id] = t.nome; });
+      }
+
+      return avals.map(a => {
+        const avalRespostas = (respostas || [])
+          .filter(r => r.avaliacao_id === a.id)
+          .map(r => ({
+            ...r,
+            pergunta: perguntaMap[r.pergunta_id]?.pergunta || "—",
+            peso: perguntaMap[r.pergunta_id]?.peso || 0,
+            ordem: perguntaMap[r.pergunta_id]?.ordem || 0,
+          }))
+          .sort((x, y) => x.ordem - y.ordem);
+        return {
+          id: a.id,
+          avaliador_nome: avaliadorNames[a.avaliador_id] || "—",
+          tipo_avaliacao_nome: a.tipo_avaliacao_id ? taNames[a.tipo_avaliacao_id] || "—" : "—",
+          concluida: a.concluida,
+          nota_final: a.nota_final,
+          respostas: avalRespostas,
+        };
+      });
+    },
+    enabled: !!selectedOS?.id && view === "os_detail",
+  });
+
   // Questions for evaluation view
   const { data: evalPerguntas = [] } = useQuery({
     queryKey: ["eval_perguntas", tipoServicoId, selectedTipoAvaliacaoId],
