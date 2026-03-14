@@ -1509,7 +1509,7 @@ export default function AvaliacaoOSPage() {
                                   placeholder="Descreva o problema encontrado..."
                                   value={observation}
                                   onChange={e => handleObservationChange(p.id, e.target.value)}
-                                  disabled={evalFinalized}
+                                  disabled={isLocked}
                                   className="bg-card min-h-[80px] text-sm"
                                 />
 
