@@ -378,7 +378,7 @@ export default function RelatoriosPage() {
       // 7. Build CSV — questions as columns with score values
       const fixedHeaders = [
         "Número OS", "Nome Cliente", "CPF Cliente", "Data Avaliação",
-        "Avaliador", "Tipo Serviço", "Colaborador Avaliado", "Nota Final"
+        "Avaliador", "Tipo Serviço", "Colaborador Avaliado", "Hora Conclusão", "Nota Final"
       ];
       // Header shows "Pergunta (Peso: X)"
       const questionHeaders = perguntas.map((p) => `${p.pergunta} (Peso: ${p.peso})`);
