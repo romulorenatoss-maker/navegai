@@ -1034,6 +1034,42 @@ export default function AvaliacaoOSPage() {
             </div>
           </div>
         )}
+
+        {/* Delete OS Password Confirmation Dialog */}
+        <Dialog open={deleteDialogOpen} onOpenChange={(open) => { if (!deleteLoading) setDeleteDialogOpen(open); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <Lock className="w-5 h-5" /> Confirmar Exclusão
+              </DialogTitle>
+              <DialogDescription>
+                Você está prestes a excluir a <strong>OS #{deleteOsNumero}</strong> e todos os dados vinculados (avaliações, respostas e evidências). Esta ação é irreversível.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <div className="space-y-1.5">
+                <Label>Digite sua senha para confirmar</Label>
+                <Input
+                  type="password"
+                  placeholder="Sua senha de acesso"
+                  value={deletePassword}
+                  onChange={e => setDeletePassword(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && handleConfirmDeleteOS()}
+                  autoFocus
+                />
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleteLoading}>
+                Cancelar
+              </Button>
+              <Button variant="destructive" onClick={handleConfirmDeleteOS} disabled={deleteLoading || !deletePassword.trim()}>
+                {deleteLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                Excluir OS
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
