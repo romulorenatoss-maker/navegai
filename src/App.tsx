@@ -19,6 +19,7 @@ import ClientesPage from "./pages/ClientesPage";
 import MinhasAvaliacoesPage from "./pages/MinhasAvaliacoesPage";
 import InconsistenciasPage from "./pages/InconsistenciasPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
+import RelatoriosPage from "./pages/RelatoriosPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,7 +48,7 @@ const App = () => (
               <Route path="/cadastros/clientes" element={<ClientesPage />} />
               <Route path="/cadastros/servicos" element={<TiposServicoPage />} />
               <Route path="/cadastros/tipos-avaliacao" element={<TiposAvaliacaoPage />} />
-              <Route path="/relatorios" element={<PlaceholderPage title="Relatórios" description="Relatórios de desempenho, avaliações e tarefas." />} />
+              <Route path="/relatorios" element={<RelatoriosPage />} />
               <Route path="/auditoria" element={<PlaceholderPage title="Auditoria" description="Registro completo de todas as ações do sistema." />} />
               <Route path="/configuracoes" element={<PlaceholderPage title="Configurações" description="Configurações gerais do sistema." />} />
             </Route>
