@@ -459,14 +459,16 @@ export default function RelatoriosPage() {
               {exportLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
               Exportar CSV
             </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setDeleteDialogOpen(true)}
-            >
-              <Trash2 className="w-4 h-4 mr-1" />
-              Excluir Selecionadas
-            </Button>
+            {isAdmin && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setDeleteDialogOpen(true)}
+              >
+                <Trash2 className="w-4 h-4 mr-1" />
+                Excluir Selecionadas
+              </Button>
+            )}
           </div>
         </motion.div>
       )}
