@@ -58,7 +58,13 @@ export default function AvaliacaoOSPage() {
   };
 
   const handleCreate = () => {
-    if (searchQuery.trim()) searchOS(searchQuery.trim(), true);
+    const val = searchQuery.trim();
+    if (!val) return;
+    if (!/^\d+$/.test(val)) {
+      toast.error("O número da OS deve conter apenas dígitos.");
+      return;
+    }
+    searchOS(val, true);
   };
 
   const isCompleted = avaliacao?.concluida === true;
