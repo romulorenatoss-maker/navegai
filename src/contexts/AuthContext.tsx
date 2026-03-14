@@ -11,6 +11,7 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   roles: AppRole[];
+  allowedScreens: string[];
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, nome: string) => Promise<{ error: Error | null }>;
@@ -26,6 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
+  const [allowedScreens, setAllowedScreens] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchProfileAndRoles = async (userId: string) => {
@@ -33,7 +35,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       supabase.from("profiles").select("*").eq("user_id", userId).single(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
     ]);
-    if (profileRes.data) setProfile(profileRes.data);
+    if (profileRes.data) {
+      setProfile(profileRes.data);
+      // Load screen permissions
+      const { data: perms } = await supabase
+        .from("permissoes_tela")
+        .select("tela_path")
+        .eq("profile_id", profileRes.data.id);
+      setAllowedScreens(perms?.map((p: any) => p.tela_path) || []);
+    }
     if (rolesRes.data) setRoles(rolesRes.data.map((r) => r.role));
   };
 
@@ -47,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setProfile(null);
           setRoles([]);
+          setAllowedScreens([]);
         }
         setLoading(false);
       }
@@ -87,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ session, user, profile, roles, loading, signIn, signUp, signOut, hasRole, isAdmin }}
+      value={{ session, user, profile, roles, allowedScreens, loading, signIn, signUp, signOut, hasRole, isAdmin }}
     >
       {children}
     </AuthContext.Provider>

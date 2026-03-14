@@ -14,8 +14,9 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   User, FileText, Trash2, Lock, Loader2, ShieldCheck,
-  Eye, MessageSquare, CheckCircle2, Clock, AlertCircle
+  Eye, MessageSquare, CheckCircle2, Clock, AlertCircle, Shield
 } from "lucide-react";
+import PermissoesTelasTab from "@/components/PermissoesTelasTab";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Profile = Tables<"profiles">;
@@ -301,6 +302,9 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
               <TabsTrigger value="dados" className="flex items-center gap-1.5">
                 <User className="w-4 h-4" /> Dados
               </TabsTrigger>
+              <TabsTrigger value="permissoes" className="flex items-center gap-1.5">
+                <Shield className="w-4 h-4" /> Permissões
+              </TabsTrigger>
               <TabsTrigger value="os" className="flex items-center gap-1.5">
                 <FileText className="w-4 h-4" /> Ordens de Serviço
                 {osList.length > 0 && (
@@ -344,6 +348,14 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
                   </p>
                 </div>
               </div>
+            </TabsContent>
+
+            {/* Permissões Tab */}
+            <TabsContent value="permissoes" className="mt-4">
+              <PermissoesTelasTab
+                profileId={collaborator.id}
+                isAdminProfile={collaborator.cargo === "administrador"}
+              />
             </TabsContent>
 
             {/* OS Tab */}

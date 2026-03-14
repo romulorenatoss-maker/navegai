@@ -10,7 +10,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "sonner";
 
 export function AppLayout() {
-  const { profile, user, signOut, isAdmin } = useAuth();
+  const { profile, user, signOut, isAdmin, allowedScreens } = useAuth();
   const isMobile = useIsMobile();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -65,6 +65,7 @@ export function AppLayout() {
               mobile
               onNavigate={() => setMobileOpen(false)}
               isAdmin={isAdmin}
+              allowedScreens={allowedScreens}
             />
           </SheetContent>
         </Sheet>
@@ -78,7 +79,7 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen bg-background">
-      <AppSidebar userName={userNameDisplay} onSignOut={handleSignOut} isAdmin={isAdmin} />
+      <AppSidebar userName={userNameDisplay} onSignOut={handleSignOut} isAdmin={isAdmin} allowedScreens={allowedScreens} />
       {/* Top bar desktop */}
       <div className="ml-[240px] transition-all duration-200">
         <header className="sticky top-0 z-30 flex items-center justify-end h-12 px-6 bg-card border-b border-border">
