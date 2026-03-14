@@ -876,13 +876,7 @@ export default function AvaliacaoOSPage() {
               <button
                 key={a.id}
                 type="button"
-                onClick={() => {
-                  const osNum = a.ordens_servico?.numero_os;
-                  if (osNum) {
-                    setSearchQuery(osNum);
-                    searchOS(osNum, false);
-                  }
-                }}
+                onClick={() => openPendingInWizard(a)}
                 className="w-full flex items-center gap-4 px-4 py-3 text-left hover:bg-muted/50 transition-colors press-effect"
               >
                 <div className="flex-1 min-w-0">
