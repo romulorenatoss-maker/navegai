@@ -1,11 +1,11 @@
-import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ClipboardCheck, FileSearch, ListChecks, PlayCircle, FolderKanban,
   BarChart3, Building2, Users, HelpCircle, Wrench, LogOut, Star, ClipboardList,
-  AlertTriangle, Link2, ChevronDown,
+  AlertTriangle, Link2, PanelLeftClose, PanelLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 const allNavSections = [
   {
@@ -56,73 +56,13 @@ interface AppSidebarProps {
   onNavigate?: () => void;
   isAdmin?: boolean;
   allowedScreens?: string[];
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-function CollapsibleSection({ section, onNavigate }: { section: typeof allNavSections[0]; onNavigate?: () => void }) {
+export function AppSidebar({ userName = "Usuário", onSignOut, onNavigate, isAdmin = false, allowedScreens = [], collapsed = false, onToggleCollapse }: AppSidebarProps) {
   const location = useLocation();
-  const hasActive = section.items.some(item => location.pathname === item.to);
-  const [open, setOpen] = useState(hasActive);
 
-  // Single item sections render without collapsible
-  if (section.items.length === 1) {
-    const item = section.items[0];
-    const isActive = location.pathname === item.to;
-    return (
-      <div>
-        <NavLink
-          to={item.to}
-          onClick={onNavigate}
-          className={cn(
-            "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
-            isActive
-              ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-              : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-          )}
-        >
-          <item.icon className="w-4 h-4 shrink-0" />
-          <span>{item.label}</span>
-        </NavLink>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <button
-        onClick={() => setOpen(prev => !prev)}
-        className="w-full flex items-center justify-between px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/50 hover:text-sidebar-foreground/70 transition-colors"
-      >
-        {section.title}
-        <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", open && "rotate-180")} />
-      </button>
-      {open && (
-        <div className="mt-0.5 space-y-0.5">
-          {section.items.map(item => {
-            const isActive = location.pathname === item.to;
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                onClick={onNavigate}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
-                  isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                )}
-              >
-                <item.icon className="w-4 h-4 shrink-0" />
-                <span>{item.label}</span>
-              </NavLink>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-export function AppSidebar({ userName = "Usuário", onSignOut, onNavigate, isAdmin = false, allowedScreens = [] }: AppSidebarProps) {
   const navSections = allNavSections
     .map((section) => ({
       ...section,
@@ -131,35 +71,106 @@ export function AppSidebar({ userName = "Usuário", onSignOut, onNavigate, isAdm
     .filter((section) => section.items.length > 0);
 
   return (
-    <div className="h-full bg-sidebar text-sidebar-foreground flex flex-col">
-      {/* Logo */}
-      <div className="h-14 flex items-center px-4 border-b border-sidebar-border shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-md bg-sidebar-primary flex items-center justify-center">
-            <span className="text-sidebar-primary-foreground text-xs font-bold">N</span>
+    <TooltipProvider delayDuration={0}>
+      <div className="h-full bg-sidebar text-sidebar-foreground flex flex-col">
+        {/* Header: Logo + Collapse toggle */}
+        <div className="h-14 flex items-center justify-between px-3 border-b border-sidebar-border shrink-0">
+          <div className="flex items-center gap-2 overflow-hidden">
+            <div className="w-7 h-7 rounded-md bg-sidebar-primary flex items-center justify-center shrink-0">
+              <span className="text-sidebar-primary-foreground text-xs font-bold">N</span>
+            </div>
+            {!collapsed && <span className="font-semibold text-sm whitespace-nowrap">Nexus Ops</span>}
           </div>
-          <span className="font-semibold text-sm whitespace-nowrap">Nexus Ops</span>
+          {onToggleCollapse && (
+            <button
+              onClick={onToggleCollapse}
+              className="p-1.5 rounded-md hover:bg-sidebar-accent/50 transition-colors text-sidebar-foreground/60 hover:text-sidebar-foreground shrink-0"
+              title={collapsed ? "Expandir menu" : "Recolher menu"}
+            >
+              {collapsed ? <PanelLeft className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+            </button>
+          )}
+        </div>
+
+        {/* Navigation - all sections expanded */}
+        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
+          {navSections.map((section) => (
+            <div key={section.title}>
+              {!collapsed && (
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40 px-3 mb-1">
+                  {section.title}
+                </p>
+              )}
+              {collapsed && section.title !== "Principal" && (
+                <div className="mx-2 my-1 border-t border-sidebar-border" />
+              )}
+              <div className="space-y-0.5">
+                {section.items.map((item) => {
+                  const isActive = location.pathname === item.to;
+                  const linkContent = (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      onClick={onNavigate}
+                      className={cn(
+                        "flex items-center gap-3 rounded-md text-sm transition-colors",
+                        collapsed ? "justify-center px-2 py-2.5" : "px-3 py-2",
+                        isActive
+                          ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                      )}
+                    >
+                      <item.icon className="w-4 h-4 shrink-0" />
+                      {!collapsed && <span>{item.label}</span>}
+                    </NavLink>
+                  );
+
+                  if (collapsed) {
+                    return (
+                      <Tooltip key={item.to}>
+                        <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
+                        <TooltipContent side="right" sideOffset={8}>
+                          {item.label}
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  }
+
+                  return linkContent;
+                })}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        {/* User + Logout */}
+        <div className="border-t border-sidebar-border p-2 shrink-0">
+          {!collapsed && (
+            <p className="text-xs text-sidebar-foreground/60 truncate mb-1.5 px-2">{userName}</p>
+          )}
+          {collapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => { onSignOut?.(); onNavigate?.(); }}
+                  className="w-full flex items-center justify-center p-2.5 rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8}>Sair</TooltipContent>
+            </Tooltip>
+          ) : (
+            <button
+              onClick={() => { onSignOut?.(); onNavigate?.(); }}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors"
+            >
+              <LogOut className="w-4 h-4 shrink-0" />
+              <span>Sair</span>
+            </button>
+          )}
         </div>
       </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-3">
-        {navSections.map((section) => (
-          <CollapsibleSection key={section.title} section={section} onNavigate={onNavigate} />
-        ))}
-      </nav>
-
-      {/* User + Logout */}
-      <div className="border-t border-sidebar-border p-3 shrink-0">
-        <p className="text-xs text-sidebar-foreground/60 truncate mb-2 px-1">{userName}</p>
-        <button
-          onClick={() => { onSignOut?.(); onNavigate?.(); }}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors"
-        >
-          <LogOut className="w-4 h-4 shrink-0" />
-          <span>Sair</span>
-        </button>
-      </div>
-    </div>
+    </TooltipProvider>
   );
 }
