@@ -243,6 +243,16 @@ export default function ColaboradoresPage() {
 
   const isSubmitting = create.isPending || update.isPending;
 
+  if (!isAdmin) {
+    return (
+      <div className="p-6 max-w-5xl mx-auto">
+        <div className="bg-card border border-border rounded-lg p-8 text-center">
+          <p className="text-body text-muted-foreground">Acesso restrito. Apenas administradores podem gerenciar colaboradores.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
