@@ -350,6 +350,14 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
               </div>
             </TabsContent>
 
+            {/* Permissões Tab */}
+            <TabsContent value="permissoes" className="mt-4">
+              <PermissoesTelasTab
+                profileId={collaborator.id}
+                isAdminProfile={collaborator.cargo === "administrador"}
+              />
+            </TabsContent>
+
             {/* OS Tab */}
             <TabsContent value="os" className="mt-4 space-y-3">
               {isAdmin && selectedOsIds.size > 0 && (
