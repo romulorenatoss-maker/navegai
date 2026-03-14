@@ -22,6 +22,7 @@ const itemVariants = {
 };
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<OSStats>({ abertas: 0, em_andamento: 0, concluidas: 0, total: 0 });
   const [recentOS, setRecentOS] = useState<any[]>([]);
 
