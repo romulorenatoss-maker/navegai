@@ -247,7 +247,7 @@ export default function PerguntasPage() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "Editar Pergunta" : "Nova Pergunta"}</DialogTitle></DialogHeader>
           <form onSubmit={(e) => { e.preventDefault(); upsert.mutate(); }} className="space-y-4">
             <div className="space-y-1.5"><Label>Pergunta</Label><Input value={pergunta} onChange={(e) => setPergunta(e.target.value)} required /></div>
@@ -294,6 +294,81 @@ export default function PerguntasPage() {
                 <Input type="number" min={0} value={ordem} onChange={(e) => setOrdem(e.target.value)} required />
               </div>
             </div>
+
+            {/* Live Preview */}
+            {pergunta && (
+              <div className="space-y-2">
+                <Label className="text-caption text-muted-foreground uppercase tracking-wider">Pré-visualização</Label>
+                <div className="bg-muted/30 border border-border rounded-lg p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <p className="text-body font-medium text-foreground">{pergunta}</p>
+                      <p className="text-caption text-muted-foreground">Peso: {peso}</p>
+                    </div>
+                    <div className="flex bg-muted rounded-md p-0.5 gap-0.5 shrink-0">
+                      {([
+                        { label: "Sim", value: "sim" as PreviewAnswer, activeColor: "bg-success text-success-foreground" },
+                        { label: "Não", value: "nao" as PreviewAnswer, activeColor: "bg-destructive text-destructive-foreground" },
+                        { label: "N/A", value: "na" as PreviewAnswer, activeColor: "bg-muted text-foreground" },
+                      ]).map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setPreviewAnswer(previewAnswer === opt.value ? null : opt.value)}
+                          className={`px-3 py-1.5 rounded text-caption font-medium transition-all duration-150 press-effect min-w-[48px] ${
+                            previewAnswer === opt.value ? opt.activeColor : "text-foreground hover:bg-background/50"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <AnimatePresence>
+                    {previewAnswer === "nao" && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 mt-3 space-y-3">
+                          <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            Ação obrigatória — O avaliador deve preencher:
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-caption">Descrição do ocorrido *</Label>
+                            <Textarea
+                              placeholder="Descreva a irregularidade encontrada..."
+                              className="bg-card h-20 text-caption"
+                              disabled
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-caption mb-1.5 block">Anexar evidência *</Label>
+                            <div className="flex gap-2">
+                              <Button type="button" variant="outline" size="sm" className="text-caption" disabled>
+                                <Camera className="w-3.5 h-3.5 mr-1.5" /> Foto
+                              </Button>
+                              <Button type="button" variant="outline" size="sm" className="text-caption" disabled>
+                                <FileVideo className="w-3.5 h-3.5 mr-1.5" /> Vídeo
+                              </Button>
+                              <Button type="button" variant="outline" size="sm" className="text-caption" disabled>
+                                <FileText className="w-3.5 h-3.5 mr-1.5" /> Documento
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            )}
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={closeDialog}>Cancelar</Button>
               <Button type="submit" disabled={upsert.isPending} className="press-effect">{upsert.isPending ? "Salvando..." : "Salvar"}</Button>
