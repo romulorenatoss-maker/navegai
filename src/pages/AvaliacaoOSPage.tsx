@@ -1589,12 +1589,46 @@ export default function AvaliacaoOSPage() {
                       </>
                     ) : (
                       <div className="ml-11 mt-1">
-                        <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-warning/5 border border-warning/20">
-                          <Clock className="w-4 h-4 text-warning shrink-0" />
-                          <span className="text-sm text-muted-foreground">
-                            PENDENTE — aguardando avaliação do setor <strong className="text-foreground">{(p as any)._setor_nome || "responsável"}</strong>
-                          </span>
-                        </div>
+                        {otherEvalAnswers[p.id] ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className={cn(
+                                "inline-flex items-center px-2.5 py-1 rounded text-sm font-semibold border",
+                                otherEvalAnswers[p.id].resposta === "sim" ? "border-success/40 bg-success/10 text-success" :
+                                otherEvalAnswers[p.id].resposta === "nao" ? "border-destructive/40 bg-destructive/10 text-destructive" :
+                                "border-muted-foreground/30 bg-muted text-muted-foreground"
+                              )}>
+                                {otherEvalAnswers[p.id].resposta === "sim" ? "SIM" : otherEvalAnswers[p.id].resposta === "nao" ? "NÃO" : "N/A"}
+                              </span>
+                              <span className="text-caption text-muted-foreground">
+                                por <strong className="text-foreground">{otherEvalAnswers[p.id].avaliador_nome}</strong>
+                              </span>
+                            </div>
+                            {otherEvalAnswers[p.id].observacao && (
+                              <div className="bg-muted/50 border border-border rounded p-2">
+                                <p className="text-caption text-muted-foreground flex items-center gap-1 mb-0.5">
+                                  <MessageSquare className="w-3 h-3" /> Observação:
+                                </p>
+                                <p className="text-sm text-foreground">{otherEvalAnswers[p.id].observacao}</p>
+                              </div>
+                            )}
+                            {otherEvalAnswers[p.id].evidencia_url && (
+                              <img
+                                src={otherEvalAnswers[p.id].evidencia_url!}
+                                alt="Evidência"
+                                className="rounded-lg border border-border max-h-32 object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => window.open(otherEvalAnswers[p.id].evidencia_url!, "_blank")}
+                              />
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-warning/5 border border-warning/20">
+                            <Clock className="w-4 h-4 text-warning shrink-0" />
+                            <span className="text-sm text-muted-foreground">
+                              PENDENTE — aguardando avaliação do setor <strong className="text-foreground">{(p as any)._setor_nome || "responsável"}</strong>
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
