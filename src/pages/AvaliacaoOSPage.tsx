@@ -121,6 +121,11 @@ export default function AvaliacaoOSPage() {
   const [evalScore, setEvalScore] = useState<number | null>(null);
   const [evalSubmitting, setEvalSubmitting] = useState(false);
   const [autoSaving, setAutoSaving] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteOsId, setDeleteOsId] = useState<string | null>(null);
+  const [deleteOsNumero, setDeleteOsNumero] = useState<string>("");
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const debounceTimers = useRef<Record<string, NodeJS.Timeout>>({});
 
   // --- Queries ---
