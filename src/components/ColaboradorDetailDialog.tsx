@@ -124,20 +124,17 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
         tss?.forEach(t => { tsMap[t.id] = t.nome; });
       }
 
-      // Get scores
+      // Get per-sector scores using SQL function
       const osIds = deduped.map(o => o.id);
+      const notas = await fetchNotasPorSetor();
+
       const { data: avals } = await supabase.from("avaliacoes")
-        .select("ordem_servico_id, nota_final, concluida, avaliador_id")
+        .select("ordem_servico_id, avaliador_id")
         .in("ordem_servico_id", osIds);
 
-      const scoreMap: Record<string, number[]> = {};
       const avaliadorOsSet = new Set<string>();
       avals?.forEach(a => {
         if (a.avaliador_id === collaborator.id) avaliadorOsSet.add(a.ordem_servico_id);
-        if (a.nota_final != null && a.concluida) {
-          if (!scoreMap[a.ordem_servico_id]) scoreMap[a.ordem_servico_id] = [];
-          scoreMap[a.ordem_servico_id].push(Number(a.nota_final));
-        }
       });
 
       return deduped.map(os => {
@@ -146,9 +143,7 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
         return {
           ...os,
           tipo_servico_nome: tsMap[os.tipo_servico_id || ""] || "—",
-          avg_nota: scoreMap[os.id]?.length
-            ? scoreMap[os.id].reduce((a, b) => a + b, 0) / scoreMap[os.id].length
-            : null,
+          avg_nota: calcularNotaPorOS(notas, collaborator.id, os.id),
           papel: isAvaliador && isAvaliado ? "Avaliador / Avaliado" : isAvaliador ? "Avaliador" : "Avaliado",
         };
       });
