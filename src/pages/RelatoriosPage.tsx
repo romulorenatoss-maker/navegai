@@ -156,19 +156,21 @@ export default function RelatoriosPage() {
 
     const osIds = osData.map((o) => o.id);
 
-    // Fetch tipo_servico names, os_perguntas, and respostas in parallel
+    // Fetch tipo_servico names, os_perguntas, respostas, and avaliacoes in parallel
     const tipoIds = [...new Set(osData.map((o) => o.tipo_servico_id).filter(Boolean))] as string[];
 
-    const [tiposRes, osPerguntasRes, respostasRes] = await Promise.all([
+    const [tiposRes, osPerguntasRes, respostasRes, avaliacoesForFilterRes] = await Promise.all([
       tipoIds.length > 0
-        ? supabase.from("tipos_servico").select("id, nome").in("id", tipoIds)
+        ? supabase.from("tipos_servico").select("id, nome, setor_id").in("id", tipoIds)
         : Promise.resolve({ data: [] }),
       supabase.from("os_perguntas").select("os_id, pergunta_id").in("os_id", osIds),
       supabase.from("respostas_avaliacao").select("ordem_servico_id, pergunta_id, resposta").in("ordem_servico_id", osIds).not("resposta", "is", null),
+      supabase.from("avaliacoes").select("ordem_servico_id, avaliador_id").in("ordem_servico_id", osIds),
     ]);
 
     const tipoNames: Record<string, string> = {};
-    (tiposRes.data || []).forEach((t: any) => { tipoNames[t.id] = t.nome; });
+    const tipoSetorMap: Record<string, string | null> = {};
+    (tiposRes.data || []).forEach((t: any) => { tipoNames[t.id] = t.nome; tipoSetorMap[t.id] = t.setor_id; });
 
     // Build os_perguntas count per OS
     const perguntaCountByOS: Record<string, number> = {};
@@ -184,31 +186,60 @@ export default function RelatoriosPage() {
       answeredByOS[r.ordem_servico_id].add(r.pergunta_id);
     });
 
+    // Build avaliador map per OS
+    const avaliadorByOS: Record<string, Set<string>> = {};
+    (avaliacoesForFilterRes.data || []).forEach((a: any) => {
+      if (!avaliadorByOS[a.ordem_servico_id]) avaliadorByOS[a.ordem_servico_id] = new Set();
+      avaliadorByOS[a.ordem_servico_id].add(a.avaliador_id);
+    });
+
+    let results = osData.map((os) => {
+      const totalPerguntas = perguntaCountByOS[os.id] || 0;
+      const totalRespondidas = answeredByOS[os.id]?.size || 0;
+      const progress = totalPerguntas > 0 ? (totalRespondidas / totalPerguntas) * 100 : 0;
+
+      let computedStatus: string;
+      if (totalRespondidas === 0) {
+        computedStatus = "aberta";
+      } else if (progress >= 100) {
+        computedStatus = "concluida";
+      } else {
+        computedStatus = "em_andamento";
+      }
+
+      return {
+        ...os,
+        status: computedStatus,
+        tipo_servico_nome: os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || null : null,
+        setor_id: os.tipo_servico_id ? tipoSetorMap[os.tipo_servico_id] || null : null,
+        avaliador_ids: avaliadorByOS[os.id] || new Set<string>(),
+      };
+    });
+
+    // Apply client-side filters
+    if (filterStatus !== "todos") {
+      results = results.filter((o) => o.status === filterStatus);
+    }
+    if (filterSetor !== "todos") {
+      results = results.filter((o) => o.setor_id === filterSetor);
+    }
+    if (filterAvaliador !== "todos") {
+      results = results.filter((o) => o.avaliador_ids.has(filterAvaliador));
+    }
+    if (filterAvaliado !== "todos") {
+      results = results.filter((o) => o.colaborador_avaliado_id === filterAvaliado);
+    }
+    if (filterCliente.trim()) {
+      const term = filterCliente.trim().toLowerCase();
+      results = results.filter((o) => o.cliente_nome?.toLowerCase().includes(term));
+    }
+
     setOsList(
-      osData.map((os) => {
-        const totalPerguntas = perguntaCountByOS[os.id] || 0;
-        const totalRespondidas = answeredByOS[os.id]?.size || 0;
-        const progress = totalPerguntas > 0 ? (totalRespondidas / totalPerguntas) * 100 : 0;
-
-        let computedStatus: string;
-        if (totalRespondidas === 0) {
-          computedStatus = "aberta";
-        } else if (progress >= 100) {
-          computedStatus = "concluida";
-        } else {
-          computedStatus = "em_andamento";
-        }
-
-        return {
-          ...os,
-          status: computedStatus,
-          tipo_servico_nome: os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || null : null,
-        };
-      })
+      results.map(({ setor_id, avaliador_ids, ...rest }) => rest)
     );
     setSelected(new Set());
     setLoading(false);
-  }, [filterMode, competenceMonth, startDate, endDate]);
+  }, [filterMode, competenceMonth, startDate, endDate, filterStatus, filterSetor, filterAvaliador, filterAvaliado, filterCliente]);
 
   // Only auto-fetch on mount
   useEffect(() => { fetchOS(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
