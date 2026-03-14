@@ -622,7 +622,7 @@ export default function AvaliacaoOSPage() {
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className={cn(
           "max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden",
-          "w-full sm:w-auto",
+          "w-full max-w-full",
           "h-full sm:h-auto",
           "rounded-none sm:rounded-lg",
           "top-0 left-0 translate-x-0 translate-y-0 sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%]",
