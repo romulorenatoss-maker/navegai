@@ -22,11 +22,7 @@ import { CSS } from "@dnd-kit/utilities";
 type Pergunta = Tables<"perguntas_avaliacao">;
 type PreviewAnswer = "sim" | "nao" | "na" | null;
 
-interface TipoAvaliacao {
-  id: string;
-  nome: string;
-  cargo_responsavel: string | null;
-}
+// TipoAvaliacao interface removed - evaluator assignment now uses sectors
 
 function SortableRow({ p, index, onEdit, onRemove }: { p: any; index: number; onEdit: (p: Pergunta) => void; onRemove: (id: string) => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.id });
@@ -36,7 +32,7 @@ function SortableRow({ p, index, onEdit, onRemove }: { p: any; index: number; on
       <td className="px-2 py-3 w-8"><button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-foreground"><GripVertical className="w-4 h-4" /></button></td>
       <td className="px-2 py-3 text-caption text-muted-foreground font-tabular w-8">{String(index + 1).padStart(2, "0")}</td>
       <td className="px-4 py-3 text-body font-medium text-foreground">{p.pergunta}</td>
-      <td className="px-4 py-3 text-body text-muted-foreground">{p._tipo_avaliacao_nome || "Todos"}</td>
+      <td className="px-4 py-3 text-body text-muted-foreground">{p.setores?.nome || "Todos"}</td>
       
       <td className="px-4 py-3 text-center text-body font-semibold text-foreground font-tabular">{p.peso}</td>
       <td className="px-4 py-3 text-right">
@@ -55,7 +51,7 @@ export default function PerguntasPage() {
   const [editing, setEditing] = useState<Pergunta | null>(null);
   const [pergunta, setPergunta] = useState("");
   const [tipoServicoId, setTipoServicoId] = useState("");
-  const [tipoAvaliacaoId, setTipoAvaliacaoId] = useState("");
+  const [tipoAvaliacaoId, setTipoAvaliacaoId] = useState(""); // kept for payload compatibility
   const [targetEmployeeType, setTargetEmployeeType] = useState("geral");
   // avaliadorId removed - evaluator access is determined by their sector
   const [setorAvaliadoId, setSetorAvaliadoId] = useState("");
@@ -99,12 +95,25 @@ export default function PerguntasPage() {
     queryFn: async () => { const { data } = await supabase.from("tipos_servico").select("*").eq("ativo", true).order("nome"); return data || []; },
   });
 
-  const { data: tiposAvaliacao = [] } = useQuery({
-    queryKey: ["tipos_avaliacao_ativos"],
+  // Query sectors that have evaluator users
+  const { data: setoresComAvaliadores = [] } = useQuery({
+    queryKey: ["setores_com_avaliadores"],
     queryFn: async () => {
-      const { data } = await (supabase as any).from("tipos_avaliacao").select("*").eq("ativo", true).order("nome");
-      return (data || []) as TipoAvaliacao[];
+      // Get user_ids with 'avaliador' role
+      const { data: avaliadorRoles } = await supabase.from("user_roles").select("user_id").eq("role", "avaliador");
+      if (!avaliadorRoles?.length) return setores;
+      const avaliadorUserIds = avaliadorRoles.map(r => r.user_id);
+      // Get profile_ids for those users
+      const { data: profiles } = await supabase.from("profiles").select("id").in("user_id", avaliadorUserIds);
+      if (!profiles?.length) return setores;
+      const profileIds = profiles.map(p => p.id);
+      // Get distinct setor_ids from colaborador_setores
+      const { data: colabSetores } = await supabase.from("colaborador_setores").select("setor_id").in("profile_id", profileIds);
+      if (!colabSetores?.length) return setores;
+      const setorIds = [...new Set(colabSetores.map(cs => cs.setor_id))];
+      return setores.filter(s => setorIds.includes(s.id));
     },
+    enabled: setores.length > 0,
   });
 
   // avaliadores query removed - no longer needed for question form
@@ -139,7 +148,7 @@ export default function PerguntasPage() {
   const upsert = useMutation({
     mutationFn: async () => {
       const resolvedTipoId = tipoServicoId === "todos" || !tipoServicoId ? null : tipoServicoId;
-      const resolvedTaId = tipoAvaliacaoId === "todos" || !tipoAvaliacaoId ? null : tipoAvaliacaoId;
+      const resolvedTaId = null; // tipo_avaliacao no longer used - sector determines who evaluates
       const computedOrdem = editing ? parseInt(ordem) : getNextOrdem(resolvedTipoId || "");
       const payload = {
         pergunta,
@@ -256,7 +265,7 @@ export default function PerguntasPage() {
                     <th className="w-8 px-2 py-2"></th>
                     <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-2 py-2 w-8">#</th>
                     <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Pergunta</th>
-                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Tipo Avaliação</th>
+                    <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Quem Avalia</th>
                     
                     <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Nota</th>
                     <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Ações</th>
@@ -311,30 +320,18 @@ export default function PerguntasPage() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Tipo de Avaliação</Label>
-                <Select value={tipoAvaliacaoId} onValueChange={setTipoAvaliacaoId}>
-                  <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos</SelectItem>
-                    {tiposAvaliacao.map(ta => <SelectItem key={ta.id} value={ta.id}>{ta.nome}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <p className="text-caption text-muted-foreground">Define qual avaliador verá esta pergunta.</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Setor Avaliado</Label>
+                <Label>Quem Avalia (Setor)</Label>
                 <Select value={setorAvaliadoId} onValueChange={setSetorAvaliadoId}>
                   <SelectTrigger><SelectValue placeholder="Todos os setores" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todos">Todos os setores</SelectItem>
-                    {setores.map(s => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+                    {setoresComAvaliadores.map(s => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                <p className="text-caption text-muted-foreground">Setor responsável por responder esta pergunta.</p>
               </div>
             </div>
+
 
             <div className="space-y-1.5">
               <Label>Nota</Label>
