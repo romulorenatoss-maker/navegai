@@ -332,7 +332,7 @@ export default function DashboardPage() {
         const pendingSetorIds = new Set<string>();
         for (const q of perguntasForOS) {
           if (!q.setor_avaliado_id) continue;
-          const answered = osAvals.some(a => answeredSet.has(`${a.id}:${q.id}`));
+          const answered = answeredSet.has(`${os.id}:${q.id}`);
           if (!answered) pendingSetorIds.add(q.setor_avaliado_id);
         }
         const pendingSetorNames = [...pendingSetorIds].map(id => setoresMap[id] || "Sem setor");
