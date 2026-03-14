@@ -1365,52 +1365,23 @@ export default function AvaliacaoOSPage() {
               )}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 mt-3 pt-3 border-t border-border">
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground">Atendente:</span>
-                {evalOsData.atendente_id ? (
-                  <span className="font-medium text-foreground">{evalAtendenteNome || "Não definido"}</span>
-                ) : (hasAtendimentoAccess || isAdmin) && !isLocked ? (
-                  <Select value={atendenteId} onValueChange={async (val) => {
-                    setAtendenteId(val);
-                    await supabase.from("ordens_servico").update({ atendente_id: val } as any).eq("id", evalOsData.id);
-                    setEvalOsData({ ...evalOsData, atendente_id: val });
-                    toast.success("Atendente salvo!");
-                  }}>
-                    <SelectTrigger className="h-8 w-[180px]"><SelectValue placeholder="Selecionar atendente" /></SelectTrigger>
-                    <SelectContent>
-                      {atendimentoProfiles.filter(p => p.id !== profile?.id).map(p =>
-                        <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <span className="font-medium text-warning italic">Pendente</span>
+            {/* Show assigned employees as read-only info if they exist */}
+            {(evalOsData.atendente_id || evalOsData.tecnico_id) && (
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 mt-3 pt-3 border-t border-border">
+                {evalOsData.atendente_id && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">Atendente:</span>
+                    <span className="font-medium text-foreground">{evalAtendenteNome || "—"}</span>
+                  </div>
+                )}
+                {evalOsData.tecnico_id && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">Técnico:</span>
+                    <span className="font-medium text-foreground">{evalTecnicoNome || "—"}</span>
+                  </div>
                 )}
               </div>
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground">Técnico:</span>
-                {evalOsData.tecnico_id ? (
-                  <span className="font-medium text-foreground">{evalTecnicoNome || "Não definido"}</span>
-                ) : (hasTecnicoAccess || isAdmin) && !isLocked ? (
-                  <Select value={tecnicoId} onValueChange={async (val) => {
-                    setTecnicoId(val);
-                    await supabase.from("ordens_servico").update({ tecnico_id: val } as any).eq("id", evalOsData.id);
-                    setEvalOsData({ ...evalOsData, tecnico_id: val });
-                    toast.success("Técnico salvo!");
-                  }}>
-                    <SelectTrigger className="h-8 w-[180px]"><SelectValue placeholder="Selecionar técnico" /></SelectTrigger>
-                    <SelectContent>
-                      {tecnicoProfiles.filter(p => p.id !== profile?.id).map(p =>
-                        <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <span className="font-medium text-warning italic">Pendente</span>
-                )}
-              </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -1454,6 +1425,79 @@ export default function AvaliacaoOSPage() {
               <p className="text-xs text-muted-foreground mt-2">Exportação disponível apenas quando a OS estiver concluída por todos os setores.</p>
             )}
           </motion.div>
+        )}
+
+        {/* Employee Selection Cards - before questions */}
+        {!isLocked && (
+          <div className="space-y-3 mb-4">
+            {/* Atendente selection */}
+            {!evalOsData.atendente_id && (
+              <div className="bg-card border border-border rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0">
+                    <Users className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground">Quem é o Atendente avaliado nesta OS?</p>
+                    <p className="text-caption text-muted-foreground mt-0.5">Selecione o colaborador do setor de Atendimento</p>
+                    <div className="mt-2">
+                      {(hasAtendimentoAccess || isAdmin) ? (
+                        <Select value={atendenteId} onValueChange={async (val) => {
+                          setAtendenteId(val);
+                          await supabase.from("ordens_servico").update({ atendente_id: val } as any).eq("id", evalOsData.id);
+                          setEvalOsData({ ...evalOsData, atendente_id: val });
+                          toast.success("Atendente salvo!");
+                        }}>
+                          <SelectTrigger className="h-9 w-full sm:w-[250px]"><SelectValue placeholder="Selecionar atendente" /></SelectTrigger>
+                          <SelectContent>
+                            {atendimentoProfiles.filter(p => p.id !== profile?.id).map(p =>
+                              <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <p className="text-sm text-muted-foreground italic">Aguardando seleção pelo setor de Atendimento</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Técnico selection */}
+            {!evalOsData.tecnico_id && (
+              <div className="bg-card border border-border rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0">
+                    <Users className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground">Quem é o Técnico avaliado nesta OS?</p>
+                    <p className="text-caption text-muted-foreground mt-0.5">Selecione o colaborador do setor Técnico</p>
+                    <div className="mt-2">
+                      {(hasTecnicoAccess || isAdmin) ? (
+                        <Select value={tecnicoId} onValueChange={async (val) => {
+                          setTecnicoId(val);
+                          await supabase.from("ordens_servico").update({ tecnico_id: val } as any).eq("id", evalOsData.id);
+                          setEvalOsData({ ...evalOsData, tecnico_id: val });
+                          toast.success("Técnico salvo!");
+                        }}>
+                          <SelectTrigger className="h-9 w-full sm:w-[250px]"><SelectValue placeholder="Selecionar técnico" /></SelectTrigger>
+                          <SelectContent>
+                            {tecnicoProfiles.filter(p => p.id !== profile?.id).map(p =>
+                              <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <p className="text-sm text-muted-foreground italic">Aguardando seleção pelo setor Técnico</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Questions List */}
