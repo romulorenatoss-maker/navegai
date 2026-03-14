@@ -932,6 +932,9 @@ export default function AvaliacaoOSPage() {
     const tsId = theOS.tipo_servico_id;
     if (!tsId) { toast.error("OS sem tipo de serviço."); return; }
 
+    // Ensure os_perguntas are snapshotted
+    await snapshotOsPerguntas(theOS.id, tsId);
+
     // Fetch existing evaluations for this OS
     const { data: existingAvals } = await supabase
       .from("avaliacoes")
