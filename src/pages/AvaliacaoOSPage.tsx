@@ -1806,9 +1806,18 @@ export default function AvaliacaoOSPage() {
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-2 mt-4">
           {selectedOS.status !== "concluida" && (
-            <Button onClick={() => startMyEvaluation(selectedOS)} className="press-effect w-full sm:w-auto">
-              <Eye className="w-4 h-4 mr-2" /> Iniciar / Continuar Avaliação
-            </Button>
+            <>
+              <Button onClick={() => startMyEvaluation(selectedOS)} className="press-effect w-full sm:w-auto">
+                <Eye className="w-4 h-4 mr-2" /> Iniciar / Continuar Avaliação
+              </Button>
+              {/* Warning if employee not set */}
+              {(hasTecnicoAccess && !selectedOS.tecnico_id) && (
+                <p className="text-caption text-warning flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> Selecione o técnico avaliado acima antes de iniciar.</p>
+              )}
+              {(hasAtendimentoAccess && !selectedOS.atendente_id) && (
+                <p className="text-caption text-warning flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> Selecione o atendente avaliado acima antes de iniciar.</p>
+              )}
+            </>
           )}
         </div>
 
