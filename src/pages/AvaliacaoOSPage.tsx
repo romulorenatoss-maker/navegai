@@ -1563,7 +1563,7 @@ export default function AvaliacaoOSPage() {
                                     <label className={cn(
                                       "flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors text-sm",
                                       isUploading ? "border-muted-foreground/30 bg-muted/30 cursor-wait" : "border-destructive/30 hover:border-destructive/50 hover:bg-destructive/5",
-                                      evalFinalized && "opacity-50 cursor-not-allowed"
+                                      isLocked && "opacity-50 cursor-not-allowed"
                                     )}>
                                       {!isUploading && (
                                         <><Camera className="w-4 h-4 text-destructive" /> Câmera</>
