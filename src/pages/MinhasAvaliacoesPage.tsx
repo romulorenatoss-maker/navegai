@@ -139,6 +139,7 @@ export default function MinhasAvaliacoesPage() {
             {selectedAval && (
               <div className="bg-muted/30 border border-border rounded-lg px-4 py-3 space-y-1">
                 <p className="text-sm text-foreground"><span className="font-medium text-muted-foreground">Cliente:</span> {selectedAval.cliente_nome || "—"}</p>
+                <p className="text-sm text-foreground"><span className="font-medium text-muted-foreground">CPF:</span> {selectedAval.cliente_cpf || "—"}</p>
               </div>
             )}
             {avalDetails.map((aval: any) => (
