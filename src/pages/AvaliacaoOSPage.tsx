@@ -953,28 +953,38 @@ export default function AvaliacaoOSPage() {
           </div>
         )}
 
-        {/* Sticky bottom bar */}
-        {!evalFinalized && evalPerguntas.length > 0 && (
+        {/* Sticky bottom bar - always visible for admin delete or when not finalized */}
+        {evalPerguntas.length > 0 && (
           <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur border-t border-border p-3 sm:p-4 z-30">
             <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 text-sm">
                 <Progress value={evalProgressPercent} className="h-2 w-24 sm:w-32" />
                 <span className="font-medium text-foreground font-tabular">{evalProgressPercent}%</span>
-                {autoSaving && (
+                {!evalFinalized && autoSaving && (
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
                     <Loader2 className="w-3 h-3 animate-spin" /> Salvando
                   </span>
                 )}
-                {!autoSaving && evalAnsweredCount > 0 && (
+                {!evalFinalized && !autoSaving && evalAnsweredCount > 0 && (
                   <span className="text-xs text-success flex items-center gap-1">
                     <Check className="w-3 h-3" /> Salvo
                   </span>
                 )}
               </div>
-              <Button onClick={handleFinalizeEvaluation} disabled={evalProgressPercent < 100 || evalSubmitting} className="press-effect">
-                {evalSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Finalizar Avaliação
-              </Button>
+              <div className="flex items-center gap-2">
+                {isAdmin && (
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs"
+                    onClick={() => promptDeleteOS(evalOsId!, evalOsData.numero_os)}>
+                    <Trash2 className="w-3.5 h-3.5 mr-1" /> Excluir
+                  </Button>
+                )}
+                {!evalFinalized && (
+                  <Button onClick={handleFinalizeEvaluation} disabled={evalProgressPercent < 100 || evalSubmitting} className="press-effect">
+                    {evalSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    Finalizar Avaliação
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         )}
