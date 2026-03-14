@@ -1657,6 +1657,11 @@ export default function AvaliacaoOSPage() {
                 )}
               </div>
               <div className="flex items-center gap-1.5">
+                {evalFinalized && (
+                  <Button size="sm" variant="outline" onClick={generatePDF} className="press-effect h-8 text-xs px-3">
+                    <Download className="w-3 h-3 mr-1" /> PDF
+                  </Button>
+                )}
                 {!evalFinalized && (
                   <Button size="sm" onClick={handleFinalizeEvaluation} disabled={evalProgressPercent < 100 || evalSubmitting} className="press-effect h-8 text-xs px-3">
                     {evalSubmitting && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
