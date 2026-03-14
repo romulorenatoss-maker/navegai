@@ -38,7 +38,7 @@ export default function ColaboradoresPage() {
   const [cargo, setCargo] = useState("atendente");
   const [selectedSetores, setSelectedSetores] = useState<string[]>([]);
   const [senha, setSenha] = useState("");
-  const [selectedTiposServico, setSelectedTiposServico] = useState<string[]>([]);
+  
 
   const { data: profiles = [], isLoading } = useQuery({
     queryKey: ["profiles"],
