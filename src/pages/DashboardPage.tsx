@@ -244,6 +244,85 @@ export default function DashboardPage() {
     fetch();
   }, [startDate, endDate]);
 
+  // Fetch pending OS by sector for current evaluator
+  useEffect(() => {
+    if (!profile) return;
+    const fetchPending = async () => {
+      const { data: sectorLinks } = await supabase
+        .from("colaborador_setores").select("setor_id").eq("profile_id", profile.id);
+      let mySetorIds = sectorLinks?.map(l => l.setor_id) || [];
+      if (mySetorIds.length === 0 && profile.setor_id) mySetorIds = [profile.setor_id];
+      if (mySetorIds.length === 0 && !isAdmin) { setPendingMySector([]); setPendingOtherSector([]); return; }
+
+      const { data: openOS } = await supabase
+        .from("ordens_servico")
+        .select("id, numero_os, cliente_nome, tipo_servico_id, status")
+        .in("status", ["aberta", "em_andamento"]);
+      if (!openOS?.length) { setPendingMySector([]); setPendingOtherSector([]); return; }
+
+      const osIds = openOS.map(o => o.id);
+      const tipoIds = [...new Set(openOS.map(o => o.tipo_servico_id).filter(Boolean))] as string[];
+
+      const [tiposRes, perguntasRes, avalsRes] = await Promise.all([
+        tipoIds.length > 0 ? supabase.from("tipos_servico").select("id, nome").in("id", tipoIds) : { data: [] },
+        supabase.from("perguntas_avaliacao").select("id, tipo_servico_id, setor_avaliado_id").eq("ativo", true),
+        supabase.from("avaliacoes").select("id, ordem_servico_id, avaliador_id, concluida").in("ordem_servico_id", osIds),
+      ]);
+
+      const tipoNames: Record<string, string> = {};
+      (tiposRes.data as any[])?.forEach((t: any) => { tipoNames[t.id] = t.nome; });
+      const allPerguntas = perguntasRes.data || [];
+      const allAvals = avalsRes.data || [];
+
+      const avalIds = allAvals.map(a => a.id);
+      let allRespostas: any[] = [];
+      if (avalIds.length > 0) {
+        const { data: resp } = await supabase
+          .from("respostas_avaliacao").select("avaliacao_id, pergunta_id, resposta")
+          .in("avaliacao_id", avalIds).not("resposta", "is", null);
+        allRespostas = resp || [];
+      }
+      const answeredSet = new Set(allRespostas.map(r => `${r.avaliacao_id}:${r.pergunta_id}`));
+
+      const myPending: PendingOS[] = [];
+      const otherPending: PendingOS[] = [];
+
+      for (const os of openOS) {
+        const perguntasForOS = allPerguntas.filter(p => !p.tipo_servico_id || p.tipo_servico_id === os.tipo_servico_id);
+        if (perguntasForOS.length === 0) continue;
+
+        const myQuestions = isAdmin ? perguntasForOS : perguntasForOS.filter(p => !p.setor_avaliado_id || mySetorIds.includes(p.setor_avaliado_id));
+        const otherQuestions = isAdmin ? [] : perguntasForOS.filter(p => p.setor_avaliado_id && !mySetorIds.includes(p.setor_avaliado_id));
+        const myAval = allAvals.find(a => a.ordem_servico_id === os.id && a.avaliador_id === profile.id);
+        const osAvals = allAvals.filter(a => a.ordem_servico_id === os.id);
+
+        const myUnanswered = myQuestions.filter(q => !myAval || !answeredSet.has(`${myAval.id}:${q.id}`));
+
+        const totalAnswered = osAvals.reduce((sum, a) => {
+          return sum + perguntasForOS.filter(q => answeredSet.has(`${a.id}:${q.id}`)).length;
+        }, 0);
+        const progress = perguntasForOS.length > 0 ? Math.round((totalAnswered / perguntasForOS.length) * 100) : 0;
+
+        const pendingItem: PendingOS = {
+          os_id: os.id, numero_os: os.numero_os, cliente_nome: os.cliente_nome,
+          tipo_servico_nome: os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || null : null, progress,
+        };
+
+        if (myUnanswered.length > 0) {
+          myPending.push(pendingItem);
+        } else if (otherQuestions.length > 0) {
+          const otherUnanswered = otherQuestions.some(q =>
+            !osAvals.some(a => a.avaliador_id !== profile.id && answeredSet.has(`${a.id}:${q.id}`))
+          );
+          if (otherUnanswered) otherPending.push(pendingItem);
+        }
+      }
+      setPendingMySector(myPending);
+      setPendingOtherSector(otherPending);
+    };
+    fetchPending();
+  }, [profile, isAdmin, startDate, endDate]);
+
   // Fetch ranking + scores (respects date filters)
   useEffect(() => {
     const fetchRanking = async () => {
