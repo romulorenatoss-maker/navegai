@@ -1043,7 +1043,7 @@ export default function AvaliacaoOSPage() {
             </Button>
           )}
           {selectedOS.status !== "concluida" && isAdmin && (
-            <Button variant="destructive" onClick={() => handleDeleteOS(selectedOS.id)} className="press-effect w-full sm:w-auto">
+            <Button variant="destructive" onClick={() => promptDeleteOS(selectedOS.id, selectedOS.numero_os)} className="press-effect w-full sm:w-auto">
               <Trash2 className="w-4 h-4 mr-2" /> Excluir OS
             </Button>
           )}
