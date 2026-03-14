@@ -183,15 +183,7 @@ export default function MinhasAvaliacoesPage() {
           <DialogHeader>
             <DialogTitle>Avaliação — OS #{selectedAval?.numero_os}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            {/* Cliente info */}
-            {selectedAval && (
-              <div className="bg-muted/30 border border-border rounded-lg px-4 py-3 space-y-1">
-                <p className="text-sm text-foreground"><span className="font-medium text-muted-foreground">Cliente:</span> {selectedAval.cliente_nome || "—"}</p>
-                <p className="text-sm text-foreground"><span className="font-medium text-muted-foreground">CPF:</span> {selectedAval.cliente_cpf || "—"}</p>
-              </div>
-            )}
-
+          <div className="space-y-5">
             {/* Loading state */}
             {detailLoading && (
               <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
@@ -207,102 +199,80 @@ export default function MinhasAvaliacoesPage() {
 
             {/* Avaliações */}
             {avalDetails.map((aval: any) => (
-              <div key={aval.id} className="border border-border rounded-lg overflow-hidden">
-                {/* Header with avaliador and nota */}
-                <div className="bg-muted/30 px-4 py-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-body font-semibold text-foreground">{aval._ta_nome}</p>
-                    <p className="text-caption text-muted-foreground">
-                      Avaliador: <span className="font-medium text-foreground">{aval._avaliador_nome}</span>
-                      {aval.concluida_em && ` • ${new Date(aval.concluida_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}`}
-                    </p>
+              <div key={aval.id} className="space-y-4">
+                {/* Dados do cliente e avaliador */}
+                <div className="bg-muted/30 border border-border rounded-lg px-4 py-3 space-y-2">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                    <p><span className="font-medium text-muted-foreground">Cliente:</span> <span className="text-foreground">{selectedAval?.cliente_nome || "—"}</span></p>
+                    <p><span className="font-medium text-muted-foreground">CPF:</span> <span className="text-foreground">{selectedAval?.cliente_cpf || "—"}</span></p>
+                    <p><span className="font-medium text-muted-foreground">Avaliador:</span> <span className="text-foreground font-semibold">{aval._avaliador_nome}</span></p>
+                    <p><span className="font-medium text-muted-foreground">Data:</span> <span className="text-foreground">{aval.concluida_em ? new Date(aval.concluida_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}</span></p>
                   </div>
+                </div>
+
+                {/* Tabela de perguntas e respostas */}
+                <div className="border border-border rounded-lg overflow-hidden">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/40">
+                        <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-3 py-2 w-8">#</th>
+                        <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-3 py-2">Pergunta</th>
+                        <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-3 py-2 w-20">Resposta</th>
+                        <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-3 py-2 w-16">Nota</th>
+                        <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-3 py-2 w-16">Anexos</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {aval._respostas.length === 0 && (
+                        <tr><td colSpan={5} className="px-3 py-4 text-center text-caption text-muted-foreground">Sem respostas registradas.</td></tr>
+                      )}
+                      {aval._respostas.map((r: any, i: number) => (
+                        <tr key={i} className="hover:bg-muted/30 transition-colors">
+                          <td className="px-3 py-2 text-caption text-muted-foreground font-tabular">{String(i + 1).padStart(2, "0")}</td>
+                          <td className="px-3 py-2">
+                            <p className="text-sm text-foreground">{r.pergunta}</p>
+                            {r.observacao && (
+                              <div className="mt-1 flex items-start gap-1 text-destructive">
+                                <MessageSquare className="w-3 h-3 mt-0.5 shrink-0" />
+                                <p className="text-caption">{r.observacao}</p>
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <span className={cn(
+                              "inline-block px-2.5 py-0.5 rounded-full text-caption font-semibold",
+                              r.resposta === "sim" ? "bg-success/15 text-success" :
+                              r.resposta === "nao" ? "bg-destructive/15 text-destructive" :
+                              "bg-muted text-muted-foreground"
+                            )}>
+                              {r.resposta === "sim" ? "Sim" : r.resposta === "nao" ? "Não" : "N/A"}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-center text-sm font-tabular text-muted-foreground">{r.peso}</td>
+                          <td className="px-3 py-2 text-center">
+                            {r.evidencia_url ? (
+                              <button onClick={() => window.open(r.evidencia_url, "_blank")} className="inline-flex items-center gap-1 text-primary hover:underline text-caption">
+                                <ImageIcon className="w-3.5 h-3.5" /> Ver
+                              </button>
+                            ) : (
+                              <span className="text-caption text-muted-foreground">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {/* Nota final */}
                   {aval.nota_final != null && (
-                    <span className={cn("text-lg font-bold font-tabular", aval.nota_final >= 80 ? "text-success" : aval.nota_final >= 60 ? "text-warning" : "text-destructive")}>
-                      {Number(aval.nota_final).toFixed(1)}%
-                    </span>
-                  )}
-                </div>
-
-                {/* Respostas */}
-                <div className="divide-y divide-border">
-                  {aval._respostas.length === 0 && (
-                    <p className="px-4 py-4 text-center text-caption text-muted-foreground">Sem respostas registradas.</p>
-                  )}
-                  {aval._respostas.map((r: any, i: number) => (
-                    <div key={i} className="px-4 py-3">
-                      <div className="flex items-start gap-3">
-                        <span className="text-caption font-medium text-muted-foreground font-tabular w-6 shrink-0 pt-0.5">
-                          {String(i + 1).padStart(2, "0")}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground">{r.pergunta}</p>
-
-                          {/* Resposta selecionada - destaque visual */}
-                          <div className="flex items-center gap-2 mt-2">
-                            <div className="flex bg-muted rounded-md p-0.5 gap-0.5">
-                              {[
-                                { label: "Sim", value: "sim", active: "bg-success text-success-foreground" },
-                                { label: "Não", value: "nao", active: "bg-destructive text-destructive-foreground" },
-                                { label: "N/A", value: "na", active: "bg-muted-foreground text-background" },
-                              ].map(opt => (
-                                <span
-                                  key={opt.value}
-                                  className={cn(
-                                    "px-3 py-1 rounded text-caption font-medium transition-all",
-                                    r.resposta === opt.value ? opt.active : "text-muted-foreground/40"
-                                  )}
-                                >
-                                  {opt.label}
-                                </span>
-                              ))}
-                            </div>
-                            <span className="text-caption text-muted-foreground">Peso: {r.peso}</span>
-                            <span className="text-caption text-muted-foreground">• {r.target === "atendente" ? "Atendente" : r.target === "tecnico" ? "Técnico" : "Geral"}</span>
-                          </div>
-
-                          {/* Observação */}
-                          {r.observacao && (
-                            <div className="mt-2 bg-destructive/5 border border-destructive/20 rounded p-2">
-                              <p className="text-caption text-destructive flex items-center gap-1 mb-0.5 font-medium">
-                                <MessageSquare className="w-3 h-3" /> Observação:
-                              </p>
-                              <p className="text-sm text-foreground">{r.observacao}</p>
-                            </div>
-                          )}
-
-                          {/* Evidência (foto) */}
-                          {r.evidencia_url && (
-                            <div className="mt-2 bg-muted/30 border border-border rounded p-2">
-                              <p className="text-caption text-muted-foreground flex items-center gap-1 mb-1.5 font-medium">
-                                <ImageIcon className="w-3 h-3" /> Evidência anexada:
-                              </p>
-                              <img
-                                src={r.evidencia_url}
-                                alt="Evidência"
-                                className="rounded-lg border border-border max-h-40 object-cover cursor-pointer hover:opacity-80 transition-opacity shadow-sm"
-                                onClick={() => window.open(r.evidencia_url, "_blank")}
-                              />
-                              <p className="text-caption text-primary mt-1 cursor-pointer hover:underline" onClick={() => window.open(r.evidencia_url, "_blank")}>
-                                Clique para ampliar
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                    <div className="border-t border-border bg-muted/20 px-4 py-3 flex items-center justify-between">
+                      <span className="text-sm font-semibold text-foreground">Nota Final</span>
+                      <span className={cn("text-xl font-bold font-tabular", aval.nota_final >= 80 ? "text-success" : aval.nota_final >= 60 ? "text-warning" : "text-destructive")}>
+                        {Number(aval.nota_final).toFixed(1)}%
+                      </span>
                     </div>
-                  ))}
+                  )}
                 </div>
-
-                {/* Nota total da avaliação */}
-                {aval.nota_final != null && (
-                  <div className="border-t border-border bg-muted/20 px-4 py-3 flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">Nota Final</span>
-                    <span className={cn("text-lg font-bold font-tabular", aval.nota_final >= 80 ? "text-success" : aval.nota_final >= 60 ? "text-warning" : "text-destructive")}>
-                      {Number(aval.nota_final).toFixed(1)}%
-                    </span>
-                  </div>
-                )}
               </div>
             ))}
           </div>
