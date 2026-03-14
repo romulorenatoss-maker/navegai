@@ -2536,7 +2536,7 @@ export default function AvaliacaoOSPage() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-body font-medium text-primary font-tabular">OS #{a.ordens_servico?.numero_os}</span>
-                    <Badge variant="outline" className="text-[10px] hidden sm:inline-flex">{a._ta_nome}</Badge>
+                    <Badge variant="outline" className="text-[10px] hidden sm:inline-flex">{a._ts_nome}</Badge>
                   </div>
                   <p className="text-caption text-muted-foreground truncate">{a.ordens_servico?.cliente_nome || "Sem cliente"}</p>
                 </div>
