@@ -207,47 +207,44 @@ interface SectorBreakdown {
 
 function TipoRow({ t, onToggle, onEdit, onRemove }: { t: any; onToggle: () => void; onEdit: () => void; onRemove: () => void }) {
   // Fetch linked checklists
-  const { data: linkedChecklists = [] } = useQuery({
+  const { data: linkedChecklists, isLoading: loadingChecklists } = useQuery({
     queryKey: ["tsc_display", t.id],
     queryFn: async () => {
       const { data } = await (supabase as any).from("tipo_servico_checklists").select("checklist_id").eq("tipo_servico_id", t.id);
-      if (!data?.length) return [];
+      if (!data?.length) return [] as { id: string; titulo: string }[];
       const ids = data.map((l: any) => l.checklist_id);
       const { data: cls } = await supabase.from("checklists").select("id, titulo").in("id", ids);
       return (cls || []) as { id: string; titulo: string }[];
     },
   });
 
+  const checklistIds = (linkedChecklists || []).map((c: any) => c.id);
+
   // Fetch question breakdown from linked checklists
   const { data: breakdown } = useQuery<SectorBreakdown>({
-    queryKey: ["tipo_servico_breakdown", t.id, linkedChecklists.map((c: any) => c.id).join(",")],
+    queryKey: ["tipo_servico_breakdown", t.id, checklistIds],
     queryFn: async () => {
       const result: SectorBreakdown = { totalPerguntas: 0, totalPontos: 0, atendimentoPerguntas: 0, atendimentoPontos: 0, tecnicoPerguntas: 0, tecnicoPontos: 0 };
-      
-      const checklistIds = linkedChecklists.map((c: any) => c.id);
-      if (checklistIds.length === 0) {
+
+      let perguntas: any[] | null = null;
+
+      if (checklistIds.length > 0) {
+        const { data } = await (supabase as any)
+          .from("perguntas_avaliacao")
+          .select("peso, setor_avaliado_id, setores!perguntas_avaliacao_setor_avaliado_id_fkey(nome)")
+          .eq("ativo", true)
+          .in("checklist_id", checklistIds);
+        perguntas = data;
+      } else {
         // Fallback: load by tipo_servico_id
-        const { data: perguntas } = await supabase
+        const { data } = await supabase
           .from("perguntas_avaliacao")
           .select("peso, setor_avaliado_id, setores!perguntas_avaliacao_setor_avaliado_id_fkey(nome)")
           .eq("ativo", true)
           .eq("tipo_servico_id", t.id);
-        if (!perguntas) return result;
-        for (const p of perguntas) {
-          result.totalPerguntas++;
-          result.totalPontos += p.peso;
-          const setorNome = ((p as any).setores?.nome || "").toLowerCase();
-          if (setorNome.includes("atendimento") || setorNome.includes("atendente")) { result.atendimentoPerguntas++; result.atendimentoPontos += p.peso; }
-          else if (setorNome.includes("técnico") || setorNome.includes("tecnico")) { result.tecnicoPerguntas++; result.tecnicoPontos += p.peso; }
-        }
-        return result;
+        perguntas = data;
       }
 
-      const { data: perguntas } = await (supabase as any)
-        .from("perguntas_avaliacao")
-        .select("peso, setor_avaliado_id, setores!perguntas_avaliacao_setor_avaliado_id_fkey(nome)")
-        .eq("ativo", true)
-        .in("checklist_id", checklistIds);
       if (!perguntas) return result;
       for (const p of perguntas) {
         result.totalPerguntas++;
@@ -258,7 +255,7 @@ function TipoRow({ t, onToggle, onEdit, onRemove }: { t: any; onToggle: () => vo
       }
       return result;
     },
-    enabled: linkedChecklists !== undefined,
+    enabled: !loadingChecklists,
   });
 
   const b = breakdown || { totalPerguntas: 0, totalPontos: 0, atendimentoPerguntas: 0, atendimentoPontos: 0, tecnicoPerguntas: 0, tecnicoPontos: 0 };
