@@ -108,16 +108,6 @@ export default function ColaboradoresPage() {
     await supabase.from("profiles").update({ setor_id: selectedSetores[0] || null }).eq("id", profileId);
   };
 
-  const saveTiposServico = async (profileId: string) => {
-    await supabase.from("avaliador_tipos_servico").delete().eq("avaliador_id", profileId);
-    if (selectedTiposServico.length > 0) {
-      const rows = selectedTiposServico.map((tid) => ({
-        avaliador_id: profileId,
-        tipo_servico_id: tid,
-      }));
-      await supabase.from("avaliador_tipos_servico").insert(rows);
-    }
-  };
 
   const create = useMutation({
     mutationFn: async () => {
