@@ -378,7 +378,7 @@ export default function DashboardPage() {
   }, [allOS, statusFilter]);
 
   const handleClickOS = (os: OSWithProgress) => {
-    navigate(`/avaliacoes/pesquisa?os=${os.numero_os}`);
+    navigate(`/avaliacoes/pesquisa?os=${os.numero_os}&mode=eval`);
   };
 
   const cards = [
