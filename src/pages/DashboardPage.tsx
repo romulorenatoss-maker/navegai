@@ -325,7 +325,9 @@ export default function DashboardPage() {
         const entry = tecMap[p.id];
         if (entry) {
           const avg = entry.notas.reduce((a, b) => a + b, 0) / entry.notas.length;
-          tecMedias.push({ profile_id: p.id, nome: p.nome, media: avg, total_avaliacoes: entry.notas.length });
+          const pSetores = profileSetores[p.id] || [];
+          const primarySetorName = pSetores.length > 0 ? (setorNames[pSetores[0]] || "Sem setor") : "Sem setor";
+          tecMedias.push({ profile_id: p.id, nome: p.nome, media: avg, total_avaliacoes: entry.notas.length, setor_nome: primarySetorName });
         }
       });
       tecMedias.sort((a, b) => b.media - a.media);
