@@ -1281,9 +1281,10 @@ export default function AvaliacaoOSPage() {
 
   const canCreateEval = !!tipoServicoId && (
     isAdmin ? (!!atendenteId && !!tecnicoId) :
+    hasAtendimentoAccess && hasTecnicoAccess ? (!!atendenteId && !!tecnicoId) :
     hasAtendimentoAccess ? !!atendenteId :
     hasTecnicoAccess ? !!tecnicoId :
-    (!!atendenteId || !!tecnicoId)
+    true // Evaluators from other sectors (e.g. Auditoria) can proceed without selecting atendente/tecnico
   );
 
   // --- PDF Generation ---
