@@ -389,7 +389,7 @@ export default function PerguntasPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Setor Avaliado</Label>
-                <Select value={setorAvaliadoId} onValueChange={setSetorAvaliadoId} disabled={!!tipos.find((t) => t.id === tipoServicoId)?.setor_id}>
+                <Select value={setorAvaliadoId} onValueChange={setSetorAvaliadoId}>
                   <SelectTrigger><SelectValue placeholder="Todos os setores" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="todos">Todos os setores</SelectItem>
