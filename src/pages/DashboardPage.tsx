@@ -106,6 +106,7 @@ const statusText: Record<string, string> = {
 // --- Main ---
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { profile, isAdmin } = useAuth();
 
   // Filter state — default to current month
   const now = new Date();
@@ -128,6 +129,17 @@ export default function DashboardPage() {
   const [ranking, setRanking] = useState<ClienteRanking[]>([]);
   const [tecnicoMedias, setTecnicoMedias] = useState<TecnicoMedia[]>([]);
   const [setorMedias, setSetorMedias] = useState<SetorMedia[]>([]);
+
+  // Pending sections
+  interface PendingOS {
+    os_id: string;
+    numero_os: string;
+    cliente_nome: string | null;
+    tipo_servico_nome: string | null;
+    progress: number;
+  }
+  const [pendingMySector, setPendingMySector] = useState<PendingOS[]>([]);
+  const [pendingOtherSector, setPendingOtherSector] = useState<PendingOS[]>([]);
 
   // Fetch OS with progress
   useEffect(() => {
