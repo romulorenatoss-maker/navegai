@@ -46,9 +46,11 @@ export default function DesempenhoColaboradorPage() {
   const targetProfileId = canViewAll && profileIdParam ? profileIdParam : profile?.id;
 
   const now = new Date();
-  const [competenceMonth, setCompetenceMonth] = useState(format(now, "yyyy-MM"));
   const [startDate, setStartDate] = useState<Date | undefined>(startOfMonth(now));
   const [endDate, setEndDate] = useState<Date | undefined>(endOfMonth(now));
+  // Applied filters (only update on "Buscar" click)
+  const [appliedStart, setAppliedStart] = useState<Date | undefined>(startOfMonth(now));
+  const [appliedEnd, setAppliedEnd] = useState<Date | undefined>(endOfMonth(now));
   const [selectedOsId, setSelectedOsId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("desempenho");
 
@@ -59,15 +61,10 @@ export default function DesempenhoColaboradorPage() {
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const handleCompetenceChange = (val: string) => {
-    setCompetenceMonth(val);
-    const [y, m] = val.split("-").map(Number);
-    const d = new Date(y, m - 1, 1);
-    setStartDate(startOfMonth(d));
-    setEndDate(endOfMonth(d));
+  const handleBuscar = () => {
+    setAppliedStart(startDate);
+    setAppliedEnd(endDate);
   };
-
-  const competenceMonths = useMemo(() => getCompetenceMonths(), []);
 
   // Employee profile
   const { data: targetProfile } = useQuery({
