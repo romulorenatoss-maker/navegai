@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { detectInconsistencies } from "@/hooks/useInconsistencyDetection";
 
 export type Answer = "sim" | "nao" | "na" | null;
 
@@ -282,6 +283,9 @@ export function useAvaliacaoOS() {
 
     setAvaliacao({ ...avaliacao, concluida: true, nota_final: nota });
     toast.success(`Avaliação concluída! Nota: ${nota.toFixed(1)}%`);
+    
+    // Detect inconsistencies
+    try { await detectInconsistencies(os.id); } catch (e) { console.warn("Inconsistency detection error:", e); }
   };
 
   const answeredCount = questions.filter((q) => q.answer !== null).length;

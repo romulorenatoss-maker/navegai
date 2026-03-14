@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
+import { detectInconsistencies, markAuditOnlyAndCalculateScore } from "@/hooks/useInconsistencyDetection";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, AlertTriangle, Loader2, Plus, ListChecks, ChevronRight, ChevronLeft,
@@ -416,7 +417,8 @@ export default function AvaliacaoOSPage() {
 
     setWizardSubmitting(true);
     try {
-      const nota = wizardMaxScore > 0 ? (wizardTotalScore / wizardMaxScore) * 100 : 0;
+      // Use sector-based scoring: only responsible sector answers count
+      let nota: number;
       let osId: string;
       let avalId: string;
 
@@ -426,18 +428,25 @@ export default function AvaliacaoOSPage() {
         for (const p of previewPerguntas) {
           await supabase.from("respostas_avaliacao").upsert({ avaliacao_id: existingAvaliacaoId, pergunta_id: p.id, resposta: wizardAnswers[p.id], observacao: wizardObservations[p.id] || null }, { onConflict: "avaliacao_id,pergunta_id" });
         }
+        // Calculate score based on responsible sector
+        const scoreResult = await markAuditOnlyAndCalculateScore(existingAvaliacaoId, selectedTipoAvaliacaoId, previewPerguntas, wizardAnswers);
+        nota = scoreResult.nota;
         await supabase.from("avaliacoes").update({ concluida: true, nota_final: nota }).eq("id", existingAvaliacaoId);
         avalId = existingAvaliacaoId;
       } else if (existingOsId) {
         osId = existingOsId;
         await supabase.from("ordens_servico").update({ atendente_id: atendenteId || null, tecnico_id: tecnicoId || null } as any).eq("id", osId);
         const { data: newAval, error: ae } = await supabase.from("avaliacoes").insert({
-          ordem_servico_id: osId, avaliador_id: profile!.id, tipo_avaliacao_id: selectedTipoAvaliacaoId, concluida: true, nota_final: nota,
+          ordem_servico_id: osId, avaliador_id: profile!.id, tipo_avaliacao_id: selectedTipoAvaliacaoId, concluida: false, nota_final: null,
         } as any).select("id").single();
         if (ae) throw ae;
         avalId = newAval.id;
         const respostas = previewPerguntas.map(p => ({ avaliacao_id: avalId, pergunta_id: p.id, resposta: wizardAnswers[p.id], observacao: wizardObservations[p.id] || null }));
         await supabase.from("respostas_avaliacao").insert(respostas);
+        // Calculate score based on responsible sector
+        const scoreResult = await markAuditOnlyAndCalculateScore(avalId, selectedTipoAvaliacaoId, previewPerguntas, wizardAnswers);
+        nota = scoreResult.nota;
+        await supabase.from("avaliacoes").update({ concluida: true, nota_final: nota }).eq("id", avalId);
       } else {
         const num = newOsNumero.trim();
         const cpfD = clienteCpf.replace(/\D/g, "");
@@ -465,16 +474,23 @@ export default function AvaliacaoOSPage() {
           osId = newOs.id;
         }
         const { data: newAval, error: ae } = await supabase.from("avaliacoes").insert({
-          ordem_servico_id: osId, avaliador_id: profile!.id, tipo_avaliacao_id: selectedTipoAvaliacaoId, concluida: true, nota_final: nota,
+          ordem_servico_id: osId, avaliador_id: profile!.id, tipo_avaliacao_id: selectedTipoAvaliacaoId, concluida: false, nota_final: null,
         } as any).select("id").single();
         if (ae) throw ae;
         avalId = newAval.id;
         const respostas = previewPerguntas.map(p => ({ avaliacao_id: avalId, pergunta_id: p.id, resposta: wizardAnswers[p.id], observacao: wizardObservations[p.id] || null }));
         await supabase.from("respostas_avaliacao").insert(respostas);
+        // Calculate score based on responsible sector
+        const scoreResult = await markAuditOnlyAndCalculateScore(avalId, selectedTipoAvaliacaoId, previewPerguntas, wizardAnswers);
+        nota = scoreResult.nota;
+        await supabase.from("avaliacoes").update({ concluida: true, nota_final: nota }).eq("id", avalId);
       }
       setWizardScore(nota);
       setWizardFinalized(true);
       toast.success(`Avaliação concluída! Nota: ${nota.toFixed(1)}%`);
+      
+      // Detect inconsistencies across evaluators for this OS
+      try { await detectInconsistencies(osId); } catch (e) { console.warn("Inconsistency detection error:", e); }
       refetchPending();
       if (selectedOS) {
         const { data: refreshed } = await supabase.from("ordens_servico").select("*").eq("id", selectedOS.id).single();
