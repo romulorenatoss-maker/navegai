@@ -47,6 +47,111 @@ export type Database = {
         }
         Relationships: []
       }
+      avaliacoes: {
+        Row: {
+          avaliador_id: string
+          concluida: boolean
+          created_at: string
+          id: string
+          nota_final: number | null
+          observacao_geral: string | null
+          ordem_servico_id: string
+          updated_at: string
+        }
+        Insert: {
+          avaliador_id: string
+          concluida?: boolean
+          created_at?: string
+          id?: string
+          nota_final?: number | null
+          observacao_geral?: string | null
+          ordem_servico_id: string
+          updated_at?: string
+        }
+        Update: {
+          avaliador_id?: string
+          concluida?: boolean
+          created_at?: string
+          id?: string
+          nota_final?: number | null
+          observacao_geral?: string | null
+          ordem_servico_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avaliacoes_avaliador_id_fkey"
+            columns: ["avaliador_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avaliacoes_ordem_servico_id_fkey"
+            columns: ["ordem_servico_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ordens_servico: {
+        Row: {
+          cliente_cpf: string | null
+          cliente_nome: string | null
+          colaborador_avaliado_id: string | null
+          created_at: string
+          data_abertura: string
+          data_conclusao: string | null
+          id: string
+          numero_os: string
+          status: Database["public"]["Enums"]["os_status"]
+          tipo_servico_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          cliente_cpf?: string | null
+          cliente_nome?: string | null
+          colaborador_avaliado_id?: string | null
+          created_at?: string
+          data_abertura?: string
+          data_conclusao?: string | null
+          id?: string
+          numero_os: string
+          status?: Database["public"]["Enums"]["os_status"]
+          tipo_servico_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cliente_cpf?: string | null
+          cliente_nome?: string | null
+          colaborador_avaliado_id?: string | null
+          created_at?: string
+          data_abertura?: string
+          data_conclusao?: string | null
+          id?: string
+          numero_os?: string
+          status?: Database["public"]["Enums"]["os_status"]
+          tipo_servico_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ordens_servico_colaborador_avaliado_id_fkey"
+            columns: ["colaborador_avaliado_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ordens_servico_tipo_servico_id_fkey"
+            columns: ["tipo_servico_id"]
+            isOneToOne: false
+            referencedRelation: "tipos_servico"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       perguntas_avaliacao: {
         Row: {
           ativo: boolean
@@ -161,6 +266,51 @@ export type Database = {
           },
         ]
       }
+      respostas_avaliacao: {
+        Row: {
+          avaliacao_id: string
+          created_at: string
+          evidencia_url: string | null
+          id: string
+          observacao: string | null
+          pergunta_id: string
+          resposta: string | null
+        }
+        Insert: {
+          avaliacao_id: string
+          created_at?: string
+          evidencia_url?: string | null
+          id?: string
+          observacao?: string | null
+          pergunta_id: string
+          resposta?: string | null
+        }
+        Update: {
+          avaliacao_id?: string
+          created_at?: string
+          evidencia_url?: string | null
+          id?: string
+          observacao?: string | null
+          pergunta_id?: string
+          resposta?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "respostas_avaliacao_avaliacao_id_fkey"
+            columns: ["avaliacao_id"]
+            isOneToOne: false
+            referencedRelation: "avaliacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "respostas_avaliacao_pergunta_id_fkey"
+            columns: ["pergunta_id"]
+            isOneToOne: false
+            referencedRelation: "perguntas_avaliacao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       setores: {
         Row: {
           ativo: boolean
@@ -260,6 +410,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "avaliador" | "executor" | "gestor"
+      os_status: "aberta" | "em_andamento" | "concluida"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -388,6 +539,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "avaliador", "executor", "gestor"],
+      os_status: ["aberta", "em_andamento", "concluida"],
     },
   },
 } as const
