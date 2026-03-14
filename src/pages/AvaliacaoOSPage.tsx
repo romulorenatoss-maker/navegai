@@ -108,7 +108,7 @@ export default function AvaliacaoOSPage() {
 
   // Setup state (after validation, for creating new OS)
   const [tipoServicoId, setTipoServicoId] = useState("");
-  const [selectedTipoAvaliacaoId, setSelectedTipoAvaliacaoId] = useState("");
+  
   const [atendenteId, setAtendenteId] = useState("");
   const [tecnicoId, setTecnicoId] = useState("");
 
