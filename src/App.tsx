@@ -14,6 +14,7 @@ import ColaboradoresPage from "./pages/ColaboradoresPage";
 import TiposServicoPage from "./pages/TiposServicoPage";
 import PerguntasPage from "./pages/PerguntasPage";
 import ChecklistsCadastroPage from "./pages/ChecklistsCadastroPage";
+import ClientesPage from "./pages/ClientesPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 
