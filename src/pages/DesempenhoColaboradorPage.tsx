@@ -468,17 +468,6 @@ export default function DesempenhoColaboradorPage() {
               <span className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Filtros</span>
             </div>
             <div className="flex flex-wrap gap-4 items-end">
-              <div className="flex flex-col gap-1.5 min-w-[200px]">
-                <label className="text-caption font-medium text-muted-foreground">Mês de Competência</label>
-                <Select value={competenceMonth} onValueChange={handleCompetenceChange}>
-                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {competenceMonths.map(m => (
-                      <SelectItem key={m.value} value={m.value} className="capitalize">{m.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-caption font-medium text-muted-foreground">Data Início</label>
                 <Popover>
@@ -507,6 +496,9 @@ export default function DesempenhoColaboradorPage() {
                   </PopoverContent>
                 </Popover>
               </div>
+              <Button onClick={handleBuscar} className="h-9">
+                <Filter className="w-4 h-4 mr-1.5" /> Buscar
+              </Button>
             </div>
           </div>
 
