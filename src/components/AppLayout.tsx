@@ -65,6 +65,7 @@ export function AppLayout() {
               mobile
               onNavigate={() => setMobileOpen(false)}
               isAdmin={isAdmin}
+              allowedScreens={allowedScreens}
             />
           </SheetContent>
         </Sheet>
