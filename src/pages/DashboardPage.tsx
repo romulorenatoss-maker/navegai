@@ -618,8 +618,31 @@ export default function DashboardPage() {
         ))}
       </motion.div>
 
-      {/* Pending Sections - My Sector & Other Sector */}
-      {(pendingMySector.length > 0 || pendingOtherSector.length > 0) && (
+      {/* Admin: Pending by Sector */}
+      {isAdmin && sectorPendingSummary.length > 0 && (
+        <motion.div variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
+          <div className="p-4 border-b border-border flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-warning" />
+            <h2 className="text-body font-semibold text-foreground">Pendências por Setor</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-4">
+            {sectorPendingSummary.map(s => (
+              <div key={s.setor_id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
+                <span className="text-body font-medium text-foreground">{s.setor_nome}</span>
+                <span className={cn(
+                  "text-body font-bold font-tabular px-2 py-0.5 rounded",
+                  s.pending_count > 3 ? "bg-destructive/10 text-destructive" :
+                  s.pending_count > 1 ? "bg-warning/10 text-warning" :
+                  "bg-primary/10 text-primary"
+                )}>{s.pending_count} OS</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Pending Sections - My Sector & Other Sector (for evaluators) */}
+      {!isAdmin && (pendingMySector.length > 0 || pendingOtherSector.length > 0) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Pending - My Sector */}
           <motion.div variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
