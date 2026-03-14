@@ -23,6 +23,7 @@ const cargoConfig: Record<string, { label: string; badge: string; description: s
 };
 
 export default function ColaboradoresPage() {
+  const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Profile | null>(null);
