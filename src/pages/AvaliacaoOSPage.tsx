@@ -486,6 +486,7 @@ export default function AvaliacaoOSPage() {
           avaliador_nome: avaliadorNames[a.avaliador_id] || "—",
           tipo_avaliacao_nome: a.tipo_avaliacao_id ? taNames[a.tipo_avaliacao_id] || "—" : "—",
           concluida: a.concluida,
+          concluida_em: a.concluida_em,
           nota_final: a.nota_final,
           respostas: avalRespostas,
         };
