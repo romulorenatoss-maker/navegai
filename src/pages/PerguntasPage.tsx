@@ -78,28 +78,25 @@ export default function PerguntasPage() {
     return map;
   }, [perguntas]);
 
-  // Filtered questions based on multi-select
-  const hasFilters = filtrosTipoServico.size > 0;
+  // Filtered questions based on single select
+  const hasFilter = filtroTipoServico !== null;
   const perguntasFiltradas = useMemo(() => {
-    if (!hasFilters) return perguntas;
-    return perguntas.filter((p) => {
-      const key = p.tipo_servico_id || "global";
-      return filtrosTipoServico.has(key);
-    });
-  }, [perguntas, filtrosTipoServico, hasFilters]);
+    if (!hasFilter) return [];
+    return perguntas
+      .filter((p) => {
+        const key = p.tipo_servico_id || "global";
+        return key === filtroTipoServico;
+      })
+      .sort((a, b) => a.ordem - b.ordem);
+  }, [perguntas, filtroTipoServico, hasFilter]);
 
   const somaPesoFiltrado = useMemo(
     () => perguntasFiltradas.reduce((acc, p) => acc + p.peso, 0),
     [perguntasFiltradas]
   );
 
-  const toggleFiltro = (key: string) => {
-    setFiltrosTipoServico((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
+  const selectFiltro = (key: string) => {
+    setFiltroTipoServico((prev) => (prev === key ? null : key));
   };
 
   const upsert = useMutation({
