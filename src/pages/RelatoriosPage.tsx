@@ -113,8 +113,7 @@ export default function RelatoriosPage() {
   // Fetch OS
   const fetchOS = useCallback(async () => {
     setLoading(true);
-    const from = startDate ? startDate.toISOString() : startOfMonth(now).toISOString();
-    const to = endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString();
+    const { from, to } = getFilterDates();
 
     const { data: osData } = await supabase
       .from("ordens_servico")
