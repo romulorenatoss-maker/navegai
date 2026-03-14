@@ -32,18 +32,6 @@ interface OSRow {
 }
 
 // --- Helpers ---
-function getCompetenceMonths(): { value: string; label: string }[] {
-  const months = [];
-  const now = new Date();
-  for (let i = 0; i < 24; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push({
-      value: format(d, "yyyy-MM"),
-      label: format(d, "MMMM yyyy", { locale: ptBR }),
-    });
-  }
-  return months;
-}
 
 const statusText: Record<string, string> = {
   aberta: "Aberta",
