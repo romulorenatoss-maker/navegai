@@ -207,6 +207,15 @@ export default function TiposServicoPage() {
   );
 }
 
+interface SectorBreakdown {
+  totalPerguntas: number;
+  totalPontos: number;
+  atendimentoPerguntas: number;
+  atendimentoPontos: number;
+  tecnicoPerguntas: number;
+  tecnicoPontos: number;
+}
+
 function TipoRow({ t, onToggle, onEdit, onRemove }: { t: any; onToggle: () => void; onEdit: () => void; onRemove: () => void }) {
   const { data: links = [] } = useQuery({
     queryKey: ["tsta_display", t.id],
@@ -219,11 +228,58 @@ function TipoRow({ t, onToggle, onEdit, onRemove }: { t: any; onToggle: () => vo
     },
   });
 
+  // Fetch question breakdown by sector
+  const { data: breakdown } = useQuery<SectorBreakdown>({
+    queryKey: ["tipo_servico_breakdown", t.id],
+    queryFn: async () => {
+      const { data: perguntas } = await supabase
+        .from("perguntas_avaliacao")
+        .select("peso, setor_avaliado_id, setores!perguntas_avaliacao_setor_avaliado_id_fkey(nome)")
+        .eq("ativo", true)
+        .eq("tipo_servico_id", t.id);
+
+      const result: SectorBreakdown = { totalPerguntas: 0, totalPontos: 0, atendimentoPerguntas: 0, atendimentoPontos: 0, tecnicoPerguntas: 0, tecnicoPontos: 0 };
+      if (!perguntas) return result;
+
+      for (const p of perguntas) {
+        result.totalPerguntas++;
+        result.totalPontos += p.peso;
+        const setorNome = ((p as any).setores?.nome || "").toLowerCase();
+        if (setorNome.includes("atendimento") || setorNome.includes("atendente")) {
+          result.atendimentoPerguntas++;
+          result.atendimentoPontos += p.peso;
+        } else if (setorNome.includes("técnico") || setorNome.includes("tecnico")) {
+          result.tecnicoPerguntas++;
+          result.tecnicoPontos += p.peso;
+        }
+      }
+      return result;
+    },
+  });
+
+  const b = breakdown || { totalPerguntas: 0, totalPontos: 0, atendimentoPerguntas: 0, atendimentoPontos: 0, tecnicoPerguntas: 0, tecnicoPontos: 0 };
+
   return (
     <tr className="hover:bg-muted/50 transition-colors">
-      <td className="px-4 py-3 text-body font-medium text-foreground">{t.nome}</td>
-      <td className="px-4 py-3 text-body text-muted-foreground">{t.setores?.nome || "—"}</td>
+      <td className="px-4 py-3">
+        <div className="text-body font-medium text-foreground">{t.nome}</div>
+        <div className="text-caption text-muted-foreground">{t.setores?.nome || "—"}</div>
+      </td>
       <td className="px-4 py-3 text-caption text-muted-foreground">{links.length > 0 ? links.join(", ") : "—"}</td>
+      <td className="px-4 py-3">
+        <div className="text-body font-medium text-foreground">{b.totalPerguntas}</div>
+        <div className="text-caption text-muted-foreground">{b.totalPontos} pts</div>
+      </td>
+      <td className="px-4 py-3">
+        <div className="flex flex-col gap-0.5">
+          <span className="text-caption text-muted-foreground">
+            Atend: <span className="font-medium text-foreground">{b.atendimentoPerguntas}</span> ({b.atendimentoPontos} pts)
+          </span>
+          <span className="text-caption text-muted-foreground">
+            Téc: <span className="font-medium text-foreground">{b.tecnicoPerguntas}</span> ({b.tecnicoPontos} pts)
+          </span>
+        </div>
+      </td>
       <td className="px-4 py-3">
         <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${t.ativo ? "badge-complete" : "badge-expired"}`}>{t.ativo ? "Ativo" : "Inativo"}</span>
       </td>
