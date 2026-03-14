@@ -7,19 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import type { Tables } from "@/integrations/supabase/types";
-import ChecklistTemplateManager from "@/components/ChecklistTemplateManager";
 
 type TipoServico = Tables<"tipos_servico">;
-
-interface TipoAvaliacao {
-  id: string;
-  nome: string;
-  cargo_responsavel: string | null;
-}
 
 export default function TiposServicoPage() {
   const queryClient = useQueryClient();
@@ -27,19 +19,18 @@ export default function TiposServicoPage() {
   const [editing, setEditing] = useState<TipoServico | null>(null);
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
-  const [checklistId, setChecklistId] = useState<string>("");
-  const [selectedTiposAvaliacao, setSelectedTiposAvaliacao] = useState<string[]>([]);
+  const [selectedChecklists, setSelectedChecklists] = useState<string[]>([]);
 
   const { data: tipos = [], isLoading } = useQuery({
     queryKey: ["tipos_servico"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).from("tipos_servico").select("*, setores(nome), checklists!tipos_servico_checklist_id_fkey(titulo)").order("nome");
+      const { data, error } = await supabase.from("tipos_servico").select("*").order("nome");
       if (error) throw error;
-      return data;
+      return data || [];
     },
   });
 
-  // Fetch all checklists for the selector
+  // Fetch all checklists
   const { data: allChecklists = [] } = useQuery({
     queryKey: ["all_checklists"],
     queryFn: async () => {
@@ -49,37 +40,40 @@ export default function TiposServicoPage() {
     },
   });
 
-  const { data: tiposAvaliacao = [] } = useQuery({
-    queryKey: ["tipos_avaliacao_all"],
-    queryFn: async () => {
-      const { data } = await (supabase as any).from("tipos_avaliacao").select("*").eq("ativo", true).order("nome");
-      return (data || []) as TipoAvaliacao[];
-    },
-  });
-
-  // Load existing links for the tipo being edited
-  const { data: existingLinks = [] } = useQuery({
-    queryKey: ["tsta_links", editing?.id],
+  // Load existing checklist links for edited tipo
+  const { data: existingChecklistLinks = [] } = useQuery({
+    queryKey: ["tsc_links", editing?.id],
     queryFn: async () => {
       if (!editing?.id) return [];
-      const { data } = await (supabase as any).from("tipo_servico_tipos_avaliacao").select("tipo_avaliacao_id").eq("tipo_servico_id", editing.id);
-      return (data || []).map((l: any) => l.tipo_avaliacao_id as string);
+      const { data } = await (supabase as any).from("tipo_servico_checklists").select("checklist_id").eq("tipo_servico_id", editing.id);
+      return (data || []).map((l: any) => l.checklist_id as string);
     },
     enabled: !!editing?.id,
   });
 
   useEffect(() => {
-    if (editing && existingLinks.length >= 0) {
-      setSelectedTiposAvaliacao(existingLinks);
+    if (editing && existingChecklistLinks.length >= 0) {
+      setSelectedChecklists(existingChecklistLinks);
     }
-  }, [existingLinks, editing]);
+  }, [existingChecklistLinks, editing]);
+
+  // Count questions per checklist for display
+  const { data: checklistQuestionCounts = {} } = useQuery({
+    queryKey: ["checklist_question_counts"],
+    queryFn: async () => {
+      const { data } = await supabase.from("perguntas_avaliacao").select("checklist_id").eq("ativo", true).not("checklist_id", "is", null);
+      const map: Record<string, number> = {};
+      data?.forEach((p: any) => { if (p.checklist_id) map[p.checklist_id] = (map[p.checklist_id] || 0) + 1; });
+      return map;
+    },
+  });
 
   const upsert = useMutation({
     mutationFn: async () => {
-      const payload = { nome, descricao, checklist_id: checklistId || null, setor_id: null };
+      const payload = { nome, descricao, setor_id: null, checklist_id: null };
       let tipoId: string;
       if (editing) {
-        const { error } = await (supabase as any).from("tipos_servico").update(payload).eq("id", editing.id);
+        const { error } = await supabase.from("tipos_servico").update(payload as any).eq("id", editing.id);
         if (error) throw error;
         tipoId = editing.id;
       } else {
@@ -87,16 +81,16 @@ export default function TiposServicoPage() {
         if (error) throw error;
         tipoId = data.id;
       }
-      // Sync evaluation type links
-      await (supabase as any).from("tipo_servico_tipos_avaliacao").delete().eq("tipo_servico_id", tipoId);
-      if (selectedTiposAvaliacao.length > 0) {
-        const rows = selectedTiposAvaliacao.map(taId => ({ tipo_servico_id: tipoId, tipo_avaliacao_id: taId }));
-        await (supabase as any).from("tipo_servico_tipos_avaliacao").insert(rows);
+      // Sync checklist links
+      await (supabase as any).from("tipo_servico_checklists").delete().eq("tipo_servico_id", tipoId);
+      if (selectedChecklists.length > 0) {
+        const rows = selectedChecklists.map(clId => ({ tipo_servico_id: tipoId, checklist_id: clId }));
+        await (supabase as any).from("tipo_servico_checklists").insert(rows);
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tipos_servico"] });
-      queryClient.invalidateQueries({ queryKey: ["all_checklists"] });
+      queryClient.invalidateQueries({ queryKey: ["tsc_links"] });
       toast.success(editing ? "Tipo de serviço atualizado." : "Tipo de serviço criado.");
       closeDialog();
     },
@@ -121,12 +115,12 @@ export default function TiposServicoPage() {
     onError: (err: any) => toast.error(err.message),
   });
 
-  const openCreate = () => { setEditing(null); setNome(""); setDescricao(""); setChecklistId(""); setSelectedTiposAvaliacao([]); setDialogOpen(true); };
-  const openEdit = (t: any) => { setEditing(t); setNome(t.nome); setDescricao(t.descricao || ""); setChecklistId(t.checklist_id || ""); setDialogOpen(true); };
-  const closeDialog = () => { setDialogOpen(false); setEditing(null); setSelectedTiposAvaliacao([]); };
+  const openCreate = () => { setEditing(null); setNome(""); setDescricao(""); setSelectedChecklists([]); setDialogOpen(true); };
+  const openEdit = (t: any) => { setEditing(t); setNome(t.nome); setDescricao(t.descricao || ""); setDialogOpen(true); };
+  const closeDialog = () => { setDialogOpen(false); setEditing(null); setSelectedChecklists([]); };
 
-  const toggleTA = (taId: string) => {
-    setSelectedTiposAvaliacao(prev => prev.includes(taId) ? prev.filter(id => id !== taId) : [...prev, taId]);
+  const toggleChecklist = (clId: string) => {
+    setSelectedChecklists(prev => prev.includes(clId) ? prev.filter(id => id !== clId) : [...prev, clId]);
   };
 
   return (
@@ -144,8 +138,7 @@ export default function TiposServicoPage() {
           <thead>
             <tr className="border-b border-border">
               <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Nome</th>
-              <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Checklist</th>
-              <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Avaliações</th>
+              <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Checklists</th>
               <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Perguntas</th>
               <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Por Setor</th>
               <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Status</th>
@@ -154,9 +147,9 @@ export default function TiposServicoPage() {
           </thead>
           <tbody className="divide-y divide-border">
             {isLoading ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">Carregando...</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Carregando...</td></tr>
             ) : tipos.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhum tipo cadastrado.</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhum tipo cadastrado.</td></tr>
             ) : tipos.map((t: any) => (
               <TipoRow key={t.id} t={t} onToggle={() => toggleAtivo.mutate(t)} onEdit={() => openEdit(t)} onRemove={() => remove.mutate(t.id)} />
             ))}
@@ -170,41 +163,27 @@ export default function TiposServicoPage() {
           <form onSubmit={e => { e.preventDefault(); upsert.mutate(); }} className="space-y-4">
             <div className="space-y-1.5"><Label>Nome</Label><Input value={nome} onChange={e => setNome(e.target.value)} required /></div>
             <div className="space-y-1.5"><Label>Descrição</Label><Textarea value={descricao} onChange={e => setDescricao(e.target.value)} /></div>
-            <div className="space-y-1.5">
-              <Label>Checklist Associado</Label>
-              <Select value={checklistId} onValueChange={setChecklistId}>
-                <SelectTrigger><SelectValue placeholder="Selecione um checklist" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Nenhum</SelectItem>
-                  {allChecklists.map(c => <SelectItem key={c.id} value={c.id}>{c.titulo}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <p className="text-caption text-muted-foreground">O checklist define as perguntas carregadas na avaliação deste serviço.</p>
-            </div>
 
-            {/* Evaluation Types */}
+            {/* Checklists Associados */}
             <div className="space-y-2">
-              <Label>Tipos de Avaliação Vinculados</Label>
-              <p className="text-caption text-muted-foreground">Selecione quais avaliações são necessárias para este serviço.</p>
-              {tiposAvaliacao.length === 0 ? (
-                <p className="text-caption text-muted-foreground">Nenhum tipo de avaliação cadastrado.</p>
+              <Label>Checklists Associados</Label>
+              <p className="text-caption text-muted-foreground">Selecione os pacotes de perguntas vinculados a este tipo de serviço.</p>
+              {allChecklists.length === 0 ? (
+                <p className="text-caption text-muted-foreground">Nenhum checklist cadastrado. Crie um na tela de Perguntas.</p>
               ) : (
-                <div className="space-y-2 border border-border rounded-lg p-3">
-                  {tiposAvaliacao.map(ta => (
-                    <label key={ta.id} className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 px-2 py-1.5 rounded-md transition-colors">
-                      <Checkbox checked={selectedTiposAvaliacao.includes(ta.id)} onCheckedChange={() => toggleTA(ta.id)} />
+                <div className="space-y-1.5 border border-border rounded-lg p-3 max-h-60 overflow-y-auto">
+                  {allChecklists.map(cl => (
+                    <label key={cl.id} className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 px-2 py-1.5 rounded-md transition-colors">
+                      <Checkbox checked={selectedChecklists.includes(cl.id)} onCheckedChange={() => toggleChecklist(cl.id)} />
                       <div className="flex-1">
-                        <span className="text-body font-medium text-foreground">{ta.nome}</span>
-                        {ta.cargo_responsavel && <span className="text-caption text-muted-foreground ml-2">({ta.cargo_responsavel})</span>}
+                        <span className="text-body font-medium text-foreground">{cl.titulo}</span>
+                        <span className="text-caption text-muted-foreground ml-2">({checklistQuestionCounts[cl.id] || 0} perguntas)</span>
                       </div>
                     </label>
                   ))}
                 </div>
               )}
             </div>
-
-            {/* Checklist Questions Manager */}
-            <ChecklistTemplateManager checklistId={checklistId === "none" ? null : checklistId || null} />
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={closeDialog}>Cancelar</Button>
@@ -227,56 +206,62 @@ interface SectorBreakdown {
 }
 
 function TipoRow({ t, onToggle, onEdit, onRemove }: { t: any; onToggle: () => void; onEdit: () => void; onRemove: () => void }) {
-  const { data: links = [] } = useQuery({
-    queryKey: ["tsta_display", t.id],
+  // Fetch linked checklists
+  const { data: linkedChecklists = [] } = useQuery({
+    queryKey: ["tsc_display", t.id],
     queryFn: async () => {
-      const { data } = await (supabase as any).from("tipo_servico_tipos_avaliacao").select("tipo_avaliacao_id").eq("tipo_servico_id", t.id);
+      const { data } = await (supabase as any).from("tipo_servico_checklists").select("checklist_id").eq("tipo_servico_id", t.id);
       if (!data?.length) return [];
-      const ids = data.map((l: any) => l.tipo_avaliacao_id);
-      const { data: tas } = await (supabase as any).from("tipos_avaliacao").select("nome").in("id", ids);
-      return (tas || []).map((ta: any) => ta.nome);
+      const ids = data.map((l: any) => l.checklist_id);
+      const { data: cls } = await supabase.from("checklists").select("id, titulo").in("id", ids);
+      return (cls || []) as { id: string; titulo: string }[];
     },
   });
 
-  // Fetch question breakdown by sector (using checklist_id if available)
+  // Fetch question breakdown from linked checklists
   const { data: breakdown } = useQuery<SectorBreakdown>({
-    queryKey: ["tipo_servico_breakdown", t.id, t.checklist_id],
+    queryKey: ["tipo_servico_breakdown", t.id, linkedChecklists.map((c: any) => c.id).join(",")],
     queryFn: async () => {
-      let query = supabase
-        .from("perguntas_avaliacao")
-        .select("peso, setor_avaliado_id, setores!perguntas_avaliacao_setor_avaliado_id_fkey(nome)")
-        .eq("ativo", true);
+      const result: SectorBreakdown = { totalPerguntas: 0, totalPontos: 0, atendimentoPerguntas: 0, atendimentoPontos: 0, tecnicoPerguntas: 0, tecnicoPontos: 0 };
       
-      // If service type has a checklist, load questions by checklist_id
-      if (t.checklist_id) {
-        query = (query as any).eq("checklist_id", t.checklist_id);
-      } else {
-        query = query.eq("tipo_servico_id", t.id);
+      const checklistIds = linkedChecklists.map((c: any) => c.id);
+      if (checklistIds.length === 0) {
+        // Fallback: load by tipo_servico_id
+        const { data: perguntas } = await supabase
+          .from("perguntas_avaliacao")
+          .select("peso, setor_avaliado_id, setores!perguntas_avaliacao_setor_avaliado_id_fkey(nome)")
+          .eq("ativo", true)
+          .eq("tipo_servico_id", t.id);
+        if (!perguntas) return result;
+        for (const p of perguntas) {
+          result.totalPerguntas++;
+          result.totalPontos += p.peso;
+          const setorNome = ((p as any).setores?.nome || "").toLowerCase();
+          if (setorNome.includes("atendimento") || setorNome.includes("atendente")) { result.atendimentoPerguntas++; result.atendimentoPontos += p.peso; }
+          else if (setorNome.includes("técnico") || setorNome.includes("tecnico")) { result.tecnicoPerguntas++; result.tecnicoPontos += p.peso; }
+        }
+        return result;
       }
 
-      const { data: perguntas } = await query;
-
-      const result: SectorBreakdown = { totalPerguntas: 0, totalPontos: 0, atendimentoPerguntas: 0, atendimentoPontos: 0, tecnicoPerguntas: 0, tecnicoPontos: 0 };
+      const { data: perguntas } = await (supabase as any)
+        .from("perguntas_avaliacao")
+        .select("peso, setor_avaliado_id, setores!perguntas_avaliacao_setor_avaliado_id_fkey(nome)")
+        .eq("ativo", true)
+        .in("checklist_id", checklistIds);
       if (!perguntas) return result;
-
       for (const p of perguntas) {
         result.totalPerguntas++;
         result.totalPontos += p.peso;
         const setorNome = ((p as any).setores?.nome || "").toLowerCase();
-        if (setorNome.includes("atendimento") || setorNome.includes("atendente")) {
-          result.atendimentoPerguntas++;
-          result.atendimentoPontos += p.peso;
-        } else if (setorNome.includes("técnico") || setorNome.includes("tecnico")) {
-          result.tecnicoPerguntas++;
-          result.tecnicoPontos += p.peso;
-        }
+        if (setorNome.includes("atendimento") || setorNome.includes("atendente")) { result.atendimentoPerguntas++; result.atendimentoPontos += p.peso; }
+        else if (setorNome.includes("técnico") || setorNome.includes("tecnico")) { result.tecnicoPerguntas++; result.tecnicoPontos += p.peso; }
       }
       return result;
     },
+    enabled: linkedChecklists !== undefined,
   });
 
   const b = breakdown || { totalPerguntas: 0, totalPontos: 0, atendimentoPerguntas: 0, atendimentoPontos: 0, tecnicoPerguntas: 0, tecnicoPontos: 0 };
-  const checklistNome = t.checklists?.titulo || null;
 
   return (
     <tr className="hover:bg-muted/50 transition-colors">
@@ -284,8 +269,9 @@ function TipoRow({ t, onToggle, onEdit, onRemove }: { t: any; onToggle: () => vo
         <div className="text-body font-medium text-foreground">{t.nome}</div>
         {t.descricao && <div className="text-caption text-muted-foreground">{t.descricao}</div>}
       </td>
-      <td className="px-4 py-3 text-caption text-muted-foreground">{checklistNome || "—"}</td>
-      <td className="px-4 py-3 text-caption text-muted-foreground">{links.length > 0 ? links.join(", ") : "—"}</td>
+      <td className="px-4 py-3 text-caption text-muted-foreground">
+        {linkedChecklists.length > 0 ? linkedChecklists.map((c: any) => c.titulo).join(", ") : "—"}
+      </td>
       <td className="px-4 py-3">
         <div className="text-body font-medium text-foreground">{b.totalPerguntas}</div>
         <div className="text-caption text-muted-foreground">{b.totalPontos} pts</div>
