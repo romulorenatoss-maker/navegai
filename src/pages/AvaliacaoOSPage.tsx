@@ -1422,13 +1422,25 @@ export default function AvaliacaoOSPage() {
         {/* Progress Bar */}
         <div className="bg-card border border-border rounded-lg shadow-card mb-4 p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-foreground">Progresso da Avaliação</span>
+            <span className="text-sm font-medium text-foreground">Progresso Global da OS</span>
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold text-foreground font-tabular">{globalProgressPercent}%</span>
               <span className="text-caption text-muted-foreground font-tabular">({globalAnsweredCount}/{evalPerguntas.length} perguntas)</span>
             </div>
           </div>
           <Progress value={globalProgressPercent} className="h-3" />
+          
+          {/* My sector progress */}
+          {answerablePerguntas.length < evalPerguntas.length && (
+            <div className="mt-3 pt-3 border-t border-border">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-caption text-muted-foreground">Meu setor</span>
+                <span className="text-caption font-medium text-foreground font-tabular">{myProgressPercent}% ({myAnsweredCount}/{answerablePerguntas.length})</span>
+              </div>
+              <Progress value={myProgressPercent} className="h-2" />
+            </div>
+          )}
+          
           {evalMaxScore > 0 && (
             <div className="flex items-center justify-between mt-2 text-caption text-muted-foreground">
               <span>Pontuação parcial</span>
