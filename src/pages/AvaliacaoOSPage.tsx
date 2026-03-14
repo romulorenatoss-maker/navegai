@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { detectInconsistencies, markAuditOnlyAndCalculateScore } from "@/hooks/useInconsistencyDetection";
+import { detectLinkedInconsistencies } from "@/hooks/useLinkedInconsistencyDetection";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, AlertTriangle, Loader2, ChevronRight, ChevronLeft,
@@ -922,6 +923,7 @@ export default function AvaliacaoOSPage() {
       setEvalFinalized(true);
       toast.success(`Avaliação concluída! Nota: ${nota.toFixed(1)}%`);
       try { await detectInconsistencies(evalOsId); } catch (e) { console.warn("Inconsistency detection error:", e); }
+      try { await detectLinkedInconsistencies(evalAvaliacaoId, evalOsId); } catch (e) { console.warn("Linked inconsistency detection error:", e); }
       refetchPending();
       setTimeout(() => navigate("/"), 1500);
     } catch (err: any) {

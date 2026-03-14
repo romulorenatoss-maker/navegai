@@ -56,6 +56,7 @@ export default function PerguntasPage() {
   const [peso, setPeso] = useState("1");
   const [ordem, setOrdem] = useState("0");
   const [previewAnswer, setPreviewAnswer] = useState<PreviewAnswer>(null);
+  const [linkedInconsistencyId, setLinkedInconsistencyId] = useState("");
   const [filtroTipoServico, setFiltroTipoServico] = useState<string | null>(null);
 
   // Checklist CRUD state
@@ -258,6 +259,7 @@ export default function PerguntasPage() {
         tipo_avaliado: tipoAvaliado,
         peso: Math.min(100, Math.max(1, parseInt(peso) || 1)),
         ordem: computedOrdem,
+        correlacao_pergunta_id: linkedInconsistencyId || null,
       };
       if (editing) {
         const { error } = await supabase.from("perguntas_avaliacao").update(payload as any).eq("id", editing.id);
@@ -303,7 +305,7 @@ export default function PerguntasPage() {
 
   const openCreate = () => {
     setEditing(null); setPergunta(""); setChecklistId(""); setTipoServicoId(""); setTipoAvaliacaoId(""); setTargetEmployeeType("geral");
-    setSetorAvaliadoId(""); setTipoAvaliado("atendente"); setPeso("1"); setOrdem("0"); setPreviewAnswer(null);
+    setSetorAvaliadoId(""); setTipoAvaliado("atendente"); setPeso("1"); setOrdem("0"); setPreviewAnswer(null); setLinkedInconsistencyId("");
     setDialogOpen(true);
   };
   const openEdit = (p: Pergunta) => {
@@ -314,6 +316,7 @@ export default function PerguntasPage() {
     const tipo = tipos.find(t => t.id === p.tipo_servico_id);
     setSetorAvaliadoId(tipo?.setor_id || (p as any).setor_avaliado_id || "");
     setTipoAvaliado(p.tipo_avaliado); setPeso(String(p.peso)); setOrdem(String(p.ordem)); setPreviewAnswer(null);
+    setLinkedInconsistencyId((p as any).correlacao_pergunta_id || "");
     setDialogOpen(true);
   };
   const closeDialog = () => { setDialogOpen(false); setEditing(null); setPreviewAnswer(null); };
@@ -520,6 +523,21 @@ export default function PerguntasPage() {
             <div className="space-y-1.5">
               <Label>Nota</Label>
               <Input type="number" min={1} max={100} value={peso} onChange={e => { const v = e.target.value.replace(/\D/g, ''); setPeso(v); }} onKeyDown={e => { if (!/[0-9]/.test(e.key) && !['Backspace','Delete','Tab','ArrowLeft','ArrowRight','Home','End'].includes(e.key)) e.preventDefault(); }} required inputMode="numeric" pattern="[0-9]*" />
+            </div>
+
+            {/* 5. Linked Inconsistency Question */}
+            <div className="space-y-1.5">
+              <Label>Pergunta Vinculada (Inconsistência)</Label>
+              <Select value={linkedInconsistencyId} onValueChange={setLinkedInconsistencyId}>
+                <SelectTrigger><SelectValue placeholder="Nenhuma" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhuma</SelectItem>
+                  {perguntas
+                    .filter(p => p.id !== editing?.id && (checklistId && checklistId !== "none" ? p.checklist_id === checklistId : true))
+                    .map(p => <SelectItem key={p.id} value={p.id}>{p.pergunta}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="text-caption text-muted-foreground">Se as respostas divergirem na mesma OS, uma inconsistência será registrada.</p>
             </div>
 
             {/* Preview */}

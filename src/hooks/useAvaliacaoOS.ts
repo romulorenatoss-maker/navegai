@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { detectInconsistencies } from "@/hooks/useInconsistencyDetection";
+import { detectLinkedInconsistencies } from "@/hooks/useLinkedInconsistencyDetection";
 
 export type Answer = "sim" | "nao" | "na" | null;
 
@@ -286,6 +287,7 @@ export function useAvaliacaoOS() {
     
     // Detect inconsistencies
     try { await detectInconsistencies(os.id); } catch (e) { console.warn("Inconsistency detection error:", e); }
+    try { if (avaliacao) await detectLinkedInconsistencies(avaliacao.id, os.id); } catch (e) { console.warn("Linked inconsistency detection error:", e); }
   };
 
   const answeredCount = questions.filter((q) => q.answer !== null).length;
