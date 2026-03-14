@@ -956,7 +956,8 @@ export default function AvaliacaoOSPage() {
     if (!tipoServicoId) { toast.error("Selecione o tipo de serviço."); return; }
     if ((hasAtendimentoAccess || isAdmin) && !atendenteId) { toast.error("Selecione o atendente avaliado."); return; }
     if ((hasTecnicoAccess || isAdmin) && !tecnicoId) { toast.error("Selecione o técnico avaliado."); return; }
-    if (!atendenteId && !tecnicoId) { toast.error("Selecione pelo menos um colaborador avaliado."); return; }
+    // Only require at least one collaborator if the evaluator has atendimento/tecnico access
+    if ((hasAtendimentoAccess || hasTecnicoAccess || isAdmin) && !atendenteId && !tecnicoId) { toast.error("Selecione pelo menos um colaborador avaliado."); return; }
 
     try {
       const num = formOsNumero.trim();
@@ -1280,9 +1281,10 @@ export default function AvaliacaoOSPage() {
 
   const canCreateEval = !!tipoServicoId && (
     isAdmin ? (!!atendenteId && !!tecnicoId) :
+    hasAtendimentoAccess && hasTecnicoAccess ? (!!atendenteId && !!tecnicoId) :
     hasAtendimentoAccess ? !!atendenteId :
     hasTecnicoAccess ? !!tecnicoId :
-    (!!atendenteId || !!tecnicoId)
+    true // Evaluators from other sectors (e.g. Auditoria) can proceed without selecting atendente/tecnico
   );
 
   // --- PDF Generation ---
