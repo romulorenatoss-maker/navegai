@@ -32,12 +32,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchProfileAndRoles = async (userId: string) => {
     const [profileRes, rolesRes] = await Promise.all([
-      supabase.from("profiles").select("*").eq("user_id", userId).single(),
+      supabase.from("profiles").select("id, user_id, nome, email, cargo, setor_id, ativo, pode_editar_avaliacoes, pode_excluir_avaliacoes, created_at, updated_at").eq("user_id", userId).single(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
     ]);
     if (profileRes.data) {
-      setProfile(profileRes.data);
-      // Load screen permissions
+      setProfile(profileRes.data as Profile);
+      // Load screen permissions in parallel with setting profile
       const { data: perms } = await supabase
         .from("permissoes_tela")
         .select("tela_path")
