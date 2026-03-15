@@ -186,6 +186,8 @@ export default function AvaliacaoOSPage() {
   const isQuestionAnswerable = useCallback((setorAvaliadoId: string | null) => {
     if (isAdmin) return true;
     if (!setorAvaliadoId) return true;
+    // If evaluator has no sectors assigned, treat all questions as answerable
+    if (evaluatorSetorIds.length === 0) return true;
     return evaluatorSetorIds.includes(setorAvaliadoId);
   }, [isAdmin, evaluatorSetorIds]);
 
