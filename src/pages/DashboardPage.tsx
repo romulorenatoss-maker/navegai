@@ -138,9 +138,9 @@ export default function DashboardPage() {
       let query = supabase
         .from("ordens_servico")
         .select("id, numero_os, status, created_at, cliente_nome, cliente_id, tipo_servico_id")
-        .gte("created_at", from)
-        .lte("created_at", to)
-        .order("created_at", { ascending: false });
+        .gte("data_abertura", from)
+        .lte("data_abertura", to)
+        .order("data_abertura", { ascending: false });
 
       if (statusFilter !== "all") {
         if (statusFilter === "em_andamento") {
