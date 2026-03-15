@@ -273,7 +273,7 @@ export default function ColaboradoresPage() {
                         {isAdmin && <Button variant="ghost" size="sm" onClick={() => toggleAtivo.mutate(p)} className="press-effect">{p.ativo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}</Button>}
                         {isAdmin && <Button variant="ghost" size="sm" onClick={() => openEdit(p)} className="press-effect"><Pencil className="w-4 h-4" /></Button>}
                         {isAdmin && <Button variant="ghost" size="sm" onClick={() => { setEditing(p); setSessionViewOpen(true); }} className="press-effect" title="Sessões"><Clock className="w-4 h-4" /></Button>}
-                        {isAdmin && <Button variant="ghost" size="sm" onClick={() => remove.mutate(p.id)} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>}
+                        {isAdmin && <Button variant="ghost" size="sm" onClick={() => { setDeletingId(p.id); setDeleteDialogOpen(true); }} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>}
                       </div>
                     </td>
                   </tr>
