@@ -2278,13 +2278,16 @@ export default function AvaliacaoOSPage() {
     );
   }
 
-  // --- Combined search handler: CPF + OS number at once ---
+  // --- Combined search handler: CPF optional, OS required ---
   const handleCombinedSearch = async () => {
     const cpfDigits = formClienteCpf.replace(/\D/g, "");
     const osNum = formOsNumero.trim();
-    if (cpfDigits.length !== 11) { toast.error("Informe um CPF completo."); return; }
-    if (!isValidCpf(cpfDigits)) { toast.error("CPF inválido."); return; }
     if (!osNum) { toast.error("Informe o número da OS."); return; }
+    
+    // Validate CPF only if provided
+    const hasCpf = cpfDigits.length > 0;
+    if (hasCpf && cpfDigits.length !== 11) { toast.error("CPF incompleto. Preencha todos os 11 dígitos ou deixe em branco."); return; }
+    if (hasCpf && !isValidCpf(cpfDigits)) { toast.error("CPF inválido."); return; }
 
     setCpfValidating(true);
     setFormValidating(true);
@@ -2293,29 +2296,35 @@ export default function AvaliacaoOSPage() {
     setFormPendingAval(null);
 
     try {
-      // 1) Validate/find client
-      const { data: cliente } = await supabase
-        .from("clientes")
-        .select("id, nome, cpf")
-        .eq("cpf", formClienteCpf.trim())
-        .limit(1)
-        .single();
+      // 1) Validate/find client (only if CPF provided)
+      let cliente: any = null;
+      if (hasCpf) {
+        const { data } = await supabase
+          .from("clientes")
+          .select("id, nome, cpf")
+          .eq("cpf", formClienteCpf.trim())
+          .limit(1)
+          .single();
+        cliente = data;
 
-      if (cliente) {
-        setFormFoundCliente(cliente);
-        setFormClienteNome(cliente.nome);
-        setClienteId(cliente.id);
-        setShowNewClienteForm(false);
-        setCpfValidated(true);
+        if (cliente) {
+          setFormFoundCliente(cliente);
+          setFormClienteNome(cliente.nome);
+          setClienteId(cliente.id);
+          setShowNewClienteForm(false);
+          setCpfValidated(true);
+        } else {
+          setFormFoundCliente(null);
+          setShowNewClienteForm(true);
+          setClienteId(null);
+          setCpfValidated(true);
+        }
       } else {
+        // No CPF provided — skip client lookup
         setFormFoundCliente(null);
-        setShowNewClienteForm(true);
+        setShowNewClienteForm(false);
         setClienteId(null);
-        setCpfValidated(true);
-        setCpfValidating(false);
-        setFormValidating(false);
-        toast.info("Cliente não encontrado. Cadastre o nome abaixo e busque novamente.");
-        return;
+        setCpfValidated(false);
       }
 
       // 2) Search OS
