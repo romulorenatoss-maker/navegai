@@ -246,7 +246,18 @@ export default function PerguntasPage() {
   const upsert = useMutation({
     mutationFn: async () => {
       const resolvedChecklistId = checklistId === "none" || !checklistId ? null : checklistId;
-      const computedOrdem = editing ? parseInt(ordem) : getNextOrdem();
+      // When editing: keep position unless checklist changed; if changed, go to last position in new checklist
+      const checklistChanged = editing && (editing.checklist_id || null) !== resolvedChecklistId;
+      let computedOrdem: number;
+      if (!editing) {
+        computedOrdem = getNextOrdem();
+      } else if (checklistChanged) {
+        // Moving to a different checklist → go to last position
+        const targetPerguntas = perguntas.filter(p => (p.checklist_id || null) === resolvedChecklistId);
+        computedOrdem = targetPerguntas.length > 0 ? Math.max(...targetPerguntas.map(p => p.ordem)) + 1 : 1;
+      } else {
+        computedOrdem = parseInt(ordem);
+      }
       const payload = {
         pergunta,
         tipo_servico_id: null,
