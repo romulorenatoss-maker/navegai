@@ -540,68 +540,14 @@ export default function RelatoriosPage() {
         profiles?.forEach((p) => { profileNames[p.id] = p.nome; });
       }
 
+      // Build Excel data
       const fixedHeaders = [
         "Número OS", "Nome Cliente", "CPF Cliente", "Data Abertura",
         "Avaliador", "Tipo Serviço", "Colaborador Avaliado", "Hora Conclusão", "Nota Final"
       ];
       const questionHeaders = perguntas.map((p) => `${p.pergunta} (Peso: ${p.peso})`);
-      const csvHeader = [...fixedHeaders, ...questionHeaders].map(escapeCSV).join(";");
-
-      const csvRows: string[] = [];
-      for (const os of osData) {
-        const osAvals = avaliacoesRes.data?.filter((a) => a.ordem_servico_id === os.id) || [];
-        const osRespostas = respostasByOS[os.id] || {};
-
-        let totalPeso = 0;
-        let earnedPeso = 0;
-        const osPerguntaIds = perguntasByOS[os.id] || new Set();
-        for (const pid of osPerguntaIds) {
-          const resp = osRespostas[pid];
-          const peso = perguntaPeso[pid] || 1;
-          if (!resp) continue;
-          totalPeso += peso;
-          if (resp === "sim" || resp === "na") earnedPeso += peso;
-        }
-        const calculatedNota = totalPeso > 0 ? ((earnedPeso / totalPeso) * 100) : null;
-
-        const bestNota = osAvals.length > 0 && osAvals[0].nota_final != null
-          ? osAvals[0].nota_final
-          : calculatedNota;
-
-        const avaliadorNome = osAvals.length > 0 ? (profileNames[osAvals[0].avaliador_id] || "") : "";
-        const dataAval = format(new Date(os.data_abertura), "dd/MM/yyyy");
-        const horaConclusao = osAvals.length > 0 && osAvals[0].concluida_em
-          ? format(new Date(osAvals[0].concluida_em), "dd/MM/yyyy HH:mm")
-          : "";
-
-        const row = [
-          os.numero_os,
-          os.cliente_nome || "",
-          os.cliente_cpf || "",
-          dataAval,
-          avaliadorNome,
-          os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || "" : "",
-          os.colaborador_avaliado_id ? profileNames[os.colaborador_avaliado_id] || "" : "",
-          horaConclusao,
-          bestNota != null ? bestNota.toFixed(2).replace(".", ",") : "",
-          ...perguntas.map((p) => {
-            const resp = osRespostas[p.id];
-            if (!resp) return "";
-            if (resp === "na") return p.peso.toString();
-            if (resp === "sim") return p.peso.toString();
-            if (resp === "nao") return "0";
-            return "";
-          }),
-        ];
-        csvRows.push(row.map(escapeCSV).join(";"));
-      }
-
-      // Build Excel workbook
-      const fixedHeadersList = [...fixedHeaders, ...questionHeaders];
-      const allRows = [fixedHeadersList, ...csvRows.map(row => row.map(escapeCSV).join(";")).length ? [] : []];
-      
-      // Build data array for xlsx
-      const wsData = [fixedHeadersList];
+      const allHeaders = [...fixedHeaders, ...questionHeaders];
+      const wsData: (string | number)[][] = [allHeaders];
       for (const os of osData) {
         const osAvals2 = avaliacoesRes.data?.filter((a) => a.ordem_servico_id === os.id) || [];
         const osRespostas2 = respostasByOS[os.id] || {};
