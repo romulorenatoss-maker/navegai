@@ -1067,8 +1067,6 @@ export default function AvaliacaoOSPage() {
         }
       }
       
-      try { if (evalOsId) await detectInconsistencies(evalOsId); } catch (e) { console.warn("Inconsistency detection error:", e); }
-      try { if (evalAvaliacaoId && evalOsId) await detectLinkedInconsistencies(evalAvaliacaoId, evalOsId); } catch (e) { console.warn("Linked inconsistency detection error:", e); }
       refetchPending();
       // Only navigate away if OS is fully concluded
       if (evalOsId) {
