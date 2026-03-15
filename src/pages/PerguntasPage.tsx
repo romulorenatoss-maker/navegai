@@ -597,6 +597,14 @@ export default function PerguntasPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <AdminPasswordDialog
+        open={deletePerguntaDialogOpen}
+        onOpenChange={setDeletePerguntaDialogOpen}
+        title="Desativar Pergunta"
+        description="A pergunta será desativada e não aparecerá mais em novas avaliações. Confirme com a senha de administrador."
+        onConfirm={handleDeletePerguntaConfirm}
+      />
     </div>
   );
 }
