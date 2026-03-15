@@ -235,11 +235,11 @@ export function useAvaliacaoOS() {
     }
 
     const totalWeight = questions.reduce(
-      (acc, q) => (q.answer !== "na" ? acc + q.peso : acc),
+      (acc, q) => (q.answer != null ? acc + q.peso : acc),
       0
     );
     const earnedWeight = questions.reduce(
-      (acc, q) => (q.answer === "sim" ? acc + q.peso : acc),
+      (acc, q) => (q.answer === "sim" || q.answer === "na" ? acc + q.peso : acc),
       0
     );
     const nota = totalWeight > 0 ? (earnedWeight / totalWeight) * 100 : 0;
