@@ -79,6 +79,15 @@ export async function detectInconsistencies(osId: string) {
     answersByQuestion.get(r.pergunta_id)!.push(entry);
   }
 
+  // Batch fetch existing inconsistencies for this OS (avoid N+1)
+  const inconsistencyPerguntaIds = [...answersByQuestion.keys()];
+  const { data: existingInconsistencies } = await (supabase as any)
+    .from("avaliacoes_inconsistencias")
+    .select("id, pergunta_id")
+    .eq("ordem_servico_id", osId)
+    .in("pergunta_id", inconsistencyPerguntaIds);
+  const existingMap = new Map((existingInconsistencies || []).map((e: any) => [e.pergunta_id, e.id]));
+
   // Detect inconsistencies (questions with different answers from different evaluators)
   for (const [perguntaId, answers] of answersByQuestion) {
     if (answers.length < 2) continue;
@@ -87,16 +96,6 @@ export async function detectInconsistencies(osId: string) {
     if (uniqueAnswers.size <= 1) continue; // All agree, no inconsistency
 
     const pergunta = perguntaMap.get(perguntaId);
-
-    // Upsert inconsistency record
-    // First check if one already exists for this OS + question
-    const { data: existing } = await (supabase as any)
-      .from("avaliacoes_inconsistencias")
-      .select("id")
-      .eq("ordem_servico_id", osId)
-      .eq("pergunta_id", perguntaId)
-      .limit(1)
-      .single();
 
     const record = {
       ordem_servico_id: osId,
@@ -114,11 +113,12 @@ export async function detectInconsistencies(osId: string) {
       resolvida: false,
     };
 
-    if (existing) {
+    const existingId = existingMap.get(perguntaId);
+    if (existingId) {
       await (supabase as any)
         .from("avaliacoes_inconsistencias")
         .update(record)
-        .eq("id", existing.id);
+        .eq("id", existingId);
     } else {
       await (supabase as any)
         .from("avaliacoes_inconsistencias")
