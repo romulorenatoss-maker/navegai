@@ -285,6 +285,29 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
     }
   };
 
+  const handleChangePassword = async () => {
+    if (!collaborator) return;
+    if (newPassword.length < 6) { toast.error("Senha deve ter no mínimo 6 caracteres."); return; }
+    if (newPassword !== confirmPassword) { toast.error("As senhas não coincidem."); return; }
+
+    setPasswordLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke("admin-update-password", {
+        body: { target_user_id: collaborator.user_id, new_password: newPassword },
+      });
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.error);
+      toast.success("Senha alterada com sucesso!");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err: any) {
+      toast.error("Erro: " + (err?.message || "falha desconhecida"));
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
   if (!collaborator) return null;
 
   return (
