@@ -178,11 +178,11 @@ export default function AvaliacaoOSPage() {
     queryKey: ["tipos_servico_aval", profile?.id],
     queryFn: async () => {
       if (!profile?.id) return [];
-      // Show all active service types - sector filtering happens at question level
       const { data } = await supabase.from("tipos_servico").select("*, setores:setor_id(nome)").eq("ativo", true).order("nome");
       return data || [];
     },
     enabled: !!profile?.id,
+    staleTime: 5 * 60 * 1000,
   });
 
   const isQuestionAnswerable = useCallback((setorAvaliadoId: string | null) => {
