@@ -15,12 +15,10 @@ const allNavSections = [
     ],
   },
   {
-    title: "Cadastros",
+    title: "Avaliações",
     items: [
-      { to: "/cadastros/setores", icon: Building2, label: "Setores" },
-      { to: "/cadastros/colaboradores", icon: Users, label: "Colaboradores" },
-      { to: "/cadastros/clientes", icon: ClipboardCheck, label: "Clientes" },
-      { to: "/cadastros/servicos", icon: Wrench, label: "Tipos de Serviço" },
+      { to: "/avaliacoes/pesquisa", icon: FileSearch, label: "Criar OS / Buscar" },
+      { to: "/avaliacoes/minhas", icon: Star, label: "Minhas Avaliações" },
     ],
   },
   {
@@ -33,10 +31,12 @@ const allNavSections = [
     ],
   },
   {
-    title: "Avaliações",
+    title: "Cadastros",
     items: [
-      { to: "/avaliacoes/pesquisa", icon: FileSearch, label: "Criar OS / Buscar" },
-      { to: "/avaliacoes/minhas", icon: Star, label: "Minhas Avaliações" },
+      { to: "/cadastros/setores", icon: Building2, label: "Setores" },
+      { to: "/cadastros/colaboradores", icon: Users, label: "Colaboradores" },
+      { to: "/cadastros/clientes", icon: ClipboardCheck, label: "Clientes" },
+      { to: "/cadastros/servicos", icon: Wrench, label: "Tipos de Serviço" },
     ],
   },
   {
