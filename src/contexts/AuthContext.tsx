@@ -32,12 +32,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchProfileAndRoles = async (userId: string) => {
     const [profileRes, rolesRes] = await Promise.all([
-      supabase.from("profiles").select("*").eq("user_id", userId).single(),
+      supabase.from("profiles").select("id, user_id, nome, email, cargo, setor_id, ativo, pode_editar_avaliacoes, pode_excluir_avaliacoes, created_at, updated_at").eq("user_id", userId).single(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
     ]);
     if (profileRes.data) {
-      setProfile(profileRes.data);
-      // Load screen permissions
+      setProfile(profileRes.data as Profile);
+      // Load screen permissions in parallel with setting profile
       const { data: perms } = await supabase
         .from("permissoes_tela")
         .select("tela_path")
@@ -48,12 +48,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    let initialFetchDone = false;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          setTimeout(() => fetchProfileAndRoles(session.user.id), 0);
+          // Skip if getSession already handled this user (avoid duplicate fetch)
+          if (!initialFetchDone || _event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED') {
+            setTimeout(() => fetchProfileAndRoles(session.user.id), 0);
+          }
         } else {
           setProfile(null);
           setRoles([]);
@@ -67,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
+        initialFetchDone = true;
         fetchProfileAndRoles(session.user.id);
       }
       setLoading(false);

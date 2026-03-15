@@ -25,30 +25,23 @@ export async function detectInconsistencies(osId: string) {
 
   // Get all answers for all avaliacoes of this OS
   const avalIds = avaliacoes.map(a => a.id);
-  const { data: allRespostas } = await supabase
-    .from("respostas_avaliacao")
-    .select("avaliacao_id, pergunta_id, resposta")
-    .in("avaliacao_id", avalIds);
+  const avaliadorIds = [...new Set(avaliacoes.map(a => a.avaliador_id))];
+  const taIds = [...new Set(avaliacoes.filter(a => a.tipo_avaliacao_id).map(a => a.tipo_avaliacao_id!))];
 
+  // Parallel fetch: respostas, profiles, tipos_avaliacao
+  const [respostasRes, profilesRes, taRes] = await Promise.all([
+    supabase.from("respostas_avaliacao").select("avaliacao_id, pergunta_id, resposta").in("avaliacao_id", avalIds),
+    supabase.from("profiles").select("id, nome").in("id", avaliadorIds),
+    taIds.length > 0 ? (supabase as any).from("tipos_avaliacao").select("id, nome").in("id", taIds) : Promise.resolve({ data: [] }),
+  ]);
+
+  const allRespostas = respostasRes.data;
   if (!allRespostas) return;
 
-  // Get evaluator names
-  const avaliadorIds = [...new Set(avaliacoes.map(a => a.avaliador_id))];
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, nome")
-    .in("id", avaliadorIds);
-  const nameMap = new Map(profiles?.map(p => [p.id, p.nome]) || []);
+  const nameMap = new Map(profilesRes.data?.map(p => [p.id, p.nome]) || []);
+  const taNameMap = new Map((taRes.data || []).map((t: any) => [t.id, t.nome]));
 
-  // Get tipo_avaliacao names
-  const taIds = [...new Set(avaliacoes.filter(a => a.tipo_avaliacao_id).map(a => a.tipo_avaliacao_id!))];
-  let taNameMap = new Map<string, string>();
-  if (taIds.length > 0) {
-    const { data: tas } = await (supabase as any).from("tipos_avaliacao").select("id, nome").in("id", taIds);
-    taNameMap = new Map(tas?.map((t: any) => [t.id, t.nome]) || []);
-  }
-
-  // Get questions with their responsible sector (tipo_avaliacao_id = responsible)
+  // Get questions with their responsible sector
   const perguntaIds = [...new Set(allRespostas.map(r => r.pergunta_id))];
   const { data: perguntas } = await supabase
     .from("perguntas_avaliacao")
@@ -75,7 +68,7 @@ export async function detectInconsistencies(osId: string) {
       avaliador_id: aval.avaliador_id,
       avaliador_nome: nameMap.get(aval.avaliador_id) || "—",
       tipo_avaliacao_id: aval.tipo_avaliacao_id || "",
-      tipo_avaliacao_nome: taNameMap.get(aval.tipo_avaliacao_id || "") || "—",
+      tipo_avaliacao_nome: (taNameMap.get(aval.tipo_avaliacao_id || "") as string) || "—",
       resposta: r.resposta,
       is_responsible: isResponsible,
     };
@@ -86,6 +79,15 @@ export async function detectInconsistencies(osId: string) {
     answersByQuestion.get(r.pergunta_id)!.push(entry);
   }
 
+  // Batch fetch existing inconsistencies for this OS (avoid N+1)
+  const inconsistencyPerguntaIds = [...answersByQuestion.keys()];
+  const { data: existingInconsistencies } = await (supabase as any)
+    .from("avaliacoes_inconsistencias")
+    .select("id, pergunta_id")
+    .eq("ordem_servico_id", osId)
+    .in("pergunta_id", inconsistencyPerguntaIds);
+  const existingMap = new Map((existingInconsistencies || []).map((e: any) => [e.pergunta_id, e.id]));
+
   // Detect inconsistencies (questions with different answers from different evaluators)
   for (const [perguntaId, answers] of answersByQuestion) {
     if (answers.length < 2) continue;
@@ -94,16 +96,6 @@ export async function detectInconsistencies(osId: string) {
     if (uniqueAnswers.size <= 1) continue; // All agree, no inconsistency
 
     const pergunta = perguntaMap.get(perguntaId);
-
-    // Upsert inconsistency record
-    // First check if one already exists for this OS + question
-    const { data: existing } = await (supabase as any)
-      .from("avaliacoes_inconsistencias")
-      .select("id")
-      .eq("ordem_servico_id", osId)
-      .eq("pergunta_id", perguntaId)
-      .limit(1)
-      .single();
 
     const record = {
       ordem_servico_id: osId,
@@ -121,11 +113,12 @@ export async function detectInconsistencies(osId: string) {
       resolvida: false,
     };
 
-    if (existing) {
+    const existingId = existingMap.get(perguntaId);
+    if (existingId) {
       await (supabase as any)
         .from("avaliacoes_inconsistencias")
         .update(record)
-        .eq("id", existing.id);
+        .eq("id", existingId);
     } else {
       await (supabase as any)
         .from("avaliacoes_inconsistencias")
@@ -148,19 +141,20 @@ export async function markAuditOnlyAndCalculateScore(
   let totalWeight = 0;
   let earnedWeight = 0;
 
+  // Batch fetch all question tipo_avaliacao_ids at once (avoid N+1)
+  const perguntaIdsToCheck = previewPerguntas.filter(p => wizardAnswers[p.id]).map(p => p.id);
+  const { data: perguntasData } = await supabase
+    .from("perguntas_avaliacao")
+    .select("id, tipo_avaliacao_id")
+    .in("id", perguntaIdsToCheck);
+  const perguntaTaMap = new Map((perguntasData || []).map(p => [p.id, p.tipo_avaliacao_id]));
+
   for (const p of previewPerguntas) {
     const answer = wizardAnswers[p.id];
     if (!answer) continue;
 
-    // Get question's responsible tipo_avaliacao
-    const { data: pergunta } = await supabase
-      .from("perguntas_avaliacao")
-      .select("tipo_avaliacao_id")
-      .eq("id", p.id)
-      .single();
-
-    // If question has a specific tipo_avaliacao_id, check if this evaluator's tipo matches
-    const isResponsible = !pergunta?.tipo_avaliacao_id || pergunta.tipo_avaliacao_id === avaliadorTipoAvaliacaoId;
+    const perguntaTaId = perguntaTaMap.get(p.id);
+    const isResponsible = !perguntaTaId || perguntaTaId === avaliadorTipoAvaliacaoId;
 
     if (!isResponsible) {
       auditOnlyIds.push(p.id);

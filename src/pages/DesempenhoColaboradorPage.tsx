@@ -136,7 +136,7 @@ export default function DesempenhoColaboradorPage() {
     enabled: !!targetProfileId,
   });
 
-  // All OS for this employee (for the OS tab) - no date filter, sorted newest first
+  // All OS for this employee (for the OS tab) - limited to last 100, sorted newest first
   const { data: allOsList = [], refetch: refetchAllOs } = useQuery({
     queryKey: ["perf_all_os", targetProfileId],
     queryFn: async () => {
@@ -145,7 +145,8 @@ export default function DesempenhoColaboradorPage() {
         .from("ordens_servico")
         .select("id, numero_os, tipo_servico_id, created_at, cliente_nome, status, data_conclusao")
         .or(`tecnico_id.eq.${targetProfileId},atendente_id.eq.${targetProfileId},colaborador_avaliado_id.eq.${targetProfileId}`)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(100);
 
       if (!osData?.length) return [];
 
@@ -156,8 +157,9 @@ export default function DesempenhoColaboradorPage() {
         tss?.forEach(t => { tsMap[t.id] = t.nome; });
       }
 
-      // Use SQL function to get per-sector scores
-      const notas = await fetchNotasPorSetor();
+      // Use SQL function with date range of oldest OS to avoid fetching ALL historical data
+      const oldestDate = osData[osData.length - 1]?.created_at;
+      const notas = await fetchNotasPorSetor(oldestDate);
 
       return osData.map(os => ({
         ...os,
