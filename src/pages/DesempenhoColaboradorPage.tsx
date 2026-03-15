@@ -190,15 +190,15 @@ export default function DesempenhoColaboradorPage() {
     queryKey: ["perf_errors", targetProfileId, appliedStart?.toISOString(), appliedEnd?.toISOString()],
     queryFn: async () => {
       if (!targetProfileId) return [];
-      const from = appliedStart?.toISOString() || startOfMonth(now).toISOString();
-      const to = appliedEnd ? endOfMonth(appliedEnd).toISOString() : endOfMonth(now).toISOString();
+      const from = appliedStart ? startOfDay(appliedStart).toISOString() : startOfDay(startOfMonth(now)).toISOString();
+      const to = appliedEnd ? endOfDay(appliedEnd).toISOString() : endOfDay(endOfMonth(now)).toISOString();
 
       const { data: osData } = await supabase
         .from("ordens_servico")
         .select("id")
         .or(`tecnico_id.eq.${targetProfileId},atendente_id.eq.${targetProfileId},colaborador_avaliado_id.eq.${targetProfileId}`)
-        .gte("created_at", from)
-        .lte("created_at", to);
+        .gte("data_abertura", from)
+        .lte("data_abertura", to);
 
       if (!osData?.length) return [];
       const osIds = osData.map(o => o.id);
