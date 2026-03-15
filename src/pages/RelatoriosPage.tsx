@@ -25,7 +25,7 @@ interface OSRow {
   id: string;
   numero_os: string;
   status: string;
-  created_at: string;
+  data_abertura: string;
   cliente_nome: string | null;
   tipo_servico_id: string | null;
   tipo_servico_nome: string | null;
