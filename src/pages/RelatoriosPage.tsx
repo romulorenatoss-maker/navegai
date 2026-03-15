@@ -104,29 +104,35 @@ export default function RelatoriosPage() {
   
 
   // Fetch OS
+  // Detect if searching by OS number or client name (direct search mode — ignores other filters)
+  const isDirectSearch = filterNumeroOS.trim() !== "" || filterCliente.trim() !== "";
+
   const fetchOS = useCallback(async () => {
     setLoading(true);
-    const { from, to } = getFilterDates();
 
     let query = supabase
       .from("ordens_servico")
-      .select("id, numero_os, status, data_abertura, cliente_nome, tipo_servico_id, colaborador_avaliado_id, atendente_id, tecnico_id, cliente_id")
-      .gte("data_abertura", from)
-      .lte("data_abertura", to);
+      .select("id, numero_os, status, data_abertura, cliente_nome, tipo_servico_id, colaborador_avaliado_id, atendente_id, tecnico_id, cliente_id");
 
-    // Apply server-side filters where possible
-    if (filterStatus !== "todos") {
-      query = query.eq("status", filterStatus as "aberta" | "em_andamento" | "concluida");
-    }
-    if (filterNumeroOS.trim()) {
-      query = query.ilike("numero_os", `%${filterNumeroOS.trim()}%`);
-    }
-    if (filterCliente.trim()) {
-      query = query.ilike("cliente_nome", `%${filterCliente.trim()}%`);
-    }
-    if (filterAvaliado !== "todos") {
-      // Filter by colaborador_avaliado_id, atendente_id, or tecnico_id
-      query = query.or(`colaborador_avaliado_id.eq.${filterAvaliado},atendente_id.eq.${filterAvaliado},tecnico_id.eq.${filterAvaliado}`);
+    if (isDirectSearch) {
+      // Direct search: only apply OS number and/or client name filters, ignore everything else
+      if (filterNumeroOS.trim()) {
+        query = query.ilike("numero_os", `%${filterNumeroOS.trim()}%`);
+      }
+      if (filterCliente.trim()) {
+        query = query.ilike("cliente_nome", `%${filterCliente.trim()}%`);
+      }
+    } else {
+      // Combined filters mode: date range + all other filters
+      const { from, to } = getFilterDates();
+      query = query.gte("data_abertura", from).lte("data_abertura", to);
+
+      if (filterStatus !== "todos") {
+        query = query.eq("status", filterStatus as "aberta" | "em_andamento" | "concluida");
+      }
+      if (filterAvaliado !== "todos") {
+        query = query.or(`colaborador_avaliado_id.eq.${filterAvaliado},atendente_id.eq.${filterAvaliado},tecnico_id.eq.${filterAvaliado}`);
+      }
     }
 
     const { data: osData } = await query.order("data_abertura", { ascending: false });
