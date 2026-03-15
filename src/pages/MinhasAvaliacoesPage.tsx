@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Eye, CheckCircle2, XCircle, MessageSquare, Image as ImageIcon, Loader2, CalendarIcon, Search } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -56,6 +56,25 @@ export default function MinhasAvaliacoesPage() {
     enabled: !!profile?.id,
   });
 
+  // Fetch atendente and técnico names for the selected OS
+  const { data: osEmployees } = useQuery({
+    queryKey: ["os_employees", selectedAval?.id],
+    queryFn: async () => {
+      if (!selectedAval) return { atendente_nome: null, tecnico_nome: null };
+      const names: { atendente_nome: string | null; tecnico_nome: string | null } = { atendente_nome: null, tecnico_nome: null };
+      if (selectedAval.atendente_id) {
+        const { data } = await supabase.from("profiles").select("nome").eq("id", selectedAval.atendente_id).single();
+        names.atendente_nome = data?.nome || null;
+      }
+      if (selectedAval.tecnico_id) {
+        const { data } = await supabase.from("profiles").select("nome").eq("id", selectedAval.tecnico_id).single();
+        names.tecnico_nome = data?.nome || null;
+      }
+      return names;
+    },
+    enabled: !!selectedAval?.id,
+  });
+
   // Load evaluation details for selected OS
   const { data: avalDetails = [], isLoading: detailLoading } = useQuery({
     queryKey: ["aval_detail", selectedAval?.id],
@@ -68,6 +87,10 @@ export default function MinhasAvaliacoesPage() {
         .eq("concluida", true);
       if (!avals || avals.length === 0) return [];
 
+      // Fetch all setores for mapping setor_nota_id to setor name
+      const { data: allSetores } = await supabase.from("setores").select("id, nome");
+      const setoresMap = new Map((allSetores || []).map(s => [s.id, s.nome]));
+
       const result = [];
       for (const aval of avals) {
         const { data: respostas } = await supabase
@@ -75,17 +98,15 @@ export default function MinhasAvaliacoesPage() {
           .select("pergunta_id, resposta, observacao, evidencia_url")
           .eq("avaliacao_id", aval.id);
 
-        // Skip evaluations with no responses (evaluator didn't score this person)
         if (!respostas || respostas.length === 0) continue;
 
         const perguntaIds = respostas.map(r => r.pergunta_id);
         let perguntas: any[] = [];
         if (perguntaIds.length > 0) {
-          const { data: ps } = await supabase.from("perguntas_avaliacao").select("id, pergunta, peso, target_employee_type").in("id", perguntaIds);
+          const { data: ps } = await supabase.from("perguntas_avaliacao").select("id, pergunta, peso, target_employee_type, setor_nota_id").in("id", perguntaIds);
           perguntas = ps || [];
         }
 
-        // Get avaliador name
         const { data: avaliador } = await supabase.from("profiles").select("nome").eq("id", aval.avaliador_id).single();
 
         result.push({
@@ -93,7 +114,15 @@ export default function MinhasAvaliacoesPage() {
           _avaliador_nome: avaliador?.nome || "—",
           _respostas: respostas.map(r => {
             const pg = perguntas.find(p => p.id === r.pergunta_id);
-            return { ...r, pergunta: pg?.pergunta || "—", peso: pg?.peso || 0, target: pg?.target_employee_type || "geral" };
+            const setorNome = pg?.setor_nota_id ? setoresMap.get(pg.setor_nota_id) || null : null;
+            // Determine employee type from setor name
+            let employeeType = pg?.target_employee_type || "geral";
+            if (setorNome) {
+              const lower = setorNome.toLowerCase();
+              if (lower.includes("atendimento")) employeeType = "atendente";
+              else if (lower.includes("cnico") || lower.includes("tecnico")) employeeType = "tecnico";
+            }
+            return { ...r, pergunta: pg?.pergunta || "—", peso: pg?.peso || 0, target: employeeType, setor_nome: setorNome };
           }),
         });
       }
@@ -101,6 +130,36 @@ export default function MinhasAvaliacoesPage() {
     },
     enabled: !!selectedAval?.id,
   });
+
+  // Calculate per-employee scores from avalDetails
+  const employeeScores = useMemo(() => {
+    if (!avalDetails || avalDetails.length === 0) return [];
+    // Combine all respostas from all evaluations
+    const allRespostas = avalDetails.flatMap((a: any) => a._respostas);
+    const groups: Record<string, { label: string; nome: string | null; pesoTotal: number; pesoAcertado: number }> = {};
+
+    for (const r of allRespostas) {
+      const tipo = r.target === "tecnico" ? "tecnico" : r.target === "atendente" ? "atendente" : null;
+      if (!tipo) continue; // skip "geral" - can't assign to specific person
+      if (r.resposta === "na") continue; // N/A ignored
+
+      if (!groups[tipo]) {
+        groups[tipo] = {
+          label: tipo === "atendente" ? "Atendente" : "Técnico",
+          nome: tipo === "atendente" ? (osEmployees?.atendente_nome || null) : (osEmployees?.tecnico_nome || null),
+          pesoTotal: 0,
+          pesoAcertado: 0,
+        };
+      }
+      groups[tipo].pesoTotal += r.peso;
+      if (r.resposta === "sim") groups[tipo].pesoAcertado += r.peso;
+    }
+
+    return Object.values(groups).map(g => ({
+      ...g,
+      nota: g.pesoTotal > 0 ? (g.pesoAcertado / g.pesoTotal) * 100 : null,
+    }));
+  }, [avalDetails, osEmployees]);
 
   const openDetail = (os: any) => { setSelectedAval(os); setDetailOpen(true); };
 
@@ -226,6 +285,25 @@ export default function MinhasAvaliacoesPage() {
                     <p><span className="font-medium text-muted-foreground">Data:</span> <span className="text-foreground">{aval.concluida_em ? new Date(aval.concluida_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}</span></p>
                   </div>
                 </div>
+
+                {/* Notas por avaliado */}
+                {employeeScores.length > 0 && (
+                  <div className="flex flex-wrap gap-3">
+                    {employeeScores.map((es) => (
+                      <div key={es.label} className="flex-1 min-w-[180px] bg-muted/20 border border-border rounded-lg px-4 py-3">
+                        <p className="text-caption font-medium text-muted-foreground">{es.label}</p>
+                        <p className="text-sm font-semibold text-foreground">{es.nome || "—"}</p>
+                        {es.nota != null ? (
+                          <span className={cn("text-lg font-bold font-tabular", es.nota >= 80 ? "text-success" : es.nota >= 60 ? "text-warning" : "text-destructive")}>
+                            {es.nota.toFixed(1)}%
+                          </span>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">Sem perguntas</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* Tabela de perguntas e respostas */}
                 <div className="border border-border rounded-lg overflow-hidden">
