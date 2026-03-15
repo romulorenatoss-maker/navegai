@@ -190,12 +190,14 @@ export default function RelatoriosPage() {
       avaliador_ids: avaliadorByOS[os.id] || new Set<string>(),
     }));
 
-    // Apply client-side filters (setor and avaliador require joined data)
-    if (filterSetor !== "todos") {
-      results = results.filter((o) => o.setor_id === filterSetor);
-    }
-    if (filterAvaliador !== "todos") {
-      results = results.filter((o) => o.avaliador_ids.has(filterAvaliador));
+    // Client-side filters only apply in combined mode (not direct search)
+    if (!isDirectSearch) {
+      if (filterSetor !== "todos") {
+        results = results.filter((o) => o.setor_id === filterSetor);
+      }
+      if (filterAvaliador !== "todos") {
+        results = results.filter((o) => o.avaliador_ids.has(filterAvaliador));
+      }
     }
 
     setOsList(
