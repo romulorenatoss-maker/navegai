@@ -21,7 +21,7 @@ export const ALL_SCREENS: ScreenDef[] = [
   { path: "/checklists/execucao", label: "Execução", group: "Perguntas & Checklists" },
   { path: "/checklists/gestao", label: "Gestão", group: "Perguntas & Checklists" },
   // Avaliações
-  { path: "/avaliacoes/pesquisa", label: "Pesquisa de OS", group: "Avaliações" },
+  { path: "/avaliacoes/pesquisa", label: "Criar OS / Buscar", group: "Avaliações" },
   { path: "/avaliacoes/minhas", label: "Minhas Avaliações", group: "Avaliações" },
   // Sistema
   { path: "/relatorios", label: "Relatórios", group: "Sistema" },

@@ -35,7 +35,7 @@ const allNavSections = [
   {
     title: "Avaliações",
     items: [
-      { to: "/avaliacoes/pesquisa", icon: FileSearch, label: "Pesquisa de OS" },
+      { to: "/avaliacoes/pesquisa", icon: FileSearch, label: "Criar OS / Buscar" },
       { to: "/avaliacoes/minhas", icon: Star, label: "Minhas Avaliações" },
     ],
   },
