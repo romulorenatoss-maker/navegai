@@ -111,44 +111,19 @@ export default function ColaboradoresPage() {
 
   const create = useMutation({
     mutationFn: async () => {
-      // Save admin session before signUp (signUp switches session to new user)
-      const { data: { session: adminSession } } = await supabase.auth.getSession();
-
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password: senha,
-        options: { data: { nome } },
+      const { data, error } = await supabase.functions.invoke("create-user", {
+        body: {
+          email,
+          password: senha,
+          nome,
+          cargo,
+          setor_id: selectedSetores[0] || null,
+          setores_ids: selectedSetores,
+        },
       });
-      if (authError) throw authError;
-      if (!authData.user) throw new Error("Erro ao criar usuário.");
 
-      // Restore admin session immediately
-      if (adminSession) {
-        await supabase.auth.setSession({
-          access_token: adminSession.access_token,
-          refresh_token: adminSession.refresh_token,
-        });
-      }
-
-      await new Promise((r) => setTimeout(r, 1000));
-
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ cargo, setor_id: selectedSetores[0] || null })
-        .eq("user_id", authData.user.id);
-      if (updateError) throw updateError;
-
-      await syncRole(authData.user.id, cargo);
-
-      const { data: createdProfile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", authData.user.id)
-        .single();
-
-      if (createdProfile) {
-        await saveSetores(createdProfile.id);
-      }
+      if (error) throw new Error(error.message || "Erro ao criar colaborador");
+      if (data?.error) throw new Error(data.error);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profiles"] });
