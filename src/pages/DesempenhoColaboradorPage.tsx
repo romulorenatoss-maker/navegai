@@ -17,7 +17,7 @@ import {
   Eye, MessageSquare, Trash2, Lock, Loader2, FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 
