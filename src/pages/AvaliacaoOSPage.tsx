@@ -2008,7 +2008,7 @@ export default function AvaliacaoOSPage() {
         </span>
         {score.max > 0 && (
           <span className={cn("text-body font-bold font-tabular",
-            score.pct >= 80 ? "text-success" : score.pct >= 60 ? "text-warning" : "text-destructive"
+            score.pct >= 85 ? "text-success" : score.pct >= 75 ? "text-warning" : "text-destructive"
           )}>
             {score.pct.toFixed(1)}%
           </span>
