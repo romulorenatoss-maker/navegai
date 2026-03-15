@@ -41,19 +41,19 @@ export default function ColaboradoresPage() {
   const { data: profiles = [], isLoading } = useQuery({
     queryKey: ["profiles"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("*, setores(nome)").order("nome");
-      if (error) throw error;
-      // Load multi-setor data for all profiles
-      const { data: allSetorLinks } = await supabase
-        .from("colaborador_setores")
-        .select("profile_id, setores(nome)");
+      // Parallel fetch profiles and setor links
+      const [profilesRes, setorLinksRes] = await Promise.all([
+        supabase.from("profiles").select("*, setores(nome)").order("nome"),
+        supabase.from("colaborador_setores").select("profile_id, setores(nome)"),
+      ]);
+      if (profilesRes.error) throw profilesRes.error;
       const setorMap = new Map<string, string[]>();
-      allSetorLinks?.forEach((link: any) => {
+      setorLinksRes.data?.forEach((link: any) => {
         const list = setorMap.get(link.profile_id) || [];
         if (link.setores?.nome) list.push(link.setores.nome);
         setorMap.set(link.profile_id, list);
       });
-      return data.map((p: any) => ({
+      return profilesRes.data.map((p: any) => ({
         ...p,
         _setoresNomes: setorMap.get(p.id) || (p.setores?.nome ? [p.setores.nome] : []),
       }));

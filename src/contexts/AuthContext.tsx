@@ -48,12 +48,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    let initialFetchDone = false;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          setTimeout(() => fetchProfileAndRoles(session.user.id), 0);
+          // Skip if getSession already handled this user (avoid duplicate fetch)
+          if (!initialFetchDone || _event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED') {
+            setTimeout(() => fetchProfileAndRoles(session.user.id), 0);
+          }
         } else {
           setProfile(null);
           setRoles([]);
@@ -67,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
+        initialFetchDone = true;
         fetchProfileAndRoles(session.user.id);
       }
       setLoading(false);

@@ -141,19 +141,20 @@ export async function markAuditOnlyAndCalculateScore(
   let totalWeight = 0;
   let earnedWeight = 0;
 
+  // Batch fetch all question tipo_avaliacao_ids at once (avoid N+1)
+  const perguntaIdsToCheck = previewPerguntas.filter(p => wizardAnswers[p.id]).map(p => p.id);
+  const { data: perguntasData } = await supabase
+    .from("perguntas_avaliacao")
+    .select("id, tipo_avaliacao_id")
+    .in("id", perguntaIdsToCheck);
+  const perguntaTaMap = new Map((perguntasData || []).map(p => [p.id, p.tipo_avaliacao_id]));
+
   for (const p of previewPerguntas) {
     const answer = wizardAnswers[p.id];
     if (!answer) continue;
 
-    // Get question's responsible tipo_avaliacao
-    const { data: pergunta } = await supabase
-      .from("perguntas_avaliacao")
-      .select("tipo_avaliacao_id")
-      .eq("id", p.id)
-      .single();
-
-    // If question has a specific tipo_avaliacao_id, check if this evaluator's tipo matches
-    const isResponsible = !pergunta?.tipo_avaliacao_id || pergunta.tipo_avaliacao_id === avaliadorTipoAvaliacaoId;
+    const perguntaTaId = perguntaTaMap.get(p.id);
+    const isResponsible = !perguntaTaId || perguntaTaId === avaliadorTipoAvaliacaoId;
 
     if (!isResponsible) {
       auditOnlyIds.push(p.id);

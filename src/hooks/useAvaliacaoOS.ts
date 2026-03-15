@@ -163,10 +163,10 @@ export function useAvaliacaoOS() {
 
     if (!perguntas) return;
 
-    // Load responses by ordem_servico_id (shared across all evaluators)
+    // Load responses by ordem_servico_id (shared across all evaluators) - only needed fields
     const { data: respostas } = await supabase
       .from("respostas_avaliacao")
-      .select("*")
+      .select("pergunta_id, resposta, observacao, evidencia_url")
       .eq("ordem_servico_id", osId);
 
     const respostasMap = new Map(respostas?.map((r) => [r.pergunta_id, r]) || []);
