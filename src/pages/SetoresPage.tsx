@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import type { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
+import AdminPasswordDialog from "@/components/AdminPasswordDialog";
 
 type Setor = Tables<"setores">;
 
@@ -22,6 +23,8 @@ export default function SetoresPage() {
   const [editing, setEditing] = useState<Setor | null>(null);
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const { data: setores = [], isLoading } = useQuery({
     queryKey: ["setores"],
@@ -59,17 +62,14 @@ export default function SetoresPage() {
     onError: (err: any) => toast.error(err.message),
   });
 
-  const remove = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("setores").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["setores"] });
-      toast.success("Setor excluído.");
-    },
-    onError: (err: any) => toast.error(err.message),
-  });
+  const handleDeleteConfirm = async () => {
+    if (!deletingId) return;
+    const { error } = await supabase.from("setores").delete().eq("id", deletingId);
+    if (error) throw error;
+    queryClient.invalidateQueries({ queryKey: ["setores"] });
+    toast.success("Setor excluído.");
+    setDeletingId(null);
+  };
 
   const openCreate = () => { setEditing(null); setNome(""); setDescricao(""); setDialogOpen(true); };
   const openEdit = (s: Setor) => { setEditing(s); setNome(s.nome); setDescricao(s.descricao || ""); setDialogOpen(true); };
@@ -122,7 +122,7 @@ export default function SetoresPage() {
                       <Button variant="ghost" size="sm" onClick={() => openEdit(s)} className="press-effect">
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => remove.mutate(s.id)} className="press-effect text-destructive">
+                      <Button variant="ghost" size="sm" onClick={() => { setDeletingId(s.id); setDeleteDialogOpen(true); }} className="press-effect text-destructive">
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
@@ -157,6 +157,14 @@ export default function SetoresPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <AdminPasswordDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Excluir Setor"
+        description="Esta ação é irreversível. O setor será removido permanentemente."
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 }
