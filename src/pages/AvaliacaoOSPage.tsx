@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { detectInconsistencies, markAuditOnlyAndCalculateScore } from "@/hooks/useInconsistencyDetection";
-import { detectLinkedInconsistencies } from "@/hooks/useLinkedInconsistencyDetection";
+import { markAuditOnlyAndCalculateScore } from "@/hooks/useInconsistencyDetection";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, AlertTriangle, Loader2, ChevronRight, ChevronLeft,
@@ -1068,8 +1067,6 @@ export default function AvaliacaoOSPage() {
         }
       }
       
-      try { if (evalOsId) await detectInconsistencies(evalOsId); } catch (e) { console.warn("Inconsistency detection error:", e); }
-      try { if (evalAvaliacaoId && evalOsId) await detectLinkedInconsistencies(evalAvaliacaoId, evalOsId); } catch (e) { console.warn("Linked inconsistency detection error:", e); }
       refetchPending();
       // Only navigate away if OS is fully concluded
       if (evalOsId) {
@@ -1154,19 +1151,6 @@ export default function AvaliacaoOSPage() {
         if (respostasError) throw respostasError;
       }
 
-      // 3) Delete inconsistências vinculadas linked to OS
-      const { error: incVincError } = await supabase
-        .from("inconsistencias_vinculadas")
-        .delete()
-        .eq("ordem_servico_id", deleteOsId);
-      if (incVincError) throw incVincError;
-
-      // 4) Delete inconsistências linked to OS
-      const { error: inconsistenciasError } = await supabase
-        .from("avaliacoes_inconsistencias")
-        .delete()
-        .eq("ordem_servico_id", deleteOsId);
-      if (inconsistenciasError) throw inconsistenciasError;
 
       // 4) Delete avaliações
       const { error: avaliacoesError } = await supabase

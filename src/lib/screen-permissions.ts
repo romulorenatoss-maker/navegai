@@ -23,8 +23,6 @@ export const ALL_SCREENS: ScreenDef[] = [
   // Avaliações
   { path: "/avaliacoes/pesquisa", label: "Pesquisa de OS", group: "Avaliações" },
   { path: "/avaliacoes/minhas", label: "Minhas Avaliações", group: "Avaliações" },
-  { path: "/avaliacoes/inconsistencias", label: "Inconsistências", group: "Avaliações" },
-  { path: "/avaliacoes/inconsistencias-vinculadas", label: "Incons. Vinculadas", group: "Avaliações" },
   // Sistema
   { path: "/relatorios", label: "Relatórios", group: "Sistema" },
   { path: "/desempenho", label: "Desempenho", group: "Sistema" },
