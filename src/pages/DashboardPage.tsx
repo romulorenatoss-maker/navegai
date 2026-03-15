@@ -870,7 +870,7 @@ export default function DashboardPage() {
                 ))}
                 {filteredOS.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhuma OS encontrada no período.</td>
+                    <td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhuma OS encontrada no período.</td>
                   </tr>
                 )}
               </tbody>
