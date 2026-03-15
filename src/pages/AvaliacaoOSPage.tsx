@@ -2119,7 +2119,7 @@ export default function AvaliacaoOSPage() {
             })()}
             {atendScore.max > 0 && (
               <span className={cn("ml-auto text-body font-bold font-tabular",
-                atendScore.pct >= 80 ? "text-success" : atendScore.pct >= 60 ? "text-warning" : "text-destructive"
+                atendScore.pct >= 85 ? "text-success" : atendScore.pct >= 75 ? "text-warning" : "text-destructive"
               )}>
                 {atendScore.pct.toFixed(1)}%
               </span>
