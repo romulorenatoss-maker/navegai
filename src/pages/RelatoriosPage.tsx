@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   CalendarIcon, Filter, Trash2, Download, Loader2, CheckSquare,
-  Square, AlertTriangle, FileText, Search
+  Square, AlertTriangle, FileText, Search, Eye
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -48,6 +49,7 @@ const statusBadge: Record<string, string> = {
 // --- Main ---
 export default function RelatoriosPage() {
   const { isAdmin, user } = useAuth();
+  const navigate = useNavigate();
 
   // Filters
   const now = new Date();
@@ -654,6 +656,7 @@ export default function RelatoriosPage() {
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Cliente</th>
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Tipo de Serviço</th>
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Status</th>
+                  <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 w-16">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -682,11 +685,22 @@ export default function RelatoriosPage() {
                         {statusText[item.status] || item.status}
                       </span>
                     </td>
+                    <td className="px-4 py-3 text-center">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        title="Abrir avaliação"
+                        onClick={() => navigate(`/avaliacoes/pesquisa?os=${item.numero_os}&mode=eval`)}
+                      >
+                        <Eye className="w-4 h-4 text-primary" />
+                      </Button>
+                    </td>
                   </tr>
                 ))}
                 {osList.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">
+                    <td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">
                       Nenhuma OS encontrada no período selecionado.
                     </td>
                   </tr>
