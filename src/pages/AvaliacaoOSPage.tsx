@@ -32,7 +32,7 @@ const SegmentedControl = ({ value, onChange, disabled }: { value: Answer; onChan
   const options: { label: string; value: Answer; activeColor: string }[] = [
     { label: "Sim", value: "sim", activeColor: "bg-success text-success-foreground" },
     { label: "Não", value: "nao", activeColor: "bg-destructive text-destructive-foreground" },
-    { label: "N/A", value: "na", activeColor: "bg-muted text-foreground" },
+    { label: "N/A", value: "na", activeColor: "bg-warning text-warning-foreground" },
   ];
   return (
     <div className="flex bg-muted rounded-md p-0.5 gap-0.5">
@@ -120,6 +120,7 @@ export default function AvaliacaoOSPage() {
   const [evalObservations, setEvalObservations] = useState<Record<string, string>>({});
   const [evalEvidencias, setEvalEvidencias] = useState<Record<string, string>>({});
   const [otherEvalAnswers, setOtherEvalAnswers] = useState<Record<string, { resposta: string; observacao: string | null; evidencia_url: string | null; avaliador_nome: string }>>({});
+  const [responseAuthors, setResponseAuthors] = useState<Record<string, { avaliador_nome: string; resposta: string }>>({});
   const [uploadingEvidence, setUploadingEvidence] = useState<string | null>(null);
   const [evalFinalized, setEvalFinalized] = useState(false);
   const [evalScore, setEvalScore] = useState<number | null>(null);
@@ -693,8 +694,9 @@ export default function AvaliacaoOSPage() {
 
   const handleAnswerChange = useCallback((perguntaId: string, answer: Answer) => {
     setEvalAnswers(prev => ({ ...prev, [perguntaId]: answer }));
+    setResponseAuthors(prev => ({ ...prev, [perguntaId]: { avaliador_nome: profile?.nome || "Você", resposta: answer || "" } }));
     autoSaveAnswer(perguntaId, answer);
-  }, [autoSaveAnswer]);
+  }, [autoSaveAnswer, profile]);
 
   const handleObservationChange = useCallback((perguntaId: string, text: string) => {
     setEvalObservations(prev => ({ ...prev, [perguntaId]: text }));
@@ -777,11 +779,21 @@ export default function AvaliacaoOSPage() {
       profiles?.forEach(p => { profileNames[p.id] = p.nome; });
     }
 
+    const authorsMap: Record<string, { avaliador_nome: string; resposta: string }> = {};
+
     (allRespostas || []).forEach((r: any) => {
       // All responses are loaded into the main answer maps
       if (r.resposta) ans[r.pergunta_id] = r.resposta as Answer;
       if (r.observacao) obs[r.pergunta_id] = r.observacao;
       if (r.evidencia_url) evid[r.pergunta_id] = r.evidencia_url;
+
+      // Track author info for ALL responses
+      if (r.avaliador_id && r.resposta) {
+        authorsMap[r.pergunta_id] = {
+          avaliador_nome: profileNames[r.avaliador_id] || "Avaliador",
+          resposta: r.resposta,
+        };
+      }
 
       // Track "other evaluator" info for display purposes
       if (r.avaliador_id && r.avaliador_id !== profile?.id && r.resposta) {
@@ -798,6 +810,7 @@ export default function AvaliacaoOSPage() {
     setEvalObservations(obs);
     setEvalEvidencias(evid);
     setOtherEvalAnswers(otherMap);
+    setResponseAuthors(authorsMap);
 
     setView("evaluation");
   };
@@ -1203,6 +1216,7 @@ export default function AvaliacaoOSPage() {
     setEvalAnswers({});
     setEvalObservations({});
     setEvalEvidencias({});
+    setResponseAuthors({});
     setEvalFinalized(false);
     setEvalScore(null);
     autoFinalizeTriggered.current = false;
@@ -1674,7 +1688,7 @@ export default function AvaliacaoOSPage() {
                     return (
                       <motion.div key={p.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
                         className={cn("bg-card border rounded-lg transition-colors",
-                          answer === "sim" ? "border-success/30" : answer === "nao" ? "border-destructive/30" : answer === "na" ? "border-muted-foreground/20" : "border-border"
+                          answer === "sim" ? "border-success/30" : answer === "nao" ? "border-destructive/30" : answer === "na" ? "border-warning/30" : "border-border"
                         )}>
                         <div className="p-4">
                           <div className="flex items-start gap-3 mb-3">
@@ -1688,6 +1702,20 @@ export default function AvaliacaoOSPage() {
                           </div>
                           <div className="ml-11">
                             <SegmentedControl value={answer} onChange={v => handleAnswerChange(p.id, v)} disabled={isLocked} />
+                            {answer && responseAuthors[p.id] && (
+                              <div className="mt-1.5 flex items-center gap-2">
+                                <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-bold border",
+                                  answer === "sim" ? "border-success/40 bg-success/10 text-success" :
+                                  answer === "nao" ? "border-destructive/40 bg-destructive/10 text-destructive" :
+                                  "border-warning/40 bg-warning/10 text-warning"
+                                )}>
+                                  {answer === "sim" ? "SIM" : answer === "nao" ? "NÃO" : "N/A"}
+                                </span>
+                                <span className="text-caption text-muted-foreground">
+                                  por <strong className="text-foreground">{responseAuthors[p.id].avaliador_nome}</strong>
+                                </span>
+                              </div>
+                            )}
                           </div>
                           <AnimatePresence>
                             {answer === "nao" && (
@@ -1765,7 +1793,7 @@ export default function AvaliacaoOSPage() {
                               <div className="space-y-2">
                                 <div className="flex items-center gap-2">
                                   <span className={cn("inline-flex items-center px-2.5 py-1 rounded text-sm font-semibold border",
-                                    answer === "sim" ? "border-success/40 bg-success/10 text-success" : answer === "nao" ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-muted-foreground/30 bg-muted text-muted-foreground"
+                                    answer === "sim" ? "border-success/40 bg-success/10 text-success" : answer === "nao" ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-warning/40 bg-warning/10 text-warning"
                                   )}>
                                     {answer === "sim" ? "SIM" : answer === "nao" ? "NÃO" : "N/A"}
                                   </span>
