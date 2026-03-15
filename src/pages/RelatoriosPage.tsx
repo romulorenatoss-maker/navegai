@@ -224,96 +224,75 @@ export default function RelatoriosPage() {
     });
   };
 
-  // Delete
-  const handleDeleteSelected = async () => {
-    if (!user || !deletePassword) return;
-    setDeleteLoading(true);
+  // Delete (called after password confirmed by AdminPasswordDialog)
+  const executeDeleteSelected = async () => {
+    if (!user) return;
 
-    try {
-      // Verify password
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email: user.email!,
-        password: deletePassword,
-      });
-      if (authError) {
-        toast.error("Senha incorreta.");
-        setDeleteLoading(false);
-        return;
-      }
+    const osIds = [...selected];
 
-      const osIds = [...selected];
+    // 1. Get avaliacoes for these OS
+    const { data: avaliacoes } = await supabase
+      .from("avaliacoes")
+      .select("id")
+      .in("ordem_servico_id", osIds);
+    const avalIds = avaliacoes?.map((a) => a.id) || [];
 
-      // 1. Get avaliacoes for these OS
-      const { data: avaliacoes } = await supabase
-        .from("avaliacoes")
-        .select("id")
-        .in("ordem_servico_id", osIds);
-      const avalIds = avaliacoes?.map((a) => a.id) || [];
+    // 2. Get evidencia URLs to delete from storage
+    if (avalIds.length > 0) {
+      const { data: respostas } = await supabase
+        .from("respostas_avaliacao")
+        .select("evidencia_url")
+        .in("avaliacao_id", avalIds)
+        .not("evidencia_url", "is", null);
 
-      // 2. Get evidencia URLs to delete from storage
-      if (avalIds.length > 0) {
-        const { data: respostas } = await supabase
-          .from("respostas_avaliacao")
-          .select("evidencia_url")
-          .in("avaliacao_id", avalIds)
-          .not("evidencia_url", "is", null);
+      if (respostas && respostas.length > 0) {
+        const paths = respostas
+          .map((r) => r.evidencia_url)
+          .filter(Boolean)
+          .map((url) => {
+            const match = url!.match(/evidencias\/(.+)$/);
+            return match ? match[1] : null;
+          })
+          .filter(Boolean) as string[];
 
-        if (respostas && respostas.length > 0) {
-          const paths = respostas
-            .map((r) => r.evidencia_url)
-            .filter(Boolean)
-            .map((url) => {
-              // Extract path from full URL
-              const match = url!.match(/evidencias\/(.+)$/);
-              return match ? match[1] : null;
-            })
-            .filter(Boolean) as string[];
-
-          if (paths.length > 0) {
-            await supabase.storage.from("evidencias").remove(paths);
-          }
+        if (paths.length > 0) {
+          await supabase.storage.from("evidencias").remove(paths);
         }
-
-        // 3. Delete respostas
-        await supabase.from("respostas_avaliacao").delete().in("avaliacao_id", avalIds);
       }
 
-      // 4. Delete inconsistencias (both types)
-      await supabase.from("avaliacoes_inconsistencias").delete().in("ordem_servico_id", osIds);
-      await supabase.from("inconsistencias_vinculadas").delete().in("ordem_servico_id", osIds);
-
-      // 5. Delete os_perguntas
-      await supabase.from("os_perguntas").delete().in("os_id", osIds);
-
-      // 6. Delete avaliacoes
-      if (avalIds.length > 0) {
-        await supabase.from("avaliacoes").delete().in("id", avalIds);
-      }
-
-      // 7. Delete OS
-      await supabase.from("ordens_servico").delete().in("id", osIds);
-
-      // 7. Audit log
-      for (const osId of osIds) {
-        const osInfo = osList.find((o) => o.id === osId);
-        await supabase.from("audit_logs").insert({
-          user_id: user.id,
-          acao: "exclusao_relatorio",
-          tabela: "ordens_servico",
-          registro_id: osId,
-          dados_anteriores: osInfo ? { numero_os: osInfo.numero_os, cliente_nome: osInfo.cliente_nome } : null,
-        });
-      }
-
-      toast.success(`${osIds.length} OS(s) e todos os dados vinculados foram excluídos.`);
-      setDeleteDialogOpen(false);
-      setDeletePassword("");
-      fetchOS();
-    } catch (err: any) {
-      toast.error("Erro ao excluir: " + err.message);
-    } finally {
-      setDeleteLoading(false);
+      // 3. Delete respostas
+      await supabase.from("respostas_avaliacao").delete().in("avaliacao_id", avalIds);
     }
+
+    // 4. Delete inconsistencias (both types)
+    await supabase.from("avaliacoes_inconsistencias").delete().in("ordem_servico_id", osIds);
+    await supabase.from("inconsistencias_vinculadas").delete().in("ordem_servico_id", osIds);
+
+    // 5. Delete os_perguntas
+    await supabase.from("os_perguntas").delete().in("os_id", osIds);
+
+    // 6. Delete avaliacoes
+    if (avalIds.length > 0) {
+      await supabase.from("avaliacoes").delete().in("id", avalIds);
+    }
+
+    // 7. Delete OS
+    await supabase.from("ordens_servico").delete().in("id", osIds);
+
+    // 8. Audit log
+    for (const osId of osIds) {
+      const osInfo = osList.find((o) => o.id === osId);
+      await supabase.from("audit_logs").insert({
+        user_id: user.id,
+        acao: "exclusao_relatorio",
+        tabela: "ordens_servico",
+        registro_id: osId,
+        dados_anteriores: osInfo ? { numero_os: osInfo.numero_os, cliente_nome: osInfo.cliente_nome } : null,
+      });
+    }
+
+    toast.success(`${osIds.length} OS(s) e todos os dados vinculados foram excluídos.`);
+    fetchOS();
   };
 
   // Export CSV — columnar format with questions as headers, showing scores
