@@ -138,9 +138,9 @@ export default function DashboardPage() {
       let query = supabase
         .from("ordens_servico")
         .select("id, numero_os, status, created_at, cliente_nome, cliente_id, tipo_servico_id")
-        .gte("created_at", from)
-        .lte("created_at", to)
-        .order("created_at", { ascending: false });
+        .gte("data_abertura", from)
+        .lte("data_abertura", to)
+        .order("data_abertura", { ascending: false });
 
       if (statusFilter !== "all") {
         if (statusFilter === "em_andamento") {
@@ -242,9 +242,9 @@ export default function DashboardPage() {
       let pendingQuery = supabase
         .from("ordens_servico")
         .select("id, numero_os, cliente_nome, tipo_servico_id, status, colaborador_avaliado_id, atendente_id, tecnico_id")
-        .gte("created_at", from)
-        .lte("created_at", to)
-        .order("created_at", { ascending: false });
+        .gte("data_abertura", from)
+        .lte("data_abertura", to)
+        .order("data_abertura", { ascending: false });
 
       if (statusFilter !== "all") {
         if (statusFilter === "em_andamento") {
@@ -410,8 +410,8 @@ export default function DashboardPage() {
       let query = supabase
         .from("ordens_servico")
         .select("cliente_id, cliente_nome, status")
-        .gte("created_at", from)
-        .lte("created_at", to)
+        .gte("data_abertura", from)
+        .lte("data_abertura", to)
         .not("cliente_id", "is", null);
 
       if (statusFilter !== "all") {
@@ -453,8 +453,8 @@ export default function DashboardPage() {
         .from("ordens_servico")
         .select("id, tecnico_id, atendente_id, colaborador_avaliado_id, tipo_servico_id, status")
         .eq("status", "concluida")
-        .gte("created_at", from)
-        .lte("created_at", to);
+        .gte("data_abertura", from)
+        .lte("data_abertura", to);
 
       if (!osInPeriod?.length) { setTecnicoMedias([]); setSetorMedias([]); return; }
 
