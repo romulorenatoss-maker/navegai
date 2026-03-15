@@ -185,22 +185,12 @@ export default function RelatoriosPage() {
       avaliador_ids: avaliadorByOS[os.id] || new Set<string>(),
     }));
 
-    // Apply client-side filters
-    if (filterStatus !== "todos") {
-      results = results.filter((o) => o.status === filterStatus);
-    }
+    // Apply client-side filters (setor and avaliador require joined data)
     if (filterSetor !== "todos") {
       results = results.filter((o) => o.setor_id === filterSetor);
     }
     if (filterAvaliador !== "todos") {
       results = results.filter((o) => o.avaliador_ids.has(filterAvaliador));
-    }
-    if (filterAvaliado !== "todos") {
-      results = results.filter((o) => o.colaborador_avaliado_id === filterAvaliado);
-    }
-    if (filterCliente.trim()) {
-      const term = filterCliente.trim().toLowerCase();
-      results = results.filter((o) => o.cliente_nome?.toLowerCase().includes(term));
     }
 
     setOsList(
