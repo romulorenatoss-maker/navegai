@@ -596,6 +596,16 @@ export default function RelatoriosPage() {
               onChange={(e) => setFilterCliente(e.target.value)}
             />
           </div>
+
+          <div className="flex flex-col gap-1.5 min-w-[140px]">
+            <label className="text-caption font-medium text-muted-foreground">Nº OS</label>
+            <Input
+              className="h-9"
+              placeholder="Buscar OS..."
+              value={filterNumeroOS}
+              onChange={(e) => setFilterNumeroOS(e.target.value)}
+            />
+          </div>
         </div>
       </div>
 
