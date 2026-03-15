@@ -1792,7 +1792,7 @@ export default function AvaliacaoOSPage() {
                               <div className="space-y-2">
                                 <div className="flex items-center gap-2">
                                   <span className={cn("inline-flex items-center px-2.5 py-1 rounded text-sm font-semibold border",
-                                    answer === "sim" ? "border-success/40 bg-success/10 text-success" : answer === "nao" ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-muted-foreground/30 bg-muted text-muted-foreground"
+                                    answer === "sim" ? "border-success/40 bg-success/10 text-success" : answer === "nao" ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-warning/40 bg-warning/10 text-warning"
                                   )}>
                                     {answer === "sim" ? "SIM" : answer === "nao" ? "NÃO" : "N/A"}
                                   </span>
