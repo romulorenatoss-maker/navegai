@@ -1527,8 +1527,8 @@ export default function AvaliacaoOSPage() {
             <div className="flex items-center justify-between mt-2 text-caption text-muted-foreground">
               <span>Pontuação parcial</span>
               <span className={cn("font-bold font-tabular",
-                evalMaxScore > 0 && (evalTotalScore / evalMaxScore) * 100 >= 80 ? "text-success" :
-                evalMaxScore > 0 && (evalTotalScore / evalMaxScore) * 100 >= 60 ? "text-warning" : "text-destructive"
+                evalMaxScore > 0 && (evalTotalScore / evalMaxScore) * 100 >= 85 ? "text-success" :
+                evalMaxScore > 0 && (evalTotalScore / evalMaxScore) * 100 >= 75 ? "text-warning" : "text-destructive"
               )}>
                 {evalTotalScore}/{evalMaxScore} pts ({evalMaxScore > 0 ? ((evalTotalScore / evalMaxScore) * 100).toFixed(1) : 0}%)
               </span>
