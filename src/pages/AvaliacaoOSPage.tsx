@@ -1261,10 +1261,15 @@ export default function AvaliacaoOSPage() {
   // Auto-finalize when all answerable questions are answered
   const autoFinalizeTriggered = useRef(false);
   useEffect(() => {
-    if (evalFinalized || isOsFullyConcluded || evalSubmitting || autoFinalizeTriggered.current || isEditing) return;
+    if (evalFinalized || isOsFullyConcluded || evalSubmitting || isEditing) return;
     if (answerablePerguntas.length === 0) return;
     const allAnswered = answerablePerguntas.every(p => evalAnswers[p.id] != null);
-    if (!allAnswered) return;
+    if (!allAnswered) {
+      // Reset trigger if conditions changed (e.g. editing removed an answer)
+      autoFinalizeTriggered.current = false;
+      return;
+    }
+    if (autoFinalizeTriggered.current) return;
     // Check "nao" answers have observations and evidence
     const missingObs = answerablePerguntas.some(p => evalAnswers[p.id] === "nao" && !(evalObservations[p.id]?.trim()));
     const missingEvidence = answerablePerguntas.some(p => evalAnswers[p.id] === "nao" && !evalEvidencias[p.id]);
