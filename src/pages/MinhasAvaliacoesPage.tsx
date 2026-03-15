@@ -294,7 +294,7 @@ export default function MinhasAvaliacoesPage() {
                         <p className="text-caption font-medium text-muted-foreground">{es.label}</p>
                         <p className="text-sm font-semibold text-foreground">{es.nome || "—"}</p>
                         {es.nota != null ? (
-                          <span className={cn("text-lg font-bold font-tabular", es.nota >= 80 ? "text-success" : es.nota >= 60 ? "text-warning" : "text-destructive")}>
+                          <span className={cn("text-lg font-bold font-tabular", es.nota >= 85 ? "text-success" : es.nota >= 75 ? "text-warning" : "text-destructive")}>
                             {es.nota.toFixed(1)}%
                           </span>
                         ) : (
