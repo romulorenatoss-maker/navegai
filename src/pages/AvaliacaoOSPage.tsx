@@ -1811,7 +1811,7 @@ export default function AvaliacaoOSPage() {
                                       "bg-warning/10 text-warning"
                                     )}>
                                       Avaliada: {answer === "sim" ? "SIM" : answer === "nao" ? "NÃO" : "N/A"}
-                                      {answer === "sim" ? ` (+${p.peso} pts)` : answer === "nao" ? " (0 pts)" : ""}
+                                      {(answer === "sim" || answer === "na") ? ` (+${p.peso} pts)` : answer === "nao" ? " (0 pts)" : ""}
                                     </span>
                                     {(other || responseAuthors[p.id]) && (
                                       <span className="text-caption text-muted-foreground">

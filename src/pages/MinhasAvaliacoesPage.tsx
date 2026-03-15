@@ -140,7 +140,6 @@ export default function MinhasAvaliacoesPage() {
     for (const r of allRespostas) {
       const tipo = r.target === "tecnico" ? "tecnico" : r.target === "atendente" ? "atendente" : null;
       if (!tipo) continue; // skip "geral" - can't assign to specific person
-      if (r.resposta === "na") continue; // N/A ignored
 
       if (!groups[tipo]) {
         groups[tipo] = {
@@ -151,7 +150,7 @@ export default function MinhasAvaliacoesPage() {
         };
       }
       groups[tipo].pesoTotal += r.peso;
-      if (r.resposta === "sim") groups[tipo].pesoAcertado += r.peso;
+      if (r.resposta === "sim" || r.resposta === "na") groups[tipo].pesoAcertado += r.peso;
     }
 
     return Object.values(groups).map(g => ({

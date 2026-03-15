@@ -437,7 +437,7 @@ export default function RelatoriosPage() {
           ...perguntas.map((p) => {
             const resp = osRespostas[p.id];
             if (!resp) return "";
-            if (resp === "na") return "N/A";
+            if (resp === "na") return p.peso.toString(); // N/A pontua igual SIM
             if (resp === "sim") return p.peso.toString();
             if (resp === "nao") return "0";
             return "";
