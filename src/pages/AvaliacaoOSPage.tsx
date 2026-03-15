@@ -142,6 +142,7 @@ export default function AvaliacaoOSPage() {
       const { data } = await supabase.from("profiles").select("id, nome, cargo, email, setor_id").eq("ativo", true).order("nome");
       return data || [];
     },
+    staleTime: 5 * 60 * 1000,
   });
 
   // Evaluator's sectors
@@ -177,11 +178,11 @@ export default function AvaliacaoOSPage() {
     queryKey: ["tipos_servico_aval", profile?.id],
     queryFn: async () => {
       if (!profile?.id) return [];
-      // Show all active service types - sector filtering happens at question level
       const { data } = await supabase.from("tipos_servico").select("*, setores:setor_id(nome)").eq("ativo", true).order("nome");
       return data || [];
     },
     enabled: !!profile?.id,
+    staleTime: 5 * 60 * 1000,
   });
 
   const isQuestionAnswerable = useCallback((setorAvaliadoId: string | null) => {
@@ -203,12 +204,21 @@ export default function AvaliacaoOSPage() {
   // Create a hash of avaliado ids+setors to bust cache when profiles change
   const avaliadoHash = useMemo(() => avaliadoProfiles.map(p => `${p.id}_${p.setor_id}`).join(","), [avaliadoProfiles]);
 
-  const { data: atendimentoProfiles = [] } = useQuery({
-    queryKey: ["profiles_atendimento", avaliadoHash],
+  // Shared setores query for employee filtering (avoids duplicate fetch)
+  const { data: allSetores = [] } = useQuery({
+    queryKey: ["setores_active"],
     queryFn: async () => {
-      if (!avaliadoProfiles.length) return [];
-      const { data: setores } = await supabase.from("setores").select("id, nome").eq("ativo", true);
-      const atendSetorIds = (setores || []).filter(s => {
+      const { data } = await supabase.from("setores").select("id, nome").eq("ativo", true);
+      return data || [];
+    },
+    staleTime: 5 * 60 * 1000, // cache 5 min - rarely changes
+  });
+
+  const { data: atendimentoProfiles = [] } = useQuery({
+    queryKey: ["profiles_atendimento", avaliadoHash, allSetores],
+    queryFn: async () => {
+      if (!avaliadoProfiles.length || !allSetores.length) return [];
+      const atendSetorIds = allSetores.filter(s => {
         const n = s.nome.toLowerCase();
         return n.includes("atendimento") || n.includes("atendente");
       }).map(s => s.id);
@@ -217,15 +227,14 @@ export default function AvaliacaoOSPage() {
       const linkedIds = new Set(links?.map(l => l.profile_id) || []);
       return avaliadoProfiles.filter(p => linkedIds.has(p.id) || (p.setor_id && atendSetorIds.includes(p.setor_id)));
     },
-    enabled: avaliadoProfiles.length > 0,
+    enabled: avaliadoProfiles.length > 0 && allSetores.length > 0,
   });
 
   const { data: tecnicoProfiles = [] } = useQuery({
-    queryKey: ["profiles_tecnico", avaliadoHash],
+    queryKey: ["profiles_tecnico", avaliadoHash, allSetores],
     queryFn: async () => {
-      if (!avaliadoProfiles.length) return [];
-      const { data: setores } = await supabase.from("setores").select("id, nome").eq("ativo", true);
-      const tecSetorIds = (setores || []).filter(s => {
+      if (!avaliadoProfiles.length || !allSetores.length) return [];
+      const tecSetorIds = allSetores.filter(s => {
         const n = s.nome.toLowerCase();
         return n.includes("técnico") || n.includes("tecnico");
       }).map(s => s.id);
@@ -234,7 +243,7 @@ export default function AvaliacaoOSPage() {
       const linkedIds = new Set(links?.map(l => l.profile_id) || []);
       return avaliadoProfiles.filter(p => linkedIds.has(p.id) || (p.setor_id && tecSetorIds.includes(p.setor_id)));
     },
-    enabled: avaliadoProfiles.length > 0,
+    enabled: avaliadoProfiles.length > 0 && allSetores.length > 0,
   });
 
   const { data: profilesBySetor = [] } = useQuery({

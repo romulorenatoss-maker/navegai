@@ -56,21 +56,20 @@ export default function MinhasAvaliacoesPage() {
     enabled: !!profile?.id,
   });
 
-  // Fetch atendente and técnico names for the selected OS
+  // Fetch atendente and técnico names in a single query (avoid N+1)
   const { data: osEmployees } = useQuery({
     queryKey: ["os_employees", selectedAval?.id],
     queryFn: async () => {
       if (!selectedAval) return { atendente_nome: null, tecnico_nome: null };
-      const names: { atendente_nome: string | null; tecnico_nome: string | null } = { atendente_nome: null, tecnico_nome: null };
-      if (selectedAval.atendente_id) {
-        const { data } = await supabase.from("profiles").select("nome").eq("id", selectedAval.atendente_id).single();
-        names.atendente_nome = data?.nome || null;
-      }
-      if (selectedAval.tecnico_id) {
-        const { data } = await supabase.from("profiles").select("nome").eq("id", selectedAval.tecnico_id).single();
-        names.tecnico_nome = data?.nome || null;
-      }
-      return names;
+      const ids = [selectedAval.atendente_id, selectedAval.tecnico_id].filter(Boolean);
+      if (!ids.length) return { atendente_nome: null, tecnico_nome: null };
+      const { data } = await supabase.from("profiles").select("id, nome").in("id", ids);
+      const map: Record<string, string> = {};
+      data?.forEach(p => { map[p.id] = p.nome; });
+      return {
+        atendente_nome: selectedAval.atendente_id ? map[selectedAval.atendente_id] || null : null,
+        tecnico_nome: selectedAval.tecnico_id ? map[selectedAval.tecnico_id] || null : null,
+      };
     },
     enabled: !!selectedAval?.id,
   });
