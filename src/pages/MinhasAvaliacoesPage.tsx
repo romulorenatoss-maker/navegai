@@ -213,7 +213,7 @@ export default function MinhasAvaliacoesPage() {
         {notaMedia != null && (
           <div className="flex items-center gap-2 ml-2 bg-muted/50 border border-border rounded-lg px-4 py-2">
             <span className="text-sm font-medium text-muted-foreground">Nota Média:</span>
-            <span className={cn("text-lg font-bold font-tabular", notaMedia >= 80 ? "text-success" : notaMedia >= 60 ? "text-warning" : "text-destructive")}>
+            <span className={cn("text-lg font-bold font-tabular", notaMedia >= 85 ? "text-success" : notaMedia >= 75 ? "text-warning" : "text-destructive")}>
               {notaMedia.toFixed(1)}%
             </span>
           </div>
@@ -294,7 +294,7 @@ export default function MinhasAvaliacoesPage() {
                         <p className="text-caption font-medium text-muted-foreground">{es.label}</p>
                         <p className="text-sm font-semibold text-foreground">{es.nome || "—"}</p>
                         {es.nota != null ? (
-                          <span className={cn("text-lg font-bold font-tabular", es.nota >= 80 ? "text-success" : es.nota >= 60 ? "text-warning" : "text-destructive")}>
+                          <span className={cn("text-lg font-bold font-tabular", es.nota >= 85 ? "text-success" : es.nota >= 75 ? "text-warning" : "text-destructive")}>
                             {es.nota.toFixed(1)}%
                           </span>
                         ) : (
@@ -362,7 +362,7 @@ export default function MinhasAvaliacoesPage() {
                   {aval.nota_final != null && (
                     <div className="border-t border-border bg-muted/20 px-4 py-3 flex items-center justify-between">
                       <span className="text-sm font-semibold text-foreground">Nota Final</span>
-                      <span className={cn("text-xl font-bold font-tabular", aval.nota_final >= 80 ? "text-success" : aval.nota_final >= 60 ? "text-warning" : "text-destructive")}>
+                      <span className={cn("text-xl font-bold font-tabular", aval.nota_final >= 85 ? "text-success" : aval.nota_final >= 75 ? "text-warning" : "text-destructive")}>
                         {Number(aval.nota_final).toFixed(1)}%
                       </span>
                     </div>

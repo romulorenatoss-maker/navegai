@@ -527,7 +527,7 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
                 </div>
                 {evalDetail.nota_final != null && (
                   <span className={cn("text-body font-bold font-tabular",
-                    evalDetail.nota_final >= 80 ? "text-success" : evalDetail.nota_final >= 60 ? "text-warning" : "text-destructive"
+                    evalDetail.nota_final >= 85 ? "text-success" : evalDetail.nota_final >= 75 ? "text-warning" : "text-destructive"
                   )}>
                     {Number(evalDetail.nota_final).toFixed(1)}%
                   </span>
