@@ -14,8 +14,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ChevronLeft, CalendarIcon, Filter, Trophy, AlertTriangle,
-  Eye, MessageSquare, Trash2, Lock, Loader2, FileText
+  Eye, MessageSquare, Trash2, Lock, Loader2, FileText, Download
 } from "lucide-react";
+import { exportOSPdf } from "@/lib/export-os-pdf";
 import { cn } from "@/lib/utils";
 import { format, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
