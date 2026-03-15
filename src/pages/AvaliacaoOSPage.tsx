@@ -142,6 +142,7 @@ export default function AvaliacaoOSPage() {
       const { data } = await supabase.from("profiles").select("id, nome, cargo, email, setor_id").eq("ativo", true).order("nome");
       return data || [];
     },
+    staleTime: 5 * 60 * 1000,
   });
 
   // Evaluator's sectors
