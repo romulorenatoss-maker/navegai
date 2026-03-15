@@ -327,7 +327,7 @@ export default function RelatoriosPage() {
       // 1. Get OS data
       const { data: osData } = await supabase
         .from("ordens_servico")
-        .select("id, numero_os, status, created_at, cliente_nome, cliente_cpf, tipo_servico_id, colaborador_avaliado_id, tecnico_id, atendente_id")
+        .select("id, numero_os, status, data_abertura, cliente_nome, cliente_cpf, tipo_servico_id, colaborador_avaliado_id, tecnico_id, atendente_id")
         .in("id", osIds);
 
       if (!osData || osData.length === 0) {
