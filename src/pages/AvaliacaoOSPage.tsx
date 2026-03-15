@@ -1151,19 +1151,6 @@ export default function AvaliacaoOSPage() {
         if (respostasError) throw respostasError;
       }
 
-      // 3) Delete inconsistências vinculadas linked to OS
-      const { error: incVincError } = await supabase
-        .from("inconsistencias_vinculadas")
-        .delete()
-        .eq("ordem_servico_id", deleteOsId);
-      if (incVincError) throw incVincError;
-
-      // 4) Delete inconsistências linked to OS
-      const { error: inconsistenciasError } = await supabase
-        .from("avaliacoes_inconsistencias")
-        .delete()
-        .eq("ordem_servico_id", deleteOsId);
-      if (inconsistenciasError) throw inconsistenciasError;
 
       // 4) Delete avaliações
       const { error: avaliacoesError } = await supabase
