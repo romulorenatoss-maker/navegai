@@ -1872,9 +1872,17 @@ export default function AvaliacaoOSPage() {
         {evalPerguntas.length > 0 && (
           <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur border-t border-border px-3 py-2 z-30">
             <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-xs">
+              <div className="flex items-center gap-2 text-xs flex-wrap">
                 <Progress value={globalProgressPercent} className="h-1.5 w-20 sm:w-28" />
-                <span className="font-medium text-foreground font-tabular">{globalProgressPercent}%</span>
+                <span className="font-medium text-foreground font-tabular">{globalAnsweredCount}/{evalPerguntas.length}</span>
+                {evalMaxScore > 0 && (
+                  <span className={cn("font-bold font-tabular",
+                    (evalTotalScore / evalMaxScore) * 100 >= 85 ? "text-success" :
+                    (evalTotalScore / evalMaxScore) * 100 >= 75 ? "text-warning" : "text-destructive"
+                  )}>
+                    {evalTotalScore}/{evalMaxScore} pts
+                  </span>
+                )}
                 {!isLocked && autoSaving && (
                   <span className="text-muted-foreground flex items-center gap-1">
                     <Loader2 className="w-3 h-3 animate-spin" /> Salvando
