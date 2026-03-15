@@ -588,7 +588,7 @@ export default function RelatoriosPage() {
       const ws = XLSX.utils.aoa_to_sheet(wsData);
       
       // Auto-size columns
-      const colWidths = fixedHeadersList.map((h, i) => {
+      const colWidths = allHeaders.map((h, i) => {
         const maxLen = Math.max(h.length, ...wsData.slice(1).map(r => String(r[i] ?? "").length));
         return { wch: Math.min(maxLen + 2, 40) };
       });
