@@ -74,6 +74,9 @@ export default function PerguntasPage() {
   const [deletingChecklistId, setDeletingChecklistId] = useState<string | null>(null);
   const [deletePassword, setDeletePassword] = useState("");
   const [deletePasswordError, setDeletePasswordError] = useState("");
+  // Pergunta delete confirmation state
+  const [deletePerguntaDialogOpen, setDeletePerguntaDialogOpen] = useState(false);
+  const [deletingPerguntaId, setDeletingPerguntaId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
