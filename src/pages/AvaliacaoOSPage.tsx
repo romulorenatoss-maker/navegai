@@ -1688,7 +1688,7 @@ export default function AvaliacaoOSPage() {
                     return (
                       <motion.div key={p.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
                         className={cn("bg-card border rounded-lg transition-colors",
-                          answer === "sim" ? "border-success/30" : answer === "nao" ? "border-destructive/30" : answer === "na" ? "border-muted-foreground/20" : "border-border"
+                          answer === "sim" ? "border-success/30" : answer === "nao" ? "border-destructive/30" : answer === "na" ? "border-warning/30" : "border-border"
                         )}>
                         <div className="p-4">
                           <div className="flex items-start gap-3 mb-3">
