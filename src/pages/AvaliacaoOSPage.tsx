@@ -778,11 +778,21 @@ export default function AvaliacaoOSPage() {
       profiles?.forEach(p => { profileNames[p.id] = p.nome; });
     }
 
+    const authorsMap: Record<string, { avaliador_nome: string; resposta: string }> = {};
+
     (allRespostas || []).forEach((r: any) => {
       // All responses are loaded into the main answer maps
       if (r.resposta) ans[r.pergunta_id] = r.resposta as Answer;
       if (r.observacao) obs[r.pergunta_id] = r.observacao;
       if (r.evidencia_url) evid[r.pergunta_id] = r.evidencia_url;
+
+      // Track author info for ALL responses
+      if (r.avaliador_id && r.resposta) {
+        authorsMap[r.pergunta_id] = {
+          avaliador_nome: profileNames[r.avaliador_id] || "Avaliador",
+          resposta: r.resposta,
+        };
+      }
 
       // Track "other evaluator" info for display purposes
       if (r.avaliador_id && r.avaliador_id !== profile?.id && r.resposta) {
@@ -799,6 +809,7 @@ export default function AvaliacaoOSPage() {
     setEvalObservations(obs);
     setEvalEvidencias(evid);
     setOtherEvalAnswers(otherMap);
+    setResponseAuthors(authorsMap);
 
     setView("evaluation");
   };
