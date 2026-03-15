@@ -67,6 +67,8 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
       setSelectedOsIds(new Set());
       setActiveTab("dados");
       setDetailOsId(null);
+      setNewPassword("");
+      setConfirmPassword("");
     }
     onOpenChange(v);
   };
