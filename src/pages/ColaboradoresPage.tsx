@@ -364,6 +364,14 @@ export default function ColaboradoresPage() {
         onOpenChange={(v) => { setDetailViewOpen(v); if (!v) setDetailProfile(null); }}
         collaborator={detailProfile}
       />
+
+      <AdminPasswordDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Excluir Colaborador"
+        description="Esta ação é irreversível. O colaborador será removido permanentemente."
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 }
