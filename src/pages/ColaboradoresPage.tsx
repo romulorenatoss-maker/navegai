@@ -186,17 +186,14 @@ export default function ColaboradoresPage() {
     onError: (err: any) => toast.error(err.message),
   });
 
-  const remove = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("profiles").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["profiles"] });
-      toast.success("Colaborador excluído.");
-    },
-    onError: (err: any) => toast.error(err.message),
-  });
+  const handleDeleteConfirm = async () => {
+    if (!deletingId) return;
+    const { error } = await supabase.from("profiles").delete().eq("id", deletingId);
+    if (error) throw error;
+    queryClient.invalidateQueries({ queryKey: ["profiles"] });
+    toast.success("Colaborador excluído.");
+    setDeletingId(null);
+  };
 
   const openCreate = () => {
     setEditing(null); setNome(""); setEmail(""); setCargo("avaliado"); setSelectedSetores([]); setSenha("");
