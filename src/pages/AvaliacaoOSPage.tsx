@@ -32,7 +32,7 @@ const SegmentedControl = ({ value, onChange, disabled }: { value: Answer; onChan
   const options: { label: string; value: Answer; activeColor: string }[] = [
     { label: "Sim", value: "sim", activeColor: "bg-success text-success-foreground" },
     { label: "Não", value: "nao", activeColor: "bg-destructive text-destructive-foreground" },
-    { label: "N/A", value: "na", activeColor: "bg-muted text-foreground" },
+    { label: "N/A", value: "na", activeColor: "bg-warning text-warning-foreground" },
   ];
   return (
     <div className="flex bg-muted rounded-md p-0.5 gap-0.5">
