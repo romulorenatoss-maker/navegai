@@ -23,6 +23,7 @@ interface OSRow {
   numero_os: string;
   status: string;
   created_at: string;
+  data_abertura: string;
   cliente_nome: string | null;
   cliente_id: string | null;
   tipo_servico_id: string | null;
@@ -137,7 +138,7 @@ export default function DashboardPage() {
 
       let query = supabase
         .from("ordens_servico")
-        .select("id, numero_os, status, created_at, cliente_nome, cliente_id, tipo_servico_id")
+        .select("id, numero_os, status, created_at, data_abertura, cliente_nome, cliente_id, tipo_servico_id")
         .gte("data_abertura", from)
         .lte("data_abertura", to)
         .order("data_abertura", { ascending: false });
@@ -840,6 +841,7 @@ export default function DashboardPage() {
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">OS</th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Data</th>
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Cliente</th>
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Tipo de Serviço</th>
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 w-40">Progresso</th>
@@ -847,9 +849,10 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filteredOS.map((item) => (
+                {filteredOS.slice(0, 5).map((item) => (
                   <tr key={item.id} className="hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => handleClickOS(item)}>
                     <td className="px-4 py-3 text-body font-medium text-primary underline underline-offset-2 font-tabular">{item.numero_os}</td>
+                    <td className="px-4 py-3 text-body text-muted-foreground font-tabular">{format(new Date(item.data_abertura), "dd/MM/yyyy")}</td>
                     <td className="px-4 py-3 text-body text-muted-foreground">{item.cliente_nome || "—"}</td>
                     <td className="px-4 py-3 text-body text-muted-foreground">{item.tipo_servico_nome || "—"}</td>
                     <td className="px-4 py-3">
@@ -867,7 +870,7 @@ export default function DashboardPage() {
                 ))}
                 {filteredOS.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhuma OS encontrada no período.</td>
+                    <td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhuma OS encontrada no período.</td>
                   </tr>
                 )}
               </tbody>
