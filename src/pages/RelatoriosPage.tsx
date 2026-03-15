@@ -97,9 +97,13 @@ export default function RelatoriosPage() {
   // Delete dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-  // Export dialog
+  // Export selected dialog
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+
+  // Export all filtered dialog
+  const [exportAllDialogOpen, setExportAllDialogOpen] = useState(false);
+  const [exportAllLoading, setExportAllLoading] = useState(false);
 
   
 
