@@ -94,6 +94,7 @@ export default function PerguntasPage() {
       const { data, error } = await supabase
         .from("perguntas_avaliacao")
         .select("*, setores!perguntas_avaliacao_setor_avaliado_id_fkey(nome), checklists!perguntas_avaliacao_checklist_id_fkey(titulo), setor_nota:setores!perguntas_avaliacao_setor_nota_id_fkey(nome)")
+        .eq("ativo", true)
         .order("ordem");
       if (error) throw error;
       return (data || []).map((p: any) => ({ ...p, _checklist_titulo: p.checklists?.titulo || null }));
@@ -277,8 +278,12 @@ export default function PerguntasPage() {
   });
 
   const remove = useMutation({
-    mutationFn: async (id: string) => { const { error } = await supabase.from("perguntas_avaliacao").delete().eq("id", id); if (error) throw error; },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["perguntas_avaliacao"] }); toast.success("Excluída."); },
+    mutationFn: async (id: string) => {
+      // Soft delete: mark as inactive instead of hard delete to avoid FK constraint errors
+      const { error } = await supabase.from("perguntas_avaliacao").update({ ativo: false } as any).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["perguntas_avaliacao"] }); toast.success("Pergunta desativada."); },
     onError: (err: any) => toast.error(err.message),
   });
 
