@@ -509,11 +509,25 @@ export default function DashboardPage() {
       const finalMedias = Array.from(deduped.values()).sort((a, b) => b.media - a.media);
       setTecnicoMedias(finalMedias);
 
-      // Sector averages
+      // Build a map of profile_id -> sector info from SQL results as fallback
+      // This ensures collaborators not in colaborador_setores are still counted
+      const profileSqlSetores: Record<string, Set<string>> = {};
+      rows.forEach(r => {
+        if (!profileSqlSetores[r.profile_id]) profileSqlSetores[r.profile_id] = new Set();
+        // Find setor_id by name from the SQL result
+        const matchedSetorId = Object.entries(setorNameMap).find(([, nome]) => nome === r.setor_nome)?.[0];
+        if (matchedSetorId) profileSqlSetores[r.profile_id].add(matchedSetorId);
+      });
+
+      // Sector averages - use colaborador_setores first, fallback to SQL-derived sectors
       const setorAvgs: Record<string, { nome: string; avgs: number[] }> = {};
       finalMedias.forEach(t => {
         const pSetores = profileSetores[t.profile_id] || [];
-        pSetores.forEach(setorId => {
+        const sqlSetores = profileSqlSetores[t.profile_id] ? [...profileSqlSetores[t.profile_id]] : [];
+        // Merge: use colaborador_setores if available, otherwise use SQL-derived sectors
+        const effectiveSetores = pSetores.length > 0 ? pSetores : sqlSetores;
+        if (effectiveSetores.length === 0) return;
+        effectiveSetores.forEach(setorId => {
           if (!setorAvgs[setorId]) setorAvgs[setorId] = { nome: setorNameMap[setorId] || "Sem setor", avgs: [] };
           setorAvgs[setorId].avgs.push(t.media);
         });
