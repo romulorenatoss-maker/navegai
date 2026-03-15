@@ -138,7 +138,7 @@ export default function DashboardPage() {
 
       let query = supabase
         .from("ordens_servico")
-        .select("id, numero_os, status, created_at, cliente_nome, cliente_id, tipo_servico_id")
+        .select("id, numero_os, status, created_at, data_abertura, cliente_nome, cliente_id, tipo_servico_id")
         .gte("data_abertura", from)
         .lte("data_abertura", to)
         .order("data_abertura", { ascending: false });
