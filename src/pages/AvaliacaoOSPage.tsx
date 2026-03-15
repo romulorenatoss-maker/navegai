@@ -186,6 +186,8 @@ export default function AvaliacaoOSPage() {
   const isQuestionAnswerable = useCallback((setorAvaliadoId: string | null) => {
     if (isAdmin) return true;
     if (!setorAvaliadoId) return true;
+    // If evaluator has no sectors assigned, treat all questions as answerable
+    if (evaluatorSetorIds.length === 0) return true;
     return evaluatorSetorIds.includes(setorAvaliadoId);
   }, [isAdmin, evaluatorSetorIds]);
 
@@ -1037,7 +1039,7 @@ export default function AvaliacaoOSPage() {
       }
       const nota = totalWeight > 0 ? (earnedWeight / totalWeight) * 100 : 0;
 
-      await supabase.from("avaliacoes").update({ concluida: true, nota_final: nota }).eq("id", evalAvaliacaoId);
+      await supabase.from("avaliacoes").update({ concluida: true, nota_final: nota, concluida_em: new Date().toISOString() }).eq("id", evalAvaliacaoId);
       setEvalScore(nota);
       setEvalFinalized(true);
       toast.success(`Avaliação do seu setor concluída! Nota: ${nota.toFixed(1)}%`);
