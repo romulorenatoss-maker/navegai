@@ -218,7 +218,26 @@ export default function MinhasAvaliacoesPage() {
             </span>
           </div>
         )}
-      </div>
+                </div>
+
+                {/* Notas por avaliado */}
+                {employeeScores.length > 0 && (
+                  <div className="flex flex-wrap gap-3">
+                    {employeeScores.map((es) => (
+                      <div key={es.label} className="flex-1 min-w-[180px] bg-muted/20 border border-border rounded-lg px-4 py-3">
+                        <p className="text-caption font-medium text-muted-foreground">{es.label}</p>
+                        <p className="text-sm font-semibold text-foreground">{es.nome || "—"}</p>
+                        {es.nota != null ? (
+                          <span className={cn("text-lg font-bold font-tabular", es.nota >= 80 ? "text-success" : es.nota >= 60 ? "text-warning" : "text-destructive")}>
+                            {es.nota.toFixed(1)}%
+                          </span>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">Sem perguntas</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )
 
       <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
         <table className="w-full">
