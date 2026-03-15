@@ -154,13 +154,10 @@ export default function PerguntasPage() {
   // Checklist delete mutation
   const deleteChecklist = useMutation({
     mutationFn: async (id: string) => {
-      // Unlink questions
       await (supabase as any).from("perguntas_avaliacao").update({ checklist_id: null }).eq("checklist_id", id);
-      // Remove related junction/item records
       await supabase.from("checklist_perguntas").delete().eq("checklist_id", id);
       await supabase.from("checklist_itens").delete().eq("checklist_id", id);
       await (supabase as any).from("tipo_servico_checklists").delete().eq("checklist_id", id);
-      // Delete checklist
       const { error } = await supabase.from("checklists").delete().eq("id", id);
       if (error) throw error;
     },
@@ -170,29 +167,12 @@ export default function PerguntasPage() {
       toast.success("Checklist excluído.");
       setDeleteChecklistDialogOpen(false);
       setDeletingChecklistId(null);
-      setDeletePassword("");
-      setDeletePasswordError("");
       if (filtroTipoServico === deletingChecklistId) setFiltroTipoServico(null);
     },
     onError: (err: any) => toast.error(err.message),
   });
 
   const handleDeleteChecklistConfirm = async () => {
-    if (!deletePassword.trim()) {
-      setDeletePasswordError("Informe sua senha para confirmar.");
-      return;
-    }
-    // Verify password via Supabase re-auth
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user?.email) {
-      setDeletePasswordError("Erro ao verificar usuário.");
-      return;
-    }
-    const { error } = await supabase.auth.signInWithPassword({ email: user.email, password: deletePassword });
-    if (error) {
-      setDeletePasswordError("Senha incorreta.");
-      return;
-    }
     if (deletingChecklistId) deleteChecklist.mutate(deletingChecklistId);
   };
 
