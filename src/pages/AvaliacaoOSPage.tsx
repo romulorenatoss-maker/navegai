@@ -8,6 +8,7 @@ import {
   Check, Clock, Trash2, Eye, Users, MessageSquare, Camera, X, Image as ImageIcon, Lock, Download, Pencil, Save
 } from "lucide-react";
 import { jsPDF } from "jspdf";
+import MinhasAvaliacoesPendentes from "@/components/MinhasAvaliacoesPendentes";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
