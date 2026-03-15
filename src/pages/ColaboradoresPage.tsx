@@ -188,6 +188,53 @@ export default function ColaboradoresPage() {
 
   const handleDeleteConfirm = async () => {
     if (!deletingId) return;
+
+    // 1. Clean up junction tables
+    await supabase.from("colaborador_setores").delete().eq("profile_id", deletingId);
+    await supabase.from("permissoes_tela").delete().eq("profile_id", deletingId);
+    await supabase.from("avaliador_tipos_servico").delete().eq("avaliador_id", deletingId);
+    await supabase.from("sessoes_usuario").delete().eq("profile_id", deletingId);
+
+    // 2. Get avaliacoes as avaliador to clean respostas + evidencias
+    const { data: avals } = await supabase.from("avaliacoes").select("id").eq("avaliador_id", deletingId);
+    if (avals?.length) {
+      const avalIds = avals.map(a => a.id);
+      // Delete evidencias from storage
+      const { data: respostas } = await supabase
+        .from("respostas_avaliacao")
+        .select("evidencia_url")
+        .in("avaliacao_id", avalIds)
+        .not("evidencia_url", "is", null);
+      if (respostas?.length) {
+        const paths = respostas
+          .map(r => r.evidencia_url)
+          .filter(Boolean)
+          .map(url => { const m = url!.match(/evidencias\/(.+)$/); return m ? m[1] : null; })
+          .filter(Boolean) as string[];
+        if (paths.length > 0) await supabase.storage.from("evidencias").remove(paths);
+      }
+      await supabase.from("respostas_avaliacao").delete().in("avaliacao_id", avalIds);
+      // Clean inconsistencias_vinculadas linked to these avaliacoes
+      await supabase.from("inconsistencias_vinculadas").delete().in("avaliacao_id", avalIds);
+    }
+    // Also clean respostas where avaliador_id matches directly
+    await supabase.from("respostas_avaliacao").delete().eq("avaliador_id", deletingId);
+    await supabase.from("avaliacoes").delete().eq("avaliador_id", deletingId);
+
+    // 3. Nullify OS references (don't delete the OS, just unlink)
+    await supabase.from("ordens_servico").update({ atendente_id: null } as any).eq("atendente_id", deletingId);
+    await supabase.from("ordens_servico").update({ tecnico_id: null } as any).eq("tecnico_id", deletingId);
+    await supabase.from("ordens_servico").update({ colaborador_avaliado_id: null } as any).eq("colaborador_avaliado_id", deletingId);
+
+    // 4. Get user_id before deleting profile for user_roles cleanup
+    const { data: prof } = await supabase.from("profiles").select("user_id").eq("id", deletingId).single();
+    if (prof?.user_id) {
+      await supabase.from("user_roles").delete().eq("user_id", prof.user_id);
+      // Also clean sessoes by user_id (some may not have profile_id set)
+      await supabase.from("sessoes_usuario").delete().eq("user_id", prof.user_id);
+    }
+
+    // 5. Delete the profile
     const { error } = await supabase.from("profiles").delete().eq("id", deletingId);
     if (error) throw error;
     queryClient.invalidateQueries({ queryKey: ["profiles"] });

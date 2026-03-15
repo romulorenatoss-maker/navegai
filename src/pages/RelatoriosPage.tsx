@@ -269,15 +269,19 @@ export default function RelatoriosPage() {
         await supabase.from("respostas_avaliacao").delete().in("avaliacao_id", avalIds);
       }
 
-      // 4. Delete inconsistencias
+      // 4. Delete inconsistencias (both types)
       await supabase.from("avaliacoes_inconsistencias").delete().in("ordem_servico_id", osIds);
+      await supabase.from("inconsistencias_vinculadas").delete().in("ordem_servico_id", osIds);
 
-      // 5. Delete avaliacoes
+      // 5. Delete os_perguntas
+      await supabase.from("os_perguntas").delete().in("os_id", osIds);
+
+      // 6. Delete avaliacoes
       if (avalIds.length > 0) {
         await supabase.from("avaliacoes").delete().in("id", avalIds);
       }
 
-      // 6. Delete OS
+      // 7. Delete OS
       await supabase.from("ordens_servico").delete().in("id", osIds);
 
       // 7. Audit log
