@@ -117,7 +117,7 @@ export default function RelatoriosPage() {
 
     // Apply server-side filters where possible
     if (filterStatus !== "todos") {
-      query = query.eq("status", filterStatus);
+      query = query.eq("status", filterStatus as "aberta" | "em_andamento" | "concluida");
     }
     if (filterNumeroOS.trim()) {
       query = query.ilike("numero_os", `%${filterNumeroOS.trim()}%`);
