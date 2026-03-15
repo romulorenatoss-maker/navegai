@@ -1216,6 +1216,7 @@ export default function AvaliacaoOSPage() {
     setEvalAnswers({});
     setEvalObservations({});
     setEvalEvidencias({});
+    setResponseAuthors({});
     setEvalFinalized(false);
     setEvalScore(null);
     autoFinalizeTriggered.current = false;
