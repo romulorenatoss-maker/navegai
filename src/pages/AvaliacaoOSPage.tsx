@@ -1054,9 +1054,9 @@ export default function AvaliacaoOSPage() {
       let earnedWeight = 0;
       for (const p of answerableQuestions) {
         const answer = evalAnswers[p.id];
-        if (answer !== "na" && answer != null) {
+        if (answer != null) {
           totalWeight += p.peso;
-          if (answer === "sim") earnedWeight += p.peso;
+          if (answer === "sim" || answer === "na") earnedWeight += p.peso;
         }
       }
       const nota = totalWeight > 0 ? (earnedWeight / totalWeight) * 100 : 0;
