@@ -81,17 +81,17 @@ export default function DesempenhoColaboradorPage() {
     queryKey: ["perf_evals", targetProfileId, appliedStart?.toISOString(), appliedEnd?.toISOString()],
     queryFn: async () => {
       if (!targetProfileId) return [];
-      const from = appliedStart?.toISOString() || startOfMonth(now).toISOString();
-      const to = appliedEnd ? endOfMonth(appliedEnd).toISOString() : endOfMonth(now).toISOString();
+      const from = appliedStart ? startOfDay(appliedStart).toISOString() : startOfDay(startOfMonth(now)).toISOString();
+      const to = appliedEnd ? endOfDay(appliedEnd).toISOString() : endOfDay(endOfMonth(now)).toISOString();
 
       const { data: osData } = await supabase
         .from("ordens_servico")
-        .select("id, numero_os, tipo_servico_id, created_at, cliente_nome, tecnico_id, atendente_id, status")
+        .select("id, numero_os, tipo_servico_id, created_at, data_abertura, cliente_nome, tecnico_id, atendente_id, status")
         .or(`tecnico_id.eq.${targetProfileId},atendente_id.eq.${targetProfileId},colaborador_avaliado_id.eq.${targetProfileId}`)
         .eq("status", "concluida")
-        .gte("created_at", from)
-        .lte("created_at", to)
-        .order("created_at", { ascending: false });
+        .gte("data_abertura", from)
+        .lte("data_abertura", to)
+        .order("data_abertura", { ascending: false });
 
       if (!osData?.length) return [];
 
