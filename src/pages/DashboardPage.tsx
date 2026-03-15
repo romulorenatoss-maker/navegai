@@ -876,14 +876,22 @@ export default function DashboardPage() {
         </motion.div>
       )}
 
-      {/* Score averages - Atendimento and Técnico side by side */}
-      <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Score averages - Atendimento, Técnico and Média de Equipe */}
+      <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {(() => {
           const atendiSetor = setorMedias.find(s => s.setor_nome.toLowerCase().includes("atendimento"));
           const tecnicoSetor = setorMedias.find(s => s.setor_nome.toLowerCase().includes("cnico"));
+
+          // Média de Equipe: average between both sectors (when both exist)
+          const equipeMedia = atendiSetor && tecnicoSetor
+            ? (atendiSetor.media + tecnicoSetor.media) / 2
+            : atendiSetor ? atendiSetor.media : tecnicoSetor ? tecnicoSetor.media : null;
+          const equipeTotal = (atendiSetor?.total_avaliacoes || 0) + (tecnicoSetor?.total_avaliacoes || 0);
+
           const sectors = [
             { label: "Média Atendimento", data: atendiSetor },
             { label: "Média Técnico", data: tecnicoSetor },
+            { label: "Média de Equipe", data: equipeMedia !== null ? { media: equipeMedia, total_avaliacoes: equipeTotal } : null },
           ];
           return sectors.map((s) => (
             <motion.div key={s.label} variants={itemVariants}
