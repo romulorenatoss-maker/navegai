@@ -18,12 +18,13 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   // Non-admin users: check screen permission for current path
-  // Always allow /avaliacoes/pesquisa with mode=eval (responding to evaluations)
+  // Always allow certain routes that are accessible by design
   if (!isAdmin && allowedScreens.length > 0) {
     const currentPath = location.pathname;
     const searchParams = new URLSearchParams(location.search);
     const isEvalMode = currentPath === "/avaliacoes/pesquisa" && searchParams.get("mode") === "eval";
-    if (!isEvalMode && !allowedScreens.includes(currentPath)) {
+    const isDesempenhoView = currentPath === "/desempenho"; // accessible to all authenticated users
+    if (!isEvalMode && !isDesempenhoView && !allowedScreens.includes(currentPath)) {
       return <Navigate to="/avaliacoes/minhas" replace />;
     }
   }
