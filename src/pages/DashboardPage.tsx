@@ -453,8 +453,8 @@ export default function DashboardPage() {
         .from("ordens_servico")
         .select("id, tecnico_id, atendente_id, colaborador_avaliado_id, tipo_servico_id, status")
         .eq("status", "concluida")
-        .gte("created_at", from)
-        .lte("created_at", to);
+        .gte("data_abertura", from)
+        .lte("data_abertura", to);
 
       if (!osInPeriod?.length) { setTecnicoMedias([]); setSetorMedias([]); return; }
 
