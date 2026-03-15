@@ -1,8 +1,9 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { session, loading } = useAuth();
+  const { session, loading, isAdmin, allowedScreens } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -14,6 +15,19 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!session) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Non-admin users: check screen permission for current path
+  if (!isAdmin && allowedScreens.length > 0) {
+    const currentPath = location.pathname;
+    if (!allowedScreens.includes(currentPath)) {
+      return <Navigate to="/avaliacoes/minhas" replace />;
+    }
+  }
+
+  // Non-admin with no permissions loaded yet but not loading — redirect from dashboard
+  if (!isAdmin && allowedScreens.length === 0 && !loading && location.pathname === "/") {
+    return <Navigate to="/avaliacoes/minhas" replace />;
   }
 
   return <>{children}</>;
