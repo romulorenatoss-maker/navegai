@@ -85,8 +85,8 @@ export default function RelatoriosPage() {
   }, []);
 
   const getFilterDates = () => ({
-    from: startDate ? startDate.toISOString() : startOfMonth(now).toISOString(),
-    to: endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString(),
+    from: startDate ? startOfDay(startDate).toISOString() : startOfDay(startOfMonth(now)).toISOString(),
+    to: endDate ? endOfDay(endDate).toISOString() : endOfDay(endOfMonth(now)).toISOString(),
   });
 
   // Data
