@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchNotasPorSetor, calcularNotaPorOS } from "@/hooks/useNotasPorSetor";
+import { getScoreColorClass } from "@/lib/score-colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { format } from "date-fns";
