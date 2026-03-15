@@ -1265,8 +1265,8 @@ export default function AvaliacaoOSPage() {
   const myAnsweredCount = answerablePerguntas.filter(p => evalAnswers[p.id] != null).length;
   const myProgressPercent = answerablePerguntas.length > 0 ? Math.round((myAnsweredCount / answerablePerguntas.length) * 100) : 0;
   
-  const evalTotalScore = evalPerguntas.reduce((a, p) => evalAnswers[p.id] === "sim" ? a + p.peso : a, 0);
-  const evalMaxScore = evalPerguntas.reduce((a, p) => evalAnswers[p.id] !== "na" && evalAnswers[p.id] != null ? a + p.peso : a, 0);
+  const evalTotalScore = evalPerguntas.reduce((a, p) => (evalAnswers[p.id] === "sim" || evalAnswers[p.id] === "na") ? a + p.peso : a, 0);
+  const evalMaxScore = evalPerguntas.reduce((a, p) => evalAnswers[p.id] != null ? a + p.peso : a, 0);
 
   // Auto-finalize when all answerable questions are answered
   const autoFinalizeTriggered = useRef(false);
