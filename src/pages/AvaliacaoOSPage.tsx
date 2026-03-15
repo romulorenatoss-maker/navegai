@@ -551,7 +551,7 @@ export default function AvaliacaoOSPage() {
         })();
       }
     }
-  }, [profile]);
+  }, [profile, searchParams]);
 
   // --- Step 1: Validate CPF ---
   const handleCpfValidation = async () => {
