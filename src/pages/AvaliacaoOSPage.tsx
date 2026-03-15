@@ -694,8 +694,9 @@ export default function AvaliacaoOSPage() {
 
   const handleAnswerChange = useCallback((perguntaId: string, answer: Answer) => {
     setEvalAnswers(prev => ({ ...prev, [perguntaId]: answer }));
+    setResponseAuthors(prev => ({ ...prev, [perguntaId]: { avaliador_nome: profile?.nome || "Você", resposta: answer || "" } }));
     autoSaveAnswer(perguntaId, answer);
-  }, [autoSaveAnswer]);
+  }, [autoSaveAnswer, profile]);
 
   const handleObservationChange = useCallback((perguntaId: string, text: string) => {
     setEvalObservations(prev => ({ ...prev, [perguntaId]: text }));
