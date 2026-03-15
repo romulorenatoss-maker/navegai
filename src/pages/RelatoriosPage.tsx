@@ -895,14 +895,6 @@ export default function RelatoriosPage() {
         onConfirm={handleExportSelected}
       />
 
-      {/* Export All Filtered Password Dialog */}
-      <AdminPasswordDialog
-        open={exportAllDialogOpen}
-        onOpenChange={setExportAllDialogOpen}
-        title="Exportar Relatório Filtrado"
-        description={`Informe sua senha para exportar ${osList.filter((os) => os.status === "concluida").length} OS(s) concluída(s) do resultado filtrado.`}
-        onConfirm={handleExportAllFiltered}
-      />
     </div>
   );
 }
