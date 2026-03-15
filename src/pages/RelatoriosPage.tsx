@@ -795,6 +795,22 @@ export default function RelatoriosPage() {
               <FileText className="w-4 h-4 text-primary" />
               Ordens de Serviço ({osList.length})
             </h2>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const concluidasCount = osList.filter((os) => os.status === "concluida").length;
+                if (concluidasCount === 0) {
+                  toast.error("Nenhuma OS concluída disponível para exportação.");
+                  return;
+                }
+                setExportAllDialogOpen(true);
+              }}
+              disabled={exportAllLoading || osList.length === 0}
+            >
+              {exportAllLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
+              Exportar Relatório ({osList.filter((os) => os.status === "concluida").length})
+            </Button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
