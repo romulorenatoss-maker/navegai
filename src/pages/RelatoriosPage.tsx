@@ -109,12 +109,28 @@ export default function RelatoriosPage() {
     setLoading(true);
     const { from, to } = getFilterDates();
 
-    const { data: osData } = await supabase
+    let query = supabase
       .from("ordens_servico")
-      .select("id, numero_os, status, created_at, cliente_nome, tipo_servico_id, colaborador_avaliado_id")
-      .gte("created_at", from)
-      .lte("created_at", to)
-      .order("created_at", { ascending: false });
+      .select("id, numero_os, status, data_abertura, cliente_nome, tipo_servico_id, colaborador_avaliado_id, atendente_id, tecnico_id, cliente_id")
+      .gte("data_abertura", from)
+      .lte("data_abertura", to);
+
+    // Apply server-side filters where possible
+    if (filterStatus !== "todos") {
+      query = query.eq("status", filterStatus);
+    }
+    if (filterNumeroOS.trim()) {
+      query = query.ilike("numero_os", `%${filterNumeroOS.trim()}%`);
+    }
+    if (filterCliente.trim()) {
+      query = query.ilike("cliente_nome", `%${filterCliente.trim()}%`);
+    }
+    if (filterAvaliado !== "todos") {
+      // Filter by colaborador_avaliado_id, atendente_id, or tecnico_id
+      query = query.or(`colaborador_avaliado_id.eq.${filterAvaliado},atendente_id.eq.${filterAvaliado},tecnico_id.eq.${filterAvaliado}`);
+    }
+
+    const { data: osData } = await query.order("data_abertura", { ascending: false });
 
     if (!osData) {
       setOsList([]);
