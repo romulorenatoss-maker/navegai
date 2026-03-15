@@ -2278,13 +2278,16 @@ export default function AvaliacaoOSPage() {
     );
   }
 
-  // --- Combined search handler: CPF + OS number at once ---
+  // --- Combined search handler: CPF optional, OS required ---
   const handleCombinedSearch = async () => {
     const cpfDigits = formClienteCpf.replace(/\D/g, "");
     const osNum = formOsNumero.trim();
-    if (cpfDigits.length !== 11) { toast.error("Informe um CPF completo."); return; }
-    if (!isValidCpf(cpfDigits)) { toast.error("CPF inválido."); return; }
     if (!osNum) { toast.error("Informe o número da OS."); return; }
+    
+    // Validate CPF only if provided
+    const hasCpf = cpfDigits.length > 0;
+    if (hasCpf && cpfDigits.length !== 11) { toast.error("CPF incompleto. Preencha todos os 11 dígitos ou deixe em branco."); return; }
+    if (hasCpf && !isValidCpf(cpfDigits)) { toast.error("CPF inválido."); return; }
 
     setCpfValidating(true);
     setFormValidating(true);
@@ -2293,29 +2296,35 @@ export default function AvaliacaoOSPage() {
     setFormPendingAval(null);
 
     try {
-      // 1) Validate/find client
-      const { data: cliente } = await supabase
-        .from("clientes")
-        .select("id, nome, cpf")
-        .eq("cpf", formClienteCpf.trim())
-        .limit(1)
-        .single();
+      // 1) Validate/find client (only if CPF provided)
+      let cliente: any = null;
+      if (hasCpf) {
+        const { data } = await supabase
+          .from("clientes")
+          .select("id, nome, cpf")
+          .eq("cpf", formClienteCpf.trim())
+          .limit(1)
+          .single();
+        cliente = data;
 
-      if (cliente) {
-        setFormFoundCliente(cliente);
-        setFormClienteNome(cliente.nome);
-        setClienteId(cliente.id);
-        setShowNewClienteForm(false);
-        setCpfValidated(true);
+        if (cliente) {
+          setFormFoundCliente(cliente);
+          setFormClienteNome(cliente.nome);
+          setClienteId(cliente.id);
+          setShowNewClienteForm(false);
+          setCpfValidated(true);
+        } else {
+          setFormFoundCliente(null);
+          setShowNewClienteForm(true);
+          setClienteId(null);
+          setCpfValidated(true);
+        }
       } else {
+        // No CPF provided — skip client lookup
         setFormFoundCliente(null);
-        setShowNewClienteForm(true);
+        setShowNewClienteForm(false);
         setClienteId(null);
-        setCpfValidated(true);
-        setCpfValidating(false);
-        setFormValidating(false);
-        toast.info("Cliente não encontrado. Cadastre o nome abaixo e busque novamente.");
-        return;
+        setCpfValidated(false);
       }
 
       // 2) Search OS
@@ -2385,7 +2394,7 @@ export default function AvaliacaoOSPage() {
     <div className="p-4 sm:p-6 max-w-4xl mx-auto">
       <div className="mb-4 sm:mb-6">
         <h1 className="text-lg sm:text-section font-semibold text-foreground">Avaliação de OS</h1>
-        <p className="text-sm sm:text-body text-muted-foreground">Informe o CPF do cliente e o número da OS para iniciar.</p>
+        <p className="text-sm sm:text-body text-muted-foreground">Informe o número da OS para iniciar. O CPF do cliente é opcional.</p>
       </div>
 
       {/* Step 1: CPF + OS Number combined */}
@@ -2399,7 +2408,7 @@ export default function AvaliacaoOSPage() {
         <div className="p-4 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label>CPF do Cliente *</Label>
+              <Label>CPF do Cliente</Label>
               <Input
                 value={formClienteCpf}
                 onChange={e => {
@@ -2462,7 +2471,7 @@ export default function AvaliacaoOSPage() {
             {!formFoundOS && (
               <Button
                 onClick={handleCombinedSearch}
-                disabled={formClienteCpf.replace(/\D/g, "").length !== 11 || !formOsNumero.trim() || cpfValidating || formValidating}
+                disabled={!formOsNumero.trim() || cpfValidating || formValidating}
                 className="press-effect"
               >
                 {(cpfValidating || formValidating) ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
