@@ -410,8 +410,8 @@ export default function DashboardPage() {
       let query = supabase
         .from("ordens_servico")
         .select("cliente_id, cliente_nome, status")
-        .gte("created_at", from)
-        .lte("created_at", to)
+        .gte("data_abertura", from)
+        .lte("data_abertura", to)
         .not("cliente_id", "is", null);
 
       if (statusFilter !== "all") {
