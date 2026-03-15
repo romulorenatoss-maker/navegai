@@ -685,6 +685,17 @@ export default function RelatoriosPage() {
                         {statusText[item.status] || item.status}
                       </span>
                     </td>
+                    <td className="px-4 py-3 text-center">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        title="Abrir avaliação"
+                        onClick={() => navigate(`/avaliacoes/pesquisa?os=${item.numero_os}&mode=eval`)}
+                      >
+                        <Eye className="w-4 h-4 text-primary" />
+                      </Button>
+                    </td>
                   </tr>
                 ))}
                 {osList.length === 0 && (
