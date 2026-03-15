@@ -797,7 +797,7 @@ export default function RelatoriosPage() {
                   toast.error("Nenhuma OS concluída disponível para exportação.");
                   return;
                 }
-                setExportAllDialogOpen(true);
+                handleExportAllFiltered();
               }}
               disabled={exportAllLoading || osList.length === 0}
             >
