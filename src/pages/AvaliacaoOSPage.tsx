@@ -1791,34 +1791,52 @@ export default function AvaliacaoOSPage() {
                     const answer = evalAnswers[p.id] || null;
                     const other = otherEvalAnswers[p.id];
                     return (
-                      <div key={p.id} className={cn("bg-card border rounded-lg", answer ? "border-muted-foreground/20" : "border-warning/20")}>
+                      <div key={p.id} className={cn("bg-card border rounded-lg",
+                        answer === "sim" ? "border-success/30" : answer === "nao" ? "border-destructive/30" : answer === "na" ? "border-warning/30" : "border-warning/20"
+                      )}>
                         <div className="p-4">
                           <div className="flex items-start gap-3 mb-2">
-                            <div className={cn("flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0", answer ? "bg-muted text-muted-foreground" : "bg-warning/10 text-warning")}>
+                            <div className={cn("flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0",
+                              answer === "sim" ? "bg-success text-success-foreground" :
+                              answer === "nao" ? "bg-destructive text-destructive-foreground" :
+                              answer === "na" ? "bg-warning text-warning-foreground" :
+                              "bg-warning/10 text-warning"
+                            )}>
                               {answer ? <Check className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm sm:text-body font-medium text-foreground leading-relaxed">{p.pergunta}</p>
-                              <p className="text-caption text-muted-foreground mt-0.5">
-                                Nota: {p.peso} • Setor: <strong>{(p as any)._setor_nome || "—"}</strong>
-                              </p>
+                              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                <span className="text-caption text-muted-foreground">Peso: {p.peso} • Setor: <strong>{(p as any)._setor_nome || "—"}</strong></span>
+                                {answer ? (
+                                  <>
+                                    <span className="text-caption text-muted-foreground">•</span>
+                                    <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold",
+                                      answer === "sim" ? "bg-success/10 text-success" :
+                                      answer === "nao" ? "bg-destructive/10 text-destructive" :
+                                      "bg-warning/10 text-warning"
+                                    )}>
+                                      Avaliada: {answer === "sim" ? "SIM" : answer === "nao" ? "NÃO" : "N/A"}
+                                      {answer === "sim" ? ` (+${p.peso} pts)` : answer === "nao" ? " (0 pts)" : ""}
+                                    </span>
+                                    {(other || responseAuthors[p.id]) && (
+                                      <span className="text-caption text-muted-foreground">
+                                        por <strong className="text-foreground">{other?.avaliador_nome || responseAuthors[p.id]?.avaliador_nome}</strong>
+                                      </span>
+                                    )}
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="text-caption text-muted-foreground">•</span>
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-warning/10 text-warning">Pendente</span>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </div>
                           <div className="ml-11 mt-1">
                             {answer ? (
                               <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <span className={cn("inline-flex items-center px-2.5 py-1 rounded text-sm font-semibold border",
-                                    answer === "sim" ? "border-success/40 bg-success/10 text-success" : answer === "nao" ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-warning/40 bg-warning/10 text-warning"
-                                  )}>
-                                    {answer === "sim" ? "SIM" : answer === "nao" ? "NÃO" : "N/A"}
-                                  </span>
-                                  {other && (
-                                    <span className="text-caption text-muted-foreground">
-                                      por <strong className="text-foreground">{other.avaliador_nome}</strong>
-                                    </span>
-                                  )}
-                                </div>
                                 {other?.observacao && (
                                   <div className="bg-muted/50 border border-border rounded p-2">
                                     <p className="text-caption text-muted-foreground flex items-center gap-1 mb-0.5"><MessageSquare className="w-3 h-3" /> Observação:</p>
@@ -1833,7 +1851,7 @@ export default function AvaliacaoOSPage() {
                               <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-warning/5 border border-warning/20">
                                 <Clock className="w-4 h-4 text-warning shrink-0" />
                                 <span className="text-sm text-muted-foreground">
-                                  PENDENTE — aguardando avaliação do setor <strong className="text-foreground">{(p as any)._setor_nome || "responsável"}</strong>
+                                  Aguardando avaliação do setor <strong className="text-foreground">{(p as any)._setor_nome || "responsável"}</strong>
                                 </span>
                               </div>
                             )}
