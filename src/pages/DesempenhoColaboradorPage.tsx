@@ -651,7 +651,35 @@ export default function DesempenhoColaboradorPage() {
       <Dialog open={!!selectedOsId} onOpenChange={open => { if (!open) setSelectedOsId(null); }}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Detalhes da Avaliação</DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle>Detalhes da Avaliação</DialogTitle>
+              {osDetail && osDetail.length > 0 && osDetail.every((e: any) => e.concluida) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-1.5"
+                  onClick={() => {
+                    const osNum = osDetailInfo?.numero_os || selectedOsId || "sem-numero";
+                    exportOSPdf({
+                      numero_os: osNum,
+                      cliente_nome: osDetailInfo?.cliente_nome,
+                      cliente_cpf: osDetailInfo?.cliente_cpf,
+                      colaborador_nome: targetProfile?.nome,
+                      avaliacoes: osDetail.map((e: any) => ({
+                        avaliador_nome: e.avaliador_nome,
+                        tipo_avaliacao_nome: e.tipo_avaliacao_nome,
+                        nota_final: e.nota_final,
+                        concluida: e.concluida,
+                        concluida_em: e.concluida_em,
+                        respostas: e.respostas,
+                      })),
+                    });
+                  }}
+                >
+                  <Download className="w-4 h-4" /> Exportar PDF
+                </Button>
+              )}
+            </div>
           </DialogHeader>
           {osDetailInfo && (
             <div className="bg-muted/30 border border-border rounded-lg px-4 py-3 mb-2 space-y-1">
