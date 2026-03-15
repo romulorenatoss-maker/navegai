@@ -23,6 +23,8 @@ export default function TiposServicoPage() {
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
   const [selectedChecklists, setSelectedChecklists] = useState<string[]>([]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const { data: tipos = [], isLoading } = useQuery({
     queryKey: ["tipos_servico"],
