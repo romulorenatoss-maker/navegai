@@ -596,14 +596,60 @@ export default function RelatoriosPage() {
         csvRows.push(row.map(escapeCSV).join(";"));
       }
 
-      const csvContent = "\uFEFF" + csvHeader + "\n" + csvRows.join("\n");
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `relatorio_filtrado_${format(new Date(), "yyyy-MM-dd_HHmm")}.xlsx`;
-      link.click();
-      URL.revokeObjectURL(url);
+      // Build Excel workbook
+      const fixedHeadersList = [...fixedHeaders, ...questionHeaders];
+      const allRows = [fixedHeadersList, ...csvRows.map(row => row.map(escapeCSV).join(";")).length ? [] : []];
+      
+      // Build data array for xlsx
+      const wsData = [fixedHeadersList];
+      for (const os of osData) {
+        const osAvals2 = avaliacoesRes.data?.filter((a) => a.ordem_servico_id === os.id) || [];
+        const osRespostas2 = respostasByOS[os.id] || {};
+
+        let tp = 0; let ep = 0;
+        const opIds = perguntasByOS[os.id] || new Set();
+        for (const pid of opIds) {
+          const resp = osRespostas2[pid]; const peso = perguntaPeso[pid] || 1;
+          if (!resp) continue; tp += peso;
+          if (resp === "sim" || resp === "na") ep += peso;
+        }
+        const cn2 = tp > 0 ? ((ep / tp) * 100) : null;
+        const bn = osAvals2.length > 0 && osAvals2[0].nota_final != null ? osAvals2[0].nota_final : cn2;
+        const avNome = osAvals2.length > 0 ? (profileNames[osAvals2[0].avaliador_id] || "") : "";
+        const hc = osAvals2.length > 0 && osAvals2[0].concluida_em ? format(new Date(osAvals2[0].concluida_em), "dd/MM/yyyy HH:mm") : "";
+
+        wsData.push([
+          os.numero_os,
+          os.cliente_nome || "",
+          os.cliente_cpf || "",
+          format(new Date(os.data_abertura), "dd/MM/yyyy"),
+          avNome,
+          os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || "" : "",
+          os.colaborador_avaliado_id ? profileNames[os.colaborador_avaliado_id] || "" : "",
+          hc,
+          bn != null ? Number(bn.toFixed(2)) : "",
+          ...perguntas.map((p) => {
+            const resp = osRespostas2[p.id];
+            if (!resp) return "";
+            if (resp === "na" || resp === "sim") return p.peso;
+            if (resp === "nao") return 0;
+            return "";
+          }),
+        ]);
+      }
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      
+      // Auto-size columns
+      const colWidths = fixedHeadersList.map((h, i) => {
+        const maxLen = Math.max(h.length, ...wsData.slice(1).map(r => String(r[i] ?? "").length));
+        return { wch: Math.min(maxLen + 2, 40) };
+      });
+      ws["!cols"] = colWidths;
+      
+      XLSX.utils.book_append_sheet(wb, ws, "Relatório");
+      XLSX.writeFile(wb, `relatorio_filtrado_${format(new Date(), "yyyy-MM-dd_HHmm")}.xlsx`);
 
       toast.success(`Relatório exportado com ${osData.length} OS(s) concluída(s).`);
     } catch (err: any) {
