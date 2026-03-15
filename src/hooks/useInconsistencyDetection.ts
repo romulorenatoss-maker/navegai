@@ -68,7 +68,7 @@ export async function detectInconsistencies(osId: string) {
       avaliador_id: aval.avaliador_id,
       avaliador_nome: nameMap.get(aval.avaliador_id) || "—",
       tipo_avaliacao_id: aval.tipo_avaliacao_id || "",
-      tipo_avaliacao_nome: taNameMap.get(aval.tipo_avaliacao_id || "") || "—",
+      tipo_avaliacao_nome: (taNameMap.get(aval.tipo_avaliacao_id || "") as string) || "—",
       resposta: r.resposta,
       is_responsible: isResponsible,
     };
