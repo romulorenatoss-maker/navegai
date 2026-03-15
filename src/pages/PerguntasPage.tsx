@@ -277,8 +277,12 @@ export default function PerguntasPage() {
   });
 
   const remove = useMutation({
-    mutationFn: async (id: string) => { const { error } = await supabase.from("perguntas_avaliacao").delete().eq("id", id); if (error) throw error; },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["perguntas_avaliacao"] }); toast.success("Excluída."); },
+    mutationFn: async (id: string) => {
+      // Soft delete: mark as inactive instead of hard delete to avoid FK constraint errors
+      const { error } = await supabase.from("perguntas_avaliacao").update({ ativo: false } as any).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["perguntas_avaliacao"] }); toast.success("Pergunta desativada."); },
     onError: (err: any) => toast.error(err.message),
   });
 
