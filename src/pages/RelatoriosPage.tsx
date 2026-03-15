@@ -707,41 +707,23 @@ export default function RelatoriosPage() {
         </div>
       )}
 
-      {/* Delete Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={(open) => { if (!deleteLoading) setDeleteDialogOpen(open); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="w-5 h-5" />
-              Confirmar Exclusão
-            </DialogTitle>
-            <DialogDescription>
-              Você está prestes a excluir <strong>{selected.size} OS(s)</strong> e <strong>todos os dados vinculados</strong>:
-              respostas, evidências (fotos), avaliações e inconsistências.
-              <br /><br />
-              <strong>Cadastros de clientes NÃO serão removidos.</strong>
-              <br /><br />
-              Esta ação é irreversível. Digite sua senha para confirmar.
-            </DialogDescription>
-          </DialogHeader>
-          <Input
-            type="password"
-            placeholder="Sua senha"
-            value={deletePassword}
-            onChange={(e) => setDeletePassword(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleDeleteSelected()}
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setDeleteDialogOpen(false); setDeletePassword(""); }} disabled={deleteLoading}>
-              Cancelar
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteSelected} disabled={deleteLoading || !deletePassword}>
-              {deleteLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Trash2 className="w-4 h-4 mr-1" />}
-              Excluir {selected.size} OS(s)
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Delete Password Dialog */}
+      <AdminPasswordDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Confirmar Exclusão"
+        description={`Você está prestes a excluir ${selected.size} OS(s) e todos os dados vinculados (respostas, evidências, avaliações e inconsistências). Esta ação é irreversível.`}
+        onConfirm={executeDeleteSelected}
+      />
+
+      {/* Export Password Dialog */}
+      <AdminPasswordDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        title="Confirmar Exportação"
+        description={`Informe sua senha para exportar ${selected.size} OS(s) selecionada(s).`}
+        onConfirm={handleExportSelected}
+      />
     </div>
   );
 }
