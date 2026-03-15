@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
+import AdminPasswordDialog from "@/components/AdminPasswordDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +23,8 @@ export default function TiposServicoPage() {
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
   const [selectedChecklists, setSelectedChecklists] = useState<string[]>([]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const { data: tipos = [], isLoading } = useQuery({
     queryKey: ["tipos_servico"],
@@ -110,24 +113,23 @@ export default function TiposServicoPage() {
     onError: (err: any) => toast.error(err.message),
   });
 
-  const remove = useMutation({
-    mutationFn: async (id: string) => {
-      // Check if referenced by ordens_servico
-      const { count } = await supabase.from("ordens_servico").select("id", { count: "exact", head: true }).eq("tipo_servico_id", id);
-      if (count && count > 0) throw new Error("Não é possível excluir: existem Ordens de Serviço vinculadas a este tipo de serviço.");
-      // Clean up junction tables and nullify FK references
-      await (supabase as any).from("tipo_servico_checklists").delete().eq("tipo_servico_id", id);
-      await (supabase as any).from("tipo_servico_tipos_avaliacao").delete().eq("tipo_servico_id", id);
-      await supabase.from("avaliador_tipos_servico").delete().eq("tipo_servico_id", id);
-      // Nullify perguntas_avaliacao and checklists references
-      await supabase.from("perguntas_avaliacao").update({ tipo_servico_id: null } as any).eq("tipo_servico_id", id);
-      await supabase.from("checklists").update({ tipo_servico_id: null } as any).eq("tipo_servico_id", id);
-      const { error } = await supabase.from("tipos_servico").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["tipos_servico"] }); toast.success("Excluído."); },
-    onError: (err: any) => toast.error(err.message),
-  });
+  const handleDeleteConfirm = async () => {
+    if (!deletingId) return;
+    // Check if referenced by ordens_servico
+    const { count } = await supabase.from("ordens_servico").select("id", { count: "exact", head: true }).eq("tipo_servico_id", deletingId);
+    if (count && count > 0) throw new Error("Não é possível excluir: existem Ordens de Serviço vinculadas a este tipo de serviço.");
+    // Clean up junction tables and nullify FK references
+    await (supabase as any).from("tipo_servico_checklists").delete().eq("tipo_servico_id", deletingId);
+    await (supabase as any).from("tipo_servico_tipos_avaliacao").delete().eq("tipo_servico_id", deletingId);
+    await supabase.from("avaliador_tipos_servico").delete().eq("tipo_servico_id", deletingId);
+    await supabase.from("perguntas_avaliacao").update({ tipo_servico_id: null } as any).eq("tipo_servico_id", deletingId);
+    await supabase.from("checklists").update({ tipo_servico_id: null } as any).eq("tipo_servico_id", deletingId);
+    const { error } = await supabase.from("tipos_servico").delete().eq("id", deletingId);
+    if (error) throw error;
+    queryClient.invalidateQueries({ queryKey: ["tipos_servico"] });
+    toast.success("Excluído.");
+    setDeletingId(null);
+  };
 
   const openCreate = () => { setEditing(null); setNome(""); setDescricao(""); setSelectedChecklists([]); setDialogOpen(true); };
   const openEdit = (t: any) => { setEditing(t); setNome(t.nome); setDescricao(t.descricao || ""); setDialogOpen(true); };
@@ -165,7 +167,7 @@ export default function TiposServicoPage() {
             ) : tipos.length === 0 ? (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhum tipo cadastrado.</td></tr>
             ) : tipos.map((t: any) => (
-              <TipoRow key={t.id} t={t} onToggle={() => toggleAtivo.mutate(t)} onEdit={() => openEdit(t)} onRemove={() => remove.mutate(t.id)} />
+              <TipoRow key={t.id} t={t} onToggle={() => toggleAtivo.mutate(t)} onEdit={() => openEdit(t)} onRemove={() => { setDeletingId(t.id); setDeleteDialogOpen(true); }} />
             ))}
           </tbody>
         </table>
@@ -206,6 +208,14 @@ export default function TiposServicoPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <AdminPasswordDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Excluir Tipo de Serviço"
+        description="Esta ação é irreversível. O tipo de serviço será removido permanentemente."
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 }

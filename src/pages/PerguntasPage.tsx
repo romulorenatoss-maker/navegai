@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AnimatePresence, motion } from "framer-motion";
 import type { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
+import AdminPasswordDialog from "@/components/AdminPasswordDialog";
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent,
 } from "@dnd-kit/core";
@@ -73,6 +74,9 @@ export default function PerguntasPage() {
   const [deletingChecklistId, setDeletingChecklistId] = useState<string | null>(null);
   const [deletePassword, setDeletePassword] = useState("");
   const [deletePasswordError, setDeletePasswordError] = useState("");
+  // Pergunta delete confirmation state
+  const [deletePerguntaDialogOpen, setDeletePerguntaDialogOpen] = useState(false);
+  const [deletingPerguntaId, setDeletingPerguntaId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -150,13 +154,10 @@ export default function PerguntasPage() {
   // Checklist delete mutation
   const deleteChecklist = useMutation({
     mutationFn: async (id: string) => {
-      // Unlink questions
       await (supabase as any).from("perguntas_avaliacao").update({ checklist_id: null }).eq("checklist_id", id);
-      // Remove related junction/item records
       await supabase.from("checklist_perguntas").delete().eq("checklist_id", id);
       await supabase.from("checklist_itens").delete().eq("checklist_id", id);
       await (supabase as any).from("tipo_servico_checklists").delete().eq("checklist_id", id);
-      // Delete checklist
       const { error } = await supabase.from("checklists").delete().eq("id", id);
       if (error) throw error;
     },
@@ -166,29 +167,12 @@ export default function PerguntasPage() {
       toast.success("Checklist excluído.");
       setDeleteChecklistDialogOpen(false);
       setDeletingChecklistId(null);
-      setDeletePassword("");
-      setDeletePasswordError("");
       if (filtroTipoServico === deletingChecklistId) setFiltroTipoServico(null);
     },
     onError: (err: any) => toast.error(err.message),
   });
 
   const handleDeleteChecklistConfirm = async () => {
-    if (!deletePassword.trim()) {
-      setDeletePasswordError("Informe sua senha para confirmar.");
-      return;
-    }
-    // Verify password via Supabase re-auth
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user?.email) {
-      setDeletePasswordError("Erro ao verificar usuário.");
-      return;
-    }
-    const { error } = await supabase.auth.signInWithPassword({ email: user.email, password: deletePassword });
-    if (error) {
-      setDeletePasswordError("Senha incorreta.");
-      return;
-    }
     if (deletingChecklistId) deleteChecklist.mutate(deletingChecklistId);
   };
 
@@ -294,9 +278,14 @@ export default function PerguntasPage() {
       const { error } = await supabase.from("perguntas_avaliacao").update({ ativo: false } as any).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["perguntas_avaliacao"] }); toast.success("Pergunta desativada."); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["perguntas_avaliacao"] }); toast.success("Pergunta desativada."); setDeletingPerguntaId(null); },
     onError: (err: any) => toast.error(err.message),
   });
+
+  const handleDeletePerguntaConfirm = async () => {
+    if (!deletingPerguntaId) return;
+    remove.mutate(deletingPerguntaId);
+  };
 
   const reorderMutation = useMutation({
     mutationFn: async (items: { id: string; ordem: number }[]) => {
@@ -413,7 +402,7 @@ export default function PerguntasPage() {
                       {perguntasFiltradas.length === 0 ? (
                         <tr><td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhuma pergunta encontrada.</td></tr>
                       ) : perguntasFiltradas.map((p, i) => (
-                        <SortableRow key={p.id} p={p} index={i} onEdit={openEdit} onRemove={id => remove.mutate(id)} isAdmin={isAdmin} />
+                        <SortableRow key={p.id} p={p} index={i} onEdit={openEdit} onRemove={id => { setDeletingPerguntaId(id); setDeletePerguntaDialogOpen(true); }} isAdmin={isAdmin} />
                       ))}
                     </tbody>
                   </SortableContext>
@@ -454,36 +443,13 @@ export default function PerguntasPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Checklist Confirmation Dialog */}
-      <Dialog open={deleteChecklistDialogOpen} onOpenChange={(open) => { if (!open) { setDeleteChecklistDialogOpen(false); setDeletePassword(""); setDeletePasswordError(""); } }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-destructive">Excluir Checklist</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-body text-muted-foreground">
-              Esta ação é irreversível. Todas as perguntas associadas serão desvinculadas. Confirme sua senha para prosseguir.
-            </p>
-            <div className="space-y-1.5">
-              <Label>Senha</Label>
-              <Input
-                type="password"
-                value={deletePassword}
-                onChange={e => { setDeletePassword(e.target.value); setDeletePasswordError(""); }}
-                placeholder="Digite sua senha"
-                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleDeleteChecklistConfirm(); } }}
-              />
-              {deletePasswordError && <p className="text-caption text-destructive">{deletePasswordError}</p>}
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDeleteChecklistDialogOpen(false)}>Cancelar</Button>
-              <Button type="button" variant="destructive" onClick={handleDeleteChecklistConfirm} disabled={deleteChecklist.isPending} className="press-effect">
-                {deleteChecklist.isPending ? "Excluindo..." : "Excluir"}
-              </Button>
-            </DialogFooter>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <AdminPasswordDialog
+        open={deleteChecklistDialogOpen}
+        onOpenChange={setDeleteChecklistDialogOpen}
+        title="Excluir Checklist"
+        description="Esta ação é irreversível. Todas as perguntas associadas serão desvinculadas."
+        onConfirm={handleDeleteChecklistConfirm}
+      />
 
       {/* Question Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -588,6 +554,14 @@ export default function PerguntasPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <AdminPasswordDialog
+        open={deletePerguntaDialogOpen}
+        onOpenChange={setDeletePerguntaDialogOpen}
+        title="Desativar Pergunta"
+        description="A pergunta será desativada e não aparecerá mais em novas avaliações. Confirme com a senha de administrador."
+        onConfirm={handleDeletePerguntaConfirm}
+      />
     </div>
   );
 }

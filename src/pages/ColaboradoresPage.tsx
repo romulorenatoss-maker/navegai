@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ShieldCheck, Clock, Eye } from "lucide-react";
+import AdminPasswordDialog from "@/components/AdminPasswordDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,7 +37,8 @@ export default function ColaboradoresPage() {
   const [cargo, setCargo] = useState("avaliado");
   const [selectedSetores, setSelectedSetores] = useState<string[]>([]);
   const [senha, setSenha] = useState("");
-  
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const { data: profiles = [], isLoading } = useQuery({
     queryKey: ["profiles"],
@@ -184,17 +186,14 @@ export default function ColaboradoresPage() {
     onError: (err: any) => toast.error(err.message),
   });
 
-  const remove = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("profiles").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["profiles"] });
-      toast.success("Colaborador excluído.");
-    },
-    onError: (err: any) => toast.error(err.message),
-  });
+  const handleDeleteConfirm = async () => {
+    if (!deletingId) return;
+    const { error } = await supabase.from("profiles").delete().eq("id", deletingId);
+    if (error) throw error;
+    queryClient.invalidateQueries({ queryKey: ["profiles"] });
+    toast.success("Colaborador excluído.");
+    setDeletingId(null);
+  };
 
   const openCreate = () => {
     setEditing(null); setNome(""); setEmail(""); setCargo("avaliado"); setSelectedSetores([]); setSenha("");
@@ -274,7 +273,7 @@ export default function ColaboradoresPage() {
                         {isAdmin && <Button variant="ghost" size="sm" onClick={() => toggleAtivo.mutate(p)} className="press-effect">{p.ativo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}</Button>}
                         {isAdmin && <Button variant="ghost" size="sm" onClick={() => openEdit(p)} className="press-effect"><Pencil className="w-4 h-4" /></Button>}
                         {isAdmin && <Button variant="ghost" size="sm" onClick={() => { setEditing(p); setSessionViewOpen(true); }} className="press-effect" title="Sessões"><Clock className="w-4 h-4" /></Button>}
-                        {isAdmin && <Button variant="ghost" size="sm" onClick={() => remove.mutate(p.id)} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>}
+                        {isAdmin && <Button variant="ghost" size="sm" onClick={() => { setDeletingId(p.id); setDeleteDialogOpen(true); }} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>}
                       </div>
                     </td>
                   </tr>
@@ -364,6 +363,14 @@ export default function ColaboradoresPage() {
         open={detailViewOpen}
         onOpenChange={(v) => { setDetailViewOpen(v); if (!v) setDetailProfile(null); }}
         collaborator={detailProfile}
+      />
+
+      <AdminPasswordDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Excluir Colaborador"
+        description="Esta ação é irreversível. O colaborador será removido permanentemente."
+        onConfirm={handleDeleteConfirm}
       />
     </div>
   );
