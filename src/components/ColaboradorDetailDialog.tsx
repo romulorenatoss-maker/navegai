@@ -190,13 +190,8 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
         tas?.forEach(t => { taNames[t.id] = t.nome; });
       }
 
-      return avals.map(a => ({
-        id: a.id,
-        avaliador_nome: avaliadorNames[a.avaliador_id] || "—",
-        tipo_avaliacao_nome: a.tipo_avaliacao_id ? taNames[a.tipo_avaliacao_id] || "—" : "—",
-        nota_final: a.nota_final,
-        concluida: a.concluida,
-        respostas: (respostas || [])
+      return avals.map(a => {
+        const avalRespostas = (respostas || [])
           .filter(r => r.avaliacao_id === a.id)
           .map(r => ({
             ...r,
@@ -204,8 +199,22 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
             peso: perguntaMap[r.pergunta_id]?.peso || 0,
             ordem: perguntaMap[r.pergunta_id]?.ordem || 0,
           }))
-          .sort((x, y) => x.ordem - y.ordem),
-      }));
+          .sort((x, y) => x.ordem - y.ordem);
+
+        // Recalculate nota: SIM/NA = peso, NAO = 0
+        const totalPeso = avalRespostas.reduce((acc, r) => r.resposta ? acc + r.peso : acc, 0);
+        const earnedPeso = avalRespostas.reduce((acc, r) => (r.resposta === "sim" || r.resposta === "na") ? acc + r.peso : acc, 0);
+        const calculatedNota = totalPeso > 0 ? (earnedPeso / totalPeso) * 100 : null;
+
+        return {
+          id: a.id,
+          avaliador_nome: avaliadorNames[a.avaliador_id] || "—",
+          tipo_avaliacao_nome: a.tipo_avaliacao_id ? taNames[a.tipo_avaliacao_id] || "—" : "—",
+          nota_final: calculatedNota ?? a.nota_final,
+          concluida: a.concluida,
+          respostas: avalRespostas,
+        };
+      });
     },
     enabled: !!detailOsId,
   });
