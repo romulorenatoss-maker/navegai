@@ -2037,9 +2037,9 @@ export default function AvaliacaoOSPage() {
                         "inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border",
                         ans.resposta === "sim" ? "border-success/40 bg-success/10 text-success" :
                         ans.resposta === "nao" ? "border-destructive/40 bg-destructive/10 text-destructive" :
-                        "border-muted-foreground/30 bg-muted text-muted-foreground"
+                        "border-warning/40 bg-warning/10 text-warning"
                       )}>
-                        {ans.resposta === "sim" ? "SIM" : ans.resposta === "nao" ? "NÃO" : "N/A"}
+                        AVALIADA • {ans.resposta === "sim" ? "SIM" : ans.resposta === "nao" ? "NÃO" : "N/A"}
                       </span>
                     ) : (
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border border-warning/40 bg-warning/10 text-warning">
