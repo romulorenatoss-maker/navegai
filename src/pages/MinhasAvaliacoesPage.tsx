@@ -362,7 +362,7 @@ export default function MinhasAvaliacoesPage() {
                   {aval.nota_final != null && (
                     <div className="border-t border-border bg-muted/20 px-4 py-3 flex items-center justify-between">
                       <span className="text-sm font-semibold text-foreground">Nota Final</span>
-                      <span className={cn("text-xl font-bold font-tabular", aval.nota_final >= 80 ? "text-success" : aval.nota_final >= 60 ? "text-warning" : "text-destructive")}>
+                      <span className={cn("text-xl font-bold font-tabular", aval.nota_final >= 85 ? "text-success" : aval.nota_final >= 75 ? "text-warning" : "text-destructive")}>
                         {Number(aval.nota_final).toFixed(1)}%
                       </span>
                     </div>

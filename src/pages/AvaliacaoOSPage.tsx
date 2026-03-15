@@ -2144,7 +2144,7 @@ export default function AvaliacaoOSPage() {
             })()}
             {tecScore.max > 0 && (
               <span className={cn("ml-auto text-body font-bold font-tabular",
-                tecScore.pct >= 80 ? "text-success" : tecScore.pct >= 60 ? "text-warning" : "text-destructive"
+                tecScore.pct >= 85 ? "text-success" : tecScore.pct >= 75 ? "text-warning" : "text-destructive"
               )}>
                 {tecScore.pct.toFixed(1)}%
               </span>
