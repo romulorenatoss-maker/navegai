@@ -848,9 +848,10 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filteredOS.map((item) => (
+                {filteredOS.slice(0, 5).map((item) => (
                   <tr key={item.id} className="hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => handleClickOS(item)}>
                     <td className="px-4 py-3 text-body font-medium text-primary underline underline-offset-2 font-tabular">{item.numero_os}</td>
+                    <td className="px-4 py-3 text-body text-muted-foreground font-tabular">{format(new Date(item.data_abertura), "dd/MM/yyyy")}</td>
                     <td className="px-4 py-3 text-body text-muted-foreground">{item.cliente_nome || "—"}</td>
                     <td className="px-4 py-3 text-body text-muted-foreground">{item.tipo_servico_nome || "—"}</td>
                     <td className="px-4 py-3">
