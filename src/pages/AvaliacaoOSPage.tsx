@@ -2398,6 +2398,9 @@ export default function AvaliacaoOSPage() {
         <p className="text-sm sm:text-body text-muted-foreground">Informe o número da OS para iniciar. O CPF do cliente é opcional.</p>
       </div>
 
+      {/* Minhas Avaliações Pendentes */}
+      <MinhasAvaliacoesPendentes />
+
       {/* Step 1: CPF + OS Number combined */}
       <div className="bg-card border border-border rounded-lg shadow-card mb-6">
         <div className="p-4 border-b border-border">
