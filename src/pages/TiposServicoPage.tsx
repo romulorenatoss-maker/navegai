@@ -208,6 +208,14 @@ export default function TiposServicoPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <AdminPasswordDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Excluir Tipo de Serviço"
+        description="Esta ação é irreversível. O tipo de serviço será removido permanentemente."
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 }

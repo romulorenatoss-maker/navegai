@@ -37,7 +37,8 @@ export default function ColaboradoresPage() {
   const [cargo, setCargo] = useState("avaliado");
   const [selectedSetores, setSelectedSetores] = useState<string[]>([]);
   const [senha, setSenha] = useState("");
-  
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const { data: profiles = [], isLoading } = useQuery({
     queryKey: ["profiles"],
