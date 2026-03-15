@@ -57,6 +57,9 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [detailOsId, setDetailOsId] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   // Reset state when dialog closes
   const handleOpenChange = (v: boolean) => {
@@ -64,6 +67,8 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
       setSelectedOsIds(new Set());
       setActiveTab("dados");
       setDetailOsId(null);
+      setNewPassword("");
+      setConfirmPassword("");
     }
     onOpenChange(v);
   };
@@ -280,6 +285,29 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
     }
   };
 
+  const handleChangePassword = async () => {
+    if (!collaborator) return;
+    if (newPassword.length < 6) { toast.error("Senha deve ter no mínimo 6 caracteres."); return; }
+    if (newPassword !== confirmPassword) { toast.error("As senhas não coincidem."); return; }
+
+    setPasswordLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke("admin-update-password", {
+        body: { target_user_id: collaborator.user_id, new_password: newPassword },
+      });
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.error);
+      toast.success("Senha alterada com sucesso!");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err: any) {
+      toast.error("Erro: " + (err?.message || "falha desconhecida"));
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
   if (!collaborator) return null;
 
   return (
@@ -344,6 +372,44 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
                   </p>
                 </div>
               </div>
+
+              {/* Alterar Senha */}
+              {isAdmin && (
+                <div className="border border-border rounded-lg p-4 space-y-3 mt-2">
+                  <div className="flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-muted-foreground" />
+                    <p className="text-body font-medium text-foreground">Alterar Senha</p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>Nova Senha</Label>
+                      <Input
+                        type="password"
+                        placeholder="Mínimo 6 caracteres"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Confirmar Senha</Label>
+                      <Input
+                        type="password"
+                        placeholder="Repita a senha"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={handleChangePassword}
+                    disabled={passwordLoading || !newPassword || !confirmPassword}
+                    className="press-effect"
+                  >
+                    {passwordLoading ? "Salvando..." : "Alterar Senha"}
+                  </Button>
+                </div>
+              )}
             </TabsContent>
 
             {/* Permissões Tab */}
