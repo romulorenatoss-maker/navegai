@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 // --- Types ---
@@ -25,7 +25,7 @@ interface OSRow {
   id: string;
   numero_os: string;
   status: string;
-  created_at: string;
+  data_abertura: string;
   cliente_nome: string | null;
   tipo_servico_id: string | null;
   tipo_servico_nome: string | null;
@@ -62,6 +62,7 @@ export default function RelatoriosPage() {
   const [filterAvaliador, setFilterAvaliador] = useState<string>("todos");
   const [filterAvaliado, setFilterAvaliado] = useState<string>("todos");
   const [filterCliente, setFilterCliente] = useState("");
+  const [filterNumeroOS, setFilterNumeroOS] = useState("");
 
   // Filter options (loaded from DB)
   const [setores, setSetores] = useState<{ id: string; nome: string }[]>([]);
@@ -84,8 +85,8 @@ export default function RelatoriosPage() {
   }, []);
 
   const getFilterDates = () => ({
-    from: startDate ? startDate.toISOString() : startOfMonth(now).toISOString(),
-    to: endDate ? endOfMonth(endDate).toISOString() : endOfMonth(now).toISOString(),
+    from: startDate ? startOfDay(startDate).toISOString() : startOfDay(startOfMonth(now)).toISOString(),
+    to: endDate ? endOfDay(endDate).toISOString() : endOfDay(endOfMonth(now)).toISOString(),
   });
 
   // Data
@@ -108,12 +109,28 @@ export default function RelatoriosPage() {
     setLoading(true);
     const { from, to } = getFilterDates();
 
-    const { data: osData } = await supabase
+    let query = supabase
       .from("ordens_servico")
-      .select("id, numero_os, status, created_at, cliente_nome, tipo_servico_id, colaborador_avaliado_id")
-      .gte("created_at", from)
-      .lte("created_at", to)
-      .order("created_at", { ascending: false });
+      .select("id, numero_os, status, data_abertura, cliente_nome, tipo_servico_id, colaborador_avaliado_id, atendente_id, tecnico_id, cliente_id")
+      .gte("data_abertura", from)
+      .lte("data_abertura", to);
+
+    // Apply server-side filters where possible
+    if (filterStatus !== "todos") {
+      query = query.eq("status", filterStatus as "aberta" | "em_andamento" | "concluida");
+    }
+    if (filterNumeroOS.trim()) {
+      query = query.ilike("numero_os", `%${filterNumeroOS.trim()}%`);
+    }
+    if (filterCliente.trim()) {
+      query = query.ilike("cliente_nome", `%${filterCliente.trim()}%`);
+    }
+    if (filterAvaliado !== "todos") {
+      // Filter by colaborador_avaliado_id, atendente_id, or tecnico_id
+      query = query.or(`colaborador_avaliado_id.eq.${filterAvaliado},atendente_id.eq.${filterAvaliado},tecnico_id.eq.${filterAvaliado}`);
+    }
+
+    const { data: osData } = await query.order("data_abertura", { ascending: false });
 
     if (!osData) {
       setOsList([]);
@@ -168,22 +185,12 @@ export default function RelatoriosPage() {
       avaliador_ids: avaliadorByOS[os.id] || new Set<string>(),
     }));
 
-    // Apply client-side filters
-    if (filterStatus !== "todos") {
-      results = results.filter((o) => o.status === filterStatus);
-    }
+    // Apply client-side filters (setor and avaliador require joined data)
     if (filterSetor !== "todos") {
       results = results.filter((o) => o.setor_id === filterSetor);
     }
     if (filterAvaliador !== "todos") {
       results = results.filter((o) => o.avaliador_ids.has(filterAvaliador));
-    }
-    if (filterAvaliado !== "todos") {
-      results = results.filter((o) => o.colaborador_avaliado_id === filterAvaliado);
-    }
-    if (filterCliente.trim()) {
-      const term = filterCliente.trim().toLowerCase();
-      results = results.filter((o) => o.cliente_nome?.toLowerCase().includes(term));
     }
 
     setOsList(
@@ -191,7 +198,7 @@ export default function RelatoriosPage() {
     );
     setSelected(new Set());
     setLoading(false);
-  }, [startDate, endDate, filterStatus, filterSetor, filterAvaliador, filterAvaliado, filterCliente]);
+  }, [startDate, endDate, filterStatus, filterSetor, filterAvaliador, filterAvaliado, filterCliente, filterNumeroOS]);
 
   // Only auto-fetch on mount
   useEffect(() => { fetchOS(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -320,7 +327,7 @@ export default function RelatoriosPage() {
       // 1. Get OS data
       const { data: osData } = await supabase
         .from("ordens_servico")
-        .select("id, numero_os, status, created_at, cliente_nome, cliente_cpf, tipo_servico_id, colaborador_avaliado_id, tecnico_id, atendente_id")
+        .select("id, numero_os, status, data_abertura, cliente_nome, cliente_cpf, tipo_servico_id, colaborador_avaliado_id, tecnico_id, atendente_id")
         .in("id", osIds);
 
       if (!osData || osData.length === 0) {
@@ -421,7 +428,7 @@ export default function RelatoriosPage() {
           : calculatedNota;
 
         const avaliadorNome = osAvals.length > 0 ? (profileNames[osAvals[0].avaliador_id] || "") : "";
-        const dataAval = osAvals.length > 0 ? format(new Date(osAvals[0].created_at), "dd/MM/yyyy") : format(new Date(os.created_at), "dd/MM/yyyy");
+        const dataAval = osAvals.length > 0 ? format(new Date(osAvals[0].created_at), "dd/MM/yyyy") : format(new Date(os.data_abertura), "dd/MM/yyyy");
         const horaConclusao = osAvals.length > 0 && osAvals[0].concluida_em
           ? format(new Date(osAvals[0].concluida_em), "dd/MM/yyyy HH:mm")
           : "";
@@ -589,6 +596,16 @@ export default function RelatoriosPage() {
               onChange={(e) => setFilterCliente(e.target.value)}
             />
           </div>
+
+          <div className="flex flex-col gap-1.5 min-w-[140px]">
+            <label className="text-caption font-medium text-muted-foreground">Nº OS</label>
+            <Input
+              className="h-9"
+              placeholder="Buscar OS..."
+              value={filterNumeroOS}
+              onChange={(e) => setFilterNumeroOS(e.target.value)}
+            />
+          </div>
         </div>
       </div>
 
@@ -652,7 +669,7 @@ export default function RelatoriosPage() {
                     />
                   </th>
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">OS</th>
-                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Data</th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Data Abertura</th>
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Cliente</th>
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Tipo de Serviço</th>
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Status</th>
@@ -676,7 +693,7 @@ export default function RelatoriosPage() {
                     </td>
                     <td className="px-4 py-3 text-body font-medium font-tabular text-foreground">{item.numero_os}</td>
                     <td className="px-4 py-3 text-body text-muted-foreground font-tabular">
-                      {format(new Date(item.created_at), "dd/MM/yyyy")}
+                      {format(new Date(item.data_abertura), "dd/MM/yyyy")}
                     </td>
                     <td className="px-4 py-3 text-body text-muted-foreground">{item.cliente_nome || "—"}</td>
                     <td className="px-4 py-3 text-body text-muted-foreground">{item.tipo_servico_nome || "—"}</td>
