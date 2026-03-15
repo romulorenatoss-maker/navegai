@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { fetchNotasPorSetor, calcularMediaColaborador, calcularNotaPorOS } from "@/hooks/useNotasPorSetor";
+import { getScoreColorClass, getScoreBgClass } from "@/lib/score-colors";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,17 +23,8 @@ import { format, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 
-function getScoreColor(score: number) {
-  if (score >= 80) return "text-success";
-  if (score >= 60) return "text-warning";
-  return "text-destructive";
-}
-
-function getScoreBg(score: number) {
-  if (score >= 80) return "bg-success/10";
-  if (score >= 60) return "bg-warning/10";
-  return "bg-destructive/10";
-}
+const getScoreColor = getScoreColorClass;
+const getScoreBg = getScoreBgClass;
 
 
 export default function DesempenhoColaboradorPage() {

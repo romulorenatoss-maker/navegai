@@ -407,9 +407,9 @@ export default function RelatoriosPage() {
         for (const pid of osPerguntaIds) {
           const resp = osRespostas[pid];
           const peso = perguntaPeso[pid] || 1;
-          if (resp === "na" || !resp) continue;
+          if (!resp) continue;
           totalPeso += peso;
-          if (resp === "sim") earnedPeso += peso;
+          if (resp === "sim" || resp === "na") earnedPeso += peso;
         }
         const calculatedNota = totalPeso > 0 ? ((earnedPeso / totalPeso) * 100) : null;
 
@@ -437,7 +437,7 @@ export default function RelatoriosPage() {
           ...perguntas.map((p) => {
             const resp = osRespostas[p.id];
             if (!resp) return "";
-            if (resp === "na") return "N/A";
+            if (resp === "na") return p.peso.toString(); // N/A pontua igual SIM
             if (resp === "sim") return p.peso.toString();
             if (resp === "nao") return "0";
             return "";
