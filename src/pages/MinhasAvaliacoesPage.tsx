@@ -213,7 +213,7 @@ export default function MinhasAvaliacoesPage() {
         {notaMedia != null && (
           <div className="flex items-center gap-2 ml-2 bg-muted/50 border border-border rounded-lg px-4 py-2">
             <span className="text-sm font-medium text-muted-foreground">Nota Média:</span>
-            <span className={cn("text-lg font-bold font-tabular", notaMedia >= 80 ? "text-success" : notaMedia >= 60 ? "text-warning" : "text-destructive")}>
+            <span className={cn("text-lg font-bold font-tabular", notaMedia >= 85 ? "text-success" : notaMedia >= 75 ? "text-warning" : "text-destructive")}>
               {notaMedia.toFixed(1)}%
             </span>
           </div>
