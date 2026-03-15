@@ -29,11 +29,7 @@ interface Props {
   collaborator: (Profile & { _setoresNomes?: string[] }) | null;
 }
 
-function getScoreColor(score: number) {
-  if (score >= 80) return "text-success";
-  if (score >= 60) return "text-warning";
-  return "text-destructive";
-}
+const getScoreColor = getScoreColorClass;
 
 const statusConfig: Record<string, { text: string; icon: typeof CheckCircle2; color: string }> = {
   aberta: { text: "Aberta", icon: Clock, color: "bg-warning/10 text-warning border-warning/30" },

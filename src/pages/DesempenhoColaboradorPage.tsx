@@ -23,17 +23,8 @@ import { format, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 
-function getScoreColor(score: number) {
-  if (score >= 80) return "text-success";
-  if (score >= 60) return "text-warning";
-  return "text-destructive";
-}
-
-function getScoreBg(score: number) {
-  if (score >= 80) return "bg-success/10";
-  if (score >= 60) return "bg-warning/10";
-  return "bg-destructive/10";
-}
+const getScoreColor = getScoreColorClass;
+const getScoreBg = getScoreBgClass;
 
 
 export default function DesempenhoColaboradorPage() {
