@@ -62,6 +62,7 @@ export default function RelatoriosPage() {
   const [filterAvaliador, setFilterAvaliador] = useState<string>("todos");
   const [filterAvaliado, setFilterAvaliado] = useState<string>("todos");
   const [filterCliente, setFilterCliente] = useState("");
+  const [filterNumeroOS, setFilterNumeroOS] = useState("");
 
   // Filter options (loaded from DB)
   const [setores, setSetores] = useState<{ id: string; nome: string }[]>([]);
