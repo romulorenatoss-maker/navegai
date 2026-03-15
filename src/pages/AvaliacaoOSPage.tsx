@@ -8,6 +8,7 @@ import {
   Check, Clock, Trash2, Eye, Users, MessageSquare, Camera, X, Image as ImageIcon, Lock, Download, Pencil, Save
 } from "lucide-react";
 import { jsPDF } from "jspdf";
+import MinhasAvaliacoesPendentes from "@/components/MinhasAvaliacoesPendentes";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -2396,6 +2397,9 @@ export default function AvaliacaoOSPage() {
         <h1 className="text-lg sm:text-section font-semibold text-foreground">Avaliação de OS</h1>
         <p className="text-sm sm:text-body text-muted-foreground">Informe o número da OS para iniciar. O CPF do cliente é opcional.</p>
       </div>
+
+      {/* Minhas Avaliações Pendentes */}
+      <MinhasAvaliacoesPendentes />
 
       {/* Step 1: CPF + OS Number combined */}
       <div className="bg-card border border-border rounded-lg shadow-card mb-6">

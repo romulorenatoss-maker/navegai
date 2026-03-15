@@ -669,66 +669,6 @@ export default function DashboardPage() {
         </motion.div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════ */}
-      {/* SECTION 1: Minhas Avaliações Pendentes */}
-      {/* ═══════════════════════════════════════════════════════════ */}
-      <motion.div variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
-        <div className="p-4 border-b border-border flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-warning" />
-          <h2 className="text-body font-semibold text-foreground">Minhas Avaliações Pendentes</h2>
-          <span className="text-caption text-muted-foreground">({pendingMySector.length})</span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">OS</th>
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Cliente</th>
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Tipo de Serviço</th>
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Colaborador Avaliado</th>
-                <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Pendentes</th>
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 w-36">Progresso</th>
-                <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Ação</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {pendingMySector.length > 0 ? pendingMySector.map(item => (
-                <tr key={item.os_id} className="hover:bg-muted/50 transition-colors">
-                  <td className="px-4 py-3 text-body font-medium text-primary font-tabular">#{item.numero_os}</td>
-                  <td className="px-4 py-3 text-body text-muted-foreground">{item.cliente_nome || "—"}</td>
-                  <td className="px-4 py-3 text-body text-muted-foreground">{item.tipo_servico_nome || "—"}</td>
-                  <td className="px-4 py-3 text-body text-foreground">{item.colaborador_avaliado_nome || "—"}</td>
-                  <td className="px-4 py-3 text-center">
-                    <Badge variant="destructive" className="font-tabular">{item.pending_count}</Badge>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <Progress value={item.progress} className="h-2 flex-1" />
-                      <span className="text-caption font-medium font-tabular text-muted-foreground w-10 text-right">{item.progress}%</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Button
-                      size="sm"
-                      onClick={() => navigate(`/avaliacoes/pesquisa?os=${item.numero_os}&mode=eval`)}
-                      className="press-effect"
-                    >
-                      Responder <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                    </Button>
-                  </td>
-                </tr>
-              )) : (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">
-                    <CheckCircle2 className="w-5 h-5 mx-auto mb-1 text-success" />
-                    Nenhuma avaliação pendente no seu setor.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </motion.div>
 
       {/* ═══════════════════════════════════════════════════════════ */}
       {/* SECTION 2: Avaliações Pendentes de Outros Setores */}
