@@ -1701,6 +1701,20 @@ export default function AvaliacaoOSPage() {
                           </div>
                           <div className="ml-11">
                             <SegmentedControl value={answer} onChange={v => handleAnswerChange(p.id, v)} disabled={isLocked} />
+                            {answer && responseAuthors[p.id] && (
+                              <div className="mt-1.5 flex items-center gap-2">
+                                <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-bold border",
+                                  answer === "sim" ? "border-success/40 bg-success/10 text-success" :
+                                  answer === "nao" ? "border-destructive/40 bg-destructive/10 text-destructive" :
+                                  "border-warning/40 bg-warning/10 text-warning"
+                                )}>
+                                  {answer === "sim" ? "SIM" : answer === "nao" ? "NÃO" : "N/A"}
+                                </span>
+                                <span className="text-caption text-muted-foreground">
+                                  por <strong className="text-foreground">{responseAuthors[p.id].avaliador_nome}</strong>
+                                </span>
+                              </div>
+                            )}
                           </div>
                           <AnimatePresence>
                             {answer === "nao" && (
