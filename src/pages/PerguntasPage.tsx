@@ -94,6 +94,7 @@ export default function PerguntasPage() {
       const { data, error } = await supabase
         .from("perguntas_avaliacao")
         .select("*, setores!perguntas_avaliacao_setor_avaliado_id_fkey(nome), checklists!perguntas_avaliacao_checklist_id_fkey(titulo), setor_nota:setores!perguntas_avaliacao_setor_nota_id_fkey(nome)")
+        .eq("ativo", true)
         .order("ordem");
       if (error) throw error;
       return (data || []).map((p: any) => ({ ...p, _checklist_titulo: p.checklists?.titulo || null }));
