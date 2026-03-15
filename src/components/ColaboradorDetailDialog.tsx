@@ -57,6 +57,9 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [detailOsId, setDetailOsId] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   // Reset state when dialog closes
   const handleOpenChange = (v: boolean) => {
