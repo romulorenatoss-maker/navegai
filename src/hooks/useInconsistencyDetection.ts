@@ -25,30 +25,23 @@ export async function detectInconsistencies(osId: string) {
 
   // Get all answers for all avaliacoes of this OS
   const avalIds = avaliacoes.map(a => a.id);
-  const { data: allRespostas } = await supabase
-    .from("respostas_avaliacao")
-    .select("avaliacao_id, pergunta_id, resposta")
-    .in("avaliacao_id", avalIds);
+  const avaliadorIds = [...new Set(avaliacoes.map(a => a.avaliador_id))];
+  const taIds = [...new Set(avaliacoes.filter(a => a.tipo_avaliacao_id).map(a => a.tipo_avaliacao_id!))];
 
+  // Parallel fetch: respostas, profiles, tipos_avaliacao
+  const [respostasRes, profilesRes, taRes] = await Promise.all([
+    supabase.from("respostas_avaliacao").select("avaliacao_id, pergunta_id, resposta").in("avaliacao_id", avalIds),
+    supabase.from("profiles").select("id, nome").in("id", avaliadorIds),
+    taIds.length > 0 ? (supabase as any).from("tipos_avaliacao").select("id, nome").in("id", taIds) : Promise.resolve({ data: [] }),
+  ]);
+
+  const allRespostas = respostasRes.data;
   if (!allRespostas) return;
 
-  // Get evaluator names
-  const avaliadorIds = [...new Set(avaliacoes.map(a => a.avaliador_id))];
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, nome")
-    .in("id", avaliadorIds);
-  const nameMap = new Map(profiles?.map(p => [p.id, p.nome]) || []);
+  const nameMap = new Map(profilesRes.data?.map(p => [p.id, p.nome]) || []);
+  const taNameMap = new Map((taRes.data || []).map((t: any) => [t.id, t.nome]));
 
-  // Get tipo_avaliacao names
-  const taIds = [...new Set(avaliacoes.filter(a => a.tipo_avaliacao_id).map(a => a.tipo_avaliacao_id!))];
-  let taNameMap = new Map<string, string>();
-  if (taIds.length > 0) {
-    const { data: tas } = await (supabase as any).from("tipos_avaliacao").select("id, nome").in("id", taIds);
-    taNameMap = new Map(tas?.map((t: any) => [t.id, t.nome]) || []);
-  }
-
-  // Get questions with their responsible sector (tipo_avaliacao_id = responsible)
+  // Get questions with their responsible sector
   const perguntaIds = [...new Set(allRespostas.map(r => r.pergunta_id))];
   const { data: perguntas } = await supabase
     .from("perguntas_avaliacao")
