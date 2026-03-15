@@ -462,6 +462,156 @@ export default function RelatoriosPage() {
     }
   };
 
+  // Export ALL filtered results (only concluídas)
+  const handleExportAllFiltered = async () => {
+    const concluidasList = osList.filter((os) => os.status === "concluida");
+    if (concluidasList.length === 0) {
+      toast.error("Nenhuma OS concluída disponível para exportação.");
+      return;
+    }
+
+    setExportAllLoading(true);
+    try {
+      const osIds = concluidasList.map((os) => os.id);
+
+      const { data: osData } = await supabase
+        .from("ordens_servico")
+        .select("id, numero_os, status, data_abertura, cliente_nome, cliente_cpf, tipo_servico_id, colaborador_avaliado_id, tecnico_id, atendente_id")
+        .in("id", osIds);
+
+      if (!osData || osData.length === 0) {
+        toast.error("Nenhum dado encontrado.");
+        setExportAllLoading(false);
+        return;
+      }
+
+      const tipoIds = [...new Set(osData.map((o) => o.tipo_servico_id).filter(Boolean))] as string[];
+      const [tiposRes, osPerguntasRes, respostasRes, avaliacoesRes] = await Promise.all([
+        tipoIds.length > 0
+          ? supabase.from("tipos_servico").select("id, nome").in("id", tipoIds)
+          : Promise.resolve({ data: [] }),
+        supabase.from("os_perguntas").select("os_id, pergunta_id").in("os_id", osIds),
+        supabase.from("respostas_avaliacao").select("ordem_servico_id, pergunta_id, resposta, avaliador_id").in("ordem_servico_id", osIds),
+        supabase.from("avaliacoes").select("id, ordem_servico_id, avaliador_id, nota_final, concluida_em, created_at").in("ordem_servico_id", osIds),
+      ]);
+
+      const tipoNames: Record<string, string> = {};
+      (tiposRes.data || []).forEach((t: any) => { tipoNames[t.id] = t.nome; });
+
+      const allPerguntaIds = [...new Set((osPerguntasRes.data || []).map((op: any) => op.pergunta_id))];
+      let perguntas: { id: string; pergunta: string; ordem: number; peso: number }[] = [];
+      if (allPerguntaIds.length > 0) {
+        const { data } = await supabase
+          .from("perguntas_avaliacao")
+          .select("id, pergunta, ordem, peso")
+          .in("id", allPerguntaIds)
+          .order("ordem");
+        perguntas = data || [];
+      }
+
+      const perguntaPeso: Record<string, number> = {};
+      perguntas.forEach((p) => { perguntaPeso[p.id] = p.peso; });
+
+      const perguntasByOS: Record<string, Set<string>> = {};
+      (osPerguntasRes.data || []).forEach((op: any) => {
+        if (!perguntasByOS[op.os_id]) perguntasByOS[op.os_id] = new Set();
+        perguntasByOS[op.os_id].add(op.pergunta_id);
+      });
+
+      const respostasByOS: Record<string, Record<string, string>> = {};
+      (respostasRes.data || []).forEach((r: any) => {
+        if (!r.ordem_servico_id) return;
+        if (!respostasByOS[r.ordem_servico_id]) respostasByOS[r.ordem_servico_id] = {};
+        if (r.resposta) respostasByOS[r.ordem_servico_id][r.pergunta_id] = r.resposta;
+      });
+
+      const profileIds = [
+        ...new Set([
+          ...(avaliacoesRes.data?.map((a) => a.avaliador_id) || []),
+          ...osData.map((o) => o.colaborador_avaliado_id).filter(Boolean) as string[],
+          ...osData.map((o) => o.tecnico_id).filter(Boolean) as string[],
+          ...osData.map((o) => o.atendente_id).filter(Boolean) as string[],
+        ]),
+      ];
+      let profileNames: Record<string, string> = {};
+      if (profileIds.length > 0) {
+        const { data: profiles } = await supabase.from("profiles").select("id, nome").in("id", profileIds);
+        profiles?.forEach((p) => { profileNames[p.id] = p.nome; });
+      }
+
+      const fixedHeaders = [
+        "Número OS", "Nome Cliente", "CPF Cliente", "Data Abertura",
+        "Avaliador", "Tipo Serviço", "Colaborador Avaliado", "Hora Conclusão", "Nota Final"
+      ];
+      const questionHeaders = perguntas.map((p) => `${p.pergunta} (Peso: ${p.peso})`);
+      const csvHeader = [...fixedHeaders, ...questionHeaders].map(escapeCSV).join(";");
+
+      const csvRows: string[] = [];
+      for (const os of osData) {
+        const osAvals = avaliacoesRes.data?.filter((a) => a.ordem_servico_id === os.id) || [];
+        const osRespostas = respostasByOS[os.id] || {};
+
+        let totalPeso = 0;
+        let earnedPeso = 0;
+        const osPerguntaIds = perguntasByOS[os.id] || new Set();
+        for (const pid of osPerguntaIds) {
+          const resp = osRespostas[pid];
+          const peso = perguntaPeso[pid] || 1;
+          if (!resp) continue;
+          totalPeso += peso;
+          if (resp === "sim" || resp === "na") earnedPeso += peso;
+        }
+        const calculatedNota = totalPeso > 0 ? ((earnedPeso / totalPeso) * 100) : null;
+
+        const bestNota = osAvals.length > 0 && osAvals[0].nota_final != null
+          ? osAvals[0].nota_final
+          : calculatedNota;
+
+        const avaliadorNome = osAvals.length > 0 ? (profileNames[osAvals[0].avaliador_id] || "") : "";
+        const dataAval = format(new Date(os.data_abertura), "dd/MM/yyyy");
+        const horaConclusao = osAvals.length > 0 && osAvals[0].concluida_em
+          ? format(new Date(osAvals[0].concluida_em), "dd/MM/yyyy HH:mm")
+          : "";
+
+        const row = [
+          os.numero_os,
+          os.cliente_nome || "",
+          os.cliente_cpf || "",
+          dataAval,
+          avaliadorNome,
+          os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || "" : "",
+          os.colaborador_avaliado_id ? profileNames[os.colaborador_avaliado_id] || "" : "",
+          horaConclusao,
+          bestNota != null ? bestNota.toFixed(2).replace(".", ",") : "",
+          ...perguntas.map((p) => {
+            const resp = osRespostas[p.id];
+            if (!resp) return "";
+            if (resp === "na") return p.peso.toString();
+            if (resp === "sim") return p.peso.toString();
+            if (resp === "nao") return "0";
+            return "";
+          }),
+        ];
+        csvRows.push(row.map(escapeCSV).join(";"));
+      }
+
+      const csvContent = "\uFEFF" + csvHeader + "\n" + csvRows.join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `relatorio_filtrado_${format(new Date(), "yyyy-MM-dd_HHmm")}.xlsx`;
+      link.click();
+      URL.revokeObjectURL(url);
+
+      toast.success(`Relatório exportado com ${osData.length} OS(s) concluída(s).`);
+    } catch (err: any) {
+      toast.error("Erro ao exportar: " + err.message);
+    } finally {
+      setExportAllLoading(false);
+    }
+  };
+
   // Access is now controlled by permissoes_tela — no admin block needed
 
   return (
