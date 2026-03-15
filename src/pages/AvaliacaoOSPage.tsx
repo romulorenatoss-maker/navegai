@@ -1692,30 +1692,46 @@ export default function AvaliacaoOSPage() {
                         )}>
                         <div className="p-4">
                           <div className="flex items-start gap-3 mb-3">
-                            <div className={cn("flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0", answer ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
+                            <div className={cn("flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0",
+                              answer === "sim" ? "bg-success text-success-foreground" :
+                              answer === "nao" ? "bg-destructive text-destructive-foreground" :
+                              answer === "na" ? "bg-warning text-warning-foreground" :
+                              "bg-muted text-muted-foreground"
+                            )}>
                               {answer ? <Check className="w-4 h-4" /> : String(i + 1).padStart(2, "0")}
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm sm:text-body font-medium text-foreground leading-relaxed">{p.pergunta}</p>
-                              <p className="text-caption text-muted-foreground mt-0.5">Nota: {p.peso}</p>
+                              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                <span className="text-caption text-muted-foreground">Peso: {p.peso}</span>
+                                {answer ? (
+                                  <>
+                                    <span className="text-caption text-muted-foreground">•</span>
+                                    <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold",
+                                      answer === "sim" ? "bg-success/10 text-success" :
+                                      answer === "nao" ? "bg-destructive/10 text-destructive" :
+                                      "bg-warning/10 text-warning"
+                                    )}>
+                                      Avaliada: {answer === "sim" ? "SIM" : answer === "nao" ? "NÃO" : "N/A"}
+                                      {answer === "sim" ? ` (+${p.peso} pts)` : answer === "nao" ? " (0 pts)" : ""}
+                                    </span>
+                                    {responseAuthors[p.id] && (
+                                      <span className="text-caption text-muted-foreground">
+                                        por <strong className="text-foreground">{responseAuthors[p.id].avaliador_nome}</strong>
+                                      </span>
+                                    )}
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="text-caption text-muted-foreground">•</span>
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground">Pendente</span>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </div>
                           <div className="ml-11">
                             <SegmentedControl value={answer} onChange={v => handleAnswerChange(p.id, v)} disabled={isLocked} />
-                            {answer && responseAuthors[p.id] && (
-                              <div className="mt-1.5 flex items-center gap-2">
-                                <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-bold border",
-                                  answer === "sim" ? "border-success/40 bg-success/10 text-success" :
-                                  answer === "nao" ? "border-destructive/40 bg-destructive/10 text-destructive" :
-                                  "border-warning/40 bg-warning/10 text-warning"
-                                )}>
-                                  {answer === "sim" ? "SIM" : answer === "nao" ? "NÃO" : "N/A"}
-                                </span>
-                                <span className="text-caption text-muted-foreground">
-                                  por <strong className="text-foreground">{responseAuthors[p.id].avaliador_nome}</strong>
-                                </span>
-                              </div>
-                            )}
                           </div>
                           <AnimatePresence>
                             {answer === "nao" && (
