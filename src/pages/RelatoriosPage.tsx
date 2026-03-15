@@ -49,6 +49,7 @@ const statusBadge: Record<string, string> = {
 // --- Main ---
 export default function RelatoriosPage() {
   const { isAdmin, user } = useAuth();
+  const navigate = useNavigate();
 
   // Filters
   const now = new Date();
