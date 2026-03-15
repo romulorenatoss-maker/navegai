@@ -108,13 +108,9 @@ export default function MinhasAvaliacoesPage() {
 
         const { data: avaliador } = await supabase.from("profiles").select("nome").eq("id", aval.avaliador_id).single();
 
-        result.push({
-          ...aval,
-          _avaliador_nome: avaliador?.nome || "—",
-          _respostas: respostas.map(r => {
+        const mappedRespostas = respostas.map(r => {
             const pg = perguntas.find(p => p.id === r.pergunta_id);
             const setorNome = pg?.setor_nota_id ? setoresMap.get(pg.setor_nota_id) || null : null;
-            // Determine employee type from setor name
             let employeeType = pg?.target_employee_type || "geral";
             if (setorNome) {
               const lower = setorNome.toLowerCase();
@@ -122,7 +118,18 @@ export default function MinhasAvaliacoesPage() {
               else if (lower.includes("cnico") || lower.includes("tecnico")) employeeType = "tecnico";
             }
             return { ...r, pergunta: pg?.pergunta || "—", peso: pg?.peso || 0, target: employeeType, setor_nome: setorNome };
-          }),
+          });
+
+        // Recalculate nota: SIM/NA = peso, NAO = 0
+        const totalPeso = mappedRespostas.reduce((acc, r) => r.resposta ? acc + r.peso : acc, 0);
+        const earnedPeso = mappedRespostas.reduce((acc, r) => (r.resposta === "sim" || r.resposta === "na") ? acc + r.peso : acc, 0);
+        const calculatedNota = totalPeso > 0 ? (earnedPeso / totalPeso) * 100 : null;
+
+        result.push({
+          ...aval,
+          nota_final: calculatedNota ?? aval.nota_final,
+          _avaliador_nome: avaliador?.nome || "—",
+          _respostas: mappedRespostas,
         });
       }
       return result;
