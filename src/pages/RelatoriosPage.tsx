@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import * as XLSX from "xlsx";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -101,8 +102,7 @@ export default function RelatoriosPage() {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
 
-  // Export all filtered dialog
-  const [exportAllDialogOpen, setExportAllDialogOpen] = useState(false);
+  // Export all filtered
   const [exportAllLoading, setExportAllLoading] = useState(false);
 
   
@@ -539,70 +539,62 @@ export default function RelatoriosPage() {
         profiles?.forEach((p) => { profileNames[p.id] = p.nome; });
       }
 
+      // Build Excel data
       const fixedHeaders = [
         "Número OS", "Nome Cliente", "CPF Cliente", "Data Abertura",
         "Avaliador", "Tipo Serviço", "Colaborador Avaliado", "Hora Conclusão", "Nota Final"
       ];
       const questionHeaders = perguntas.map((p) => `${p.pergunta} (Peso: ${p.peso})`);
-      const csvHeader = [...fixedHeaders, ...questionHeaders].map(escapeCSV).join(";");
-
-      const csvRows: string[] = [];
+      const allHeaders = [...fixedHeaders, ...questionHeaders];
+      const wsData: (string | number)[][] = [allHeaders];
       for (const os of osData) {
-        const osAvals = avaliacoesRes.data?.filter((a) => a.ordem_servico_id === os.id) || [];
-        const osRespostas = respostasByOS[os.id] || {};
+        const osAvals2 = avaliacoesRes.data?.filter((a) => a.ordem_servico_id === os.id) || [];
+        const osRespostas2 = respostasByOS[os.id] || {};
 
-        let totalPeso = 0;
-        let earnedPeso = 0;
-        const osPerguntaIds = perguntasByOS[os.id] || new Set();
-        for (const pid of osPerguntaIds) {
-          const resp = osRespostas[pid];
-          const peso = perguntaPeso[pid] || 1;
-          if (!resp) continue;
-          totalPeso += peso;
-          if (resp === "sim" || resp === "na") earnedPeso += peso;
+        let tp = 0; let ep = 0;
+        const opIds = perguntasByOS[os.id] || new Set();
+        for (const pid of opIds) {
+          const resp = osRespostas2[pid]; const peso = perguntaPeso[pid] || 1;
+          if (!resp) continue; tp += peso;
+          if (resp === "sim" || resp === "na") ep += peso;
         }
-        const calculatedNota = totalPeso > 0 ? ((earnedPeso / totalPeso) * 100) : null;
+        const cn2 = tp > 0 ? ((ep / tp) * 100) : null;
+        const bn = osAvals2.length > 0 && osAvals2[0].nota_final != null ? osAvals2[0].nota_final : cn2;
+        const avNome = osAvals2.length > 0 ? (profileNames[osAvals2[0].avaliador_id] || "") : "";
+        const hc = osAvals2.length > 0 && osAvals2[0].concluida_em ? format(new Date(osAvals2[0].concluida_em), "dd/MM/yyyy HH:mm") : "";
 
-        const bestNota = osAvals.length > 0 && osAvals[0].nota_final != null
-          ? osAvals[0].nota_final
-          : calculatedNota;
-
-        const avaliadorNome = osAvals.length > 0 ? (profileNames[osAvals[0].avaliador_id] || "") : "";
-        const dataAval = format(new Date(os.data_abertura), "dd/MM/yyyy");
-        const horaConclusao = osAvals.length > 0 && osAvals[0].concluida_em
-          ? format(new Date(osAvals[0].concluida_em), "dd/MM/yyyy HH:mm")
-          : "";
-
-        const row = [
+        wsData.push([
           os.numero_os,
           os.cliente_nome || "",
           os.cliente_cpf || "",
-          dataAval,
-          avaliadorNome,
+          format(new Date(os.data_abertura), "dd/MM/yyyy"),
+          avNome,
           os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || "" : "",
           os.colaborador_avaliado_id ? profileNames[os.colaborador_avaliado_id] || "" : "",
-          horaConclusao,
-          bestNota != null ? bestNota.toFixed(2).replace(".", ",") : "",
+          hc,
+          bn != null ? Number(bn.toFixed(2)) : "",
           ...perguntas.map((p) => {
-            const resp = osRespostas[p.id];
+            const resp = osRespostas2[p.id];
             if (!resp) return "";
-            if (resp === "na") return p.peso.toString();
-            if (resp === "sim") return p.peso.toString();
-            if (resp === "nao") return "0";
+            if (resp === "na" || resp === "sim") return p.peso;
+            if (resp === "nao") return 0;
             return "";
           }),
-        ];
-        csvRows.push(row.map(escapeCSV).join(";"));
+        ]);
       }
 
-      const csvContent = "\uFEFF" + csvHeader + "\n" + csvRows.join("\n");
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `relatorio_filtrado_${format(new Date(), "yyyy-MM-dd_HHmm")}.xlsx`;
-      link.click();
-      URL.revokeObjectURL(url);
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      
+      // Auto-size columns
+      const colWidths = allHeaders.map((h, i) => {
+        const maxLen = Math.max(h.length, ...wsData.slice(1).map(r => String(r[i] ?? "").length));
+        return { wch: Math.min(maxLen + 2, 40) };
+      });
+      ws["!cols"] = colWidths;
+      
+      XLSX.utils.book_append_sheet(wb, ws, "Relatório");
+      XLSX.writeFile(wb, `relatorio_filtrado_${format(new Date(), "yyyy-MM-dd_HHmm")}.xlsx`);
 
       toast.success(`Relatório exportado com ${osData.length} OS(s) concluída(s).`);
     } catch (err: any) {
@@ -804,7 +796,7 @@ export default function RelatoriosPage() {
                   toast.error("Nenhuma OS concluída disponível para exportação.");
                   return;
                 }
-                setExportAllDialogOpen(true);
+                handleExportAllFiltered();
               }}
               disabled={exportAllLoading || osList.length === 0}
             >
@@ -902,14 +894,6 @@ export default function RelatoriosPage() {
         onConfirm={handleExportSelected}
       />
 
-      {/* Export All Filtered Password Dialog */}
-      <AdminPasswordDialog
-        open={exportAllDialogOpen}
-        onOpenChange={setExportAllDialogOpen}
-        title="Exportar Relatório Filtrado"
-        description={`Informe sua senha para exportar ${osList.filter((os) => os.status === "concluida").length} OS(s) concluída(s) do resultado filtrado.`}
-        onConfirm={handleExportAllFiltered}
-      />
     </div>
   );
 }
