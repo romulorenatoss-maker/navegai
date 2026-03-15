@@ -121,6 +121,9 @@ export default function ClientesPage() {
 
     setDeleteLoading(true);
     try {
+      // Nullify FK references in ordens_servico
+      await supabase.from("ordens_servico").update({ cliente_id: null, cliente_nome: null } as any).eq("cliente_id", selectedId!);
+      // Delete the cliente
       const { error } = await supabase.from("clientes").delete().eq("id", selectedId!);
       if (error) throw error;
       toast.success("Cliente excluído.");

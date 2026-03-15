@@ -64,6 +64,15 @@ export default function SetoresPage() {
 
   const handleDeleteConfirm = async () => {
     if (!deletingId) return;
+    // Nullify all FK references to this setor
+    await supabase.from("colaborador_setores").delete().eq("setor_id", deletingId);
+    await supabase.from("profiles").update({ setor_id: null }).eq("setor_id", deletingId);
+    await supabase.from("perguntas_avaliacao").update({ setor_avaliado_id: null } as any).eq("setor_avaliado_id", deletingId);
+    await supabase.from("perguntas_avaliacao").update({ setor_nota_id: null } as any).eq("setor_nota_id", deletingId);
+    await supabase.from("checklists").update({ setor_id: null } as any).eq("setor_id", deletingId);
+    await supabase.from("tipos_servico").update({ setor_id: null } as any).eq("setor_id", deletingId);
+    await supabase.from("respostas_avaliacao").update({ avaliador_setor_id: null } as any).eq("avaliador_setor_id", deletingId);
+    // Delete the setor
     const { error } = await supabase.from("setores").delete().eq("id", deletingId);
     if (error) throw error;
     queryClient.invalidateQueries({ queryKey: ["setores"] });

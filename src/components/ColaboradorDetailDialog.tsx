@@ -253,12 +253,30 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
       const idsToDelete = Array.from(selectedOsIds);
 
       for (const osId of idsToDelete) {
+        // Get avaliacoes for this OS
         const { data: avals } = await supabase.from("avaliacoes").select("id").eq("ordem_servico_id", osId);
         if (avals?.length) {
           const avalIds = avals.map(a => a.id);
+          // Delete evidencias from storage
+          const { data: respostas } = await supabase
+            .from("respostas_avaliacao")
+            .select("evidencia_url")
+            .in("avaliacao_id", avalIds)
+            .not("evidencia_url", "is", null);
+          if (respostas?.length) {
+            const paths = respostas
+              .map(r => r.evidencia_url)
+              .filter(Boolean)
+              .map(url => { const m = url!.match(/evidencias\/(.+)$/); return m ? m[1] : null; })
+              .filter(Boolean) as string[];
+            if (paths.length > 0) await supabase.storage.from("evidencias").remove(paths);
+          }
           await supabase.from("respostas_avaliacao").delete().in("avaliacao_id", avalIds);
+          await supabase.from("inconsistencias_vinculadas").delete().in("avaliacao_id", avalIds);
         }
         await supabase.from("avaliacoes_inconsistencias").delete().eq("ordem_servico_id", osId);
+        await supabase.from("inconsistencias_vinculadas").delete().eq("ordem_servico_id", osId);
+        await supabase.from("os_perguntas").delete().eq("os_id", osId);
         await supabase.from("avaliacoes").delete().eq("ordem_servico_id", osId);
         await supabase.from("ordens_servico").delete().eq("id", osId);
       }
