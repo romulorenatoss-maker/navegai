@@ -2486,6 +2486,9 @@ export default function AvaliacaoOSPage() {
         </div>
       </div>
 
+      {/* Minhas Avaliações Pendentes */}
+      <MinhasAvaliacoesPendentes />
+
       {/* Results: OS found */}
       {formValidated && formFoundOS && (
         <AnimatePresence>
