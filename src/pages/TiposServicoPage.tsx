@@ -167,7 +167,7 @@ export default function TiposServicoPage() {
             ) : tipos.length === 0 ? (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhum tipo cadastrado.</td></tr>
             ) : tipos.map((t: any) => (
-              <TipoRow key={t.id} t={t} onToggle={() => toggleAtivo.mutate(t)} onEdit={() => openEdit(t)} onRemove={() => remove.mutate(t.id)} />
+              <TipoRow key={t.id} t={t} onToggle={() => toggleAtivo.mutate(t)} onEdit={() => openEdit(t)} onRemove={() => { setDeletingId(t.id); setDeleteDialogOpen(true); }} />
             ))}
           </tbody>
         </table>
