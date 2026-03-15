@@ -661,8 +661,8 @@ export default function DesempenhoColaboradorPage() {
               <div className="p-4 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className={cn("w-3 h-3 rounded-full shrink-0", evalDetail.concluida ? "bg-success" : "bg-warning")} />
-                   <h3 className="text-body font-semibold text-foreground">{evalDetail.tipo_avaliacao_nome}</h3>
-                   <span className="text-caption text-muted-foreground">— {evalDetail.avaliador_nome}</span>
+                   <span className="text-caption text-muted-foreground">Avaliador:</span>
+                   <h3 className="text-body font-semibold text-foreground">{evalDetail.avaliador_nome}</h3>
                    {evalDetail.concluida_em && (
                      <span className="text-caption text-muted-foreground ml-1">• {format(new Date(evalDetail.concluida_em), "dd/MM/yyyy HH:mm")}</span>
                    )}
