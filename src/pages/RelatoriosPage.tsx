@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  CalendarIcon, Filter, Trash2, Download, Loader2, CheckSquare,
-  Square, AlertTriangle, FileText, Search, Eye
+  CalendarIcon, Filter, Trash2, Download, Loader2,
+  FileText, Search, Eye
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import AdminPasswordDialog from "@/components/AdminPasswordDialog";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
@@ -96,10 +96,9 @@ export default function RelatoriosPage() {
 
   // Delete dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deletePassword, setDeletePassword] = useState("");
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Export loading
+  // Export dialog
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
 
   
@@ -224,96 +223,75 @@ export default function RelatoriosPage() {
     });
   };
 
-  // Delete
-  const handleDeleteSelected = async () => {
-    if (!user || !deletePassword) return;
-    setDeleteLoading(true);
+  // Delete (called after password confirmed by AdminPasswordDialog)
+  const executeDeleteSelected = async () => {
+    if (!user) return;
 
-    try {
-      // Verify password
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email: user.email!,
-        password: deletePassword,
-      });
-      if (authError) {
-        toast.error("Senha incorreta.");
-        setDeleteLoading(false);
-        return;
-      }
+    const osIds = [...selected];
 
-      const osIds = [...selected];
+    // 1. Get avaliacoes for these OS
+    const { data: avaliacoes } = await supabase
+      .from("avaliacoes")
+      .select("id")
+      .in("ordem_servico_id", osIds);
+    const avalIds = avaliacoes?.map((a) => a.id) || [];
 
-      // 1. Get avaliacoes for these OS
-      const { data: avaliacoes } = await supabase
-        .from("avaliacoes")
-        .select("id")
-        .in("ordem_servico_id", osIds);
-      const avalIds = avaliacoes?.map((a) => a.id) || [];
+    // 2. Get evidencia URLs to delete from storage
+    if (avalIds.length > 0) {
+      const { data: respostas } = await supabase
+        .from("respostas_avaliacao")
+        .select("evidencia_url")
+        .in("avaliacao_id", avalIds)
+        .not("evidencia_url", "is", null);
 
-      // 2. Get evidencia URLs to delete from storage
-      if (avalIds.length > 0) {
-        const { data: respostas } = await supabase
-          .from("respostas_avaliacao")
-          .select("evidencia_url")
-          .in("avaliacao_id", avalIds)
-          .not("evidencia_url", "is", null);
+      if (respostas && respostas.length > 0) {
+        const paths = respostas
+          .map((r) => r.evidencia_url)
+          .filter(Boolean)
+          .map((url) => {
+            const match = url!.match(/evidencias\/(.+)$/);
+            return match ? match[1] : null;
+          })
+          .filter(Boolean) as string[];
 
-        if (respostas && respostas.length > 0) {
-          const paths = respostas
-            .map((r) => r.evidencia_url)
-            .filter(Boolean)
-            .map((url) => {
-              // Extract path from full URL
-              const match = url!.match(/evidencias\/(.+)$/);
-              return match ? match[1] : null;
-            })
-            .filter(Boolean) as string[];
-
-          if (paths.length > 0) {
-            await supabase.storage.from("evidencias").remove(paths);
-          }
+        if (paths.length > 0) {
+          await supabase.storage.from("evidencias").remove(paths);
         }
-
-        // 3. Delete respostas
-        await supabase.from("respostas_avaliacao").delete().in("avaliacao_id", avalIds);
       }
 
-      // 4. Delete inconsistencias (both types)
-      await supabase.from("avaliacoes_inconsistencias").delete().in("ordem_servico_id", osIds);
-      await supabase.from("inconsistencias_vinculadas").delete().in("ordem_servico_id", osIds);
-
-      // 5. Delete os_perguntas
-      await supabase.from("os_perguntas").delete().in("os_id", osIds);
-
-      // 6. Delete avaliacoes
-      if (avalIds.length > 0) {
-        await supabase.from("avaliacoes").delete().in("id", avalIds);
-      }
-
-      // 7. Delete OS
-      await supabase.from("ordens_servico").delete().in("id", osIds);
-
-      // 7. Audit log
-      for (const osId of osIds) {
-        const osInfo = osList.find((o) => o.id === osId);
-        await supabase.from("audit_logs").insert({
-          user_id: user.id,
-          acao: "exclusao_relatorio",
-          tabela: "ordens_servico",
-          registro_id: osId,
-          dados_anteriores: osInfo ? { numero_os: osInfo.numero_os, cliente_nome: osInfo.cliente_nome } : null,
-        });
-      }
-
-      toast.success(`${osIds.length} OS(s) e todos os dados vinculados foram excluídos.`);
-      setDeleteDialogOpen(false);
-      setDeletePassword("");
-      fetchOS();
-    } catch (err: any) {
-      toast.error("Erro ao excluir: " + err.message);
-    } finally {
-      setDeleteLoading(false);
+      // 3. Delete respostas
+      await supabase.from("respostas_avaliacao").delete().in("avaliacao_id", avalIds);
     }
+
+    // 4. Delete inconsistencias (both types)
+    await supabase.from("avaliacoes_inconsistencias").delete().in("ordem_servico_id", osIds);
+    await supabase.from("inconsistencias_vinculadas").delete().in("ordem_servico_id", osIds);
+
+    // 5. Delete os_perguntas
+    await supabase.from("os_perguntas").delete().in("os_id", osIds);
+
+    // 6. Delete avaliacoes
+    if (avalIds.length > 0) {
+      await supabase.from("avaliacoes").delete().in("id", avalIds);
+    }
+
+    // 7. Delete OS
+    await supabase.from("ordens_servico").delete().in("id", osIds);
+
+    // 8. Audit log
+    for (const osId of osIds) {
+      const osInfo = osList.find((o) => o.id === osId);
+      await supabase.from("audit_logs").insert({
+        user_id: user.id,
+        acao: "exclusao_relatorio",
+        tabela: "ordens_servico",
+        registro_id: osId,
+        dados_anteriores: osInfo ? { numero_os: osInfo.numero_os, cliente_nome: osInfo.cliente_nome } : null,
+      });
+    }
+
+    toast.success(`${osIds.length} OS(s) e todos os dados vinculados foram excluídos.`);
+    fetchOS();
   };
 
   // Export CSV — columnar format with questions as headers, showing scores
@@ -623,7 +601,7 @@ export default function RelatoriosPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={handleExportSelected}
+              onClick={() => setExportDialogOpen(true)}
               disabled={exportLoading}
             >
               {exportLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
@@ -728,41 +706,23 @@ export default function RelatoriosPage() {
         </div>
       )}
 
-      {/* Delete Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={(open) => { if (!deleteLoading) setDeleteDialogOpen(open); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="w-5 h-5" />
-              Confirmar Exclusão
-            </DialogTitle>
-            <DialogDescription>
-              Você está prestes a excluir <strong>{selected.size} OS(s)</strong> e <strong>todos os dados vinculados</strong>:
-              respostas, evidências (fotos), avaliações e inconsistências.
-              <br /><br />
-              <strong>Cadastros de clientes NÃO serão removidos.</strong>
-              <br /><br />
-              Esta ação é irreversível. Digite sua senha para confirmar.
-            </DialogDescription>
-          </DialogHeader>
-          <Input
-            type="password"
-            placeholder="Sua senha"
-            value={deletePassword}
-            onChange={(e) => setDeletePassword(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleDeleteSelected()}
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setDeleteDialogOpen(false); setDeletePassword(""); }} disabled={deleteLoading}>
-              Cancelar
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteSelected} disabled={deleteLoading || !deletePassword}>
-              {deleteLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Trash2 className="w-4 h-4 mr-1" />}
-              Excluir {selected.size} OS(s)
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Delete Password Dialog */}
+      <AdminPasswordDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Confirmar Exclusão"
+        description={`Você está prestes a excluir ${selected.size} OS(s) e todos os dados vinculados (respostas, evidências, avaliações e inconsistências). Esta ação é irreversível.`}
+        onConfirm={executeDeleteSelected}
+      />
+
+      {/* Export Password Dialog */}
+      <AdminPasswordDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        title="Confirmar Exportação"
+        description={`Informe sua senha para exportar ${selected.size} OS(s) selecionada(s).`}
+        onConfirm={handleExportSelected}
+      />
     </div>
   );
 }
