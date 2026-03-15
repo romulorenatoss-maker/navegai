@@ -428,7 +428,7 @@ export default function RelatoriosPage() {
           : calculatedNota;
 
         const avaliadorNome = osAvals.length > 0 ? (profileNames[osAvals[0].avaliador_id] || "") : "";
-        const dataAval = osAvals.length > 0 ? format(new Date(osAvals[0].created_at), "dd/MM/yyyy") : format(new Date(os.created_at), "dd/MM/yyyy");
+        const dataAval = osAvals.length > 0 ? format(new Date(osAvals[0].created_at), "dd/MM/yyyy") : format(new Date(os.data_abertura), "dd/MM/yyyy");
         const horaConclusao = osAvals.length > 0 && osAvals[0].concluida_em
           ? format(new Date(osAvals[0].concluida_em), "dd/MM/yyyy HH:mm")
           : "";
