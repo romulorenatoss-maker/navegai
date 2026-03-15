@@ -449,152 +449,80 @@ export default function DashboardPage() {
       const from = startDate ? startOfDay(startDate).toISOString() : startOfMonth(now).toISOString();
       const to = endDate ? endOfDay(endDate).toISOString() : endOfMonth(now).toISOString();
 
-      const { data: osInPeriod } = await supabase
-        .from("ordens_servico")
-        .select("id, tecnico_id, atendente_id, colaborador_avaliado_id, tipo_servico_id, status")
-        .eq("status", "concluida")
-        .gte("data_abertura", from)
-        .lte("data_abertura", to);
-
-      if (!osInPeriod?.length) { setTecnicoMedias([]); setSetorMedias([]); return; }
-
-      const osIds = osInPeriod.map(o => o.id);
-      const osMap: Record<string, typeof osInPeriod[0]> = {};
-      osInPeriod.forEach(o => { osMap[o.id] = o; });
-
-      // Fetch os_perguntas, respostas and perguntas in parallel
-      const [osPerguntasRes, respostasRes, setoresRes] = await Promise.all([
-        (supabase as any).from("os_perguntas").select("os_id, pergunta_id").in("os_id", osIds),
-        supabase.from("respostas_avaliacao").select("ordem_servico_id, pergunta_id, resposta").in("ordem_servico_id", osIds).not("resposta", "is", null),
-        supabase.from("setores").select("id, nome").eq("ativo", true),
-      ]);
-
-      const setorNames: Record<string, string> = {};
-      (setoresRes.data || []).forEach(s => { setorNames[s.id] = s.nome; });
-
-      // Build os_perguntas map
-      const perguntasByOS: Record<string, string[]> = {};
-      ((osPerguntasRes as any).data || []).forEach((op: any) => {
-        if (!perguntasByOS[op.os_id]) perguntasByOS[op.os_id] = [];
-        perguntasByOS[op.os_id].push(op.pergunta_id);
+      // Use the same SQL function as the Desempenho page for consistency
+      const { data: metricas, error } = await supabase.rpc("dashboard_metricas_agregadas" as any, {
+        p_data_inicio: from,
+        p_data_fim: to,
       });
 
-      // Build respostas map: os_id -> { pergunta_id -> resposta }
-      const respostasByOS: Record<string, Record<string, string>> = {};
-      ((respostasRes as any).data || []).forEach((r: any) => {
-        if (!r.ordem_servico_id) return;
-        if (!respostasByOS[r.ordem_servico_id]) respostasByOS[r.ordem_servico_id] = {};
-        respostasByOS[r.ordem_servico_id][r.pergunta_id] = r.resposta;
-      });
-
-      // All OS here already have status = 'concluida', use them directly
-      const completedOsIds = osIds;
-
-      // Fetch pergunta details (peso, setor_avaliado_id) for all relevant perguntas
-      const allPerguntaIds = [...new Set(completedOsIds.flatMap(osId => perguntasByOS[osId] || []))];
-      const { data: perguntasData } = await supabase
-        .from("perguntas_avaliacao")
-        .select("id, peso, setor_avaliado_id")
-        .in("id", allPerguntaIds);
-
-      const perguntaInfo: Record<string, { peso: number; setor_avaliado_id: string | null }> = {};
-      (perguntasData || []).forEach(p => { perguntaInfo[p.id] = { peso: p.peso, setor_avaliado_id: p.setor_avaliado_id }; });
-
-      // Calculate score per OS per sector
-      // employeeScores: profile_id -> { notas: number[] }
-      const employeeScores: Record<string, { notas: number[] }> = {};
-
-      for (const osId of completedOsIds) {
-        const os = osMap[osId];
-        if (!os) continue;
-        const osPerguntaIds = perguntasByOS[osId] || [];
-        const osRespostas = respostasByOS[osId] || {};
-
-        // Group perguntas by setor
-        const setorPerguntas: Record<string, string[]> = {};
-        for (const pid of osPerguntaIds) {
-          const info = perguntaInfo[pid];
-          const setorId = info?.setor_avaliado_id || "geral";
-          if (!setorPerguntas[setorId]) setorPerguntas[setorId] = [];
-          setorPerguntas[setorId].push(pid);
-        }
-
-        // Calculate score per setor and assign to correct employee
-        for (const [setorId, pids] of Object.entries(setorPerguntas)) {
-          let totalWeight = 0;
-          let earnedWeight = 0;
-          for (const pid of pids) {
-            const resp = osRespostas[pid];
-            const peso = perguntaInfo[pid]?.peso || 1;
-            if (resp === "na") continue;
-            totalWeight += peso;
-            if (resp === "sim") earnedWeight += peso;
-          }
-          if (totalWeight === 0) continue;
-          const nota = (earnedWeight / totalWeight) * 100;
-
-          // Determine which employee gets this score based on setor
-          const setorNome = (setorNames[setorId] || "").toLowerCase();
-          let targetColabId: string | null = null;
-          if (setorNome.includes("atendimento") && os.atendente_id) {
-            targetColabId = os.atendente_id;
-          } else if (setorNome.includes("cnico") && os.tecnico_id) {
-            targetColabId = os.tecnico_id;
-          } else {
-            targetColabId = os.colaborador_avaliado_id || os.tecnico_id || os.atendente_id;
-          }
-
-          if (!targetColabId) continue;
-          if (!employeeScores[targetColabId]) employeeScores[targetColabId] = { notas: [] };
-          employeeScores[targetColabId].notas.push(nota);
-        }
+      if (error || !metricas) {
+        console.error("Erro ao buscar métricas agregadas:", error);
+        setTecnicoMedias([]);
+        setSetorMedias([]);
+        return;
       }
 
-      const colabIds = Object.keys(employeeScores);
-      if (colabIds.length === 0) { setTecnicoMedias([]); setSetorMedias([]); return; }
+      const rows = metricas as Array<{ tipo: string; profile_id: string; nome: string; setor_nome: string; total_os: number; media_nota: number }>;
 
-      // Fetch evaluated employee profiles and their sectors
-      const [profilesRes, colabSetorLinksRes] = await Promise.all([
-        supabase.from("profiles").select("id, nome, setor_id").in("id", colabIds),
-        supabase.from("colaborador_setores").select("profile_id, setor_id").in("profile_id", colabIds),
-      ]);
+      // Fetch employee sector links for grouping in the ranking
+      const profileIds = [...new Set(rows.map(r => r.profile_id))];
+      if (profileIds.length === 0) { setTecnicoMedias([]); setSetorMedias([]); return; }
 
+      const { data: setoresData } = await supabase.from("setores").select("id, nome").eq("ativo", true);
+      const setorNameMap: Record<string, string> = {};
+      (setoresData || []).forEach(s => { setorNameMap[s.id] = s.nome; });
+
+      const { data: colabSetorLinks } = await supabase.from("colaborador_setores").select("profile_id, setor_id").in("profile_id", profileIds);
       const profileSetores: Record<string, string[]> = {};
-      (colabSetorLinksRes.data || []).forEach((l) => {
+      (colabSetorLinks || []).forEach(l => {
         if (!profileSetores[l.profile_id]) profileSetores[l.profile_id] = [];
         profileSetores[l.profile_id].push(l.setor_id);
       });
-      (profilesRes.data || []).forEach((p) => {
-        if (!profileSetores[p.id] && p.setor_id) profileSetores[p.id] = [p.setor_id];
+
+      // Build TecnicoMedia from SQL results
+      const tecMedias: TecnicoMedia[] = rows.map(r => {
+        const pSetores = profileSetores[r.profile_id] || [];
+        const primarySetorName = pSetores.length > 0 ? (setorNameMap[pSetores[0]] || r.setor_nome) : r.setor_nome;
+        return {
+          profile_id: r.profile_id,
+          nome: r.nome,
+          media: Number(r.media_nota),
+          total_avaliacoes: Number(r.total_os),
+          setor_nome: primarySetorName,
+        };
       });
 
-      const tecMedias: TecnicoMedia[] = [];
-      (profilesRes.data || []).forEach((p) => {
-        const entry = employeeScores[p.id];
-        if (entry) {
-          const avg = entry.notas.reduce((a, b) => a + b, 0) / entry.notas.length;
-          const pSetores = profileSetores[p.id] || [];
-          const primarySetorName = pSetores.length > 0 ? (setorNames[pSetores[0]] || "Sem setor") : "Sem setor";
-          tecMedias.push({ profile_id: p.id, nome: p.nome, media: avg, total_avaliacoes: entry.notas.length, setor_nome: primarySetorName });
+      // Deduplicate by profile_id (SQL may return multiple rows per employee if they have scores in multiple sectors)
+      const deduped = new Map<string, TecnicoMedia>();
+      tecMedias.forEach(t => {
+        const existing = deduped.get(t.profile_id);
+        if (!existing) {
+          deduped.set(t.profile_id, t);
+        } else {
+          // Merge: weighted average
+          const totalEvals = existing.total_avaliacoes + t.total_avaliacoes;
+          existing.media = (existing.media * existing.total_avaliacoes + t.media * t.total_avaliacoes) / totalEvals;
+          existing.total_avaliacoes = totalEvals;
         }
       });
-      tecMedias.sort((a, b) => b.media - a.media);
-      setTecnicoMedias(tecMedias);
+
+      const finalMedias = Array.from(deduped.values()).sort((a, b) => b.media - a.media);
+      setTecnicoMedias(finalMedias);
 
       // Sector averages
-      const setorEmployeeAvgs: Record<string, { nome: string; avgs: number[] }> = {};
-      tecMedias.forEach(t => {
+      const setorAvgs: Record<string, { nome: string; avgs: number[] }> = {};
+      finalMedias.forEach(t => {
         const pSetores = profileSetores[t.profile_id] || [];
         pSetores.forEach(setorId => {
-          if (!setorEmployeeAvgs[setorId]) setorEmployeeAvgs[setorId] = { nome: setorNames[setorId] || "Sem setor", avgs: [] };
-          setorEmployeeAvgs[setorId].avgs.push(t.media);
+          if (!setorAvgs[setorId]) setorAvgs[setorId] = { nome: setorNameMap[setorId] || "Sem setor", avgs: [] };
+          setorAvgs[setorId].avgs.push(t.media);
         });
       });
 
-      const sMedias: SetorMedia[] = Object.entries(setorEmployeeAvgs).map(([id, v]) => ({
+      const sMedias: SetorMedia[] = Object.entries(setorAvgs).map(([id, v]) => ({
         setor_id: id, setor_nome: v.nome,
         media: v.avgs.reduce((a, b) => a + b, 0) / v.avgs.length,
-        total_avaliacoes: tecMedias.filter(t => (profileSetores[t.profile_id] || []).includes(id)).reduce((acc, t) => acc + t.total_avaliacoes, 0),
+        total_avaliacoes: finalMedias.filter(t => (profileSetores[t.profile_id] || []).includes(id)).reduce((acc, t) => acc + t.total_avaliacoes, 0),
       }));
       sMedias.sort((a, b) => b.media - a.media);
       setSetorMedias(sMedias);
