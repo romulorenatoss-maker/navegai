@@ -443,36 +443,13 @@ export default function PerguntasPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Checklist Confirmation Dialog */}
-      <Dialog open={deleteChecklistDialogOpen} onOpenChange={(open) => { if (!open) { setDeleteChecklistDialogOpen(false); setDeletePassword(""); setDeletePasswordError(""); } }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-destructive">Excluir Checklist</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-body text-muted-foreground">
-              Esta ação é irreversível. Todas as perguntas associadas serão desvinculadas. Confirme sua senha para prosseguir.
-            </p>
-            <div className="space-y-1.5">
-              <Label>Senha</Label>
-              <Input
-                type="password"
-                value={deletePassword}
-                onChange={e => { setDeletePassword(e.target.value); setDeletePasswordError(""); }}
-                placeholder="Digite sua senha"
-                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleDeleteChecklistConfirm(); } }}
-              />
-              {deletePasswordError && <p className="text-caption text-destructive">{deletePasswordError}</p>}
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDeleteChecklistDialogOpen(false)}>Cancelar</Button>
-              <Button type="button" variant="destructive" onClick={handleDeleteChecklistConfirm} disabled={deleteChecklist.isPending} className="press-effect">
-                {deleteChecklist.isPending ? "Excluindo..." : "Excluir"}
-              </Button>
-            </DialogFooter>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <AdminPasswordDialog
+        open={deleteChecklistDialogOpen}
+        onOpenChange={setDeleteChecklistDialogOpen}
+        title="Excluir Checklist"
+        description="Esta ação é irreversível. Todas as perguntas associadas serão desvinculadas."
+        onConfirm={handleDeleteChecklistConfirm}
+      />
 
       {/* Question Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
