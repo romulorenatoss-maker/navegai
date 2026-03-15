@@ -298,9 +298,14 @@ export default function PerguntasPage() {
       const { error } = await supabase.from("perguntas_avaliacao").update({ ativo: false } as any).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["perguntas_avaliacao"] }); toast.success("Pergunta desativada."); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["perguntas_avaliacao"] }); toast.success("Pergunta desativada."); setDeletingPerguntaId(null); },
     onError: (err: any) => toast.error(err.message),
   });
+
+  const handleDeletePerguntaConfirm = async () => {
+    if (!deletingPerguntaId) return;
+    remove.mutate(deletingPerguntaId);
+  };
 
   const reorderMutation = useMutation({
     mutationFn: async (items: { id: string; ordem: number }[]) => {
