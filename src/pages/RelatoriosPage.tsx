@@ -602,7 +602,7 @@ export default function RelatoriosPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={handleExportSelected}
+              onClick={() => setExportDialogOpen(true)}
               disabled={exportLoading}
             >
               {exportLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
