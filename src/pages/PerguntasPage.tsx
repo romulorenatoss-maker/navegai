@@ -422,7 +422,7 @@ export default function PerguntasPage() {
                       {perguntasFiltradas.length === 0 ? (
                         <tr><td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhuma pergunta encontrada.</td></tr>
                       ) : perguntasFiltradas.map((p, i) => (
-                        <SortableRow key={p.id} p={p} index={i} onEdit={openEdit} onRemove={id => remove.mutate(id)} isAdmin={isAdmin} />
+                        <SortableRow key={p.id} p={p} index={i} onEdit={openEdit} onRemove={id => { setDeletingPerguntaId(id); setDeletePerguntaDialogOpen(true); }} isAdmin={isAdmin} />
                       ))}
                     </tbody>
                   </SortableContext>
