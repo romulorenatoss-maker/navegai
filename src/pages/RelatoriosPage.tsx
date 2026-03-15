@@ -693,7 +693,7 @@ export default function RelatoriosPage() {
                     </td>
                     <td className="px-4 py-3 text-body font-medium font-tabular text-foreground">{item.numero_os}</td>
                     <td className="px-4 py-3 text-body text-muted-foreground font-tabular">
-                      {format(new Date(item.created_at), "dd/MM/yyyy")}
+                      {format(new Date(item.data_abertura), "dd/MM/yyyy")}
                     </td>
                     <td className="px-4 py-3 text-body text-muted-foreground">{item.cliente_nome || "—"}</td>
                     <td className="px-4 py-3 text-body text-muted-foreground">{item.tipo_servico_nome || "—"}</td>
