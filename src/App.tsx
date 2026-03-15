@@ -22,7 +22,16 @@ import RelatoriosPage from "./pages/RelatoriosPage";
 import DesempenhoColaboradorPage from "./pages/DesempenhoColaboradorPage";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 2 * 60 * 1000, // 2 min - avoid refetching unchanged data
+      gcTime: 10 * 60 * 1000, // 10 min - keep in cache longer
+      refetchOnWindowFocus: false, // don't refetch on tab switch
+      retry: 1, // reduce retries on failure
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
