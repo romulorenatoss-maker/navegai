@@ -1054,9 +1054,9 @@ export default function AvaliacaoOSPage() {
       let earnedWeight = 0;
       for (const p of answerableQuestions) {
         const answer = evalAnswers[p.id];
-        if (answer !== "na" && answer != null) {
+        if (answer != null) {
           totalWeight += p.peso;
-          if (answer === "sim") earnedWeight += p.peso;
+          if (answer === "sim" || answer === "na") earnedWeight += p.peso;
         }
       }
       const nota = totalWeight > 0 ? (earnedWeight / totalWeight) * 100 : 0;
@@ -1265,8 +1265,8 @@ export default function AvaliacaoOSPage() {
   const myAnsweredCount = answerablePerguntas.filter(p => evalAnswers[p.id] != null).length;
   const myProgressPercent = answerablePerguntas.length > 0 ? Math.round((myAnsweredCount / answerablePerguntas.length) * 100) : 0;
   
-  const evalTotalScore = evalPerguntas.reduce((a, p) => evalAnswers[p.id] === "sim" ? a + p.peso : a, 0);
-  const evalMaxScore = evalPerguntas.reduce((a, p) => evalAnswers[p.id] !== "na" && evalAnswers[p.id] != null ? a + p.peso : a, 0);
+  const evalTotalScore = evalPerguntas.reduce((a, p) => (evalAnswers[p.id] === "sim" || evalAnswers[p.id] === "na") ? a + p.peso : a, 0);
+  const evalMaxScore = evalPerguntas.reduce((a, p) => evalAnswers[p.id] != null ? a + p.peso : a, 0);
 
   // Auto-finalize when all answerable questions are answered
   const autoFinalizeTriggered = useRef(false);
@@ -1999,10 +1999,8 @@ export default function AvaliacaoOSPage() {
         const ans = q._answer;
         if (ans?.resposta) {
           answered++;
-          if (ans.resposta !== "na") {
-            max += q.peso;
-            if (ans.resposta === "sim") scored += q.peso;
-          }
+          max += q.peso;
+          if (ans.resposta === "sim" || ans.resposta === "na") scored += q.peso;
         }
       });
       const pct = max > 0 ? (scored / max) * 100 : 0;
