@@ -1999,10 +1999,8 @@ export default function AvaliacaoOSPage() {
         const ans = q._answer;
         if (ans?.resposta) {
           answered++;
-          if (ans.resposta !== "na") {
-            max += q.peso;
-            if (ans.resposta === "sim") scored += q.peso;
-          }
+          max += q.peso;
+          if (ans.resposta === "sim" || ans.resposta === "na") scored += q.peso;
         }
       });
       const pct = max > 0 ? (scored / max) * 100 : 0;

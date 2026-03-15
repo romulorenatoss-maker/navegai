@@ -263,9 +263,9 @@ export function useAvaliacaoOS() {
   };
 
   const answeredCount = questions.filter((q) => q.answer !== null).length;
-  const totalScore = questions.reduce((acc, q) => (q.answer === "sim" ? acc + q.peso : acc), 0);
+  const totalScore = questions.reduce((acc, q) => (q.answer === "sim" || q.answer === "na" ? acc + q.peso : acc), 0);
   const maxScore = questions.reduce(
-    (acc, q) => (q.answer !== "na" && q.answer !== null ? acc + q.peso : acc),
+    (acc, q) => (q.answer !== null ? acc + q.peso : acc),
     0
   );
 

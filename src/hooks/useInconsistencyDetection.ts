@@ -165,11 +165,9 @@ export async function markAuditOnlyAndCalculateScore(
         .eq("avaliacao_id", avaliacaoId)
         .eq("pergunta_id", p.id);
     } else {
-      // This answer counts for scoring
-      if (answer !== "na") {
-        totalWeight += p.peso;
-        if (answer === "sim") earnedWeight += p.peso;
-      }
+      // This answer counts for scoring — N/A pontua igual SIM
+      totalWeight += p.peso;
+      if (answer === "sim" || answer === "na") earnedWeight += p.peso;
     }
   }
 
