@@ -173,8 +173,8 @@ export default function DesempenhoColaboradorPage() {
     queryKey: ["perf_notas_setor", targetProfileId, appliedStart?.toISOString(), appliedEnd?.toISOString()],
     queryFn: async () => {
       if (!targetProfileId) return [];
-      const from = appliedStart?.toISOString() || startOfMonth(now).toISOString();
-      const to = appliedEnd ? endOfMonth(appliedEnd).toISOString() : endOfMonth(now).toISOString();
+      const from = appliedStart ? startOfDay(appliedStart).toISOString() : startOfDay(startOfMonth(now)).toISOString();
+      const to = appliedEnd ? endOfDay(appliedEnd).toISOString() : endOfDay(endOfMonth(now)).toISOString();
       return fetchNotasPorSetor(from, to);
     },
     enabled: !!targetProfileId,
