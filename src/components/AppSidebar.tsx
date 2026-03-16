@@ -13,6 +13,7 @@ const allNavSections = [
     title: "Principal",
     items: [
       { to: "/", icon: LayoutDashboard, label: "Dashboard OS" },
+      { to: "/leads/dashboard", icon: LayoutGrid, label: "Dashboard de Leads" },
     ],
   },
   {
@@ -48,7 +49,6 @@ const allNavSections = [
       { to: "/leads/fila-tarefas", icon: ClipboardList, label: "Fila de Tarefas" },
       { to: "/leads/finalizados", icon: UserCheck, label: "Leads Finalizados" },
       { to: "/leads/importador", icon: FileUp, label: "Importador de Leads" },
-      { to: "/leads/dashboard", icon: LayoutGrid, label: "Dashboard de Leads" },
       { to: "/leads/relatorios", icon: FileBarChart, label: "Relatórios de Leads" },
     ],
   },
