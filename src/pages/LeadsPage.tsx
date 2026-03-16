@@ -521,6 +521,47 @@ export default function LeadsPage() {
       if (!selectedLead || !profile) throw new Error("Erro interno.");
       if (!newPhoneValue.trim()) throw new Error("Informe o valor do contato.");
 
+      if (newPhoneTipo === "telefone") {
+        const digits = normalizePhone(newPhoneValue);
+        if (!isValidPhone(digits)) throw new Error("Número de telefone inválido. Verifique o formato.");
+
+        // Check duplicate in lead_contatos
+        const { data: dupeLeadContatos } = await supabase
+          .from("lead_contatos")
+          .select("id, lead_id")
+          .eq("tipo_contato", "telefone");
+        const dupeInLeads = (dupeLeadContatos || []).find(
+          (c: any) => normalizePhone(c.lead_id !== selectedLead.id ? "" : "skip") !== "skip" || normalizePhone(c.valor || "") === digits
+        );
+        // More precise check
+        const { data: allLeadPhones } = await supabase
+          .from("lead_contatos")
+          .select("id, lead_id, valor")
+          .eq("tipo_contato", "telefone");
+        const foundInLeads = (allLeadPhones || []).find(
+          (c: any) => normalizePhone(c.valor) === digits
+        );
+        if (foundInLeads) {
+          if (foundInLeads.lead_id === selectedLead.id) {
+            throw new Error("Este número já está cadastrado neste lead.");
+          } else {
+            throw new Error("Este número já está cadastrado em outro lead.");
+          }
+        }
+
+        // Check duplicate in cliente_contatos
+        const { data: allClientePhones } = await supabase
+          .from("cliente_contatos")
+          .select("id, valor")
+          .in("tipo", ["movel", "fixo", "telefone"]);
+        const foundInClientes = (allClientePhones || []).find(
+          (c: any) => normalizePhone(c.valor) === digits
+        );
+        if (foundInClientes) {
+          throw new Error("Este número já está cadastrado em um cliente existente.");
+        }
+      }
+
       const { error } = await supabase.from("lead_contatos").insert({
         lead_id: selectedLead.id,
         tipo_contato: newPhoneTipo,
