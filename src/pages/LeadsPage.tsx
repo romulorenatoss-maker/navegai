@@ -230,6 +230,31 @@ export default function LeadsPage() {
     },
   });
 
+  const { data: objecoes = [] } = useQuery({
+    queryKey: ["lead-objecoes-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("lead_objecoes").select("*").eq("ativo", true).order("descricao");
+      if (error) throw error;
+      return data as { id: string; descricao: string; ativo: boolean }[];
+    },
+  });
+
+  const { data: leadObjecaoRegistro, refetch: refetchObjecao } = useQuery({
+    queryKey: ["lead-objecao-registro", selectedLead?.id],
+    enabled: !!selectedLead,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("registro_objecao_lead")
+        .select("*")
+        .eq("lead_id", selectedLead!.id)
+        .order("data_registro", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { id: string; objecao_id: string; lead_id: string } | null;
+    },
+  });
+
   // All lead contacts for queue building
   const activeLeadIds = allLeads.filter(l => ["novo", "em_contato", "interessado"].includes(l.status_lead)).map(l => l.id);
 
