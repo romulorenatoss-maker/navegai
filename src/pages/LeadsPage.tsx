@@ -355,6 +355,33 @@ export default function LeadsPage() {
         descricao: `Lead "${createName.trim()}" criado por ${profile.nome}`,
       });
 
+      // Auto-create first tarefa_contato based on rotina config
+      try {
+        const { data: firstRotina } = await supabase
+          .from("rotina_tentativas_leads")
+          .select("*")
+          .eq("tentativa_numero", 1)
+          .single();
+
+        if (firstRotina) {
+          const nextDate = new Date();
+          nextDate.setDate(nextDate.getDate() + (firstRotina.dias_apos_anterior || 0));
+          const periodoHora = firstRotina.periodo_contato === "manha" ? 9 : firstRotina.periodo_contato === "tarde" ? 14 : 19;
+          nextDate.setHours(periodoHora, 0, 0, 0);
+
+          await supabase.from("lead_tarefas_contato").insert({
+            lead_id: newLead.id,
+            tentativa: 1,
+            data_contato: nextDate.toISOString(),
+            periodo: firstRotina.periodo_contato,
+            status: "pendente",
+            responsavel_id: profile.id,
+          });
+        }
+      } catch {
+        // Silently ignore if rotina not configured
+      }
+
       return newLead;
     },
     onSuccess: (newLead) => {
