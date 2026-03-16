@@ -610,7 +610,7 @@ export default function RelatoriosPage() {
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-section font-semibold text-foreground">Relatórios</h1>
+        <h1 className="text-section font-semibold text-foreground">Relatórios de OS</h1>
         <p className="text-body text-muted-foreground">Gerencie e exporte dados de Ordens de Serviço</p>
       </div>
 
