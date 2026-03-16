@@ -31,6 +31,7 @@ interface Lead {
   status_lead: string;
   responsavel_id: string | null;
   plano_id: string | null;
+  repetidor: string | null;
   data_criacao: string;
   created_at: string;
   updated_at: string;
