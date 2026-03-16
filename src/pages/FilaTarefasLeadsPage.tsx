@@ -55,7 +55,7 @@ export default function FilaTarefasLeadsPage() {
   const [attemptNumero, setAttemptNumero] = useState("");
   const [attemptResultado, setAttemptResultado] = useState("");
 
-  // Fetch tarefas pendentes/atrasadas
+  // Fetch tarefas pendentes/atrasadas and auto-mark expired
   const { data: tarefas = [], isLoading } = useQuery({
     queryKey: ["fila-tarefas-leads"],
     queryFn: async () => {
@@ -65,6 +65,49 @@ export default function FilaTarefasLeadsPage() {
         .in("status", ["pendente", "atrasado"])
         .order("data_contato", { ascending: true });
       if (error) throw error;
+
+      // Auto-mark expired tasks as "atrasado"
+      const toUpdate: string[] = [];
+      (data || []).forEach((t: any) => {
+        if (t.status === "pendente" && isTarefaExpirada(t)) {
+          toUpdate.push(t.id);
+        }
+      });
+
+      if (toUpdate.length > 0) {
+        await supabase
+          .from("lead_tarefas_contato")
+          .update({ status: "atrasado" })
+          .in("id", toUpdate);
+
+        // Register delay events
+        if (profile) {
+          for (const id of toUpdate) {
+            const tarefa = data?.find((t: any) => t.id === id);
+            if (tarefa) {
+              await supabase.from("registro_atraso_tentativa").insert({
+                lead_id: tarefa.lead_id,
+                colaborador_id: tarefa.responsavel_id || profile.id,
+                tentativa: tarefa.tentativa,
+                data_programada: tarefa.data_contato,
+                periodo: tarefa.periodo,
+              });
+              await supabase.from("lead_historico").insert({
+                lead_id: tarefa.lead_id,
+                usuario_id: profile.id,
+                tipo_evento: "tentativa_atrasada",
+                descricao: `Tentativa ${tarefa.tentativa} (${PERIODO_LABELS[tarefa.periodo] || tarefa.periodo}) expirou sem registro`,
+              });
+            }
+          }
+        }
+
+        // Return updated data
+        return (data || []).map((t: any) =>
+          toUpdate.includes(t.id) ? { ...t, status: "atrasado" } : t
+        );
+      }
+
       return data;
     },
     refetchInterval: 60_000,
