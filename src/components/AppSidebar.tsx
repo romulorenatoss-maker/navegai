@@ -43,6 +43,7 @@ const allNavSections = [
     title: "Leads",
     items: [
       { to: "/leads", icon: UserPlus, label: "Gestão de Leads" },
+      { to: "/leads/fila", icon: ListOrdered, label: "Fila de Atendimento" },
     ],
   },
   {
