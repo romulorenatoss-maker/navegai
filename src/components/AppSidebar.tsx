@@ -2,7 +2,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ClipboardCheck, FileSearch, ListChecks, PlayCircle, FolderKanban,
   BarChart3, Building2, Users, HelpCircle, Wrench, LogOut, Star,
-  PanelLeftClose, PanelLeft, UserPlus,
+  PanelLeftClose, PanelLeft, UserPlus, ListOrdered,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -43,6 +43,7 @@ const allNavSections = [
     title: "Leads",
     items: [
       { to: "/leads", icon: UserPlus, label: "Gestão de Leads" },
+      { to: "/leads/fila", icon: ListOrdered, label: "Fila de Atendimento" },
     ],
   },
   {
