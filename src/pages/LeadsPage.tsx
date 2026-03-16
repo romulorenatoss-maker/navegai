@@ -433,13 +433,15 @@ export default function LeadsPage() {
         }
       }
 
-      // Create lead
+      // Create lead (link to existing client if found)
+      const leadNome = linkedClienteNome || createName.trim();
       const { data: newLead, error: e1 } = await supabase
         .from("leads")
         .insert({
-          nome: createName.trim(),
+          nome: leadNome,
           status_lead: "novo",
           responsavel_id: profile.id,
+          cliente_id: linkedClienteId,
         })
         .select()
         .single();
@@ -455,12 +457,20 @@ export default function LeadsPage() {
       if (e2) throw e2;
 
       // Log creation
+      const descParts = [`Lead "${leadNome}" criado por ${profile.nome}`];
+      if (linkedClienteNome) {
+        descParts.push(`— vinculado ao cliente existente "${linkedClienteNome}"`);
+      }
       await supabase.from("lead_historico").insert({
         lead_id: newLead.id,
         usuario_id: profile.id,
         tipo_evento: "criacao",
-        descricao: `Lead "${createName.trim()}" criado por ${profile.nome}`,
+        descricao: descParts.join(" "),
       });
+
+      if (linkedClienteNome) {
+        toast.info(`Cliente "${linkedClienteNome}" encontrado na base. Lead vinculado automaticamente.`);
+      }
 
       // Auto-create first tarefa_contato based on rotina config
       try {
