@@ -37,6 +37,7 @@ interface Lead {
   data_criacao: string;
   created_at: string;
   updated_at: string;
+  agendamento_retorno: string | null;
 }
 
 interface LeadContato {
