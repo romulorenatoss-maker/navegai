@@ -4,7 +4,7 @@ import { markAuditOnlyAndCalculateScore } from "@/hooks/useInconsistencyDetectio
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, AlertTriangle, Loader2, ChevronRight, ChevronLeft,
-  Check, Clock, Trash2, Eye, Users, MessageSquare, Camera, X, Image as ImageIcon, Lock, Download, Pencil, Save
+  Check, Clock, Trash2, Eye, Users, User, Phone, MessageSquare, Camera, X, Image as ImageIcon, Lock, Download, Pencil, Save
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import MinhasAvaliacoesPendentes from "@/components/MinhasAvaliacoesPendentes";
@@ -54,6 +54,7 @@ const statusLabel: Record<string, { text: string; badge: string }> = {
   aberta: { text: "Aberta", badge: "badge-pending" },
   em_andamento: { text: "Em andamento", badge: "badge-active" },
   concluida: { text: "Concluída", badge: "badge-complete" },
+  aguardando_numero: { text: "Aguardando Número", badge: "badge-pending" },
 };
 
 function formatCpf(value: string): string {
@@ -132,6 +133,11 @@ export default function AvaliacaoOSPage() {
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [fillNumeroOsId, setFillNumeroOsId] = useState<string | null>(null);
+  const [fillNumeroValue, setFillNumeroValue] = useState("");
+  const [fillNumeroLoading, setFillNumeroLoading] = useState(false);
+  const [viewClienteData, setViewClienteData] = useState<any | null>(null);
+  const [viewClienteOpen, setViewClienteOpen] = useState(false);
   const debounceTimers = useRef<Record<string, NodeJS.Timeout>>({});
 
   // --- Queries ---
@@ -377,6 +383,20 @@ export default function AvaliacaoOSPage() {
       });
     },
     enabled: !!profile?.id,
+  });
+
+  // OS aguardando número (from lead conversion)
+  const { data: aguardandoNumeroOS = [], refetch: refetchAguardando } = useQuery({
+    queryKey: ["os_aguardando_numero"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("ordens_servico")
+        .select("id, numero_os, cliente_id, cliente_nome, cliente_cpf, tipo_servico_id, created_at, status")
+        .eq("status", "aguardando_numero" as any)
+        .order("created_at", { ascending: true });
+      return data || [];
+    },
+    staleTime: 30_000,
   });
 
   // OS Detail queries
@@ -1232,6 +1252,45 @@ export default function AvaliacaoOSPage() {
     setIsEditing(false);
     // Re-finalize the evaluation
     await handleFinalizeEvaluation();
+  };
+
+  const handleFillNumeroOS = async () => {
+    if (!fillNumeroOsId || !fillNumeroValue.trim()) return;
+    setFillNumeroLoading(true);
+    try {
+      // Check if OS number already exists
+      const { data: existing } = await supabase
+        .from("ordens_servico")
+        .select("id")
+        .eq("numero_os", fillNumeroValue.trim())
+        .limit(1)
+        .single();
+      if (existing) {
+        toast.error("Já existe uma OS com esse número.");
+        return;
+      }
+      await supabase.from("ordens_servico").update({
+        numero_os: fillNumeroValue.trim(),
+        status: "aberta" as any,
+      } as any).eq("id", fillNumeroOsId);
+      toast.success("Número da OS preenchido com sucesso!");
+      setFillNumeroOsId(null);
+      setFillNumeroValue("");
+      refetchAguardando();
+    } catch (err: any) {
+      toast.error("Erro: " + err.message);
+    } finally {
+      setFillNumeroLoading(false);
+    }
+  };
+
+  const handleViewCliente = async (clienteId: string) => {
+    const { data: cliente } = await supabase.from("clientes").select("*").eq("id", clienteId).single();
+    if (!cliente) { toast.error("Cliente não encontrado."); return; }
+    // Also fetch contacts
+    const { data: contatos } = await supabase.from("cliente_contatos").select("*").eq("cliente_id", clienteId);
+    setViewClienteData({ ...cliente, contatos: contatos || [] });
+    setViewClienteOpen(true);
   };
 
   const resetForm = () => {
@@ -2479,6 +2538,97 @@ export default function AvaliacaoOSPage() {
 
       {/* Minhas Avaliações Pendentes */}
       <MinhasAvaliacoesPendentes />
+
+      {/* OS Aguardando Número */}
+      {aguardandoNumeroOS.length > 0 && (
+        <div className="bg-card border border-border rounded-lg shadow-card mb-6">
+          <div className="p-4 border-b border-border flex items-center gap-2">
+            <Clock className="w-4 h-4 text-warning" />
+            <h2 className="text-body font-semibold text-foreground">OS Aguardando Número</h2>
+            <Badge variant="secondary" className="ml-auto text-xs">{aguardandoNumeroOS.length}</Badge>
+          </div>
+          <div className="divide-y divide-border">
+            {aguardandoNumeroOS.map((os: any) => (
+              <div key={os.id} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-body font-medium text-foreground">{os.cliente_nome || "Sem cliente"}</p>
+                  <p className="text-caption text-muted-foreground">CPF: {os.cliente_cpf || "—"} • Criada em: {format(new Date(os.created_at), "dd/MM/yyyy HH:mm")}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {os.cliente_id && (
+                    <Button size="sm" variant="outline" onClick={() => handleViewCliente(os.cliente_id)} className="press-effect h-8 text-xs px-3">
+                      <Eye className="w-3.5 h-3.5 mr-1" /> Ver Cliente
+                    </Button>
+                  )}
+                  {fillNumeroOsId === os.id ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={fillNumeroValue}
+                        onChange={e => setFillNumeroValue(e.target.value.replace(/\D/g, ""))}
+                        placeholder="Nº da OS"
+                        className="h-8 w-28 text-sm"
+                        onKeyDown={e => e.key === "Enter" && handleFillNumeroOS()}
+                        autoFocus
+                      />
+                      <Button size="sm" onClick={handleFillNumeroOS} disabled={!fillNumeroValue.trim() || fillNumeroLoading} className="press-effect h-8 text-xs px-3">
+                        {fillNumeroLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5 mr-1" />}
+                        Salvar
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => { setFillNumeroOsId(null); setFillNumeroValue(""); }} className="h-8 text-xs px-2">
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button size="sm" onClick={() => setFillNumeroOsId(os.id)} className="press-effect h-8 text-xs px-3 bg-warning text-warning-foreground hover:bg-warning/90">
+                      Preencher Número
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* View Cliente Dialog */}
+      <Dialog open={viewClienteOpen} onOpenChange={setViewClienteOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <User className="w-5 h-5 text-primary" /> Dados do Cliente
+            </DialogTitle>
+          </DialogHeader>
+          {viewClienteData && (
+            <div className="space-y-3 text-sm">
+              <div className="grid grid-cols-2 gap-3">
+                <div><span className="text-muted-foreground">Nome:</span><p className="font-medium">{viewClienteData.nome}</p></div>
+                <div><span className="text-muted-foreground">CPF:</span><p className="font-medium">{viewClienteData.cpf || "—"}</p></div>
+                <div><span className="text-muted-foreground">RG:</span><p className="font-medium">{viewClienteData.rg || "—"}</p></div>
+                <div><span className="text-muted-foreground">Nome da Mãe:</span><p className="font-medium">{viewClienteData.nome_mae || "—"}</p></div>
+                <div><span className="text-muted-foreground">Endereço:</span><p className="font-medium">{viewClienteData.endereco || "—"}</p></div>
+                <div><span className="text-muted-foreground">Número:</span><p className="font-medium">{viewClienteData.numero || "—"}</p></div>
+                <div><span className="text-muted-foreground">CEP:</span><p className="font-medium">{viewClienteData.cep || "—"}</p></div>
+                <div><span className="text-muted-foreground">Cidade:</span><p className="font-medium">{viewClienteData.cidade || "—"}</p></div>
+                <div className="col-span-2"><span className="text-muted-foreground">Referência:</span><p className="font-medium">{viewClienteData.referencia || "—"}</p></div>
+              </div>
+              {viewClienteData.contatos?.length > 0 && (
+                <div className="border-t border-border pt-3">
+                  <span className="text-muted-foreground font-medium">Contatos:</span>
+                  <div className="mt-1 space-y-1">
+                    {viewClienteData.contatos.map((c: any) => (
+                      <div key={c.id} className="flex items-center gap-2">
+                        <Phone className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span>{c.valor}</span>
+                        {c.tem_whatsapp && <Badge variant="secondary" className="text-[10px]">WhatsApp</Badge>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Results: OS found */}
       {formValidated && formFoundOS && (

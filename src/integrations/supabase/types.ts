@@ -745,7 +745,7 @@ export type Database = {
           data_abertura: string
           data_conclusao: string | null
           id: string
-          numero_os: string
+          numero_os: string | null
           status: Database["public"]["Enums"]["os_status"]
           tecnico_id: string | null
           tipo_servico_id: string | null
@@ -761,7 +761,7 @@ export type Database = {
           data_abertura?: string
           data_conclusao?: string | null
           id?: string
-          numero_os: string
+          numero_os?: string | null
           status?: Database["public"]["Enums"]["os_status"]
           tecnico_id?: string | null
           tipo_servico_id?: string | null
@@ -777,7 +777,7 @@ export type Database = {
           data_abertura?: string
           data_conclusao?: string | null
           id?: string
-          numero_os?: string
+          numero_os?: string | null
           status?: Database["public"]["Enums"]["os_status"]
           tecnico_id?: string | null
           tipo_servico_id?: string | null
@@ -1473,7 +1473,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "avaliador" | "executor" | "gestor" | "avaliado"
-      os_status: "aberta" | "em_andamento" | "concluida"
+      os_status: "aberta" | "em_andamento" | "concluida" | "aguardando_numero"
       recorrencia_tipo:
         | "diaria"
         | "semanal"
@@ -1608,7 +1608,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "avaliador", "executor", "gestor", "avaliado"],
-      os_status: ["aberta", "em_andamento", "concluida"],
+      os_status: ["aberta", "em_andamento", "concluida", "aguardando_numero"],
       recorrencia_tipo: [
         "diaria",
         "semanal",
