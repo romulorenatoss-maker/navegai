@@ -754,7 +754,13 @@ export default function LeadsPage() {
       queryClient.invalidateQueries({ queryKey: ["leads-list"] });
       refetchHistorico();
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err: any) => {
+      if (err.message === "__DUPLICATE_CPF__") {
+        toast.info("Lead vinculado ao cliente existente.");
+        return;
+      }
+      toast.error(err.message);
+    },
   });
 
   // Helper: get profile name
