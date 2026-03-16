@@ -1211,7 +1211,7 @@ export default function LeadsPage() {
                 </CardHeader>
                 <CardContent className="p-3 space-y-2">
                   <Button size="sm" className="w-full press-effect" onClick={() => setShowInteraction(true)}>
-                    <PhoneCall className="w-4 h-4 mr-1.5" /> Registrar Tentativa
+                    <PhoneCall className="w-4 h-4 mr-1.5" /> Registrar {selectedQueueInfo?.tentativaAtual || 1}ª Tentativa
                   </Button>
                   {selectedLead.status_lead !== "convertido" ? (
                     <Button size="sm" variant="secondary" className="w-full press-effect" onClick={openConversion}>
@@ -1324,7 +1324,7 @@ export default function LeadsPage() {
       <Dialog open={showInteraction} onOpenChange={setShowInteraction}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Registrar Tentativa — {selectedLead?.nome}</DialogTitle>
+            <DialogTitle>Registrar {selectedQueueInfo?.tentativaAtual || 1}ª Tentativa — {selectedLead?.nome}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             {selectedQueueInfo && (
@@ -1363,7 +1363,7 @@ export default function LeadsPage() {
             <Button variant="outline" onClick={() => setShowInteraction(false)}>Cancelar</Button>
             <Button onClick={() => interactionMutation.mutate()} disabled={interactionMutation.isPending || !interNumero} className="press-effect">
               {interactionMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <PhoneCall className="w-4 h-4 mr-1" />}
-              Registrar Tentativa
+              Registrar {selectedQueueInfo?.tentativaAtual || 1}ª Tentativa
             </Button>
           </DialogFooter>
         </DialogContent>
