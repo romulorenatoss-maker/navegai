@@ -1037,7 +1037,7 @@ export default function LeadsPage() {
                         </Select>
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Plano de Interesse</Label>
+                        <Label className="text-xs">Perfil Identificado</Label>
                         <Select value={selectedLead.plano_id || "none"} onValueChange={updatePlano}>
                           <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                           <SelectContent>
@@ -1047,6 +1047,17 @@ export default function LeadsPage() {
                                 {p.nome_plano}{p.velocidade ? ` (${p.velocidade})` : ""}
                               </SelectItem>
                             ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Repetidor</Label>
+                        <Select value={selectedLead.repetidor || "none"} onValueChange={updateRepetidor}>
+                          <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Nenhum</SelectItem>
+                            <SelectItem value="fast">Fast</SelectItem>
+                            <SelectItem value="dual">Dual</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
