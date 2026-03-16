@@ -1254,6 +1254,45 @@ export default function AvaliacaoOSPage() {
     await handleFinalizeEvaluation();
   };
 
+  const handleFillNumeroOS = async () => {
+    if (!fillNumeroOsId || !fillNumeroValue.trim()) return;
+    setFillNumeroLoading(true);
+    try {
+      // Check if OS number already exists
+      const { data: existing } = await supabase
+        .from("ordens_servico")
+        .select("id")
+        .eq("numero_os", fillNumeroValue.trim())
+        .limit(1)
+        .single();
+      if (existing) {
+        toast.error("Já existe uma OS com esse número.");
+        return;
+      }
+      await supabase.from("ordens_servico").update({
+        numero_os: fillNumeroValue.trim(),
+        status: "aberta" as any,
+      } as any).eq("id", fillNumeroOsId);
+      toast.success("Número da OS preenchido com sucesso!");
+      setFillNumeroOsId(null);
+      setFillNumeroValue("");
+      refetchAguardando();
+    } catch (err: any) {
+      toast.error("Erro: " + err.message);
+    } finally {
+      setFillNumeroLoading(false);
+    }
+  };
+
+  const handleViewCliente = async (clienteId: string) => {
+    const { data: cliente } = await supabase.from("clientes").select("*").eq("id", clienteId).single();
+    if (!cliente) { toast.error("Cliente não encontrado."); return; }
+    // Also fetch contacts
+    const { data: contatos } = await supabase.from("cliente_contatos").select("*").eq("cliente_id", clienteId);
+    setViewClienteData({ ...cliente, contatos: contatos || [] });
+    setViewClienteOpen(true);
+  };
+
   const resetForm = () => {
     setFormClienteCpf("");
     setFormClienteNome("");
