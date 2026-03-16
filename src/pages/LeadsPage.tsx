@@ -676,6 +676,15 @@ export default function LeadsPage() {
     queryClient.invalidateQueries({ queryKey: ["leads-list"] });
   };
 
+  // ─── Update lead repetidor ────────────────────────────
+  const updateRepetidor = async (value: string) => {
+    if (!selectedLead) return;
+    const val = value === "none" ? null : value;
+    await supabase.from("leads").update({ repetidor: val } as any).eq("id", selectedLead.id);
+    setSelectedLead((prev) => prev ? { ...prev, repetidor: val } : null);
+    queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+  };
+
   // ─── Open conversion dialog ────────────────────────
   const openConversion = () => {
     if (!selectedLead) return;
