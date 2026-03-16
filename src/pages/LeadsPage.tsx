@@ -493,7 +493,17 @@ export default function LeadsPage() {
       setSelectedLead(newLead);
       setDetailTab("info");
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err: any) => {
+      // Suppress duplicate messages (handled via UI)
+      if (err.message === "__DUPLICATE_LEAD__") {
+        toast.info("Lead existente aberto automaticamente e transferido para você.");
+        return;
+      }
+      if (err.message === "__DUPLICATE_CLIENTE__") {
+        return; // Alert dialog already shown
+      }
+      toast.error(err.message);
+    },
   });
 
   // ─── Add contact ──────────────────────────────────
