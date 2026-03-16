@@ -162,6 +162,9 @@ export default function LeadsPage() {
     nome: "", cpf: "", rg: "", nome_mae: "", endereco: "", numero: "", cep: "", cidade: "", referencia: "",
   });
 
+  // Finalize dialog (when all attempts done)
+  const [showFinalize, setShowFinalize] = useState(false);
+
   // Duplicate alert state
   const [dupeAlert, setDupeAlert] = useState<{
     type: "lead_phone" | "cliente_phone" | "cpf";
