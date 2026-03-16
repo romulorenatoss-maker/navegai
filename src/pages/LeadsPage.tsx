@@ -124,6 +124,12 @@ export default function LeadsPage() {
   const [newPhoneTipo, setNewPhoneTipo] = useState("telefone");
   const [newPhoneWhatsapp, setNewPhoneWhatsapp] = useState(false);
 
+  // Conversion dialog
+  const [showConvert, setShowConvert] = useState(false);
+  const [convForm, setConvForm] = useState({
+    nome: "", cpf: "", rg: "", nome_mae: "", endereco: "", numero: "", cep: "", cidade: "", referencia: "",
+  });
+
   // ─── Queries ──────────────────────────────────────
   const { data: allLeads = [], isLoading: loadingLeads } = useQuery({
     queryKey: ["leads-list"],
