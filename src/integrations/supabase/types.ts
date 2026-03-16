@@ -706,6 +706,27 @@ export type Database = {
           },
         ]
       }
+      lead_objecoes: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          descricao: string
+          id: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          descricao: string
+          id?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string
+          id?: string
+        }
+        Relationships: []
+      }
       lead_tarefas_contato: {
         Row: {
           created_at: string
@@ -764,6 +785,7 @@ export type Database = {
           data_criacao: string
           id: string
           nome: string
+          origem_lead: string | null
           plano_id: string | null
           responsavel_id: string | null
           status_lead: string
@@ -775,6 +797,7 @@ export type Database = {
           data_criacao?: string
           id?: string
           nome: string
+          origem_lead?: string | null
           plano_id?: string | null
           responsavel_id?: string | null
           status_lead?: string
@@ -786,6 +809,7 @@ export type Database = {
           data_criacao?: string
           id?: string
           nome?: string
+          origem_lead?: string | null
           plano_id?: string | null
           responsavel_id?: string | null
           status_lead?: string
@@ -1192,6 +1216,55 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      registro_objecao_lead: {
+        Row: {
+          colaborador_id: string
+          created_at: string
+          data_registro: string
+          id: string
+          lead_id: string
+          objecao_id: string
+        }
+        Insert: {
+          colaborador_id: string
+          created_at?: string
+          data_registro?: string
+          id?: string
+          lead_id: string
+          objecao_id: string
+        }
+        Update: {
+          colaborador_id?: string
+          created_at?: string
+          data_registro?: string
+          id?: string
+          lead_id?: string
+          objecao_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registro_objecao_lead_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registro_objecao_lead_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registro_objecao_lead_objecao_id_fkey"
+            columns: ["objecao_id"]
+            isOneToOne: false
+            referencedRelation: "lead_objecoes"
             referencedColumns: ["id"]
           },
         ]

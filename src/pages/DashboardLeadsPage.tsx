@@ -26,6 +26,7 @@ const fetchLeadsAggregated = async () => {
     { data: statusBreakdown },
     { count: leadsSemana },
     { count: leadsMes },
+    { data: topObjecoes },
   ] = await Promise.all([
     supabase.from("leads").select("*", { count: "exact", head: true }),
     supabase.from("leads").select("*", { count: "exact", head: true })
@@ -47,12 +48,20 @@ const fetchLeadsAggregated = async () => {
     supabase.from("leads").select("*", { count: "exact", head: true })
       .gte("data_criacao", startOfMonth(today).toISOString())
       .lte("data_criacao", endOfMonth(today).toISOString()),
+    supabase.from("registro_objecao_lead").select("objecao_id, lead_objecoes(descricao)"),
   ]);
 
   // Aggregate status breakdown
   const statusCounts: Record<string, number> = {};
   (statusBreakdown || []).forEach((l) => {
     statusCounts[l.status_lead] = (statusCounts[l.status_lead] || 0) + 1;
+  });
+
+  // Aggregate objeções
+  const objecaoCounts: Record<string, number> = {};
+  (topObjecoes || []).forEach((o: any) => {
+    const desc = o.lead_objecoes?.descricao || "Outra";
+    objecaoCounts[desc] = (objecaoCounts[desc] || 0) + 1;
   });
 
   const taxaConversao = (totalLeads || 0) > 0
@@ -71,6 +80,7 @@ const fetchLeadsAggregated = async () => {
     statusCounts,
     leadsSemana: leadsSemana || 0,
     leadsMes: leadsMes || 0,
+    objecaoCounts,
   };
 };
 
@@ -208,6 +218,7 @@ export default function DashboardLeadsPage() {
     totalLeads: 0, leadsHoje: 0, emAtendimento: 0, convertidos: 0,
     convertidosHoje: 0, tentativas: 0, tentativasHoje: 0,
     taxaConversao: "0.0", statusCounts: {}, leadsSemana: 0, leadsMes: 0,
+    objecaoCounts: {},
   };
 
   return (
@@ -304,13 +315,34 @@ export default function DashboardLeadsPage() {
         </div>
 
         {/* Charts area */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <StatusBar statusCounts={m.statusCounts} total={m.totalLeads} />
           <PeriodSummary
             leadsHoje={m.leadsHoje}
             leadsSemana={m.leadsSemana}
             leadsMes={m.leadsMes}
           />
+          {/* Top Objeções */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6, duration: 0.3 }}
+            className="bg-card rounded-xl border border-border p-5 shadow-sm"
+          >
+            <h3 className="text-sm font-semibold text-foreground mb-4">Principais Objeções</h3>
+            {Object.keys(m.objecaoCounts).length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">Nenhuma objeção registrada</p>
+            ) : (
+              <div className="space-y-2">
+                {Object.entries(m.objecaoCounts).sort((a, b) => (b[1] as number) - (a[1] as number)).slice(0, 5).map(([desc, count]) => (
+                  <div key={desc} className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground truncate max-w-[160px]">{desc}</span>
+                    <span className="text-sm font-bold text-foreground">{count as number}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.div>
         </div>
       </div>
     </div>

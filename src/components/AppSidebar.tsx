@@ -3,6 +3,7 @@ import {
   LayoutDashboard, ClipboardCheck, FileSearch, ListChecks, PlayCircle, FolderKanban,
   BarChart3, Building2, Users, HelpCircle, Wrench, LogOut, Star,
   PanelLeftClose, PanelLeft, UserPlus, ListOrdered, LayoutGrid, Settings, UserCheck, ClipboardList,
+  FileUp, MessageSquare, FileBarChart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -46,13 +47,16 @@ const allNavSections = [
       { to: "/leads/fila", icon: ListOrdered, label: "Fila de Atendimento" },
       { to: "/leads/fila-tarefas", icon: ClipboardList, label: "Fila de Tarefas" },
       { to: "/leads/finalizados", icon: UserCheck, label: "Leads Finalizados" },
+      { to: "/leads/importador", icon: FileUp, label: "Importador de Leads" },
       { to: "/leads/dashboard", icon: LayoutGrid, label: "Dashboard de Leads" },
+      { to: "/leads/relatorios", icon: FileBarChart, label: "Relatórios de Leads" },
     ],
   },
   {
     title: "Configurações",
     items: [
       { to: "/leads/rotina", icon: Settings, label: "Rotina de Tentativas" },
+      { to: "/leads/objecoes", icon: MessageSquare, label: "Cadastro de Objeções" },
     ],
   },
   {
