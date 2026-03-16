@@ -1179,8 +1179,18 @@ export default function LeadsPage() {
               <Input
                 placeholder={newPhoneTipo === "telefone" ? "(00) 00000-0000" : "email@exemplo.com"}
                 value={newPhoneValue}
-                onChange={(e) => setNewPhoneValue(e.target.value)}
+                onChange={(e) => setNewPhoneValue(
+                  newPhoneTipo === "telefone" ? applyPhoneMask(e.target.value) : e.target.value
+                )}
               />
+              {newPhoneTipo === "telefone" && normalizePhone(newPhoneValue).length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Tipo detectado: {getPhoneTypeLabel(normalizePhone(newPhoneValue))}
+                  {!isValidPhone(normalizePhone(newPhoneValue)) && normalizePhone(newPhoneValue).length >= 8 && (
+                    <span className="text-destructive ml-2">— formato inválido</span>
+                  )}
+                </p>
+              )}
             </div>
             {newPhoneTipo === "telefone" && (
               <div className="flex items-center gap-2">
