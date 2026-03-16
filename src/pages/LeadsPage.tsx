@@ -18,8 +18,9 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Search, Plus, Phone, User, Users, History, ArrowRight, Trash2,
-  MessageSquare, PhoneCall, Clock, UserCheck, RefreshCw, Loader2,
+  MessageSquare, PhoneCall, Clock, UserCheck, RefreshCw, Loader2, UserPlus,
 } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 // ─── Types ──────────────────────────────────────────────
 interface Lead {
@@ -122,6 +123,12 @@ export default function LeadsPage() {
   const [newPhoneValue, setNewPhoneValue] = useState("");
   const [newPhoneTipo, setNewPhoneTipo] = useState("telefone");
   const [newPhoneWhatsapp, setNewPhoneWhatsapp] = useState(false);
+
+  // Conversion dialog
+  const [showConvert, setShowConvert] = useState(false);
+  const [convForm, setConvForm] = useState({
+    nome: "", cpf: "", rg: "", nome_mae: "", endereco: "", numero: "", cep: "", cidade: "", referencia: "",
+  });
 
   // ─── Queries ──────────────────────────────────────
   const { data: allLeads = [], isLoading: loadingLeads } = useQuery({
@@ -479,6 +486,84 @@ export default function LeadsPage() {
     queryClient.invalidateQueries({ queryKey: ["leads-list"] });
   };
 
+  // ─── Open conversion dialog ────────────────────────
+  const openConversion = () => {
+    if (!selectedLead) return;
+    setConvForm({
+      nome: selectedLead.nome,
+      cpf: "", rg: "", nome_mae: "", endereco: "", numero: "", cep: "", cidade: "", referencia: "",
+    });
+    setShowConvert(true);
+  };
+
+  // ─── Convert Lead → Client ────────────────────────
+  const convertMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedLead || !profile) throw new Error("Erro interno.");
+      const f = convForm;
+      // Validate all required fields
+      if (!f.nome.trim()) throw new Error("Nome é obrigatório.");
+      if (!f.cpf.trim()) throw new Error("CPF é obrigatório.");
+      if (!f.rg.trim()) throw new Error("RG é obrigatório.");
+      if (!f.nome_mae.trim()) throw new Error("Nome da mãe é obrigatório.");
+      if (!f.endereco.trim()) throw new Error("Endereço é obrigatório.");
+      if (!f.numero.trim()) throw new Error("Número é obrigatório.");
+      if (!f.cep.trim()) throw new Error("CEP é obrigatório.");
+      if (!f.cidade.trim()) throw new Error("Cidade é obrigatória.");
+      if (!f.referencia.trim()) throw new Error("Referência é obrigatória.");
+
+      // Create client with full data
+      const { data: newCliente, error: e1 } = await supabase.from("clientes").insert({
+        nome: f.nome.trim(),
+        cpf: f.cpf.trim(),
+        rg: f.rg.trim(),
+        nome_mae: f.nome_mae.trim(),
+        endereco: f.endereco.trim(),
+        numero: f.numero.trim(),
+        cep: f.cep.trim(),
+        cidade: f.cidade.trim(),
+        referencia: f.referencia.trim(),
+      }).select("id").single();
+      if (e1) throw e1;
+
+      // Copy lead contacts to cliente_contatos
+      const phoneContatos = leadContatos.filter((c) => c.tipo_contato === "telefone");
+      if (phoneContatos.length > 0) {
+        const inserts = phoneContatos.map((c) => ({
+          cliente_id: newCliente.id,
+          tipo: "movel" as const,
+          valor: c.valor,
+          tem_whatsapp: c.tem_whatsapp,
+        }));
+        await supabase.from("cliente_contatos").insert(inserts);
+      }
+
+      // Update lead: mark as converted and link to client
+      await supabase.from("leads").update({
+        status_lead: "convertido",
+        cliente_id: newCliente.id,
+      }).eq("id", selectedLead.id);
+
+      // Log history
+      await supabase.from("lead_historico").insert({
+        lead_id: selectedLead.id,
+        usuario_id: profile.id,
+        tipo_evento: "conversao_cliente",
+        descricao: `Lead convertido em cliente: ${f.nome.trim()} (CPF: ${f.cpf.trim()})`,
+      });
+
+      return newCliente;
+    },
+    onSuccess: () => {
+      toast.success("Lead convertido em cliente com sucesso!");
+      setShowConvert(false);
+      setSelectedLead((prev) => prev ? { ...prev, status_lead: "convertido" } : null);
+      queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+      refetchHistorico();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
   // Helper: get profile name
   const getProfileName = (id: string | null) => {
     if (!id) return "—";
@@ -687,10 +772,22 @@ export default function LeadsPage() {
                       )}
                     </div>
 
-                    {/* Quick action */}
-                    <Button size="sm" onClick={() => setShowInteraction(true)} className="press-effect">
-                      <PhoneCall className="w-4 h-4 mr-1" /> Registrar Interação
-                    </Button>
+                    {/* Quick actions */}
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" onClick={() => setShowInteraction(true)} className="press-effect">
+                        <PhoneCall className="w-4 h-4 mr-1" /> Registrar Interação
+                      </Button>
+                      {selectedLead.status_lead !== "convertido" && (
+                        <Button size="sm" variant="secondary" onClick={openConversion} className="press-effect">
+                          <UserPlus className="w-4 h-4 mr-1" /> Converter em Cliente
+                        </Button>
+                      )}
+                      {selectedLead.status_lead === "convertido" && (
+                        <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-0">
+                          ✓ Convertido em Cliente
+                        </Badge>
+                      )}
+                    </div>
                   </TabsContent>
 
                   {/* Interações tab */}
@@ -900,6 +997,81 @@ export default function LeadsPage() {
             >
               {interactionMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <PhoneCall className="w-4 h-4 mr-1" />}
               Registrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Conversion Dialog ──────────────────────── */}
+      <Dialog open={showConvert} onOpenChange={setShowConvert}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5" /> Converter Lead em Cliente
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh] pr-3">
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">Todos os campos são obrigatórios para conversão.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Nome *</Label>
+                  <Input value={convForm.nome} onChange={(e) => setConvForm((f) => ({ ...f, nome: e.target.value }))} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">CPF *</Label>
+                  <Input placeholder="000.000.000-00" value={convForm.cpf} onChange={(e) => setConvForm((f) => ({ ...f, cpf: e.target.value }))} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">RG *</Label>
+                  <Input value={convForm.rg} onChange={(e) => setConvForm((f) => ({ ...f, rg: e.target.value }))} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Nome da Mãe *</Label>
+                  <Input value={convForm.nome_mae} onChange={(e) => setConvForm((f) => ({ ...f, nome_mae: e.target.value }))} />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label className="text-xs">Endereço *</Label>
+                  <Input value={convForm.endereco} onChange={(e) => setConvForm((f) => ({ ...f, endereco: e.target.value }))} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Número *</Label>
+                  <Input value={convForm.numero} onChange={(e) => setConvForm((f) => ({ ...f, numero: e.target.value }))} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">CEP *</Label>
+                  <Input placeholder="00000-000" value={convForm.cep} onChange={(e) => setConvForm((f) => ({ ...f, cep: e.target.value }))} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Cidade *</Label>
+                  <Input value={convForm.cidade} onChange={(e) => setConvForm((f) => ({ ...f, cidade: e.target.value }))} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Referência *</Label>
+                  <Input value={convForm.referencia} onChange={(e) => setConvForm((f) => ({ ...f, referencia: e.target.value }))} />
+                </div>
+              </div>
+              {leadContatos.filter((c) => c.tipo_contato === "telefone").length > 0 && (
+                <div className="p-3 rounded-md border bg-muted/30">
+                  <p className="text-xs font-medium mb-1">Contatos que serão copiados:</p>
+                  {leadContatos.filter((c) => c.tipo_contato === "telefone").map((c) => (
+                    <p key={c.id} className="text-xs text-muted-foreground">
+                      📞 {c.valor} {c.tem_whatsapp ? "(WhatsApp)" : ""}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConvert(false)}>Cancelar</Button>
+            <Button
+              onClick={() => convertMutation.mutate()}
+              disabled={convertMutation.isPending}
+              className="press-effect"
+            >
+              {convertMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <UserPlus className="w-4 h-4 mr-1" />}
+              Converter em Cliente
             </Button>
           </DialogFooter>
         </DialogContent>
