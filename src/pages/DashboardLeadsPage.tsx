@@ -218,6 +218,7 @@ export default function DashboardLeadsPage() {
     totalLeads: 0, leadsHoje: 0, emAtendimento: 0, convertidos: 0,
     convertidosHoje: 0, tentativas: 0, tentativasHoje: 0,
     taxaConversao: "0.0", statusCounts: {}, leadsSemana: 0, leadsMes: 0,
+    objecaoCounts: {},
   };
 
   return (
