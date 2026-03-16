@@ -471,7 +471,9 @@ export default function LeadsPage() {
 
         if (firstRotina) {
           const nextDate = new Date();
-          nextDate.setDate(nextDate.getDate() + (firstRotina.dias_apos_anterior || 0));
+          // Primeira tentativa sempre no dia seguinte para evitar atraso no mesmo dia
+          const diasAdicionais = Math.max(firstRotina.dias_apos_anterior || 0, 1);
+          nextDate.setDate(nextDate.getDate() + diasAdicionais);
           const periodoHora = firstRotina.periodo_contato === "manha" ? 9 : firstRotina.periodo_contato === "tarde" ? 14 : 19;
           nextDate.setHours(periodoHora, 0, 0, 0);
 

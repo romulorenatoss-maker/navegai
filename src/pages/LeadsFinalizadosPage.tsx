@@ -75,7 +75,8 @@ export default function LeadsFinalizadosPage() {
       const periodo = firstRotina?.periodo_contato || "manha";
       const diasApos = firstRotina?.dias_apos_anterior || 0;
       const nextDate = new Date();
-      nextDate.setDate(nextDate.getDate() + diasApos);
+      // Primeira tentativa sempre no dia seguinte para evitar atraso no mesmo dia
+      nextDate.setDate(nextDate.getDate() + Math.max(diasApos, 1));
       const periodoHora = periodo === "manha" ? 9 : periodo === "tarde" ? 14 : 19;
       nextDate.setHours(periodoHora, 0, 0, 0);
 
