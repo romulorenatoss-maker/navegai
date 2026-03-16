@@ -89,11 +89,18 @@ function statusBadge(status: string) {
 const EVENTO_LABELS: Record<string, string> = {
   criacao: "Criação do Lead",
   tentativa_contato: "Tentativa de Contato",
+  tentativa_registrada: "Tentativa Registrada",
   transferencia_automatica: "Transferência Automática",
   conversao_cliente: "Conversão em Cliente",
   alteracao_status: "Alteração de Status",
   contato_adicionado: "Contato Adicionado",
   contato_removido: "Contato Removido",
+  telefone_existente: "Telefone Existente",
+  cliente_existente: "Cliente Existente",
+  vinculo_cliente_existente: "Vínculo c/ Cliente",
+  tentativas_finalizadas: "Tentativas Finalizadas",
+  rotina_reiniciada: "Rotina Reiniciada",
+  lead_arquivado: "Lead Arquivado",
 };
 
 // ─── Component ──────────────────────────────────────────
