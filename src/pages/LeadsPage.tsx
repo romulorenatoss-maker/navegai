@@ -526,14 +526,6 @@ export default function LeadsPage() {
         if (!isValidPhone(digits)) throw new Error("Número de telefone inválido. Verifique o formato.");
 
         // Check duplicate in lead_contatos
-        const { data: dupeLeadContatos } = await supabase
-          .from("lead_contatos")
-          .select("id, lead_id")
-          .eq("tipo_contato", "telefone");
-        const dupeInLeads = (dupeLeadContatos || []).find(
-          (c: any) => normalizePhone(c.lead_id !== selectedLead.id ? "" : "skip") !== "skip" || normalizePhone(c.valor || "") === digits
-        );
-        // More precise check
         const { data: allLeadPhones } = await supabase
           .from("lead_contatos")
           .select("id, lead_id, valor")
