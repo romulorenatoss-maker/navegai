@@ -31,6 +31,7 @@ interface Lead {
   status_lead: string;
   responsavel_id: string | null;
   plano_id: string | null;
+  repetidor: string | null;
   data_criacao: string;
   created_at: string;
   updated_at: string;
@@ -675,6 +676,15 @@ export default function LeadsPage() {
     queryClient.invalidateQueries({ queryKey: ["leads-list"] });
   };
 
+  // ─── Update lead repetidor ────────────────────────────
+  const updateRepetidor = async (value: string) => {
+    if (!selectedLead) return;
+    const val = value === "none" ? null : value;
+    await supabase.from("leads").update({ repetidor: val } as any).eq("id", selectedLead.id);
+    setSelectedLead((prev) => prev ? { ...prev, repetidor: val } : null);
+    queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+  };
+
   // ─── Open conversion dialog ────────────────────────
   const openConversion = () => {
     if (!selectedLead) return;
@@ -1036,7 +1046,7 @@ export default function LeadsPage() {
                         </Select>
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Plano de Interesse</Label>
+                        <Label className="text-xs">Perfil Identificado</Label>
                         <Select value={selectedLead.plano_id || "none"} onValueChange={updatePlano}>
                           <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                           <SelectContent>
@@ -1046,6 +1056,17 @@ export default function LeadsPage() {
                                 {p.nome_plano}{p.velocidade ? ` (${p.velocidade})` : ""}
                               </SelectItem>
                             ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Repetidor</Label>
+                        <Select value={selectedLead.repetidor || "none"} onValueChange={updateRepetidor}>
+                          <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Nenhum</SelectItem>
+                            <SelectItem value="fast">Fast</SelectItem>
+                            <SelectItem value="dual">Dual</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
