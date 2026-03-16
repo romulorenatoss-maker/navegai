@@ -1,11 +1,13 @@
 import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   UserPlus, PhoneCall, CheckCircle2, ArrowRightLeft,
-  TrendingUp, Clock, Users, Target,
+  TrendingUp, Clock, Users, Target, AlertTriangle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { format, startOfDay, endOfDay, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -200,10 +202,13 @@ function PeriodSummary({ leadsHoje, leadsSemana, leadsMes }: {
 
 // ─── Main Page ───
 export default function DashboardLeadsPage() {
+  const navigate = useNavigate();
+  const { profile } = useAuth();
+
   const { data: metrics, isLoading } = useQuery({
     queryKey: ["dashboard-leads-metrics"],
     queryFn: fetchLeadsAggregated,
-    refetchInterval: 5 * 60 * 1000, // 5 minutes
+    refetchInterval: 5 * 60 * 1000,
     staleTime: 60 * 1000,
   });
 
@@ -212,6 +217,29 @@ export default function DashboardLeadsPage() {
     queryFn: fetchOSAguardando,
     refetchInterval: 5 * 60 * 1000,
     staleTime: 60 * 1000,
+  });
+
+  // Fetch atrasos for current user
+  const { data: meusAtrasos = [] } = useQuery({
+    queryKey: ["dashboard-meus-atrasos", profile?.id],
+    enabled: !!profile?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("lead_tarefas_contato")
+        .select("id, lead_id, tentativa, data_contato, periodo")
+        .eq("status", "atrasado")
+        .eq("responsavel_id", profile!.id);
+      if (error) throw error;
+      // Fetch lead names
+      const leadIds = [...new Set((data || []).map((t) => t.lead_id))];
+      if (leadIds.length === 0) return [];
+      const { data: leads } = await supabase.from("leads").select("id, nome").in("id", leadIds);
+      return (data || []).map((t) => ({
+        ...t,
+        lead_nome: leads?.find((l) => l.id === t.lead_id)?.nome || "—",
+      }));
+    },
+    refetchInterval: 60_000,
   });
 
   const m = metrics || {
@@ -244,6 +272,42 @@ export default function DashboardLeadsPage() {
             </div>
           )}
         </div>
+
+        {/* Atrasos Alert */}
+        {meusAtrasos.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-destructive/10 border border-destructive/30 rounded-xl p-4"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              <h3 className="text-sm font-semibold text-destructive">
+                Você possui {meusAtrasos.length} tentativa(s) atrasada(s)
+              </h3>
+              <button
+                onClick={() => navigate("/leads/fila-tarefas")}
+                className="ml-auto text-xs font-medium text-destructive underline underline-offset-2 hover:opacity-80"
+              >
+                Ver na Fila de Tarefas →
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {meusAtrasos.slice(0, 8).map((a: any) => (
+                <button
+                  key={a.id}
+                  onClick={() => navigate("/leads/fila-tarefas")}
+                  className="text-xs px-2 py-1 rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors cursor-pointer"
+                >
+                  {a.lead_nome} • Tentativa {a.tentativa}
+                </button>
+              ))}
+              {meusAtrasos.length > 8 && (
+                <span className="text-xs text-destructive/70 self-center">+{meusAtrasos.length - 8} mais</span>
+              )}
+            </div>
+          </motion.div>
+        )}
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

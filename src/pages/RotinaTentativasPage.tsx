@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -186,16 +187,37 @@ export default function RotinaTentativasPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label>Ação quando atrasar</Label>
-                  <Select
-                    value={localConfig?.acao_quando_atrasar || "registrar_atraso"}
-                    onValueChange={(v) => localConfig && setLocalConfig({ ...localConfig, acao_quando_atrasar: v })}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="registrar_atraso">Registrar Atraso</SelectItem>
-                      <SelectItem value="notificar_avaliador">Notificar Avaliador</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-2 pt-1">
+                    {[
+                      { value: "registrar_atraso", label: "Registrar Atraso" },
+                      { value: "notificar_avaliador", label: "Notificar Avaliador (mostrar no Dashboard)" },
+                    ].map((opt) => {
+                      const currentValues = (localConfig?.acao_quando_atrasar || "").split(",").filter(Boolean);
+                      const isChecked = currentValues.includes(opt.value);
+                      return (
+                        <div key={opt.value} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`acao-atraso-${opt.value}`}
+                            checked={isChecked}
+                            onCheckedChange={(checked) => {
+                              if (!localConfig) return;
+                              let next: string[];
+                              if (checked) {
+                                next = [...currentValues, opt.value];
+                              } else {
+                                next = currentValues.filter((v) => v !== opt.value);
+                              }
+                              if (next.length === 0) next = ["registrar_atraso"];
+                              setLocalConfig({ ...localConfig, acao_quando_atrasar: next.join(",") });
+                            }}
+                          />
+                          <Label htmlFor={`acao-atraso-${opt.value}`} className="text-sm font-normal cursor-pointer">
+                            {opt.label}
+                          </Label>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Ação após finalizar tentativas</Label>
