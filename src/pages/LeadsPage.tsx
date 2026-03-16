@@ -162,6 +162,9 @@ export default function LeadsPage() {
     nome: "", cpf: "", rg: "", nome_mae: "", endereco: "", numero: "", cep: "", cidade: "", referencia: "",
   });
 
+  // Finalize dialog (when all attempts done)
+  const [showFinalize, setShowFinalize] = useState(false);
+
   // Duplicate alert state
   const [dupeAlert, setDupeAlert] = useState<{
     type: "lead_phone" | "cliente_phone" | "cpf";
@@ -211,6 +214,19 @@ export default function LeadsPage() {
         .order("numero_tentativa", { ascending: true });
       if (error) throw error;
       return data as CadenciaTentativa[];
+    },
+  });
+
+  const { data: fluxoConfig } = useQuery({
+    queryKey: ["configuracao-fluxo-leads"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("configuracao_fluxo_leads")
+        .select("*")
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { quantidade_tentativas: number; permitir_reiniciar_rotina: boolean } | null;
     },
   });
 
@@ -798,6 +814,55 @@ export default function LeadsPage() {
   // Phone options for interaction dialog
   const phoneOptions = leadContatos.filter(c => c.tipo_contato === "telefone");
 
+  // Check if all cadencia attempts are exhausted
+  const maxTentativas = fluxoConfig?.quantidade_tentativas || cadencia.length || 7;
+  const allAttemptsExhausted = selectedQueueInfo ? selectedQueueInfo.tentativaAtual > maxTentativas : false;
+
+  // Handle finalize action (after all attempts)
+  const handleFinalizeAction = async (action: "reiniciar" | "arquivar") => {
+    if (!selectedLead || !profile) return;
+    if (action === "reiniciar") {
+      // Reset lead back to em_contato and log
+      await supabase.from("leads").update({ status_lead: "em_contato" }).eq("id", selectedLead.id);
+      await supabase.from("lead_historico").insert({
+        lead_id: selectedLead.id, usuario_id: profile.id,
+        tipo_evento: "rotina_reiniciada",
+        descricao: `Rotina de tentativas reiniciada por ${profile.nome}. Lead retorna à fila.`,
+      });
+      // Create first tarefa again
+      try {
+        const { data: firstRotina } = await supabase
+          .from("rotina_tentativas_leads").select("*").eq("tentativa_numero", 1).single();
+        if (firstRotina) {
+          const nextDate = new Date();
+          nextDate.setDate(nextDate.getDate() + Math.max(firstRotina.dias_apos_anterior || 0, 1));
+          const periodoHora = firstRotina.periodo_contato === "manha" ? 9 : firstRotina.periodo_contato === "tarde" ? 14 : 19;
+          nextDate.setHours(periodoHora, 0, 0, 0);
+          await supabase.from("lead_tarefas_contato").insert({
+            lead_id: selectedLead.id, tentativa: 1, data_contato: nextDate.toISOString(),
+            periodo: firstRotina.periodo_contato, status: "pendente", responsavel_id: profile.id,
+          });
+        }
+      } catch { /* ignore */ }
+      setSelectedLead(prev => prev ? { ...prev, status_lead: "em_contato" } : null);
+      toast.success("Rotina reiniciada! Lead voltou para a fila.");
+    } else {
+      // Archive lead
+      await supabase.from("leads").update({ status_lead: "perdido" }).eq("id", selectedLead.id);
+      await supabase.from("lead_historico").insert({
+        lead_id: selectedLead.id, usuario_id: profile.id,
+        tipo_evento: "lead_arquivado",
+        descricao: `Lead arquivado por ${profile.nome} após ${maxTentativas} tentativas sem sucesso.`,
+      });
+      setSelectedLead(prev => prev ? { ...prev, status_lead: "perdido" } : null);
+      toast.success("Lead arquivado como perdido.");
+    }
+    setShowFinalize(false);
+    queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+    queryClient.invalidateQueries({ queryKey: ["all-lead-interacoes"] });
+    refetchHistorico();
+  };
+
   // ─── Render ───────────────────────────────────────
   return (
     <div className="p-3 md:p-4 space-y-3 h-[calc(100vh-4rem)]">
@@ -1157,14 +1222,22 @@ export default function LeadsPage() {
                       ✓ Convertido em Cliente
                     </Badge>
                   )}
-                  {selectedLead.status_lead !== "perdido" && selectedLead.status_lead !== "convertido" && (
-                    <Button
-                      size="sm" variant="outline"
-                      className="w-full text-destructive hover:text-destructive"
-                      onClick={() => updateStatus("perdido")}
-                    >
-                      Marcar como Perdido
-                    </Button>
+                  {allAttemptsExhausted && selectedLead.status_lead !== "perdido" && selectedLead.status_lead !== "convertido" && (
+                    <div className="space-y-2">
+                      <div className="p-2 rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+                        <p className="text-xs text-amber-800 dark:text-amber-200 flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3" />
+                          Todas as {maxTentativas} tentativas foram realizadas.
+                        </p>
+                      </div>
+                      <Button
+                        size="sm" variant="outline"
+                        className="w-full text-destructive hover:text-destructive"
+                        onClick={() => setShowFinalize(true)}
+                      >
+                        Finalizar Tentativas
+                      </Button>
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -1330,6 +1403,45 @@ export default function LeadsPage() {
             <Button variant="outline" onClick={() => setShowConvert(false)}>Cancelar</Button>
             <Button onClick={() => convertMutation.mutate()} disabled={convertMutation.isPending} className="press-effect">
               {convertMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <UserPlus className="w-4 h-4 mr-1" />} Converter em Cliente
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Finalize Dialog (all attempts exhausted) */}
+      <Dialog open={showFinalize} onOpenChange={setShowFinalize}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-600" /> Tentativas Finalizadas
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Todas as <span className="font-semibold">{maxTentativas}</span> tentativas de contato com{" "}
+              <span className="font-semibold">{selectedLead?.nome}</span> foram realizadas sem sucesso.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              O que deseja fazer com este lead?
+            </p>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setShowFinalize(false)}>Cancelar</Button>
+            {fluxoConfig?.permitir_reiniciar_rotina !== false && (
+              <Button
+                variant="secondary"
+                onClick={() => handleFinalizeAction("reiniciar")}
+                className="press-effect"
+              >
+                <RefreshCw className="w-4 h-4 mr-1.5" /> Voltar para Fila
+              </Button>
+            )}
+            <Button
+              variant="destructive"
+              onClick={() => handleFinalizeAction("arquivar")}
+              className="press-effect"
+            >
+              <Trash2 className="w-4 h-4 mr-1.5" /> Arquivar Lead
             </Button>
           </DialogFooter>
         </DialogContent>
