@@ -126,6 +126,7 @@ const EVENTO_ICONS: Record<string, typeof Phone> = {
   tentativas_finalizadas: Clock,
   rotina_reiniciada: RefreshCw,
   lead_arquivado: FileText,
+  agendamento_retorno: CalendarClock,
 };
 
 const PERIODO_HORA: Record<string, number> = { manha: 9, tarde: 14, noite: 19 };
