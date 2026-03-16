@@ -30,6 +30,23 @@ const STATUS_STYLE: Record<string, string> = {
 
 const PERIODO_LABELS: Record<string, string> = { manha: "Manhã", tarde: "Tarde", noite: "Noite" };
 
+// Horários limites de cada período
+// Manhã: 06:00 - 12:00 | Tarde: 12:01 - 18:00 | Noite: 18:01 - 00:00
+function getPeriodoEndHour(periodo: string): number {
+  if (periodo === "manha") return 12;
+  if (periodo === "tarde") return 18;
+  return 24; // noite → meia-noite
+}
+
+function isTarefaExpirada(tarefa: { data_contato: string; periodo: string; status: string }): boolean {
+  if (tarefa.status === "realizado") return false;
+  const dataContato = new Date(tarefa.data_contato);
+  const now = new Date();
+  const tarefaDate = new Date(dataContato);
+  tarefaDate.setHours(getPeriodoEndHour(tarefa.periodo), 0, 0, 0);
+  return now > tarefaDate;
+}
+
 export default function FilaTarefasLeadsPage() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
@@ -38,7 +55,7 @@ export default function FilaTarefasLeadsPage() {
   const [attemptNumero, setAttemptNumero] = useState("");
   const [attemptResultado, setAttemptResultado] = useState("");
 
-  // Fetch tarefas pendentes/atrasadas
+  // Fetch tarefas pendentes/atrasadas and auto-mark expired
   const { data: tarefas = [], isLoading } = useQuery({
     queryKey: ["fila-tarefas-leads"],
     queryFn: async () => {
@@ -48,6 +65,49 @@ export default function FilaTarefasLeadsPage() {
         .in("status", ["pendente", "atrasado"])
         .order("data_contato", { ascending: true });
       if (error) throw error;
+
+      // Auto-mark expired tasks as "atrasado"
+      const toUpdate: string[] = [];
+      (data || []).forEach((t: any) => {
+        if (t.status === "pendente" && isTarefaExpirada(t)) {
+          toUpdate.push(t.id);
+        }
+      });
+
+      if (toUpdate.length > 0) {
+        await supabase
+          .from("lead_tarefas_contato")
+          .update({ status: "atrasado" })
+          .in("id", toUpdate);
+
+        // Register delay events
+        if (profile) {
+          for (const id of toUpdate) {
+            const tarefa = data?.find((t: any) => t.id === id);
+            if (tarefa) {
+              await supabase.from("registro_atraso_tentativa").insert({
+                lead_id: tarefa.lead_id,
+                colaborador_id: tarefa.responsavel_id || profile.id,
+                tentativa: tarefa.tentativa,
+                data_programada: tarefa.data_contato,
+                periodo: tarefa.periodo,
+              });
+              await supabase.from("lead_historico").insert({
+                lead_id: tarefa.lead_id,
+                usuario_id: profile.id,
+                tipo_evento: "tentativa_atrasada",
+                descricao: `Tentativa ${tarefa.tentativa} (${PERIODO_LABELS[tarefa.periodo] || tarefa.periodo}) expirou sem registro`,
+              });
+            }
+          }
+        }
+
+        // Return updated data
+        return (data || []).map((t: any) =>
+          toUpdate.includes(t.id) ? { ...t, status: "atrasado" } : t
+        );
+      }
+
       return data;
     },
     refetchInterval: 60_000,
@@ -93,12 +153,11 @@ export default function FilaTarefasLeadsPage() {
     },
   });
 
-  // Sort: atrasados first, then by data_contato
+  // Sort: atrasados/expirados first, then today, then future
   const sortedTarefas = useMemo(() => {
-    const now = new Date();
     return [...tarefas].sort((a: any, b: any) => {
-      const aAtrasado = a.status === "atrasado" || new Date(a.data_contato) < now;
-      const bAtrasado = b.status === "atrasado" || new Date(b.data_contato) < now;
+      const aAtrasado = a.status === "atrasado" || isTarefaExpirada(a);
+      const bAtrasado = b.status === "atrasado" || isTarefaExpirada(b);
       if (aAtrasado && !bAtrasado) return -1;
       if (!aAtrasado && bAtrasado) return 1;
       return new Date(a.data_contato).getTime() - new Date(b.data_contato).getTime();
