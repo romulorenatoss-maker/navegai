@@ -787,6 +787,7 @@ export type Database = {
           nome: string
           origem_lead: string | null
           plano_id: string | null
+          repetidor: string | null
           responsavel_id: string | null
           status_lead: string
           updated_at: string
@@ -799,6 +800,7 @@ export type Database = {
           nome: string
           origem_lead?: string | null
           plano_id?: string | null
+          repetidor?: string | null
           responsavel_id?: string | null
           status_lead?: string
           updated_at?: string
@@ -811,6 +813,7 @@ export type Database = {
           nome?: string
           origem_lead?: string | null
           plano_id?: string | null
+          repetidor?: string | null
           responsavel_id?: string | null
           status_lead?: string
           updated_at?: string
