@@ -486,6 +486,84 @@ export default function LeadsPage() {
     queryClient.invalidateQueries({ queryKey: ["leads-list"] });
   };
 
+  // ─── Open conversion dialog ────────────────────────
+  const openConversion = () => {
+    if (!selectedLead) return;
+    setConvForm({
+      nome: selectedLead.nome,
+      cpf: "", rg: "", nome_mae: "", endereco: "", numero: "", cep: "", cidade: "", referencia: "",
+    });
+    setShowConvert(true);
+  };
+
+  // ─── Convert Lead → Client ────────────────────────
+  const convertMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedLead || !profile) throw new Error("Erro interno.");
+      const f = convForm;
+      // Validate all required fields
+      if (!f.nome.trim()) throw new Error("Nome é obrigatório.");
+      if (!f.cpf.trim()) throw new Error("CPF é obrigatório.");
+      if (!f.rg.trim()) throw new Error("RG é obrigatório.");
+      if (!f.nome_mae.trim()) throw new Error("Nome da mãe é obrigatório.");
+      if (!f.endereco.trim()) throw new Error("Endereço é obrigatório.");
+      if (!f.numero.trim()) throw new Error("Número é obrigatório.");
+      if (!f.cep.trim()) throw new Error("CEP é obrigatório.");
+      if (!f.cidade.trim()) throw new Error("Cidade é obrigatória.");
+      if (!f.referencia.trim()) throw new Error("Referência é obrigatória.");
+
+      // Create client with full data
+      const { data: newCliente, error: e1 } = await supabase.from("clientes").insert({
+        nome: f.nome.trim(),
+        cpf: f.cpf.trim(),
+        rg: f.rg.trim(),
+        nome_mae: f.nome_mae.trim(),
+        endereco: f.endereco.trim(),
+        numero: f.numero.trim(),
+        cep: f.cep.trim(),
+        cidade: f.cidade.trim(),
+        referencia: f.referencia.trim(),
+      }).select("id").single();
+      if (e1) throw e1;
+
+      // Copy lead contacts to cliente_contatos
+      const phoneContatos = leadContatos.filter((c) => c.tipo_contato === "telefone");
+      if (phoneContatos.length > 0) {
+        const inserts = phoneContatos.map((c) => ({
+          cliente_id: newCliente.id,
+          tipo: "movel" as const,
+          valor: c.valor,
+          tem_whatsapp: c.tem_whatsapp,
+        }));
+        await supabase.from("cliente_contatos").insert(inserts);
+      }
+
+      // Update lead: mark as converted and link to client
+      await supabase.from("leads").update({
+        status_lead: "convertido",
+        cliente_id: newCliente.id,
+      }).eq("id", selectedLead.id);
+
+      // Log history
+      await supabase.from("lead_historico").insert({
+        lead_id: selectedLead.id,
+        usuario_id: profile.id,
+        tipo_evento: "conversao_cliente",
+        descricao: `Lead convertido em cliente: ${f.nome.trim()} (CPF: ${f.cpf.trim()})`,
+      });
+
+      return newCliente;
+    },
+    onSuccess: () => {
+      toast.success("Lead convertido em cliente com sucesso!");
+      setShowConvert(false);
+      setSelectedLead((prev) => prev ? { ...prev, status_lead: "convertido" } : null);
+      queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+      refetchHistorico();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
   // Helper: get profile name
   const getProfileName = (id: string | null) => {
     if (!id) return "—";
