@@ -202,10 +202,13 @@ function PeriodSummary({ leadsHoje, leadsSemana, leadsMes }: {
 
 // ─── Main Page ───
 export default function DashboardLeadsPage() {
+  const navigate = useNavigate();
+  const { profile } = useAuth();
+
   const { data: metrics, isLoading } = useQuery({
     queryKey: ["dashboard-leads-metrics"],
     queryFn: fetchLeadsAggregated,
-    refetchInterval: 5 * 60 * 1000, // 5 minutes
+    refetchInterval: 5 * 60 * 1000,
     staleTime: 60 * 1000,
   });
 
@@ -214,6 +217,29 @@ export default function DashboardLeadsPage() {
     queryFn: fetchOSAguardando,
     refetchInterval: 5 * 60 * 1000,
     staleTime: 60 * 1000,
+  });
+
+  // Fetch atrasos for current user
+  const { data: meusAtrasos = [] } = useQuery({
+    queryKey: ["dashboard-meus-atrasos", profile?.id],
+    enabled: !!profile?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("lead_tarefas_contato")
+        .select("id, lead_id, tentativa, data_contato, periodo")
+        .eq("status", "atrasado")
+        .eq("responsavel_id", profile!.id);
+      if (error) throw error;
+      // Fetch lead names
+      const leadIds = [...new Set((data || []).map((t) => t.lead_id))];
+      if (leadIds.length === 0) return [];
+      const { data: leads } = await supabase.from("leads").select("id, nome").in("id", leadIds);
+      return (data || []).map((t) => ({
+        ...t,
+        lead_nome: leads?.find((l) => l.id === t.lead_id)?.nome || "—",
+      }));
+    },
+    refetchInterval: 60_000,
   });
 
   const m = metrics || {
