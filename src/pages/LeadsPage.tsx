@@ -791,16 +791,25 @@ export default function LeadsPage() {
       }).select("id").single();
       if (e1) throw e1;
 
-      // Copy lead contacts to cliente_contatos
-      const phoneContatos = leadContatos.filter((c) => c.tipo_contato === "telefone");
-      if (phoneContatos.length > 0) {
-        const inserts = phoneContatos.map((c) => ({
-          cliente_id: newCliente.id,
-          tipo: "movel" as const,
-          valor: c.valor,
-          tem_whatsapp: c.tem_whatsapp,
-        }));
-        await supabase.from("cliente_contatos").insert(inserts);
+      // Copy lead contacts to cliente_contatos (skip already existing phones)
+      const leadPhoneContatos = leadContatos.filter((c) => c.tipo_contato === "telefone");
+      if (leadPhoneContatos.length > 0) {
+        const { data: existingClientePhones } = await supabase
+          .from("cliente_contatos")
+          .select("valor")
+          .eq("cliente_id", newCliente.id);
+        const existingNorms = new Set((existingClientePhones || []).map((c: any) => normalizePhone(c.valor)));
+        const newInserts = leadPhoneContatos
+          .filter((c) => !existingNorms.has(normalizePhone(c.valor)))
+          .map((c) => ({
+            cliente_id: newCliente.id,
+            tipo: "movel" as const,
+            valor: c.valor,
+            tem_whatsapp: c.tem_whatsapp,
+          }));
+        if (newInserts.length > 0) {
+          await supabase.from("cliente_contatos").insert(newInserts);
+        }
       }
 
       // Update lead: mark as converted and link to client
