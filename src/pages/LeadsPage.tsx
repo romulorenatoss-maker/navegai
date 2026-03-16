@@ -171,6 +171,12 @@ export default function LeadsPage() {
   // Finalize dialog (when all attempts done)
   const [showFinalize, setShowFinalize] = useState(false);
 
+  // Schedule dialog
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
+  const [scheduleHour, setScheduleHour] = useState("09");
+  const [scheduleMinute, setScheduleMinute] = useState("00");
+
   // Duplicate alert state
   const [dupeAlert, setDupeAlert] = useState<{
     type: "lead_phone" | "cliente_phone" | "cpf";
