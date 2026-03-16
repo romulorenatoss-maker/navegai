@@ -26,6 +26,7 @@ const fetchLeadsAggregated = async () => {
     { data: statusBreakdown },
     { count: leadsSemana },
     { count: leadsMes },
+    { data: topObjecoes },
   ] = await Promise.all([
     supabase.from("leads").select("*", { count: "exact", head: true }),
     supabase.from("leads").select("*", { count: "exact", head: true })
@@ -47,12 +48,20 @@ const fetchLeadsAggregated = async () => {
     supabase.from("leads").select("*", { count: "exact", head: true })
       .gte("data_criacao", startOfMonth(today).toISOString())
       .lte("data_criacao", endOfMonth(today).toISOString()),
+    supabase.from("registro_objecao_lead").select("objecao_id, lead_objecoes(descricao)"),
   ]);
 
   // Aggregate status breakdown
   const statusCounts: Record<string, number> = {};
   (statusBreakdown || []).forEach((l) => {
     statusCounts[l.status_lead] = (statusCounts[l.status_lead] || 0) + 1;
+  });
+
+  // Aggregate objeções
+  const objecaoCounts: Record<string, number> = {};
+  (topObjecoes || []).forEach((o: any) => {
+    const desc = o.lead_objecoes?.descricao || "Outra";
+    objecaoCounts[desc] = (objecaoCounts[desc] || 0) + 1;
   });
 
   const taxaConversao = (totalLeads || 0) > 0
@@ -71,6 +80,7 @@ const fetchLeadsAggregated = async () => {
     statusCounts,
     leadsSemana: leadsSemana || 0,
     leadsMes: leadsMes || 0,
+    objecaoCounts,
   };
 };
 
