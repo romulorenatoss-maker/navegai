@@ -12,13 +12,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { format, addDays } from "date-fns";
+import { format, addDays, setHours, setMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Search, Plus, Phone, User, Users, History, ArrowRight, Trash2,
   MessageSquare, PhoneCall, Clock, UserCheck, RefreshCw, Loader2, UserPlus, AlertTriangle,
-  ListOrdered, Send, FileText, ChevronRight,
+  ListOrdered, Send, FileText, ChevronRight, CalendarClock, CalendarIcon,
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { applyPhoneMask, normalizePhone, isValidPhone, getPhoneTypeLabel } from "@/lib/phone-utils";
@@ -34,6 +37,7 @@ interface Lead {
   data_criacao: string;
   created_at: string;
   updated_at: string;
+  agendamento_retorno: string | null;
 }
 
 interface LeadContato {
@@ -107,6 +111,7 @@ const EVENTO_LABELS: Record<string, string> = {
   tentativas_finalizadas: "Tentativas Finalizadas",
   rotina_reiniciada: "Rotina Reiniciada",
   lead_arquivado: "Lead Arquivado",
+  agendamento_retorno: "Agendamento de Retorno",
 };
 
 const EVENTO_ICONS: Record<string, typeof Phone> = {
@@ -121,6 +126,7 @@ const EVENTO_ICONS: Record<string, typeof Phone> = {
   tentativas_finalizadas: Clock,
   rotina_reiniciada: RefreshCw,
   lead_arquivado: FileText,
+  agendamento_retorno: CalendarClock,
 };
 
 const PERIODO_HORA: Record<string, number> = { manha: 9, tarde: 14, noite: 19 };
@@ -164,6 +170,12 @@ export default function LeadsPage() {
 
   // Finalize dialog (when all attempts done)
   const [showFinalize, setShowFinalize] = useState(false);
+
+  // Schedule dialog
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
+  const [scheduleHour, setScheduleHour] = useState("09");
+  const [scheduleMinute, setScheduleMinute] = useState("00");
 
   // Duplicate alert state
   const [dupeAlert, setDupeAlert] = useState<{
@@ -305,6 +317,16 @@ export default function LeadsPage() {
 
       return { lead, tentativaAtual, proximoContato, ultimaInteracao };
     }).sort((a, b) => {
+      const now = Date.now();
+      // Scheduled returns that have arrived get top priority
+      const aScheduled = a.lead.agendamento_retorno ? new Date(a.lead.agendamento_retorno).getTime() : null;
+      const bScheduled = b.lead.agendamento_retorno ? new Date(b.lead.agendamento_retorno).getTime() : null;
+      const aReady = aScheduled && aScheduled <= now;
+      const bReady = bScheduled && bScheduled <= now;
+      if (aReady && !bReady) return -1;
+      if (!aReady && bReady) return 1;
+      if (aReady && bReady) return aScheduled! - bScheduled!;
+
       // Leads without interactions first (newest leads), then by next contact date
       if (!a.ultimaInteracao && b.ultimaInteracao) return -1;
       if (a.ultimaInteracao && !b.ultimaInteracao) return 1;
@@ -964,6 +986,8 @@ export default function LeadsPage() {
                     const contatos = allLeadContatos.filter(c => c.lead_id === item.lead.id && c.tipo_contato === "telefone");
                     const isSelected = selectedLead?.id === item.lead.id;
                     const isOverdue = item.proximoContato && item.proximoContato < new Date();
+                    const hasSchedule = !!item.lead.agendamento_retorno;
+                    const scheduleReady = hasSchedule && new Date(item.lead.agendamento_retorno!) <= new Date();
 
                     return (
                       <button
@@ -998,10 +1022,21 @@ export default function LeadsPage() {
                           </div>
                         </div>
                         <div className="ml-5 mt-1 flex items-center gap-1">
-                          <Clock className={`w-2.5 h-2.5 ${isOverdue ? "text-destructive" : "text-muted-foreground"}`} />
-                          <span className={`text-[10px] ${isOverdue ? "text-destructive font-medium" : "text-muted-foreground"}`}>
-                            {item.proximoContato ? fmtDateShort(item.proximoContato) : "Sem agendamento"}
-                          </span>
+                          {hasSchedule ? (
+                            <>
+                              <CalendarClock className={`w-2.5 h-2.5 ${scheduleReady ? "text-primary" : "text-muted-foreground"}`} />
+                              <span className={`text-[10px] ${scheduleReady ? "text-primary font-semibold" : "text-muted-foreground"}`}>
+                                {scheduleReady ? "⬆ Retorno agora" : `Retorno: ${fmtDateShort(new Date(item.lead.agendamento_retorno!))}`}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <Clock className={`w-2.5 h-2.5 ${isOverdue ? "text-destructive" : "text-muted-foreground"}`} />
+                              <span className={`text-[10px] ${isOverdue ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                                {item.proximoContato ? fmtDateShort(item.proximoContato) : "Sem agendamento"}
+                              </span>
+                            </>
+                          )}
                         </div>
                       </button>
                     );
@@ -1269,6 +1304,29 @@ export default function LeadsPage() {
                   <Button size="sm" className="w-full press-effect" onClick={() => setShowInteraction(true)}>
                     <PhoneCall className="w-4 h-4 mr-1.5" /> Registrar {selectedQueueInfo?.tentativaAtual || 1}ª Tentativa
                   </Button>
+                  <Button size="sm" variant="outline" className="w-full press-effect" onClick={() => {
+                    setScheduleDate(undefined);
+                    setScheduleHour("09");
+                    setScheduleMinute("00");
+                    setShowSchedule(true);
+                  }}>
+                    <CalendarClock className="w-4 h-4 mr-1.5" /> Agendar Retorno
+                  </Button>
+                  {selectedLead.agendamento_retorno && (
+                    <div className="p-2 rounded-md bg-muted/50 border text-xs flex items-center gap-1.5">
+                      <CalendarClock className="w-3 h-3 text-primary" />
+                      <span>Retorno agendado: <span className="font-semibold">{fmtDate(selectedLead.agendamento_retorno)}</span></span>
+                      <button
+                        className="ml-auto text-destructive/60 hover:text-destructive text-[10px] underline"
+                        onClick={async () => {
+                          await supabase.from("leads").update({ agendamento_retorno: null } as any).eq("id", selectedLead.id);
+                          setSelectedLead(prev => prev ? { ...prev, agendamento_retorno: null } : null);
+                          queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                          toast.success("Agendamento removido.");
+                        }}
+                      >Remover</button>
+                    </div>
+                  )}
                   {selectedLead.status_lead !== "convertido" ? (
                     <Button size="sm" variant="secondary" className="w-full press-effect" onClick={openConversion}>
                       <UserPlus className="w-4 h-4 mr-1.5" /> Converter em Cliente
@@ -1303,6 +1361,87 @@ export default function LeadsPage() {
       </div>
 
       {/* ─── Dialogs ──────────────────────────────── */}
+
+      {/* Schedule Return Dialog */}
+      <Dialog open={showSchedule} onOpenChange={setShowSchedule}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarClock className="w-5 h-5" /> Agendar Retorno — {selectedLead?.nome}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Data do Retorno</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !scheduleDate && "text-muted-foreground")}>
+                    <CalendarIcon className="w-4 h-4 mr-2" />
+                    {scheduleDate ? format(scheduleDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecione a data..."}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={scheduleDate}
+                    onSelect={setScheduleDate}
+                    disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Horário</Label>
+              <div className="flex items-center gap-2">
+                <Select value={scheduleHour} onValueChange={setScheduleHour}>
+                  <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 15 }, (_, i) => i + 7).map(h => (
+                      <SelectItem key={h} value={String(h).padStart(2, "0")}>{String(h).padStart(2, "0")}h</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="text-muted-foreground font-bold">:</span>
+                <Select value={scheduleMinute} onValueChange={setScheduleMinute}>
+                  <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {["00", "15", "30", "45"].map(m => (
+                      <SelectItem key={m} value={m}>{m}min</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSchedule(false)}>Cancelar</Button>
+            <Button
+              disabled={!scheduleDate}
+              onClick={async () => {
+                if (!scheduleDate || !selectedLead || !profile) return;
+                const dt = setMinutes(setHours(scheduleDate, parseInt(scheduleHour)), parseInt(scheduleMinute));
+                const { error } = await supabase.from("leads").update({ agendamento_retorno: dt.toISOString() } as any).eq("id", selectedLead.id);
+                if (error) { toast.error(error.message); return; }
+                await supabase.from("lead_historico").insert({
+                  lead_id: selectedLead.id, usuario_id: profile.id,
+                  tipo_evento: "agendamento_retorno",
+                  descricao: `Retorno agendado para ${format(dt, "dd/MM/yyyy HH:mm", { locale: ptBR })}`,
+                });
+                setSelectedLead(prev => prev ? { ...prev, agendamento_retorno: dt.toISOString() } : null);
+                queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                refetchHistorico();
+                setShowSchedule(false);
+                toast.success(`Retorno agendado para ${format(dt, "dd/MM/yyyy HH:mm", { locale: ptBR })}`);
+              }}
+              className="press-effect"
+            >
+              <CalendarClock className="w-4 h-4 mr-1.5" /> Agendar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Create Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
