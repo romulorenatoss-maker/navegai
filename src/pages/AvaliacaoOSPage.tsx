@@ -54,6 +54,7 @@ const statusLabel: Record<string, { text: string; badge: string }> = {
   aberta: { text: "Aberta", badge: "badge-pending" },
   em_andamento: { text: "Em andamento", badge: "badge-active" },
   concluida: { text: "Concluída", badge: "badge-complete" },
+  aguardando_numero: { text: "Aguardando Número", badge: "badge-pending" },
 };
 
 function formatCpf(value: string): string {
