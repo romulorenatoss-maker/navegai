@@ -814,6 +814,55 @@ export default function LeadsPage() {
   // Phone options for interaction dialog
   const phoneOptions = leadContatos.filter(c => c.tipo_contato === "telefone");
 
+  // Check if all cadencia attempts are exhausted
+  const maxTentativas = fluxoConfig?.quantidade_tentativas || cadencia.length || 7;
+  const allAttemptsExhausted = selectedQueueInfo ? selectedQueueInfo.tentativaAtual > maxTentativas : false;
+
+  // Handle finalize action (after all attempts)
+  const handleFinalizeAction = async (action: "reiniciar" | "arquivar") => {
+    if (!selectedLead || !profile) return;
+    if (action === "reiniciar") {
+      // Reset lead back to em_contato and log
+      await supabase.from("leads").update({ status_lead: "em_contato" }).eq("id", selectedLead.id);
+      await supabase.from("lead_historico").insert({
+        lead_id: selectedLead.id, usuario_id: profile.id,
+        tipo_evento: "rotina_reiniciada",
+        descricao: `Rotina de tentativas reiniciada por ${profile.nome}. Lead retorna à fila.`,
+      });
+      // Create first tarefa again
+      try {
+        const { data: firstRotina } = await supabase
+          .from("rotina_tentativas_leads").select("*").eq("tentativa_numero", 1).single();
+        if (firstRotina) {
+          const nextDate = new Date();
+          nextDate.setDate(nextDate.getDate() + Math.max(firstRotina.dias_apos_anterior || 0, 1));
+          const periodoHora = firstRotina.periodo_contato === "manha" ? 9 : firstRotina.periodo_contato === "tarde" ? 14 : 19;
+          nextDate.setHours(periodoHora, 0, 0, 0);
+          await supabase.from("lead_tarefas_contato").insert({
+            lead_id: selectedLead.id, tentativa: 1, data_contato: nextDate.toISOString(),
+            periodo: firstRotina.periodo_contato, status: "pendente", responsavel_id: profile.id,
+          });
+        }
+      } catch { /* ignore */ }
+      setSelectedLead(prev => prev ? { ...prev, status_lead: "em_contato" } : null);
+      toast.success("Rotina reiniciada! Lead voltou para a fila.");
+    } else {
+      // Archive lead
+      await supabase.from("leads").update({ status_lead: "perdido" }).eq("id", selectedLead.id);
+      await supabase.from("lead_historico").insert({
+        lead_id: selectedLead.id, usuario_id: profile.id,
+        tipo_evento: "lead_arquivado",
+        descricao: `Lead arquivado por ${profile.nome} após ${maxTentativas} tentativas sem sucesso.`,
+      });
+      setSelectedLead(prev => prev ? { ...prev, status_lead: "perdido" } : null);
+      toast.success("Lead arquivado como perdido.");
+    }
+    setShowFinalize(false);
+    queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+    queryClient.invalidateQueries({ queryKey: ["all-lead-interacoes"] });
+    refetchHistorico();
+  };
+
   // ─── Render ───────────────────────────────────────
   return (
     <div className="p-3 md:p-4 space-y-3 h-[calc(100vh-4rem)]">
