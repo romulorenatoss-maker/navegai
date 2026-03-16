@@ -69,6 +69,9 @@ interface Plano {
   descricao: string | null;
 }
 
+// Normalize phone: strip all non-digits
+const normalizePhone = (phone: string) => phone.replace(/\D/g, "");
+
 // ─── Status helpers ────────────────────────────────────
 const STATUS_OPTIONS = [
   { value: "novo", label: "Novo", color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
