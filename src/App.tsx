@@ -21,6 +21,7 @@ import PlaceholderPage from "./pages/PlaceholderPage";
 import RelatoriosPage from "./pages/RelatoriosPage";
 import DesempenhoColaboradorPage from "./pages/DesempenhoColaboradorPage";
 import LeadsPage from "./pages/LeadsPage";
+import FilaLeadsPage from "./pages/FilaLeadsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
