@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { normalizePhone, isValidPhone } from "@/lib/phone-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
