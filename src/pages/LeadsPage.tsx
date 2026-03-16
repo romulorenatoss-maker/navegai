@@ -18,9 +18,10 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Search, Plus, Phone, User, Users, History, ArrowRight, Trash2,
-  MessageSquare, PhoneCall, Clock, UserCheck, RefreshCw, Loader2, UserPlus,
+  MessageSquare, PhoneCall, Clock, UserCheck, RefreshCw, Loader2, UserPlus, AlertTriangle,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // ─── Types ──────────────────────────────────────────────
 interface Lead {
