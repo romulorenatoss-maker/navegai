@@ -1222,14 +1222,22 @@ export default function LeadsPage() {
                       ✓ Convertido em Cliente
                     </Badge>
                   )}
-                  {selectedLead.status_lead !== "perdido" && selectedLead.status_lead !== "convertido" && (
-                    <Button
-                      size="sm" variant="outline"
-                      className="w-full text-destructive hover:text-destructive"
-                      onClick={() => updateStatus("perdido")}
-                    >
-                      Marcar como Perdido
-                    </Button>
+                  {allAttemptsExhausted && selectedLead.status_lead !== "perdido" && selectedLead.status_lead !== "convertido" && (
+                    <div className="space-y-2">
+                      <div className="p-2 rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+                        <p className="text-xs text-amber-800 dark:text-amber-200 flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3" />
+                          Todas as {maxTentativas} tentativas foram realizadas.
+                        </p>
+                      </div>
+                      <Button
+                        size="sm" variant="outline"
+                        className="w-full text-destructive hover:text-destructive"
+                        onClick={() => setShowFinalize(true)}
+                      >
+                        Finalizar Tentativas
+                      </Button>
+                    </div>
                   )}
                 </CardContent>
               </Card>
