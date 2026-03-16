@@ -404,24 +404,45 @@ export type Database = {
       }
       clientes: {
         Row: {
+          cep: string | null
+          cidade: string | null
           cpf: string | null
           created_at: string
+          endereco: string | null
           id: string
           nome: string
+          nome_mae: string | null
+          numero: string | null
+          referencia: string | null
+          rg: string | null
           updated_at: string
         }
         Insert: {
+          cep?: string | null
+          cidade?: string | null
           cpf?: string | null
           created_at?: string
+          endereco?: string | null
           id?: string
           nome: string
+          nome_mae?: string | null
+          numero?: string | null
+          referencia?: string | null
+          rg?: string | null
           updated_at?: string
         }
         Update: {
+          cep?: string | null
+          cidade?: string | null
           cpf?: string | null
           created_at?: string
+          endereco?: string | null
           id?: string
           nome?: string
+          nome_mae?: string | null
+          numero?: string | null
+          referencia?: string | null
+          rg?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -657,6 +678,7 @@ export type Database = {
       }
       leads: {
         Row: {
+          cliente_id: string | null
           created_at: string
           data_criacao: string
           id: string
@@ -667,6 +689,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cliente_id?: string | null
           created_at?: string
           data_criacao?: string
           id?: string
@@ -677,6 +700,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cliente_id?: string | null
           created_at?: string
           data_criacao?: string
           id?: string
@@ -687,6 +711,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "leads_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "leads_plano_id_fkey"
             columns: ["plano_id"]
