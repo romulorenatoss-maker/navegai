@@ -772,10 +772,22 @@ export default function LeadsPage() {
                       )}
                     </div>
 
-                    {/* Quick action */}
-                    <Button size="sm" onClick={() => setShowInteraction(true)} className="press-effect">
-                      <PhoneCall className="w-4 h-4 mr-1" /> Registrar Interação
-                    </Button>
+                    {/* Quick actions */}
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" onClick={() => setShowInteraction(true)} className="press-effect">
+                        <PhoneCall className="w-4 h-4 mr-1" /> Registrar Interação
+                      </Button>
+                      {selectedLead.status_lead !== "convertido" && (
+                        <Button size="sm" variant="secondary" onClick={openConversion} className="press-effect">
+                          <UserPlus className="w-4 h-4 mr-1" /> Converter em Cliente
+                        </Button>
+                      )}
+                      {selectedLead.status_lead === "convertido" && (
+                        <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-0">
+                          ✓ Convertido em Cliente
+                        </Badge>
+                      )}
+                    </div>
                   </TabsContent>
 
                   {/* Interações tab */}
