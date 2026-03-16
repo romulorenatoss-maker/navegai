@@ -230,6 +230,31 @@ export default function LeadsPage() {
     },
   });
 
+  const { data: objecoes = [] } = useQuery({
+    queryKey: ["lead-objecoes-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("lead_objecoes").select("*").eq("ativo", true).order("descricao");
+      if (error) throw error;
+      return data as { id: string; descricao: string; ativo: boolean }[];
+    },
+  });
+
+  const { data: leadObjecaoRegistro, refetch: refetchObjecao } = useQuery({
+    queryKey: ["lead-objecao-registro", selectedLead?.id],
+    enabled: !!selectedLead,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("registro_objecao_lead")
+        .select("*")
+        .eq("lead_id", selectedLead!.id)
+        .order("data_registro", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { id: string; objecao_id: string; lead_id: string } | null;
+    },
+  });
+
   // All lead contacts for queue building
   const activeLeadIds = allLeads.filter(l => ["novo", "em_contato", "interessado"].includes(l.status_lead)).map(l => l.id);
 
@@ -1132,7 +1157,7 @@ export default function LeadsPage() {
                   )}
                 </CardHeader>
                 <CardContent className="p-3 space-y-3">
-                  {/* Status & Plano */}
+                  {/* Status & Objeção */}
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
                       <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Status</Label>
@@ -1144,6 +1169,37 @@ export default function LeadsPage() {
                       </Select>
                     </div>
                     <div className="space-y-1">
+                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Objeção</Label>
+                      <Select
+                        value={leadObjecaoRegistro?.objecao_id || "none"}
+                        onValueChange={async (val) => {
+                          if (!selectedLead || !profile) return;
+                          if (val === "none") return;
+                          await supabase.from("registro_objecao_lead").insert({
+                            lead_id: selectedLead.id,
+                            objecao_id: val,
+                            colaborador_id: profile.id,
+                          });
+                          await supabase.from("lead_historico").insert({
+                            lead_id: selectedLead.id, usuario_id: profile.id,
+                            tipo_evento: "objecao_registrada",
+                            descricao: `Objeção registrada: ${objecoes.find(o => o.id === val)?.descricao || val}`,
+                          });
+                          refetchObjecao(); refetchHistorico();
+                          toast.success("Objeção registrada.");
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhuma</SelectItem>
+                          {objecoes.map(o => <SelectItem key={o.id} value={o.id}>{o.descricao}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  {/* Perfil & Repetidor */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
                       <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Perfil</Label>
                       <Select value={selectedLead.plano_id || "none"} onValueChange={updatePlano}>
                         <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione..." /></SelectTrigger>
@@ -1153,17 +1209,17 @@ export default function LeadsPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Repetidor</Label>
-                    <Select value={selectedLead.repetidor || "none"} onValueChange={updateRepetidor}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Nenhum</SelectItem>
-                        <SelectItem value="fast">Fast</SelectItem>
-                        <SelectItem value="dual">Dual</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Repetidor</Label>
+                      <Select value={selectedLead.repetidor || "none"} onValueChange={updateRepetidor}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhum</SelectItem>
+                          <SelectItem value="fast">Fast</SelectItem>
+                          <SelectItem value="dual">Dual</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
