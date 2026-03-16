@@ -407,11 +407,13 @@ export default function LeadsPage() {
         }
       }
 
-      // ── Duplicate phone check in cliente_contatos ──
+      // ── Check if phone exists in cliente_contatos → link to existing client ──
+      let linkedClienteId: string | null = null;
+      let linkedClienteNome: string | null = null;
       const { data: existingClienteContatos } = await supabase
         .from("cliente_contatos")
         .select("cliente_id, valor, tipo")
-        .eq("tipo", "movel");
+        .in("tipo", ["movel", "fixo", "telefone"]);
       const matchedCliente = (existingClienteContatos || []).find(
         (c) => normalizePhone(c.valor) === phoneNorm
       );
@@ -422,13 +424,12 @@ export default function LeadsPage() {
           .eq("id", matchedCliente.cliente_id)
           .single();
         if (cliente) {
-          setDupeAlert({
-            type: "cliente_phone",
-            message: `Este telefone já pertence ao cliente "${cliente.nome}" (CPF: ${cliente.cpf || "N/A"}).`,
-            clienteId: cliente.id,
-            clienteNome: cliente.nome,
-          });
-          throw new Error("__DUPLICATE_CLIENTE__");
+          linkedClienteId = cliente.id;
+          linkedClienteNome = cliente.nome;
+          // Use client name if createName is generic
+          if (!createName.trim() || createName.trim().toLowerCase() === "novo lead") {
+            // will use client name below
+          }
         }
       }
 
