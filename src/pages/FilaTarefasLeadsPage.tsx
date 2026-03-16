@@ -153,12 +153,11 @@ export default function FilaTarefasLeadsPage() {
     },
   });
 
-  // Sort: atrasados first, then by data_contato
+  // Sort: atrasados/expirados first, then today, then future
   const sortedTarefas = useMemo(() => {
-    const now = new Date();
     return [...tarefas].sort((a: any, b: any) => {
-      const aAtrasado = a.status === "atrasado" || new Date(a.data_contato) < now;
-      const bAtrasado = b.status === "atrasado" || new Date(b.data_contato) < now;
+      const aAtrasado = a.status === "atrasado" || isTarefaExpirada(a);
+      const bAtrasado = b.status === "atrasado" || isTarefaExpirada(b);
       if (aAtrasado && !bAtrasado) return -1;
       if (!aAtrasado && bAtrasado) return 1;
       return new Date(a.data_contato).getTime() - new Date(b.data_contato).getTime();
