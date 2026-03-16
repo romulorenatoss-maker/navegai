@@ -12,7 +12,7 @@ const allNavSections = [
   {
     title: "Principal",
     items: [
-      { to: "/", icon: LayoutDashboard, label: "Dashboard" },
+      { to: "/", icon: LayoutDashboard, label: "Dashboard OS" },
     ],
   },
   {
