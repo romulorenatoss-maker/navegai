@@ -315,13 +315,34 @@ export default function DashboardLeadsPage() {
         </div>
 
         {/* Charts area */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <StatusBar statusCounts={m.statusCounts} total={m.totalLeads} />
           <PeriodSummary
             leadsHoje={m.leadsHoje}
             leadsSemana={m.leadsSemana}
             leadsMes={m.leadsMes}
           />
+          {/* Top Objeções */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6, duration: 0.3 }}
+            className="bg-card rounded-xl border border-border p-5 shadow-sm"
+          >
+            <h3 className="text-sm font-semibold text-foreground mb-4">Principais Objeções</h3>
+            {Object.keys(m.objecaoCounts).length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">Nenhuma objeção registrada</p>
+            ) : (
+              <div className="space-y-2">
+                {Object.entries(m.objecaoCounts).sort((a, b) => (b[1] as number) - (a[1] as number)).slice(0, 5).map(([desc, count]) => (
+                  <div key={desc} className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground truncate max-w-[160px]">{desc}</span>
+                    <span className="text-sm font-bold text-foreground">{count as number}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.div>
         </div>
       </div>
     </div>
