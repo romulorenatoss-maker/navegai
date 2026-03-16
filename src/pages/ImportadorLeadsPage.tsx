@@ -24,7 +24,7 @@ interface ImportResult {
   message?: string;
 }
 
-const normalizePhone = (phone: string) => phone.replace(/\D/g, "");
+// normalizePhone imported from @/lib/phone-utils
 
 function parseCSV(text: string): ImportRow[] {
   const lines = text.trim().split("\n");
