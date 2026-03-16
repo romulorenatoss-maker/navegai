@@ -111,6 +111,7 @@ const EVENTO_LABELS: Record<string, string> = {
   tentativas_finalizadas: "Tentativas Finalizadas",
   rotina_reiniciada: "Rotina Reiniciada",
   lead_arquivado: "Lead Arquivado",
+  agendamento_retorno: "Agendamento de Retorno",
 };
 
 const EVENTO_ICONS: Record<string, typeof Phone> = {
