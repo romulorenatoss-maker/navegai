@@ -26,6 +26,9 @@ import DashboardLeadsPage from "./pages/DashboardLeadsPage";
 import RotinaTentativasPage from "./pages/RotinaTentativasPage";
 import FilaTarefasLeadsPage from "./pages/FilaTarefasLeadsPage";
 import LeadsFinalizadosPage from "./pages/LeadsFinalizadosPage";
+import ImportadorLeadsPage from "./pages/ImportadorLeadsPage";
+import ObjecoesLeadsPage from "./pages/ObjecoesLeadsPage";
+import RelatoriosLeadsPage from "./pages/RelatoriosLeadsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
