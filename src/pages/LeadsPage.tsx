@@ -986,6 +986,8 @@ export default function LeadsPage() {
                     const contatos = allLeadContatos.filter(c => c.lead_id === item.lead.id && c.tipo_contato === "telefone");
                     const isSelected = selectedLead?.id === item.lead.id;
                     const isOverdue = item.proximoContato && item.proximoContato < new Date();
+                    const hasSchedule = !!item.lead.agendamento_retorno;
+                    const scheduleReady = hasSchedule && new Date(item.lead.agendamento_retorno!) <= new Date();
 
                     return (
                       <button
