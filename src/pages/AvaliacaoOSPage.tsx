@@ -385,6 +385,20 @@ export default function AvaliacaoOSPage() {
     enabled: !!profile?.id,
   });
 
+  // OS aguardando número (from lead conversion)
+  const { data: aguardandoNumeroOS = [], refetch: refetchAguardando } = useQuery({
+    queryKey: ["os_aguardando_numero"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("ordens_servico")
+        .select("id, numero_os, cliente_id, cliente_nome, cliente_cpf, tipo_servico_id, created_at, status")
+        .eq("status", "aguardando_numero" as any)
+        .order("created_at", { ascending: true });
+      return data || [];
+    },
+    staleTime: 30_000,
+  });
+
   // OS Detail queries
   // osLinkedTA removed - tipos_avaliacao no longer used
 
