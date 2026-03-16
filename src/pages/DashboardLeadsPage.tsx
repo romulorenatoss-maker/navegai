@@ -273,6 +273,42 @@ export default function DashboardLeadsPage() {
           )}
         </div>
 
+        {/* Atrasos Alert */}
+        {meusAtrasos.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-destructive/10 border border-destructive/30 rounded-xl p-4"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              <h3 className="text-sm font-semibold text-destructive">
+                Você possui {meusAtrasos.length} tentativa(s) atrasada(s)
+              </h3>
+              <button
+                onClick={() => navigate("/leads/fila-tarefas")}
+                className="ml-auto text-xs font-medium text-destructive underline underline-offset-2 hover:opacity-80"
+              >
+                Ver na Fila de Tarefas →
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {meusAtrasos.slice(0, 8).map((a: any) => (
+                <button
+                  key={a.id}
+                  onClick={() => navigate("/leads/fila-tarefas")}
+                  className="text-xs px-2 py-1 rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors cursor-pointer"
+                >
+                  {a.lead_nome} • Tentativa {a.tentativa}
+                </button>
+              ))}
+              {meusAtrasos.length > 8 && (
+                <span className="text-xs text-destructive/70 self-center">+{meusAtrasos.length - 8} mais</span>
+              )}
+            </div>
+          </motion.div>
+        )}
+
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard
