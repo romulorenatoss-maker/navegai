@@ -1275,6 +1275,57 @@ export default function LeadsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* ─── Duplicate Alert Dialog ────────────────── */}
+      <Dialog open={!!dupeAlert} onOpenChange={(o) => !o && setDupeAlert(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="w-5 h-5" /> Registro Duplicado Detectado
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Alert variant="destructive" className="border-amber-300 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Este registro já existe no sistema</AlertTitle>
+              <AlertDescription className="text-sm">{dupeAlert?.message}</AlertDescription>
+            </Alert>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setDupeAlert(null)}>Cancelar</Button>
+            {dupeAlert?.type === "lead_phone" && dupeAlert.leadId && (
+              <Button
+                onClick={() => {
+                  const lead = allLeads.find((l) => l.id === dupeAlert.leadId);
+                  if (lead) openLeadWithTransfer(lead);
+                  setDupeAlert(null);
+                  setShowCreate(false);
+                }}
+                className="press-effect"
+              >
+                Assumir Lead Existente
+              </Button>
+            )}
+            {dupeAlert?.type === "cliente_phone" && (
+              <Button
+                variant="secondary"
+                onClick={() => { setDupeAlert(null); setShowCreate(false); }}
+                className="press-effect"
+              >
+                OK, Entendi
+              </Button>
+            )}
+            {dupeAlert?.type === "cpf" && (
+              <Button
+                variant="secondary"
+                onClick={() => setDupeAlert(null)}
+                className="press-effect"
+              >
+                OK, Entendi
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
