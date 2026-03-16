@@ -1408,6 +1408,45 @@ export default function LeadsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Finalize Dialog (all attempts exhausted) */}
+      <Dialog open={showFinalize} onOpenChange={setShowFinalize}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-600" /> Tentativas Finalizadas
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Todas as <span className="font-semibold">{maxTentativas}</span> tentativas de contato com{" "}
+              <span className="font-semibold">{selectedLead?.nome}</span> foram realizadas sem sucesso.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              O que deseja fazer com este lead?
+            </p>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setShowFinalize(false)}>Cancelar</Button>
+            {fluxoConfig?.permitir_reiniciar_rotina !== false && (
+              <Button
+                variant="secondary"
+                onClick={() => handleFinalizeAction("reiniciar")}
+                className="press-effect"
+              >
+                <RefreshCw className="w-4 h-4 mr-1.5" /> Voltar para Fila
+              </Button>
+            )}
+            <Button
+              variant="destructive"
+              onClick={() => handleFinalizeAction("arquivar")}
+              className="press-effect"
+            >
+              <Trash2 className="w-4 h-4 mr-1.5" /> Arquivar Lead
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Duplicate Alert Dialog */}
       <Dialog open={!!dupeAlert} onOpenChange={o => !o && setDupeAlert(null)}>
         <DialogContent className="sm:max-w-md">
