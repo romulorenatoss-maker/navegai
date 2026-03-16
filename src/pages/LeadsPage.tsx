@@ -217,6 +217,19 @@ export default function LeadsPage() {
     },
   });
 
+  const { data: fluxoConfig } = useQuery({
+    queryKey: ["configuracao-fluxo-leads"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("configuracao_fluxo_leads")
+        .select("*")
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { quantidade_tentativas: number; permitir_reiniciar_rotina: boolean } | null;
+    },
+  });
+
   // All lead contacts for queue building
   const activeLeadIds = allLeads.filter(l => ["novo", "em_contato", "interessado"].includes(l.status_lead)).map(l => l.id);
 
