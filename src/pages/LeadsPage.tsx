@@ -134,6 +134,15 @@ export default function LeadsPage() {
     nome: "", cpf: "", rg: "", nome_mae: "", endereco: "", numero: "", cep: "", cidade: "", referencia: "",
   });
 
+  // Duplicate alert state
+  const [dupeAlert, setDupeAlert] = useState<{
+    type: "lead_phone" | "cliente_phone" | "cpf";
+    message: string;
+    leadId?: string;
+    clienteId?: string;
+    clienteNome?: string;
+  } | null>(null);
+
   // ─── Queries ──────────────────────────────────────
   const { data: allLeads = [], isLoading: loadingLeads } = useQuery({
     queryKey: ["leads-list"],
