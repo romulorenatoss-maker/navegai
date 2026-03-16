@@ -13,6 +13,7 @@ const allNavSections = [
     title: "Principal",
     items: [
       { to: "/", icon: LayoutDashboard, label: "Dashboard OS" },
+      { to: "/leads/dashboard", icon: LayoutGrid, label: "Dashboard de Leads" },
     ],
   },
   {
