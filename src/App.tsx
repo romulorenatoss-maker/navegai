@@ -23,6 +23,9 @@ import DesempenhoColaboradorPage from "./pages/DesempenhoColaboradorPage";
 import LeadsPage from "./pages/LeadsPage";
 import FilaLeadsPage from "./pages/FilaLeadsPage";
 import DashboardLeadsPage from "./pages/DashboardLeadsPage";
+import RotinaTentativasPage from "./pages/RotinaTentativasPage";
+import FilaTarefasLeadsPage from "./pages/FilaTarefasLeadsPage";
+import LeadsFinalizadosPage from "./pages/LeadsFinalizadosPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
