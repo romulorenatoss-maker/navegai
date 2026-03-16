@@ -22,6 +22,7 @@ import RelatoriosPage from "./pages/RelatoriosPage";
 import DesempenhoColaboradorPage from "./pages/DesempenhoColaboradorPage";
 import LeadsPage from "./pages/LeadsPage";
 import FilaLeadsPage from "./pages/FilaLeadsPage";
+import DashboardLeadsPage from "./pages/DashboardLeadsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
