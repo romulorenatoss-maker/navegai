@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  Search, Plus, Phone, User, History, ArrowRight, Trash2,
+  Search, Plus, Phone, User, Users, History, ArrowRight, Trash2,
   MessageSquare, PhoneCall, Clock, UserCheck, RefreshCw, Loader2,
 } from "lucide-react";
 
