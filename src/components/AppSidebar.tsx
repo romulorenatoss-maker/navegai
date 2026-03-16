@@ -40,6 +40,12 @@ const allNavSections = [
     ],
   },
   {
+    title: "Leads",
+    items: [
+      { to: "/leads", icon: UserPlus, label: "Gestão de Leads" },
+    ],
+  },
+  {
     title: "Sistema",
     items: [
       { to: "/relatorios", icon: BarChart3, label: "Relatórios" },

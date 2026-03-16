@@ -58,6 +58,7 @@ const App = () => (
               <Route path="/cadastros/servicos" element={<TiposServicoPage />} />
               
               <Route path="/relatorios" element={<RelatoriosPage />} />
+              <Route path="/leads" element={<LeadsPage />} />
               <Route path="/desempenho" element={<DesempenhoColaboradorPage />} />
               <Route path="/auditoria" element={<PlaceholderPage title="Auditoria" description="Registro completo de todas as ações do sistema." />} />
               <Route path="/configuracoes" element={<PlaceholderPage title="Configurações" description="Configurações gerais do sistema." />} />
