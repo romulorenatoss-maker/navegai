@@ -483,6 +483,36 @@ export type Database = {
           },
         ]
       }
+      configuracao_fluxo_leads: {
+        Row: {
+          acao_apos_finalizar_tentativas: string
+          acao_quando_atrasar: string
+          created_at: string
+          id: string
+          permitir_reiniciar_rotina: boolean
+          quantidade_tentativas: number
+          updated_at: string
+        }
+        Insert: {
+          acao_apos_finalizar_tentativas?: string
+          acao_quando_atrasar?: string
+          created_at?: string
+          id?: string
+          permitir_reiniciar_rotina?: boolean
+          quantidade_tentativas?: number
+          updated_at?: string
+        }
+        Update: {
+          acao_apos_finalizar_tentativas?: string
+          acao_quando_atrasar?: string
+          created_at?: string
+          id?: string
+          permitir_reiniciar_rotina?: boolean
+          quantidade_tentativas?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inconsistencias_vinculadas: {
         Row: {
           avaliacao_id: string | null
@@ -672,6 +702,57 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_tarefas_contato: {
+        Row: {
+          created_at: string
+          data_contato: string
+          data_criacao: string
+          id: string
+          lead_id: string
+          periodo: string
+          responsavel_id: string | null
+          status: string
+          tentativa: number
+        }
+        Insert: {
+          created_at?: string
+          data_contato?: string
+          data_criacao?: string
+          id?: string
+          lead_id: string
+          periodo?: string
+          responsavel_id?: string | null
+          status?: string
+          tentativa?: number
+        }
+        Update: {
+          created_at?: string
+          data_contato?: string
+          data_criacao?: string
+          id?: string
+          lead_id?: string
+          periodo?: string
+          responsavel_id?: string | null
+          status?: string
+          tentativa?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_tarefas_contato_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_tarefas_contato_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1192,6 +1273,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      rotina_tentativas_leads: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          dias_apos_anterior: number
+          id: string
+          periodo_contato: string
+          prioridade: string
+          tentativa_numero: number
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          dias_apos_anterior?: number
+          id?: string
+          periodo_contato?: string
+          prioridade?: string
+          tentativa_numero: number
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          dias_apos_anterior?: number
+          id?: string
+          periodo_contato?: string
+          prioridade?: string
+          tentativa_numero?: number
+        }
+        Relationships: []
       }
       sessoes_usuario: {
         Row: {
