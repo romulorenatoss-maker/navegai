@@ -317,6 +317,16 @@ export default function LeadsPage() {
 
       return { lead, tentativaAtual, proximoContato, ultimaInteracao };
     }).sort((a, b) => {
+      const now = Date.now();
+      // Scheduled returns that have arrived get top priority
+      const aScheduled = a.lead.agendamento_retorno ? new Date(a.lead.agendamento_retorno).getTime() : null;
+      const bScheduled = b.lead.agendamento_retorno ? new Date(b.lead.agendamento_retorno).getTime() : null;
+      const aReady = aScheduled && aScheduled <= now;
+      const bReady = bScheduled && bScheduled <= now;
+      if (aReady && !bReady) return -1;
+      if (!aReady && bReady) return 1;
+      if (aReady && bReady) return aScheduled! - bScheduled!;
+
       // Leads without interactions first (newest leads), then by next contact date
       if (!a.ultimaInteracao && b.ultimaInteracao) return -1;
       if (a.ultimaInteracao && !b.ultimaInteracao) return 1;
