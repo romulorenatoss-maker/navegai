@@ -363,6 +363,68 @@ export default function LeadsPage() {
       if (!createName.trim() || !createPhone.trim()) throw new Error("Nome e telefone são obrigatórios.");
       if (!profile) throw new Error("Perfil não encontrado.");
 
+      const phoneNorm = normalizePhone(createPhone);
+      if (phoneNorm.length < 8) throw new Error("Telefone inválido.");
+
+      // ── Duplicate phone check in lead_contatos ──
+      const { data: existingLeadContatos } = await supabase
+        .from("lead_contatos")
+        .select("lead_id, valor")
+        .eq("tipo_contato", "telefone");
+      const matchedLeadContato = (existingLeadContatos || []).find(
+        (c) => normalizePhone(c.valor) === phoneNorm
+      );
+      if (matchedLeadContato) {
+        // Find the lead and check if active
+        const { data: existingLead } = await supabase
+          .from("leads")
+          .select("*")
+          .eq("id", matchedLeadContato.lead_id)
+          .not("status_lead", "in", '("convertido","perdido","arquivado")')
+          .single();
+        if (existingLead) {
+          // Transfer and open existing lead
+          await supabase.from("leads").update({ responsavel_id: profile.id }).eq("id", existingLead.id);
+          await supabase.from("lead_historico").insert({
+            lead_id: existingLead.id,
+            usuario_id: profile.id,
+            tipo_evento: "transferencia_automatica",
+            descricao: "Lead assumido automaticamente por telefone existente",
+          });
+          // Set state to open existing lead
+          setShowCreate(false);
+          setSelectedLead({ ...existingLead, responsavel_id: profile.id });
+          setDetailTab("info");
+          queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+          throw new Error("__DUPLICATE_LEAD__");
+        }
+      }
+
+      // ── Duplicate phone check in cliente_contatos ──
+      const { data: existingClienteContatos } = await supabase
+        .from("cliente_contatos")
+        .select("cliente_id, valor, tipo")
+        .eq("tipo", "movel");
+      const matchedCliente = (existingClienteContatos || []).find(
+        (c) => normalizePhone(c.valor) === phoneNorm
+      );
+      if (matchedCliente) {
+        const { data: cliente } = await supabase
+          .from("clientes")
+          .select("id, nome, cpf")
+          .eq("id", matchedCliente.cliente_id)
+          .single();
+        if (cliente) {
+          setDupeAlert({
+            type: "cliente_phone",
+            message: `Este telefone já pertence ao cliente "${cliente.nome}" (CPF: ${cliente.cpf || "N/A"}).`,
+            clienteId: cliente.id,
+            clienteNome: cliente.nome,
+          });
+          throw new Error("__DUPLICATE_CLIENTE__");
+        }
+      }
+
       // Create lead
       const { data: newLead, error: e1 } = await supabase
         .from("leads")
