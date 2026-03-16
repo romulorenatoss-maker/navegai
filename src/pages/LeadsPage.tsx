@@ -17,8 +17,11 @@ import { ptBR } from "date-fns/locale";
 import {
   Search, Plus, Phone, User, Users, History, ArrowRight, Trash2,
   MessageSquare, PhoneCall, Clock, UserCheck, RefreshCw, Loader2, UserPlus, AlertTriangle,
-  ListOrdered, Send, FileText, ChevronRight,
+  ListOrdered, Send, FileText, ChevronRight, CalendarClock, CalendarIcon,
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { applyPhoneMask, normalizePhone, isValidPhone, getPhoneTypeLabel } from "@/lib/phone-utils";
