@@ -227,10 +227,9 @@ export default function LeadsPage() {
     }
     setSearching(true);
     try {
-      // Search by phone in lead_contatos
-      const phoneDigits = term.replace(/\D/g, "");
+      const phoneDigits = normalizePhone(term);
 
-      // Also search by name
+      // Search by name in leads
       const { data: byName, error: e1 } = await supabase
         .from("leads")
         .select("*")
@@ -239,14 +238,40 @@ export default function LeadsPage() {
 
       let byPhoneLeadIds: string[] = [];
       if (phoneDigits.length >= 4) {
-        const { data: contatos, error: e2 } = await supabase
+        // Search lead_contatos
+        const { data: leadConts, error: e2 } = await supabase
           .from("lead_contatos")
           .select("lead_id, valor")
           .eq("tipo_contato", "telefone");
         if (e2) throw e2;
-        byPhoneLeadIds = (contatos || [])
-          .filter((c) => c.valor.replace(/\D/g, "").includes(phoneDigits))
+        byPhoneLeadIds = (leadConts || [])
+          .filter((c) => normalizePhone(c.valor).includes(phoneDigits))
           .map((c) => c.lead_id);
+
+        // Also search cliente_contatos (global phone search)
+        const { data: clienteConts } = await supabase
+          .from("cliente_contatos")
+          .select("cliente_id, valor, tipo")
+          .eq("tipo", "movel");
+        const matchedClienteIds = (clienteConts || [])
+          .filter((c) => normalizePhone(c.valor).includes(phoneDigits))
+          .map((c) => c.cliente_id);
+
+        if (matchedClienteIds.length > 0) {
+          const { data: matchedClientes } = await supabase
+            .from("clientes")
+            .select("id, nome, cpf")
+            .in("id", matchedClienteIds);
+          if (matchedClientes && matchedClientes.length > 0) {
+            const c = matchedClientes[0];
+            setDupeAlert({
+              type: "cliente_phone",
+              message: `Este telefone já pertence ao cliente "${c.nome}" (CPF: ${c.cpf || "N/A"}).`,
+              clienteId: c.id,
+              clienteNome: c.nome,
+            });
+          }
+        }
       }
 
       // Merge results
@@ -267,7 +292,6 @@ export default function LeadsPage() {
         .in("id", Array.from(allIds));
       if (e3) throw e3;
 
-      // Fetch contatos for results
       const { data: contatos } = await supabase
         .from("lead_contatos")
         .select("*")
