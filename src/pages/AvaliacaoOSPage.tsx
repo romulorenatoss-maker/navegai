@@ -4,7 +4,7 @@ import { markAuditOnlyAndCalculateScore } from "@/hooks/useInconsistencyDetectio
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, AlertTriangle, Loader2, ChevronRight, ChevronLeft,
-  Check, Clock, Trash2, Eye, Users, MessageSquare, Camera, X, Image as ImageIcon, Lock, Download, Pencil, Save
+  Check, Clock, Trash2, Eye, Users, User, Phone, MessageSquare, Camera, X, Image as ImageIcon, Lock, Download, Pencil, Save
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import MinhasAvaliacoesPendentes from "@/components/MinhasAvaliacoesPendentes";
