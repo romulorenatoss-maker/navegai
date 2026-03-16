@@ -209,6 +209,33 @@ export type Database = {
           },
         ]
       }
+      cadencia_tentativas: {
+        Row: {
+          created_at: string
+          dias_apos: number
+          id: string
+          numero_tentativa: number
+          periodo: string
+          prioridade: number
+        }
+        Insert: {
+          created_at?: string
+          dias_apos?: number
+          id?: string
+          numero_tentativa: number
+          periodo: string
+          prioridade?: number
+        }
+        Update: {
+          created_at?: string
+          dias_apos?: number
+          id?: string
+          numero_tentativa?: number
+          periodo?: string
+          prioridade?: number
+        }
+        Relationships: []
+      }
       checklist_itens: {
         Row: {
           checklist_id: string
@@ -340,6 +367,41 @@ export type Database = {
           },
         ]
       }
+      cliente_contatos: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          id: string
+          tem_whatsapp: boolean
+          tipo: string
+          valor: string
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          id?: string
+          tem_whatsapp?: boolean
+          tipo: string
+          valor: string
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          id?: string
+          tem_whatsapp?: boolean
+          tipo?: string
+          valor?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cliente_contatos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clientes: {
         Row: {
           cpf: string | null
@@ -461,6 +523,182 @@ export type Database = {
             columns: ["pergunta_b_id"]
             isOneToOne: false
             referencedRelation: "perguntas_avaliacao"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_contatos: {
+        Row: {
+          created_at: string
+          id: string
+          lead_id: string
+          tem_whatsapp: boolean
+          tipo_contato: string
+          valor: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lead_id: string
+          tem_whatsapp?: boolean
+          tipo_contato: string
+          valor: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lead_id?: string
+          tem_whatsapp?: boolean
+          tipo_contato?: string
+          valor?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_contatos_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_historico: {
+        Row: {
+          created_at: string
+          data_evento: string
+          descricao: string | null
+          id: string
+          lead_id: string
+          tipo_evento: string
+          usuario_id: string
+        }
+        Insert: {
+          created_at?: string
+          data_evento?: string
+          descricao?: string | null
+          id?: string
+          lead_id: string
+          tipo_evento: string
+          usuario_id: string
+        }
+        Update: {
+          created_at?: string
+          data_evento?: string
+          descricao?: string | null
+          id?: string
+          lead_id?: string
+          tipo_evento?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_historico_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_historico_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_interacoes: {
+        Row: {
+          colaborador_id: string
+          created_at: string
+          data_interacao: string
+          id: string
+          lead_id: string
+          numero_utilizado: string | null
+          resultado: string | null
+          tipo_contato: string
+        }
+        Insert: {
+          colaborador_id: string
+          created_at?: string
+          data_interacao?: string
+          id?: string
+          lead_id: string
+          numero_utilizado?: string | null
+          resultado?: string | null
+          tipo_contato: string
+        }
+        Update: {
+          colaborador_id?: string
+          created_at?: string
+          data_interacao?: string
+          id?: string
+          lead_id?: string
+          numero_utilizado?: string | null
+          resultado?: string | null
+          tipo_contato?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_interacoes_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_interacoes_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          created_at: string
+          data_criacao: string
+          id: string
+          nome: string
+          plano_id: string | null
+          responsavel_id: string | null
+          status_lead: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_criacao?: string
+          id?: string
+          nome: string
+          plano_id?: string | null
+          responsavel_id?: string | null
+          status_lead?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_criacao?: string
+          id?: string
+          nome?: string
+          plano_id?: string | null
+          responsavel_id?: string | null
+          status_lead?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_plano_id_fkey"
+            columns: ["plano_id"]
+            isOneToOne: false
+            referencedRelation: "planos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -724,6 +962,30 @@ export type Database = {
           },
         ]
       }
+      planos: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          id: string
+          nome_plano: string
+          velocidade: string | null
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome_plano: string
+          velocidade?: string | null
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome_plano?: string
+          velocidade?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           ativo: boolean
@@ -770,6 +1032,54 @@ export type Database = {
             columns: ["setor_id"]
             isOneToOne: false
             referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      registro_atraso_tentativa: {
+        Row: {
+          colaborador_id: string
+          created_at: string
+          data_programada: string
+          data_registro: string
+          id: string
+          lead_id: string
+          periodo: string
+          tentativa: number
+        }
+        Insert: {
+          colaborador_id: string
+          created_at?: string
+          data_programada: string
+          data_registro?: string
+          id?: string
+          lead_id: string
+          periodo: string
+          tentativa: number
+        }
+        Update: {
+          colaborador_id?: string
+          created_at?: string
+          data_programada?: string
+          data_registro?: string
+          id?: string
+          lead_id?: string
+          periodo?: string
+          tentativa?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registro_atraso_tentativa_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registro_atraso_tentativa_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]
