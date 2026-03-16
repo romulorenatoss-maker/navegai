@@ -1022,10 +1022,21 @@ export default function LeadsPage() {
                           </div>
                         </div>
                         <div className="ml-5 mt-1 flex items-center gap-1">
-                          <Clock className={`w-2.5 h-2.5 ${isOverdue ? "text-destructive" : "text-muted-foreground"}`} />
-                          <span className={`text-[10px] ${isOverdue ? "text-destructive font-medium" : "text-muted-foreground"}`}>
-                            {item.proximoContato ? fmtDateShort(item.proximoContato) : "Sem agendamento"}
-                          </span>
+                          {hasSchedule ? (
+                            <>
+                              <CalendarClock className={`w-2.5 h-2.5 ${scheduleReady ? "text-primary" : "text-muted-foreground"}`} />
+                              <span className={`text-[10px] ${scheduleReady ? "text-primary font-semibold" : "text-muted-foreground"}`}>
+                                {scheduleReady ? "⬆ Retorno agora" : `Retorno: ${fmtDateShort(new Date(item.lead.agendamento_retorno!))}`}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <Clock className={`w-2.5 h-2.5 ${isOverdue ? "text-destructive" : "text-muted-foreground"}`} />
+                              <span className={`text-[10px] ${isOverdue ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                                {item.proximoContato ? fmtDateShort(item.proximoContato) : "Sem agendamento"}
+                              </span>
+                            </>
+                          )}
                         </div>
                       </button>
                     );
