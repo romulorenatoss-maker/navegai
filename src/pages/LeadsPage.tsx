@@ -1211,7 +1211,7 @@ export default function LeadsPage() {
                 </CardHeader>
                 <CardContent className="p-3 space-y-2">
                   <Button size="sm" className="w-full press-effect" onClick={() => setShowInteraction(true)}>
-                    <PhoneCall className="w-4 h-4 mr-1.5" /> Registrar Tentativa
+                    <PhoneCall className="w-4 h-4 mr-1.5" /> Registrar {selectedQueueInfo?.tentativaAtual || 1}ª Tentativa
                   </Button>
                   {selectedLead.status_lead !== "convertido" ? (
                     <Button size="sm" variant="secondary" className="w-full press-effect" onClick={openConversion}>
