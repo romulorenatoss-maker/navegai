@@ -70,8 +70,7 @@ interface Plano {
   descricao: string | null;
 }
 
-// Normalize phone: strip all non-digits
-const normalizePhone = (phone: string) => phone.replace(/\D/g, "");
+// normalizePhone imported from @/lib/phone-utils
 
 // ─── Status helpers ────────────────────────────────────
 const STATUS_OPTIONS = [
