@@ -136,7 +136,9 @@ export default function ImportadorLeadsPage() {
         // Auto-create first task
         if (firstRotina) {
           const nextDate = new Date();
-          nextDate.setDate(nextDate.getDate() + (firstRotina.dias_apos_anterior || 0));
+          // Primeira tentativa sempre no dia seguinte para evitar atraso no mesmo dia
+          const diasAdicionais = Math.max(firstRotina.dias_apos_anterior || 0, 1);
+          nextDate.setDate(nextDate.getDate() + diasAdicionais);
           await supabase.from("lead_tarefas_contato").insert({
             lead_id: newLead.id,
             tentativa: 1,
