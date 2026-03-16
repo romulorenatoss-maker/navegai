@@ -780,6 +780,7 @@ export type Database = {
       }
       leads: {
         Row: {
+          agendamento_retorno: string | null
           cliente_id: string | null
           created_at: string
           data_criacao: string
@@ -793,6 +794,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          agendamento_retorno?: string | null
           cliente_id?: string | null
           created_at?: string
           data_criacao?: string
@@ -806,6 +808,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          agendamento_retorno?: string | null
           cliente_id?: string | null
           created_at?: string
           data_criacao?: string
