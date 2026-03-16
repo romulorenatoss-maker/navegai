@@ -544,12 +544,32 @@ export default function LeadsPage() {
         cliente_id: newCliente.id,
       }).eq("id", selectedLead.id);
 
+      // Auto-create OS for the new client (aguardando_numero)
+      // Find tipo_servico "Venda / Instalação"
+      const { data: tipoVenda } = await supabase
+        .from("tipos_servico")
+        .select("id")
+        .or("nome.ilike.%venda%,nome.ilike.%instalac%")
+        .limit(1)
+        .single();
+
+      const { data: newOS, error: osErr } = await supabase.from("ordens_servico").insert({
+        cliente_id: newCliente.id,
+        cliente_nome: f.nome.trim(),
+        cliente_cpf: f.cpf.trim(),
+        tipo_servico_id: tipoVenda?.id || null,
+        numero_os: null,
+        status: "aguardando_numero" as any,
+      } as any).select("id, numero_os").single();
+
+      if (osErr) console.warn("Erro ao criar OS automática:", osErr.message);
+
       // Log history
       await supabase.from("lead_historico").insert({
         lead_id: selectedLead.id,
         usuario_id: profile.id,
         tipo_evento: "conversao_cliente",
-        descricao: `Lead convertido em cliente: ${f.nome.trim()} (CPF: ${f.cpf.trim()})`,
+        descricao: `Lead convertido em cliente: ${f.nome.trim()} (CPF: ${f.cpf.trim()})${newOS ? ". OS criada aguardando número." : ""}`,
       });
 
       return newCliente;
