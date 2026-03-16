@@ -1119,8 +1119,16 @@ export default function LeadsPage() {
               <Input
                 placeholder="(00) 00000-0000"
                 value={createPhone}
-                onChange={(e) => setCreatePhone(e.target.value)}
+                onChange={(e) => setCreatePhone(applyPhoneMask(e.target.value))}
               />
+              {normalizePhone(createPhone).length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Tipo detectado: {getPhoneTypeLabel(normalizePhone(createPhone))}
+                  {!isValidPhone(normalizePhone(createPhone)) && normalizePhone(createPhone).length >= 8 && (
+                    <span className="text-destructive ml-2">— formato inválido</span>
+                  )}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Switch checked={createPhoneWhatsapp} onCheckedChange={setCreatePhoneWhatsapp} />
