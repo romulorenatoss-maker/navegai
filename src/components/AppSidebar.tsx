@@ -96,7 +96,7 @@ export function AppSidebar({ userName = "Usuário", onSignOut, onNavigate, isAdm
             <div className="w-7 h-7 rounded-md bg-sidebar-primary flex items-center justify-center shrink-0">
               <span className="text-sidebar-primary-foreground text-xs font-bold">N</span>
             </div>
-            {!collapsed && <span className="font-semibold text-sm whitespace-nowrap">Nexus Ops</span>}
+            {!collapsed && <span className="font-semibold text-sm whitespace-nowrap">Navegai Metricas</span>}
           </div>
           {onToggleCollapse && (
             <button
