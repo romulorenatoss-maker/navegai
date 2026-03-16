@@ -18,9 +18,10 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Search, Plus, Phone, User, Users, History, ArrowRight, Trash2,
-  MessageSquare, PhoneCall, Clock, UserCheck, RefreshCw, Loader2, UserPlus,
+  MessageSquare, PhoneCall, Clock, UserCheck, RefreshCw, Loader2, UserPlus, AlertTriangle,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // ─── Types ──────────────────────────────────────────────
 interface Lead {
@@ -68,6 +69,9 @@ interface Plano {
   descricao: string | null;
 }
 
+// Normalize phone: strip all non-digits
+const normalizePhone = (phone: string) => phone.replace(/\D/g, "");
+
 // ─── Status helpers ────────────────────────────────────
 const STATUS_OPTIONS = [
   { value: "novo", label: "Novo", color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
@@ -85,11 +89,18 @@ function statusBadge(status: string) {
 const EVENTO_LABELS: Record<string, string> = {
   criacao: "Criação do Lead",
   tentativa_contato: "Tentativa de Contato",
+  tentativa_registrada: "Tentativa Registrada",
   transferencia_automatica: "Transferência Automática",
   conversao_cliente: "Conversão em Cliente",
   alteracao_status: "Alteração de Status",
   contato_adicionado: "Contato Adicionado",
   contato_removido: "Contato Removido",
+  telefone_existente: "Telefone Existente",
+  cliente_existente: "Cliente Existente",
+  vinculo_cliente_existente: "Vínculo c/ Cliente",
+  tentativas_finalizadas: "Tentativas Finalizadas",
+  rotina_reiniciada: "Rotina Reiniciada",
+  lead_arquivado: "Lead Arquivado",
 };
 
 // ─── Component ──────────────────────────────────────────
@@ -129,6 +140,15 @@ export default function LeadsPage() {
   const [convForm, setConvForm] = useState({
     nome: "", cpf: "", rg: "", nome_mae: "", endereco: "", numero: "", cep: "", cidade: "", referencia: "",
   });
+
+  // Duplicate alert state
+  const [dupeAlert, setDupeAlert] = useState<{
+    type: "lead_phone" | "cliente_phone" | "cpf";
+    message: string;
+    leadId?: string;
+    clienteId?: string;
+    clienteNome?: string;
+  } | null>(null);
 
   // ─── Queries ──────────────────────────────────────
   const { data: allLeads = [], isLoading: loadingLeads } = useQuery({
@@ -214,10 +234,9 @@ export default function LeadsPage() {
     }
     setSearching(true);
     try {
-      // Search by phone in lead_contatos
-      const phoneDigits = term.replace(/\D/g, "");
+      const phoneDigits = normalizePhone(term);
 
-      // Also search by name
+      // Search by name in leads
       const { data: byName, error: e1 } = await supabase
         .from("leads")
         .select("*")
@@ -226,14 +245,40 @@ export default function LeadsPage() {
 
       let byPhoneLeadIds: string[] = [];
       if (phoneDigits.length >= 4) {
-        const { data: contatos, error: e2 } = await supabase
+        // Search lead_contatos
+        const { data: leadConts, error: e2 } = await supabase
           .from("lead_contatos")
           .select("lead_id, valor")
           .eq("tipo_contato", "telefone");
         if (e2) throw e2;
-        byPhoneLeadIds = (contatos || [])
-          .filter((c) => c.valor.replace(/\D/g, "").includes(phoneDigits))
+        byPhoneLeadIds = (leadConts || [])
+          .filter((c) => normalizePhone(c.valor).includes(phoneDigits))
           .map((c) => c.lead_id);
+
+        // Also search cliente_contatos (global phone search)
+        const { data: clienteConts } = await supabase
+          .from("cliente_contatos")
+          .select("cliente_id, valor, tipo")
+          .eq("tipo", "movel");
+        const matchedClienteIds = (clienteConts || [])
+          .filter((c) => normalizePhone(c.valor).includes(phoneDigits))
+          .map((c) => c.cliente_id);
+
+        if (matchedClienteIds.length > 0) {
+          const { data: matchedClientes } = await supabase
+            .from("clientes")
+            .select("id, nome, cpf")
+            .in("id", matchedClienteIds);
+          if (matchedClientes && matchedClientes.length > 0) {
+            const c = matchedClientes[0];
+            setDupeAlert({
+              type: "cliente_phone",
+              message: `Este telefone já pertence ao cliente "${c.nome}" (CPF: ${c.cpf || "N/A"}).`,
+              clienteId: c.id,
+              clienteNome: c.nome,
+            });
+          }
+        }
       }
 
       // Merge results
@@ -254,7 +299,6 @@ export default function LeadsPage() {
         .in("id", Array.from(allIds));
       if (e3) throw e3;
 
-      // Fetch contatos for results
       const { data: contatos } = await supabase
         .from("lead_contatos")
         .select("*")
@@ -326,6 +370,68 @@ export default function LeadsPage() {
       if (!createName.trim() || !createPhone.trim()) throw new Error("Nome e telefone são obrigatórios.");
       if (!profile) throw new Error("Perfil não encontrado.");
 
+      const phoneNorm = normalizePhone(createPhone);
+      if (phoneNorm.length < 8) throw new Error("Telefone inválido.");
+
+      // ── Duplicate phone check in lead_contatos ──
+      const { data: existingLeadContatos } = await supabase
+        .from("lead_contatos")
+        .select("lead_id, valor")
+        .eq("tipo_contato", "telefone");
+      const matchedLeadContato = (existingLeadContatos || []).find(
+        (c) => normalizePhone(c.valor) === phoneNorm
+      );
+      if (matchedLeadContato) {
+        // Find the lead and check if active
+        const { data: existingLead } = await supabase
+          .from("leads")
+          .select("*")
+          .eq("id", matchedLeadContato.lead_id)
+          .not("status_lead", "in", '("convertido","perdido","arquivado")')
+          .single();
+        if (existingLead) {
+          // Transfer and open existing lead
+          await supabase.from("leads").update({ responsavel_id: profile.id }).eq("id", existingLead.id);
+          await supabase.from("lead_historico").insert({
+            lead_id: existingLead.id,
+            usuario_id: profile.id,
+            tipo_evento: "transferencia_automatica",
+            descricao: "Lead assumido automaticamente por telefone existente",
+          });
+          // Set state to open existing lead
+          setShowCreate(false);
+          setSelectedLead({ ...existingLead, responsavel_id: profile.id });
+          setDetailTab("info");
+          queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+          throw new Error("__DUPLICATE_LEAD__");
+        }
+      }
+
+      // ── Duplicate phone check in cliente_contatos ──
+      const { data: existingClienteContatos } = await supabase
+        .from("cliente_contatos")
+        .select("cliente_id, valor, tipo")
+        .eq("tipo", "movel");
+      const matchedCliente = (existingClienteContatos || []).find(
+        (c) => normalizePhone(c.valor) === phoneNorm
+      );
+      if (matchedCliente) {
+        const { data: cliente } = await supabase
+          .from("clientes")
+          .select("id, nome, cpf")
+          .eq("id", matchedCliente.cliente_id)
+          .single();
+        if (cliente) {
+          setDupeAlert({
+            type: "cliente_phone",
+            message: `Este telefone já pertence ao cliente "${cliente.nome}" (CPF: ${cliente.cpf || "N/A"}).`,
+            clienteId: cliente.id,
+            clienteNome: cliente.nome,
+          });
+          throw new Error("__DUPLICATE_CLIENTE__");
+        }
+      }
+
       // Create lead
       const { data: newLead, error: e1 } = await supabase
         .from("leads")
@@ -394,7 +500,17 @@ export default function LeadsPage() {
       setSelectedLead(newLead);
       setDetailTab("info");
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err: any) => {
+      // Suppress duplicate messages (handled via UI)
+      if (err.message === "__DUPLICATE_LEAD__") {
+        toast.info("Lead existente aberto automaticamente e transferido para você.");
+        return;
+      }
+      if (err.message === "__DUPLICATE_CLIENTE__") {
+        return; // Alert dialog already shown
+      }
+      toast.error(err.message);
+    },
   });
 
   // ─── Add contact ──────────────────────────────────
@@ -539,6 +655,43 @@ export default function LeadsPage() {
       if (!f.cidade.trim()) throw new Error("Cidade é obrigatória.");
       if (!f.referencia.trim()) throw new Error("Referência é obrigatória.");
 
+      // ── CPF duplicate check ──
+      const cpfNorm = f.cpf.trim().replace(/\D/g, "");
+      if (cpfNorm.length >= 11) {
+        const { data: existingCliente } = await supabase
+          .from("clientes")
+          .select("id, nome, cpf")
+          .eq("cpf", f.cpf.trim())
+          .maybeSingle();
+        if (existingCliente) {
+          // Link lead to existing client instead of creating new
+          await supabase.from("leads").update({
+            status_lead: "convertido",
+            cliente_id: existingCliente.id,
+          }).eq("id", selectedLead.id);
+
+          await supabase.from("lead_historico").insert({
+            lead_id: selectedLead.id,
+            usuario_id: profile.id,
+            tipo_evento: "vinculo_cliente_existente",
+            descricao: `Lead vinculado ao cliente existente "${existingCliente.nome}" (CPF: ${existingCliente.cpf})`,
+          });
+
+          setDupeAlert({
+            type: "cpf",
+            message: `CPF já cadastrado para o cliente "${existingCliente.nome}". O lead foi vinculado ao cliente existente.`,
+            clienteId: existingCliente.id,
+            clienteNome: existingCliente.nome,
+          });
+
+          setShowConvert(false);
+          setSelectedLead((prev) => prev ? { ...prev, status_lead: "convertido" } : null);
+          queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+          refetchHistorico();
+          throw new Error("__DUPLICATE_CPF__");
+        }
+      }
+
       // Create client with full data
       const { data: newCliente, error: e1 } = await supabase.from("clientes").insert({
         nome: f.nome.trim(),
@@ -608,7 +761,13 @@ export default function LeadsPage() {
       queryClient.invalidateQueries({ queryKey: ["leads-list"] });
       refetchHistorico();
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err: any) => {
+      if (err.message === "__DUPLICATE_CPF__") {
+        toast.info("Lead vinculado ao cliente existente.");
+        return;
+      }
+      toast.error(err.message);
+    },
   });
 
   // Helper: get profile name
@@ -1120,6 +1279,57 @@ export default function LeadsPage() {
               {convertMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <UserPlus className="w-4 h-4 mr-1" />}
               Converter em Cliente
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* ─── Duplicate Alert Dialog ────────────────── */}
+      <Dialog open={!!dupeAlert} onOpenChange={(o) => !o && setDupeAlert(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="w-5 h-5" /> Registro Duplicado Detectado
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Alert variant="destructive" className="border-amber-300 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Este registro já existe no sistema</AlertTitle>
+              <AlertDescription className="text-sm">{dupeAlert?.message}</AlertDescription>
+            </Alert>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setDupeAlert(null)}>Cancelar</Button>
+            {dupeAlert?.type === "lead_phone" && dupeAlert.leadId && (
+              <Button
+                onClick={() => {
+                  const lead = allLeads.find((l) => l.id === dupeAlert.leadId);
+                  if (lead) openLeadWithTransfer(lead);
+                  setDupeAlert(null);
+                  setShowCreate(false);
+                }}
+                className="press-effect"
+              >
+                Assumir Lead Existente
+              </Button>
+            )}
+            {dupeAlert?.type === "cliente_phone" && (
+              <Button
+                variant="secondary"
+                onClick={() => { setDupeAlert(null); setShowCreate(false); }}
+                className="press-effect"
+              >
+                OK, Entendi
+              </Button>
+            )}
+            {dupeAlert?.type === "cpf" && (
+              <Button
+                variant="secondary"
+                onClick={() => setDupeAlert(null)}
+                className="press-effect"
+              >
+                OK, Entendi
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
