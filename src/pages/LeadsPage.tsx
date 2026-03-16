@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { applyPhoneMask, normalizePhone, isValidPhone, getPhoneTypeLabel } from "@/lib/phone-utils";
 
 // ─── Types ──────────────────────────────────────────────
 interface Lead {
@@ -69,8 +70,7 @@ interface Plano {
   descricao: string | null;
 }
 
-// Normalize phone: strip all non-digits
-const normalizePhone = (phone: string) => phone.replace(/\D/g, "");
+// normalizePhone imported from @/lib/phone-utils
 
 // ─── Status helpers ────────────────────────────────────
 const STATUS_OPTIONS = [
@@ -521,6 +521,39 @@ export default function LeadsPage() {
       if (!selectedLead || !profile) throw new Error("Erro interno.");
       if (!newPhoneValue.trim()) throw new Error("Informe o valor do contato.");
 
+      if (newPhoneTipo === "telefone") {
+        const digits = normalizePhone(newPhoneValue);
+        if (!isValidPhone(digits)) throw new Error("Número de telefone inválido. Verifique o formato.");
+
+        // Check duplicate in lead_contatos
+        const { data: allLeadPhones } = await supabase
+          .from("lead_contatos")
+          .select("id, lead_id, valor")
+          .eq("tipo_contato", "telefone");
+        const foundInLeads = (allLeadPhones || []).find(
+          (c: any) => normalizePhone(c.valor) === digits
+        );
+        if (foundInLeads) {
+          if (foundInLeads.lead_id === selectedLead.id) {
+            throw new Error("Este número já está cadastrado neste lead.");
+          } else {
+            throw new Error("Este número já está cadastrado em outro lead.");
+          }
+        }
+
+        // Check duplicate in cliente_contatos
+        const { data: allClientePhones } = await supabase
+          .from("cliente_contatos")
+          .select("id, valor")
+          .in("tipo", ["movel", "fixo", "telefone"]);
+        const foundInClientes = (allClientePhones || []).find(
+          (c: any) => normalizePhone(c.valor) === digits
+        );
+        if (foundInClientes) {
+          throw new Error("Este número já está cadastrado em um cliente existente.");
+        }
+      }
+
       const { error } = await supabase.from("lead_contatos").insert({
         lead_id: selectedLead.id,
         tipo_contato: newPhoneTipo,
@@ -657,6 +690,57 @@ export default function LeadsPage() {
       if (!f.cidade.trim()) throw new Error("Cidade é obrigatória.");
       if (!f.referencia.trim()) throw new Error("Referência é obrigatória.");
 
+      // ── Phone duplicate check in cliente_contatos ──
+      const phoneContatos = leadContatos.filter((c) => c.tipo_contato === "telefone");
+      const phoneDigitsArr = phoneContatos.map((c) => normalizePhone(c.valor));
+      
+      if (phoneDigitsArr.length > 0) {
+        const { data: allClientePhones } = await supabase
+          .from("cliente_contatos")
+          .select("id, cliente_id, valor")
+          .in("tipo", ["movel", "fixo", "telefone"]);
+        
+        for (const digits of phoneDigitsArr) {
+          const matchedClienteContato = (allClientePhones || []).find(
+            (c: any) => normalizePhone(c.valor) === digits
+          );
+          if (matchedClienteContato) {
+            // Find the client
+            const { data: existingCliente } = await supabase
+              .from("clientes")
+              .select("id, nome, cpf")
+              .eq("id", matchedClienteContato.cliente_id)
+              .maybeSingle();
+            if (existingCliente) {
+              await supabase.from("leads").update({
+                status_lead: "convertido",
+                cliente_id: existingCliente.id,
+              }).eq("id", selectedLead.id);
+
+              await supabase.from("lead_historico").insert({
+                lead_id: selectedLead.id,
+                usuario_id: profile.id,
+                tipo_evento: "vinculo_cliente_existente",
+                descricao: `Lead vinculado ao cliente existente "${existingCliente.nome}" (telefone já cadastrado)`,
+              });
+
+              setDupeAlert({
+                type: "cpf",
+                message: `Telefone já cadastrado para o cliente "${existingCliente.nome}". O lead foi vinculado ao cliente existente.`,
+                clienteId: existingCliente.id,
+                clienteNome: existingCliente.nome,
+              });
+
+              setShowConvert(false);
+              setSelectedLead((prev) => prev ? { ...prev, status_lead: "convertido" } : null);
+              queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+              refetchHistorico();
+              throw new Error("__DUPLICATE_CPF__");
+            }
+          }
+        }
+      }
+
       // ── CPF duplicate check ──
       const cpfNorm = f.cpf.trim().replace(/\D/g, "");
       if (cpfNorm.length >= 11) {
@@ -666,7 +750,6 @@ export default function LeadsPage() {
           .eq("cpf", f.cpf.trim())
           .maybeSingle();
         if (existingCliente) {
-          // Link lead to existing client instead of creating new
           await supabase.from("leads").update({
             status_lead: "convertido",
             cliente_id: existingCliente.id,
@@ -708,16 +791,25 @@ export default function LeadsPage() {
       }).select("id").single();
       if (e1) throw e1;
 
-      // Copy lead contacts to cliente_contatos
-      const phoneContatos = leadContatos.filter((c) => c.tipo_contato === "telefone");
-      if (phoneContatos.length > 0) {
-        const inserts = phoneContatos.map((c) => ({
-          cliente_id: newCliente.id,
-          tipo: "movel" as const,
-          valor: c.valor,
-          tem_whatsapp: c.tem_whatsapp,
-        }));
-        await supabase.from("cliente_contatos").insert(inserts);
+      // Copy lead contacts to cliente_contatos (skip already existing phones)
+      const leadPhoneContatos = leadContatos.filter((c) => c.tipo_contato === "telefone");
+      if (leadPhoneContatos.length > 0) {
+        const { data: existingClientePhones } = await supabase
+          .from("cliente_contatos")
+          .select("valor")
+          .eq("cliente_id", newCliente.id);
+        const existingNorms = new Set((existingClientePhones || []).map((c: any) => normalizePhone(c.valor)));
+        const newInserts = leadPhoneContatos
+          .filter((c) => !existingNorms.has(normalizePhone(c.valor)))
+          .map((c) => ({
+            cliente_id: newCliente.id,
+            tipo: "movel" as const,
+            valor: c.valor,
+            tem_whatsapp: c.tem_whatsapp,
+          }));
+        if (newInserts.length > 0) {
+          await supabase.from("cliente_contatos").insert(newInserts);
+        }
       }
 
       // Update lead: mark as converted and link to client
@@ -1086,8 +1178,16 @@ export default function LeadsPage() {
               <Input
                 placeholder="(00) 00000-0000"
                 value={createPhone}
-                onChange={(e) => setCreatePhone(e.target.value)}
+                onChange={(e) => setCreatePhone(applyPhoneMask(e.target.value))}
               />
+              {normalizePhone(createPhone).length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Tipo detectado: {getPhoneTypeLabel(normalizePhone(createPhone))}
+                  {!isValidPhone(normalizePhone(createPhone)) && normalizePhone(createPhone).length >= 8 && (
+                    <span className="text-destructive ml-2">— formato inválido</span>
+                  )}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Switch checked={createPhoneWhatsapp} onCheckedChange={setCreatePhoneWhatsapp} />
@@ -1138,8 +1238,18 @@ export default function LeadsPage() {
               <Input
                 placeholder={newPhoneTipo === "telefone" ? "(00) 00000-0000" : "email@exemplo.com"}
                 value={newPhoneValue}
-                onChange={(e) => setNewPhoneValue(e.target.value)}
+                onChange={(e) => setNewPhoneValue(
+                  newPhoneTipo === "telefone" ? applyPhoneMask(e.target.value) : e.target.value
+                )}
               />
+              {newPhoneTipo === "telefone" && normalizePhone(newPhoneValue).length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Tipo detectado: {getPhoneTypeLabel(normalizePhone(newPhoneValue))}
+                  {!isValidPhone(normalizePhone(newPhoneValue)) && normalizePhone(newPhoneValue).length >= 8 && (
+                    <span className="text-destructive ml-2">— formato inválido</span>
+                  )}
+                </p>
+              )}
             </div>
             {newPhoneTipo === "telefone" && (
               <div className="flex items-center gap-2">

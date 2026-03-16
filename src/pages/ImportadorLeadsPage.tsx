@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { normalizePhone, isValidPhone } from "@/lib/phone-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,7 @@ interface ImportResult {
   message?: string;
 }
 
-const normalizePhone = (phone: string) => phone.replace(/\D/g, "");
+// normalizePhone imported from @/lib/phone-utils
 
 function parseCSV(text: string): ImportRow[] {
   const lines = text.trim().split("\n");
