@@ -1291,6 +1291,29 @@ export default function LeadsPage() {
                   <Button size="sm" className="w-full press-effect" onClick={() => setShowInteraction(true)}>
                     <PhoneCall className="w-4 h-4 mr-1.5" /> Registrar {selectedQueueInfo?.tentativaAtual || 1}ª Tentativa
                   </Button>
+                  <Button size="sm" variant="outline" className="w-full press-effect" onClick={() => {
+                    setScheduleDate(undefined);
+                    setScheduleHour("09");
+                    setScheduleMinute("00");
+                    setShowSchedule(true);
+                  }}>
+                    <CalendarClock className="w-4 h-4 mr-1.5" /> Agendar Retorno
+                  </Button>
+                  {selectedLead.agendamento_retorno && (
+                    <div className="p-2 rounded-md bg-muted/50 border text-xs flex items-center gap-1.5">
+                      <CalendarClock className="w-3 h-3 text-primary" />
+                      <span>Retorno agendado: <span className="font-semibold">{fmtDate(selectedLead.agendamento_retorno)}</span></span>
+                      <button
+                        className="ml-auto text-destructive/60 hover:text-destructive text-[10px] underline"
+                        onClick={async () => {
+                          await supabase.from("leads").update({ agendamento_retorno: null } as any).eq("id", selectedLead.id);
+                          setSelectedLead(prev => prev ? { ...prev, agendamento_retorno: null } : null);
+                          queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                          toast.success("Agendamento removido.");
+                        }}
+                      >Remover</button>
+                    </div>
+                  )}
                   {selectedLead.status_lead !== "convertido" ? (
                     <Button size="sm" variant="secondary" className="w-full press-effect" onClick={openConversion}>
                       <UserPlus className="w-4 h-4 mr-1.5" /> Converter em Cliente
