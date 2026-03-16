@@ -428,7 +428,7 @@ export default function LeadsPage() {
       }
     });
 
-    items.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     return items;
   }, [leadHistorico, leadInteracoes]);
 
