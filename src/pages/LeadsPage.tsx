@@ -690,6 +690,57 @@ export default function LeadsPage() {
       if (!f.cidade.trim()) throw new Error("Cidade é obrigatória.");
       if (!f.referencia.trim()) throw new Error("Referência é obrigatória.");
 
+      // ── Phone duplicate check in cliente_contatos ──
+      const phoneContatos = leadContatos.filter((c) => c.tipo_contato === "telefone");
+      const phoneDigitsArr = phoneContatos.map((c) => normalizePhone(c.valor));
+      
+      if (phoneDigitsArr.length > 0) {
+        const { data: allClientePhones } = await supabase
+          .from("cliente_contatos")
+          .select("id, cliente_id, valor")
+          .in("tipo", ["movel", "fixo", "telefone"]);
+        
+        for (const digits of phoneDigitsArr) {
+          const matchedClienteContato = (allClientePhones || []).find(
+            (c: any) => normalizePhone(c.valor) === digits
+          );
+          if (matchedClienteContato) {
+            // Find the client
+            const { data: existingCliente } = await supabase
+              .from("clientes")
+              .select("id, nome, cpf")
+              .eq("id", matchedClienteContato.cliente_id)
+              .maybeSingle();
+            if (existingCliente) {
+              await supabase.from("leads").update({
+                status_lead: "convertido",
+                cliente_id: existingCliente.id,
+              }).eq("id", selectedLead.id);
+
+              await supabase.from("lead_historico").insert({
+                lead_id: selectedLead.id,
+                usuario_id: profile.id,
+                tipo_evento: "vinculo_cliente_existente",
+                descricao: `Lead vinculado ao cliente existente "${existingCliente.nome}" (telefone já cadastrado)`,
+              });
+
+              setDupeAlert({
+                type: "cpf",
+                message: `Telefone já cadastrado para o cliente "${existingCliente.nome}". O lead foi vinculado ao cliente existente.`,
+                clienteId: existingCliente.id,
+                clienteNome: existingCliente.nome,
+              });
+
+              setShowConvert(false);
+              setSelectedLead((prev) => prev ? { ...prev, status_lead: "convertido" } : null);
+              queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+              refetchHistorico();
+              throw new Error("__DUPLICATE_CPF__");
+            }
+          }
+        }
+      }
+
       // ── CPF duplicate check ──
       const cpfNorm = f.cpf.trim().replace(/\D/g, "");
       if (cpfNorm.length >= 11) {
@@ -699,7 +750,6 @@ export default function LeadsPage() {
           .eq("cpf", f.cpf.trim())
           .maybeSingle();
         if (existingCliente) {
-          // Link lead to existing client instead of creating new
           await supabase.from("leads").update({
             status_lead: "convertido",
             cliente_id: existingCliente.id,
