@@ -1349,6 +1349,87 @@ export default function LeadsPage() {
 
       {/* ─── Dialogs ──────────────────────────────── */}
 
+      {/* Schedule Return Dialog */}
+      <Dialog open={showSchedule} onOpenChange={setShowSchedule}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarClock className="w-5 h-5" /> Agendar Retorno — {selectedLead?.nome}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Data do Retorno</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !scheduleDate && "text-muted-foreground")}>
+                    <CalendarIcon className="w-4 h-4 mr-2" />
+                    {scheduleDate ? format(scheduleDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecione a data..."}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={scheduleDate}
+                    onSelect={setScheduleDate}
+                    disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Horário</Label>
+              <div className="flex items-center gap-2">
+                <Select value={scheduleHour} onValueChange={setScheduleHour}>
+                  <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 15 }, (_, i) => i + 7).map(h => (
+                      <SelectItem key={h} value={String(h).padStart(2, "0")}>{String(h).padStart(2, "0")}h</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="text-muted-foreground font-bold">:</span>
+                <Select value={scheduleMinute} onValueChange={setScheduleMinute}>
+                  <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {["00", "15", "30", "45"].map(m => (
+                      <SelectItem key={m} value={m}>{m}min</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSchedule(false)}>Cancelar</Button>
+            <Button
+              disabled={!scheduleDate}
+              onClick={async () => {
+                if (!scheduleDate || !selectedLead || !profile) return;
+                const dt = setMinutes(setHours(scheduleDate, parseInt(scheduleHour)), parseInt(scheduleMinute));
+                const { error } = await supabase.from("leads").update({ agendamento_retorno: dt.toISOString() } as any).eq("id", selectedLead.id);
+                if (error) { toast.error(error.message); return; }
+                await supabase.from("lead_historico").insert({
+                  lead_id: selectedLead.id, usuario_id: profile.id,
+                  tipo_evento: "agendamento_retorno",
+                  descricao: `Retorno agendado para ${format(dt, "dd/MM/yyyy HH:mm", { locale: ptBR })}`,
+                });
+                setSelectedLead(prev => prev ? { ...prev, agendamento_retorno: dt.toISOString() } : null);
+                queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                refetchHistorico();
+                setShowSchedule(false);
+                toast.success(`Retorno agendado para ${format(dt, "dd/MM/yyyy HH:mm", { locale: ptBR })}`);
+              }}
+              className="press-effect"
+            >
+              <CalendarClock className="w-4 h-4 mr-1.5" /> Agendar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Create Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent className="sm:max-w-md">
