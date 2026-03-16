@@ -1324,7 +1324,7 @@ export default function LeadsPage() {
       <Dialog open={showInteraction} onOpenChange={setShowInteraction}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Registrar Tentativa — {selectedLead?.nome}</DialogTitle>
+            <DialogTitle>Registrar {selectedQueueInfo?.tentativaAtual || 1}ª Tentativa — {selectedLead?.nome}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             {selectedQueueInfo && (
