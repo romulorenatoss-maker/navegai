@@ -62,7 +62,7 @@ const allNavSections = [
   {
     title: "Sistema",
     items: [
-      { to: "/relatorios", icon: BarChart3, label: "Relatórios" },
+      { to: "/relatorios", icon: BarChart3, label: "Relatórios de OS" },
     ],
   },
 ];

@@ -1,252 +1,440 @@
-import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { useState, useEffect, useCallback } from "react";
+import * as XLSX from "xlsx";
+import { motion } from "framer-motion";
 import {
-  BarChart3, TrendingUp, Users, Target, Clock, MessageSquare, Loader2,
+  CalendarIcon, Filter, Trash2, Download, Loader2,
+  FileText, Search, Users,
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import AdminPasswordDialog from "@/components/AdminPasswordDialog";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { format, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+interface LeadRow {
+  id: string;
+  nome: string;
+  status_lead: string;
+  origem_lead: string | null;
+  responsavel_nome: string | null;
+  data_criacao: string;
+  telefone: string | null;
+  plano_nome: string | null;
+  repetidor: string | null;
+}
 
 const STATUS_LABELS: Record<string, string> = {
-  novo: "Novo", em_atendimento: "Em Atendimento", convertido: "Convertido",
-  sem_interesse: "Sem Interesse", perdido: "Perdido", arquivado: "Arquivado",
-  aguardando_decisao_avaliador: "Aguardando Decisão",
+  novo: "Novo",
+  em_atendimento: "Em Atendimento",
+  convertido: "Convertido",
+  sem_interesse: "Sem Interesse",
+  perdido: "Perdido",
+  arquivado: "Arquivado",
+  aguardando_decisao_avaliador: "Aguard. Decisão",
+};
+
+const STATUS_BADGE: Record<string, string> = {
+  novo: "border-primary/40 bg-primary/10 text-primary",
+  em_atendimento: "border-warning/40 bg-warning/10 text-warning",
+  convertido: "border-success/40 bg-success/10 text-success",
+  sem_interesse: "border-muted-foreground/40 bg-muted/30 text-muted-foreground",
+  perdido: "border-destructive/40 bg-destructive/10 text-destructive",
+  arquivado: "border-muted-foreground/40 bg-muted/30 text-muted-foreground",
+  aguardando_decisao_avaliador: "border-warning/40 bg-warning/10 text-warning",
 };
 
 export default function RelatoriosLeadsPage() {
-  const [periodo, setPeriodo] = useState("30");
+  const { isAdmin, user } = useAuth();
 
-  const dataInicio = useMemo(() => subDays(new Date(), parseInt(periodo)).toISOString(), [periodo]);
+  const now = new Date();
+  const [startDate, setStartDate] = useState<Date | undefined>(startOfMonth(now));
+  const [endDate, setEndDate] = useState<Date | undefined>(endOfMonth(now));
 
-  const { data: leads = [], isLoading: loadingLeads } = useQuery({
-    queryKey: ["relatorio-leads", periodo],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("leads").select("*").gte("data_criacao", dataInicio);
-      if (error) throw error;
-      return data;
-    },
-  });
+  const [filterStatus, setFilterStatus] = useState("todos");
+  const [filterOrigem, setFilterOrigem] = useState("todos");
+  const [filterResponsavel, setFilterResponsavel] = useState("todos");
+  const [filterNome, setFilterNome] = useState("");
 
-  const { data: interacoes = [] } = useQuery({
-    queryKey: ["relatorio-interacoes", periodo],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("lead_interacoes").select("*").gte("data_interacao", dataInicio);
-      if (error) throw error;
-      return data;
-    },
-  });
+  const [responsaveis, setResponsaveis] = useState<{ id: string; nome: string }[]>([]);
 
-  const { data: objecoes = [] } = useQuery({
-    queryKey: ["relatorio-objecoes", periodo],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("registro_objecao_lead")
-        .select("*, lead_objecoes(descricao)")
-        .gte("data_registro", dataInicio);
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const { data: profiles = [] } = useQuery({
-    queryKey: ["relatorio-profiles"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("id, nome").eq("ativo", true);
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  // Metrics
-  const totalLeads = leads.length;
-  const convertidos = leads.filter((l) => l.status_lead === "convertido").length;
-  const taxaConversao = totalLeads > 0 ? ((convertidos / totalLeads) * 100).toFixed(1) : "0.0";
-  const totalTentativas = interacoes.length;
-
-  // Status breakdown
-  const statusCounts: Record<string, number> = {};
-  leads.forEach((l) => { statusCounts[l.status_lead] = (statusCounts[l.status_lead] || 0) + 1; });
-
-  // Top objeções
-  const objecaoCounts: Record<string, number> = {};
-  objecoes.forEach((o: any) => {
-    const desc = o.lead_objecoes?.descricao || "Desconhecida";
-    objecaoCounts[desc] = (objecaoCounts[desc] || 0) + 1;
-  });
-  const topObjecoes = Object.entries(objecaoCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
-
-  // Per-avaliador stats
-  const avaliadorStats = useMemo(() => {
-    const map: Record<string, { nome: string; tentativas: number; conversoes: number }> = {};
-    interacoes.forEach((i: any) => {
-      if (!map[i.colaborador_id]) {
-        const p = profiles.find((p) => p.id === i.colaborador_id);
-        map[i.colaborador_id] = { nome: p?.nome || "—", tentativas: 0, conversoes: 0 };
-      }
-      map[i.colaborador_id].tentativas++;
+  useEffect(() => {
+    supabase.from("profiles").select("id, nome").eq("ativo", true).order("nome").then(({ data }) => {
+      setResponsaveis(data || []);
     });
-    leads.filter((l) => l.status_lead === "convertido" && l.responsavel_id).forEach((l) => {
-      if (map[l.responsavel_id!]) map[l.responsavel_id!].conversoes++;
-    });
-    return Object.values(map).sort((a, b) => b.conversoes - a.conversoes);
-  }, [interacoes, leads, profiles]);
+  }, []);
+
+  const [leadsList, setLeadsList] = useState<LeadRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportAllLoading, setExportAllLoading] = useState(false);
+
+  const isDirectSearch = filterNome.trim() !== "";
+
+  const fetchLeads = useCallback(async () => {
+    setLoading(true);
+
+    let query = supabase
+      .from("leads")
+      .select("id, nome, status_lead, origem_lead, responsavel_id, data_criacao, plano_id, repetidor");
+
+    if (isDirectSearch) {
+      query = query.ilike("nome", `%${filterNome.trim()}%`);
+    } else {
+      const from = startDate ? startOfDay(startDate).toISOString() : startOfDay(startOfMonth(now)).toISOString();
+      const to = endDate ? endOfDay(endDate).toISOString() : endOfDay(endOfMonth(now)).toISOString();
+      query = query.gte("data_criacao", from).lte("data_criacao", to);
+
+      if (filterStatus !== "todos") query = query.eq("status_lead", filterStatus);
+      if (filterOrigem !== "todos") query = query.eq("origem_lead", filterOrigem);
+      if (filterResponsavel !== "todos") query = query.eq("responsavel_id", filterResponsavel);
+    }
+
+    const { data: leadsData } = await query.order("data_criacao", { ascending: false });
+    if (!leadsData) { setLeadsList([]); setLoading(false); return; }
+
+    const leadIds = leadsData.map((l) => l.id);
+    const planoIds = [...new Set(leadsData.map((l) => l.plano_id).filter(Boolean))] as string[];
+    const respIds = [...new Set(leadsData.map((l) => l.responsavel_id).filter(Boolean))] as string[];
+
+    const [contatosRes, planosRes, profilesRes] = await Promise.all([
+      leadIds.length > 0 ? supabase.from("lead_contatos").select("lead_id, valor").eq("tipo_contato", "telefone").in("lead_id", leadIds) : Promise.resolve({ data: [] }),
+      planoIds.length > 0 ? supabase.from("planos").select("id, nome_plano").in("id", planoIds) : Promise.resolve({ data: [] }),
+      respIds.length > 0 ? supabase.from("profiles").select("id, nome").in("id", respIds) : Promise.resolve({ data: [] }),
+    ]);
+
+    const phoneMap: Record<string, string> = {};
+    (contatosRes.data || []).forEach((c: any) => { if (!phoneMap[c.lead_id]) phoneMap[c.lead_id] = c.valor; });
+    const planoMap: Record<string, string> = {};
+    (planosRes.data || []).forEach((p: any) => { planoMap[p.id] = p.nome_plano; });
+    const profileMap: Record<string, string> = {};
+    (profilesRes.data || []).forEach((p: any) => { profileMap[p.id] = p.nome; });
+
+    setLeadsList(leadsData.map((l) => ({
+      id: l.id,
+      nome: l.nome,
+      status_lead: l.status_lead,
+      origem_lead: l.origem_lead,
+      responsavel_nome: l.responsavel_id ? profileMap[l.responsavel_id] || null : null,
+      data_criacao: l.data_criacao,
+      telefone: phoneMap[l.id] || null,
+      plano_nome: l.plano_id ? planoMap[l.plano_id] || null : null,
+      repetidor: (l as any).repetidor || null,
+    })));
+    setSelected(new Set());
+    setLoading(false);
+  }, [startDate, endDate, filterStatus, filterOrigem, filterResponsavel, filterNome]);
+
+  useEffect(() => { fetchLeads(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const allSelected = leadsList.length > 0 && selected.size === leadsList.length;
+  const someSelected = selected.size > 0 && !allSelected;
+  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(leadsList.map((l) => l.id)));
+  const toggleOne = (id: string) => setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  // ─── Delete leads and ALL related records ───────────
+  const executeDeleteSelected = async () => {
+    if (!user) return;
+    const ids = [...selected];
+
+    // Delete child records in order
+    await supabase.from("lead_tarefas_contato").delete().in("lead_id", ids);
+    await supabase.from("lead_interacoes").delete().in("lead_id", ids);
+    await supabase.from("lead_historico").delete().in("lead_id", ids);
+    await supabase.from("lead_contatos").delete().in("lead_id", ids);
+    await supabase.from("registro_atraso_tentativa").delete().in("lead_id", ids);
+    await supabase.from("registro_objecao_lead").delete().in("lead_id", ids);
+    await supabase.from("leads").delete().in("id", ids);
+
+    // Audit
+    for (const id of ids) {
+      const info = leadsList.find((l) => l.id === id);
+      await supabase.from("audit_logs").insert({
+        user_id: user.id,
+        acao: "exclusao_lead_relatorio",
+        tabela: "leads",
+        registro_id: id,
+        dados_anteriores: info ? { nome: info.nome, status: info.status_lead } : null,
+      });
+    }
+
+    toast.success(`${ids.length} lead(s) e todos os dados vinculados foram excluídos.`);
+    fetchLeads();
+  };
+
+  // ─── Export selected to Excel ───────────────────────
+  const handleExportSelected = async () => {
+    if (selected.size === 0) return;
+    setExportLoading(true);
+    try {
+      exportToExcel(leadsList.filter((l) => selected.has(l.id)));
+      toast.success(`Exportação de ${selected.size} lead(s) concluída.`);
+    } catch (err: any) {
+      toast.error("Erro ao exportar: " + err.message);
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  // ─── Export all filtered ────────────────────────────
+  const handleExportAllFiltered = async () => {
+    if (leadsList.length === 0) { toast.error("Nenhum lead disponível."); return; }
+    setExportAllLoading(true);
+    try {
+      exportToExcel(leadsList);
+      toast.success(`Relatório exportado com ${leadsList.length} lead(s).`);
+    } catch (err: any) {
+      toast.error("Erro ao exportar: " + err.message);
+    } finally {
+      setExportAllLoading(false);
+    }
+  };
+
+  const exportToExcel = (data: LeadRow[]) => {
+    const headers = ["Nome", "Telefone", "Status", "Origem", "Responsável", "Perfil Identificado", "Repetidor", "Data Criação"];
+    const wsData: (string | number)[][] = [headers];
+    for (const l of data) {
+      wsData.push([
+        l.nome,
+        l.telefone || "",
+        STATUS_LABELS[l.status_lead] || l.status_lead,
+        l.origem_lead || "",
+        l.responsavel_nome || "",
+        l.plano_nome || "",
+        l.repetidor ? (l.repetidor === "fast" ? "Fast" : "Dual") : "",
+        format(new Date(l.data_criacao), "dd/MM/yyyy"),
+      ]);
+    }
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws["!cols"] = headers.map((h, i) => ({ wch: Math.min(Math.max(h.length, ...wsData.slice(1).map((r) => String(r[i] ?? "").length)) + 2, 40) }));
+    XLSX.utils.book_append_sheet(wb, ws, "Leads");
+    XLSX.writeFile(wb, `relatorio_leads_${format(new Date(), "yyyy-MM-dd_HHmm")}.xlsx`);
+  };
 
   return (
-    <div className="flex-1 min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Relatórios de Leads</h1>
-            <p className="text-sm text-muted-foreground mt-1">Análise detalhada do módulo de leads</p>
-          </div>
-          <Select value={periodo} onValueChange={setPeriodo}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">Últimos 7 dias</SelectItem>
-              <SelectItem value="15">Últimos 15 dias</SelectItem>
-              <SelectItem value="30">Últimos 30 dias</SelectItem>
-              <SelectItem value="60">Últimos 60 dias</SelectItem>
-              <SelectItem value="90">Últimos 90 dias</SelectItem>
-            </SelectContent>
-          </Select>
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-section font-semibold text-foreground">Relatórios de Leads</h1>
+        <p className="text-body text-muted-foreground">Gerencie e exporte dados de Leads</p>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-card border border-border rounded-lg p-4 shadow-card">
+        <div className="flex items-center gap-2 mb-3">
+          <Filter className="w-4 h-4 text-muted-foreground" />
+          <span className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Filtros</span>
         </div>
 
-        {loadingLeads ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        <div className="flex flex-wrap gap-4 items-end">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-caption font-medium text-muted-foreground">Data Início</label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("h-9 w-[160px] justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
+                  <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                  {startDate ? format(startDate, "dd/MM/yyyy") : "Selecionar"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus className="p-3 pointer-events-auto" locale={ptBR} />
+              </PopoverContent>
+            </Popover>
           </div>
-        ) : (
-          <>
-            {/* KPIs */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card>
-                <CardContent className="pt-5">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10"><Users className="w-4 h-4 text-primary" /></div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Total de Leads</p>
-                      <p className="text-xl font-bold">{totalLeads}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-5">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-emerald-500/10"><Target className="w-4 h-4 text-emerald-600" /></div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Convertidos</p>
-                      <p className="text-xl font-bold">{convertidos}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-5">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-amber-500/10"><TrendingUp className="w-4 h-4 text-amber-600" /></div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Taxa Conversão</p>
-                      <p className="text-xl font-bold">{taxaConversao}%</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-5">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-violet-500/10"><Clock className="w-4 h-4 text-violet-600" /></div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Tentativas</p>
-                      <p className="text-xl font-bold">{totalTentativas}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-caption font-medium text-muted-foreground">Data Fim</label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("h-9 w-[160px] justify-start text-left font-normal", !endDate && "text-muted-foreground")}>
+                  <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                  {endDate ? format(endDate, "dd/MM/yyyy") : "Selecionar"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus className="p-3 pointer-events-auto" locale={ptBR} />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <Button onClick={fetchLeads} disabled={loading} className="h-9">
+            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Search className="w-4 h-4 mr-1" />}
+            Buscar
+          </Button>
+        </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Status Breakdown */}
-              <Card>
-                <CardHeader><CardTitle className="text-base flex items-center gap-2"><BarChart3 className="w-4 h-4" /> Distribuição por Status</CardTitle></CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {Object.entries(statusCounts).sort((a, b) => b[1] - a[1]).map(([status, count]) => (
-                      <div key={status} className="flex items-center justify-between py-1">
-                        <span className="text-sm">{STATUS_LABELS[status] || status}</span>
-                        <div className="flex items-center gap-2">
-                          <div className="w-24 h-2 rounded-full bg-muted overflow-hidden">
-                            <div className="h-full bg-primary rounded-full" style={{ width: `${(count / totalLeads) * 100}%` }} />
-                          </div>
-                          <span className="text-sm font-medium w-8 text-right">{count}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+        <div className="flex flex-wrap gap-4 items-end mt-4 pt-4 border-t border-border">
+          <div className="flex flex-col gap-1.5 min-w-[160px]">
+            <label className="text-caption font-medium text-muted-foreground">Status</label>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                {Object.entries(STATUS_LABELS).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-              {/* Top Objeções */}
-              <Card>
-                <CardHeader><CardTitle className="text-base flex items-center gap-2"><MessageSquare className="w-4 h-4" /> Principais Objeções</CardTitle></CardHeader>
-                <CardContent>
-                  {topObjecoes.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">Nenhuma objeção registrada</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {topObjecoes.map(([desc, count]) => (
-                        <div key={desc} className="flex items-center justify-between py-1">
-                          <span className="text-sm">{desc}</span>
-                          <Badge variant="secondary">{count}</Badge>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+          <div className="flex flex-col gap-1.5 min-w-[160px]">
+            <label className="text-caption font-medium text-muted-foreground">Origem</label>
+            <Select value={filterOrigem} onValueChange={setFilterOrigem}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todas</SelectItem>
+                <SelectItem value="manual">Manual</SelectItem>
+                <SelectItem value="importacao">Importação</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-            {/* Per-avaliador */}
-            <Card>
-              <CardHeader><CardTitle className="text-base flex items-center gap-2"><Users className="w-4 h-4" /> Desempenho por Avaliado</CardTitle></CardHeader>
-              <CardContent>
-                {avaliadorStats.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">Sem dados</p>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Colaborador</TableHead>
-                        <TableHead className="text-center">Tentativas</TableHead>
-                        <TableHead className="text-center">Conversões</TableHead>
-                        <TableHead className="text-center">Taxa</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {avaliadorStats.map((a, i) => (
-                        <TableRow key={i}>
-                          <TableCell className="font-medium">{a.nome}</TableCell>
-                          <TableCell className="text-center">{a.tentativas}</TableCell>
-                          <TableCell className="text-center">{a.conversoes}</TableCell>
-                          <TableCell className="text-center">
-                            {a.tentativas > 0 ? ((a.conversoes / a.tentativas) * 100).toFixed(1) : "0.0"}%
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-          </>
-        )}
+          <div className="flex flex-col gap-1.5 min-w-[160px]">
+            <label className="text-caption font-medium text-muted-foreground">Responsável</label>
+            <Select value={filterResponsavel} onValueChange={setFilterResponsavel}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                {responsaveis.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-col gap-1.5 min-w-[160px]">
+            <label className="text-caption font-medium text-muted-foreground">Nome do Lead</label>
+            <Input className="h-9" placeholder="Buscar..." value={filterNome} onChange={(e) => setFilterNome(e.target.value)} />
+          </div>
+        </div>
       </div>
+
+      {/* Action bar */}
+      {selected.size > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-card border border-border rounded-lg p-3 shadow-card flex items-center justify-between"
+        >
+          <span className="text-body font-medium text-foreground">{selected.size} lead(s) selecionado(s)</span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setExportDialogOpen(true)} disabled={exportLoading}>
+              {exportLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
+              Exportar Excel
+            </Button>
+            {isAdmin && (
+              <Button variant="destructive" size="sm" onClick={() => setDeleteDialogOpen(true)}>
+                <Trash2 className="w-4 h-4 mr-1" /> Excluir Selecionados
+              </Button>
+            )}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Table */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
+          <Loader2 className="w-4 h-4 animate-spin" /> Carregando...
+        </div>
+      ) : (
+        <div className="bg-card border border-border rounded-lg shadow-card">
+          <div className="p-4 border-b border-border flex items-center justify-between">
+            <h2 className="text-body font-semibold text-foreground flex items-center gap-2">
+              <Users className="w-4 h-4 text-primary" />
+              Leads ({leadsList.length})
+            </h2>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportAllFiltered}
+              disabled={exportAllLoading || leadsList.length === 0}
+            >
+              {exportAllLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
+              Exportar Relatório ({leadsList.length})
+            </Button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="px-4 py-2 w-10">
+                    <Checkbox
+                      checked={allSelected}
+                      onCheckedChange={toggleAll}
+                      className="translate-y-[1px]"
+                      {...(someSelected ? { "data-state": "indeterminate" } : {})}
+                    />
+                  </th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Nome</th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Telefone</th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Status</th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Origem</th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Responsável</th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Data Criação</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {leadsList.map((item) => (
+                  <tr
+                    key={item.id}
+                    className={cn("hover:bg-muted/50 transition-colors", selected.has(item.id) && "bg-primary/5")}
+                  >
+                    <td className="px-4 py-3">
+                      <Checkbox checked={selected.has(item.id)} onCheckedChange={() => toggleOne(item.id)} />
+                    </td>
+                    <td className="px-4 py-3 text-body font-medium text-foreground">{item.nome}</td>
+                    <td className="px-4 py-3 text-body text-muted-foreground font-tabular">{item.telefone || "—"}</td>
+                    <td className="px-4 py-3">
+                      <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border", STATUS_BADGE[item.status_lead] || "border-border bg-muted text-muted-foreground")}>
+                        {STATUS_LABELS[item.status_lead] || item.status_lead}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-body text-muted-foreground">{item.origem_lead || "—"}</td>
+                    <td className="px-4 py-3 text-body text-muted-foreground">{item.responsavel_nome || "—"}</td>
+                    <td className="px-4 py-3 text-body text-muted-foreground font-tabular">
+                      {format(new Date(item.data_criacao), "dd/MM/yyyy")}
+                    </td>
+                  </tr>
+                ))}
+                {leadsList.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">
+                      Nenhum lead encontrado no período selecionado.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Password Dialog */}
+      <AdminPasswordDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Confirmar Exclusão"
+        description={`Você está prestes a excluir ${selected.size} lead(s) e todos os dados vinculados (contatos, tarefas, interações, histórico). Esta ação é irreversível.`}
+        onConfirm={executeDeleteSelected}
+      />
+
+      {/* Export Selected Password Dialog */}
+      <AdminPasswordDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        title="Confirmar Exportação"
+        description={`Informe sua senha para exportar ${selected.size} lead(s) selecionado(s).`}
+        onConfirm={handleExportSelected}
+      />
     </div>
   );
 }
