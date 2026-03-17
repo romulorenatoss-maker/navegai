@@ -1438,87 +1438,97 @@ export default function LeadsPage() {
                       {/* Vertical line */}
                       <div className="absolute left-4 top-3 bottom-3 w-px bg-border" />
 
-                      {timeline.map((item, idx) => {
-                        const IconComp = item.type === "historico"
-                          ? (EVENTO_ICONS[item.evento || ""] || Clock)
-                          : PhoneCall;
-                        const isInteracao = item.type === "interacao" || item.evento === "tentativa_contato";
-                        const isTransfer = item.evento === "transferencia_automatica";
-                        const isCriacao = item.evento === "criacao";
-                        const isCriacaoVinculado = isCriacao && item.descricao?.includes("vinculado ao cliente existente");
-                        const isConversao = item.evento === "conversao_cliente";
+                      {(() => {
+                        // Group timeline items by minute to consolidate
+                        const groups: { key: string; date: string; items: typeof timeline }[] = [];
+                        timeline.forEach(item => {
+                          const minuteKey = item.date.slice(0, 16); // YYYY-MM-DDTHH:mm
+                          const userId = item.usuario_id || item.colaborador_id || "";
+                          const groupKey = `${minuteKey}_${userId}`;
+                          const existing = groups.find(g => g.key === groupKey);
+                          if (existing) {
+                            existing.items.push(item);
+                          } else {
+                            groups.push({ key: groupKey, date: item.date, items: [item] });
+                          }
+                        });
 
-                        // Determine attempt number from description
-                        let attemptNum: string | null = null;
-                        if (item.descricao) {
-                          const match = item.descricao.match(/Tentativa #(\d+)/i) || item.descricao.match(/Tentativa (\d+)/i);
-                          if (match) attemptNum = match[1];
-                        }
+                        return groups.map((group) => {
+                          const mainItem = group.items[0];
+                          const IconComp = mainItem.type === "historico"
+                            ? (EVENTO_ICONS[mainItem.evento || ""] || Clock)
+                            : PhoneCall;
+                          const isInteracao = mainItem.type === "interacao" || mainItem.evento === "tentativa_contato";
+                          const isTransfer = mainItem.evento === "transferencia_automatica";
+                          const isCriacao = mainItem.evento === "criacao";
+                          const isCriacaoVinculado = isCriacao && mainItem.descricao?.includes("vinculado ao cliente existente");
+                          const isConversao = mainItem.evento === "conversao_cliente";
 
-                        return (
-                          <div key={item.id} className="relative pl-10 pb-4 last:pb-0">
-                            {/* Icon node */}
-                            <div className={`absolute left-1.5 w-5 h-5 rounded-full flex items-center justify-center ring-2 ring-background ${
-                              isCriacaoVinculado ? "bg-amber-500" :
-                              isCriacao ? "bg-blue-500" :
-                              isConversao ? "bg-green-500" :
-                              isTransfer ? "bg-amber-500" :
-                              isInteracao ? "bg-primary" :
-                              "bg-muted-foreground/30"
-                            }`}>
-                              <IconComp className="w-2.5 h-2.5 text-white" />
-                            </div>
-
-                            <div className={`rounded-lg p-2.5 border ${
-                              isInteracao ? "bg-primary/5 border-primary/20" :
-                              isTransfer ? "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800" :
-                              isCriacaoVinculado ? "bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-700" :
-                              isCriacao ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800" :
-                              isConversao ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800" :
-                              "bg-card border-border"
-                            }`}>
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${isCriacaoVinculado ? "border-amber-400 text-amber-700 dark:text-amber-300" : ""}`}>
-                                    {item.type === "historico"
-                                      ? (isCriacaoVinculado ? "⚠️ Cliente já cadastrado na base" : (EVENTO_LABELS[item.evento || ""] || item.evento))
-                                      : `${item.tipo_contato === "whatsapp" ? "WhatsApp" : "Telefone"}`}
-                                  </Badge>
-                                  {attemptNum && (
-                                    <Badge className="text-[10px] px-1.5 py-0 bg-primary/20 text-primary border-0">
-                                      #{attemptNum}
-                                    </Badge>
-                                  )}
-                                </div>
-                                <span className="text-[10px] text-muted-foreground whitespace-nowrap">{fmtDate(item.date)}</span>
+                          return (
+                            <div key={group.key} className="relative pl-10 pb-4 last:pb-0">
+                              <div className={`absolute left-1.5 w-5 h-5 rounded-full flex items-center justify-center ring-2 ring-background ${
+                                isCriacaoVinculado ? "bg-amber-500" :
+                                isCriacao ? "bg-blue-500" :
+                                isConversao ? "bg-green-500" :
+                                isTransfer ? "bg-amber-500" :
+                                isInteracao ? "bg-primary" :
+                                "bg-muted-foreground/30"
+                              }`}>
+                                <IconComp className="w-2.5 h-2.5 text-white" />
                               </div>
 
-                              {/* Content */}
-                              {item.type === "historico" && item.descricao && (
-                                <p className="text-sm mt-1.5 text-foreground/80">{item.descricao}</p>
-                              )}
-                              {item.type === "interacao" && (
-                                <div className="mt-1.5 space-y-0.5">
-                                  {item.numero_utilizado && (
-                                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                      <Phone className="w-2.5 h-2.5" /> {item.numero_utilizado}
-                                    </p>
-                                  )}
-                                  {item.resultado && (
-                                    <p className="text-sm text-foreground/80">{item.resultado}</p>
-                                  )}
+                              <div className={`rounded-lg p-2.5 border ${
+                                isInteracao ? "bg-primary/5 border-primary/20" :
+                                isTransfer ? "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800" :
+                                isCriacaoVinculado ? "bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-700" :
+                                isCriacao ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800" :
+                                isConversao ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800" :
+                                "bg-card border-border"
+                              }`}>
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {group.items.length === 1 ? (
+                                      <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${isCriacaoVinculado ? "border-amber-400 text-amber-700 dark:text-amber-300" : ""}`}>
+                                        {mainItem.type === "historico"
+                                          ? (isCriacaoVinculado ? "⚠️ Cliente na base" : (EVENTO_LABELS[mainItem.evento || ""] || mainItem.evento))
+                                          : `${mainItem.tipo_contato === "whatsapp" ? "WhatsApp" : "Telefone"}`}
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                        {group.items.length} registros
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">{fmtDate(group.date)}</span>
                                 </div>
-                              )}
 
-                              {/* Author */}
-                              <p className="text-[10px] text-muted-foreground/60 mt-1 flex items-center gap-1">
-                                <User className="w-2.5 h-2.5" />
-                                {getProfileName(item.usuario_id || item.colaborador_id)}
-                              </p>
+                                {/* Consolidated content */}
+                                <div className="mt-1.5 space-y-1">
+                                  {group.items.map(item => (
+                                    <div key={item.id}>
+                                      {item.type === "historico" && item.descricao && (
+                                        <p className="text-[11px] text-foreground/80">• {item.descricao}</p>
+                                      )}
+                                      {item.type === "interacao" && (
+                                        <p className="text-[11px] text-foreground/80">
+                                          • {item.tipo_contato === "whatsapp" ? "WhatsApp" : "Telefone"}
+                                          {item.numero_utilizado ? ` → ${item.numero_utilizado}` : ""}
+                                          {item.resultado ? `: ${item.resultado}` : ""}
+                                        </p>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+
+                                <p className="text-[10px] text-muted-foreground/60 mt-1 flex items-center gap-1">
+                                  <User className="w-2.5 h-2.5" />
+                                  {getProfileName(mainItem.usuario_id || mainItem.colaborador_id)}
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        });
+                      })()}
                     </div>
                   )}
                 </div>
