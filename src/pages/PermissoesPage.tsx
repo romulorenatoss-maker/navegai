@@ -285,7 +285,7 @@ export default function PermissoesPage() {
                       {Object.entries(resourcesByModule).map(([module, res]) => (
                         <>
                           <tr key={module}>
-                            <td colSpan={5} className="px-3 py-1.5 bg-muted/30 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{module}</td>
+                            <td colSpan={7} className="px-3 py-1.5 bg-muted/30 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{module}</td>
                           </tr>
                           {res.map((r) => (
                             <tr key={r.id} className="border-b border-border/50 hover:bg-muted/20">
