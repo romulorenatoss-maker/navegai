@@ -17,7 +17,7 @@ import { format, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Phone, MessageSquare, Loader2, ListOrdered, CalendarClock, AlertTriangle,
-  ArrowRightLeft, Clock, Search, Filter, UserCheck, ExternalLink,
+  ArrowRightLeft, Clock, Search, Filter, UserCheck, ExternalLink, Archive, RefreshCw,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
