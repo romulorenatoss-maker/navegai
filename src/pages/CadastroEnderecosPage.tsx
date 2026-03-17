@@ -117,7 +117,7 @@ export default function CadastroEnderecosPage() {
         }
       } else if (tab === "bairros") {
         if (!formCidadeId) { toast.error("Selecione a cidade."); setSaving(false); return; }
-        const payload = { nome: formNome.trim(), cidade_id: formCidadeId, cep: formCep.trim() || null };
+        const payload = { nome: formNome.trim(), cidade_id: formCidadeId };
         if (editingId) {
           const { error } = await supabase.from("bairros").update(payload).eq("id", editingId);
           if (error) throw error;
