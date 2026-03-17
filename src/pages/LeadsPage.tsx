@@ -1633,7 +1633,7 @@ export default function LeadsPage() {
                           await supabase.from("lead_historico").insert({ lead_id: selectedLead.id, usuario_id: profile.id, tipo_evento: "agendamento_removido", descricao: "Agendamento de retorno removido manualmente" });
                         }
                         setSelectedLead(prev => prev ? { ...prev, agendamento_retorno: null } : null);
-                        queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                        updateLeadInCache(selectedLead.id, { agendamento_retorno: null });
                         refetchHistorico();
                         toast.success("Agendamento removido.");
                       }}>×</button>
