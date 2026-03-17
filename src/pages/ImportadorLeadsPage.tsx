@@ -106,8 +106,8 @@ interface ImportResult {
       toast.error("Selecione uma campanha antes de carregar.");
       return;
     }
-    const text = await pendingFile.text();
-    const { headers, rows } = parseCSVRaw(text);
+    const buffer = await pendingFile.arrayBuffer();
+    const { headers, rows } = parseFileToJSON(buffer, pendingFile.name);
     if (headers.length === 0 || rows.length === 0) {
       toast.error("Arquivo vazio ou sem dados válidos.");
       return;
