@@ -879,6 +879,7 @@ export default function FilaLeadsPage() {
                       <TableHead>Lead</TableHead>
                       <TableHead>Telefone(s)</TableHead>
                       <TableHead>Último Responsável</TableHead>
+                      <TableHead>Última Tentativa</TableHead>
                       <TableHead>Tentativas</TableHead>
                       <TableHead className="text-center">Visto</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
@@ -892,9 +893,12 @@ export default function FilaLeadsPage() {
                         <TableRow key={item.lead.id} className={!isVisto ? "bg-orange-50 dark:bg-orange-950/20" : ""}>
                           <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-2">
-                              {!isVisto && <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />}
-                              <span className="font-medium text-sm">{item.lead.nome}</span>
+                            <div className="flex flex-col gap-0.5">
+                              <div className="flex items-center gap-2">
+                                {!isVisto && <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />}
+                                <span className="font-medium text-sm">{item.lead.nome}</span>
+                              </div>
+                              <span className="text-[10px] text-orange-600 dark:text-orange-400 font-medium">⚠ Lead requer avaliação após tentativa final</span>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -904,6 +908,11 @@ export default function FilaLeadsPage() {
                             </div>
                           </TableCell>
                           <TableCell className="text-xs">{item.responsavelNome}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {item.ultimaTentativaEm
+                              ? format(new Date(item.ultimaTentativaEm), "dd/MM/yy HH:mm", { locale: ptBR })
+                              : "—"}
+                          </TableCell>
                           <TableCell><Badge variant="secondary" className="text-xs">{item.interacoes} realizadas</Badge></TableCell>
                           <TableCell className="text-center">
                             {isVisto ? (
@@ -929,6 +938,15 @@ export default function FilaLeadsPage() {
                                       <Eye className="w-3.5 h-3.5" /> Marcar como Visto
                                     </DropdownMenuItem>
                                   )}
+                                  <DropdownMenuItem onClick={() => restartMutation.mutate(item.lead.id)} className="gap-2 text-xs">
+                                    <RefreshCw className="w-3.5 h-3.5" /> Reabrir Lead
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => markAsLostMutation.mutate(item.lead.id)} className="gap-2 text-xs text-destructive">
+                                    <XCircle className="w-3.5 h-3.5" /> Marcar como Perdido
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => navigate(`/leads?id=${item.lead.id}&convert=true`)} className="gap-2 text-xs">
+                                    <UserCheck className="w-3.5 h-3.5" /> Converter Lead
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => archiveMutation.mutate(item.lead.id)} className="gap-2 text-xs">
                                     <Archive className="w-3.5 h-3.5" /> Arquivar Lead
                                   </DropdownMenuItem>
