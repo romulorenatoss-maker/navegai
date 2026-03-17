@@ -40,6 +40,11 @@ serve(async (req) => {
       { count: osHoje },
       { data: tentativasData },
       { data: statusLeads },
+      { data: osDetalhes },
+      { data: historicoLeads },
+      { data: atrasosData },
+      { data: avaliacoesData },
+      { data: respostasData },
     ] = await Promise.all([
       supabase.from("leads").select("*", { count: "exact", head: true }),
       supabase.from("leads").select("*", { count: "exact", head: true }).gte("created_at", todayStart).lte("created_at", todayEnd),
