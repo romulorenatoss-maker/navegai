@@ -1099,18 +1099,19 @@ export default function LeadsPage() {
       const nextTentativa = tentativaNum + 1;
 
       if (nextTentativa > mxTentativas) {
-        const { data: configData } = await supabase
-          .from("configuracao_fluxo_leads").select("acao_apos_finalizar_tentativas").limit(1).maybeSingle();
-        const acao = configData?.acao_apos_finalizar_tentativas || "enviar_avaliador";
-        const newStatus = acao === "arquivar_lead" ? "arquivado" : "aguardando_decisao_avaliador";
-        await supabase.from("leads").update({ status_lead: newStatus }).eq("id", selectedLead.id);
+        // Last attempt done and not converted → auto-send to avaliador
+        await supabase.from("leads").update({ 
+          status_lead: "aguardando_decisao_avaliador",
+          responsavel_id: null,
+        }).eq("id", selectedLead.id);
         await supabase.from("lead_historico").insert({
           lead_id: selectedLead.id, usuario_id: profile.id,
           tipo_evento: "tentativas_finalizadas",
-          descricao: `Todas as ${mxTentativas} tentativas finalizadas. Ação: ${acao === "arquivar_lead" ? "Arquivado" : "Enviado para avaliador"}`,
+          descricao: `Todas as ${mxTentativas} tentativas finalizadas sem conversão. Lead enviado automaticamente para fila do avaliador.`,
         });
-        setSelectedLead(prev => prev ? { ...prev, status_lead: newStatus } : null);
-        toast.info(acao === "arquivar_lead" ? "Lead arquivado após todas as tentativas." : "Lead enviado para avaliação do avaliador.");
+        // Close detail panel — lead leaves atendente's screen
+        setSelectedLead(null);
+        toast.warning("Última tentativa registrada sem conversão. Lead enviado para a fila do avaliador.");
       } else {
         try {
           const { data: nextRotina } = await supabase
@@ -1319,6 +1320,7 @@ export default function LeadsPage() {
   // Check if all cadencia attempts are exhausted
   const maxTentativas = fluxoConfig?.quantidade_tentativas || cadencia.length || 7;
   const allAttemptsExhausted = tentativasRealizadas >= maxTentativas;
+  const isLastAttempt = tentativasRealizadas === maxTentativas - 1;
 
   // Handle finalize action (after all attempts)
   const handleFinalizeAction = async (action: "reiniciar" | "arquivar") => {
@@ -1753,11 +1755,6 @@ export default function LeadsPage() {
                         {selectedLead.status_lead !== "convertido" && (
                           <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8" onClick={openConversion}>
                             <UserPlus className="w-3.5 h-3.5 mr-2" /> Converter em Cliente
-                          </Button>
-                        )}
-                        {allAttemptsExhausted && selectedLead.status_lead !== "perdido" && selectedLead.status_lead !== "convertido" && (
-                          <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8 text-amber-600 hover:text-amber-700" onClick={() => setShowFinalize(true)}>
-                            <AlertTriangle className="w-3.5 h-3.5 mr-2" /> Finalizar Tentativas
                           </Button>
                         )}
                         {canArchiveLead && selectedLead.status_lead !== "arquivado" && selectedLead.status_lead !== "convertido" && (
@@ -2517,6 +2514,15 @@ export default function LeadsPage() {
               <Label>Resultado</Label>
               <Textarea placeholder="Descreva o resultado..." value={interResultado} onChange={e => setInterResultado(e.target.value)} rows={3} />
             </div>
+            {isLastAttempt && selectedLead?.status_lead !== "convertido" && (
+              <Alert className="border-amber-300 bg-amber-50 dark:bg-amber-950/30">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertTitle className="text-amber-800 dark:text-amber-200 text-xs">Última tentativa!</AlertTitle>
+                <AlertDescription className="text-amber-700 dark:text-amber-300 text-xs">
+                  Se não houver conversão, o lead será enviado automaticamente para a fila do avaliador e sairá da sua tela.
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowInteraction(false)}>Cancelar</Button>
