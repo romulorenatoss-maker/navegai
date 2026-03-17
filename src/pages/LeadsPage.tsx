@@ -1929,11 +1929,13 @@ export default function LeadsPage() {
                     if (error) throw error;
                     queryClient.invalidateQueries({ queryKey: ["enderecos-bairros"] });
                     setCreateBairroId(data.id);
+                    setCreateBairroSearch(quickAddNome.trim());
                   } else if (quickAddType === "rua" && createBairroId) {
                     const { data, error } = await supabase.from("ruas").insert({ nome: quickAddNome.trim(), bairro_id: createBairroId }).select().single();
                     if (error) throw error;
                     queryClient.invalidateQueries({ queryKey: ["enderecos-ruas"] });
                     setCreateRuaId(data.id);
+                    setCreateRuaSearch(quickAddNome.trim());
                   }
                   toast.success("Cadastrado!");
                   setQuickAddType(null);
