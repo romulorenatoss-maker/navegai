@@ -180,6 +180,10 @@ const EVENTO_LABELS: Record<string, string> = {
   agendamento_removido: "Agendamento Removido",
   lead_reaberto_captura: "Lead Reaberto p/ Captura",
   lead_capturado: "Lead Capturado",
+  lead_reservado: "Lead Reservado",
+  reserva_liberada: "Reserva Liberada",
+  reserva_expirada: "Reserva Expirada",
+  transferencia_manual: "Transferência Manual",
 };
 
 const EVENTO_ICONS: Record<string, typeof Phone> = {
