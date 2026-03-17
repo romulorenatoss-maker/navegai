@@ -33,6 +33,7 @@ import ObjecoesLeadsPage from "./pages/ObjecoesLeadsPage";
 import RelatoriosLeadsPage from "./pages/RelatoriosLeadsPage";
 import CampanhasPage from "./pages/CampanhasPage";
 import PermissoesPage from "./pages/PermissoesPage";
+import AssistentePage from "./pages/AssistentePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
