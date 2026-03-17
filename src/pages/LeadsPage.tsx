@@ -2422,6 +2422,7 @@ export default function LeadsPage() {
                       </div>
                     </PopoverContent>
                   </Popover>
+                  )}
                   {selectedLead.status_lead === "convertido" && (
                     <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-0 text-xs">✓ Convertido</Badge>
                   )}
