@@ -611,6 +611,7 @@ export type Database = {
           can_export: boolean
           can_view: boolean
           created_at: string
+          data_scope: Database["public"]["Enums"]["data_scope"]
           group_id: string
           id: string
           resource_id: string
@@ -623,6 +624,7 @@ export type Database = {
           can_export?: boolean
           can_view?: boolean
           created_at?: string
+          data_scope?: Database["public"]["Enums"]["data_scope"]
           group_id: string
           id?: string
           resource_id: string
@@ -635,6 +637,7 @@ export type Database = {
           can_export?: boolean
           can_view?: boolean
           created_at?: string
+          data_scope?: Database["public"]["Enums"]["data_scope"]
           group_id?: string
           id?: string
           resource_id?: string
@@ -1911,6 +1914,7 @@ export type Database = {
           can_export: boolean | null
           can_view: boolean | null
           created_at: string
+          data_scope: Database["public"]["Enums"]["data_scope"] | null
           id: string
           profile_id: string
           resource_id: string
@@ -1923,6 +1927,7 @@ export type Database = {
           can_export?: boolean | null
           can_view?: boolean | null
           created_at?: string
+          data_scope?: Database["public"]["Enums"]["data_scope"] | null
           id?: string
           profile_id: string
           resource_id: string
@@ -1935,6 +1940,7 @@ export type Database = {
           can_export?: boolean | null
           can_view?: boolean | null
           created_at?: string
+          data_scope?: Database["public"]["Enums"]["data_scope"] | null
           id?: string
           profile_id?: string
           resource_id?: string
@@ -2011,6 +2017,7 @@ export type Database = {
           can_edit: boolean
           can_export: boolean
           can_view: boolean
+          data_scope: Database["public"]["Enums"]["data_scope"]
           resource_code: string
           resource_path: string
         }[]
@@ -2034,6 +2041,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "avaliador" | "executor" | "gestor" | "avaliado"
+      data_scope: "none" | "own" | "team" | "all"
       os_status: "aberta" | "em_andamento" | "concluida" | "aguardando_numero"
       recorrencia_tipo:
         | "diaria"
@@ -2169,6 +2177,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "avaliador", "executor", "gestor", "avaliado"],
+      data_scope: ["none", "own", "team", "all"],
       os_status: ["aberta", "em_andamento", "concluida", "aguardando_numero"],
       recorrencia_tipo: [
         "diaria",
