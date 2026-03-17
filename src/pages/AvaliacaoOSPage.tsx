@@ -1287,9 +1287,54 @@ export default function AvaliacaoOSPage() {
   const handleViewCliente = async (clienteId: string) => {
     const { data: cliente } = await supabase.from("clientes").select("*").eq("id", clienteId).single();
     if (!cliente) { toast.error("Cliente não encontrado."); return; }
-    // Also fetch contacts
+    // Fetch contacts
     const { data: contatos } = await supabase.from("cliente_contatos").select("*").eq("cliente_id", clienteId);
-    setViewClienteData({ ...cliente, contatos: contatos || [] });
+    // Fetch lead linked to this client
+    const { data: lead } = await supabase.from("leads").select("id, nome, responsavel_id, status_lead, origem_lead, created_at, plano_id, repetidor").eq("cliente_id", clienteId).limit(1).single();
+    let leadHistory: any[] = [];
+    let leadInteracoes: any[] = [];
+    let leadContatos: any[] = [];
+    let conversorNome = "—";
+    let planoNome = "—";
+    if (lead) {
+      // Fetch lead history, interactions, contacts in parallel
+      const [histRes, intRes, lcRes] = await Promise.all([
+        supabase.from("lead_historico").select("id, tipo_evento, descricao, data_evento, usuario_id").eq("lead_id", lead.id).order("data_evento", { ascending: false }).limit(50),
+        supabase.from("lead_interacoes").select("id, tipo_contato, resultado, data_interacao, colaborador_id, numero_utilizado").eq("lead_id", lead.id).order("data_interacao", { ascending: false }).limit(50),
+        supabase.from("lead_contatos").select("id, tipo_contato, valor, tem_whatsapp").eq("lead_id", lead.id),
+      ]);
+      leadHistory = histRes.data || [];
+      leadInteracoes = intRes.data || [];
+      leadContatos = lcRes.data || [];
+      // Get names for user IDs
+      const allUserIds = [...new Set([
+        lead.responsavel_id,
+        ...leadHistory.map((h: any) => h.usuario_id),
+        ...leadInteracoes.map((i: any) => i.colaborador_id),
+      ].filter(Boolean))];
+      if (allUserIds.length > 0) {
+        const { data: profs } = await supabase.from("profiles").select("id, nome").in("id", allUserIds);
+        const nameMap: Record<string, string> = {};
+        profs?.forEach(p => { nameMap[p.id] = p.nome; });
+        conversorNome = lead.responsavel_id ? (nameMap[lead.responsavel_id] || "—") : "—";
+        leadHistory = leadHistory.map((h: any) => ({ ...h, _usuario_nome: nameMap[h.usuario_id] || "—" }));
+        leadInteracoes = leadInteracoes.map((i: any) => ({ ...i, _colaborador_nome: nameMap[i.colaborador_id] || "—" }));
+      }
+      if (lead.plano_id) {
+        const { data: plano } = await supabase.from("planos").select("nome_plano").eq("id", lead.plano_id).single();
+        planoNome = plano?.nome_plano || "—";
+      }
+    }
+    setViewClienteData({
+      ...cliente,
+      contatos: contatos || [],
+      lead,
+      leadHistory,
+      leadInteracoes,
+      leadContatos,
+      conversorNome,
+      planoNome,
+    });
     setViewClienteOpen(true);
   };
 
