@@ -810,27 +810,8 @@ export default function LeadsPage() {
     }
   }, [selectedLead?.id, selectedLead?.status_lead, selectedLead?.reserved_by, profile?.id]);
 
-  // Release on component unmount (leaving the page via SPA navigation)
-  useEffect(() => {
-    return () => {
-      if (reservedLeadRef.current) {
-        const { id: leadId, profileId } = reservedLeadRef.current;
-        // Fire-and-forget release
-        supabase.from("leads").update({
-          reserved_by: null,
-          reserved_at: null,
-          status_lead: "aguardando_captura",
-        } as any).eq("id", leadId).eq("reserved_by", profileId).then(() => {
-          // Log that user left without interacting
-          supabase.from("lead_historico").insert({
-            lead_id: leadId, usuario_id: profileId,
-            tipo_evento: "lead_visualizado_nao_pegou",
-            descricao: "Usuário saiu da tela sem interagir. Lead retornou à fila de captura.",
-          });
-        });
-      }
-    };
-  }, []); // Empty deps = only runs on unmount
+   // NOTE: Reservation is NOT released on unmount so the user can navigate away and come back
+  // The 2-minute auto-expiry timer handles cleanup if the user doesn't return in time
 
   // Track selected lead changes to release previous reservation
   const prevSelectedLeadIdRef = useMemo(() => ({ current: null as string | null }), []);
