@@ -170,6 +170,10 @@ export default function LeadsPage() {
   const [createNumeroEnd, setCreateNumeroEnd] = useState("");
   const [createBairroSearch, setCreateBairroSearch] = useState("");
   const [createRuaSearch, setCreateRuaSearch] = useState("");
+  const [createCepSearch, setCreateCepSearch] = useState("");
+  const [cepNotFound, setCepNotFound] = useState(false);
+  const [newRuaNomeFromCep, setNewRuaNomeFromCep] = useState("");
+  const [newBairroNomeFromCep, setNewBairroNomeFromCep] = useState("");
   // Quick-add address dialogs
   const [quickAddType, setQuickAddType] = useState<"cidade" | "bairro" | "rua" | null>(null);
   const [quickAddNome, setQuickAddNome] = useState("");
