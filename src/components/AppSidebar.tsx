@@ -47,7 +47,6 @@ const allNavSections = [
     title: "Leads",
     items: [
       { to: "/leads/fila", icon: ListOrdered, label: "Gerenciador de Leads" },
-      { to: "/leads/fila-tarefas", icon: ClipboardList, label: "Fila de Tarefas" },
       
       { to: "/leads/arquivados", icon: Archive, label: "Leads Arquivados" },
       { to: "/leads/importador", icon: FileUp, label: "Importador de Leads" },

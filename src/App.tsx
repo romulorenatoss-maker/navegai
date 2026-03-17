@@ -25,7 +25,7 @@ import LeadsPage from "./pages/LeadsPage";
 import FilaLeadsPage from "./pages/FilaLeadsPage";
 import DashboardLeadsPage from "./pages/DashboardLeadsPage";
 import RotinaTentativasPage from "./pages/RotinaTentativasPage";
-import FilaTarefasLeadsPage from "./pages/FilaTarefasLeadsPage";
+
 
 import LeadsArquivadosPage from "./pages/LeadsArquivadosPage";
 import ImportadorLeadsPage from "./pages/ImportadorLeadsPage";
@@ -71,7 +71,7 @@ const App = () => (
               <Route path="/relatorios" element={<RelatoriosPage />} />
               <Route path="/leads" element={<LeadsPage />} />
               <Route path="/leads/fila" element={<FilaLeadsPage />} />
-              <Route path="/leads/fila-tarefas" element={<FilaTarefasLeadsPage />} />
+              <Route path="/leads/fila-tarefas" element={<FilaLeadsPage />} />
               
               <Route path="/leads/arquivados" element={<LeadsArquivadosPage />} />
               <Route path="/leads/dashboard" element={<DashboardLeadsPage />} />
