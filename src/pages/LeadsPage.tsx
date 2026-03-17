@@ -1028,7 +1028,7 @@ export default function LeadsPage() {
         rua_id: localRuaId,
         numero_endereco: localNumeroEnd || null,
       } : null);
-      queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+      updateLeadInCache(selectedLead!.id, { plano_id: localPlanoId, repetidor: localRepetidor, cidade_id: localCidadeId, bairro_id: localBairroId, rua_id: localRuaId, numero_endereco: localNumeroEnd || null });
     },
     onSuccess: () => {
       toast.success("Tentativa registrada!");
