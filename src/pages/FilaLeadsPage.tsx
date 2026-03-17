@@ -91,6 +91,8 @@ export default function FilaLeadsPage() {
   const [showTransfer, setShowTransfer] = useState(false);
   const [transferItem, setTransferItem] = useState<QueueItem | null>(null);
   const [transferTarget, setTransferTarget] = useState("");
+  const [transferMotivo, setTransferMotivo] = useState("");
+  const [transferTarget, setTransferTarget] = useState("");
 
   const [showDecisionTransfer, setShowDecisionTransfer] = useState(false);
   const [decisionLeadId, setDecisionLeadId] = useState("");
