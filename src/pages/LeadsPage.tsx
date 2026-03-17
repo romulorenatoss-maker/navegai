@@ -2290,14 +2290,12 @@ export default function LeadsPage() {
       <Dialog open={showInteraction} onOpenChange={setShowInteraction}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Registrar {selectedQueueInfo?.tentativaAtual || 1}ª Tentativa — {selectedLead?.nome}</DialogTitle>
+            <DialogTitle>Registrar Tentativa {tentativasRealizadas} — {selectedLead?.nome}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            {selectedQueueInfo && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                Tentativa: <Badge variant="secondary">{selectedQueueInfo.tentativaAtual}ª</Badge>
-              </div>
-            )}
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              Tentativa: <Badge variant="secondary">{tentativasRealizadas}</Badge>
+            </div>
             <div className="space-y-1.5">
               <Label>Tipo de Contato</Label>
               <Select value={interTipo} onValueChange={setInterTipo}>
