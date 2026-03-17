@@ -314,6 +314,7 @@ export default function LeadsPage() {
   const [convCepNotFound, setConvCepNotFound] = useState(false);
   const [convNewBairroNome, setConvNewBairroNome] = useState("");
   const [convNewRuaNome, setConvNewRuaNome] = useState("");
+  const [convStep, setConvStep] = useState<"form" | "review">("form");
 
   // Finalize dialog (when all attempts done)
   const [showFinalize, setShowFinalize] = useState(false);
