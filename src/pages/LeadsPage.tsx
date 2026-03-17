@@ -472,6 +472,16 @@ export default function LeadsPage() {
     }
   }, [searchParams, allLeads, selectedLead]);
 
+  // Auto-select reserved lead when returning to the page
+  useEffect(() => {
+    if (selectedLead || !allLeads.length || !profile?.id) return;
+    if (searchParams.get("id")) return;
+    const myReserved = allLeads.find(l => l.status_lead === "reservado" && l.reserved_by === profile.id);
+    if (myReserved) {
+      setSelectedLead(myReserved);
+    }
+  }, [allLeads, profile?.id, selectedLead]);
+
   const { data: planos = [] } = useQuery({
     queryKey: ["planos"],
     queryFn: async () => {
@@ -810,27 +820,8 @@ export default function LeadsPage() {
     }
   }, [selectedLead?.id, selectedLead?.status_lead, selectedLead?.reserved_by, profile?.id]);
 
-  // Release on component unmount (leaving the page via SPA navigation)
-  useEffect(() => {
-    return () => {
-      if (reservedLeadRef.current) {
-        const { id: leadId, profileId } = reservedLeadRef.current;
-        // Fire-and-forget release
-        supabase.from("leads").update({
-          reserved_by: null,
-          reserved_at: null,
-          status_lead: "aguardando_captura",
-        } as any).eq("id", leadId).eq("reserved_by", profileId).then(() => {
-          // Log that user left without interacting
-          supabase.from("lead_historico").insert({
-            lead_id: leadId, usuario_id: profileId,
-            tipo_evento: "lead_visualizado_nao_pegou",
-            descricao: "Usuário saiu da tela sem interagir. Lead retornou à fila de captura.",
-          });
-        });
-      }
-    };
-  }, []); // Empty deps = only runs on unmount
+   // NOTE: Reservation is NOT released on unmount so the user can navigate away and come back
+  // The 2-minute auto-expiry timer handles cleanup if the user doesn't return in time
 
   // Track selected lead changes to release previous reservation
   const prevSelectedLeadIdRef = useMemo(() => ({ current: null as string | null }), []);
@@ -846,26 +837,7 @@ export default function LeadsPage() {
     prevSelectedLeadIdRef.current = currentId;
   }, [selectedLead?.id, profile?.id]);
 
-  // Release reservation on page unload (browser close / tab close)
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (reservedLeadRef.current) {
-        const { id: leadId } = reservedLeadRef.current;
-        const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/leads?id=eq.${leadId}&reserved_by=eq.${profile!.id}`;
-        const body = JSON.stringify({ reserved_by: null, reserved_at: null, status_lead: "aguardando_captura" });
-        const headers = {
-          "Content-Type": "application/json",
-          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          "Authorization": `Bearer ${(supabase as any).auth?.currentSession?.access_token || ""}`,
-          "Prefer": "return=minimal",
-        };
-        // sendBeacon doesn't support custom headers, use fetch with keepalive instead
-        fetch(url, { method: "PATCH", headers, body, keepalive: true }).catch(() => {});
-      }
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [profile?.id]);
+   // beforeunload does NOT release reservation – the 2-min timer handles expiry
 
   // ─── Realtime subscription for capture queue ─────────────────
   useEffect(() => {
