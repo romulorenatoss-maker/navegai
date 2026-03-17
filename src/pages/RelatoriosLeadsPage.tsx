@@ -545,6 +545,17 @@ export default function RelatoriosLeadsPage() {
                     <td className="px-4 py-3 text-body text-muted-foreground font-tabular">
                       {format(new Date(item.data_criacao), "dd/MM/yyyy")}
                     </td>
+                    <td className="px-4 py-3 text-center">
+                      {item.atrasos > 0 ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border border-destructive/40 bg-destructive/10 text-destructive">
+                          {item.atrasos} fora do prazo
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
+                          No prazo
+                        </span>
+                      )}
+                    </td>
                     <td className="px-2 py-3">
                       <Button variant="ghost" size="icon" className="h-7 w-7" title="Ver detalhes" onClick={() => openLeadDetail(item.id)}>
                         <Eye className="w-3.5 h-3.5" />
