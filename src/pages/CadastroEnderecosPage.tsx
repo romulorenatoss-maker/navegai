@@ -178,15 +178,40 @@ export default function CadastroEnderecosPage() {
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
-      const table = tab === "cidades" ? "cidades" : tab === "bairros" ? "bairros" : "ruas";
-      // Before deleting, update leads that reference this item
+      // Check if there are associated leads
+      let hasLeads = false;
       if (tab === "cidades") {
-        await supabase.from("leads").update({ cidade_id: null } as any).eq("cidade_id", deleteId);
+        const { count } = await supabase.from("leads").select("id", { count: "exact", head: true }).eq("cidade_id", deleteId);
+        hasLeads = (count || 0) > 0;
       } else if (tab === "bairros") {
-        await supabase.from("leads").update({ bairro_id: null } as any).eq("bairro_id", deleteId);
+        const { count } = await supabase.from("leads").select("id", { count: "exact", head: true }).eq("bairro_id", deleteId);
+        hasLeads = (count || 0) > 0;
       } else {
-        await supabase.from("leads").update({ rua_id: null } as any).eq("rua_id", deleteId);
+        const { count } = await supabase.from("leads").select("id", { count: "exact", head: true }).eq("rua_id", deleteId);
+        hasLeads = (count || 0) > 0;
       }
+      if (hasLeads) {
+        toast.error("Não é possível remover: existem leads associados a este registro. Migre os leads primeiro.");
+        setDeleteId(null);
+        return;
+      }
+      // Check child records (bairros in cidade, ruas in bairro)
+      if (tab === "cidades") {
+        const { count } = await supabase.from("bairros").select("id", { count: "exact", head: true }).eq("cidade_id", deleteId);
+        if ((count || 0) > 0) {
+          toast.error("Não é possível remover: existem bairros associados a esta cidade.");
+          setDeleteId(null);
+          return;
+        }
+      } else if (tab === "bairros") {
+        const { count } = await supabase.from("ruas").select("id", { count: "exact", head: true }).eq("bairro_id", deleteId);
+        if ((count || 0) > 0) {
+          toast.error("Não é possível remover: existem ruas associadas a este bairro.");
+          setDeleteId(null);
+          return;
+        }
+      }
+      const table = tab === "cidades" ? "cidades" : tab === "bairros" ? "bairros" : "ruas";
       const { error } = await supabase.from(table).delete().eq("id", deleteId);
       if (error) throw error;
       toast.success("Removido com sucesso!");
