@@ -581,12 +581,14 @@ export default function AvaliacaoOSPage() {
 
     setCpfValidating(true);
     try {
-      const { data: cliente } = await supabase
+      // Search by normalized CPF (digits only) to handle any formatting
+      const formattedCpf = formatCpf(cpfDigits);
+      const { data: clientes } = await supabase
         .from("clientes")
         .select("id, nome, cpf")
-        .eq("cpf", formClienteCpf.trim())
-        .limit(1)
-        .single();
+        .or(`cpf.eq.${formattedCpf},cpf.eq.${cpfDigits}`);
+
+      const cliente = clientes?.[0] || null;
 
       if (cliente) {
         setFormFoundCliente(cliente);
@@ -594,11 +596,90 @@ export default function AvaliacaoOSPage() {
         setClienteId(cliente.id);
         setShowNewClienteForm(false);
         toast.success(`Cliente encontrado: ${cliente.nome}`);
+
+        // Auto-search for existing open OS for this client
+        const { data: existingOS } = await supabase
+          .from("ordens_servico")
+          .select("*")
+          .eq("cliente_id", cliente.id)
+          .in("status", ["aberta", "em_andamento", "aguardando_numero"] as any[])
+          .order("created_at", { ascending: false });
+
+        if (existingOS && existingOS.length > 0) {
+          // Prioritize OS without number (aguardando_numero)
+          const osNoNumber = existingOS.find((o: any) => o.status === "aguardando_numero" || !o.numero_os);
+          const targetOS = osNoNumber || existingOS[0];
+
+          if (!targetOS.numero_os) {
+            // Open "fill number" dialog
+            setFillNumeroOsId(targetOS.id);
+            setFormFoundOS(targetOS);
+            if (targetOS.tipo_servico_id) setTipoServicoId(targetOS.tipo_servico_id);
+            if (targetOS.atendente_id) setAtendenteId(targetOS.atendente_id);
+            if (targetOS.tecnico_id) setTecnicoId(targetOS.tecnico_id);
+            setFormValidated(true);
+            toast.info("OS existente encontrada aguardando número.");
+          } else {
+            // Open existing OS directly
+            setFormFoundOS(targetOS);
+            setFormOsNumero(targetOS.numero_os || "");
+            if (targetOS.tipo_servico_id) setTipoServicoId(targetOS.tipo_servico_id);
+            if (targetOS.atendente_id) setAtendenteId(targetOS.atendente_id);
+            if (targetOS.tecnico_id) setTecnicoId(targetOS.tecnico_id);
+            setFormValidated(true);
+
+            // Check for pending evaluation
+            if (profile) {
+              const { data: pendingAval } = await supabase
+                .from("avaliacoes")
+                .select("id, tipo_avaliacao_id, concluida, nota_final")
+                .eq("ordem_servico_id", targetOS.id)
+                .eq("avaliador_id", profile.id)
+                .eq("concluida", false)
+                .limit(1)
+                .maybeSingle();
+              if (pendingAval) {
+                setFormPendingAval(pendingAval);
+                toast.info("OS encontrada com avaliação pendente.");
+              } else {
+                toast.info(`OS ${targetOS.numero_os} encontrada para este cliente.`);
+              }
+            }
+          }
+        }
       } else {
-        setFormFoundCliente(null);
-        setShowNewClienteForm(true);
-        setClienteId(null);
-        toast.info("Cliente não encontrado. Preencha o nome para cadastrar.");
+        // Also check ordens_servico by CPF directly (legacy data)
+        const { data: osLegacy } = await supabase
+          .from("ordens_servico")
+          .select("*")
+          .or(`cliente_cpf.eq.${formattedCpf},cliente_cpf.eq.${cpfDigits}`)
+          .in("status", ["aberta", "em_andamento", "aguardando_numero"] as any[])
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        if (osLegacy && osLegacy.length > 0) {
+          const targetOS = osLegacy[0];
+          setFormFoundOS(targetOS);
+          setFormClienteNome(targetOS.cliente_nome || "");
+          if (targetOS.cliente_id) setClienteId(targetOS.cliente_id);
+          if (targetOS.tipo_servico_id) setTipoServicoId(targetOS.tipo_servico_id);
+          if (targetOS.atendente_id) setAtendenteId(targetOS.atendente_id);
+          if (targetOS.tecnico_id) setTecnicoId(targetOS.tecnico_id);
+          setFormValidated(true);
+          if (!targetOS.numero_os) {
+            setFillNumeroOsId(targetOS.id);
+            toast.info("OS existente encontrada aguardando número.");
+          } else {
+            setFormOsNumero(targetOS.numero_os);
+            toast.info(`OS ${targetOS.numero_os} encontrada para este CPF.`);
+          }
+          setShowNewClienteForm(false);
+        } else {
+          setFormFoundCliente(null);
+          setShowNewClienteForm(true);
+          setClienteId(null);
+          toast.info("Cliente não encontrado. Preencha o nome para cadastrar.");
+        }
       }
       setCpfValidated(true);
     } catch (err: any) {
@@ -612,16 +693,44 @@ export default function AvaliacaoOSPage() {
   const handleCreateCliente = async () => {
     const nome = formClienteNome.trim();
     if (!nome) { toast.error("Informe o nome do cliente."); return; }
-    const cpfTr = formClienteCpf.trim();
+    const cpfDigits = formClienteCpf.replace(/\D/g, "");
+    const cpfFormatted = formatCpf(cpfDigits);
     try {
-      const { data: nc, error } = await supabase.from("clientes").insert({ nome, cpf: cpfTr }).select("id, nome, cpf").single();
+      // Double-check for existing client before creating
+      const { data: existing } = await supabase
+        .from("clientes")
+        .select("id, nome, cpf")
+        .or(`cpf.eq.${cpfFormatted},cpf.eq.${cpfDigits}`)
+        .limit(1);
+      if (existing && existing.length > 0) {
+        setFormFoundCliente(existing[0]);
+        setClienteId(existing[0].id);
+        setFormClienteNome(existing[0].nome);
+        setShowNewClienteForm(false);
+        toast.info(`Cliente já existe: ${existing[0].nome}. Usando cadastro existente.`);
+        return;
+      }
+
+      const { data: nc, error } = await supabase.from("clientes").insert({ nome, cpf: cpfFormatted }).select("id, nome, cpf").single();
       if (error) throw error;
       setFormFoundCliente(nc);
       setClienteId(nc!.id);
       setShowNewClienteForm(false);
       toast.success("Cliente cadastrado com sucesso!");
     } catch (err: any) {
-      toast.error("Erro ao cadastrar cliente: " + err.message);
+      if (err.message?.includes("idx_clientes_cpf_normalized") || err.message?.includes("duplicate")) {
+        toast.error("CPF já cadastrado. Buscando cliente existente...");
+        // Retry finding the client
+        const { data: found } = await supabase.from("clientes").select("id, nome, cpf").or(`cpf.eq.${cpfFormatted},cpf.eq.${cpfDigits}`).limit(1);
+        if (found?.[0]) {
+          setFormFoundCliente(found[0]);
+          setClienteId(found[0].id);
+          setFormClienteNome(found[0].nome);
+          setShowNewClienteForm(false);
+        }
+      } else {
+        toast.error("Erro ao cadastrar cliente: " + err.message);
+      }
     }
   };
 
@@ -1001,13 +1110,13 @@ export default function AvaliacaoOSPage() {
     if (!tipoServicoId) { toast.error("Selecione o tipo de serviço."); return; }
     if ((hasAtendimentoAccess || isAdmin) && !atendenteId) { toast.error("Selecione o atendente avaliado."); return; }
     if ((hasTecnicoAccess || isAdmin) && !tecnicoId) { toast.error("Selecione o técnico avaliado."); return; }
-    // Only require at least one collaborator if the evaluator has atendimento/tecnico access
     if ((hasAtendimentoAccess || hasTecnicoAccess || isAdmin) && !atendenteId && !tecnicoId) { toast.error("Selecione pelo menos um colaborador avaliado."); return; }
 
     try {
       const num = formOsNumero.trim();
       const nomeTr = formClienteNome.trim() || null;
-      const cpfTr = formClienteCpf.trim() || null;
+      const cpfDigits = formClienteCpf.replace(/\D/g, "");
+      const cpfTr = cpfDigits.length === 11 ? formatCpf(cpfDigits) : formClienteCpf.trim() || null;
 
       let osId: string;
       if (formFoundOS) {
@@ -1015,14 +1124,41 @@ export default function AvaliacaoOSPage() {
         await supabase.from("ordens_servico").update({
           atendente_id: atendenteId || null, tecnico_id: tecnicoId || null,
           tipo_servico_id: tipoServicoId, cliente_id: clienteId,
+          numero_os: num || formFoundOS.numero_os || null,
+          cliente_nome: nomeTr || formFoundOS.cliente_nome,
+          cliente_cpf: cpfTr || formFoundOS.cliente_cpf,
+          status: (formFoundOS.status === "aguardando_numero" && num) ? "aberta" : formFoundOS.status,
         } as any).eq("id", osId);
       } else {
-        const { data: newOs, error: oe } = await supabase.from("ordens_servico").insert({
-          numero_os: num, cliente_nome: nomeTr, cliente_cpf: cpfTr, tipo_servico_id: tipoServicoId,
-          cliente_id: clienteId, atendente_id: atendenteId || null, tecnico_id: tecnicoId || null,
-        } as any).select("id").single();
-        if (oe) throw oe;
-        osId = newOs.id;
+        // Check for existing open OS for this client before creating
+        const { data: existingOpenOS } = await supabase
+          .from("ordens_servico")
+          .select("id, numero_os, status")
+          .eq("cliente_id", clienteId)
+          .in("status", ["aberta", "em_andamento", "aguardando_numero"] as any[])
+          .limit(1);
+
+        if (existingOpenOS && existingOpenOS.length > 0) {
+          const existingOS = existingOpenOS[0];
+          osId = existingOS.id;
+          // Update with new data
+          await supabase.from("ordens_servico").update({
+            atendente_id: atendenteId || null, tecnico_id: tecnicoId || null,
+            tipo_servico_id: tipoServicoId,
+            numero_os: num || existingOS.numero_os || null,
+            cliente_nome: nomeTr,
+            cliente_cpf: cpfTr,
+            status: (existingOS.status === "aguardando_numero" && num) ? "aberta" : existingOS.status,
+          } as any).eq("id", osId);
+          toast.info("OS existente encontrada. Atualizando dados...");
+        } else {
+          const { data: newOs, error: oe } = await supabase.from("ordens_servico").insert({
+            numero_os: num || null, cliente_nome: nomeTr, cliente_cpf: cpfTr, tipo_servico_id: tipoServicoId,
+            cliente_id: clienteId, atendente_id: atendenteId || null, tecnico_id: tecnicoId || null,
+          } as any).select("id").single();
+          if (oe) throw oe;
+          osId = newOs.id;
+        }
       }
 
       // Snapshot checklist questions into os_perguntas

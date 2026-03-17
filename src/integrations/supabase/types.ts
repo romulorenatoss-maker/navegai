@@ -2150,6 +2150,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      normalize_cpf: { Args: { cpf_input: string }; Returns: string }
       sync_user_role: {
         Args: { _cargo: string; _user_id: string }
         Returns: undefined
