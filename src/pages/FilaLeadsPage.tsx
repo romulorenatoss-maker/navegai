@@ -640,6 +640,9 @@ export default function FilaLeadsPage() {
                                   <DropdownMenuItem onClick={() => { setSelectedTarefa(tarefa); setTarefaTipo("telefone"); setTarefaNumero(""); setTarefaResultado(""); }} className="gap-2 text-xs">
                                     <Phone className="w-3.5 h-3.5" /> Registrar Tentativa
                                   </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => { setTarefaTransferLeadId(tarefa.lead_id); setTarefaTransferLeadName(getTarefaLeadName(tarefa.lead_id)); setTarefaTransferTarget(""); setShowTarefaTransfer(true); }} className="gap-2 text-xs">
+                                    <ArrowRightLeft className="w-3.5 h-3.5" /> Transferir para
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => navigate(`/leads?id=${tarefa.lead_id}`)} className="gap-2 text-xs">
                                     <ExternalLink className="w-3.5 h-3.5" /> Abrir Lead
                                   </DropdownMenuItem>
