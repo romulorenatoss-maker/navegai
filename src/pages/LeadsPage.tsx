@@ -1120,7 +1120,7 @@ export default function LeadsPage() {
           setDupeAlert({ type: "cpf", message: `CPF já cadastrado para o cliente "${existingCliente.nome}". O lead foi vinculado ao cliente existente.`, clienteId: existingCliente.id, clienteNome: existingCliente.nome });
           setShowConvert(false);
           setSelectedLead(prev => prev ? { ...prev, status_lead: "convertido" } : null);
-          queryClient.invalidateQueries({ queryKey: ["leads-list"] }); refetchHistorico();
+          updateLeadInCache(selectedLead.id, { status_lead: "convertido" }); refetchHistorico();
           throw new Error("__DUPLICATE_CPF__");
         }
       }
