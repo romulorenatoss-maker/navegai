@@ -854,8 +854,19 @@ export default function FilaLeadsPage() {
                         const phones = item.contatos.filter(c => c.tipo_contato === "telefone");
                         const campanha = getCampanhaNome(item.lead);
                         const cidade = getCidadeNome(item.lead);
+                        const _now2 = new Date();
+                        const _nextD = item.nextAttempt ? new Date(item.nextAttempt) : null;
+                        const _schedD = item.lead.agendamento_retorno ? new Date(item.lead.agendamento_retorno) : null;
+                        const _urgRef = _schedD || _nextD;
+                        const _hrsLeft = _urgRef ? (_urgRef.getTime() - _now2.getTime()) / (1000 * 60 * 60) : null;
+                        let rowBg = "";
+                        if (_hrsLeft !== null) {
+                          if (_hrsLeft <= 0) rowBg = "bg-red-50/70 dark:bg-red-950/25 border-l-[3px] border-l-red-500";
+                          else if (_hrsLeft <= 2) rowBg = "bg-yellow-50/60 dark:bg-yellow-950/20 border-l-[3px] border-l-yellow-500";
+                          else if (_hrsLeft > 3) rowBg = "border-l-[3px] border-l-emerald-500";
+                        }
                         return (
-                          <TableRow key={item.lead.id} className={item.nextAttemptExpired ? "bg-destructive/5" : ""}>
+                          <TableRow key={item.lead.id} className={rowBg}>
                             <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
                             <TableCell>
                               <div className="flex flex-col gap-0.5">
