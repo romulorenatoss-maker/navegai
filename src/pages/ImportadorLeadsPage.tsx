@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Upload, FileSpreadsheet, Loader2, X, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Upload, FileSpreadsheet, Loader2, X, CheckCircle2, AlertTriangle, Download } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -373,10 +373,26 @@ export default function ImportadorLeadsPage() {
                    <AlertDescription className="text-xs">
                     Aceita arquivos <strong>CSV, XLS e XLSX</strong> (incluindo exportações do Google Sheets).
                     O sistema detecta automaticamente as colunas: nome, telefone, email, endereco, plano.
+                    Baixe o modelo abaixo para garantir o formato correto.
                   </AlertDescription>
                 </Alert>
 
-                <div className="flex justify-end">
+                <div className="flex justify-between items-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const headers = ["Nome", "Telefone", "Email", "CEP", "Cidade", "Estado", "Endereco", "Bairro", "Perfil", "Plano", "Campanha", "Observacoes"];
+                      const sample = ["João da Silva", "(11) 99999-0000", "joao@email.com", "01001-000", "São Paulo", "SP", "Rua Exemplo, 123", "Centro", "Residencial", "100 Mega", "Campanha Verão", "Lead interessado"];
+                      const ws = XLSX.utils.aoa_to_sheet([headers, sample]);
+                      ws["!cols"] = headers.map(() => ({ wch: 18 }));
+                      const wb = XLSX.utils.book_new();
+                      XLSX.utils.book_append_sheet(wb, ws, "Leads");
+                      XLSX.writeFile(wb, "modelo_importacao_leads.xlsx");
+                    }}
+                  >
+                    <Download className="w-4 h-4 mr-2" /> Baixar Modelo de Importação
+                  </Button>
                   <Button
                     onClick={handleLoadFile}
                     disabled={!pendingFile || !campanhaId || campanhaId === "__none"}
