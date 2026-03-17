@@ -311,7 +311,7 @@ export default function FilaLeadsPage() {
   const handleTransfer = async () => {
     if (!transferItem || !transferTarget || !profile) return;
     // Mark all pending tasks as cancelled so attempt count resets for new owner
-    await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", transferItem.lead.id).eq("status", "pendente");
+    await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", transferItem.lead.id).in("status", ["pendente", "atrasado"]);
     await supabase.from("leads").update({ responsavel_id: transferTarget, status_lead: "em_contato" } as any).eq("id", transferItem.lead.id);
     const targetName = profiles.find(p => p.id === transferTarget)?.nome || "—";
     await supabase.from("lead_historico").insert({ lead_id: transferItem.lead.id, usuario_id: profile.id, tipo_evento: "transferencia_automatica", descricao: `Lead transferido para ${targetName}. Contagem de tentativas reiniciada. Histórico anterior mantido.` });
