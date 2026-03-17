@@ -425,48 +425,34 @@ export default function FilaLeadsPage() {
     });
   }, [leads, allContatos, allInteracoes, cadencia, profiles]);
 
-  // ─── Fila de Captura (leads aguardando captura + reservados visíveis) ──
-  const RESERVATION_TIMEOUT_MS = 2 * 60 * 1000;
+  // ─── Fila de Captura (ONLY truly available leads) ──
   const capturaLeads = useMemo(() => {
     if (!profile) return [];
-    const capturaItems = leads
-      .filter(lead => {
-        if (lead.status_lead === CAPTURE_QUEUE_STATUS && !lead.reserved_by && !lead.responsavel_id) return true;
-        if (lead.status_lead === "reservado" && lead.reserved_by) {
-          const expired = lead.reserved_at
-            ? (Date.now() - new Date(lead.reserved_at).getTime()) > RESERVATION_TIMEOUT_MS
-            : false;
-          if (lead.reserved_by === profile.id) return true;
-          if (isAdmin) return true;
-          if (expired) return true;
-          return false;
-        }
-        return false;
-      })
+    return leads
+      .filter(lead =>
+        lead.status_lead === CAPTURE_QUEUE_STATUS &&
+        !lead.reserved_by &&
+        !lead.responsavel_id
+      )
       .map(lead => {
         const contatos = allContatos.filter(c => c.lead_id === lead.id);
         const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
         const lastInteracao = interacoes[0];
         const prevHandlerIds = interacoes.map((i: any) => i.colaborador_id);
         const userPreviouslyHandled = prevHandlerIds.includes(profile.id);
-        const isReservedByMe = lead.reserved_by === profile.id;
-        const isReservedByOther = !!lead.reserved_by && lead.reserved_by !== profile.id;
-        const reservedByName = isReservedByOther ? (profiles.find(p => p.id === lead.reserved_by)?.nome || "Outro") : null;
 
         return {
           lead, contatos,
           totalInteracoes: interacoes.length,
           ultimaTentativaEm: lastInteracao?.data_interacao || null,
           userPreviouslyHandled,
-          isReservedByOther,
-          isReservedByMe,
-          reservedByName,
-          isTaken: isReservedByOther,
+          isReservedByOther: false,
+          isReservedByMe: false,
+          reservedByName: null as string | null,
+          isTaken: false,
         };
       });
-
-    return capturaItems;
-  }, [leads, allContatos, allInteracoes, profile, isAdmin, CAPTURE_QUEUE_STATUS, profiles]);
+  }, [leads, allContatos, allInteracoes, profile, CAPTURE_QUEUE_STATUS]);
 
   // ─── Notificações (aguardando_decisao) ────────────
   const notificacoes = useMemo(() => {
@@ -661,6 +647,18 @@ export default function FilaLeadsPage() {
     mutationFn: async (leadId: string) => {
       if (!profile) throw new Error("Perfil não encontrado.");
 
+      // Re-check lead availability before attempting capture
+      const { data: freshLead, error: checkErr } = await supabase
+        .from("leads")
+        .select("id, status_lead, reserved_by, responsavel_id")
+        .eq("id", leadId)
+        .single();
+
+      if (checkErr) throw checkErr;
+      if (!freshLead || freshLead.status_lead !== "aguardando_captura" || freshLead.reserved_by || freshLead.responsavel_id) {
+        throw new Error("Este lead já foi atribuído a outro usuário.");
+      }
+
       const { data: reserved, error: reserveErr } = await supabase.rpc("atomic_reserve_lead", {
         _lead_id: leadId,
         _user_id: profile.user_id,
@@ -668,7 +666,7 @@ export default function FilaLeadsPage() {
       });
 
       if (reserveErr) throw reserveErr;
-      if (!reserved) throw new Error("Este lead já está sendo atendido ou visualizado por outro usuário.");
+      if (!reserved) throw new Error("Este lead já foi atribuído a outro usuário.");
 
       const { error: historyErr } = await supabase.from("lead_historico").insert({
         lead_id: leadId,
@@ -678,28 +676,31 @@ export default function FilaLeadsPage() {
       });
 
       if (historyErr) throw historyErr;
+      return leadId;
     },
     onMutate: async (leadId: string) => {
       await queryClient.cancelQueries({ queryKey: ["fila-leads"] });
       const previousLeads = queryClient.getQueryData<Lead[]>(["fila-leads"]);
 
+      // Optimistically remove from capture queue
       queryClient.setQueryData<Lead[]>(["fila-leads"], (current = []) =>
         current.filter(lead => lead.id !== leadId)
       );
 
       return { previousLeads };
     },
-    onSuccess: () => {
-      toast.success("Lead reservado com sucesso.");
+    onSuccess: (_data, leadId) => {
+      toast.success("Lead capturado com sucesso!");
       queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
+      // Navigate to the lead in "Meus Leads"
+      navigate(`/leads?id=${leadId}`);
     },
     onError: (err: any, _leadId, context) => {
       if (context?.previousLeads) {
         queryClient.setQueryData(["fila-leads"], context.previousLeads);
       }
       toast.error(err.message);
-    },
-    onSettled: () => {
+      // Refresh to get latest state
       queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
     },
   });
@@ -941,18 +942,14 @@ export default function FilaLeadsPage() {
                       const campanha = getCampanhaNome(item.lead);
                       const cidade = getCidadeNome(item.lead);
                       return (
-                        <TableRow key={item.lead.id} className={cn("bg-purple-50/30 dark:bg-purple-950/10", item.isReservedByOther && "opacity-50")}>
+                        <TableRow key={item.lead.id} className="bg-purple-50/30 dark:bg-purple-950/10">
                           <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
                           <TableCell>
                             <div className="flex flex-col gap-0.5">
                               <span className="font-medium text-sm">{item.lead.nome}</span>
                               <span className="text-[10px] text-primary/70 truncate">Origem: {campanha || "Não especificada"}</span>
                               {cidade && <span className="text-[10px] text-muted-foreground truncate">{cidade}</span>}
-                              {item.isReservedByOther ? (
-                                <Badge className="w-fit text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-0">Já capturado por {item.reservedByName}</Badge>
-                              ) : (
-                                <Badge className="w-fit text-[10px] bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border-0">Aguardando Captura</Badge>
-                              )}
+                              <Badge className="w-fit text-[10px] bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border-0">Aguardando Captura</Badge>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -967,11 +964,7 @@ export default function FilaLeadsPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center justify-end gap-1">
-                              {item.isTaken ? (
-                                <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300">
-                                  {item.reservedByName ? `Já capturado por ${item.reservedByName}` : "Em atendimento"}
-                                </Badge>
-                              ) : item.userPreviouslyHandled ? (
+                              {item.userPreviouslyHandled ? (
                                 <Badge variant="outline" className="text-[10px]">Você já interagiu</Badge>
                               ) : (
                                 <Button

@@ -1423,6 +1423,13 @@ export default function LeadsPage() {
     mutationFn: async () => {
       if (!selectedLead || !profile) throw new Error("Erro interno.");
 
+      // Block interaction if lead is not owned by or reserved by current user
+      const isOwner = selectedLead.responsavel_id === profile.id;
+      const isReservedByMe = selectedLead.reserved_by === profile.id;
+      if (!isOwner && !isReservedByMe && !isAdmin) {
+        throw new Error("Você não tem permissão para interagir com este lead. Ele pertence a outro usuário.");
+      }
+
       // If lead is reserved (from capture queue), confirm assignment on first interaction
       const isReservedCapture = selectedLead.status_lead === "reservado" && selectedLead.reserved_by === profile.id;
       if (isReservedCapture) {
