@@ -389,10 +389,10 @@ export default function FilaLeadsPage() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
-            <ListOrdered className="w-5 h-5" /> Fila de Atendimento
+            <ListOrdered className="w-5 h-5" /> Gerenciador de Leads
           </h1>
           <p className="text-sm text-muted-foreground">
-            Gerencie a fila de leads, transfira responsáveis e registre atrasos.
+            Gerencie leads, registre tentativas, transfira responsáveis e tome decisões.
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
