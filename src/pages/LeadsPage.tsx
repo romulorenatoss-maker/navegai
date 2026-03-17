@@ -588,6 +588,9 @@ export default function LeadsPage() {
           base.setHours(PERIODO_HORA[regra.periodo] || 9, 0, 0, 0);
           proximoContato = base;
         }
+      } else if (!ultimaInteracao) {
+        // New lead without interactions: deadline = data_criacao + 1 day (same hour)
+        proximoContato = addDays(new Date(lead.data_criacao), 1);
       }
 
       return { lead, tentativaAtual, proximoContato, ultimaInteracao };
