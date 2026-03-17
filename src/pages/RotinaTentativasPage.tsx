@@ -28,6 +28,7 @@ interface ConfigFluxo {
   acao_quando_atrasar: string;
   acao_apos_finalizar_tentativas: string;
   permitir_reiniciar_rotina: boolean;
+  tipo_servico_conversao_id: string | null;
 }
 
 const PERIODO_LABELS: Record<string, string> = { manha: "Manhã", tarde: "Tarde", noite: "Noite" };
