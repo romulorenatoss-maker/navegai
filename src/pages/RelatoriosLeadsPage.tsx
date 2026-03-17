@@ -57,9 +57,15 @@ const STATUS_BADGE: Record<string, string> = {
 export default function RelatoriosLeadsPage() {
   const { isAdmin, user } = useAuth();
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlCidadeId = searchParams.get("cidade_id");
+  const urlBairroId = searchParams.get("bairro_id");
+  const urlRuaId = searchParams.get("rua_id");
+  const hasAddressFilter = !!(urlCidadeId || urlBairroId || urlRuaId);
+
   const now = new Date();
-  const [startDate, setStartDate] = useState<Date | undefined>(startOfMonth(now));
-  const [endDate, setEndDate] = useState<Date | undefined>(endOfMonth(now));
+  const [startDate, setStartDate] = useState<Date | undefined>(hasAddressFilter ? undefined : startOfMonth(now));
+  const [endDate, setEndDate] = useState<Date | undefined>(hasAddressFilter ? undefined : endOfMonth(now));
 
   const [filterStatus, setFilterStatus] = useState("todos");
   const [filterOrigem, setFilterOrigem] = useState("todos");
@@ -67,6 +73,11 @@ export default function RelatoriosLeadsPage() {
   const [filterNome, setFilterNome] = useState("");
 
   const [responsaveis, setResponsaveis] = useState<{ id: string; nome: string }[]>([]);
+
+  // Lead detail dialog
+  const [viewLeadId, setViewLeadId] = useState<string | null>(null);
+  const [viewLeadData, setViewLeadData] = useState<any>(null);
+  const [viewLeadLoading, setViewLeadLoading] = useState(false);
 
   useEffect(() => {
     supabase.from("profiles").select("id, nome").eq("ativo", true).order("nome").then(({ data }) => {
