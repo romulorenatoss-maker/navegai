@@ -1,1 +1,4 @@
 project_id = "ctwvbnalunqsydacbekg"
+
+[functions.business-assistant]
+verify_jwt = false

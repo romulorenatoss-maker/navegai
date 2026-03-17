@@ -3,7 +3,7 @@ import {
   LayoutDashboard, ClipboardCheck, FileSearch, ListChecks, PlayCircle, FolderKanban,
   BarChart3, Building2, Users, HelpCircle, Wrench, LogOut, Star,
   PanelLeftClose, PanelLeft, UserPlus, ListOrdered, LayoutGrid, Settings, UserCheck, ClipboardList,
-  FileUp, MessageSquare, FileBarChart, Archive, MapPin, Megaphone,
+  FileUp, MessageSquare, FileBarChart, Archive, MapPin, Megaphone, Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -62,6 +62,7 @@ const allNavSections = [
   {
     title: "Sistema",
     items: [
+      { to: "/assistente", icon: Bot, label: "Assistente" },
       { to: "/relatorios", icon: BarChart3, label: "Relatórios de OS" },
       { to: "/leads/relatorios", icon: FileBarChart, label: "Relatórios de Leads" },
       { to: "/desempenho", icon: UserCheck, label: "Desempenho" },
