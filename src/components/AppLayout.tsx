@@ -91,7 +91,17 @@ export function AppLayout() {
               <span className="font-semibold text-sm">Nexus Ops</span>
             </div>
           </div>
-          <span className="text-xs text-sidebar-foreground/80 max-w-[120px] truncate">{userNameDisplay}</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="text-xs text-sidebar-foreground/80 max-w-[120px] truncate">{userNameDisplay}</button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setPasswordDialogOpen(true)}>
+                <KeyRound className="w-4 h-4 mr-2" />
+                Editar Senha
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </header>
 
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
