@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+export type DataScope = "none" | "own" | "team" | "all";
+
 export interface EffectivePermission {
   resource_code: string;
   resource_path: string | null;
@@ -10,6 +12,7 @@ export interface EffectivePermission {
   can_delete: boolean;
   can_assign: boolean;
   can_export: boolean;
+  data_scope: DataScope;
 }
 
 export function usePermissions(profileId: string | null) {
