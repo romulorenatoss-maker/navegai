@@ -764,8 +764,7 @@ export default function LeadsPage() {
     queryClient.invalidateQueries({ queryKey: ["leads-list"] });
   }, [profile, queryClient]);
 
-  // ─── Release reservation on leaving the lead (deselecting or navigating away) ──
-  // Store current reserved lead id in a ref so cleanup effects can access it
+  // Ref tracking for cleanup (no auto-expiry — reservations are manual only)
   const reservedLeadRef = useRef<{ id: string; profileId: string } | null>(null);
   useEffect(() => {
     if (selectedLead?.status_lead === "reservado" && selectedLead?.reserved_by === profile?.id) {
@@ -775,24 +774,6 @@ export default function LeadsPage() {
     }
   }, [selectedLead?.id, selectedLead?.status_lead, selectedLead?.reserved_by, profile?.id]);
 
-   // NOTE: Reservation is NOT released on unmount so the user can navigate away and come back
-  // The 2-minute auto-expiry timer handles cleanup if the user doesn't return in time
-
-  // Track selected lead changes to release previous reservation
-  const prevSelectedLeadIdRef = useMemo(() => ({ current: null as string | null }), []);
-  useEffect(() => {
-    const prevId = prevSelectedLeadIdRef.current;
-    const currentId = selectedLead?.id || null;
-    const wasReservedByMe = prevId && capturaLeadsRaw.find(l => l.id === prevId)?.reserved_by === profile?.id;
-
-    if (prevId && prevId !== currentId && wasReservedByMe) {
-      // User moved away from a reserved lead without acting
-      releaseReservation(prevId, "manual");
-    }
-    prevSelectedLeadIdRef.current = currentId;
-  }, [selectedLead?.id, profile?.id]);
-
-   // beforeunload does NOT release reservation – the 2-min timer handles expiry
 
   // ─── Realtime subscription for capture queue ─────────────────
   useEffect(() => {
