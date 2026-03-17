@@ -443,7 +443,14 @@ export default function LeadsPage() {
     });
   }, [effectiveProfileId, queryClient]);
 
-  // Auto-select lead from URL param ?id=
+  // Auto-activate vision mode and select lead from URL params ?id=&viewAs=
+  useEffect(() => {
+    const viewAs = searchParams.get("viewAs");
+    if (viewAs && !viewAsProfileId) {
+      setViewAsProfileId(viewAs);
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     const leadId = searchParams.get("id");
     if (leadId && allLeads.length > 0 && !selectedLead) {
