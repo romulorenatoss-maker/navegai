@@ -1610,7 +1610,7 @@ export default function LeadsPage() {
                             await supabase.from("leads").update({ status_lead: "arquivado" }).eq("id", selectedLead.id);
                             await supabase.from("lead_historico").insert({ lead_id: selectedLead.id, usuario_id: profile.id, tipo_evento: "lead_arquivado", descricao: "Lead arquivado manualmente" });
                             setSelectedLead(prev => prev ? { ...prev, status_lead: "arquivado" } : null);
-                            queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                            updateLeadInCache(selectedLead.id, { status_lead: "arquivado" });
                             refetchHistorico();
                             toast.success("Lead arquivado.");
                           }}>
