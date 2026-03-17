@@ -96,7 +96,7 @@ export default function CadastroEnderecosPage() {
   const openEdit = (item: any) => {
     setEditingId(item.id);
     setFormNome(item.nome);
-    setFormCep(item.cep || "");
+    setFormCep(tab === "ruas" && item.cep ? (item.cep as string[]).join(", ") : "");
     if (tab === "bairros") setFormCidadeId(item.cidade_id);
     if (tab === "ruas") setFormBairroId(item.bairro_id);
     setShowForm(true);
