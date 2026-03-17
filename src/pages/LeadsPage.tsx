@@ -263,6 +263,15 @@ export default function LeadsPage() {
   // Priority queue filter
   const [filaFiltro, setFilaFiltro] = useState<"hoje" | "todos">("hoje");
 
+  // Local editable state (saved only when registering an attempt)
+  const [localPlanoId, setLocalPlanoId] = useState<string | null>(null);
+  const [localRepetidor, setLocalRepetidor] = useState<string | null>(null);
+  const [localObjecaoId, setLocalObjecaoId] = useState<string>("none");
+  const [localCidadeId, setLocalCidadeId] = useState<string | null>(null);
+  const [localBairroId, setLocalBairroId] = useState<string | null>(null);
+  const [localRuaId, setLocalRuaId] = useState<string | null>(null);
+  const [localNumeroEnd, setLocalNumeroEnd] = useState("");
+
   // Duplicate alert state
   const [dupeAlert, setDupeAlert] = useState<{
     type: "lead_phone" | "cliente_phone" | "cpf";
