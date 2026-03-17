@@ -39,7 +39,7 @@ interface LeadRow {
 
 const STATUS_LABELS: Record<string, string> = {
   novo: "Novo",
-  em_atendimento: "Em Atendimento",
+  em_atendimento: "Em tratativa",
   convertido: "Convertido",
   sem_interesse: "Sem Interesse",
   perdido: "Perdido",

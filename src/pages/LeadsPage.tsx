@@ -146,7 +146,7 @@ const STATUS_OPTIONS = [
   { value: "aguardando_decisao_avaliador", label: "Aguardando Avaliador", color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
   { value: "fila_captura", label: "Fila de Captura", color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
   { value: "reservado", label: "Reservado", color: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200" },
-  { value: "em_atendimento", label: "Em Atendimento", color: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" },
+  { value: "em_atendimento", label: "Em tratativa", color: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" },
 ];
 
 // No timeout — reservations persist until manual release or action

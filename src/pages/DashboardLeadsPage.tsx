@@ -320,7 +320,7 @@ function StatusBar({ statusCounts, total, onStatusClick }: {
   const statuses = [
     { key: "novo", label: "Novos", color: "bg-blue-500" },
     { key: "em_contato", label: "Em Contato", color: "bg-yellow-500" },
-    { key: "em_atendimento", label: "Em Atendimento", color: "bg-amber-500" },
+    { key: "em_atendimento", label: "Em tratativa", color: "bg-amber-500" },
     { key: "interessado", label: "Interessados", color: "bg-teal-500" },
     { key: "convertido", label: "Convertidos", color: "bg-emerald-500" },
     { key: "sem_interesse", label: "Sem Interesse", color: "bg-red-400" },
