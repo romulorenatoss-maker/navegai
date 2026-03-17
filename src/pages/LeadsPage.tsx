@@ -201,6 +201,18 @@ export default function LeadsPage() {
     },
   });
 
+  // Auto-select lead from URL param ?id=
+  useEffect(() => {
+    const leadId = searchParams.get("id");
+    if (leadId && allLeads.length > 0 && !selectedLead) {
+      const found = allLeads.find(l => l.id === leadId);
+      if (found) {
+        setSelectedLead(found);
+        setSearchParams({}, { replace: true });
+      }
+    }
+  }, [searchParams, allLeads, selectedLead]);
+
   const { data: planos = [] } = useQuery({
     queryKey: ["planos"],
     queryFn: async () => {
