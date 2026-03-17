@@ -250,6 +250,22 @@ export default function RotinaTentativasPage() {
                   />
                   <Label>Permitir reiniciar rotina</Label>
                 </div>
+                <div className="space-y-1.5">
+                  <Label>Tipo de Serviço na Conversão de Lead</Label>
+                  <Select
+                    value={localConfig?.tipo_servico_conversao_id || "none"}
+                    onValueChange={(v) => localConfig && setLocalConfig({ ...localConfig, tipo_servico_conversao_id: v === "none" ? null : v })}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Selecione o tipo de serviço" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— Automático (Venda/Instalação) —</SelectItem>
+                      {tiposServico.map((ts: any) => (
+                        <SelectItem key={ts.id} value={ts.id}>{ts.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Define qual checklist será usado na OS criada ao converter um lead em cliente.</p>
+                </div>
               </div>
             </CardContent>
           </Card>
