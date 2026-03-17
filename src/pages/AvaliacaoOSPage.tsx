@@ -2820,9 +2820,6 @@ export default function AvaliacaoOSPage() {
         </div>
       </div>
 
-      {/* Minhas Avaliações Pendentes */}
-      <MinhasAvaliacoesPendentes />
-
       {/* OS Aguardando Número */}
       {aguardandoNumeroOS.length > 0 && (
         <div className="bg-card border border-border rounded-lg shadow-card mb-6">
@@ -2873,6 +2870,9 @@ export default function AvaliacaoOSPage() {
           </div>
         </div>
       )}
+
+      {/* Minhas Avaliações Pendentes */}
+      <MinhasAvaliacoesPendentes />
 
       {/* View Cliente Dialog */}
       <Dialog open={viewClienteOpen} onOpenChange={setViewClienteOpen}>
