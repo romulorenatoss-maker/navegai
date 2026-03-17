@@ -3012,17 +3012,6 @@ export default function LeadsPage() {
                   <UserCheck className="w-4 h-4 mr-2" /> Assumir Lead
                 </Button>
                 <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => {
-                    setShowDuplicateModal(false); setDuplicateLeadData(null);
-                    setForceCreateLead(true);
-                    setTimeout(() => createLeadMutation.mutate(), 50);
-                  }}
-                >
-                  <Plus className="w-4 h-4 mr-2" /> Criar Novo Mesmo Assim
-                </Button>
-                <Button
                   variant="ghost"
                   className="w-full"
                   onClick={() => { setShowDuplicateModal(false); setDuplicateLeadData(null); }}
