@@ -1435,7 +1435,7 @@ export default function LeadsPage() {
                     return (
                       <button
                         key={item.lead.id}
-                        onClick={() => openLeadWithTransfer(item.lead)}
+                        onClick={() => isVisionMode ? setSelectedLead(item.lead) : openLeadWithTransfer(item.lead)}
                         className={`w-full text-left px-3 py-2.5 transition-colors relative ${
                           isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-accent/50 border-l-2 border-l-transparent"
                         }`}
