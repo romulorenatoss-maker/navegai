@@ -154,9 +154,35 @@ export default function RelatoriosLeadsPage() {
     })));
     setSelected(new Set());
     setLoading(false);
-  }, [startDate, endDate, filterStatus, filterOrigem, filterResponsavel, filterNome]);
+  }, [startDate, endDate, filterStatus, filterOrigem, filterResponsavel, filterNome, urlCidadeId, urlBairroId, urlRuaId]);
 
   useEffect(() => { fetchLeads(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── View Lead Detail ──────────────────────────────
+  const openLeadDetail = async (leadId: string) => {
+    setViewLeadId(leadId);
+    setViewLeadLoading(true);
+    try {
+      const [leadRes, contatosRes, historicoRes] = await Promise.all([
+        supabase.from("leads").select("*, cidade:cidades(nome), bairro:bairros(nome), rua:ruas(nome), plano:planos(nome_plano)").eq("id", leadId).single(),
+        supabase.from("lead_contatos").select("*").eq("lead_id", leadId),
+        supabase.from("lead_historico").select("*, usuario:profiles(nome)").eq("lead_id", leadId).order("data_evento", { ascending: false }).limit(20),
+      ]);
+      const responsavelNome = leadRes.data?.responsavel_id
+        ? responsaveis.find(r => r.id === leadRes.data.responsavel_id)?.nome || "—"
+        : "—";
+      setViewLeadData({
+        ...leadRes.data,
+        responsavel_nome: responsavelNome,
+        contatos: contatosRes.data || [],
+        historico: historicoRes.data || [],
+      });
+    } catch {
+      toast.error("Erro ao carregar detalhes do lead.");
+    } finally {
+      setViewLeadLoading(false);
+    }
+  };
 
   const allSelected = leadsList.length > 0 && selected.size === leadsList.length;
   const someSelected = selected.size > 0 && !allSelected;
