@@ -53,12 +53,44 @@ serve(async (req) => {
       supabase.from("leads").select("*", { count: "exact", head: true }).eq("status_lead", "convertido").gte("updated_at", todayStart).lte("updated_at", todayEnd),
       supabase.from("leads").select("*", { count: "exact", head: true }).eq("status_lead", "perdido"),
       supabase.from("campanhas").select("id, nome").eq("ativo", true),
-      supabase.from("lead_interacoes").select("lead_id, tipo_contato, resultado, data_interacao"),
+      supabase.from("lead_interacoes").select("lead_id, tipo_contato, resultado, data_interacao, colaborador_id, numero_utilizado, profiles:colaborador_id(nome)"),
       supabase.from("ordens_servico").select("*", { count: "exact", head: true }),
       supabase.from("ordens_servico").select("*", { count: "exact", head: true }).eq("status", "concluida"),
       supabase.from("ordens_servico").select("*", { count: "exact", head: true }).gte("created_at", todayStart).lte("created_at", todayEnd),
       supabase.from("lead_tarefas_contato").select("lead_id, tentativa, status"),
       supabase.from("leads").select("status_lead"),
+      // OS com detalhes de colaboradores avaliados
+      supabase.from("ordens_servico").select(`
+        id, numero_os, status, data_abertura, data_conclusao, cliente_nome, cliente_cpf,
+        tipo_servico:tipo_servico_id(nome),
+        tecnico:tecnico_id(nome),
+        atendente:atendente_id(nome),
+        colaborador_avaliado:colaborador_avaliado_id(nome)
+      `).order("created_at", { ascending: false }).limit(200),
+      // Histórico de leads com nomes de usuários
+      supabase.from("lead_historico").select(`
+        lead_id, tipo_evento, descricao, data_evento,
+        profiles:usuario_id(nome),
+        leads:lead_id(nome)
+      `).order("data_evento", { ascending: false }).limit(500),
+      // Registros de atraso com nomes
+      supabase.from("registro_atraso_tentativa").select(`
+        lead_id, tentativa, periodo, data_programada, data_registro,
+        profiles:colaborador_id(nome),
+        leads:lead_id(nome)
+      `).order("created_at", { ascending: false }).limit(200),
+      // Avaliações com avaliadores
+      supabase.from("avaliacoes").select(`
+        id, ordem_servico_id, concluida, concluida_em, nota_final,
+        profiles:avaliador_id(nome),
+        tipo_avaliacao:tipo_avaliacao_id(nome)
+      `).order("created_at", { ascending: false }).limit(300),
+      // Respostas de avaliação com detalhes
+      supabase.from("respostas_avaliacao").select(`
+        ordem_servico_id, pergunta_id, resposta, observacao, created_at,
+        profiles:avaliador_id(nome),
+        perguntas_avaliacao:pergunta_id(pergunta, peso, setor_avaliado:setor_avaliado_id(nome))
+      `).not("resposta", "is", null).order("created_at", { ascending: false }).limit(500),
     ]);
 
     // Campaign conversion counts
@@ -100,6 +132,70 @@ serve(async (req) => {
     const totalInteracoes = interacoes?.length || 0;
     const interacoesHoje = interacoes?.filter(i => i.data_interacao >= todayStart && i.data_interacao <= todayEnd).length || 0;
 
+    // Format OS details with names
+    const osDetalhesFmt = (osDetalhes || []).slice(0, 100).map((os: any) => ({
+      numero: os.numero_os || "S/N",
+      status: os.status,
+      abertura: os.data_abertura?.split("T")[0],
+      conclusao: os.data_conclusao?.split("T")[0] || "-",
+      cliente: os.cliente_nome || "-",
+      tecnico: os.tecnico?.nome || "-",
+      atendente: os.atendente?.nome || "-",
+      avaliado: os.colaborador_avaliado?.nome || "-",
+      servico: os.tipo_servico?.nome || "-",
+    }));
+
+    // Format lead history with names
+    const historicoFmt = (historicoLeads || []).slice(0, 200).map((h: any) => ({
+      lead: (h as any).leads?.nome || h.lead_id,
+      evento: h.tipo_evento,
+      descricao: h.descricao || "",
+      data: h.data_evento,
+      usuario: (h as any).profiles?.nome || "-",
+    }));
+
+    // Format delays with names
+    const atrasosFmt = (atrasosData || []).slice(0, 100).map((a: any) => ({
+      lead: (a as any).leads?.nome || a.lead_id,
+      colaborador: (a as any).profiles?.nome || "-",
+      tentativa: a.tentativa,
+      periodo: a.periodo,
+      programada: a.data_programada,
+      registro: a.data_registro,
+    }));
+
+    // Format interaction details with names
+    const interacoesFmt = (interacoes || []).slice(0, 200).map((i: any) => ({
+      lead_id: i.lead_id,
+      tipo: i.tipo_contato,
+      resultado: i.resultado || "-",
+      data: i.data_interacao,
+      colaborador: (i as any).profiles?.nome || "-",
+      numero: i.numero_utilizado || "-",
+    }));
+
+    // Format evaluations
+    const avaliacoesFmt = (avaliacoesData || []).slice(0, 100).map((a: any) => ({
+      os_id: a.ordem_servico_id,
+      avaliador: (a as any).profiles?.nome || "-",
+      tipo: (a as any).tipo_avaliacao?.nome || "-",
+      concluida: a.concluida,
+      concluida_em: a.concluida_em || "-",
+      nota: a.nota_final,
+    }));
+
+    // Format responses with question details
+    const respostasFmt = (respostasData || []).slice(0, 200).map((r: any) => ({
+      os_id: r.ordem_servico_id,
+      pergunta: (r as any).perguntas_avaliacao?.pergunta || "-",
+      setor: (r as any).perguntas_avaliacao?.setor_avaliado?.nome || "-",
+      peso: (r as any).perguntas_avaliacao?.peso || 1,
+      resposta: r.resposta,
+      observacao: r.observacao || "",
+      avaliador: (r as any).profiles?.nome || "-",
+      data: r.created_at,
+    }));
+
     const contextData = `
 DADOS DO SISTEMA EM TEMPO REAL (${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}):
 
@@ -118,12 +214,30 @@ ORDENS DE SERVIÇO (OS):
 - OS concluídas: ${osConcluidas || 0}
 - OS criadas hoje: ${osHoje || 0}
 
+DETALHES DAS OS (últimas 100):
+${JSON.stringify(osDetalhesFmt)}
+
 CAMPANHAS ATIVAS: ${campanhas?.map(c => c.nome).join(", ") || "Nenhuma"}
 CONVERSÃO POR CAMPANHA: ${JSON.stringify(campConversion)}
 
-INTERAÇÕES:
+INTERAÇÕES COM LEADS (últimas 200, com nome do colaborador):
+${JSON.stringify(interacoesFmt)}
 - Total de interações registradas: ${totalInteracoes}
 - Interações hoje: ${interacoesHoje}
+
+HISTÓRICO DE ALTERAÇÕES EM LEADS (últimos 200 eventos):
+Cada evento mostra quem fez a ação, quando e o que aconteceu.
+${JSON.stringify(historicoFmt)}
+
+REGISTROS DE ATRASO EM TENTATIVAS (últimos 100):
+Mostra colaboradores que atrasaram nas tentativas de contato com leads.
+${JSON.stringify(atrasosFmt)}
+
+AVALIAÇÕES (últimas 100):
+${JSON.stringify(avaliacoesFmt)}
+
+RESPOSTAS DE AVALIAÇÃO (últimas 200, com pergunta, setor e avaliador):
+${JSON.stringify(respostasFmt)}
 `;
 
     const systemPrompt = `Você é um assistente inteligente de business intelligence para um sistema de gestão de leads, vendas e avaliações.
