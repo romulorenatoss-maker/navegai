@@ -1708,7 +1708,15 @@ export default function LeadsPage() {
                 <CardTitle className="text-xs font-semibold flex items-center gap-1.5 text-muted-foreground uppercase tracking-wider">
                   <ListOrdered className="w-3.5 h-3.5" /> Fila
                 </CardTitle>
-                <div className="flex gap-1">
+                <div className="flex gap-1 items-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn("h-6 w-6 p-0", showFilaFilters && "text-primary")}
+                    onClick={() => setShowFilaFilters(v => !v)}
+                  >
+                    <Filter className="w-3 h-3" />
+                  </Button>
                   <Button
                     variant={filaFiltro === "hoje" ? "default" : "ghost"}
                     size="sm"
@@ -1737,6 +1745,57 @@ export default function LeadsPage() {
                   </Button>
                 </div>
               </div>
+              {showFilaFilters && (
+                <div className="mt-2 space-y-1.5">
+                  <div>
+                    <label className="text-[10px] text-muted-foreground">Responsável</label>
+                    <Select value={filtroResponsavel} onValueChange={setFiltroResponsavel}>
+                      <SelectTrigger className="h-7 text-[11px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        {[...new Set(priorityQueue.map(q => q.lead.responsavel_id).filter(Boolean))].map(rId => {
+                          const p = profiles.find(pr => pr.id === rId);
+                          return p ? <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem> : null;
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground">Interagiu com</label>
+                    <Select value={filtroHandler} onValueChange={setFiltroHandler}>
+                      <SelectTrigger className="h-7 text-[11px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        {[...new Set(priorityQueue.flatMap(q => q.handlers))].map(hId => {
+                          const p = profiles.find(pr => pr.id === hId);
+                          return p ? <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem> : null;
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground">Mín. tentativas totais</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      className="h-7 text-[11px]"
+                      placeholder="Ex: 3"
+                      value={filtroMinTentativas}
+                      onChange={e => setFiltroMinTentativas(e.target.value)}
+                    />
+                  </div>
+                  {(filtroResponsavel !== "all" || filtroHandler !== "all" || filtroMinTentativas) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[10px] w-full"
+                      onClick={() => { setFiltroResponsavel("all"); setFiltroHandler("all"); setFiltroMinTentativas(""); }}
+                    >
+                      Limpar filtros
+                    </Button>
+                  )}
+                </div>
+              )}
             </CardHeader>
             <ScrollArea className="flex-1">
               <div className="divide-y divide-border">
