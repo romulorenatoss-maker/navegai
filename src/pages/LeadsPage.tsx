@@ -228,6 +228,9 @@ export default function LeadsPage() {
   // Quick-add address dialogs
   const [quickAddType, setQuickAddType] = useState<"cidade" | "bairro" | "rua" | null>(null);
   const [quickAddNome, setQuickAddNome] = useState("");
+  // Quick-add for detail panel address
+  const [detailQuickAddType, setDetailQuickAddType] = useState<"cidade" | "bairro" | "rua" | null>(null);
+  const [detailQuickAddNome, setDetailQuickAddNome] = useState("");
 
   // Detail view
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -1435,87 +1438,97 @@ export default function LeadsPage() {
                       {/* Vertical line */}
                       <div className="absolute left-4 top-3 bottom-3 w-px bg-border" />
 
-                      {timeline.map((item, idx) => {
-                        const IconComp = item.type === "historico"
-                          ? (EVENTO_ICONS[item.evento || ""] || Clock)
-                          : PhoneCall;
-                        const isInteracao = item.type === "interacao" || item.evento === "tentativa_contato";
-                        const isTransfer = item.evento === "transferencia_automatica";
-                        const isCriacao = item.evento === "criacao";
-                        const isCriacaoVinculado = isCriacao && item.descricao?.includes("vinculado ao cliente existente");
-                        const isConversao = item.evento === "conversao_cliente";
+                      {(() => {
+                        // Group timeline items by minute to consolidate
+                        const groups: { key: string; date: string; items: typeof timeline }[] = [];
+                        timeline.forEach(item => {
+                          const minuteKey = item.date.slice(0, 16); // YYYY-MM-DDTHH:mm
+                          const userId = item.usuario_id || item.colaborador_id || "";
+                          const groupKey = `${minuteKey}_${userId}`;
+                          const existing = groups.find(g => g.key === groupKey);
+                          if (existing) {
+                            existing.items.push(item);
+                          } else {
+                            groups.push({ key: groupKey, date: item.date, items: [item] });
+                          }
+                        });
 
-                        // Determine attempt number from description
-                        let attemptNum: string | null = null;
-                        if (item.descricao) {
-                          const match = item.descricao.match(/Tentativa #(\d+)/i) || item.descricao.match(/Tentativa (\d+)/i);
-                          if (match) attemptNum = match[1];
-                        }
+                        return groups.map((group) => {
+                          const mainItem = group.items[0];
+                          const IconComp = mainItem.type === "historico"
+                            ? (EVENTO_ICONS[mainItem.evento || ""] || Clock)
+                            : PhoneCall;
+                          const isInteracao = mainItem.type === "interacao" || mainItem.evento === "tentativa_contato";
+                          const isTransfer = mainItem.evento === "transferencia_automatica";
+                          const isCriacao = mainItem.evento === "criacao";
+                          const isCriacaoVinculado = isCriacao && mainItem.descricao?.includes("vinculado ao cliente existente");
+                          const isConversao = mainItem.evento === "conversao_cliente";
 
-                        return (
-                          <div key={item.id} className="relative pl-10 pb-4 last:pb-0">
-                            {/* Icon node */}
-                            <div className={`absolute left-1.5 w-5 h-5 rounded-full flex items-center justify-center ring-2 ring-background ${
-                              isCriacaoVinculado ? "bg-amber-500" :
-                              isCriacao ? "bg-blue-500" :
-                              isConversao ? "bg-green-500" :
-                              isTransfer ? "bg-amber-500" :
-                              isInteracao ? "bg-primary" :
-                              "bg-muted-foreground/30"
-                            }`}>
-                              <IconComp className="w-2.5 h-2.5 text-white" />
-                            </div>
-
-                            <div className={`rounded-lg p-2.5 border ${
-                              isInteracao ? "bg-primary/5 border-primary/20" :
-                              isTransfer ? "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800" :
-                              isCriacaoVinculado ? "bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-700" :
-                              isCriacao ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800" :
-                              isConversao ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800" :
-                              "bg-card border-border"
-                            }`}>
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${isCriacaoVinculado ? "border-amber-400 text-amber-700 dark:text-amber-300" : ""}`}>
-                                    {item.type === "historico"
-                                      ? (isCriacaoVinculado ? "⚠️ Cliente já cadastrado na base" : (EVENTO_LABELS[item.evento || ""] || item.evento))
-                                      : `${item.tipo_contato === "whatsapp" ? "WhatsApp" : "Telefone"}`}
-                                  </Badge>
-                                  {attemptNum && (
-                                    <Badge className="text-[10px] px-1.5 py-0 bg-primary/20 text-primary border-0">
-                                      #{attemptNum}
-                                    </Badge>
-                                  )}
-                                </div>
-                                <span className="text-[10px] text-muted-foreground whitespace-nowrap">{fmtDate(item.date)}</span>
+                          return (
+                            <div key={group.key} className="relative pl-10 pb-4 last:pb-0">
+                              <div className={`absolute left-1.5 w-5 h-5 rounded-full flex items-center justify-center ring-2 ring-background ${
+                                isCriacaoVinculado ? "bg-amber-500" :
+                                isCriacao ? "bg-blue-500" :
+                                isConversao ? "bg-green-500" :
+                                isTransfer ? "bg-amber-500" :
+                                isInteracao ? "bg-primary" :
+                                "bg-muted-foreground/30"
+                              }`}>
+                                <IconComp className="w-2.5 h-2.5 text-white" />
                               </div>
 
-                              {/* Content */}
-                              {item.type === "historico" && item.descricao && (
-                                <p className="text-sm mt-1.5 text-foreground/80">{item.descricao}</p>
-                              )}
-                              {item.type === "interacao" && (
-                                <div className="mt-1.5 space-y-0.5">
-                                  {item.numero_utilizado && (
-                                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                      <Phone className="w-2.5 h-2.5" /> {item.numero_utilizado}
-                                    </p>
-                                  )}
-                                  {item.resultado && (
-                                    <p className="text-sm text-foreground/80">{item.resultado}</p>
-                                  )}
+                              <div className={`rounded-lg p-2.5 border ${
+                                isInteracao ? "bg-primary/5 border-primary/20" :
+                                isTransfer ? "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800" :
+                                isCriacaoVinculado ? "bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-700" :
+                                isCriacao ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800" :
+                                isConversao ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800" :
+                                "bg-card border-border"
+                              }`}>
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {group.items.length === 1 ? (
+                                      <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${isCriacaoVinculado ? "border-amber-400 text-amber-700 dark:text-amber-300" : ""}`}>
+                                        {mainItem.type === "historico"
+                                          ? (isCriacaoVinculado ? "⚠️ Cliente na base" : (EVENTO_LABELS[mainItem.evento || ""] || mainItem.evento))
+                                          : `${mainItem.tipo_contato === "whatsapp" ? "WhatsApp" : "Telefone"}`}
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                        {group.items.length} registros
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">{fmtDate(group.date)}</span>
                                 </div>
-                              )}
 
-                              {/* Author */}
-                              <p className="text-[10px] text-muted-foreground/60 mt-1 flex items-center gap-1">
-                                <User className="w-2.5 h-2.5" />
-                                {getProfileName(item.usuario_id || item.colaborador_id)}
-                              </p>
+                                {/* Consolidated content */}
+                                <div className="mt-1.5 space-y-1">
+                                  {group.items.map(item => (
+                                    <div key={item.id}>
+                                      {item.type === "historico" && item.descricao && (
+                                        <p className="text-[11px] text-foreground/80">• {item.descricao}</p>
+                                      )}
+                                      {item.type === "interacao" && (
+                                        <p className="text-[11px] text-foreground/80">
+                                          • {item.tipo_contato === "whatsapp" ? "WhatsApp" : "Telefone"}
+                                          {item.numero_utilizado ? ` → ${item.numero_utilizado}` : ""}
+                                          {item.resultado ? `: ${item.resultado}` : ""}
+                                        </p>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+
+                                <p className="text-[10px] text-muted-foreground/60 mt-1 flex items-center gap-1">
+                                  <User className="w-2.5 h-2.5" />
+                                  {getProfileName(mainItem.usuario_id || mainItem.colaborador_id)}
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        });
+                      })()}
                     </div>
                   )}
                 </div>
@@ -1557,68 +1570,71 @@ export default function LeadsPage() {
                   </CardHeader>
                 </Card>
 
-                {/* Ação Card */}
-                <Card>
-                  <CardHeader className="py-2 px-3 border-b">
-                    <CardTitle className="text-xs font-semibold flex items-center gap-1.5 text-muted-foreground uppercase tracking-wider">
-                      <Zap className="w-3 h-3" /> Ação
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-2 space-y-1">
-                    <Button size="sm" className="w-full justify-start text-xs h-8 press-effect" onClick={() => setShowInteraction(true)}>
-                      <PhoneCall className="w-3.5 h-3.5 mr-2" /> Registrar Tentativa {tentativasRealizadas}
-                    </Button>
-                    <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8" onClick={() => { setScheduleDate(undefined); setScheduleHour("09"); setScheduleMinute("00"); setShowSchedule(true); }}>
-                      <CalendarClock className="w-3.5 h-3.5 mr-2" /> Agendar Retorno
-                    </Button>
-                    {selectedLead.agendamento_retorno && (
-                      <div className="p-2 rounded-md bg-muted/50 border text-xs flex items-center gap-1.5">
-                        <CalendarClock className="w-3 h-3 text-primary" />
-                        <span>Retorno: <span className="font-semibold">{fmtDate(selectedLead.agendamento_retorno)}</span></span>
-                        <button className="ml-auto text-destructive/60 hover:text-destructive text-[10px] underline" onClick={async () => {
-                          await supabase.from("leads").update({ agendamento_retorno: null } as any).eq("id", selectedLead.id);
-                          if (profile) {
-                            await supabase.from("lead_historico").insert({ lead_id: selectedLead.id, usuario_id: profile.id, tipo_evento: "agendamento_removido", descricao: "Agendamento de retorno removido manualmente" });
-                          }
-                          setSelectedLead(prev => prev ? { ...prev, agendamento_retorno: null } : null);
-                          queryClient.invalidateQueries({ queryKey: ["leads-list"] });
-                          refetchHistorico();
-                          toast.success("Agendamento removido.");
-                        }}>Remover</button>
-                      </div>
-                    )}
-                    {selectedLead.status_lead !== "convertido" ? (
-                      <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8" onClick={openConversion}>
-                        <UserPlus className="w-3.5 h-3.5 mr-2" /> Converter em Cliente
+                {/* Ação Popover Button */}
+                <div className="flex items-center gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button size="sm" className="h-8 text-xs gap-1.5 press-effect">
+                        <Zap className="w-3.5 h-3.5" /> Ação
                       </Button>
-                    ) : (
-                      <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-0 w-full justify-center py-1.5">✓ Convertido</Badge>
-                    )}
-                    {allAttemptsExhausted && selectedLead.status_lead !== "perdido" && selectedLead.status_lead !== "convertido" && (
-                      <>
-                        <div className="p-2 rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
-                          <p className="text-xs text-amber-800 dark:text-amber-200 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Todas as {maxTentativas} tentativas realizadas.</p>
-                        </div>
-                        <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8 text-destructive hover:text-destructive" onClick={() => setShowFinalize(true)}>
-                          Finalizar Tentativas
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-1" align="start">
+                      <div className="space-y-0.5">
+                        <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8" onClick={() => setShowInteraction(true)}>
+                          <PhoneCall className="w-3.5 h-3.5 mr-2" /> Registrar Tentativa {tentativasRealizadas}
                         </Button>
-                      </>
-                    )}
-                    {canArchiveLead && selectedLead.status_lead !== "arquivado" && selectedLead.status_lead !== "convertido" && (
-                      <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8 text-destructive hover:text-destructive" onClick={async () => {
-                        if (!profile) return;
-                        await supabase.from("leads").update({ status_lead: "arquivado" }).eq("id", selectedLead.id);
-                        await supabase.from("lead_historico").insert({ lead_id: selectedLead.id, usuario_id: profile.id, tipo_evento: "lead_arquivado", descricao: "Lead arquivado manualmente" });
-                        setSelectedLead(prev => prev ? { ...prev, status_lead: "arquivado" } : null);
+                        <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8" onClick={() => { setScheduleDate(undefined); setScheduleHour("09"); setScheduleMinute("00"); setShowSchedule(true); }}>
+                          <CalendarClock className="w-3.5 h-3.5 mr-2" /> Agendar Retorno
+                        </Button>
+                        {selectedLead.status_lead !== "convertido" && (
+                          <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8" onClick={openConversion}>
+                            <UserPlus className="w-3.5 h-3.5 mr-2" /> Converter em Cliente
+                          </Button>
+                        )}
+                        {allAttemptsExhausted && selectedLead.status_lead !== "perdido" && selectedLead.status_lead !== "convertido" && (
+                          <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8 text-amber-600 hover:text-amber-700" onClick={() => setShowFinalize(true)}>
+                            <AlertTriangle className="w-3.5 h-3.5 mr-2" /> Finalizar Tentativas
+                          </Button>
+                        )}
+                        {canArchiveLead && selectedLead.status_lead !== "arquivado" && selectedLead.status_lead !== "convertido" && (
+                          <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8 text-destructive hover:text-destructive" onClick={async () => {
+                            if (!profile) return;
+                            await supabase.from("leads").update({ status_lead: "arquivado" }).eq("id", selectedLead.id);
+                            await supabase.from("lead_historico").insert({ lead_id: selectedLead.id, usuario_id: profile.id, tipo_evento: "lead_arquivado", descricao: "Lead arquivado manualmente" });
+                            setSelectedLead(prev => prev ? { ...prev, status_lead: "arquivado" } : null);
+                            queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                            refetchHistorico();
+                            toast.success("Lead arquivado.");
+                          }}>
+                            <Archive className="w-3.5 h-3.5 mr-2" /> Arquivar Lead
+                          </Button>
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  {selectedLead.status_lead === "convertido" && (
+                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-0 text-xs">✓ Convertido</Badge>
+                  )}
+                  {selectedLead.agendamento_retorno && (
+                    <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted/50 border text-[11px]">
+                      <CalendarClock className="w-3 h-3 text-primary" />
+                      <span className="font-medium">{fmtDate(selectedLead.agendamento_retorno)}</span>
+                      <button className="text-destructive/60 hover:text-destructive text-[10px] underline ml-1" onClick={async () => {
+                        await supabase.from("leads").update({ agendamento_retorno: null } as any).eq("id", selectedLead.id);
+                        if (profile) {
+                          await supabase.from("lead_historico").insert({ lead_id: selectedLead.id, usuario_id: profile.id, tipo_evento: "agendamento_removido", descricao: "Agendamento de retorno removido manualmente" });
+                        }
+                        setSelectedLead(prev => prev ? { ...prev, agendamento_retorno: null } : null);
                         queryClient.invalidateQueries({ queryKey: ["leads-list"] });
                         refetchHistorico();
-                        toast.success("Lead arquivado.");
-                      }}>
-                        <Archive className="w-3.5 h-3.5 mr-2" /> Arquivar Lead
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
+                        toast.success("Agendamento removido.");
+                      }}>×</button>
+                    </div>
+                  )}
+                  {allAttemptsExhausted && selectedLead.status_lead !== "perdido" && selectedLead.status_lead !== "convertido" && (
+                    <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-0 text-[10px] gap-1"><AlertTriangle className="w-3 h-3" /> {maxTentativas} tentativas</Badge>
+                  )}
+                </div>
 
                 {/* Dados do Lead - vertical stacking */}
                 <Card>
@@ -1666,39 +1682,54 @@ export default function LeadsPage() {
                       <div className="space-y-2">
                         <div className="space-y-1">
                           <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Cidade</Label>
-                          <Select value={localCidadeId || "none"} onValueChange={v => {
-                            const val = v === "none" ? null : v;
-                            setLocalCidadeId(val); setLocalBairroId(null); setLocalRuaId(null);
-                          }}>
-                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">Nenhuma</SelectItem>
-                              {endCidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
+                          <div className="flex gap-1">
+                            <Select value={localCidadeId || "none"} onValueChange={v => {
+                              const val = v === "none" ? null : v;
+                              setLocalCidadeId(val); setLocalBairroId(null); setLocalRuaId(null);
+                            }}>
+                              <SelectTrigger className="h-8 text-xs flex-1"><SelectValue placeholder="—" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Nenhuma</SelectItem>
+                                {endCidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { setDetailQuickAddType("cidade"); setDetailQuickAddNome(""); }}>
+                              <Plus className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
                         </div>
                         <div className="space-y-1">
                           <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Bairro</Label>
-                          <Select value={localBairroId || "none"} onValueChange={v => {
-                            const val = v === "none" ? null : v;
-                            setLocalBairroId(val); setLocalRuaId(null);
-                          }} disabled={!localCidadeId}>
-                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">Nenhum</SelectItem>
-                              {endBairros.filter(b => b.cidade_id === localCidadeId).map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
+                          <div className="flex gap-1">
+                            <Select value={localBairroId || "none"} onValueChange={v => {
+                              const val = v === "none" ? null : v;
+                              setLocalBairroId(val); setLocalRuaId(null);
+                            }} disabled={!localCidadeId}>
+                              <SelectTrigger className="h-8 text-xs flex-1"><SelectValue placeholder="—" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Nenhum</SelectItem>
+                                {endBairros.filter(b => b.cidade_id === localCidadeId).map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { setDetailQuickAddType("bairro"); setDetailQuickAddNome(""); }} disabled={!localCidadeId}>
+                              <Plus className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
                         </div>
                         <div className="space-y-1">
                           <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Rua</Label>
-                          <Select value={localRuaId || "none"} onValueChange={v => setLocalRuaId(v === "none" ? null : v)} disabled={!localBairroId}>
-                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">Nenhuma</SelectItem>
-                              {endRuas.filter(r => r.bairro_id === localBairroId).map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
+                          <div className="flex gap-1">
+                            <Select value={localRuaId || "none"} onValueChange={v => setLocalRuaId(v === "none" ? null : v)} disabled={!localBairroId}>
+                              <SelectTrigger className="h-8 text-xs flex-1"><SelectValue placeholder="—" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Nenhuma</SelectItem>
+                                {endRuas.filter(r => r.bairro_id === localBairroId).map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { setDetailQuickAddType("rua"); setDetailQuickAddNome(""); }} disabled={!localBairroId}>
+                              <Plus className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
                         </div>
                         <div className="space-y-1">
                           <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Nº</Label>
@@ -2445,6 +2476,54 @@ export default function LeadsPage() {
             {(dupeAlert?.type === "cliente_phone" || dupeAlert?.type === "cpf") && (
               <Button variant="secondary" onClick={() => setDupeAlert(null)} className="press-effect">OK, Entendi</Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Detail Panel Quick Add Address Dialog */}
+      <Dialog open={!!detailQuickAddType} onOpenChange={v => !v && setDetailQuickAddType(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Adicionar {detailQuickAddType === "cidade" ? "Cidade" : detailQuickAddType === "bairro" ? "Bairro" : "Rua"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Nome *</Label>
+              <Input value={detailQuickAddNome} onChange={e => setDetailQuickAddNome(e.target.value)} placeholder="Digite o nome..." autoFocus />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailQuickAddType(null)}>Cancelar</Button>
+            <Button
+              disabled={!detailQuickAddNome.trim()}
+              onClick={async () => {
+                try {
+                  if (detailQuickAddType === "cidade") {
+                    const { data, error } = await supabase.from("cidades").insert({ nome: detailQuickAddNome.trim() }).select().single();
+                    if (error) throw error;
+                    queryClient.invalidateQueries({ queryKey: ["enderecos-cidades"] });
+                    setLocalCidadeId(data.id); setLocalBairroId(null); setLocalRuaId(null);
+                  } else if (detailQuickAddType === "bairro" && localCidadeId) {
+                    const { data, error } = await supabase.from("bairros").insert({ nome: detailQuickAddNome.trim(), cidade_id: localCidadeId }).select().single();
+                    if (error) throw error;
+                    queryClient.invalidateQueries({ queryKey: ["enderecos-bairros"] });
+                    setLocalBairroId(data.id); setLocalRuaId(null);
+                  } else if (detailQuickAddType === "rua" && localBairroId) {
+                    const { data, error } = await supabase.from("ruas").insert({ nome: detailQuickAddNome.trim(), bairro_id: localBairroId }).select().single();
+                    if (error) throw error;
+                    queryClient.invalidateQueries({ queryKey: ["enderecos-ruas"] });
+                    setLocalRuaId(data.id);
+                  }
+                  toast.success("Cadastrado!");
+                  setDetailQuickAddType(null);
+                } catch (err: any) {
+                  toast.error(err.message?.includes("duplicate") ? "Já existe um registro com esse nome." : err.message);
+                }
+              }}
+              className="press-effect"
+            >
+              <Plus className="w-4 h-4 mr-1" /> Cadastrar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
