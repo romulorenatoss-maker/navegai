@@ -1062,7 +1062,8 @@ export default function LeadsPage() {
       toast.success("Tentativa registrada!");
       setShowInteraction(false); setInterNumero(""); setInterResultado("");
       refetchInteracoes(); refetchHistorico(); refetchObjecao();
-      queryClient.invalidateQueries({ queryKey: ["all-lead-interacoes"] });
+      queryClient.invalidateQueries({ queryKey: ["all-lead-interacoes"], refetchType: "none" });
+      queryClient.refetchQueries({ queryKey: ["all-lead-interacoes"] });
     },
     onError: (err: any) => toast.error(err.message),
   });
