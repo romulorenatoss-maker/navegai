@@ -390,11 +390,12 @@ export default function CadastroEnderecosPage() {
               <div className="divide-y">
                 {filteredRuas.length === 0 ? (
                   <p className="p-4 text-sm text-muted-foreground text-center">Nenhuma rua encontrada.</p>
-                ) : filteredRuas.map(r => {
+                 ) : filteredRuas.map(r => {
                   const bairro = bairros.find(b => b.id === r.bairro_id);
+                  const lc = ruaLeadCount(r.id);
                   return (
                     <div key={r.id} className="flex items-center justify-between px-4 py-2.5 hover:bg-muted/30">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <MapPin className="w-4 h-4 text-muted-foreground" />
                         <div>
                           <span className="text-sm font-medium">{r.nome}</span>
@@ -403,6 +404,16 @@ export default function CadastroEnderecosPage() {
                           </span>
                           {r.cep && r.cep.length > 0 && <span className="text-xs text-muted-foreground ml-2">CEP: {r.cep.join(", ")}</span>}
                         </div>
+                        {lc > 0 ? (
+                          <Badge
+                            variant="secondary" className="text-[10px] cursor-pointer hover:bg-primary/20"
+                            onClick={() => navigate(`/leads/relatorios?rua_id=${r.id}`)}
+                          >
+                            {lc} lead{lc > 1 ? "s" : ""} <ExternalLink className="w-2.5 h-2.5 ml-0.5" />
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[10px] text-muted-foreground">0 leads</Badge>
+                        )}
                       </div>
                       <div className="flex gap-1">
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(r)}><Pencil className="w-3.5 h-3.5" /></Button>
