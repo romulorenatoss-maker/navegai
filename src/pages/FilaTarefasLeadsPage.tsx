@@ -39,7 +39,7 @@ function getPeriodoEndHour(periodo: string): number {
 }
 
 function isTarefaExpirada(tarefa: { data_contato: string; periodo: string; status: string }): boolean {
-  if (tarefa.status === "realizado") return false;
+  if (tarefa.status === "realizado" || tarefa.status === "aguardando_visualizacao") return false;
   const dataContato = new Date(tarefa.data_contato);
   const now = new Date();
   const tarefaDate = new Date(dataContato);
