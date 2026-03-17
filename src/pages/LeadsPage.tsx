@@ -1379,7 +1379,7 @@ export default function LeadsPage() {
                           <div className="flex flex-col items-end gap-0.5 shrink-0">
                             {statusBadge(item.lead.status_lead)}
                             <span className="text-[10px] text-muted-foreground">
-                              {item.tentativaAtual}ª tent.
+                              {item.tentativaAtual - 1} tent.
                             </span>
                           </div>
                         </div>
