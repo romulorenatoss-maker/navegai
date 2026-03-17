@@ -1681,11 +1681,17 @@ export default function LeadsPage() {
       if (!f.cpf.trim()) throw new Error("CPF é obrigatório.");
       if (!f.rg.trim()) throw new Error("RG é obrigatório.");
       if (!f.nome_mae.trim()) throw new Error("Nome da mãe é obrigatório.");
-      if (!f.endereco.trim()) throw new Error("Endereço é obrigatório.");
+      if (!convCidadeId) throw new Error("Cidade é obrigatória.");
+      if (!convBairroId) throw new Error("Bairro é obrigatório.");
+      if (!convRuaId) throw new Error("Rua é obrigatória.");
       if (!f.numero.trim()) throw new Error("Número é obrigatório.");
-      if (!f.cep.trim()) throw new Error("CEP é obrigatório.");
-      if (!f.cidade.trim()) throw new Error("Cidade é obrigatória.");
       if (!f.referencia.trim()) throw new Error("Referência é obrigatória.");
+
+      // Resolve CEP from rua
+      const selectedRua = endRuas.find(r => r.id === convRuaId);
+      const cepValue = selectedRua?.cep?.[0] || null;
+      // Resolve cidade name
+      const selectedCidade = endCidades.find(c => c.id === convCidadeId);
 
       const phoneContatos = leadContatos.filter(c => c.tipo_contato === "telefone");
       const phoneDigitsArr = phoneContatos.map(c => normalizePhone(c.valor));
@@ -1736,8 +1742,9 @@ export default function LeadsPage() {
 
       const { data: newCliente, error: e1 } = await supabase.from("clientes").insert({
         nome: f.nome.trim(), cpf: f.cpf.trim(), rg: f.rg.trim(), nome_mae: f.nome_mae.trim(),
-        endereco: f.endereco.trim(), numero: f.numero.trim(), cep: f.cep.trim(), cidade: f.cidade.trim(), referencia: f.referencia.trim(),
-        cidade_id: selectedLead.cidade_id || null, bairro_id: selectedLead.bairro_id || null, rua_id: selectedLead.rua_id || null,
+        numero: f.numero.trim(), referencia: f.referencia.trim(),
+        cep: cepValue, cidade: selectedCidade?.nome || null,
+        cidade_id: convCidadeId, bairro_id: convBairroId, rua_id: convRuaId,
       } as any).select("id").single();
       if (e1) throw e1;
 
