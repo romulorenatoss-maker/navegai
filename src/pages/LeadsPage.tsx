@@ -1569,6 +1569,11 @@ export default function LeadsPage() {
             </Badge>
           )}
           <Badge variant="secondary" className="text-xs">{filteredQueue.length} na fila</Badge>
+          {capturaQueue.length > 0 && !isVisionMode && (
+            <Badge className="text-xs gap-1 bg-primary text-primary-foreground border-0">
+              <UserCheck className="w-3 h-3" /> {capturaQueue.length} p/ captura
+            </Badge>
+          )}
           {/* Vision Mode Button */}
           {canUseVisionMode && visionProfiles.length > 0 && (
             <Popover>
