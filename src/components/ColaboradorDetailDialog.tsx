@@ -438,7 +438,7 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
 
             {/* Permissões Tab */}
             <TabsContent value="permissoes" className="mt-4">
-              <PermissoesTelasTab
+              <PermissoesColaboradorTab
                 profileId={collaborator.id}
                 isAdminProfile={collaborator.cargo === "administrador"}
               />
