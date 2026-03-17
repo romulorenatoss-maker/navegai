@@ -345,12 +345,15 @@ export default function FilaLeadsPage() {
         const prevHandlerIds = interacoes.map((i: any) => i.colaborador_id);
         const userPreviouslyHandled = prevHandlerIds.includes(profile.id);
         const isReservedByOther = lead.status_lead === "reservado" && (lead as any).reserved_by !== profile.id;
+        const isReservedByMe = lead.status_lead === "reservado" && (lead as any).reserved_by === profile.id;
+        const hasResponsavel = !!lead.responsavel_id;
         const reservedByName = isReservedByOther ? getProfileName((lead as any).reserved_by) : null;
-        return { lead, contatos, totalInteracoes: interacoes.length, ultimaTentativaEm: lastInteracao?.data_interacao || null, userPreviouslyHandled, isReservedByOther, reservedByName };
+        const isTaken = isReservedByOther || (hasResponsavel && lead.responsavel_id !== profile.id);
+        return { lead, contatos, totalInteracoes: interacoes.length, ultimaTentativaEm: lastInteracao?.data_interacao || null, userPreviouslyHandled, isReservedByOther, isReservedByMe, reservedByName, isTaken };
       });
-    // Non-admin: hide leads they previously handled, but show reserved leads (with indicator)
+    // Non-admin: hide leads they previously handled (unless taken by someone — show with indicator)
     if (isAdmin) return capturaItems;
-    return capturaItems.filter(item => !item.userPreviouslyHandled || item.isReservedByOther);
+    return capturaItems.filter(item => !item.userPreviouslyHandled || item.isTaken);
   }, [leads, allContatos, allInteracoes, profile, isAdmin]);
 
   // ─── Notificações (aguardando_decisao) ────────────
