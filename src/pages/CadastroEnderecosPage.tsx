@@ -53,6 +53,30 @@ export default function CadastroEnderecosPage() {
     },
   });
 
+  // Lead counts per bairro and rua
+  const { data: leadCounts } = useQuery({
+    queryKey: ["enderecos-lead-counts"],
+    queryFn: async () => {
+      const { data: leads, error } = await supabase
+        .from("leads")
+        .select("id, cidade_id, bairro_id, rua_id");
+      if (error) throw error;
+      const byCidade: Record<string, number> = {};
+      const byBairro: Record<string, number> = {};
+      const byRua: Record<string, number> = {};
+      for (const l of leads || []) {
+        if (l.cidade_id) byCidade[l.cidade_id] = (byCidade[l.cidade_id] || 0) + 1;
+        if (l.bairro_id) byBairro[l.bairro_id] = (byBairro[l.bairro_id] || 0) + 1;
+        if (l.rua_id) byRua[l.rua_id] = (byRua[l.rua_id] || 0) + 1;
+      }
+      return { byCidade, byBairro, byRua };
+    },
+  });
+
+  const cidadeLeadCount = (id: string) => leadCounts?.byCidade[id] || 0;
+  const bairroLeadCount = (id: string) => leadCounts?.byBairro[id] || 0;
+  const ruaLeadCount = (id: string) => leadCounts?.byRua[id] || 0;
+
   // ─── CRUD State ─────────────────
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
