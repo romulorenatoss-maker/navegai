@@ -251,7 +251,7 @@ export default function FilaLeadsPage() {
     queryFn: async () => {
       const { data, error } = await supabase.from("leads").select("id, nome, status_lead, responsavel_id, agendamento_retorno")
         .not("agendamento_retorno", "is", null)
-        .in("status_lead", ["novo", "em_contato", "interessado"]);
+        .in("status_lead", ["novo", "em_contato", "interessado", "em_atendimento", "reservado"]);
       if (error) throw error;
       return data || [];
     },
