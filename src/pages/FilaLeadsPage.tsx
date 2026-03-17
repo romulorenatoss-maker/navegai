@@ -540,7 +540,27 @@ export default function FilaLeadsPage() {
       if (!selectedItem || !profile) throw new Error("Erro interno.");
       if (!attemptNumero) throw new Error("Selecione o número utilizado.");
       await supabase.from("lead_interacoes").insert({ lead_id: selectedItem.lead.id, colaborador_id: profile.id, tipo_contato: attemptTipo, numero_utilizado: attemptNumero, resultado: attemptResultado.trim() || null });
-      await supabase.from("lead_historico").insert({ lead_id: selectedItem.lead.id, usuario_id: profile.id, tipo_evento: "tentativa_contato", descricao: `Tentativa ${selectedItem.tentativaAtual} via ${attemptTipo}: ${attemptResultado.trim() || "sem resultado"}` });
+      // Calculate timing relative to deadline
+      let timingInfo = "";
+      const _now = new Date();
+      const _schedRef = selectedItem.lead.agendamento_retorno ? new Date(selectedItem.lead.agendamento_retorno) : null;
+      const _cadRef = selectedItem.nextAttempt ? new Date(selectedItem.nextAttempt) : null;
+      if (_schedRef) {
+        const diffMin = Math.round((_schedRef.getTime() - _now.getTime()) / 60000);
+        const absH = Math.floor(Math.abs(diffMin) / 60);
+        const absM = Math.abs(diffMin) % 60;
+        timingInfo = diffMin < 0
+          ? ` | ⏱️ Registrada ${absH}h${String(absM).padStart(2,'0')}m APÓS expiração (agendamento manual)`
+          : ` | ⏱️ Registrada ${absH}h${String(absM).padStart(2,'0')}m ANTES da expiração (agendamento manual)`;
+      } else if (_cadRef) {
+        const diffMin = Math.round((_cadRef.getTime() - _now.getTime()) / 60000);
+        const absH = Math.floor(Math.abs(diffMin) / 60);
+        const absM = Math.abs(diffMin) % 60;
+        timingInfo = diffMin < 0
+          ? ` | ⏱️ Registrada ${absH}h${String(absM).padStart(2,'0')}m APÓS expiração (cadência automática)`
+          : ` | ⏱️ Registrada ${absH}h${String(absM).padStart(2,'0')}m ANTES da expiração (cadência automática)`;
+      }
+      await supabase.from("lead_historico").insert({ lead_id: selectedItem.lead.id, usuario_id: profile.id, tipo_evento: "tentativa_contato", descricao: `Tentativa ${selectedItem.tentativaAtual} via ${attemptTipo}: ${attemptResultado.trim() || "sem resultado"}${timingInfo}` });
       const hadAgendamento = !!selectedItem.lead.agendamento_retorno;
       const currentStatus = selectedItem.lead.status_lead;
       const newStatus = (currentStatus === "novo" || currentStatus === "reservado") ? "em_atendimento" : currentStatus;
