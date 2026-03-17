@@ -1331,49 +1331,51 @@ export default function LeadsPage() {
             </Popover>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative w-64">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Buscar telefone ou nome..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleSearch()}
-              className="pl-8 h-8 text-sm"
-            />
-            {/* Search dropdown */}
-            {searchResults !== null && (
-              <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto">
-                {searchResults.length === 0 ? (
-                  <div className="p-3 text-sm text-muted-foreground">
-                    Nenhum encontrado.{" "}
-                    <button onClick={() => { setShowCreate(true); setSearchResults(null); }} className="text-primary underline">Criar?</button>
-                  </div>
-                ) : (
-                  searchResults.map(lead => (
-                    <button
-                      key={lead.id}
-                      onClick={() => openLeadWithTransfer(lead)}
-                      className="w-full text-left px-3 py-2 hover:bg-accent/50 transition-colors flex items-center justify-between border-b last:border-0"
-                    >
-                      <div>
-                        <p className="text-sm font-medium">{lead.nome}</p>
-                        <p className="text-xs text-muted-foreground">{lead.contatos.map(c => c.valor).join(", ")}</p>
-                      </div>
-                      {statusBadge(lead.status_lead)}
-                    </button>
-                  ))
-                )}
-              </div>
-            )}
+        {!isVisionMode && (
+          <div className="flex items-center gap-2">
+            <div className="relative w-64">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Buscar telefone ou nome..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleSearch()}
+                className="pl-8 h-8 text-sm"
+              />
+              {/* Search dropdown */}
+              {searchResults !== null && (
+                <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                  {searchResults.length === 0 ? (
+                    <div className="p-3 text-sm text-muted-foreground">
+                      Nenhum encontrado.{" "}
+                      <button onClick={() => { setShowCreate(true); setSearchResults(null); }} className="text-primary underline">Criar?</button>
+                    </div>
+                  ) : (
+                    searchResults.map(lead => (
+                      <button
+                        key={lead.id}
+                        onClick={() => openLeadWithTransfer(lead)}
+                        className="w-full text-left px-3 py-2 hover:bg-accent/50 transition-colors flex items-center justify-between border-b last:border-0"
+                      >
+                        <div>
+                          <p className="text-sm font-medium">{lead.nome}</p>
+                          <p className="text-xs text-muted-foreground">{lead.contatos.map(c => c.valor).join(", ")}</p>
+                        </div>
+                        {statusBadge(lead.status_lead)}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+            <Button onClick={handleSearch} disabled={searching} size="sm" variant="outline" className="h-8">
+              {searching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+            </Button>
+            <Button onClick={() => setShowCreate(true)} size="sm" className="h-8 press-effect">
+              <Plus className="w-3.5 h-3.5 mr-1" /> Novo Lead
+            </Button>
           </div>
-          <Button onClick={handleSearch} disabled={searching} size="sm" variant="outline" className="h-8">
-            {searching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
-          </Button>
-          <Button onClick={() => setShowCreate(true)} size="sm" className="h-8 press-effect">
-            <Plus className="w-3.5 h-3.5 mr-1" /> Novo Lead
-          </Button>
-        </div>
+        )}
       </div>
 
       {/* 3-Panel Layout */}
