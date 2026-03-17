@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChevronDown } from "lucide-react";
 import * as XLSX from "xlsx";
-import ColumnMapper, { autoDetectMapping, type ColumnMapping } from "@/components/import/ColumnMapper";
+import ColumnMapper, { autoDetectMapping, EMPTY_MAPPING, type ColumnMapping } from "@/components/import/ColumnMapper";
 
 const PREPOSITIONS = new Set(["de", "da", "do", "das", "dos", "e", "em", "na", "no", "nas", "nos", "com", "para", "por"]);
 
