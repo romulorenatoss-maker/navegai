@@ -416,6 +416,22 @@ export default function LeadsPage() {
     },
   });
 
+  // Sync local state when selected lead changes
+  useEffect(() => {
+    if (selectedLead) {
+      setLocalPlanoId(selectedLead.plano_id);
+      setLocalRepetidor(selectedLead.repetidor);
+      setLocalCidadeId(selectedLead.cidade_id);
+      setLocalBairroId(selectedLead.bairro_id);
+      setLocalRuaId(selectedLead.rua_id);
+      setLocalNumeroEnd(selectedLead.numero_endereco || "");
+    }
+  }, [selectedLead?.id]);
+
+  useEffect(() => {
+    setLocalObjecaoId(leadObjecaoRegistro?.objecao_id || "none");
+  }, [selectedLead?.id, leadObjecaoRegistro]);
+
   // All lead contacts for queue building
   const activeLeadIds = allLeads.filter(l => ["novo", "em_contato", "interessado"].includes(l.status_lead)).map(l => l.id);
 
