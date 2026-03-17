@@ -1001,7 +1001,8 @@ export default function FilaLeadsPage() {
                             </TableCell>
                           </TableRow>
                         );
-                      })}
+                      });
+                      })()}
                     </TableBody>
                   </Table>
                 </div>
