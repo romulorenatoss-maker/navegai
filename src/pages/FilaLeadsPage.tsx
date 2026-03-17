@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -30,6 +30,7 @@ interface Lead {
   id: string; nome: string; status_lead: string; responsavel_id: string | null;
   updated_at: string; created_at: string; agendamento_retorno: string | null;
   notificacao_vista?: boolean; notificacao_vista_em?: string | null; notificacao_vista_por?: string | null;
+  reserved_by?: string | null; reserved_at?: string | null;
 }
 interface LeadContato { id: string; lead_id: string; tipo_contato: string; valor: string; tem_whatsapp: boolean; }
 interface CadenciaTentativa { id: string; numero_tentativa: number; dias_apos: number; periodo: string; prioridade: number; }
@@ -107,12 +108,27 @@ export default function FilaLeadsPage() {
   const [tarefaNumero, setTarefaNumero] = useState("");
   const [tarefaResultado, setTarefaResultado] = useState("");
 
+  // ─── Realtime: auto-refresh when leads change ─────
+  useEffect(() => {
+    const channel = supabase
+      .channel("fila-leads-realtime")
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "leads",
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
+
   // ─── Queries ──────────────────────────────────────
   const { data: leads = [], isLoading: loadingLeads } = useQuery({
     queryKey: ["fila-leads"],
     queryFn: async () => {
       const { data, error } = await supabase.from("leads").select("*")
-        .in("status_lead", ["novo", "em_contato", "interessado", "aguardando_decisao_avaliador", "aguardando_captura"])
+        .in("status_lead", ["novo", "em_contato", "interessado", "aguardando_decisao_avaliador", "aguardando_captura", "reservado"])
         .order("updated_at", { ascending: true });
       if (error) throw error;
       return data as Lead[];
@@ -294,7 +310,7 @@ export default function FilaLeadsPage() {
 
   const queue = useMemo<QueueItem[]>(() => {
     const now = new Date();
-    return leads.filter(l => l.status_lead !== "aguardando_decisao_avaliador" && l.status_lead !== "aguardando_captura").map(lead => {
+    return leads.filter(l => l.status_lead !== "aguardando_decisao_avaliador" && l.status_lead !== "aguardando_captura" && l.status_lead !== "reservado").map(lead => {
       const contatos = allContatos.filter(c => c.lead_id === lead.id);
       const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
       const tentativaAtual = interacoes.length + 1;
@@ -317,23 +333,24 @@ export default function FilaLeadsPage() {
     });
   }, [leads, allContatos, allInteracoes, cadencia, profiles]);
 
-  // ─── Fila de Captura (aguardando_captura, exclude previous handlers for non-admin) ──
+  // ─── Fila de Captura (aguardando_captura + reservado, show status) ──
   const capturaLeads = useMemo(() => {
     if (!profile) return [];
     const capturaItems = leads
-      .filter(l => l.status_lead === "aguardando_captura")
+      .filter(l => l.status_lead === "aguardando_captura" || l.status_lead === "reservado")
       .map(lead => {
         const contatos = allContatos.filter(c => c.lead_id === lead.id);
         const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
         const lastInteracao = interacoes[0];
         const prevHandlerIds = interacoes.map((i: any) => i.colaborador_id);
         const userPreviouslyHandled = prevHandlerIds.includes(profile.id);
-        return { lead, contatos, totalInteracoes: interacoes.length, ultimaTentativaEm: lastInteracao?.data_interacao || null, userPreviouslyHandled };
+        const isReservedByOther = lead.status_lead === "reservado" && (lead as any).reserved_by !== profile.id;
+        const reservedByName = isReservedByOther ? getProfileName((lead as any).reserved_by) : null;
+        return { lead, contatos, totalInteracoes: interacoes.length, ultimaTentativaEm: lastInteracao?.data_interacao || null, userPreviouslyHandled, isReservedByOther, reservedByName };
       });
-    // Non-admin/non-avaliador: hide leads they previously handled
-    // Admin/avaliador: show all (read-only for ones they handled — they can still see status)
+    // Non-admin: hide leads they previously handled, but show reserved leads (with indicator)
     if (isAdmin) return capturaItems;
-    return capturaItems.filter(item => !item.userPreviouslyHandled);
+    return capturaItems.filter(item => !item.userPreviouslyHandled || item.isReservedByOther);
   }, [leads, allContatos, allInteracoes, profile, isAdmin]);
 
   // ─── Notificações (aguardando_decisao) ────────────
@@ -775,12 +792,16 @@ export default function FilaLeadsPage() {
                     {capturaLeads.map((item, idx) => {
                       const phones = item.contatos.filter(c => c.tipo_contato === "telefone");
                       return (
-                        <TableRow key={item.lead.id} className="bg-purple-50/30 dark:bg-purple-950/10">
+                        <TableRow key={item.lead.id} className={cn("bg-purple-50/30 dark:bg-purple-950/10", item.isReservedByOther && "opacity-50")}>
                           <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
                           <TableCell>
                             <div className="flex flex-col gap-0.5">
                               <span className="font-medium text-sm">{item.lead.nome}</span>
-                              <Badge className="w-fit text-[10px] bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border-0">Aguardando Captura</Badge>
+                              {item.isReservedByOther ? (
+                                <Badge className="w-fit text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-0">Já capturado por {item.reservedByName}</Badge>
+                              ) : (
+                                <Badge className="w-fit text-[10px] bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border-0">Aguardando Captura</Badge>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -795,19 +816,23 @@ export default function FilaLeadsPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center justify-end gap-1">
-                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Ver lead" onClick={() => navigate(`/leads?id=${item.lead.id}`)}><Eye className="w-3.5 h-3.5" /></Button>
-                              {item.userPreviouslyHandled ? (
+                              {item.isReservedByOther ? (
+                                <Badge variant="outline" className="text-[10px] text-amber-600">Em atendimento</Badge>
+                              ) : item.userPreviouslyHandled ? (
                                 <Badge variant="outline" className="text-[10px]">Você já interagiu</Badge>
                               ) : (
-                                <Button
-                                  size="sm"
-                                  className="h-7 text-[11px] px-3 gap-1 bg-purple-600 hover:bg-purple-700 text-white"
-                                  onClick={() => captureMutation.mutate(item.lead.id)}
-                                  disabled={captureMutation.isPending}
-                                >
-                                  {captureMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserCheck className="w-3.5 h-3.5" />}
-                                  Capturar Lead
-                                </Button>
+                                <>
+                                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Ver lead" onClick={() => navigate(`/leads?id=${item.lead.id}`)}><Eye className="w-3.5 h-3.5" /></Button>
+                                  <Button
+                                    size="sm"
+                                    className="h-7 text-[11px] px-3 gap-1 bg-purple-600 hover:bg-purple-700 text-white"
+                                    onClick={() => captureMutation.mutate(item.lead.id)}
+                                    disabled={captureMutation.isPending}
+                                  >
+                                    {captureMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserCheck className="w-3.5 h-3.5" />}
+                                    Capturar Lead
+                                  </Button>
+                                </>
                               )}
                             </div>
                           </TableCell>
