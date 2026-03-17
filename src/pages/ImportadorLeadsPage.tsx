@@ -61,30 +61,40 @@ export default function ImportadorLeadsPage() {
   });
 
   const selectedCampanhaNome = campanhas.find(c => c.id === campanhaId)?.nome || null;
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
 
-  // Step 1: File upload
-  const handleFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Pick file (no processing yet)
+  const handleFilePick = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setFileName(file.name);
-    setResults([]);
-
-    if (file.name.endsWith(".csv") || file.name.endsWith(".txt")) {
-      const text = await file.text();
-      const { headers, rows } = parseCSVRaw(text);
-      if (headers.length === 0 || rows.length === 0) {
-        toast.error("Arquivo vazio ou sem dados válidos.");
-        return;
-      }
-      setRawHeaders(headers);
-      setRawRows(rows);
-      const detected = autoDetectMapping(headers);
-      setMapping(detected);
-      setStep("mapping");
-    } else {
+    if (!file.name.endsWith(".csv") && !file.name.endsWith(".txt")) {
       toast.error("Formato não suportado. Use CSV.");
+      return;
     }
+    setFileName(file.name);
+    setPendingFile(file);
+    setResults([]);
   }, []);
+
+  // Process file on button click
+  const handleLoadFile = useCallback(async () => {
+    if (!pendingFile) return;
+    if (!campanhaId || campanhaId === "__none") {
+      toast.error("Selecione uma campanha antes de carregar.");
+      return;
+    }
+    const text = await pendingFile.text();
+    const { headers, rows } = parseCSVRaw(text);
+    if (headers.length === 0 || rows.length === 0) {
+      toast.error("Arquivo vazio ou sem dados válidos.");
+      return;
+    }
+    setRawHeaders(headers);
+    setRawRows(rows);
+    const detected = autoDetectMapping(headers);
+    setMapping(detected);
+    setStep("mapping");
+  }, [pendingFile, campanhaId]);
 
   // Step 2: Build preview with duplicate detection
   const buildPreview = useCallback(async () => {
@@ -314,22 +324,22 @@ export default function ImportadorLeadsPage() {
                 <label className="flex items-center gap-2 px-4 py-6 rounded-lg border-2 border-dashed border-border hover:border-primary cursor-pointer transition-colors justify-center">
                   <FileSpreadsheet className="w-5 h-5 text-muted-foreground" />
                   <span className="text-sm">{fileName || "Escolher arquivo CSV"}</span>
-                  <input type="file" accept=".csv,.txt" className="hidden" onChange={handleFile} />
+                  <input type="file" accept=".csv,.txt" className="hidden" onChange={handleFilePick} />
                 </label>
 
                 <div className="space-y-1.5">
-                  <Label>Campanha (opcional)</Label>
+                  <Label>Campanha *</Label>
                   <Select value={campanhaId} onValueChange={setCampanhaId}>
                     <SelectTrigger className="w-full sm:w-72">
                       <SelectValue placeholder="Selecione uma campanha..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__none">Sem campanha</SelectItem>
                       {campanhas.map(c => (
                         <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">Obrigatório. Todos os leads importados serão vinculados a esta campanha.</p>
                 </div>
 
                 <Alert className="border-muted">
@@ -340,6 +350,16 @@ export default function ImportadorLeadsPage() {
                     O sistema detecta automaticamente as colunas.
                   </AlertDescription>
                 </Alert>
+
+                <div className="flex justify-end">
+                  <Button
+                    onClick={handleLoadFile}
+                    disabled={!pendingFile || !campanhaId || campanhaId === "__none"}
+                    className="press-effect"
+                  >
+                    <Upload className="w-4 h-4 mr-2" /> Carregar Arquivo
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
