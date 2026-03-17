@@ -721,12 +721,63 @@ export default function LeadsPage() {
         await supabase.from("leads").update({ status_lead: "em_contato" }).eq("id", selectedLead.id);
         setSelectedLead(prev => prev ? { ...prev, status_lead: "em_contato" } : null);
       }
-      // Touch updated_at to push to end of queue
-      await supabase.from("leads").update({ status_lead: selectedLead.status_lead === "novo" ? "em_contato" : selectedLead.status_lead }).eq("id", selectedLead.id);
+
+      // Mark current pending tarefa as "realizado"
+      const { data: pendingTarefas } = await supabase
+        .from("lead_tarefas_contato")
+        .select("*")
+        .eq("lead_id", selectedLead.id)
+        .in("status", ["pendente", "atrasado"])
+        .order("tentativa", { ascending: true })
+        .limit(1);
+      if (pendingTarefas && pendingTarefas.length > 0) {
+        await supabase.from("lead_tarefas_contato")
+          .update({ status: "realizado" })
+          .eq("id", pendingTarefas[0].id);
+      }
+
+      // Check max tentativas and create next or finalize
+      const mxTentativas = fluxoConfig?.quantidade_tentativas || 7;
+      const nextTentativa = tentativaNum + 1;
+
+      if (nextTentativa > mxTentativas) {
+        // All attempts exhausted — archive or send to evaluator
+        const { data: configData } = await supabase
+          .from("configuracao_fluxo_leads").select("acao_apos_finalizar_tentativas").limit(1).maybeSingle();
+        const acao = configData?.acao_apos_finalizar_tentativas || "enviar_avaliador";
+        const newStatus = acao === "arquivar_lead" ? "arquivado" : "aguardando_decisao_avaliador";
+        await supabase.from("leads").update({ status_lead: newStatus }).eq("id", selectedLead.id);
+        await supabase.from("lead_historico").insert({
+          lead_id: selectedLead.id, usuario_id: profile.id,
+          tipo_evento: "tentativas_finalizadas",
+          descricao: `Todas as ${mxTentativas} tentativas finalizadas. Ação: ${acao === "arquivar_lead" ? "Arquivado" : "Enviado para avaliador"}`,
+        });
+        setSelectedLead(prev => prev ? { ...prev, status_lead: newStatus } : null);
+        toast.info(acao === "arquivar_lead" ? "Lead arquivado após todas as tentativas." : "Lead enviado para avaliação do avaliador.");
+      } else {
+        // Create next tarefa based on rotina
+        try {
+          const { data: nextRotina } = await supabase
+            .from("rotina_tentativas_leads").select("*").eq("tentativa_numero", nextTentativa).maybeSingle();
+          const diasApos = nextRotina?.dias_apos_anterior || 1;
+          const periodo = nextRotina?.periodo_contato || "manha";
+          const nextDate = new Date();
+          nextDate.setDate(nextDate.getDate() + Math.max(diasApos, 1));
+          const periodoHora = periodo === "manha" ? 9 : periodo === "tarde" ? 14 : 19;
+          nextDate.setHours(periodoHora, 0, 0, 0);
+          await supabase.from("lead_tarefas_contato").insert({
+            lead_id: selectedLead.id, tentativa: nextTentativa, data_contato: nextDate.toISOString(),
+            periodo, status: "pendente", responsavel_id: profile.id,
+          });
+        } catch { /* ignore */ }
+        // Touch updated_at
+        await supabase.from("leads").update({ status_lead: selectedLead.status_lead === "novo" ? "em_contato" : selectedLead.status_lead }).eq("id", selectedLead.id);
+      }
+
       queryClient.invalidateQueries({ queryKey: ["leads-list"] });
     },
     onSuccess: () => {
-      toast.success("Interação registrada! Lead movido para o final da fila.");
+      toast.success("Interação registrada!");
       setShowInteraction(false); setInterNumero(""); setInterResultado("");
       refetchInteracoes(); refetchHistorico();
       queryClient.invalidateQueries({ queryKey: ["all-lead-interacoes"] });
