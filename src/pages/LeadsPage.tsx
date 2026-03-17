@@ -170,6 +170,10 @@ export default function LeadsPage() {
   const [createNumeroEnd, setCreateNumeroEnd] = useState("");
   const [createBairroSearch, setCreateBairroSearch] = useState("");
   const [createRuaSearch, setCreateRuaSearch] = useState("");
+  const [createCepSearch, setCreateCepSearch] = useState("");
+  const [cepNotFound, setCepNotFound] = useState(false);
+  const [newRuaNomeFromCep, setNewRuaNomeFromCep] = useState("");
+  const [newBairroNomeFromCep, setNewBairroNomeFromCep] = useState("");
   // Quick-add address dialogs
   const [quickAddType, setQuickAddType] = useState<"cidade" | "bairro" | "rua" | null>(null);
   const [quickAddNome, setQuickAddNome] = useState("");
@@ -1797,6 +1801,118 @@ export default function LeadsPage() {
               <div className="border-t pt-3 mt-3">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Endereço</p>
                 <div className="space-y-2">
+                  {/* CEP search */}
+                  <div className="space-y-1">
+                    <Label className="text-xs">Buscar por CEP</Label>
+                    <div className="flex gap-1">
+                      <Input
+                        className="h-8 text-xs flex-1"
+                        placeholder="Digite o CEP..."
+                        value={createCepSearch}
+                        onChange={e => {
+                          const v = e.target.value.replace(/\D/g, "").slice(0, 8);
+                          setCreateCepSearch(v);
+                          setCepNotFound(false);
+                          setNewRuaNomeFromCep("");
+                          setNewBairroNomeFromCep("");
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs"
+                        disabled={createCepSearch.length < 5}
+                        onClick={() => {
+                          const cep = createCepSearch.trim();
+                          // Search ruas that have this CEP
+                          const match = endRuas.find(r => r.cep && r.cep.some(c => c.replace(/\D/g, "").includes(cep)));
+                          if (match) {
+                            // Auto-fill: find bairro and cidade
+                            const bairro = endBairros.find(b => b.id === match.bairro_id);
+                            if (bairro) {
+                              setCreateCidadeId(bairro.cidade_id);
+                              setCreateBairroId(bairro.id);
+                              setCreateBairroSearch(bairro.nome);
+                            }
+                            setCreateRuaId(match.id);
+                            setCreateRuaSearch(match.nome);
+                            setCepNotFound(false);
+                            toast.success(`CEP encontrado: ${match.nome}`);
+                          } else {
+                            setCepNotFound(true);
+                          }
+                        }}
+                      >
+                        <Search className="w-3 h-3 mr-1" /> Buscar
+                      </Button>
+                    </div>
+                    {cepNotFound && (
+                      <div className="border border-dashed border-destructive/40 rounded-md p-2 mt-1 space-y-2 bg-destructive/5">
+                        <p className="text-xs text-destructive font-medium">CEP não encontrado. Cadastre abaixo:</p>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Cidade</Label>
+                          <Select value={createCidadeId || "none"} onValueChange={v => {
+                            setCreateCidadeId(v === "none" ? "" : v);
+                            setCreateBairroId(""); setCreateRuaId(""); setCreateBairroSearch(""); setCreateRuaSearch("");
+                            setNewBairroNomeFromCep("");
+                          }}>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Nenhuma</SelectItem>
+                              {endCidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Nome do Bairro *</Label>
+                          <Input className="h-8 text-xs" placeholder="Nome do novo bairro" value={newBairroNomeFromCep} onChange={e => setNewBairroNomeFromCep(e.target.value)} disabled={!createCidadeId} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Nome da Rua *</Label>
+                          <Input className="h-8 text-xs" placeholder="Nome da nova rua" value={newRuaNomeFromCep} onChange={e => setNewRuaNomeFromCep(e.target.value)} disabled={!createCidadeId} />
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="h-7 text-xs w-full"
+                          disabled={!createCidadeId || !newRuaNomeFromCep.trim() || !newBairroNomeFromCep.trim()}
+                          onClick={async () => {
+                            try {
+                              // Check if bairro already exists in that cidade
+                              let bairroId = "";
+                              const existingBairro = endBairros.find(b => b.cidade_id === createCidadeId && b.nome.toLowerCase() === newBairroNomeFromCep.trim().toLowerCase());
+                              if (existingBairro) {
+                                bairroId = existingBairro.id;
+                              } else {
+                                const { data: newBairro, error: bErr } = await supabase.from("bairros").insert({ nome: newBairroNomeFromCep.trim(), cidade_id: createCidadeId }).select().single();
+                                if (bErr) throw bErr;
+                                bairroId = newBairro.id;
+                                queryClient.invalidateQueries({ queryKey: ["enderecos-bairros"] });
+                              }
+                              // Create rua with CEP
+                              const { data: newRua, error: rErr } = await supabase.from("ruas").insert({ nome: newRuaNomeFromCep.trim(), bairro_id: bairroId, cep: [createCepSearch] }).select().single();
+                              if (rErr) throw rErr;
+                              queryClient.invalidateQueries({ queryKey: ["enderecos-ruas"] });
+                              setCreateBairroId(bairroId);
+                              setCreateBairroSearch(existingBairro?.nome || newBairroNomeFromCep.trim());
+                              setCreateRuaId(newRua.id);
+                              setCreateRuaSearch(newRuaNomeFromCep.trim());
+                              setCepNotFound(false);
+                              setNewRuaNomeFromCep("");
+                              setNewBairroNomeFromCep("");
+                              toast.success("Endereço cadastrado com sucesso!");
+                            } catch (err: any) {
+                              toast.error(err.message?.includes("duplicate") ? "Já existe um registro com esse nome." : err.message);
+                            }
+                          }}
+                        >
+                          <Plus className="w-3 h-3 mr-1" /> Cadastrar Endereço
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="space-y-1">
                     <Label className="text-xs">Cidade</Label>
                     <div className="flex gap-1">
