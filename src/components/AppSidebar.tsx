@@ -79,9 +79,10 @@ interface AppSidebarProps {
   canViewPath?: (path: string) => boolean;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  badgeCounts?: Record<string, number>;
 }
 
-export function AppSidebar({ userName = "Usuário", onSignOut, onNavigate, isAdmin = false, allowedScreens = [], canViewPath, collapsed = false, onToggleCollapse }: AppSidebarProps) {
+export function AppSidebar({ userName = "Usuário", onSignOut, onNavigate, isAdmin = false, allowedScreens = [], canViewPath, collapsed = false, onToggleCollapse, badgeCounts = {} }: AppSidebarProps) {
   const location = useLocation();
 
   const navSections = allNavSections
