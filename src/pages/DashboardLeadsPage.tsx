@@ -30,7 +30,7 @@ interface DrillDownConfig {
 const STATUS_LABELS: Record<string, string> = {
   novo: "Novo",
   em_contato: "Em Contato",
-  em_atendimento: "Em Atendimento",
+  em_atendimento: "Em tratativa",
   interessado: "Interessado",
   convertido: "Convertido",
   sem_interesse: "Sem Interesse",
