@@ -311,7 +311,7 @@ export default function FilaLeadsPage() {
   const handleTransfer = async () => {
     if (!transferItem || !transferTarget || !profile) return;
     // Mark all pending tasks as cancelled so attempt count resets for new owner
-    await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", transferItem.lead.id).eq("status", "pendente");
+    await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", transferItem.lead.id).in("status", ["pendente", "atrasado"]);
     await supabase.from("leads").update({ responsavel_id: transferTarget, status_lead: "em_contato" } as any).eq("id", transferItem.lead.id);
     const targetName = profiles.find(p => p.id === transferTarget)?.nome || "—";
     await supabase.from("lead_historico").insert({ lead_id: transferItem.lead.id, usuario_id: profile.id, tipo_evento: "transferencia_automatica", descricao: `Lead transferido para ${targetName}. Contagem de tentativas reiniciada. Histórico anterior mantido.` });
@@ -328,7 +328,7 @@ export default function FilaLeadsPage() {
   const handleDecisionTransfer = async () => {
     if (!decisionLeadId || !decisionTarget || !profile) return;
     // Cancel all old pending tasks before creating new ones
-    await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", decisionLeadId).eq("status", "pendente");
+    await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", decisionLeadId).in("status", ["pendente", "atrasado"]);
     await supabase.from("leads").update({ responsavel_id: decisionTarget, status_lead: "em_contato", notificacao_vista: false } as any).eq("id", decisionLeadId);
     const targetName = profiles.find(p => p.id === decisionTarget)?.nome || "—";
     await supabase.from("lead_historico").insert({ lead_id: decisionLeadId, usuario_id: profile.id, tipo_evento: "transferencia_decisao", descricao: `Lead transferido para ${targetName} após finalizar tentativas. Contagem reiniciada. Histórico mantido.` });
@@ -376,7 +376,7 @@ export default function FilaLeadsPage() {
 
   const handleTarefaTransfer = async () => {
     if (!tarefaTransferLeadId || !tarefaTransferTarget || !profile) return;
-    await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", tarefaTransferLeadId).eq("status", "pendente");
+    await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", tarefaTransferLeadId).in("status", ["pendente", "atrasado"]);
     await supabase.from("leads").update({ responsavel_id: tarefaTransferTarget, status_lead: "em_contato" } as any).eq("id", tarefaTransferLeadId);
     const targetName = profiles.find(p => p.id === tarefaTransferTarget)?.nome || "—";
     await supabase.from("lead_historico").insert({ lead_id: tarefaTransferLeadId, usuario_id: profile.id, tipo_evento: "transferencia_automatica", descricao: `Lead transferido para ${targetName}. Contagem de tentativas reiniciada.` });

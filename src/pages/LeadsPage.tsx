@@ -729,7 +729,7 @@ export default function LeadsPage() {
   // Helper: cancel old tasks and create immediate task for new owner on transfer
   const resetTasksForTransfer = useCallback(async (leadId: string, newOwnerId: string) => {
     // Cancel all pending tasks from old owner
-    await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", leadId).eq("status", "pendente");
+    await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", leadId).in("status", ["pendente", "atrasado"]);
     // Create immediate task for new owner
     const { data: firstRotina } = await supabase
       .from("rotina_tentativas_leads").select("*").eq("tentativa_numero", 1).maybeSingle();
