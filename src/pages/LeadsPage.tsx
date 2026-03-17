@@ -1660,7 +1660,11 @@ export default function LeadsPage() {
                             <>
                               <Clock className={`w-2.5 h-2.5 ${isOverdue ? "text-destructive" : "text-muted-foreground"}`} />
                               <span className={`text-[10px] ${isOverdue ? "text-destructive font-medium" : "text-muted-foreground"}`}>
-                                {item.proximoContato ? fmtDateShort(item.proximoContato) : "Sem agendamento"}
+                                {item.proximoContato
+                                  ? (isOverdue
+                                    ? `Expirado ${formatCountdown(item.proximoContato, now)}`
+                                    : `Expira em ${formatCountdown(item.proximoContato, now)}`)
+                                  : "Sem prazo"}
                               </span>
                             </>
                           )}
