@@ -144,11 +144,12 @@ const STATUS_OPTIONS = [
   { value: "perdido", label: "Perdido", color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" },
   { value: "arquivado", label: "Arquivado", color: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200" },
   { value: "aguardando_decisao_avaliador", label: "Aguardando Avaliador", color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
-  { value: "aguardando_captura", label: "Aguardando Captura", color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
+  { value: "fila_captura", label: "Fila de Captura", color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
   { value: "reservado", label: "Reservado", color: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200" },
+  { value: "em_atendimento", label: "Em Atendimento", color: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" },
 ];
 
-const RESERVATION_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes
+// No timeout — reservations persist until manual release or action
 
 function statusBadge(status: string) {
   const s = STATUS_OPTIONS.find((o) => o.value === status) || STATUS_OPTIONS[0];
@@ -661,12 +662,14 @@ export default function LeadsPage() {
     },
   });
 
-  // ─── Capture Queue: leads aguardando_captura (visible to atendentes) ──
+   // ─── Capture Queue: leads fila_captura (visible to all) ──
   const { data: capturaLeadsRaw = [] } = useQuery({
     queryKey: ["leads-captura"],
     queryFn: async () => {
       const { data, error } = await supabase.from("leads").select("*")
-        .in("status_lead", ["aguardando_captura", "reservado"])
+        .eq("status_lead", "fila_captura")
+        .is("reserved_by", null)
+        .is("responsavel_id", null)
         .order("updated_at", { ascending: true });
       if (error) throw error;
       return data as Lead[];
@@ -704,113 +707,64 @@ export default function LeadsPage() {
 
   const capturaQueue = useMemo(() => {
     if (!profile) return [];
-    return capturaLeadsRaw
-      .map(lead => {
-        const interacoes = capturaInteracoes.filter(i => i.lead_id === lead.id);
-        const contatos = capturaContatos.filter(c => c.lead_id === lead.id);
-        const lastInteracao = interacoes[0];
-        // Exclude users who performed REAL interactions (lead_interacoes), not just views/captures
-        const prevHandlerIds = interacoes.map(i => i.colaborador_id);
-        const wasLastHandler = prevHandlerIds.includes(profile.id);
-        // Check reservation status
-        const isReservedByMe = lead.reserved_by === profile.id;
-        const isReservedByOther = !!lead.reserved_by && lead.reserved_by !== profile.id;
-        // Check if reservation expired (2 min)
-        const reservationExpired = lead.reserved_at
-          ? (Date.now() - new Date(lead.reserved_at).getTime()) > RESERVATION_TIMEOUT_MS
-          : false;
-        return {
-          lead, contatos, userPreviouslyHandled: wasLastHandler,
-          ultimaTentativaEm: lastInteracao?.data_interacao || null,
-          isReservedByMe, isReservedByOther: isReservedByOther && !reservationExpired,
-          reservationExpired,
-        };
-      })
-      .filter(item => {
-        // Hide leads reserved by other users (unless expired)
-        if (item.isReservedByOther) return false;
-        // Admin sees everything, non-admin filters out previous handler
-        return isAdmin || !item.userPreviouslyHandled || item.isReservedByMe;
-      });
-  }, [capturaLeadsRaw, capturaInteracoes, capturaContatos, profile, isAdmin]);
+    return capturaLeadsRaw.map(lead => {
+      const contatos = capturaContatos.filter(c => c.lead_id === lead.id);
+      return { lead, contatos };
+    });
+  }, [capturaLeadsRaw, capturaContatos, profile]);
 
-  // ─── Reservation: reserve lead (not assign) ─────────────────
+  // ─── Capture: atomic reserve via RPC ─────────────────
   const reserveLeadMutation = useMutation({
     mutationFn: async (leadId: string) => {
       if (!profile) throw new Error("Perfil não encontrado.");
-      // Atomic: only reserve if not already reserved (or reservation expired)
-      const { data, error } = await supabase
-        .from("leads")
-        .update({
-          reserved_by: profile.id,
-          reserved_at: new Date().toISOString(),
-          status_lead: "reservado",
-        } as any)
-        .eq("id", leadId)
-        .or(`reserved_by.is.null,reserved_at.lt.${new Date(Date.now() - RESERVATION_TIMEOUT_MS).toISOString()}`)
-        .select("id");
+      // Use atomic RPC: only succeeds if fila_captura + reserved_by IS NULL + responsavel_id IS NULL
+      const { data: reserved, error } = await supabase.rpc("atomic_reserve_lead", {
+        _lead_id: leadId,
+        _user_id: profile.user_id,
+        _profile_id: profile.id,
+      });
       if (error) throw error;
-      if (!data || data.length === 0) throw new Error("Este lead está sendo visualizado por outro usuário.");
-      // Log reservation — "pegou"
+      if (!reserved) throw new Error("Este lead já está sendo atendido por outro usuário.");
       await supabase.from("lead_historico").insert({
         lead_id: leadId, usuario_id: profile.id,
-        tipo_evento: "lead_capturado",
-        descricao: `${profile.nome} capturou o lead e está visualizando. Aguardando primeira interação.`,
+        tipo_evento: "lead_reservado",
+        descricao: `${profile.nome} capturou o lead.`,
       });
       return leadId;
     },
     onSuccess: (leadId) => {
-      toast.success("Lead reservado! Registre a interação para confirmar.");
+      toast.success("Lead capturado! Registre a interação para confirmar.");
       queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
-      // Open the reserved lead for interaction
+      queryClient.invalidateQueries({ queryKey: ["leads-list"] });
       const lead = capturaLeadsRaw.find(l => l.id === leadId);
       if (lead) {
         setSelectedLead({ ...lead, reserved_by: profile!.id, reserved_at: new Date().toISOString(), status_lead: "reservado" });
       }
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err: any) => {
+      toast.error(err.message);
+      queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
+    },
   });
 
-  // ─── Release reservation ─────────────────
-  const releaseReservation = useCallback(async (leadId: string, reason: string = "manual") => {
+  // ─── Release reservation (Liberar) ─────────────────
+  const releaseReservation = useCallback(async (leadId: string) => {
     if (!profile) return;
     await supabase.from("leads").update({
       reserved_by: null,
       reserved_at: null,
-      status_lead: "aguardando_captura",
+      status_lead: "fila_captura",
     } as any).eq("id", leadId).eq("reserved_by", profile.id);
     await supabase.from("lead_historico").insert({
       lead_id: leadId, usuario_id: profile.id,
-      tipo_evento: reason === "timeout" ? "reserva_expirada" : "lead_visualizado_nao_pegou",
-      descricao: reason === "timeout"
-        ? `Reserva expirada após 2 minutos sem interação. ${profile.nome} visualizou e não pegou o lead.`
-        : `${profile.nome} visualizou o lead e não pegou. Lead retornou à fila.`,
+      tipo_evento: "reserva_liberada",
+      descricao: `${profile.nome} liberou o lead. Lead retornou à fila de captura.`,
     });
     queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
+    queryClient.invalidateQueries({ queryKey: ["leads-list"] });
   }, [profile, queryClient]);
 
-  // ─── Auto-expiry timer for reserved leads ─────────────────
-  useEffect(() => {
-    if (!selectedLead || selectedLead.status_lead !== "reservado" || selectedLead.reserved_by !== profile?.id) return;
-    const reservedAt = selectedLead.reserved_at ? new Date(selectedLead.reserved_at).getTime() : Date.now();
-    const remaining = RESERVATION_TIMEOUT_MS - (Date.now() - reservedAt);
-    if (remaining <= 0) {
-      // Already expired
-      releaseReservation(selectedLead.id, "timeout");
-      setSelectedLead(null);
-      toast.warning("Reserva expirada. Lead retornou à fila de captura.");
-      return;
-    }
-    const timer = setTimeout(() => {
-      releaseReservation(selectedLead.id, "timeout");
-      setSelectedLead(null);
-      toast.warning("Reserva expirada (2 minutos). Lead retornou à fila de captura.");
-    }, remaining);
-    return () => clearTimeout(timer);
-  }, [selectedLead?.id, selectedLead?.status_lead, selectedLead?.reserved_by, selectedLead?.reserved_at, profile?.id, releaseReservation]);
-
-  // ─── Release reservation on leaving the lead (deselecting or navigating away) ──
-  // Store current reserved lead id in a ref so cleanup effects can access it
+  // Ref tracking for cleanup (no auto-expiry — reservations are manual only)
   const reservedLeadRef = useRef<{ id: string; profileId: string } | null>(null);
   useEffect(() => {
     if (selectedLead?.status_lead === "reservado" && selectedLead?.reserved_by === profile?.id) {
@@ -820,24 +774,6 @@ export default function LeadsPage() {
     }
   }, [selectedLead?.id, selectedLead?.status_lead, selectedLead?.reserved_by, profile?.id]);
 
-   // NOTE: Reservation is NOT released on unmount so the user can navigate away and come back
-  // The 2-minute auto-expiry timer handles cleanup if the user doesn't return in time
-
-  // Track selected lead changes to release previous reservation
-  const prevSelectedLeadIdRef = useMemo(() => ({ current: null as string | null }), []);
-  useEffect(() => {
-    const prevId = prevSelectedLeadIdRef.current;
-    const currentId = selectedLead?.id || null;
-    const wasReservedByMe = prevId && capturaLeadsRaw.find(l => l.id === prevId)?.reserved_by === profile?.id;
-
-    if (prevId && prevId !== currentId && wasReservedByMe) {
-      // User moved away from a reserved lead without acting
-      releaseReservation(prevId, "manual");
-    }
-    prevSelectedLeadIdRef.current = currentId;
-  }, [selectedLead?.id, profile?.id]);
-
-   // beforeunload does NOT release reservation – the 2-min timer handles expiry
 
   // ─── Realtime subscription for capture queue ─────────────────
   useEffect(() => {
@@ -851,7 +787,7 @@ export default function LeadsPage() {
         const oldStatus = payload.old?.status_lead;
         const newStatus = payload.new?.status_lead;
         // Invalidate capture queue when any lead enters or leaves capture/reserved states
-        const captureStates = ["aguardando_captura", "reservado"];
+        const captureStates = ["fila_captura", "reservado", "em_atendimento"];
         if (captureStates.includes(oldStatus) || captureStates.includes(newStatus)) {
           queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
         }
@@ -866,7 +802,7 @@ export default function LeadsPage() {
 
   // Build priority queue (cycle-aware after transfers)
   const priorityQueue = useMemo(() => {
-    const activeLeads = allLeads.filter(l => ["novo", "em_contato", "interessado", "aguardando_captura", "reservado", "aguardando_decisao_avaliador"].includes(l.status_lead));
+    const activeLeads = allLeads.filter(l => ["novo", "em_contato", "em_atendimento", "interessado", "fila_captura", "reservado", "aguardando_decisao_avaliador"].includes(l.status_lead));
     return activeLeads.map((lead) => {
       const interacoes = allLeadInteracoes.filter(i => i.lead_id === lead.id);
       
@@ -1433,10 +1369,10 @@ export default function LeadsPage() {
       // If lead is reserved (from capture queue), confirm assignment on first interaction
       const isReservedCapture = selectedLead.status_lead === "reservado" && selectedLead.reserved_by === profile.id;
       if (isReservedCapture) {
-        // Officially assign the lead
+        // Officially assign the lead with em_atendimento status
         await supabase.from("leads").update({
           responsavel_id: profile.id,
-          status_lead: "em_contato",
+          status_lead: "em_atendimento",
           reserved_by: null,
           reserved_at: null,
         } as any).eq("id", selectedLead.id);
@@ -1451,10 +1387,10 @@ export default function LeadsPage() {
         await supabase.from("lead_historico").insert({
           lead_id: selectedLead.id, usuario_id: profile.id,
           tipo_evento: "lead_capturado",
-          descricao: `Lead capturado e atribuído a ${profile.nome} após primeira interação. Nova rotina iniciada.`,
+          descricao: `Lead capturado e atribuído a ${profile.nome}. Status: Em Atendimento. Nova rotina iniciada.`,
         });
         // Update local state
-        setSelectedLead(prev => prev ? { ...prev, responsavel_id: profile.id, status_lead: "em_contato", reserved_by: null, reserved_at: null } : null);
+        setSelectedLead(prev => prev ? { ...prev, responsavel_id: profile.id, status_lead: "em_atendimento", reserved_by: null, reserved_at: null } : null);
         queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
         queryClient.invalidateQueries({ queryKey: ["leads-list"] });
       }
@@ -2175,45 +2111,23 @@ export default function LeadsPage() {
                   <div className="divide-y divide-border">
                     {capturaQueue.map(item => {
                       const phones = item.contatos.filter(c => c.tipo_contato === "telefone");
-                      const isReservedByMe = item.isReservedByMe;
                       return (
                         <div key={item.lead.id} className="px-3 py-2 flex items-center justify-between gap-2">
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium truncate">{item.lead.nome}</p>
                             <p className="text-[10px] text-muted-foreground">
                               {phones.length > 0 ? phones[0].valor : "Sem telefone"}
-                              {item.ultimaTentativaEm && ` · Última: ${format(new Date(item.ultimaTentativaEm), "dd/MM HH:mm", { locale: ptBR })}`}
                             </p>
-                            {isReservedByMe && (
-                              <Badge className="text-[9px] bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 border-0 mt-0.5">
-                                <Clock className="w-2.5 h-2.5 mr-0.5" /> Reservado por você
-                              </Badge>
-                            )}
                           </div>
-                          {item.userPreviouslyHandled && !isReservedByMe ? (
-                            <Badge variant="outline" className="text-[9px] shrink-0">Já interagiu</Badge>
-                          ) : isReservedByMe ? (
-                            <div className="flex gap-1">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-[10px] px-2 gap-1 text-destructive border-destructive/30"
-                                onClick={() => { releaseReservation(item.lead.id, "manual"); if (selectedLead?.id === item.lead.id) setSelectedLead(null); }}
-                              >
-                                Liberar
-                              </Button>
-                            </div>
-                          ) : (
-                            <Button
-                              size="sm"
-                              className="h-7 text-[10px] px-2 gap-1"
-                              onClick={() => reserveLeadMutation.mutate(item.lead.id)}
-                              disabled={reserveLeadMutation.isPending}
-                            >
-                              {reserveLeadMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserCheck className="w-3 h-3" />}
-                              Capturar
-                            </Button>
-                          )}
+                          <Button
+                            size="sm"
+                            className="h-7 text-[10px] px-2 gap-1"
+                            onClick={() => reserveLeadMutation.mutate(item.lead.id)}
+                            disabled={reserveLeadMutation.isPending}
+                          >
+                            {reserveLeadMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserCheck className="w-3 h-3" />}
+                            Capturar
+                          </Button>
                         </div>
                       );
                     })}

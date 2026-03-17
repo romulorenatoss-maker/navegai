@@ -46,7 +46,7 @@ const fmtDate = (d: string | Date) => { try { return format(new Date(d), "dd/MM/
 const fmtDateShort = (d: string | Date) => { try { return format(new Date(d), "dd/MM HH:mm", { locale: ptBR }); } catch { return String(d); } };
 const PERIODO_HORA: Record<string, number> = { manha: 9, tarde: 14, noite: 19 };
 const PERIODO_LABELS: Record<string, string> = { manha: "Manhã", tarde: "Tarde", noite: "Noite" };
-const STATUS_MAP: Record<string, string> = { novo: "Novo", em_contato: "Em Contato", interessado: "Interessado", aguardando_decisao_avaliador: "Aguardando Decisão", aguardando_captura: "Aguardando Captura", reservado: "Reservado" };
+const STATUS_MAP: Record<string, string> = { novo: "Novo", em_contato: "Em Contato", em_atendimento: "Em Atendimento", interessado: "Interessado", aguardando_decisao_avaliador: "Aguardando Decisão", fila_captura: "Fila de Captura", reservado: "Reservado" };
 
 function getPeriodoEndHour(periodo: string): number { return periodo === "manha" ? 12 : periodo === "tarde" ? 18 : 24; }
 function isTarefaExpirada(tarefa: { data_contato: string; periodo: string; status: string }): boolean {
@@ -127,13 +127,13 @@ export default function FilaLeadsPage() {
   }, [queryClient]);
 
   // ─── Queries ──────────────────────────────────────
-  const CAPTURE_QUEUE_STATUS = "aguardando_captura";
+  const CAPTURE_QUEUE_STATUS = "fila_captura";
 
   const { data: leads = [], isLoading: loadingLeads } = useQuery({
     queryKey: ["fila-leads"],
     queryFn: async () => {
       const { data, error } = await supabase.from("leads").select("*")
-        .in("status_lead", ["novo", "em_contato", "interessado", "aguardando_decisao_avaliador", CAPTURE_QUEUE_STATUS, "reservado"])
+        .in("status_lead", ["novo", "em_contato", "em_atendimento", "interessado", "aguardando_decisao_avaliador", CAPTURE_QUEUE_STATUS, "reservado"])
         .order("updated_at", { ascending: true });
       if (error) throw error;
       return data as Lead[];
@@ -586,9 +586,9 @@ export default function FilaLeadsPage() {
       if (!profile) throw new Error("Perfil não encontrado.");
       // Cancel pending tasks
       await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", leadId).in("status", ["pendente", "atrasado"]);
-      // Set to aguardando_captura with NO responsible — goes to shared capture queue
-      await supabase.from("leads").update({ status_lead: "aguardando_captura", responsavel_id: null, notificacao_vista: false } as any).eq("id", leadId);
-      await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "lead_reaberto_captura", descricao: "Lead reaberto e enviado para Fila de Captura. Usuários que já interagiram não poderão capturá-lo." });
+      // Set to fila_captura with NO responsible — goes to shared capture queue
+      await supabase.from("leads").update({ status_lead: "fila_captura", responsavel_id: null, reserved_by: null, reserved_at: null, notificacao_vista: false } as any).eq("id", leadId);
+      await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "lead_reaberto_captura", descricao: "Lead reaberto e enviado para Fila de Captura." });
     },
     onSuccess: () => { toast.success("Lead reaberto e enviado para Fila de Captura!"); setActiveTab("captura"); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }); },
     onError: (err: any) => toast.error(err.message),
@@ -655,8 +655,8 @@ export default function FilaLeadsPage() {
         .single();
 
       if (checkErr) throw checkErr;
-      if (!freshLead || freshLead.status_lead !== "aguardando_captura" || freshLead.reserved_by || freshLead.responsavel_id) {
-        throw new Error("Este lead já foi atribuído a outro usuário.");
+      if (!freshLead || freshLead.status_lead !== "fila_captura" || freshLead.reserved_by || freshLead.responsavel_id) {
+        throw new Error("Este lead já está sendo atendido por outro usuário.");
       }
 
       const { data: reserved, error: reserveErr } = await supabase.rpc("atomic_reserve_lead", {
@@ -789,7 +789,7 @@ export default function FilaLeadsPage() {
                      <SelectItem value="em_contato">Em Contato</SelectItem>
                      <SelectItem value="interessado">Interessado</SelectItem>
                      <SelectItem value="aguardando_decisao_avaliador">Aguardando Decisão</SelectItem>
-                     <SelectItem value="aguardando_captura">Aguardando Captura</SelectItem>
+                     <SelectItem value="fila_captura">Fila de Captura</SelectItem>
                      <SelectItem value="reservado">Reservado</SelectItem>
                    </SelectContent>
                 </Select>
