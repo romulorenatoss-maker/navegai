@@ -107,7 +107,7 @@ export default function ImportadorLeadsPage() {
     for (const c of leadContatos || []) leadPhoneMap.set(normalizePhone(c.valor), c.lead_id);
 
     const clientPhoneSet = new Set<string>();
-    for (const c of clienteContatos || []) clientPhoneSet.set(normalizePhone(c.valor));
+    for (const c of clienteContatos || []) clientPhoneSet.add(normalizePhone(c.valor));
 
     const leadMap = new Map<string, any>();
     for (const l of allLeads || []) leadMap.set(l.id, l);
