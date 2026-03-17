@@ -483,15 +483,14 @@ export default function FilaLeadsPage() {
             <Badge variant="secondary" className="text-xs">{filteredQueue.length}</Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-0 overflow-auto max-h-[calc(100vh-320px)]">
           {loadingLeads ? (
             <div className="p-8 text-center text-muted-foreground text-sm">Carregando fila...</div>
           ) : filteredQueue.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground text-sm">Nenhum lead encontrado</div>
           ) : (
-            <ScrollArea className="max-h-[calc(100vh-320px)]">
-              <div className="overflow-x-auto">
-                <Table>
+            <div className="min-w-[900px]">
+              <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-8">#</TableHead>
