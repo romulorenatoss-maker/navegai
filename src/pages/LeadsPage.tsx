@@ -87,6 +87,52 @@ interface CadenciaTentativa {
   prioridade: number;
 }
 
+// ─── Inline CEP adder ──────────────────────────────────
+function AddCepInline({ ruaId, existingCeps, onSaved }: { ruaId: string; existingCeps: string[]; onSaved: () => void }) {
+  const [newCep, setNewCep] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const handleAdd = async () => {
+    const clean = newCep.replace(/\D/g, "");
+    if (clean.length < 5) { toast.error("CEP inválido."); return; }
+    const formatted = clean.length >= 8 ? `${clean.slice(0, 5)}-${clean.slice(5, 8)}` : clean;
+    if (existingCeps.some(c => c.replace(/\D/g, "") === clean)) { toast.error("CEP já vinculado."); return; }
+    setSaving(true);
+    try {
+      const updated = [...existingCeps, formatted];
+      const { error } = await supabase.from("ruas").update({ cep: updated }).eq("id", ruaId);
+      if (error) throw error;
+      setNewCep("");
+      onSaved();
+      toast.success("CEP adicionado!");
+    } catch (err: any) {
+      toast.error("Erro ao salvar CEP: " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <Input
+        className="h-7 text-xs flex-1 font-mono"
+        placeholder="Novo CEP (ex: 12345-678)"
+        value={newCep}
+        onChange={(e) => {
+          let v = e.target.value.replace(/\D/g, "").slice(0, 8);
+          if (v.length > 5) v = v.slice(0, 5) + "-" + v.slice(5);
+          setNewCep(v);
+        }}
+        onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+      />
+      <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={handleAdd} disabled={saving || !newCep.trim()}>
+        {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3 mr-0.5" />}
+        Add CEP
+      </Button>
+    </div>
+  );
+}
+
 // ─── Status helpers ────────────────────────────────────
 const STATUS_OPTIONS = [
   { value: "novo", label: "Novo", color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
