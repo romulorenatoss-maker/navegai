@@ -1197,6 +1197,7 @@ export default function LeadsPage() {
                           <div key={item.id} className="relative pl-10 pb-4 last:pb-0">
                             {/* Icon node */}
                             <div className={`absolute left-1.5 w-5 h-5 rounded-full flex items-center justify-center ring-2 ring-background ${
+                              isCriacaoVinculado ? "bg-amber-500" :
                               isCriacao ? "bg-blue-500" :
                               isConversao ? "bg-green-500" :
                               isTransfer ? "bg-amber-500" :
