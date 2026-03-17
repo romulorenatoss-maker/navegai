@@ -305,12 +305,24 @@ export default function CadastroEnderecosPage() {
               <div className="divide-y">
                 {filteredCidades.length === 0 ? (
                   <p className="p-4 text-sm text-muted-foreground text-center">Nenhuma cidade encontrada.</p>
-                ) : filteredCidades.map(c => (
+                 ) : filteredCidades.map(c => {
+                  const lc = cidadeLeadCount(c.id);
+                  return (
                   <div key={c.id} className="flex items-center justify-between px-4 py-2.5 hover:bg-muted/30">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Building2 className="w-4 h-4 text-muted-foreground" />
                       <span className="text-sm font-medium">{c.nome}</span>
                       <Badge variant="outline" className="text-[10px]">{bairros.filter(b => b.cidade_id === c.id).length} bairros</Badge>
+                      {lc > 0 ? (
+                        <Badge
+                          variant="secondary" className="text-[10px] cursor-pointer hover:bg-primary/20"
+                          onClick={() => navigate(`/leads/relatorios?cidade_id=${c.id}`)}
+                        >
+                          {lc} lead{lc > 1 ? "s" : ""} <ExternalLink className="w-2.5 h-2.5 ml-0.5" />
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] text-muted-foreground">0 leads</Badge>
+                      )}
                     </div>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(c)}><Pencil className="w-3.5 h-3.5" /></Button>
@@ -321,7 +333,8 @@ export default function CadastroEnderecosPage() {
                       )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </ScrollArea>
           </Card>
