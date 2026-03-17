@@ -579,7 +579,8 @@ export default function FilaLeadsPage() {
     await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", transferItem.lead.id).in("status", ["pendente", "atrasado"]);
     await supabase.from("leads").update({ responsavel_id: transferTarget, status_lead: "em_contato" } as any).eq("id", transferItem.lead.id);
     const targetName = profiles.find(p => p.id === transferTarget)?.nome || "—";
-    await supabase.from("lead_historico").insert({ lead_id: transferItem.lead.id, usuario_id: profile.id, tipo_evento: "transferencia_automatica", descricao: `Lead transferido para ${targetName}. Contagem de tentativas reiniciada. Histórico anterior mantido.` });
+    const motivo = transferMotivo.trim();
+    await supabase.from("lead_historico").insert({ lead_id: transferItem.lead.id, usuario_id: profile.id, tipo_evento: "transferencia_manual", descricao: `Lead transferido manualmente para ${targetName}. Motivo: ${motivo || "não informado"}. Responsável anterior: ${transferItem.responsavelNome}. Contagem de tentativas reiniciada.` });
     // Schedule first attempt for NOW so it appears as immediate priority
     const firstRotina = rotinaTentativas.find((r: any) => r.tentativa_numero === 1);
     const periodo = firstRotina?.periodo_contato || "manha";
