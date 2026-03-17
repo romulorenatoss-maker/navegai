@@ -71,6 +71,7 @@ const App = () => (
               <Route path="/leads/fila" element={<FilaLeadsPage />} />
               <Route path="/leads/fila-tarefas" element={<FilaTarefasLeadsPage />} />
               <Route path="/leads/finalizados" element={<LeadsFinalizadosPage />} />
+              <Route path="/leads/arquivados" element={<LeadsArquivadosPage />} />
               <Route path="/leads/dashboard" element={<DashboardLeadsPage />} />
               <Route path="/leads/rotina" element={<RotinaTentativasPage />} />
               <Route path="/leads/importador" element={<ImportadorLeadsPage />} />
