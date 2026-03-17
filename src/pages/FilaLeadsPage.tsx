@@ -23,7 +23,7 @@ import { ptBR } from "date-fns/locale";
 import {
   Phone, MessageSquare, Loader2, ListOrdered, CalendarClock, AlertTriangle,
   ArrowRightLeft, Clock, Search, Filter, Eye, Archive, RefreshCw,
-  MoreHorizontal, Bell, CheckCircle2, ExternalLink, CalendarIcon,
+  MoreHorizontal, Bell, CheckCircle2, ExternalLink, CalendarIcon, XCircle, UserCheck,
 } from "lucide-react";
 import { startOfDay, endOfDay, isWithinInterval } from "date-fns";
 interface Lead {
@@ -324,13 +324,12 @@ export default function FilaLeadsPage() {
       .map(lead => {
         const contatos = allContatos.filter(c => c.lead_id === lead.id);
         const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
-        // Find last person who actually worked the lead (last interaction's colaborador)
-        const lastInteracao = interacoes.length > 0 ? interacoes[0] : null; // already sorted desc
+        const lastInteracao = interacoes.length > 0 ? interacoes[0] : null;
         const ultimoResponsavelNome = lastInteracao ? getProfileName((lastInteracao as any).colaborador_id) : getProfileName(lead.responsavel_id);
-        return { lead, contatos, interacoes: interacoes.length, responsavelNome: ultimoResponsavelNome };
+        const ultimaTentativaEm = lastInteracao ? (lastInteracao as any).data_interacao : null;
+        return { lead, contatos, interacoes: interacoes.length, responsavelNome: ultimoResponsavelNome, ultimaTentativaEm };
       })
       .sort((a, b) => {
-        // Not seen first
         if (!a.lead.notificacao_vista && b.lead.notificacao_vista) return -1;
         if (a.lead.notificacao_vista && !b.lead.notificacao_vista) return 1;
         return new Date(b.lead.updated_at).getTime() - new Date(a.lead.updated_at).getTime();
@@ -448,14 +447,25 @@ export default function FilaLeadsPage() {
   const restartMutation = useMutation({
     mutationFn: async (leadId: string) => {
       if (!profile) throw new Error("Perfil não encontrado.");
-      await supabase.from("leads").update({ status_lead: "em_contato", notificacao_vista: false } as any).eq("id", leadId);
+      await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", leadId).in("status", ["pendente", "atrasado"]);
+      await supabase.from("leads").update({ status_lead: "em_contato", notificacao_vista: false, responsavel_id: profile.id } as any).eq("id", leadId);
       const firstRotina = rotinaTentativas.find((r: any) => r.tentativa_numero === 1);
       const periodo = firstRotina?.periodo_contato || "manha";
       const nextDate = new Date(); nextDate.setDate(nextDate.getDate() + 1); nextDate.setHours(PERIODO_HORA[periodo] || 9, 0, 0, 0);
       await supabase.from("lead_tarefas_contato").insert({ lead_id: leadId, tentativa: 1, data_contato: nextDate.toISOString(), periodo, status: "pendente", responsavel_id: profile.id });
-      await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "rotina_reiniciada", descricao: "Rotina de tentativas reiniciada pelo avaliador." });
+      await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "rotina_reiniciada", descricao: "Rotina de tentativas reiniciada pelo avaliador. Lead reaberto para atendimento." });
     },
-    onSuccess: () => { toast.success("Rotina reiniciada!"); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }); },
+    onSuccess: () => { toast.success("Lead reaberto com rotina reiniciada!"); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }); },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const markAsLostMutation = useMutation({
+    mutationFn: async (leadId: string) => {
+      if (!profile) throw new Error("Perfil não encontrado.");
+      await supabase.from("leads").update({ status_lead: "perdido" }).eq("id", leadId);
+      await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "lead_perdido", descricao: "Lead marcado como perdido pelo avaliador após avaliação final." });
+    },
+    onSuccess: () => { toast.success("Lead marcado como perdido."); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); },
     onError: (err: any) => toast.error(err.message),
   });
 
@@ -508,7 +518,7 @@ export default function FilaLeadsPage() {
       if (nextT > maxT) {
         const acao = (fluxoConfig as any)?.acao_apos_finalizar_tentativas || "enviar_avaliador";
         const newStatus = acao === "arquivar_lead" ? "arquivado" : "aguardando_decisao_avaliador";
-        await supabase.from("leads").update({ status_lead: newStatus }).eq("id", selectedTarefa.lead_id);
+        await supabase.from("leads").update({ status_lead: newStatus, responsavel_id: null } as any).eq("id", selectedTarefa.lead_id);
         await supabase.from("lead_historico").insert({ lead_id: selectedTarefa.lead_id, usuario_id: profile.id, tipo_evento: "tentativas_finalizadas", descricao: `Todas as ${maxT} tentativas finalizadas. Ação: ${acao}` });
       } else {
         const nextR = rotinaTentativas.find((r: any) => r.tentativa_numero === nextT);
@@ -869,6 +879,7 @@ export default function FilaLeadsPage() {
                       <TableHead>Lead</TableHead>
                       <TableHead>Telefone(s)</TableHead>
                       <TableHead>Último Responsável</TableHead>
+                      <TableHead>Última Tentativa</TableHead>
                       <TableHead>Tentativas</TableHead>
                       <TableHead className="text-center">Visto</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
@@ -882,9 +893,12 @@ export default function FilaLeadsPage() {
                         <TableRow key={item.lead.id} className={!isVisto ? "bg-orange-50 dark:bg-orange-950/20" : ""}>
                           <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-2">
-                              {!isVisto && <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />}
-                              <span className="font-medium text-sm">{item.lead.nome}</span>
+                            <div className="flex flex-col gap-0.5">
+                              <div className="flex items-center gap-2">
+                                {!isVisto && <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />}
+                                <span className="font-medium text-sm">{item.lead.nome}</span>
+                              </div>
+                              <span className="text-[10px] text-orange-600 dark:text-orange-400 font-medium">⚠ Lead requer avaliação após tentativa final</span>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -894,6 +908,11 @@ export default function FilaLeadsPage() {
                             </div>
                           </TableCell>
                           <TableCell className="text-xs">{item.responsavelNome}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {item.ultimaTentativaEm
+                              ? format(new Date(item.ultimaTentativaEm), "dd/MM/yy HH:mm", { locale: ptBR })
+                              : "—"}
+                          </TableCell>
                           <TableCell><Badge variant="secondary" className="text-xs">{item.interacoes} realizadas</Badge></TableCell>
                           <TableCell className="text-center">
                             {isVisto ? (
@@ -919,6 +938,15 @@ export default function FilaLeadsPage() {
                                       <Eye className="w-3.5 h-3.5" /> Marcar como Visto
                                     </DropdownMenuItem>
                                   )}
+                                  <DropdownMenuItem onClick={() => restartMutation.mutate(item.lead.id)} className="gap-2 text-xs">
+                                    <RefreshCw className="w-3.5 h-3.5" /> Reabrir Lead
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => markAsLostMutation.mutate(item.lead.id)} className="gap-2 text-xs text-destructive">
+                                    <XCircle className="w-3.5 h-3.5" /> Marcar como Perdido
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => navigate(`/leads?id=${item.lead.id}&convert=true`)} className="gap-2 text-xs">
+                                    <UserCheck className="w-3.5 h-3.5" /> Converter Lead
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => archiveMutation.mutate(item.lead.id)} className="gap-2 text-xs">
                                     <Archive className="w-3.5 h-3.5" /> Arquivar Lead
                                   </DropdownMenuItem>
