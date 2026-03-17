@@ -1468,6 +1468,26 @@ export default function LeadsPage() {
                       </Button>
                     </div>
                   )}
+                  {canArchiveLead && selectedLead.status_lead !== "arquivado" && selectedLead.status_lead !== "convertido" && (
+                    <Button
+                      size="sm" variant="outline"
+                      className="w-full text-destructive hover:text-destructive border-destructive/30"
+                      onClick={async () => {
+                        if (!profile) return;
+                        await supabase.from("leads").update({ status_lead: "arquivado" }).eq("id", selectedLead.id);
+                        await supabase.from("lead_historico").insert({
+                          lead_id: selectedLead.id, usuario_id: profile.id,
+                          tipo_evento: "lead_arquivado",
+                          descricao: "Lead arquivado manualmente (erro de cadastro ou decisão do avaliador)",
+                        });
+                        setSelectedLead(prev => prev ? { ...prev, status_lead: "arquivado" } : null);
+                        queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                        toast.success("Lead arquivado.");
+                      }}
+                    >
+                      <FileText className="w-4 h-4 mr-1.5" /> Arquivar Lead
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             </>
