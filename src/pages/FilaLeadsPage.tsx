@@ -791,12 +791,16 @@ export default function FilaLeadsPage() {
                     {capturaLeads.map((item, idx) => {
                       const phones = item.contatos.filter(c => c.tipo_contato === "telefone");
                       return (
-                        <TableRow key={item.lead.id} className="bg-purple-50/30 dark:bg-purple-950/10">
+                        <TableRow key={item.lead.id} className={cn("bg-purple-50/30 dark:bg-purple-950/10", item.isReservedByOther && "opacity-50")}>
                           <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
                           <TableCell>
                             <div className="flex flex-col gap-0.5">
                               <span className="font-medium text-sm">{item.lead.nome}</span>
-                              <Badge className="w-fit text-[10px] bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border-0">Aguardando Captura</Badge>
+                              {item.isReservedByOther ? (
+                                <Badge className="w-fit text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-0">Já capturado por {item.reservedByName}</Badge>
+                              ) : (
+                                <Badge className="w-fit text-[10px] bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border-0">Aguardando Captura</Badge>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -811,19 +815,23 @@ export default function FilaLeadsPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center justify-end gap-1">
-                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Ver lead" onClick={() => navigate(`/leads?id=${item.lead.id}`)}><Eye className="w-3.5 h-3.5" /></Button>
-                              {item.userPreviouslyHandled ? (
+                              {item.isReservedByOther ? (
+                                <Badge variant="outline" className="text-[10px] text-amber-600">Em atendimento</Badge>
+                              ) : item.userPreviouslyHandled ? (
                                 <Badge variant="outline" className="text-[10px]">Você já interagiu</Badge>
                               ) : (
-                                <Button
-                                  size="sm"
-                                  className="h-7 text-[11px] px-3 gap-1 bg-purple-600 hover:bg-purple-700 text-white"
-                                  onClick={() => captureMutation.mutate(item.lead.id)}
-                                  disabled={captureMutation.isPending}
-                                >
-                                  {captureMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserCheck className="w-3.5 h-3.5" />}
-                                  Capturar Lead
-                                </Button>
+                                <>
+                                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Ver lead" onClick={() => navigate(`/leads?id=${item.lead.id}`)}><Eye className="w-3.5 h-3.5" /></Button>
+                                  <Button
+                                    size="sm"
+                                    className="h-7 text-[11px] px-3 gap-1 bg-purple-600 hover:bg-purple-700 text-white"
+                                    onClick={() => captureMutation.mutate(item.lead.id)}
+                                    disabled={captureMutation.isPending}
+                                  >
+                                    {captureMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserCheck className="w-3.5 h-3.5" />}
+                                    Capturar Lead
+                                  </Button>
+                                </>
                               )}
                             </div>
                           </TableCell>
