@@ -46,7 +46,7 @@ const fmtDate = (d: string | Date) => { try { return format(new Date(d), "dd/MM/
 const fmtDateShort = (d: string | Date) => { try { return format(new Date(d), "dd/MM HH:mm", { locale: ptBR }); } catch { return String(d); } };
 const PERIODO_HORA: Record<string, number> = { manha: 9, tarde: 14, noite: 19 };
 const PERIODO_LABELS: Record<string, string> = { manha: "Manhã", tarde: "Tarde", noite: "Noite" };
-const STATUS_MAP: Record<string, string> = { novo: "Novo", em_contato: "Em Contato", em_atendimento: "Em tratativa", interessado: "Interessado", aguardando_decisao_avaliador: "Aguardando Decisão", fila_captura: "Fila de Captura", reservado: "Reservado" };
+const STATUS_MAP: Record<string, string> = { novo: "Novo", em_contato: "Em Contato", em_atendimento: "Em tratativa", interessado: "Interessado", aguardando_decisao_avaliador: "Aguardando Decisão", fila_captura: "Fila de Captura", reservado: "Reservado", expirado: "Expirado" };
 
 function getPeriodoEndHour(periodo: string): number { return periodo === "manha" ? 12 : periodo === "tarde" ? 18 : 24; }
 function isTarefaExpirada(tarefa: { data_contato: string; periodo: string; status: string }): boolean {
@@ -489,7 +489,8 @@ export default function FilaLeadsPage() {
 
   const filteredQueue = useMemo(() => {
     return queue.filter(item => {
-      if (filterStatus !== "todos" && item.lead.status_lead !== filterStatus) return false;
+      if (filterStatus === "expirado" && !(item.nextAttemptExpired || item.isOverdue)) return false;
+      if (filterStatus !== "todos" && filterStatus !== "expirado" && item.lead.status_lead !== filterStatus) return false;
       if (filterResponsavel !== "todos" && item.lead.responsavel_id !== filterResponsavel) return false;
       if (filterAgendamento === "agendado" && !item.isScheduled) return false;
       if (filterAgendamento === "sem_agendamento" && item.isScheduled) return false;
@@ -794,6 +795,7 @@ export default function FilaLeadsPage() {
                      <SelectItem value="aguardando_decisao_avaliador">Aguardando Decisão</SelectItem>
                      <SelectItem value="fila_captura">Fila de Captura</SelectItem>
                      <SelectItem value="reservado">Reservado</SelectItem>
+                     <SelectItem value="expirado">Expirado</SelectItem>
                    </SelectContent>
                 </Select>
                 <Select value={filterResponsavel} onValueChange={setFilterResponsavel}>
@@ -868,13 +870,31 @@ export default function FilaLeadsPage() {
                               )}
                             </TableCell>
                             <TableCell>
-                              <Badge className={`text-[11px] border-0 ${
-                                item.lead.status_lead === "novo" ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" :
-                                item.lead.status_lead === "em_contato" ? "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" :
-                                "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200"
-                              }`}>
-                                {STATUS_MAP[item.lead.status_lead] || item.lead.status_lead}
-                              </Badge>
+                              {(() => {
+                                const hasInteracoes = item.tentativaAtual > 1;
+                                const isExpired = item.nextAttemptExpired || item.isOverdue;
+                                let displayStatus = item.lead.status_lead;
+                                let badgeClass = "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200";
+                                
+                                if (isExpired) {
+                                  displayStatus = "expirado";
+                                  badgeClass = "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+                                } else if (hasInteracoes || displayStatus === "em_atendimento" || displayStatus === "em_contato") {
+                                  displayStatus = "em_atendimento";
+                                  badgeClass = "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200";
+                                } else if (displayStatus === "novo") {
+                                  badgeClass = "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+                                } else if (displayStatus === "reservado") {
+                                  badgeClass = "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200";
+                                }
+                                
+                                return (
+                                  <Badge className={`text-[11px] border-0 ${badgeClass}`}>
+                                    {isExpired && <AlertTriangle className="w-3 h-3 mr-0.5" />}
+                                    {STATUS_MAP[displayStatus] || displayStatus}
+                                  </Badge>
+                                );
+                              })()}
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center justify-end gap-1">
