@@ -489,7 +489,7 @@ export default function CadastroEnderecosPage() {
         open={showDeleteConfirm}
         onOpenChange={v => { setShowDeleteConfirm(v); if (!v) setDeleteId(null); }}
         title={`Excluir ${tabLabel}`}
-        description={`Esta ação removerá o registro e desvinculará leads associados. Informe a senha de administrador.`}
+        description={`Só é possível excluir se não houver leads, bairros ou ruas associados. Informe a senha de administrador.`}
         onConfirm={handleDelete}
       />
 
