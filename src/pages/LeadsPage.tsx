@@ -305,6 +305,32 @@ export default function LeadsPage() {
 
   const canArchiveLead = isAdmin || (hasRole("avaliador") && userSetor?.nome?.toLowerCase().includes("atendimento"));
 
+  // Address queries
+  const { data: endCidades = [] } = useQuery({
+    queryKey: ["enderecos-cidades"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("cidades").select("*").order("nome");
+      if (error) throw error;
+      return data as { id: string; nome: string }[];
+    },
+  });
+  const { data: endBairros = [] } = useQuery({
+    queryKey: ["enderecos-bairros"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("bairros").select("*").order("nome");
+      if (error) throw error;
+      return data as { id: string; nome: string; cidade_id: string; cep: string | null }[];
+    },
+  });
+  const { data: endRuas = [] } = useQuery({
+    queryKey: ["enderecos-ruas"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("ruas").select("*").order("nome");
+      if (error) throw error;
+      return data as { id: string; nome: string; bairro_id: string; cep: string | null }[];
+    },
+  });
+
   const { data: leadObjecaoRegistro, refetch: refetchObjecao } = useQuery({
     queryKey: ["lead-objecao-registro", selectedLead?.id],
     enabled: !!selectedLead,
