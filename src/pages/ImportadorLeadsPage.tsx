@@ -369,9 +369,9 @@ export default function ImportadorLeadsPage() {
                 <Alert className="border-muted">
                   <FileSpreadsheet className="h-4 w-4" />
                   <AlertTitle>Formato esperado</AlertTitle>
-                  <AlertDescription className="text-xs">
-                    Colunas: <strong>nome, telefone, email, endereco, plano</strong> (separadas por vírgula ou ponto-e-vírgula).
-                    O sistema detecta automaticamente as colunas.
+                   <AlertDescription className="text-xs">
+                    Aceita arquivos <strong>CSV, XLS e XLSX</strong> (incluindo exportações do Google Sheets).
+                    O sistema detecta automaticamente as colunas: nome, telefone, email, endereco, plano.
                   </AlertDescription>
                 </Alert>
 
