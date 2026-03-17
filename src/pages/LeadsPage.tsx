@@ -696,7 +696,12 @@ export default function LeadsPage() {
         }
       }
 
-      return { lead, tentativaAtual, proximoContato, ultimaInteracao };
+      // Total attempts (all history, all cycles)
+      const totalTentativas = interacoes.length;
+      // Unique handlers (all collaborators who interacted)
+      const handlers = [...new Set(interacoes.map(i => i.colaborador_id))];
+
+      return { lead, tentativaAtual, proximoContato, ultimaInteracao, totalTentativas, handlers };
     }).sort((a, b) => {
       const now = Date.now();
 
