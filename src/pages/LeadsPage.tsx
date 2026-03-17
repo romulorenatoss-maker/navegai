@@ -548,11 +548,11 @@ export default function LeadsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("lead_interacoes")
-        .select("id, lead_id, data_interacao")
+        .select("id, lead_id, colaborador_id, data_interacao")
         .in("lead_id", activeLeadIds)
         .order("data_interacao", { ascending: false });
       if (error) throw error;
-      return data as { id: string; lead_id: string; data_interacao: string }[];
+      return data as { id: string; lead_id: string; colaborador_id: string; data_interacao: string }[];
     },
   });
 
