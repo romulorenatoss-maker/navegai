@@ -639,6 +639,7 @@ export default function LeadsPage() {
     if (filaFiltro === "todos") return priorityQueue;
     const now = new Date();
     const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    const in8hours = new Date(now.getTime() + 8 * 60 * 60 * 1000);
     return priorityQueue.filter((item) => {
       // Expired schedule or schedule for today
       if (item.lead.agendamento_retorno) {
@@ -646,8 +647,8 @@ export default function LeadsPage() {
         if (schedDate <= endOfToday) return true;
         return false;
       }
-      // Overdue cadence contact
-      if (item.proximoContato && item.proximoContato <= endOfToday) return true;
+      // Overdue cadence contact or expiring within 8 hours
+      if (item.proximoContato && (item.proximoContato <= endOfToday || item.proximoContato <= in8hours)) return true;
       // New leads with no next contact yet (need action)
       if (!item.proximoContato && !item.ultimaInteracao) return true;
       return false;
@@ -1581,12 +1582,13 @@ export default function LeadsPage() {
                     onClick={() => setFilaFiltro("hoje")}
                   >
                     Hoje ({priorityQueue.filter((item) => {
-                      const now = new Date();
-                      const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+                      const _now = new Date();
+                      const endOfToday = new Date(_now.getFullYear(), _now.getMonth(), _now.getDate(), 23, 59, 59, 999);
+                      const in8hours = new Date(_now.getTime() + 8 * 60 * 60 * 1000);
                       if (item.lead.agendamento_retorno) {
                         return new Date(item.lead.agendamento_retorno) <= endOfToday;
                       }
-                      if (item.proximoContato && item.proximoContato <= endOfToday) return true;
+                      if (item.proximoContato && (item.proximoContato <= endOfToday || item.proximoContato <= in8hours)) return true;
                       if (!item.proximoContato && !item.ultimaInteracao) return true;
                       return false;
                     }).length})
