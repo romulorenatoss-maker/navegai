@@ -727,18 +727,25 @@ export default function LeadsPage() {
       if (!reserved) throw new Error("Este lead já está sendo atendido por outro usuário.");
       await supabase.from("lead_historico").insert({
         lead_id: leadId, usuario_id: profile.id,
-        tipo_evento: "lead_reservado",
-        descricao: `${profile.nome} capturou o lead.`,
+        tipo_evento: "lead_capturado",
+        descricao: `${profile.nome} capturou o lead. Status: Em tratativa.`,
+      });
+      // Start cadence
+      const { data: firstRotina } = await supabase.from("rotina_tentativas_leads").select("*").eq("tentativa_numero", 1).maybeSingle();
+      const periodo = (firstRotina as any)?.periodo_contato || "manha";
+      await supabase.from("lead_tarefas_contato").insert({
+        lead_id: leadId, tentativa: 1, data_contato: new Date().toISOString(),
+        periodo, status: "pendente", responsavel_id: profile.id,
       });
       return leadId;
     },
     onSuccess: (leadId) => {
-      toast.success("Lead capturado! Registre a interação para confirmar.");
+      toast.success("Lead capturado com sucesso!");
       queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
       queryClient.invalidateQueries({ queryKey: ["leads-list"] });
       const lead = capturaLeadsRaw.find(l => l.id === leadId);
       if (lead) {
-        setSelectedLead({ ...lead, reserved_by: profile!.id, reserved_at: new Date().toISOString(), status_lead: "reservado" });
+        setSelectedLead({ ...lead, responsavel_id: profile!.id, reserved_by: null, reserved_at: null, status_lead: "em_atendimento" });
       }
     },
     onError: (err: any) => {
