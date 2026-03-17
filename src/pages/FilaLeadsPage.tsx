@@ -159,6 +159,34 @@ export default function FilaLeadsPage() {
     },
   });
 
+  const { data: allCampanhas = [] } = useQuery({
+    queryKey: ["campanhas-all-fila"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("campanhas").select("id, nome").order("nome");
+      if (error) throw error;
+      return data as { id: string; nome: string }[];
+    },
+  });
+
+  const { data: allCidades = [] } = useQuery({
+    queryKey: ["cidades-all-fila"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("cidades").select("id, nome").order("nome");
+      if (error) throw error;
+      return data as { id: string; nome: string }[];
+    },
+  });
+
+  const getCampanhaNome = useCallback((lead: Lead) => {
+    if (!lead.campanha_id) return null;
+    return allCampanhas.find(c => c.id === lead.campanha_id)?.nome || null;
+  }, [allCampanhas]);
+
+  const getCidadeNome = useCallback((lead: Lead) => {
+    if (!lead.cidade_id) return null;
+    return allCidades.find(c => c.id === lead.cidade_id)?.nome || null;
+  }, [allCidades]);
+
   const leadIds = leads.map(l => l.id);
 
   const { data: allContatos = [] } = useQuery({
