@@ -2499,7 +2499,7 @@ export default function LeadsPage() {
           </DialogHeader>
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              Tentativa: <Badge variant="secondary">{tentativasRealizadas}</Badge>
+              Tentativa: <Badge variant="secondary">{tentativasCicloAtual}</Badge>
             </div>
             <div className="space-y-1.5">
               <Label>Tipo de Contato</Label>
