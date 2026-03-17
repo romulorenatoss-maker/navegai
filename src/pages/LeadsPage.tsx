@@ -330,7 +330,7 @@ export default function LeadsPage() {
     queryFn: async () => {
       const { data, error } = await supabase.from("ruas").select("*").order("nome");
       if (error) throw error;
-      return data as { id: string; nome: string; bairro_id: string; cep: string | null }[];
+      return data as { id: string; nome: string; bairro_id: string; cep: string[] | null }[];
     },
   });
 
