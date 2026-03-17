@@ -31,6 +31,7 @@ interface Lead {
   updated_at: string; created_at: string; agendamento_retorno: string | null;
   notificacao_vista?: boolean; notificacao_vista_em?: string | null; notificacao_vista_por?: string | null;
   reserved_by?: string | null; reserved_at?: string | null;
+  campanha_id?: string | null; cidade_id?: string | null;
 }
 interface LeadContato { id: string; lead_id: string; tipo_contato: string; valor: string; tem_whatsapp: boolean; }
 interface CadenciaTentativa { id: string; numero_tentativa: number; dias_apos: number; periodo: string; prioridade: number; }
@@ -157,6 +158,34 @@ export default function FilaLeadsPage() {
       return (profs || []) as { id: string; nome: string }[];
     },
   });
+
+  const { data: allCampanhas = [] } = useQuery({
+    queryKey: ["campanhas-all-fila"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("campanhas").select("id, nome").order("nome");
+      if (error) throw error;
+      return data as { id: string; nome: string }[];
+    },
+  });
+
+  const { data: allCidades = [] } = useQuery({
+    queryKey: ["cidades-all-fila"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("cidades").select("id, nome").order("nome");
+      if (error) throw error;
+      return data as { id: string; nome: string }[];
+    },
+  });
+
+  const getCampanhaNome = useCallback((lead: Lead) => {
+    if (!lead.campanha_id) return null;
+    return allCampanhas.find(c => c.id === lead.campanha_id)?.nome || null;
+  }, [allCampanhas]);
+
+  const getCidadeNome = useCallback((lead: Lead) => {
+    if (!lead.cidade_id) return null;
+    return allCidades.find(c => c.id === lead.cidade_id)?.nome || null;
+  }, [allCidades]);
 
   const leadIds = leads.map(l => l.id);
 
@@ -701,7 +730,7 @@ export default function FilaLeadsPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-8">#</TableHead>
-                        <TableHead>Nome</TableHead>
+                        <TableHead>Lead</TableHead>
                         <TableHead>Telefone(s)</TableHead>
                         <TableHead>Vencimento</TableHead>
                         <TableHead>Status</TableHead>
@@ -711,10 +740,18 @@ export default function FilaLeadsPage() {
                     <TableBody>
                       {filteredQueue.map((item, idx) => {
                         const phones = item.contatos.filter(c => c.tipo_contato === "telefone");
+                        const campanha = getCampanhaNome(item.lead);
+                        const cidade = getCidadeNome(item.lead);
                         return (
                           <TableRow key={item.lead.id} className={item.nextAttemptExpired ? "bg-destructive/5" : ""}>
                             <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
-                            <TableCell><span className="font-medium text-sm">{item.lead.nome}</span></TableCell>
+                            <TableCell>
+                              <div className="flex flex-col gap-0.5">
+                                <span className="font-medium text-sm">{item.lead.nome}</span>
+                                <span className="text-[10px] text-primary/70 truncate">Origem: {campanha || "Não especificada"}</span>
+                                {cidade && <span className="text-[10px] text-muted-foreground truncate">{cidade}</span>}
+                              </div>
+                            </TableCell>
                             <TableCell>
                               <div className="flex flex-wrap gap-1">
                                 {phones.map(c => <Badge key={c.id} variant="outline" className="text-[11px] gap-0.5 font-normal"><Phone className="w-2.5 h-2.5" />{c.valor}{c.tem_whatsapp && <MessageSquare className="w-2.5 h-2.5 text-green-600" />}</Badge>)}
@@ -803,12 +840,16 @@ export default function FilaLeadsPage() {
                   <TableBody>
                     {capturaLeads.map((item, idx) => {
                       const phones = item.contatos.filter(c => c.tipo_contato === "telefone");
+                      const campanha = getCampanhaNome(item.lead);
+                      const cidade = getCidadeNome(item.lead);
                       return (
                         <TableRow key={item.lead.id} className={cn("bg-purple-50/30 dark:bg-purple-950/10", item.isReservedByOther && "opacity-50")}>
                           <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
                           <TableCell>
                             <div className="flex flex-col gap-0.5">
                               <span className="font-medium text-sm">{item.lead.nome}</span>
+                              <span className="text-[10px] text-primary/70 truncate">Origem: {campanha || "Não especificada"}</span>
+                              {cidade && <span className="text-[10px] text-muted-foreground truncate">{cidade}</span>}
                               {item.isReservedByOther ? (
                                 <Badge className="w-fit text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-0">Já capturado por {item.reservedByName}</Badge>
                               ) : (

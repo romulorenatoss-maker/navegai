@@ -2067,9 +2067,7 @@ export default function LeadsPage() {
                               <span className="text-[10px] font-mono text-muted-foreground w-4 shrink-0">#{idx + 1}</span>
                               <span className="text-sm font-medium truncate">{item.lead.nome}</span>
                             </div>
-                            {getCampanhaNome(item.lead) && (
-                              <p className="text-[10px] text-primary/70 ml-5 truncate">Origem: {getCampanhaNome(item.lead)}</p>
-                            )}
+                            <p className="text-[10px] text-primary/70 ml-5 truncate">Origem: {getCampanhaNome(item.lead) || "Não especificada"}</p>
                             <div className="flex items-center gap-1.5 mt-0.5 ml-5">
                               {contatos.length > 0 ? (
                                 <span className="text-[11px] text-muted-foreground flex items-center gap-0.5">
@@ -2351,9 +2349,7 @@ export default function LeadsPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <CardTitle className="text-sm font-semibold">{selectedLead.nome}</CardTitle>
-                        {getCampanhaNome(selectedLead) && (
-                          <p className="text-[10px] text-primary/80 font-medium">Origem: {getCampanhaNome(selectedLead)}</p>
-                        )}
+                        <p className="text-[10px] text-primary/80 font-medium">Origem: {getCampanhaNome(selectedLead) || "Não especificada"}</p>
                         <p className="text-[11px] text-muted-foreground">
                           Responsável: {getProfileName(selectedLead.responsavel_id)} · Criado em {fmtDate(selectedLead.data_criacao)}
                         </p>
