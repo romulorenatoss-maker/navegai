@@ -2349,9 +2349,7 @@ export default function LeadsPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <CardTitle className="text-sm font-semibold">{selectedLead.nome}</CardTitle>
-                        {getCampanhaNome(selectedLead) && (
-                          <p className="text-[10px] text-primary/80 font-medium">Origem: {getCampanhaNome(selectedLead)}</p>
-                        )}
+                        <p className="text-[10px] text-primary/80 font-medium">Origem: {getCampanhaNome(selectedLead) || "Não especificada"}</p>
                         <p className="text-[11px] text-muted-foreground">
                           Responsável: {getProfileName(selectedLead.responsavel_id)} · Criado em {fmtDate(selectedLead.data_criacao)}
                         </p>
