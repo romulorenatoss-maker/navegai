@@ -16,8 +16,8 @@ import { Plus, Pencil, Trash2, Search, ArrowRightLeft, Loader2, MapPin, Building
 import AdminPasswordDialog from "@/components/AdminPasswordDialog";
 
 interface Cidade { id: string; nome: string; }
-interface Bairro { id: string; nome: string; cidade_id: string; cep: string | null; }
-interface Rua { id: string; nome: string; bairro_id: string; cep: string | null; }
+interface Bairro { id: string; nome: string; cidade_id: string; }
+interface Rua { id: string; nome: string; bairro_id: string; cep: string[] | null; }
 
 export default function CadastroEnderecosPage() {
   const { isAdmin } = useAuth();
