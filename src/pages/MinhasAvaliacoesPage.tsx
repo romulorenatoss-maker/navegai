@@ -289,11 +289,22 @@ export default function MinhasAvaliacoesPage() {
             <p className="text-sm text-muted-foreground">Minhas Avaliações</p>
           </div>
           {avgScore !== null && (
-            <div className={cn("px-4 py-2 rounded-lg", getScoreBgClass(avgScore))}>
-              <p className="text-caption text-muted-foreground">Média Geral</p>
-              <p className={cn("text-2xl font-bold font-tabular", getScoreColorClass(avgScore))}>
-                {avgScore.toFixed(1)}%
-              </p>
+            <div className="flex items-center gap-3">
+              {rankingPosition && (
+                <div className="px-3 py-2 rounded-lg bg-muted text-center">
+                  <p className="text-caption text-muted-foreground">Ranking</p>
+                  <p className="text-lg font-bold text-foreground font-tabular">
+                    {rankingPosition.position}º
+                    <span className="text-xs font-normal text-muted-foreground">/{rankingPosition.total}</span>
+                  </p>
+                </div>
+              )}
+              <div className={cn("px-4 py-2 rounded-lg", getScoreBgClass(avgScore))}>
+                <p className="text-caption text-muted-foreground">Média Geral</p>
+                <p className={cn("text-2xl font-bold font-tabular", getScoreColorClass(avgScore))}>
+                  {avgScore.toFixed(1)}%
+                </p>
+              </div>
             </div>
           )}
         </div>
