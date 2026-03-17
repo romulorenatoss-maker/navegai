@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from "react";
 
 const IDLE_EVENTS = ["mousedown", "mousemove", "keydown", "scroll", "touchstart", "click"];
 
-export function useIdleTimeout(onIdle: () => void, timeoutMs = 10 * 60 * 1000) {
+export function useIdleTimeout(onIdle: () => void, timeoutMs = 15 * 60 * 1000) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resetTimer = useCallback(() => {
