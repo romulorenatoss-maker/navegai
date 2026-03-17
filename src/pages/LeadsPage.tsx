@@ -1745,7 +1745,7 @@ export default function LeadsPage() {
                     <PopoverContent className="w-56 p-1" align="start">
                       <div className="space-y-0.5">
                         <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8" onClick={() => setShowInteraction(true)}>
-                          <PhoneCall className="w-3.5 h-3.5 mr-2" /> Registrar Tentativa {tentativasRealizadas}
+                          <PhoneCall className="w-3.5 h-3.5 mr-2" /> {tentativasRealizadas === 0 ? "Registrar Lead" : `Registrar Tentativa ${tentativasRealizadas}`}
                         </Button>
                         <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8" onClick={() => { setScheduleDate(undefined); setScheduleHour("09"); setScheduleMinute("00"); setShowSchedule(true); }}>
                           <CalendarClock className="w-3.5 h-3.5 mr-2" /> Agendar Retorno
@@ -2485,7 +2485,7 @@ export default function LeadsPage() {
       <Dialog open={showInteraction} onOpenChange={setShowInteraction}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Registrar Tentativa {tentativasRealizadas} — {selectedLead?.nome}</DialogTitle>
+            <DialogTitle>{tentativasRealizadas === 0 ? "Registrar Lead" : `Registrar Tentativa ${tentativasRealizadas}`} — {selectedLead?.nome}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -2522,7 +2522,7 @@ export default function LeadsPage() {
             <Button variant="outline" onClick={() => setShowInteraction(false)}>Cancelar</Button>
             <Button onClick={() => interactionMutation.mutate()} disabled={interactionMutation.isPending || !interNumero} className="press-effect">
               {interactionMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <PhoneCall className="w-4 h-4 mr-1" />}
-              Registrar Tentativa {tentativasRealizadas}
+              {tentativasRealizadas === 0 ? "Registrar Lead" : `Registrar Tentativa ${tentativasRealizadas}`}
             </Button>
           </DialogFooter>
         </DialogContent>
