@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -16,7 +17,7 @@ import { format, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Phone, MessageSquare, Loader2, ListOrdered, CalendarClock, AlertTriangle,
-  ArrowRightLeft, Clock, Search, Filter, UserCheck,
+  ArrowRightLeft, Clock, Search, Filter, UserCheck, ExternalLink,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -81,6 +82,7 @@ const STATUS_MAP: Record<string, string> = {
 export default function FilaLeadsPage() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // Filters
   const [filterStatus, setFilterStatus] = useState("todos");
@@ -558,6 +560,13 @@ export default function FilaLeadsPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center justify-end gap-1">
+                              <Button
+                                size="sm" variant="ghost" className="h-7 text-[11px] px-1.5"
+                                title="Abrir detalhes do lead"
+                                onClick={() => navigate(`/leads?id=${item.lead.id}`)}
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </Button>
                               <Button size="sm" variant="outline" className="h-7 text-[11px] px-2" onClick={() => openAttempt(item)}>
                                 <Phone className="w-3 h-3 mr-1" /> {item.tentativaAtual}ª Tentativa
                               </Button>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -135,6 +136,7 @@ const PERIODO_HORA: Record<string, number> = { manha: 9, tarde: 14, noite: 19 };
 export default function LeadsPage() {
   const { profile, isAdmin } = useAuth();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Search
   const [searchTerm, setSearchTerm] = useState("");
@@ -198,6 +200,18 @@ export default function LeadsPage() {
       return data as Lead[];
     },
   });
+
+  // Auto-select lead from URL param ?id=
+  useEffect(() => {
+    const leadId = searchParams.get("id");
+    if (leadId && allLeads.length > 0 && !selectedLead) {
+      const found = allLeads.find(l => l.id === leadId);
+      if (found) {
+        setSelectedLead(found);
+        setSearchParams({}, { replace: true });
+      }
+    }
+  }, [searchParams, allLeads, selectedLead]);
 
   const { data: planos = [] } = useQuery({
     queryKey: ["planos"],
