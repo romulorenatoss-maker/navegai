@@ -868,7 +868,7 @@ export default function LeadsPage() {
 
   // Build priority queue (cycle-aware after transfers)
   const priorityQueue = useMemo(() => {
-    const activeLeads = allLeads.filter(l => ["novo", "em_contato", "interessado"].includes(l.status_lead));
+    const activeLeads = allLeads.filter(l => ["novo", "em_contato", "interessado", "aguardando_captura", "reservado", "aguardando_decisao_avaliador"].includes(l.status_lead));
     return activeLeads.map((lead) => {
       const interacoes = allLeadInteracoes.filter(i => i.lead_id === lead.id);
       
