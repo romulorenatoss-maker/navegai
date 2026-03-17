@@ -127,7 +127,7 @@ export default function FilaLeadsPage() {
   }, [queryClient]);
 
   // ─── Queries ──────────────────────────────────────
-  const CAPTURE_QUEUE_STATUS = "aguardando_captura";
+  const CAPTURE_QUEUE_STATUS = "fila_captura";
 
   const { data: leads = [], isLoading: loadingLeads } = useQuery({
     queryKey: ["fila-leads"],
