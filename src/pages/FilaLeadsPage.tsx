@@ -377,7 +377,60 @@ export default function FilaLeadsPage() {
     queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
   };
 
-  const openAttempt = (item: QueueItem) => {
+  // ─── Archive lead (aguardando_decisao) ────────────
+  const archiveMutation = useMutation({
+    mutationFn: async (leadId: string) => {
+      if (!profile) throw new Error("Perfil não encontrado.");
+      await supabase.from("leads").update({ status_lead: "arquivado" }).eq("id", leadId);
+      await supabase.from("lead_historico").insert({
+        lead_id: leadId,
+        usuario_id: profile.id,
+        tipo_evento: "lead_arquivado",
+        descricao: "Lead arquivado pelo avaliador.",
+      });
+    },
+    onSuccess: () => {
+      toast.success("Lead arquivado.");
+      queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  // ─── Restart routine (aguardando_decisao) ─────────
+  const restartMutation = useMutation({
+    mutationFn: async (leadId: string) => {
+      if (!profile) throw new Error("Perfil não encontrado.");
+      await supabase.from("leads").update({ status_lead: "em_contato" }).eq("id", leadId);
+      const firstRotina = rotinaTentativas.find((r: any) => r.tentativa_numero === 1);
+      const periodo = firstRotina?.periodo_contato || "manha";
+      const diasApos = firstRotina?.dias_apos_anterior || 0;
+      const nextDate = new Date();
+      nextDate.setDate(nextDate.getDate() + Math.max(diasApos, 1));
+      const periodoHora = periodo === "manha" ? 9 : periodo === "tarde" ? 14 : 19;
+      nextDate.setHours(periodoHora, 0, 0, 0);
+      await supabase.from("lead_tarefas_contato").insert({
+        lead_id: leadId,
+        tentativa: 1,
+        data_contato: nextDate.toISOString(),
+        periodo,
+        status: "pendente",
+        responsavel_id: profile.id,
+      });
+      await supabase.from("lead_historico").insert({
+        lead_id: leadId,
+        usuario_id: profile.id,
+        tipo_evento: "rotina_reiniciada",
+        descricao: "Rotina de tentativas reiniciada pelo avaliador.",
+      });
+    },
+    onSuccess: () => {
+      toast.success("Rotina reiniciada!");
+      queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
     setSelectedItem(item);
     setAttemptTipo("telefone");
     setAttemptNumero("");
