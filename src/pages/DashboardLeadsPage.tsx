@@ -594,14 +594,14 @@ export default function DashboardLeadsPage() {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <KpiCard
+           <KpiCard
             icon={UserPlus}
             label="Leads Recebidos"
             value={m.leadsNoPeriodo}
             subValue="No período selecionado"
             color="bg-primary/10 text-primary"
             delay={0}
-            onClick={() => openDrill("leads_periodo", "Leads Recebidos no Período")}
+            onClick={() => toRelatorios()}
           />
           <KpiCard
             icon={PhoneCall}
@@ -610,8 +610,8 @@ export default function DashboardLeadsPage() {
             subValue={`${m.statusCounts["novo"] || 0} aguardando`}
             color="bg-amber-500/10 text-amber-600"
             delay={0.1}
-            onClick={() => openDrill("status", "Leads Em Atendimento", "em_atendimento")}
-            onSubClick={() => openDrill("status", "Leads Novos (Aguardando)", "novo")}
+            onClick={() => toRelatorios("em_atendimento")}
+            onSubClick={() => toRelatorios("novo")}
           />
           <KpiCard
             icon={CheckCircle2}
@@ -620,7 +620,7 @@ export default function DashboardLeadsPage() {
             subValue="No período selecionado"
             color="bg-emerald-500/10 text-emerald-600"
             delay={0.2}
-            onClick={() => navigate(`/leads/relatorios?status=convertido&start=${format(dateStart, "yyyy-MM-dd")}&end=${format(dateEnd, "yyyy-MM-dd")}`)}
+            onClick={() => toRelatorios("convertido")}
           />
           <KpiCard
             icon={ArrowRightLeft}
