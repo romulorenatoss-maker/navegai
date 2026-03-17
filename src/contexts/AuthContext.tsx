@@ -1,8 +1,7 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables, Enums } from "@/integrations/supabase/types";
-import { usePermissions, EffectivePermission, DataScope } from "@/hooks/usePermissions";
 
 type Profile = Tables<"profiles">;
 type AppRole = Enums<"app_role">;
@@ -13,10 +12,6 @@ interface AuthContextType {
   profile: Profile | null;
   roles: AppRole[];
   allowedScreens: string[];
-  permissions: EffectivePermission[];
-  permissionsLoading: boolean;
-  can: (resourceCode: string, action: "view" | "create" | "edit" | "delete" | "assign" | "export") => boolean;
-  getScope: (resourceCode: string) => DataScope;
   canViewPath: (path: string) => boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
@@ -33,16 +28,16 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
+  const [allowedScreens, setAllowedScreens] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   const hasRole = (role: AppRole) => roles.includes(role);
   const isAdmin = hasRole("admin");
 
-  // New RBAC permissions
-  const { permissions, isLoading: permissionsLoading, can, canViewPath, getScope, viewablePaths } = usePermissions(profile?.id ?? null);
-
-  // Backward-compatible allowedScreens derived from new RBAC
-  const allowedScreens = isAdmin ? [] : viewablePaths;
+  const canViewPath = useCallback((path: string): boolean => {
+    if (isAdmin) return true;
+    return allowedScreens.includes(path);
+  }, [isAdmin, allowedScreens]);
 
   const fetchProfileAndRoles = async (userId: string) => {
     const [profileRes, rolesRes] = await Promise.all([
@@ -50,7 +45,14 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       supabase.from("user_roles").select("role").eq("user_id", userId),
     ]);
     if (profileRes.data) {
-      setProfile(profileRes.data as Profile);
+      const prof = profileRes.data as Profile;
+      setProfile(prof);
+      // Fetch screen permissions
+      const { data: telas } = await supabase
+        .from("permissoes_tela")
+        .select("tela_path")
+        .eq("profile_id", prof.id);
+      setAllowedScreens(telas?.map((t) => t.tela_path) ?? []);
     }
     if (rolesRes.data) setRoles(rolesRes.data.map((r) => r.role));
   };
@@ -69,6 +71,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
         } else {
           setProfile(null);
           setRoles([]);
+          setAllowedScreens([]);
         }
         setLoading(false);
       }
@@ -109,7 +112,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         session, user, profile, roles, allowedScreens,
-        permissions, permissionsLoading, can, getScope, canViewPath,
+        canViewPath,
         loading, signIn, signUp, signOut, hasRole, isAdmin,
       }}
     >
@@ -117,7 +120,6 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     </AuthContext.Provider>
   );
 }
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthProviderInner>{children}</AuthProviderInner>;
 }
