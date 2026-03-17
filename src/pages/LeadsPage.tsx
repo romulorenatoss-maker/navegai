@@ -173,6 +173,8 @@ const EVENTO_LABELS: Record<string, string> = {
   observacao_adicionada: "Observação Adicionada",
   dados_alterados: "Dados Alterados",
   agendamento_removido: "Agendamento Removido",
+  lead_reaberto_captura: "Lead Reaberto p/ Captura",
+  lead_capturado: "Lead Capturado",
 };
 
 const EVENTO_ICONS: Record<string, typeof Phone> = {
