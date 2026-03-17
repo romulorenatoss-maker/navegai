@@ -11,8 +11,9 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { question } = await req.json();
+    const { question, mode } = await req.json();
     if (!question) throw new Error("Question is required");
+    const isSimpleMode = mode === "simple";
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
