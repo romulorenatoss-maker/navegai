@@ -1169,11 +1169,17 @@ export default function FilaLeadsPage() {
               <p className="text-xs text-muted-foreground">• O histórico completo será mantido para o novo responsável</p>
               <p className="text-xs text-muted-foreground">• Uma nova rotina de tentativas será iniciada automaticamente</p>
               <p className="text-xs text-muted-foreground">• O último responsável ficará registrado no histórico</p>
+              <p className="text-xs text-muted-foreground">• Usuários que já interagiram com este lead são excluídos</p>
             </div>
             <div className="space-y-1.5"><Label>Novo Responsável</Label>
               <Select value={decisionTarget} onValueChange={setDecisionTarget}><SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger><SelectContent>
-                {atendimentoProfiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
-                {atendimentoProfiles.length === 0 && <SelectItem value="__none" disabled>Nenhum colaborador no setor Atendimento</SelectItem>}
+                {(() => {
+                  const prevHandlerIds = allInteracoes.filter((i: any) => i.lead_id === decisionLeadId).map((i: any) => i.colaborador_id);
+                  const eligible = atendimentoProfiles.filter(p => !prevHandlerIds.includes(p.id));
+                  return eligible.length > 0
+                    ? eligible.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)
+                    : <SelectItem value="__none" disabled>Nenhum colaborador elegível (todos já interagiram)</SelectItem>;
+                })()}
               </SelectContent></Select>
             </div>
           </div>
