@@ -521,7 +521,36 @@ export default function FilaLeadsPage() {
     onError: (err: any) => toast.error(err.message),
   });
 
-  // Tarefa attempt mutation
+  // ─── Atomic Capture Mutation ──────────────────────
+  const captureMutation = useMutation({
+    mutationFn: async (leadId: string) => {
+      if (!profile) throw new Error("Perfil não encontrado.");
+      // Atomic: only assign if responsavel_id IS NULL (prevents race conditions)
+      const { data, error } = await supabase
+        .from("leads")
+        .update({ responsavel_id: profile.id, status_lead: "em_contato" } as any)
+        .eq("id", leadId)
+        .is("responsavel_id", null)
+        .select("id");
+      if (error) throw error;
+      if (!data || data.length === 0) throw new Error("Lead já foi capturado por outro usuário.");
+      // Cancel old tasks and create new cadence
+      await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", leadId).in("status", ["pendente", "atrasado"]);
+      const firstRotina = rotinaTentativas.find((r: any) => r.tentativa_numero === 1);
+      const periodo = firstRotina?.periodo_contato || "manha";
+      const now = new Date();
+      await supabase.from("lead_tarefas_contato").insert({ lead_id: leadId, tentativa: 1, data_contato: now.toISOString(), periodo, status: "pendente", responsavel_id: profile.id });
+      await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "lead_capturado", descricao: `Lead capturado por ${profile.nome}. Nova rotina de tentativas iniciada.` });
+    },
+    onSuccess: () => {
+      toast.success("Lead capturado com sucesso! Nova rotina iniciada.");
+      queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+
   const tarefaAttemptMutation = useMutation({
     mutationFn: async () => {
       if (!selectedTarefa || !profile) throw new Error("Erro interno.");
