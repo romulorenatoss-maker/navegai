@@ -1743,7 +1743,7 @@ export default function LeadsPage() {
 
       const { data: newCliente, error: e1 } = await supabase.from("clientes").insert({
         nome: f.nome.trim(), cpf: f.cpf.trim(), rg: f.rg.trim(), nome_mae: f.nome_mae.trim(),
-        numero: f.numero.trim(), referencia: f.referencia.trim(),
+        numero: f.numero.trim(), referencia: f.referencia?.trim() || null,
         cep: cepValue, cidade: selectedCidade?.nome || null,
         cidade_id: convCidadeId, bairro_id: convBairroId, rua_id: convRuaId,
       } as any).select("id").single();
