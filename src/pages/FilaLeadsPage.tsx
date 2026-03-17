@@ -125,11 +125,14 @@ export default function FilaLeadsPage() {
   }, [queryClient]);
 
   // ─── Queries ──────────────────────────────────────
+  const CAPTURE_QUEUE_STATUS = "aguardando_captura";
+  const RESERVED_STATUS = "reservado";
+
   const { data: leads = [], isLoading: loadingLeads } = useQuery({
     queryKey: ["fila-leads"],
     queryFn: async () => {
       const { data, error } = await supabase.from("leads").select("*")
-        .in("status_lead", ["novo", "em_contato", "interessado", "aguardando_decisao_avaliador", "aguardando_captura", "reservado"])
+        .in("status_lead", ["novo", "em_contato", "interessado", "aguardando_decisao_avaliador", CAPTURE_QUEUE_STATUS])
         .order("updated_at", { ascending: true });
       if (error) throw error;
       return data as Lead[];
