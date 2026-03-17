@@ -431,6 +431,7 @@ export default function FilaLeadsPage() {
     onError: (err: any) => toast.error(err.message),
   });
 
+  const openAttempt = (item: QueueItem) => {
     setSelectedItem(item);
     setAttemptTipo("telefone");
     setAttemptNumero("");
