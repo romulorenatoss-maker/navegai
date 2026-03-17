@@ -261,17 +261,6 @@ export default function FilaTarefasLeadsPage() {
     onError: (err: any) => toast.error(err.message),
   });
 
-  // Next lead button
-  const goToNext = () => {
-    const currentIdx = sortedTarefas.findIndex((t: any) => t.id === selectedTarefa?.id);
-    const nextIdx = currentIdx + 1;
-    if (nextIdx < sortedTarefas.length) {
-      openAttempt(sortedTarefas[nextIdx]);
-    } else {
-      toast.info("Não há mais leads na fila.");
-      setSelectedTarefa(null);
-    }
-  };
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
