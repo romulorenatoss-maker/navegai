@@ -1050,7 +1050,7 @@ export default function LeadsPage() {
       descricao: `Status alterado para: ${STATUS_OPTIONS.find(s => s.value === newStatus)?.label || newStatus}`,
     });
     setSelectedLead(prev => prev ? { ...prev, status_lead: newStatus } : null);
-    queryClient.invalidateQueries({ queryKey: ["leads-list"] }); refetchHistorico();
+    updateLeadInCache(selectedLead.id, { status_lead: newStatus }); refetchHistorico();
     toast.success("Status atualizado.");
   };
 
