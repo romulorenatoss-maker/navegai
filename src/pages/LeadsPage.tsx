@@ -410,7 +410,7 @@ export default function LeadsPage() {
         .limit(1)
         .maybeSingle();
       if (error) throw error;
-      return data as { quantidade_tentativas: number; permitir_reiniciar_rotina: boolean; tipo_servico_conversao_id?: string | null } | null;
+      return data as { quantidade_tentativas: number; permitir_reiniciar_rotina: boolean; tipo_servico_conversao_id?: string | null; acao_apos_finalizar_tentativas?: string } | null;
     },
   });
 
