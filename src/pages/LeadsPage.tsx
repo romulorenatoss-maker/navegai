@@ -865,6 +865,7 @@ export default function LeadsPage() {
     if (!profile) return;
     if (lead.responsavel_id && lead.responsavel_id !== profile.id) {
       await supabase.from("leads").update({ responsavel_id: profile.id }).eq("id", lead.id);
+      await resetTasksForTransfer(lead.id, profile.id);
       await supabase.from("lead_historico").insert({
         lead_id: lead.id, usuario_id: profile.id,
         tipo_evento: "transferencia_automatica",
@@ -874,6 +875,7 @@ export default function LeadsPage() {
       updateLeadInCache(lead.id, { responsavel_id: profile.id });
     } else if (!lead.responsavel_id) {
       await supabase.from("leads").update({ responsavel_id: profile.id }).eq("id", lead.id);
+      await resetTasksForTransfer(lead.id, profile.id);
       await supabase.from("lead_historico").insert({
         lead_id: lead.id, usuario_id: profile.id,
         tipo_evento: "transferencia_automatica",
