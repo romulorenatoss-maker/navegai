@@ -222,6 +222,13 @@ export default function LeadsPage() {
   const effectiveProfileId = viewAsProfileId || profile?.id || null;
 
   // Search
+  // Live clock for countdown
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<(Lead & { contatos: LeadContato[] })[] | null>(null);
   const [searching, setSearching] = useState(false);
