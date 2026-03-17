@@ -26,6 +26,7 @@ import DashboardLeadsPage from "./pages/DashboardLeadsPage";
 import RotinaTentativasPage from "./pages/RotinaTentativasPage";
 import FilaTarefasLeadsPage from "./pages/FilaTarefasLeadsPage";
 import LeadsFinalizadosPage from "./pages/LeadsFinalizadosPage";
+import LeadsArquivadosPage from "./pages/LeadsArquivadosPage";
 import ImportadorLeadsPage from "./pages/ImportadorLeadsPage";
 import ObjecoesLeadsPage from "./pages/ObjecoesLeadsPage";
 import RelatoriosLeadsPage from "./pages/RelatoriosLeadsPage";
