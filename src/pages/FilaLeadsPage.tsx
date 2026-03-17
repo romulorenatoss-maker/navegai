@@ -586,9 +586,9 @@ export default function FilaLeadsPage() {
       if (!profile) throw new Error("Perfil não encontrado.");
       // Cancel pending tasks
       await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", leadId).in("status", ["pendente", "atrasado"]);
-      // Set to aguardando_captura with NO responsible — goes to shared capture queue
-      await supabase.from("leads").update({ status_lead: "aguardando_captura", responsavel_id: null, notificacao_vista: false } as any).eq("id", leadId);
-      await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "lead_reaberto_captura", descricao: "Lead reaberto e enviado para Fila de Captura. Usuários que já interagiram não poderão capturá-lo." });
+      // Set to fila_captura with NO responsible — goes to shared capture queue
+      await supabase.from("leads").update({ status_lead: "fila_captura", responsavel_id: null, reserved_by: null, reserved_at: null, notificacao_vista: false } as any).eq("id", leadId);
+      await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "lead_reaberto_captura", descricao: "Lead reaberto e enviado para Fila de Captura." });
     },
     onSuccess: () => { toast.success("Lead reaberto e enviado para Fila de Captura!"); setActiveTab("captura"); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }); },
     onError: (err: any) => toast.error(err.message),
