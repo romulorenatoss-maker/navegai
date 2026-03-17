@@ -1263,6 +1263,7 @@ export default function LeadsPage() {
           nome: leadNome, status_lead: "novo", responsavel_id: profile.id, cliente_id: linkedClienteId,
           cidade_id: createCidadeId || null, bairro_id: createBairroId || null, rua_id: createRuaId || null,
           numero_endereco: createNumeroEnd.trim() || null,
+          campanha_id: createCampanhaId || null,
         } as any)
         .select().single();
       if (e1) throw e1;
