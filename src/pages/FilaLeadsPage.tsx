@@ -145,7 +145,7 @@ export default function FilaLeadsPage() {
   const { data: allInteracoes = [] } = useQuery({
     queryKey: ["fila-interacoes", leadIds],
     enabled: leadIds.length > 0,
-    queryFn: async () => { const { data, error } = await supabase.from("lead_interacoes").select("id, lead_id, data_interacao").in("lead_id", leadIds).order("data_interacao", { ascending: false }); if (error) throw error; return data; },
+    queryFn: async () => { const { data, error } = await supabase.from("lead_interacoes").select("id, lead_id, data_interacao, colaborador_id").in("lead_id", leadIds).order("data_interacao", { ascending: false }); if (error) throw error; return data; },
   });
 
   const { data: cadencia = [] } = useQuery({
@@ -256,7 +256,10 @@ export default function FilaLeadsPage() {
       .map(lead => {
         const contatos = allContatos.filter(c => c.lead_id === lead.id);
         const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
-        return { lead, contatos, interacoes: interacoes.length, responsavelNome: getProfileName(lead.responsavel_id) };
+        // Find last person who actually worked the lead (last interaction's colaborador)
+        const lastInteracao = interacoes.length > 0 ? interacoes[0] : null; // already sorted desc
+        const ultimoResponsavelNome = lastInteracao ? getProfileName((lastInteracao as any).colaborador_id) : getProfileName(lead.responsavel_id);
+        return { lead, contatos, interacoes: interacoes.length, responsavelNome: ultimoResponsavelNome };
       })
       .sort((a, b) => {
         // Not seen first
@@ -720,7 +723,7 @@ export default function FilaLeadsPage() {
                       <TableHead className="w-8">#</TableHead>
                       <TableHead>Lead</TableHead>
                       <TableHead>Telefone(s)</TableHead>
-                      <TableHead>Responsável Anterior</TableHead>
+                      <TableHead>Último Responsável</TableHead>
                       <TableHead>Tentativas</TableHead>
                       <TableHead className="text-center">Visto</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
@@ -871,7 +874,7 @@ export default function FilaLeadsPage() {
             <div className="p-3 rounded-md bg-muted/50 border border-border space-y-1">
               <p className="text-xs text-muted-foreground">• O histórico completo será mantido para o novo responsável</p>
               <p className="text-xs text-muted-foreground">• Uma nova rotina de tentativas será iniciada automaticamente</p>
-              <p className="text-xs text-muted-foreground">• O responsável anterior ficará registrado no histórico</p>
+              <p className="text-xs text-muted-foreground">• O último responsável ficará registrado no histórico</p>
             </div>
             <div className="space-y-1.5"><Label>Novo Responsável</Label>
               <Select value={decisionTarget} onValueChange={setDecisionTarget}><SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger><SelectContent>
