@@ -253,12 +253,11 @@ export default function RotinaTentativasPage() {
                 <div className="space-y-1.5">
                   <Label>Tipo de Serviço na Conversão de Lead</Label>
                   <Select
-                    value={localConfig?.tipo_servico_conversao_id || "none"}
-                    onValueChange={(v) => localConfig && setLocalConfig({ ...localConfig, tipo_servico_conversao_id: v === "none" ? null : v })}
+                    value={localConfig?.tipo_servico_conversao_id || ""}
+                    onValueChange={(v) => localConfig && setLocalConfig({ ...localConfig, tipo_servico_conversao_id: v || null })}
                   >
                     <SelectTrigger><SelectValue placeholder="Selecione o tipo de serviço" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">— Automático (Venda/Instalação) —</SelectItem>
                       {tiposServico.map((ts: any) => (
                         <SelectItem key={ts.id} value={ts.id}>{ts.nome}</SelectItem>
                       ))}
