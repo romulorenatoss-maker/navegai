@@ -2,10 +2,10 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { session, loading, isAdmin, canViewPath, permissionsLoading } = useAuth();
+  const { session, loading, isAdmin, canViewPath } = useAuth();
   const location = useLocation();
 
-  if (loading || permissionsLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-body text-muted-foreground">Carregando...</div>
