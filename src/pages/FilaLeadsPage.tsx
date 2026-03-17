@@ -886,9 +886,9 @@ export default function FilaLeadsPage() {
                         const _hrsLeft = _urgRef ? (_urgRef.getTime() - _now2.getTime()) / (1000 * 60 * 60) : null;
                         let rowBg = "";
                         if (_hrsLeft !== null) {
-                          if (_hrsLeft <= 0) rowBg = "bg-red-50/70 dark:bg-red-950/25 border-l-[3px] border-l-red-500";
-                          else if (_hrsLeft <= 2) rowBg = "bg-yellow-50/60 dark:bg-yellow-950/20 border-l-[3px] border-l-yellow-500";
-                          else if (_hrsLeft > 3) rowBg = "border-l-[3px] border-l-emerald-500";
+                          if (_hrsLeft <= 1) rowBg = "bg-red-50/70 dark:bg-red-950/25 border-l-[3px] border-l-red-500";
+                          else if (_hrsLeft <= 3) rowBg = "bg-yellow-50/60 dark:bg-yellow-950/20 border-l-[3px] border-l-yellow-500";
+                          else rowBg = "border-l-[3px] border-l-emerald-500";
                         }
                         return (
                           <TableRow key={item.lead.id} className={rowBg}>
