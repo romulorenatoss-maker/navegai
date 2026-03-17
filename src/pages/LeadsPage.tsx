@@ -2768,7 +2768,91 @@ export default function LeadsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Quick Add Address Dialog */}
+      {/* Duplicate Phone Detection Modal */}
+      <Dialog open={showDuplicateModal} onOpenChange={v => { if (!v) { setShowDuplicateModal(false); setDuplicateLeadData(null); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" /> Telefone já cadastrado
+            </DialogTitle>
+            <DialogDescription>
+              Um lead com este telefone já existe no sistema. O que deseja fazer?
+            </DialogDescription>
+          </DialogHeader>
+          {duplicateLeadData && (
+            <div className="space-y-3">
+              <div className="rounded-lg border bg-muted/30 p-3 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Nome:</span>
+                  <span className="font-medium">{duplicateLeadData.lead.nome}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Telefone:</span>
+                  <span className="font-medium">{duplicateLeadData.contatos.find((c: any) => c.tipo_contato === "telefone")?.valor || "—"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Status:</span>
+                  <Badge variant="outline" className="text-xs">{duplicateLeadData.lead.status_lead}</Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Responsável:</span>
+                  <span className="font-medium">{duplicateLeadData.responsavel || "Sem responsável"}</span>
+                </div>
+                {duplicateLeadData.ultimaInteracao && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Última interação:</span>
+                    <span className="text-xs">{new Date(duplicateLeadData.ultimaInteracao.data_interacao).toLocaleDateString("pt-BR")} — {duplicateLeadData.ultimaInteracao.tipo_contato}</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <Button
+                  className="w-full press-effect"
+                  onClick={async () => {
+                    if (!profile || !duplicateLeadData) return;
+                    try {
+                      const lead = duplicateLeadData.lead;
+                      const prevResponsavel = duplicateLeadData.responsavel || "nenhum";
+                      await supabase.from("leads").update({ responsavel_id: profile.id, status_lead: "em_contato" }).eq("id", lead.id);
+                      await resetTasksForTransfer(lead.id, profile.id);
+                      await supabase.from("lead_historico").insert({
+                        lead_id: lead.id, usuario_id: profile.id,
+                        tipo_evento: "transferencia_manual",
+                        descricao: `Lead transferido manualmente de "${prevResponsavel}" para "${profile.nome}" via detecção de duplicidade`,
+                      });
+                      queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                      setShowDuplicateModal(false); setShowCreate(false); setDuplicateLeadData(null);
+                      setSelectedLead({ ...lead, responsavel_id: profile.id, status_lead: "em_contato" });
+                      toast.success("Lead assumido com sucesso!");
+                    } catch (err: any) { toast.error(err.message); }
+                  }}
+                >
+                  <UserCheck className="w-4 h-4 mr-2" /> Assumir Lead
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    setShowDuplicateModal(false); setDuplicateLeadData(null);
+                    setForceCreateLead(true);
+                    setTimeout(() => createLeadMutation.mutate(), 50);
+                  }}
+                >
+                  <Plus className="w-4 h-4 mr-2" /> Criar Novo Mesmo Assim
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => { setShowDuplicateModal(false); setDuplicateLeadData(null); }}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!quickAddType} onOpenChange={v => !v && setQuickAddType(null)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
