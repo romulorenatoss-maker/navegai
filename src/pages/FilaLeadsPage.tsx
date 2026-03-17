@@ -341,7 +341,7 @@ export default function FilaLeadsPage() {
 
   const queue = useMemo<QueueItem[]>(() => {
     const now = new Date();
-    return leads.filter(l => l.status_lead !== "aguardando_decisao_avaliador" && l.status_lead !== "aguardando_captura" && l.status_lead !== "reservado").map(lead => {
+    return leads.map(lead => {
       const contatos = allContatos.filter(c => c.lead_id === lead.id);
       const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
       const tentativaAtual = interacoes.length + 1;
