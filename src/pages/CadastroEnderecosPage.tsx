@@ -100,6 +100,7 @@ export default function CadastroEnderecosPage() {
     qc.invalidateQueries({ queryKey: ["enderecos-cidades"] });
     qc.invalidateQueries({ queryKey: ["enderecos-bairros"] });
     qc.invalidateQueries({ queryKey: ["enderecos-ruas"] });
+    qc.invalidateQueries({ queryKey: ["enderecos-lead-counts"] });
   };
 
   // ─── Filtered lists ─────────────
