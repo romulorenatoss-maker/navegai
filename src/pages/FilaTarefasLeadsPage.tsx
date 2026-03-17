@@ -160,7 +160,10 @@ export default function FilaTarefasLeadsPage() {
       const bAtrasado = b.status === "atrasado" || isTarefaExpirada(b);
       if (aAtrasado && !bAtrasado) return -1;
       if (!aAtrasado && bAtrasado) return 1;
-      return new Date(a.data_contato).getTime() - new Date(b.data_contato).getTime();
+      // Same status: sort by scheduled date first, then by creation date
+      const dateDiff = new Date(a.data_contato).getTime() - new Date(b.data_contato).getTime();
+      if (dateDiff !== 0) return dateDiff;
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
     });
   }, [tarefas]);
 
