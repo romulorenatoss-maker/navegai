@@ -294,7 +294,7 @@ export default function FilaLeadsPage() {
 
   const queue = useMemo<QueueItem[]>(() => {
     const now = new Date();
-    return leads.filter(l => l.status_lead !== "aguardando_decisao_avaliador").map(lead => {
+    return leads.filter(l => l.status_lead !== "aguardando_decisao_avaliador" && l.status_lead !== "aguardando_captura").map(lead => {
       const contatos = allContatos.filter(c => c.lead_id === lead.id);
       const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
       const tentativaAtual = interacoes.length + 1;
@@ -316,6 +316,24 @@ export default function FilaLeadsPage() {
       return a.nextAttempt.getTime() - b.nextAttempt.getTime();
     });
   }, [leads, allContatos, allInteracoes, cadencia, profiles]);
+
+  // ─── Fila de Captura (aguardando_captura, exclude previous handlers) ──
+  const capturaLeads = useMemo(() => {
+    if (!profile) return [];
+    return leads
+      .filter(l => l.status_lead === "aguardando_captura")
+      .filter(lead => {
+        // Exclude current user if they previously interacted with this lead
+        const prevHandlers = allInteracoes.filter((i: any) => i.lead_id === lead.id).map((i: any) => i.colaborador_id);
+        return !prevHandlers.includes(profile.id);
+      })
+      .map(lead => {
+        const contatos = allContatos.filter(c => c.lead_id === lead.id);
+        const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
+        const lastInteracao = interacoes[0];
+        return { lead, contatos, totalInteracoes: interacoes.length, ultimaTentativaEm: lastInteracao?.data_interacao || null };
+      });
+  }, [leads, allContatos, allInteracoes, profile]);
 
   // ─── Notificações (aguardando_decisao) ────────────
   const notificacoes = useMemo(() => {
