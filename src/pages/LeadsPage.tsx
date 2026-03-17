@@ -1278,8 +1278,7 @@ export default function LeadsPage() {
     }
     setShowFinalize(false);
     if (selectedLead) updateLeadInCache(selectedLead.id, { status_lead: selectedLead.status_lead });
-    queryClient.invalidateQueries({ queryKey: ["all-lead-interacoes"], refetchType: "none" });
-    queryClient.refetchQueries({ queryKey: ["all-lead-interacoes"] });
+    queryClient.invalidateQueries({ queryKey: ["all-lead-interacoes"] });
     refetchHistorico();
   };
 
