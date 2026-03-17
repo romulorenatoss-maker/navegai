@@ -1483,6 +1483,68 @@ export default function LeadsPage() {
                       </Select>
                     </div>
                   </div>
+                  {/* Address display */}
+                  <div className="grid grid-cols-4 gap-2 pt-2 border-t">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Cidade</Label>
+                      <Select value={selectedLead.cidade_id || "none"} onValueChange={async (v) => {
+                        if (!selectedLead || !profile) return;
+                        const val = v === "none" ? null : v;
+                        await supabase.from("leads").update({ cidade_id: val, bairro_id: null, rua_id: null } as any).eq("id", selectedLead.id);
+                        setSelectedLead(prev => prev ? { ...prev, cidade_id: val, bairro_id: null, rua_id: null } : null);
+                        queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                      }}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhuma</SelectItem>
+                          {endCidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Bairro</Label>
+                      <Select value={selectedLead.bairro_id || "none"} onValueChange={async (v) => {
+                        if (!selectedLead || !profile) return;
+                        const val = v === "none" ? null : v;
+                        await supabase.from("leads").update({ bairro_id: val, rua_id: null } as any).eq("id", selectedLead.id);
+                        setSelectedLead(prev => prev ? { ...prev, bairro_id: val, rua_id: null } : null);
+                        queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                      }} disabled={!selectedLead.cidade_id}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhum</SelectItem>
+                          {endBairros.filter(b => b.cidade_id === selectedLead.cidade_id).map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Rua</Label>
+                      <Select value={selectedLead.rua_id || "none"} onValueChange={async (v) => {
+                        if (!selectedLead || !profile) return;
+                        const val = v === "none" ? null : v;
+                        await supabase.from("leads").update({ rua_id: val } as any).eq("id", selectedLead.id);
+                        setSelectedLead(prev => prev ? { ...prev, rua_id: val } : null);
+                        queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                      }} disabled={!selectedLead.bairro_id}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhuma</SelectItem>
+                          {endRuas.filter(r => r.bairro_id === selectedLead.bairro_id).map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Nº</Label>
+                      <Input className="h-8 text-xs" value={selectedLead.numero_endereco || ""} onChange={async (e) => {
+                        const val = e.target.value;
+                        setSelectedLead(prev => prev ? { ...prev, numero_endereco: val } : null);
+                      }} onBlur={async () => {
+                        if (!selectedLead) return;
+                        await supabase.from("leads").update({ numero_endereco: selectedLead.numero_endereco || null } as any).eq("id", selectedLead.id);
+                        queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                      }} placeholder="Nº" />
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
