@@ -13,11 +13,12 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChevronDown } from "lucide-react";
+import * as XLSX from "xlsx";
 import ColumnMapper, { autoDetectMapping, type ColumnMapping } from "@/components/import/ColumnMapper";
 
 const PREPOSITIONS = new Set(["de", "da", "do", "das", "dos", "e", "em", "na", "no", "nas", "nos", "com", "para", "por"]);
 
-/** "JOÃO DA SILVA" → "João da Silva", "rua das flores" → "Rua das Flores" */
+/** "JOÃO DA SILVA" → "João da Silva" */
 function toProperCase(text: string): string {
   if (!text) return text;
   return text
@@ -29,6 +30,24 @@ function toProperCase(text: string): string {
     })
     .join(" ");
 }
+
+/** Universal file parser: CSV, XLS, XLSX, Google Sheets exports */
+function parseFileToJSON(buffer: ArrayBuffer, fileName: string): { headers: string[]; rows: Record<string, string>[] } {
+  const workbook = XLSX.read(buffer, { type: "array" });
+  const sheetName = workbook.SheetNames[0];
+  if (!sheetName) return { headers: [], rows: [] };
+  const sheet = workbook.Sheets[sheetName];
+  const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: "" });
+  if (jsonData.length === 0) return { headers: [], rows: [] };
+  const headers = Object.keys(jsonData[0]);
+  const rows = jsonData.map(row => {
+    const obj: Record<string, string> = {};
+    headers.forEach(h => { obj[h] = String(row[h] ?? "").trim(); });
+    return obj;
+  }).filter(r => Object.values(r).some(v => v.trim()));
+  return { headers, rows };
+}
+
 import ImportPreviewTable, { type PreviewRow, type RowAction, type RowStatus } from "@/components/import/ImportPreviewTable";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -39,19 +58,6 @@ interface ImportResult {
   telefone: string;
   status: "ok" | "skipped" | "error";
   message?: string;
-}
-
-function parseCSVRaw(text: string): { headers: string[]; rows: Record<string, string>[] } {
-  const lines = text.trim().split("\n");
-  if (lines.length < 2) return { headers: [], rows: [] };
-  const headers = lines[0].split(/[;,]/).map(h => h.trim().replace(/"/g, ""));
-  const rows = lines.slice(1).map(line => {
-    const values = line.split(/[;,]/).map(v => v.trim().replace(/"/g, ""));
-    const obj: Record<string, string> = {};
-    headers.forEach((h, i) => { obj[h] = values[i] || ""; });
-    return obj;
-  }).filter(r => Object.values(r).some(v => v.trim()));
-  return { headers, rows };
 }
 
 export default function ImportadorLeadsPage() {
@@ -84,8 +90,9 @@ export default function ImportadorLeadsPage() {
   const handleFilePick = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.name.endsWith(".csv") && !file.name.endsWith(".txt")) {
-      toast.error("Formato não suportado. Use CSV.");
+    const ext = file.name.toLowerCase();
+    if (!ext.endsWith(".csv") && !ext.endsWith(".txt") && !ext.endsWith(".xls") && !ext.endsWith(".xlsx")) {
+      toast.error("Formato não suportado. Use CSV, XLS ou XLSX.");
       return;
     }
     setFileName(file.name);
@@ -100,8 +107,8 @@ export default function ImportadorLeadsPage() {
       toast.error("Selecione uma campanha antes de carregar.");
       return;
     }
-    const text = await pendingFile.text();
-    const { headers, rows } = parseCSVRaw(text);
+    const buffer = await pendingFile.arrayBuffer();
+    const { headers, rows } = parseFileToJSON(buffer, pendingFile.name);
     if (headers.length === 0 || rows.length === 0) {
       toast.error("Arquivo vazio ou sem dados válidos.");
       return;
@@ -341,8 +348,8 @@ export default function ImportadorLeadsPage() {
               <CardContent className="space-y-4">
                 <label className="flex items-center gap-2 px-4 py-6 rounded-lg border-2 border-dashed border-border hover:border-primary cursor-pointer transition-colors justify-center">
                   <FileSpreadsheet className="w-5 h-5 text-muted-foreground" />
-                  <span className="text-sm">{fileName || "Escolher arquivo CSV"}</span>
-                  <input type="file" accept=".csv,.txt" className="hidden" onChange={handleFilePick} />
+                  <span className="text-sm">{fileName || "Escolher arquivo CSV, XLS ou XLSX"}</span>
+                  <input type="file" accept=".csv,.txt,.xls,.xlsx" className="hidden" onChange={handleFilePick} />
                 </label>
 
                 <div className="space-y-1.5">
@@ -363,9 +370,9 @@ export default function ImportadorLeadsPage() {
                 <Alert className="border-muted">
                   <FileSpreadsheet className="h-4 w-4" />
                   <AlertTitle>Formato esperado</AlertTitle>
-                  <AlertDescription className="text-xs">
-                    Colunas: <strong>nome, telefone, email, endereco, plano</strong> (separadas por vírgula ou ponto-e-vírgula).
-                    O sistema detecta automaticamente as colunas.
+                   <AlertDescription className="text-xs">
+                    Aceita arquivos <strong>CSV, XLS e XLSX</strong> (incluindo exportações do Google Sheets).
+                    O sistema detecta automaticamente as colunas: nome, telefone, email, endereco, plano.
                   </AlertDescription>
                 </Alert>
 
