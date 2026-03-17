@@ -896,6 +896,50 @@ export default function LeadsPage() {
   const interactionMutation = useMutation({
     mutationFn: async () => {
       if (!selectedLead || !profile) throw new Error("Erro interno.");
+
+      // Save pending field changes first
+      const changes: string[] = [];
+      const leadUpdates: Record<string, any> = {};
+
+      if (localPlanoId !== selectedLead.plano_id) {
+        leadUpdates.plano_id = localPlanoId;
+        const oldP = planos.find(p => p.id === selectedLead.plano_id)?.nome_plano || "Nenhum";
+        const newP = planos.find(p => p.id === localPlanoId)?.nome_plano || "Nenhum";
+        changes.push(`Perfil: "${oldP}" → "${newP}"`);
+      }
+      if (localRepetidor !== selectedLead.repetidor) {
+        leadUpdates.repetidor = localRepetidor;
+        changes.push(`Repetidor: "${selectedLead.repetidor || "Nenhum"}" → "${localRepetidor || "Nenhum"}"`);
+      }
+      if (localCidadeId !== selectedLead.cidade_id || localBairroId !== selectedLead.bairro_id || localRuaId !== selectedLead.rua_id || localNumeroEnd !== (selectedLead.numero_endereco || "")) {
+        leadUpdates.cidade_id = localCidadeId;
+        leadUpdates.bairro_id = localBairroId;
+        leadUpdates.rua_id = localRuaId;
+        leadUpdates.numero_endereco = localNumeroEnd || null;
+        changes.push("Endereço atualizado");
+      }
+
+      if (Object.keys(leadUpdates).length > 0) {
+        await supabase.from("leads").update(leadUpdates as any).eq("id", selectedLead.id);
+      }
+
+      // Save objeção if changed
+      if (localObjecaoId !== "none" && localObjecaoId !== (leadObjecaoRegistro?.objecao_id || "none")) {
+        await supabase.from("registro_objecao_lead").insert({
+          lead_id: selectedLead.id, objecao_id: localObjecaoId, colaborador_id: profile.id,
+        });
+        changes.push(`Objeção: ${objecoes.find(o => o.id === localObjecaoId)?.descricao || localObjecaoId}`);
+      }
+
+      if (changes.length > 0) {
+        await supabase.from("lead_historico").insert({
+          lead_id: selectedLead.id, usuario_id: profile.id,
+          tipo_evento: "dados_alterados",
+          descricao: changes.join(" | "),
+        });
+      }
+
+      // Register interaction
       const { error } = await supabase.from("lead_interacoes").insert({
         lead_id: selectedLead.id, colaborador_id: profile.id,
         tipo_contato: interTipo, numero_utilizado: interNumero.trim() || null, resultado: interResultado.trim() || null,
@@ -933,7 +977,6 @@ export default function LeadsPage() {
       const nextTentativa = tentativaNum + 1;
 
       if (nextTentativa > mxTentativas) {
-        // All attempts exhausted — archive or send to evaluator
         const { data: configData } = await supabase
           .from("configuracao_fluxo_leads").select("acao_apos_finalizar_tentativas").limit(1).maybeSingle();
         const acao = configData?.acao_apos_finalizar_tentativas || "enviar_avaliador";
@@ -947,7 +990,6 @@ export default function LeadsPage() {
         setSelectedLead(prev => prev ? { ...prev, status_lead: newStatus } : null);
         toast.info(acao === "arquivar_lead" ? "Lead arquivado após todas as tentativas." : "Lead enviado para avaliação do avaliador.");
       } else {
-        // Create next tarefa based on rotina
         try {
           const { data: nextRotina } = await supabase
             .from("rotina_tentativas_leads").select("*").eq("tentativa_numero", nextTentativa).maybeSingle();
@@ -962,16 +1004,25 @@ export default function LeadsPage() {
             periodo, status: "pendente", responsavel_id: profile.id,
           });
         } catch { /* ignore */ }
-        // Touch updated_at
         await supabase.from("leads").update({ status_lead: selectedLead.status_lead === "novo" ? "em_contato" : selectedLead.status_lead }).eq("id", selectedLead.id);
       }
 
+      // Update local selectedLead with saved changes
+      setSelectedLead(prev => prev ? {
+        ...prev,
+        plano_id: localPlanoId,
+        repetidor: localRepetidor,
+        cidade_id: localCidadeId,
+        bairro_id: localBairroId,
+        rua_id: localRuaId,
+        numero_endereco: localNumeroEnd || null,
+      } : null);
       queryClient.invalidateQueries({ queryKey: ["leads-list"] });
     },
     onSuccess: () => {
-      toast.success("Interação registrada!");
+      toast.success("Tentativa registrada!");
       setShowInteraction(false); setInterNumero(""); setInterResultado("");
-      refetchInteracoes(); refetchHistorico();
+      refetchInteracoes(); refetchHistorico(); refetchObjecao();
       queryClient.invalidateQueries({ queryKey: ["all-lead-interacoes"] });
     },
     onError: (err: any) => toast.error(err.message),
