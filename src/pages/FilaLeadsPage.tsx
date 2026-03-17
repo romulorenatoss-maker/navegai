@@ -365,28 +365,34 @@ export default function FilaLeadsPage() {
     });
   }, [leads, allContatos, allInteracoes, cadencia, profiles]);
 
-  // ─── Fila de Captura (aguardando_captura + reservado, show status) ──
+  // ─── Fila de Captura (somente leads realmente disponíveis) ──
   const capturaLeads = useMemo(() => {
     if (!profile) return [];
     const capturaItems = leads
-      .filter(l => l.status_lead === "aguardando_captura" || l.status_lead === "reservado")
+      .filter(lead => lead.status_lead === CAPTURE_QUEUE_STATUS && !lead.reserved_by && !lead.responsavel_id)
       .map(lead => {
         const contatos = allContatos.filter(c => c.lead_id === lead.id);
         const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
         const lastInteracao = interacoes[0];
         const prevHandlerIds = interacoes.map((i: any) => i.colaborador_id);
         const userPreviouslyHandled = prevHandlerIds.includes(profile.id);
-        const isReservedByOther = lead.status_lead === "reservado" && (lead as any).reserved_by !== profile.id;
-        const isReservedByMe = lead.status_lead === "reservado" && (lead as any).reserved_by === profile.id;
-        const hasResponsavel = !!lead.responsavel_id;
-        const reservedByName = isReservedByOther ? getProfileName((lead as any).reserved_by) : null;
-        const isTaken = isReservedByOther || (hasResponsavel && lead.responsavel_id !== profile.id);
-        return { lead, contatos, totalInteracoes: interacoes.length, ultimaTentativaEm: lastInteracao?.data_interacao || null, userPreviouslyHandled, isReservedByOther, isReservedByMe, reservedByName, isTaken };
+
+        return {
+          lead,
+          contatos,
+          totalInteracoes: interacoes.length,
+          ultimaTentativaEm: lastInteracao?.data_interacao || null,
+          userPreviouslyHandled,
+          isReservedByOther: false,
+          isReservedByMe: false,
+          reservedByName: null,
+          isTaken: false,
+        };
       });
-    // Non-admin: hide leads they previously handled (unless taken by someone — show with indicator)
+
     if (isAdmin) return capturaItems;
-    return capturaItems.filter(item => !item.userPreviouslyHandled || item.isTaken);
-  }, [leads, allContatos, allInteracoes, profile, isAdmin]);
+    return capturaItems.filter(item => !item.userPreviouslyHandled);
+  }, [leads, allContatos, allInteracoes, profile, isAdmin, CAPTURE_QUEUE_STATUS]);
 
   // ─── Notificações (aguardando_decisao) ────────────
   const notificacoes = useMemo(() => {
