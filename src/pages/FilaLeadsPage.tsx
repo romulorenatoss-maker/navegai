@@ -742,11 +742,12 @@ export default function FilaLeadsPage() {
                   </TableHeader>
                   <TableBody>
                     {sortedTarefas.map((tarefa: any, idx: number) => {
-                      const isOv = tarefa.status === "atrasado" || (tarefa.periodo && isTarefaExpirada(tarefa));
+                      const isAguardando = tarefa.status === "aguardando_visualizacao";
+                      const isOv = !isAguardando && (tarefa.status === "atrasado" || (tarefa.periodo && isTarefaExpirada(tarefa)));
                       const responsavelNome = tarefa._responsavel_id ? (profiles.find(p => p.id === tarefa._responsavel_id)?.nome || "—") : "Sem responsável";
                       const isManual = tarefa._tipo_agenda === "manual";
                       return (
-                        <TableRow key={tarefa.id} className={isOv ? "bg-destructive/5" : ""}>
+                        <TableRow key={tarefa.id} className={isOv ? "bg-destructive/5" : isAguardando ? "bg-blue-50/50 dark:bg-blue-950/20" : ""}>
                           <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
                           <TableCell className="font-medium text-sm">{tarefa._lead_nome || getTarefaLeadName(tarefa.lead_id)}</TableCell>
                           <TableCell>
@@ -768,9 +769,19 @@ export default function FilaLeadsPage() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Badge className={`text-xs border-0 ${isOv ? "bg-destructive/10 text-destructive" : "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200"}`}>
-                              {isOv ? <span className="flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Atrasado</span> : "Pendente"}
-                            </Badge>
+                            {isAguardando ? (
+                              <Badge className="text-xs border-0 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> Aguardando Visualização</span>
+                              </Badge>
+                            ) : isOv ? (
+                              <Badge className="text-xs border-0 bg-destructive/10 text-destructive">
+                                <span className="flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Atrasado</span>
+                              </Badge>
+                            ) : (
+                              <Badge className="text-xs border-0 bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
+                                No Prazo
+                              </Badge>
+                            )}
                           </TableCell>
                           <TableCell className="text-xs font-medium">{responsavelNome}</TableCell>
                           <TableCell>
