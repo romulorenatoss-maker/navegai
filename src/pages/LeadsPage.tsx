@@ -707,38 +707,95 @@ export default function LeadsPage() {
     setSearching(true);
     try {
       const phoneDigits = normalizePhone(term);
+
+      // --- Phone-first verification: auto-open lead or show client data ---
+      if (phoneDigits.length >= 8) {
+        // 1) Check if phone exists as a lead contact
+        const { data: leadConts } = await supabase
+          .from("lead_contatos").select("lead_id, valor").eq("tipo_contato", "telefone");
+        const matchedLeadContatos = (leadConts || []).filter(c => normalizePhone(c.valor) === phoneDigits);
+
+        if (matchedLeadContatos.length > 0) {
+          // Find active leads with this phone
+          const leadIds = [...new Set(matchedLeadContatos.map(c => c.lead_id))];
+          const { data: matchedLeads } = await supabase
+            .from("leads").select("*").in("id", leadIds)
+            .not("status_lead", "in", '("convertido","perdido","arquivado")');
+
+          if (matchedLeads && matchedLeads.length > 0) {
+            const lead = matchedLeads[0] as Lead;
+            // Auto-transfer if different responsible or no responsible
+            if (profile && lead.responsavel_id !== profile.id) {
+              const oldResponsavelId = lead.responsavel_id;
+              let oldResponsavelNome = "ninguém";
+              if (oldResponsavelId) {
+                const { data: oldProfile } = await supabase.from("profiles").select("nome").eq("id", oldResponsavelId).single();
+                if (oldProfile) oldResponsavelNome = oldProfile.nome;
+              }
+              await supabase.from("leads").update({ responsavel_id: profile.id }).eq("id", lead.id);
+              await supabase.from("lead_historico").insert({
+                lead_id: lead.id, usuario_id: profile.id,
+                tipo_evento: "transferencia_automatica",
+                descricao: `Lead transferido de "${oldResponsavelNome}" para "${profile.nome}" via busca por telefone`,
+              });
+              toast.info(`Lead já existe e foi transferido para você (era de ${oldResponsavelNome}).`);
+              updateLeadInCache(lead.id, { responsavel_id: profile.id });
+              setSelectedLead({ ...lead, responsavel_id: profile.id });
+            } else {
+              toast.info("Lead encontrado! Abrindo...");
+              setSelectedLead(lead);
+            }
+            setSearchResults(null);
+            setSearchTerm("");
+            setSearching(false);
+            queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+            return;
+          }
+        }
+
+        // 2) Check if phone exists in cliente_contatos
+        const { data: clienteConts } = await supabase
+          .from("cliente_contatos").select("cliente_id, valor, tipo").in("tipo", ["movel", "fixo", "telefone"]);
+        const matchedCliente = (clienteConts || []).find(c => normalizePhone(c.valor) === phoneDigits);
+        if (matchedCliente) {
+          const { data: cliente } = await supabase
+            .from("clientes").select("id, nome, cpf, endereco, cidade_id, bairro_id, rua_id, numero")
+            .eq("id", matchedCliente.cliente_id).single();
+          if (cliente) {
+            setDupeAlert({
+              type: "cliente_phone",
+              message: `Telefone pertence ao cliente "${cliente.nome}" (CPF: ${cliente.cpf || "N/A"}). Deseja criar um lead vinculado?`,
+              clienteId: cliente.id,
+              clienteNome: cliente.nome,
+            });
+            // Pre-fill create dialog with client data
+            setCreateName(cliente.nome);
+            setCreatePhone(applyPhoneMask(term));
+            setCreateCidadeId(cliente.cidade_id || "");
+            setCreateBairroId(cliente.bairro_id || "");
+            setCreateRuaId(cliente.rua_id || "");
+            setCreateNumeroEnd(cliente.numero || "");
+            setShowCreate(true);
+            setSearchResults(null);
+            setSearchTerm("");
+            setSearching(false);
+            return;
+          }
+        }
+      }
+
+      // --- Fallback: normal name + partial phone search ---
       const { data: byName, error: e1 } = await supabase
         .from("leads").select("*").ilike("nome", `%${term}%`);
       if (e1) throw e1;
 
       let byPhoneLeadIds: string[] = [];
       if (phoneDigits.length >= 4) {
-        const { data: leadConts, error: e2 } = await supabase
+        const { data: leadConts } = await supabase
           .from("lead_contatos").select("lead_id, valor").eq("tipo_contato", "telefone");
-        if (e2) throw e2;
         byPhoneLeadIds = (leadConts || [])
           .filter(c => normalizePhone(c.valor).includes(phoneDigits))
           .map(c => c.lead_id);
-
-        const { data: clienteConts } = await supabase
-          .from("cliente_contatos").select("cliente_id, valor, tipo").eq("tipo", "movel");
-        const matchedClienteIds = (clienteConts || [])
-          .filter(c => normalizePhone(c.valor).includes(phoneDigits))
-          .map(c => c.cliente_id);
-
-        if (matchedClienteIds.length > 0) {
-          const { data: matchedClientes } = await supabase
-            .from("clientes").select("id, nome, cpf").in("id", matchedClienteIds);
-          if (matchedClientes && matchedClientes.length > 0) {
-            const c = matchedClientes[0];
-            setDupeAlert({
-              type: "cliente_phone",
-              message: `Este telefone já pertence ao cliente "${c.nome}" (CPF: ${c.cpf || "N/A"}).`,
-              clienteId: c.id,
-              clienteNome: c.nome,
-            });
-          }
-        }
       }
 
       const allIds = new Set([...(byName || []).map(l => l.id), ...byPhoneLeadIds]);
@@ -761,7 +818,7 @@ export default function LeadsPage() {
     } finally {
       setSearching(false);
     }
-  }, [searchTerm]);
+  }, [searchTerm, profile, queryClient, updateLeadInCache]);
 
   // ─── Auto-transfer on opening ──────────────────────
   const openLeadWithTransfer = useCallback(async (lead: Lead) => {
