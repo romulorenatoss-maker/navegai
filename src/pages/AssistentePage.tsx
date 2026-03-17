@@ -379,7 +379,6 @@ function ChatMode() {
                 </Card>
               </div>
             )}
-          </div>
         </div>
       </div>
 
