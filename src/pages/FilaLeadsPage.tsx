@@ -535,10 +535,12 @@ export default function FilaLeadsPage() {
   const markAsLostMutation = useMutation({
     mutationFn: async (leadId: string) => {
       if (!profile) throw new Error("Perfil não encontrado.");
+      // Cancel pending tasks
+      await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", leadId).in("status", ["pendente", "atrasado", "aguardando_visualizacao"]);
       await supabase.from("leads").update({ status_lead: "perdido" }).eq("id", leadId);
-      await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "lead_perdido", descricao: "Lead marcado como perdido pelo avaliador após avaliação final." });
+      await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "lead_perdido", descricao: "Lead marcado como perdido e arquivado automaticamente." });
     },
-    onSuccess: () => { toast.success("Lead marcado como perdido."); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); },
+    onSuccess: () => { toast.success("Lead marcado como perdido e arquivado."); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }); queryClient.invalidateQueries({ queryKey: ["leads-arquivados"] }); },
     onError: (err: any) => toast.error(err.message),
   });
 
