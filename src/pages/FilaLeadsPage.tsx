@@ -387,6 +387,7 @@ export default function FilaLeadsPage() {
           reservedByName: null,
           isTaken: false,
         };
+      });
 
     return capturaItems;
   }, [leads, allContatos, allInteracoes, profile, isAdmin, CAPTURE_QUEUE_STATUS]);
