@@ -672,7 +672,7 @@ export default function DashboardLeadsPage() {
             onClick={() => toRelatorios("perdido")}
           />
           <KpiCard
-            icon={Clock}
+            icon={Archive}
             label="Arquivados"
             value={m.statusCounts["arquivado"] || 0}
             subValue="No período selecionado"
