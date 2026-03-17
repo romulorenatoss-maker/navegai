@@ -713,80 +713,56 @@ export default function LeadsPage() {
     });
   }, [capturaLeadsRaw, capturaContatos, profile]);
 
-  // ─── Reservation: reserve lead (not assign) ─────────────────
+  // ─── Capture: atomic reserve via RPC ─────────────────
   const reserveLeadMutation = useMutation({
     mutationFn: async (leadId: string) => {
       if (!profile) throw new Error("Perfil não encontrado.");
-      // Atomic: only reserve if not already reserved (or reservation expired)
-      const { data, error } = await supabase
-        .from("leads")
-        .update({
-          reserved_by: profile.id,
-          reserved_at: new Date().toISOString(),
-          status_lead: "reservado",
-        } as any)
-        .eq("id", leadId)
-        .or(`reserved_by.is.null,reserved_at.lt.${new Date(Date.now() - RESERVATION_TIMEOUT_MS).toISOString()}`)
-        .select("id");
+      // Use atomic RPC: only succeeds if fila_captura + reserved_by IS NULL + responsavel_id IS NULL
+      const { data: reserved, error } = await supabase.rpc("atomic_reserve_lead", {
+        _lead_id: leadId,
+        _user_id: profile.user_id,
+        _profile_id: profile.id,
+      });
       if (error) throw error;
-      if (!data || data.length === 0) throw new Error("Este lead está sendo visualizado por outro usuário.");
-      // Log reservation — "pegou"
+      if (!reserved) throw new Error("Este lead já está sendo atendido por outro usuário.");
       await supabase.from("lead_historico").insert({
         lead_id: leadId, usuario_id: profile.id,
-        tipo_evento: "lead_capturado",
-        descricao: `${profile.nome} capturou o lead e está visualizando. Aguardando primeira interação.`,
+        tipo_evento: "lead_reservado",
+        descricao: `${profile.nome} capturou o lead.`,
       });
       return leadId;
     },
     onSuccess: (leadId) => {
-      toast.success("Lead reservado! Registre a interação para confirmar.");
+      toast.success("Lead capturado! Registre a interação para confirmar.");
       queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
-      // Open the reserved lead for interaction
+      queryClient.invalidateQueries({ queryKey: ["leads-list"] });
       const lead = capturaLeadsRaw.find(l => l.id === leadId);
       if (lead) {
         setSelectedLead({ ...lead, reserved_by: profile!.id, reserved_at: new Date().toISOString(), status_lead: "reservado" });
       }
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err: any) => {
+      toast.error(err.message);
+      queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
+    },
   });
 
-  // ─── Release reservation ─────────────────
-  const releaseReservation = useCallback(async (leadId: string, reason: string = "manual") => {
+  // ─── Release reservation (Liberar) ─────────────────
+  const releaseReservation = useCallback(async (leadId: string) => {
     if (!profile) return;
     await supabase.from("leads").update({
       reserved_by: null,
       reserved_at: null,
-      status_lead: "aguardando_captura",
+      status_lead: "fila_captura",
     } as any).eq("id", leadId).eq("reserved_by", profile.id);
     await supabase.from("lead_historico").insert({
       lead_id: leadId, usuario_id: profile.id,
-      tipo_evento: reason === "timeout" ? "reserva_expirada" : "lead_visualizado_nao_pegou",
-      descricao: reason === "timeout"
-        ? `Reserva expirada após 2 minutos sem interação. ${profile.nome} visualizou e não pegou o lead.`
-        : `${profile.nome} visualizou o lead e não pegou. Lead retornou à fila.`,
+      tipo_evento: "reserva_liberada",
+      descricao: `${profile.nome} liberou o lead. Lead retornou à fila de captura.`,
     });
     queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
+    queryClient.invalidateQueries({ queryKey: ["leads-list"] });
   }, [profile, queryClient]);
-
-  // ─── Auto-expiry timer for reserved leads ─────────────────
-  useEffect(() => {
-    if (!selectedLead || selectedLead.status_lead !== "reservado" || selectedLead.reserved_by !== profile?.id) return;
-    const reservedAt = selectedLead.reserved_at ? new Date(selectedLead.reserved_at).getTime() : Date.now();
-    const remaining = RESERVATION_TIMEOUT_MS - (Date.now() - reservedAt);
-    if (remaining <= 0) {
-      // Already expired
-      releaseReservation(selectedLead.id, "timeout");
-      setSelectedLead(null);
-      toast.warning("Reserva expirada. Lead retornou à fila de captura.");
-      return;
-    }
-    const timer = setTimeout(() => {
-      releaseReservation(selectedLead.id, "timeout");
-      setSelectedLead(null);
-      toast.warning("Reserva expirada (2 minutos). Lead retornou à fila de captura.");
-    }, remaining);
-    return () => clearTimeout(timer);
-  }, [selectedLead?.id, selectedLead?.status_lead, selectedLead?.reserved_by, selectedLead?.reserved_at, profile?.id, releaseReservation]);
 
   // ─── Release reservation on leaving the lead (deselecting or navigating away) ──
   // Store current reserved lead id in a ref so cleanup effects can access it
