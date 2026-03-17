@@ -1751,10 +1751,30 @@ export default function LeadsPage() {
       }
 
       const cpfNorm = f.cpf.trim().replace(/\D/g, "");
+      const cpfFormatted = cpfNorm.length === 11
+        ? `${cpfNorm.slice(0,3)}.${cpfNorm.slice(3,6)}.${cpfNorm.slice(6,9)}-${cpfNorm.slice(9)}`
+        : f.cpf.trim();
       if (cpfNorm.length >= 11) {
-        const { data: existingCliente } = await supabase
-          .from("clientes").select("id, nome, cpf").eq("cpf", f.cpf.trim()).maybeSingle();
+        const { data: existingClientes } = await supabase
+          .from("clientes").select("id, nome, cpf").or(`cpf.eq.${cpfFormatted},cpf.eq.${cpfNorm}`);
+        const existingCliente = existingClientes?.[0] || null;
         if (existingCliente) {
+          // Merge phone contacts into existing client
+          const leadPhones = leadContatos.filter(c => c.tipo_contato === "telefone");
+          if (leadPhones.length > 0) {
+            const { data: existingPhones } = await supabase
+              .from("cliente_contatos").select("valor").eq("cliente_id", existingCliente.id);
+            const existingNorms = new Set((existingPhones || []).map((c: any) => normalizePhone(c.valor)));
+            const newInserts = leadPhones
+              .filter(c => !existingNorms.has(normalizePhone(c.valor)))
+              .map(c => ({ cliente_id: existingCliente.id, tipo: "movel" as const, valor: c.valor, tem_whatsapp: c.tem_whatsapp }));
+            if (newInserts.length > 0) await supabase.from("cliente_contatos").insert(newInserts);
+          }
+          // Update client address if empty
+          if (!existingCliente.cpf || existingCliente.cpf !== cpfFormatted) {
+            await supabase.from("clientes").update({ cpf: cpfFormatted } as any).eq("id", existingCliente.id);
+          }
+
           await supabase.from("leads").update({ status_lead: "convertido", cliente_id: existingCliente.id }).eq("id", selectedLead.id);
           await supabase.from("lead_historico").insert({
             lead_id: selectedLead.id, usuario_id: profile.id,
@@ -1770,7 +1790,7 @@ export default function LeadsPage() {
       }
 
       const { data: newCliente, error: e1 } = await supabase.from("clientes").insert({
-        nome: f.nome.trim(), cpf: f.cpf.trim(), rg: f.rg.trim(), nome_mae: f.nome_mae.trim(),
+        nome: f.nome.trim(), cpf: cpfFormatted, rg: f.rg.trim(), nome_mae: f.nome_mae.trim(),
         numero: f.numero.trim(), referencia: f.referencia?.trim() || null,
         cep: cepValue, cidade: selectedCidade?.nome || null,
         cidade_id: convCidadeId, bairro_id: convBairroId, rua_id: convRuaId,
