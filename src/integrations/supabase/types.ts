@@ -877,6 +877,9 @@ export type Database = {
           data_criacao: string
           id: string
           nome: string
+          notificacao_vista: boolean
+          notificacao_vista_em: string | null
+          notificacao_vista_por: string | null
           numero_endereco: string | null
           origem_lead: string | null
           plano_id: string | null
@@ -895,6 +898,9 @@ export type Database = {
           data_criacao?: string
           id?: string
           nome: string
+          notificacao_vista?: boolean
+          notificacao_vista_em?: string | null
+          notificacao_vista_por?: string | null
           numero_endereco?: string | null
           origem_lead?: string | null
           plano_id?: string | null
@@ -913,6 +919,9 @@ export type Database = {
           data_criacao?: string
           id?: string
           nome?: string
+          notificacao_vista?: boolean
+          notificacao_vista_em?: string | null
+          notificacao_vista_por?: string | null
           numero_endereco?: string | null
           origem_lead?: string | null
           plano_id?: string | null
