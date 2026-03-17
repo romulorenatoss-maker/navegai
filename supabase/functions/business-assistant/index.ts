@@ -345,6 +345,17 @@ ANÁLISE E INSIGHTS:
 
 ${contextData}`;
 
+    const simpleSystemPrompt = isSimpleMode
+      ? systemPrompt + `\n\nMODO SIMPLES - REGRAS ADICIONAIS:
+Você DEVE retornar a resposta em formato JSON válido com a seguinte estrutura:
+{"texto": "Sua análise em texto aqui", "dados": [{"coluna1": "valor1", "coluna2": "valor2"}]}
+- "texto" contém sua análise textual
+- "dados" é um array de objetos com os dados tabulares relevantes à pergunta
+- Se não houver dados tabulares, retorne "dados" como array vazio []
+- NÃO use blocos de código markdown, retorne JSON puro
+- Inclua o máximo de dados relevantes no array "dados"`
+      : systemPrompt;
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -354,10 +365,10 @@ ${contextData}`;
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: simpleSystemPrompt },
           { role: "user", content: question },
         ],
-        stream: true,
+        stream: !isSimpleMode,
       }),
     });
 
@@ -376,6 +387,26 @@ ${contextData}`;
       console.error("AI gateway error:", response.status, t);
       return new Response(JSON.stringify({ error: "Erro ao consultar o assistente." }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (isSimpleMode) {
+      const data = await response.json();
+      const rawContent = data.choices?.[0]?.message?.content || "";
+      // Try to parse as JSON, otherwise return as text
+      let texto = rawContent;
+      let dados: any[] = [];
+      try {
+        // Strip markdown code fences if present
+        const cleaned = rawContent.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+        const parsed = JSON.parse(cleaned);
+        texto = parsed.texto || rawContent;
+        dados = Array.isArray(parsed.dados) ? parsed.dados : [];
+      } catch {
+        // AI didn't return valid JSON, just use the text
+      }
+      return new Response(JSON.stringify({ texto, dados }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
