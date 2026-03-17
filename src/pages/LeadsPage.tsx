@@ -767,8 +767,6 @@ export default function LeadsPage() {
     queryClient.invalidateQueries({ queryKey: ["leads-list"] });
   }, [profile, queryClient]);
 
-  // Reserved lead ref no longer needed since capture directly assigns
-  }, [selectedLead?.id, selectedLead?.status_lead, selectedLead?.reserved_by, profile?.id]);
 
 
   // ─── Realtime subscription for capture queue ─────────────────
