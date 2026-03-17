@@ -48,7 +48,7 @@ const STATUS_MAP: Record<string, string> = { novo: "Novo", em_contato: "Em Conta
 
 function getPeriodoEndHour(periodo: string): number { return periodo === "manha" ? 12 : periodo === "tarde" ? 18 : 24; }
 function isTarefaExpirada(tarefa: { data_contato: string; periodo: string; status: string }): boolean {
-  if (tarefa.status === "realizado") return false;
+  if (tarefa.status === "realizado" || tarefa.status === "aguardando_visualizacao") return false;
   const tarefaDate = new Date(new Date(tarefa.data_contato));
   tarefaDate.setHours(getPeriodoEndHour(tarefa.periodo), 0, 0, 0);
   return new Date() > tarefaDate;
