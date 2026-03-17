@@ -39,7 +39,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   const isAdmin = hasRole("admin");
 
   // New RBAC permissions
-  const { permissions, isLoading: permissionsLoading, can, canViewPath, viewablePaths } = usePermissions(profile?.id ?? null);
+  const { permissions, isLoading: permissionsLoading, can, canViewPath, getScope, viewablePaths } = usePermissions(profile?.id ?? null);
 
   // Backward-compatible allowedScreens derived from new RBAC
   const allowedScreens = isAdmin ? [] : viewablePaths;
