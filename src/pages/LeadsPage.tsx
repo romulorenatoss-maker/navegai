@@ -149,7 +149,7 @@ const STATUS_OPTIONS = [
   { value: "em_atendimento", label: "Em Atendimento", color: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" },
 ];
 
-const RESERVATION_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes
+// No timeout — reservations persist until manual release or action
 
 function statusBadge(status: string) {
   const s = STATUS_OPTIONS.find((o) => o.value === status) || STATUS_OPTIONS[0];
