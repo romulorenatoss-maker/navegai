@@ -198,6 +198,18 @@ const EVENTO_ICONS: Record<string, typeof Phone> = {
 
 const PERIODO_HORA: Record<string, number> = { manha: 9, tarde: 14, noite: 19 };
 
+function formatCountdown(target: Date, now: Date): string {
+  const diffMs = target.getTime() - now.getTime();
+  const absDiff = Math.abs(diffMs);
+  const days = Math.floor(absDiff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((absDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const mins = Math.floor((absDiff % (1000 * 60 * 60)) / (1000 * 60));
+  const prefix = diffMs < 0 ? "−" : "";
+  if (days > 0) return `${prefix}${days}d ${hours}h`;
+  if (hours > 0) return `${prefix}${hours}h ${mins}m`;
+  return `${prefix}${mins}m`;
+}
+
 // ─── Component ──────────────────────────────────────────
 export default function LeadsPage() {
   const { profile, isAdmin, hasRole } = useAuth();
@@ -210,6 +222,13 @@ export default function LeadsPage() {
   const effectiveProfileId = viewAsProfileId || profile?.id || null;
 
   // Search
+  // Live clock for countdown
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<(Lead & { contatos: LeadContato[] })[] | null>(null);
   const [searching, setSearching] = useState(false);
@@ -569,6 +588,9 @@ export default function LeadsPage() {
           base.setHours(PERIODO_HORA[regra.periodo] || 9, 0, 0, 0);
           proximoContato = base;
         }
+      } else if (!ultimaInteracao) {
+        // New lead without interactions: deadline = data_criacao + 1 day (same hour)
+        proximoContato = addDays(new Date(lead.data_criacao), 1);
       }
 
       return { lead, tentativaAtual, proximoContato, ultimaInteracao };
@@ -1638,7 +1660,11 @@ export default function LeadsPage() {
                             <>
                               <Clock className={`w-2.5 h-2.5 ${isOverdue ? "text-destructive" : "text-muted-foreground"}`} />
                               <span className={`text-[10px] ${isOverdue ? "text-destructive font-medium" : "text-muted-foreground"}`}>
-                                {item.proximoContato ? fmtDateShort(item.proximoContato) : "Sem agendamento"}
+                                {item.proximoContato
+                                  ? (isOverdue
+                                    ? `Expirado ${formatCountdown(item.proximoContato, now)}`
+                                    : `Expira em ${formatCountdown(item.proximoContato, now)}`)
+                                  : "Sem prazo"}
                               </span>
                             </>
                           )}
