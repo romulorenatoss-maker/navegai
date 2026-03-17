@@ -65,6 +65,7 @@ export default function ImportadorLeadsPage() {
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [importing, setImporting] = useState(false);
   const [results, setResults] = useState<ImportResult[]>([]);
+  const [showResultDetails, setShowResultDetails] = useState(false);
   const [campanhaId, setCampanhaId] = useState("");
 
   const { data: campanhas = [] } = useQuery({
