@@ -410,7 +410,7 @@ export default function LeadsPage() {
         .limit(1)
         .maybeSingle();
       if (error) throw error;
-      return data as { quantidade_tentativas: number; permitir_reiniciar_rotina: boolean; tipo_servico_conversao_id?: string | null } | null;
+      return data as { quantidade_tentativas: number; permitir_reiniciar_rotina: boolean; tipo_servico_conversao_id?: string | null; acao_apos_finalizar_tentativas?: string } | null;
     },
   });
 
@@ -1154,14 +1154,21 @@ export default function LeadsPage() {
 
       if (nextTentativa > mxTentativas) {
         // Last attempt done and not converted → auto-send to avaliador
+        const acaoFinal = fluxoConfig?.acao_apos_finalizar_tentativas || "enviar_avaliador";
+        const finalStatus = acaoFinal === "arquivar_lead" ? "arquivado" : "aguardando_decisao_avaliador";
         await supabase.from("leads").update({ 
-          status_lead: "aguardando_decisao_avaliador",
+          status_lead: finalStatus,
           responsavel_id: null,
         }).eq("id", selectedLead.id);
         await supabase.from("lead_historico").insert({
           lead_id: selectedLead.id, usuario_id: profile.id,
           tipo_evento: "tentativas_finalizadas",
           descricao: `Todas as ${mxTentativas} tentativas finalizadas sem conversão. Lead enviado automaticamente para fila do avaliador.`,
+        });
+        // Remove lead from local cache so it disappears from the list
+        queryClient.setQueryData(["leads-list", effectiveProfileId], (old: any[] | undefined) => {
+          if (!old) return old;
+          return old.filter((l: any) => l.id !== selectedLead.id);
         });
         // Close detail panel — lead leaves atendente's screen
         setSelectedLead(null);
@@ -1182,19 +1189,19 @@ export default function LeadsPage() {
           });
         } catch { /* ignore */ }
         await supabase.from("leads").update({ status_lead: selectedLead.status_lead === "novo" ? "em_contato" : selectedLead.status_lead }).eq("id", selectedLead.id);
-      }
 
-      // Update local selectedLead with saved changes
-      setSelectedLead(prev => prev ? {
-        ...prev,
-        plano_id: localPlanoId,
-        repetidor: localRepetidor,
-        cidade_id: localCidadeId,
-        bairro_id: localBairroId,
-        rua_id: localRuaId,
-        numero_endereco: localNumeroEnd || null,
-      } : null);
-      updateLeadInCache(selectedLead!.id, { plano_id: localPlanoId, repetidor: localRepetidor, cidade_id: localCidadeId, bairro_id: localBairroId, rua_id: localRuaId, numero_endereco: localNumeroEnd || null });
+        // Update local selectedLead with saved changes
+        setSelectedLead(prev => prev ? {
+          ...prev,
+          plano_id: localPlanoId,
+          repetidor: localRepetidor,
+          cidade_id: localCidadeId,
+          bairro_id: localBairroId,
+          rua_id: localRuaId,
+          numero_endereco: localNumeroEnd || null,
+        } : null);
+        updateLeadInCache(selectedLead!.id, { plano_id: localPlanoId, repetidor: localRepetidor, cidade_id: localCidadeId, bairro_id: localBairroId, rua_id: localRuaId, numero_endereco: localNumeroEnd || null });
+      }
     },
     onSuccess: () => {
       toast.success("Tentativa registrada!");
