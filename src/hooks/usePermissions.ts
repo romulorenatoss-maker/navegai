@@ -49,9 +49,14 @@ export function usePermissions(profileId: string | null) {
     return perm?.can_view ?? false;
   };
 
+  const getScope = (resourceCode: string): DataScope => {
+    const perm = permissions.find((p) => p.resource_code === resourceCode);
+    return perm?.data_scope ?? "none";
+  };
+
   const viewablePaths = permissions
     .filter((p) => p.can_view && p.resource_path)
     .map((p) => p.resource_path!);
 
-  return { permissions, isLoading, can, canViewPath, viewablePaths };
+  return { permissions, isLoading, can, canViewPath, getScope, viewablePaths };
 }

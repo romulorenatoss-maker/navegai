@@ -109,7 +109,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         session, user, profile, roles, allowedScreens,
-        permissions, permissionsLoading, can, canViewPath,
+        permissions, permissionsLoading, can, getScope, canViewPath,
         loading, signIn, signUp, signOut, hasRole, isAdmin,
       }}
     >
