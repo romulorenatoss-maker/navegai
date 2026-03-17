@@ -771,8 +771,9 @@ export default function LeadsPage() {
                 const { data: oldProfile } = await supabase.from("profiles").select("nome").eq("id", oldResponsavelId).single();
                 if (oldProfile) oldResponsavelNome = oldProfile.nome;
               }
-              await supabase.from("leads").update({ responsavel_id: profile.id }).eq("id", lead.id);
-              await supabase.from("lead_historico").insert({
+               await supabase.from("leads").update({ responsavel_id: profile.id }).eq("id", lead.id);
+               await resetTasksForTransfer(lead.id, profile.id);
+               await supabase.from("lead_historico").insert({
                 lead_id: lead.id, usuario_id: profile.id,
                 tipo_evento: "transferencia_automatica",
                 descricao: `Lead transferido de "${oldResponsavelNome}" para "${profile.nome}" via busca por telefone`,
