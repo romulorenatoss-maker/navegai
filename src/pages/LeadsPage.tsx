@@ -198,6 +198,18 @@ const EVENTO_ICONS: Record<string, typeof Phone> = {
 
 const PERIODO_HORA: Record<string, number> = { manha: 9, tarde: 14, noite: 19 };
 
+function formatCountdown(target: Date, now: Date): string {
+  const diffMs = target.getTime() - now.getTime();
+  const absDiff = Math.abs(diffMs);
+  const days = Math.floor(absDiff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((absDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const mins = Math.floor((absDiff % (1000 * 60 * 60)) / (1000 * 60));
+  const prefix = diffMs < 0 ? "−" : "";
+  if (days > 0) return `${prefix}${days}d ${hours}h`;
+  if (hours > 0) return `${prefix}${hours}h ${mins}m`;
+  return `${prefix}${mins}m`;
+}
+
 // ─── Component ──────────────────────────────────────────
 export default function LeadsPage() {
   const { profile, isAdmin, hasRole } = useAuth();
