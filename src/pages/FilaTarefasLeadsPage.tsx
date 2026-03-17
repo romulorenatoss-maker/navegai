@@ -98,11 +98,12 @@ export default function FilaTarefasLeadsPage() {
                 data_programada: tarefa.data_contato,
                 periodo: tarefa.periodo,
               });
+              const responsavelNome = tarefa.responsavel_id ? (allProfiles.find((p: any) => p.id === tarefa.responsavel_id)?.nome || "Desconhecido") : "Sem responsável";
               await supabase.from("lead_historico").insert({
                 lead_id: tarefa.lead_id,
                 usuario_id: profile.id,
                 tipo_evento: "tentativa_atrasada",
-                descricao: `Tentativa ${tarefa.tentativa} (${PERIODO_LABELS[tarefa.periodo] || tarefa.periodo}) expirou sem registro`,
+                descricao: `Tentativa ${tarefa.tentativa} (${PERIODO_LABELS[tarefa.periodo] || tarefa.periodo}) expirou sem registro. Responsável: ${responsavelNome}`,
               });
             }
           }
