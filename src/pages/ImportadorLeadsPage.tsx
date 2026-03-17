@@ -324,22 +324,22 @@ export default function ImportadorLeadsPage() {
                 <label className="flex items-center gap-2 px-4 py-6 rounded-lg border-2 border-dashed border-border hover:border-primary cursor-pointer transition-colors justify-center">
                   <FileSpreadsheet className="w-5 h-5 text-muted-foreground" />
                   <span className="text-sm">{fileName || "Escolher arquivo CSV"}</span>
-                  <input type="file" accept=".csv,.txt" className="hidden" onChange={handleFile} />
+                  <input type="file" accept=".csv,.txt" className="hidden" onChange={handleFilePick} />
                 </label>
 
                 <div className="space-y-1.5">
-                  <Label>Campanha (opcional)</Label>
+                  <Label>Campanha *</Label>
                   <Select value={campanhaId} onValueChange={setCampanhaId}>
                     <SelectTrigger className="w-full sm:w-72">
                       <SelectValue placeholder="Selecione uma campanha..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__none">Sem campanha</SelectItem>
                       {campanhas.map(c => (
                         <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">Obrigatório. Todos os leads importados serão vinculados a esta campanha.</p>
                 </div>
 
                 <Alert className="border-muted">
@@ -348,6 +348,18 @@ export default function ImportadorLeadsPage() {
                   <AlertDescription className="text-xs">
                     Colunas: <strong>nome, telefone, email, endereco, plano</strong> (separadas por vírgula ou ponto-e-vírgula).
                     O sistema detecta automaticamente as colunas.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="flex justify-end">
+                  <Button
+                    onClick={handleLoadFile}
+                    disabled={!pendingFile || !campanhaId || campanhaId === "__none"}
+                    className="press-effect"
+                  >
+                    <Upload className="w-4 h-4 mr-2" /> Carregar Arquivo
+                  </Button>
+                </div>
                   </AlertDescription>
                 </Alert>
               </CardContent>
