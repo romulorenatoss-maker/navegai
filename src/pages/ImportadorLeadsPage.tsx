@@ -2,10 +2,13 @@ import { useState, useCallback } from "react";
 import { normalizePhone, isValidPhone } from "@/lib/phone-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Upload, FileSpreadsheet, AlertTriangle, CheckCircle2, Loader2, X } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -23,8 +26,6 @@ interface ImportResult {
   status: "ok" | "duplicate" | "error";
   message?: string;
 }
-
-// normalizePhone imported from @/lib/phone-utils
 
 function parseCSV(text: string): ImportRow[] {
   const lines = text.trim().split("\n");
@@ -50,6 +51,20 @@ export default function ImportadorLeadsPage() {
   const [results, setResults] = useState<ImportResult[]>([]);
   const [importing, setImporting] = useState(false);
   const [fileName, setFileName] = useState("");
+  const [campanhaId, setCampanhaId] = useState("");
+
+  const { data: campanhas = [] } = useQuery({
+    queryKey: ["campanhas-ativas"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("campanhas")
+        .select("id, nome")
+        .eq("ativo", true)
+        .order("nome");
+      if (error) throw error;
+      return data as { id: string; nome: string }[];
+    },
+  });
 
   const handleFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -69,12 +84,13 @@ export default function ImportadorLeadsPage() {
     }
   }, []);
 
+  const selectedCampanhaNome = campanhas.find(c => c.id === campanhaId)?.nome || null;
+
   const handleImport = useCallback(async () => {
     if (!profile || rows.length === 0) return;
     setImporting(true);
     const importResults: ImportResult[] = [];
 
-    // Fetch existing phones for duplicate check
     const { data: existingLeadContatos } = await supabase
       .from("lead_contatos").select("valor").eq("tipo_contato", "telefone");
     const { data: existingClienteContatos } = await supabase
@@ -85,7 +101,6 @@ export default function ImportadorLeadsPage() {
       ...(existingClienteContatos || []).map((c) => normalizePhone(c.valor)),
     ]);
 
-    // Fetch rotina for auto-task
     const { data: firstRotina } = await supabase
       .from("rotina_tentativas_leads")
       .select("*").eq("tentativa_numero", 1).eq("ativo", true).maybeSingle();
@@ -107,7 +122,8 @@ export default function ImportadorLeadsPage() {
           status_lead: "novo",
           responsavel_id: null,
           origem_lead: "importacao",
-        }).select().single();
+          campanha_id: (campanhaId && campanhaId !== "__none") ? campanhaId : null,
+        } as any).select().single();
 
         if (error || !newLead) throw error || new Error("Falha ao criar lead");
 
@@ -127,17 +143,19 @@ export default function ImportadorLeadsPage() {
           });
         }
 
+        const descricao = selectedCampanhaNome
+          ? `Lead importado da campanha "${selectedCampanhaNome}"`
+          : "Lead importado via CSV";
+
         await supabase.from("lead_historico").insert({
           lead_id: newLead.id,
           usuario_id: profile.id,
           tipo_evento: "lead_criado",
-          descricao: "Lead importado via CSV",
+          descricao,
         });
 
-        // Auto-create first task
         if (firstRotina) {
           const nextDate = new Date();
-          // Primeira tentativa sempre no dia seguinte para evitar atraso no mesmo dia
           const diasAdicionais = Math.max(firstRotina.dias_apos_anterior || 0, 1);
           nextDate.setDate(nextDate.getDate() + diasAdicionais);
           await supabase.from("lead_tarefas_contato").insert({
@@ -163,7 +181,7 @@ export default function ImportadorLeadsPage() {
     const dupes = importResults.filter((r) => r.status === "duplicate").length;
     const errs = importResults.filter((r) => r.status === "error").length;
     toast.success(`Importação concluída: ${ok} criados, ${dupes} duplicados, ${errs} erros`);
-  }, [rows, profile]);
+  }, [rows, profile, campanhaId, selectedCampanhaNome]);
 
   return (
     <div className="flex-1 min-h-screen bg-background">
@@ -193,6 +211,25 @@ export default function ImportadorLeadsPage() {
               )}
             </div>
 
+            {/* Campaign selection */}
+            <div className="space-y-1.5">
+              <Label>Campanha (opcional)</Label>
+              <Select value={campanhaId} onValueChange={setCampanhaId}>
+                <SelectTrigger className="w-full sm:w-72">
+                  <SelectValue placeholder="Selecione uma campanha..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">Sem campanha</SelectItem>
+                  {campanhas.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                A campanha selecionada será vinculada a todos os leads importados.
+              </p>
+            </div>
+
             <Alert className="border-muted">
               <FileSpreadsheet className="h-4 w-4" />
               <AlertTitle>Formato esperado</AlertTitle>
@@ -203,10 +240,18 @@ export default function ImportadorLeadsPage() {
           </CardContent>
         </Card>
 
+        {/* Preview before import */}
         {rows.length > 0 && results.length === 0 && (
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base">{rows.length} leads para importar</CardTitle>
+              <div>
+                <CardTitle className="text-base">{rows.length} leads para importar</CardTitle>
+                {selectedCampanhaNome && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Campanha: <span className="font-semibold">{selectedCampanhaNome}</span>
+                  </p>
+                )}
+              </div>
               <Button onClick={handleImport} disabled={importing} className="press-effect">
                 {importing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
                 {importing ? "Importando..." : "Importar Leads"}

@@ -260,6 +260,7 @@ export default function LeadsPage() {
   const [createBairroId, setCreateBairroId] = useState<string>("");
   const [createRuaId, setCreateRuaId] = useState<string>("");
   const [createNumeroEnd, setCreateNumeroEnd] = useState("");
+  const [createCampanhaId, setCreateCampanhaId] = useState("");
   const [createBairroSearch, setCreateBairroSearch] = useState("");
   const [createRuaSearch, setCreateRuaSearch] = useState("");
   const [createCepSearch, setCreateCepSearch] = useState("");
@@ -397,7 +398,34 @@ export default function LeadsPage() {
     enabled: !!effectiveProfileId,
   });
 
-  // Helper: update a single lead in cache without full refetch (prevents closing detail panel)
+  // Campanhas for source tracking
+  const { data: campanhasAtivas = [] } = useQuery({
+    queryKey: ["campanhas-ativas"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("campanhas").select("id, nome").eq("ativo", true).order("nome");
+      if (error) throw error;
+      return data as { id: string; nome: string }[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // All campanhas (including inactive) for display
+  const { data: allCampanhas = [] } = useQuery({
+    queryKey: ["campanhas-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("campanhas").select("id, nome").order("nome");
+      if (error) throw error;
+      return data as { id: string; nome: string }[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const getCampanhaNome = useCallback((lead: Lead) => {
+    const cId = (lead as any).campanha_id;
+    if (!cId) return null;
+    return allCampanhas.find(c => c.id === cId)?.nome || null;
+  }, [allCampanhas]);
+
   const updateLeadInCache = useCallback((leadId: string, updates: Partial<Lead>) => {
     queryClient.setQueryData(["leads-list", effectiveProfileId], (old: Lead[] | undefined) => {
       if (!old) return old;
@@ -1262,6 +1290,7 @@ export default function LeadsPage() {
           nome: leadNome, status_lead: "novo", responsavel_id: profile.id, cliente_id: linkedClienteId,
           cidade_id: createCidadeId || null, bairro_id: createBairroId || null, rua_id: createRuaId || null,
           numero_endereco: createNumeroEnd.trim() || null,
+          campanha_id: (createCampanhaId && createCampanhaId !== "__none") ? createCampanhaId : null,
         } as any)
         .select().single();
       if (e1) throw e1;
@@ -1287,6 +1316,8 @@ export default function LeadsPage() {
 
       const descParts = [`Lead "${leadNome}" criado por ${profile.nome}`];
       if (linkedClienteNome) descParts.push(`— vinculado ao cliente existente "${linkedClienteNome}"`);
+      const campanhaNome = campanhasAtivas.find(c => c.id === createCampanhaId)?.nome;
+      if (campanhaNome) descParts.push(`— origem: campanha "${campanhaNome}"`);
       await supabase.from("lead_historico").insert({
         lead_id: newLead.id, usuario_id: profile.id, tipo_evento: "criacao", descricao: descParts.join(" "),
       });
@@ -1314,6 +1345,7 @@ export default function LeadsPage() {
     onSuccess: (newLead) => {
       toast.success("Lead criado com sucesso!");
       setShowCreate(false); setCreateName(""); setCreatePhone(""); setCreatePhoneWhatsapp(false);
+      setCreateCampanhaId("");
       setCreateExtraContatos([]);
       setCreateCidadeId(""); setCreateBairroId(""); setCreateRuaId(""); setCreateNumeroEnd("");
       setCreateBairroSearch(""); setCreateRuaSearch("");
@@ -2035,6 +2067,9 @@ export default function LeadsPage() {
                               <span className="text-[10px] font-mono text-muted-foreground w-4 shrink-0">#{idx + 1}</span>
                               <span className="text-sm font-medium truncate">{item.lead.nome}</span>
                             </div>
+                            {getCampanhaNome(item.lead) && (
+                              <p className="text-[10px] text-primary/70 ml-5 truncate">Origem: {getCampanhaNome(item.lead)}</p>
+                            )}
                             <div className="flex items-center gap-1.5 mt-0.5 ml-5">
                               {contatos.length > 0 ? (
                                 <span className="text-[11px] text-muted-foreground flex items-center gap-0.5">
@@ -2316,6 +2351,9 @@ export default function LeadsPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <CardTitle className="text-sm font-semibold">{selectedLead.nome}</CardTitle>
+                        {getCampanhaNome(selectedLead) && (
+                          <p className="text-[10px] text-primary/80 font-medium">Origem: {getCampanhaNome(selectedLead)}</p>
+                        )}
                         <p className="text-[11px] text-muted-foreground">
                           Responsável: {getProfileName(selectedLead.responsavel_id)} · Criado em {fmtDate(selectedLead.data_criacao)}
                         </p>
@@ -2710,6 +2748,20 @@ export default function LeadsPage() {
               <div className="space-y-1.5">
                 <Label>Nome *</Label>
                 <Input placeholder="Nome do lead" value={createName} onChange={e => setCreateName(e.target.value)} />
+              </div>
+
+              {/* Origem / Campanha */}
+              <div className="space-y-1.5">
+                <Label>Origem (Campanha)</Label>
+                <Select value={createCampanhaId} onValueChange={setCreateCampanhaId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione a origem..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">Manual (sem campanha)</SelectItem>
+                    {campanhasAtivas.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* ─── Address fields ──────────────── */}

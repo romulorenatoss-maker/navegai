@@ -3,7 +3,7 @@ import {
   LayoutDashboard, ClipboardCheck, FileSearch, ListChecks, PlayCircle, FolderKanban,
   BarChart3, Building2, Users, HelpCircle, Wrench, LogOut, Star,
   PanelLeftClose, PanelLeft, UserPlus, ListOrdered, LayoutGrid, Settings, UserCheck, ClipboardList,
-  FileUp, MessageSquare, FileBarChart, Archive, MapPin,
+  FileUp, MessageSquare, FileBarChart, Archive, MapPin, Megaphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -30,6 +30,7 @@ const allNavSections = [
       { to: "/leads/fila", icon: ListOrdered, label: "Gerenciador de Leads" },
       { to: "/leads/arquivados", icon: Archive, label: "Leads Arquivados" },
       { to: "/leads/importador", icon: FileUp, label: "Importador de Leads" },
+      { to: "/leads/campanhas", icon: Megaphone, label: "Campanhas" },
     ],
   },
   {

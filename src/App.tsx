@@ -31,6 +31,7 @@ import LeadsArquivadosPage from "./pages/LeadsArquivadosPage";
 import ImportadorLeadsPage from "./pages/ImportadorLeadsPage";
 import ObjecoesLeadsPage from "./pages/ObjecoesLeadsPage";
 import RelatoriosLeadsPage from "./pages/RelatoriosLeadsPage";
+import CampanhasPage from "./pages/CampanhasPage";
 import PermissoesPage from "./pages/PermissoesPage";
 import NotFound from "./pages/NotFound";
 
@@ -78,6 +79,7 @@ const App = () => (
               <Route path="/leads/dashboard" element={<DashboardLeadsPage />} />
               <Route path="/leads/rotina" element={<RotinaTentativasPage />} />
               <Route path="/leads/importador" element={<ImportadorLeadsPage />} />
+              <Route path="/leads/campanhas" element={<CampanhasPage />} />
               <Route path="/leads/objecoes" element={<ObjecoesLeadsPage />} />
               <Route path="/leads/relatorios" element={<RelatoriosLeadsPage />} />
               <Route path="/desempenho" element={<DesempenhoColaboradorPage />} />
