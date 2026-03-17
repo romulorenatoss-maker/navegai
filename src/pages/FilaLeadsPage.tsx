@@ -173,7 +173,7 @@ export default function FilaLeadsPage() {
   const { data: tarefas = [], isLoading: loadingTarefas } = useQuery({
     queryKey: ["fila-tarefas-leads"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("lead_tarefas_contato").select("*").in("status", ["pendente", "atrasado"]).order("data_contato", { ascending: true });
+      const { data, error } = await supabase.from("lead_tarefas_contato").select("*").in("status", ["pendente", "atrasado", "aguardando_visualizacao"]).order("data_contato", { ascending: true });
       if (error) throw error;
       const toUpdate: string[] = [];
       (data || []).forEach((t: any) => { if (t.status === "pendente" && isTarefaExpirada(t)) toUpdate.push(t.id); });
