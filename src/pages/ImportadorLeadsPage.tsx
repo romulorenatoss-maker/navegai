@@ -156,12 +156,20 @@ export default function ImportadorLeadsPage() {
       const nome = toProperCase(raw[mapping.nome] || "");
       const telefone = raw[mapping.telefone] || "";
       const email = mapping.email ? raw[mapping.email] || "" : "";
+      const cidade = mapping.cidade ? toProperCase(raw[mapping.cidade] || "") : "";
+      const bairro = mapping.bairro ? toProperCase(raw[mapping.bairro] || "") : "";
+      const rua = mapping.rua ? toProperCase(raw[mapping.rua] || "") : "";
+      const numero = mapping.numero ? raw[mapping.numero] || "" : "";
+      const plano = mapping.plano ? raw[mapping.plano] || "" : "";
+      const repetidor = mapping.repetidor ? raw[mapping.repetidor] || "" : "";
       const phoneNorm = normalizePhone(telefone);
+
+      const extraFields = { cidade, bairro, rua, numero, plano, repetidor };
 
       // Validate
       if (!nome.trim() || phoneNorm.length < 8) {
         return {
-          index: i, nome, telefone, phoneNormalized: phoneNorm, email,
+          index: i, nome, telefone, phoneNormalized: phoneNorm, email, ...extraFields,
           status: "invalid" as RowStatus, action: "skip" as RowAction,
           error: !nome.trim() ? "Nome vazio" : "Telefone inválido",
         };
@@ -170,7 +178,7 @@ export default function ImportadorLeadsPage() {
       // Intra-file duplicate
       if (seenInFile.has(phoneNorm)) {
         return {
-          index: i, nome, telefone, phoneNormalized: phoneNorm, email,
+          index: i, nome, telefone, phoneNormalized: phoneNorm, email, ...extraFields,
           status: "duplicate_active" as RowStatus, action: "skip" as RowAction,
           duplicateInfo: { leadNome: rawRows[seenInFile.get(phoneNorm)!][mapping.nome], statusLead: "duplicado no arquivo", responsavelNome: "" },
         };
@@ -188,7 +196,7 @@ export default function ImportadorLeadsPage() {
           };
           const rowStatus: RowStatus = statusMap[lead.status_lead] || "duplicate_active";
           return {
-            index: i, nome, telefone, phoneNormalized: phoneNorm, email,
+            index: i, nome, telefone, phoneNormalized: phoneNorm, email, ...extraFields,
             status: rowStatus,
             action: rowStatus === "duplicate_archived" || rowStatus === "duplicate_lost" ? "import" as RowAction : "skip" as RowAction,
             duplicateInfo: {
@@ -202,14 +210,14 @@ export default function ImportadorLeadsPage() {
       // Check existing clients
       if (clientPhoneSet.has(phoneNorm)) {
         return {
-          index: i, nome, telefone, phoneNormalized: phoneNorm, email,
+          index: i, nome, telefone, phoneNormalized: phoneNorm, email, ...extraFields,
           status: "duplicate_client" as RowStatus, action: "import_alert" as RowAction,
           duplicateInfo: { isClient: true },
         };
       }
 
       return {
-        index: i, nome, telefone, phoneNormalized: phoneNorm, email,
+        index: i, nome, telefone, phoneNormalized: phoneNorm, email, ...extraFields,
         status: "new" as RowStatus, action: "import" as RowAction,
       };
     });
