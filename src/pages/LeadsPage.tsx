@@ -1217,9 +1217,9 @@ export default function LeadsPage() {
                             }`}>
                               <div className="flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                  <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${isCriacaoVinculado ? "border-amber-400 text-amber-700 dark:text-amber-300" : ""}`}>
                                     {item.type === "historico"
-                                      ? (EVENTO_LABELS[item.evento || ""] || item.evento)
+                                      ? (isCriacaoVinculado ? "⚠️ Cliente já cadastrado na base" : (EVENTO_LABELS[item.evento || ""] || item.evento))
                                       : `${item.tipo_contato === "whatsapp" ? "WhatsApp" : "Telefone"}`}
                                   </Badge>
                                   {attemptNum && (
