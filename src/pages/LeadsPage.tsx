@@ -300,6 +300,14 @@ export default function LeadsPage() {
     enabled: !!profile,
   });
 
+  // Helper: update a single lead in cache without full refetch (prevents closing detail panel)
+  const updateLeadInCache = useCallback((leadId: string, updates: Partial<Lead>) => {
+    queryClient.setQueryData(["leads-list", profile?.id], (old: Lead[] | undefined) => {
+      if (!old) return old;
+      return old.map(l => l.id === leadId ? { ...l, ...updates } : l);
+    });
+  }, [profile?.id, queryClient]);
+
   // Auto-select lead from URL param ?id=
   useEffect(() => {
     const leadId = searchParams.get("id");
