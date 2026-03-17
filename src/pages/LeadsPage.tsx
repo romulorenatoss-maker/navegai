@@ -409,14 +409,21 @@ export default function LeadsPage() {
   });
 
   const { data: cadencia = [] } = useQuery({
-    queryKey: ["cadencia-tentativas"],
+    queryKey: ["rotina-tentativas-leads-cadencia"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("cadencia_tentativas")
+        .from("rotina_tentativas_leads")
         .select("*")
-        .order("numero_tentativa", { ascending: true });
+        .eq("ativo", true)
+        .order("tentativa_numero", { ascending: true });
       if (error) throw error;
-      return data as CadenciaTentativa[];
+      return (data || []).map((r: any) => ({
+        id: r.id,
+        numero_tentativa: r.tentativa_numero,
+        dias_apos: r.dias_apos_anterior,
+        periodo: r.periodo_contato,
+        prioridade: r.prioridade === "alta" ? 3 : r.prioridade === "media" ? 2 : 1,
+      })) as CadenciaTentativa[];
     },
   });
 
