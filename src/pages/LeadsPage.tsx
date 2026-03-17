@@ -822,6 +822,7 @@ export default function LeadsPage() {
   const openConversion = () => {
     if (!selectedLead) return;
     setConvForm({ nome: selectedLead.nome, cpf: "", rg: "", nome_mae: "", endereco: "", numero: "", cep: "", cidade: "", referencia: "" });
+    setConvAtendenteId(profile?.id || "");
     setShowConvert(true);
   };
 
