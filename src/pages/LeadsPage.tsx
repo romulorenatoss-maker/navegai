@@ -309,6 +309,11 @@ export default function LeadsPage() {
   const [convCpfLookedUp, setConvCpfLookedUp] = useState(false);
   const [convCpfSearching, setConvCpfSearching] = useState(false);
   const convCpfLookupRef = useRef("");
+  // CEP search for conversion dialog
+  const [convCepSearch, setConvCepSearch] = useState("");
+  const [convCepNotFound, setConvCepNotFound] = useState(false);
+  const [convNewBairroNome, setConvNewBairroNome] = useState("");
+  const [convNewRuaNome, setConvNewRuaNome] = useState("");
 
   // Finalize dialog (when all attempts done)
   const [showFinalize, setShowFinalize] = useState(false);
