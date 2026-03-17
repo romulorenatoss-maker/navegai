@@ -519,6 +519,15 @@ export default function DashboardLeadsPage() {
     setDrillDown({ title, filter, filterValue });
   };
 
+  const dateFmt = (d: Date) => format(d, "yyyy-MM-dd");
+  const toRelatorios = (status?: string) => {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    params.set("start", dateFmt(dateStart));
+    params.set("end", dateFmt(dateEnd));
+    navigate(`/leads/relatorios?${params.toString()}`);
+  };
+
   return (
     <div className="flex-1 min-h-screen bg-background">
       <div className="max-w-7xl mx-auto p-6 space-y-6">
