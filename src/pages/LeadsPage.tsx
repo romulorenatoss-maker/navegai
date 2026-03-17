@@ -1096,8 +1096,9 @@ export default function LeadsPage() {
         .order("tentativa", { ascending: true })
         .limit(1);
       if (pendingTarefas && pendingTarefas.length > 0) {
+        const wasLate = pendingTarefas[0].status === "atrasado" || isTarefaExpirada(pendingTarefas[0]);
         await supabase.from("lead_tarefas_contato")
-          .update({ status: "realizado" })
+          .update({ status: "realizado", fora_do_prazo: wasLate } as any)
           .eq("id", pendingTarefas[0].id);
       }
 
