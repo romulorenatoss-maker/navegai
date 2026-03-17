@@ -25,6 +25,14 @@ const allNavSections = [
     ],
   },
   {
+    title: "Leads",
+    items: [
+      { to: "/leads/fila", icon: ListOrdered, label: "Gerenciador de Leads" },
+      { to: "/leads/arquivados", icon: Archive, label: "Leads Arquivados" },
+      { to: "/leads/importador", icon: FileUp, label: "Importador de Leads" },
+    ],
+  },
+  {
     title: "Checklists",
     items: [
       { to: "/checklists/cadastro", icon: ListChecks, label: "Cadastro" },
@@ -41,14 +49,6 @@ const allNavSections = [
       { to: "/leads/objecoes", icon: MessageSquare, label: "Objeções" },
       { to: "/cadastros/clientes", icon: ClipboardCheck, label: "Clientes" },
       { to: "/cadastros/enderecos", icon: MapPin, label: "Endereços" },
-    ],
-  },
-  {
-    title: "Leads",
-    items: [
-      { to: "/leads/fila", icon: ListOrdered, label: "Gerenciador de Leads" },
-      { to: "/leads/arquivados", icon: Archive, label: "Leads Arquivados" },
-      { to: "/leads/importador", icon: FileUp, label: "Importador de Leads" },
     ],
   },
   {
