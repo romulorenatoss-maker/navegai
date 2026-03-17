@@ -228,8 +228,9 @@ export default function ImportadorLeadsPage() {
 
     for (const row of toImport) {
       try {
+        const nomeFmt = toProperCase(row.nome);
         const { data: newLead, error } = await supabase.from("leads").insert({
-          nome: row.nome,
+          nome: nomeFmt,
           status_lead: "aguardando_captura",
           responsavel_id: null,
           origem_lead: "importacao",
