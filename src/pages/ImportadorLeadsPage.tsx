@@ -66,7 +66,7 @@ export default function ImportadorLeadsPage() {
   const [fileName, setFileName] = useState("");
   const [rawHeaders, setRawHeaders] = useState<string[]>([]);
   const [rawRows, setRawRows] = useState<Record<string, string>[]>([]);
-  const [mapping, setMapping] = useState<ColumnMapping>({ nome: "", telefone: "", email: "", endereco: "", plano: "" });
+  const [mapping, setMapping] = useState<ColumnMapping>({ ...EMPTY_MAPPING });
   const [previewRows, setPreviewRows] = useState<PreviewRow[]>([]);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [importing, setImporting] = useState(false);
