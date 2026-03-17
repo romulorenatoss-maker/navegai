@@ -644,9 +644,9 @@ export default function LeadsPage() {
         const interacoes = capturaInteracoes.filter(i => i.lead_id === lead.id);
         const contatos = capturaContatos.filter(c => c.lead_id === lead.id);
         const lastInteracao = interacoes[0];
-        // Only exclude the LAST handler (person whose cycle just ended), not everyone
-        const lastHandlerId = lastInteracao?.colaborador_id || null;
-        const wasLastHandler = lastHandlerId === profile.id;
+        // Exclude users who performed REAL interactions (lead_interacoes), not just views/captures
+        const prevHandlerIds = interacoes.map(i => i.colaborador_id);
+        const wasLastHandler = prevHandlerIds.includes(profile.id);
         // Check reservation status
         const isReservedByMe = lead.reserved_by === profile.id;
         const isReservedByOther = !!lead.reserved_by && lead.reserved_by !== profile.id;
