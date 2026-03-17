@@ -459,7 +459,18 @@ export default function FilaLeadsPage() {
     await supabase.from("lead_historico").insert({ lead_id: tarefaTransferLeadId, usuario_id: profile.id, tipo_evento: "transferencia_automatica", descricao: `Lead transferido para ${targetName}. Contagem de tentativas reiniciada.` });
     const firstRotina = rotinaTentativas.find((r: any) => r.tentativa_numero === 1);
     const periodo = firstRotina?.periodo_contato || "manha";
-    await supabase.from("lead_tarefas_contato").insert({ lead_id: tarefaTransferLeadId, tentativa: 1, data_contato: new Date().toISOString(), periodo, status: "pendente", responsavel_id: tarefaTransferTarget });
+    // Schedule for next valid period window so it doesn't expire immediately
+    const now = new Date();
+    const currentHour = now.getHours();
+    let taskDate = new Date(now);
+    const periodoStartHour = periodo === "manha" ? 8 : periodo === "tarde" ? 12 : 18;
+    const periodoEndHour = getPeriodoEndHour(periodo);
+    if (currentHour >= periodoEndHour) {
+      // Period already passed today → schedule for tomorrow
+      taskDate.setDate(taskDate.getDate() + 1);
+    }
+    taskDate.setHours(periodoStartHour, 0, 0, 0);
+    await supabase.from("lead_tarefas_contato").insert({ lead_id: tarefaTransferLeadId, tentativa: 1, data_contato: taskDate.toISOString(), periodo, status: "aguardando_visualizacao", responsavel_id: tarefaTransferTarget });
     toast.success(`Lead transferido para ${targetName}!`);
     setShowTarefaTransfer(false); setTarefaTransferLeadId(""); setTarefaTransferTarget("");
     queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
