@@ -22,6 +22,7 @@ const allNavSections = [
       { to: "/avaliacoes/pesquisa", icon: FileSearch, label: "Criar OS / Buscar" },
       { to: "/avaliacoes/minhas", icon: Star, label: "Minhas Avaliações" },
       { to: "/leads", icon: UserPlus, label: "Meus Leads" },
+      { to: "/assistente", icon: Bot, label: "Assistente" },
     ],
   },
   {
@@ -62,7 +63,6 @@ const allNavSections = [
   {
     title: "Sistema",
     items: [
-      { to: "/assistente", icon: Bot, label: "Assistente" },
       { to: "/relatorios", icon: BarChart3, label: "Relatórios de OS" },
       { to: "/leads/relatorios", icon: FileBarChart, label: "Relatórios de Leads" },
       { to: "/desempenho", icon: UserCheck, label: "Desempenho" },
