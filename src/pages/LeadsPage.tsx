@@ -3331,13 +3331,16 @@ export default function LeadsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs">Cidade *</Label>
-                    <Select value={convCidadeId || "none"} onValueChange={v => { setConvCidadeId(v === "none" ? null : v); setConvBairroId(null); setConvRuaId(null); }}>
-                      <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Nenhuma</SelectItem>
-                        {endCidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-1">
+                      <Select value={convCidadeId || "none"} onValueChange={v => { setConvCidadeId(v === "none" ? null : v); setConvBairroId(null); setConvRuaId(null); }}>
+                        <SelectTrigger className="h-9 flex-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhuma</SelectItem>
+                          {endCidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => { setConvQuickAddType("cidade"); setConvQuickAddNome(""); }}><Plus className="w-3.5 h-3.5" /></Button>
+                    </div>
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">CEP</Label>
@@ -3345,26 +3348,32 @@ export default function LeadsPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Bairro *</Label>
-                    <Select value={convBairroId || "none"} onValueChange={v => { setConvBairroId(v === "none" ? null : v); setConvRuaId(null); }} disabled={!convCidadeId}>
-                      <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Nenhum</SelectItem>
-                        {endBairros.filter(b => b.cidade_id === convCidadeId).map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-1">
+                      <Select value={convBairroId || "none"} onValueChange={v => { setConvBairroId(v === "none" ? null : v); setConvRuaId(null); }} disabled={!convCidadeId}>
+                        <SelectTrigger className="h-9 flex-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhum</SelectItem>
+                          {endBairros.filter(b => b.cidade_id === convCidadeId).map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => { setConvQuickAddType("bairro"); setConvQuickAddNome(""); }} disabled={!convCidadeId}><Plus className="w-3.5 h-3.5" /></Button>
+                    </div>
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Rua *</Label>
-                    <Select value={convRuaId || "none"} onValueChange={v => setConvRuaId(v === "none" ? null : v)} disabled={!convBairroId}>
-                      <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Nenhuma</SelectItem>
-                        {endRuas.filter(r => r.bairro_id === convBairroId).map(r => <SelectItem key={r.id} value={r.id}>{r.nome}{r.cep?.[0] ? ` (${r.cep[0]})` : ""}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-1">
+                      <Select value={convRuaId || "none"} onValueChange={v => setConvRuaId(v === "none" ? null : v)} disabled={!convBairroId}>
+                        <SelectTrigger className="h-9 flex-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhuma</SelectItem>
+                          {endRuas.filter(r => r.bairro_id === convBairroId).map(r => <SelectItem key={r.id} value={r.id}>{r.nome}{r.cep?.[0] ? ` (${r.cep[0]})` : ""}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => { setConvQuickAddType("rua"); setConvQuickAddNome(""); }} disabled={!convBairroId}><Plus className="w-3.5 h-3.5" /></Button>
+                    </div>
                   </div>
                   <div className="space-y-1.5"><Label className="text-xs">Número *</Label><Input value={convForm.numero} onChange={e => setConvForm(f => ({ ...f, numero: e.target.value }))} className="h-9" /></div>
-                  <div className="space-y-1.5"><Label className="text-xs">Referência *</Label><Input value={convForm.referencia} onChange={e => setConvForm(f => ({ ...f, referencia: e.target.value }))} className="h-9" /></div>
+                  <div className="space-y-1.5"><Label className="text-xs">Referência</Label><Input value={convForm.referencia} onChange={e => setConvForm(f => ({ ...f, referencia: e.target.value }))} className="h-9" /></div>
                 </div>
               </div>
               {/* Atendente selector */}
