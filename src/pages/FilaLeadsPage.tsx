@@ -28,6 +28,7 @@ interface Lead {
   status_lead: string;
   responsavel_id: string | null;
   updated_at: string;
+  created_at: string;
   agendamento_retorno: string | null;
 }
 
@@ -57,6 +58,8 @@ interface QueueItem {
   isOverdue: boolean;
   isScheduled: boolean;
   scheduleReady: boolean;
+  nextAttempt: Date;
+  nextAttemptExpired: boolean;
 }
 
 // ─── Helpers ────────────────────────────────────────────
@@ -229,25 +232,27 @@ export default function FilaLeadsPage() {
       const isScheduled = !!lead.agendamento_retorno;
       const scheduleReady = isScheduled && new Date(lead.agendamento_retorno!) <= now;
 
+      // Compute nextAttempt: if scheduled use that, otherwise created_at + 1 day (same time)
+      let nextAttempt: Date;
+      if (lead.agendamento_retorno) {
+        nextAttempt = new Date(lead.agendamento_retorno);
+      } else {
+        nextAttempt = addDays(new Date(lead.created_at), 1);
+      }
+      const nextAttemptExpired = nextAttempt < now;
+
       return {
         lead, contatos, tentativaAtual, proximoContato, ultimaInteracao,
         responsavelNome: getProfileName(lead.responsavel_id),
         isOverdue, isScheduled, scheduleReady,
+        nextAttempt, nextAttemptExpired,
       };
     }).sort((a, b) => {
-      // Scheduled and ready → top
-      if (a.scheduleReady && !b.scheduleReady) return -1;
-      if (!a.scheduleReady && b.scheduleReady) return 1;
-      // Overdue → next
-      if (a.isOverdue && !b.isOverdue) return -1;
-      if (!a.isOverdue && b.isOverdue) return 1;
-      // New leads first
-      if (!a.ultimaInteracao && b.ultimaInteracao) return -1;
-      if (a.ultimaInteracao && !b.ultimaInteracao) return 1;
-      // By next contact
-      const aTime = a.proximoContato?.getTime() || Infinity;
-      const bTime = b.proximoContato?.getTime() || Infinity;
-      return aTime - bTime;
+      // Expired nextAttempt first
+      if (a.nextAttemptExpired && !b.nextAttemptExpired) return -1;
+      if (!a.nextAttemptExpired && b.nextAttemptExpired) return 1;
+      // Then by nextAttempt ASC
+      return a.nextAttempt.getTime() - b.nextAttempt.getTime();
     });
   }, [leads, allContatos, allInteracoes, cadencia, profiles]);
 
@@ -559,12 +564,10 @@ export default function FilaLeadsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-8">#</TableHead>
-                      <TableHead>Lead</TableHead>
-                      <TableHead>Responsável</TableHead>
+                      <TableHead>Nome</TableHead>
                       <TableHead>Telefone(s)</TableHead>
-                      <TableHead className="text-center">Tentativa</TableHead>
-                      <TableHead>Próximo Contato</TableHead>
-                      <TableHead>Agendamento</TableHead>
+                      <TableHead>Criado em</TableHead>
+                      <TableHead>Próx. Tentativa / Vencimento</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
@@ -577,16 +580,13 @@ export default function FilaLeadsPage() {
                         <TableRow
                           key={item.lead.id}
                           className={
-                            item.scheduleReady ? "bg-primary/5" :
-                            item.isOverdue ? "bg-destructive/5" :
-                            ""
+                            item.nextAttemptExpired ? "bg-destructive/5" : ""
                           }
                         >
                           <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
                           <TableCell>
                             <span className="font-medium text-sm">{item.lead.nome}</span>
                           </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{item.responsavelNome}</TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
                               {phones.map(c => (
@@ -599,42 +599,22 @@ export default function FilaLeadsPage() {
                               {phones.length === 0 && <span className="text-[11px] text-muted-foreground">Sem tel.</span>}
                             </div>
                           </TableCell>
-                          <TableCell className="text-center">
-                            <Badge
-                              variant={allDone ? "destructive" : "secondary"}
-                              className="text-xs"
-                            >
-                              {item.tentativaAtual}ª{allDone ? " (esgotada)" : ""}
-                            </Badge>
+                          <TableCell>
+                            <span className="text-xs text-muted-foreground">
+                              {fmtDate(item.lead.created_at)}
+                            </span>
                           </TableCell>
                           <TableCell>
-                            {item.isOverdue ? (
+                            {item.nextAttemptExpired ? (
                               <span className="text-xs flex items-center gap-1 text-destructive font-semibold bg-destructive/10 border border-destructive/30 rounded px-1.5 py-0.5 w-fit">
                                 <AlertTriangle className="w-3 h-3" />
-                                {item.proximoContato ? fmtDateShort(item.proximoContato) : "Atrasado"}
+                                {fmtDate(item.nextAttempt)}
                               </span>
                             ) : (
                               <span className="text-xs flex items-center gap-1 text-muted-foreground">
                                 <Clock className="w-3 h-3" />
-                                {item.proximoContato ? fmtDateShort(item.proximoContato) : "Sem cadência"}
+                                {fmtDate(item.nextAttempt)}
                               </span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {item.isScheduled ? (
-                              item.scheduleReady ? (
-                                <span className="text-xs flex items-center gap-1 text-destructive font-semibold bg-destructive/10 border border-destructive/30 rounded px-1.5 py-0.5 w-fit">
-                                  <AlertTriangle className="w-3 h-3" />
-                                  Retorno expirado
-                                </span>
-                              ) : (
-                                <span className="text-xs flex items-center gap-1 text-muted-foreground">
-                                  <CalendarClock className="w-3 h-3" />
-                                  {fmtDateShort(new Date(item.lead.agendamento_retorno!))}
-                                </span>
-                              )
-                            ) : (
-                              <span className="text-[11px] text-muted-foreground">—</span>
                             )}
                           </TableCell>
                           <TableCell>
