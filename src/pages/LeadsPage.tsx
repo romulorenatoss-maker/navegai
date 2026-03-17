@@ -136,7 +136,7 @@ const PERIODO_HORA: Record<string, number> = { manha: 9, tarde: 14, noite: 19 };
 
 // ─── Component ──────────────────────────────────────────
 export default function LeadsPage() {
-  const { profile, isAdmin } = useAuth();
+  const { profile, isAdmin, hasRole } = useAuth();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
