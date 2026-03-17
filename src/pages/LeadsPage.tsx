@@ -679,8 +679,21 @@ export default function LeadsPage() {
           proximoContato = base;
         }
       } else if (!ultimaInteracao) {
-        // New lead without interactions: deadline = data_criacao + 1 day (same hour)
-        proximoContato = addDays(new Date(lead.data_criacao), 1);
+        // No interactions in current cycle: use transfer date if available, else data_criacao
+        // Transferred leads should appear immediately (use transfer date as base)
+        if (transferDate) {
+          const regra = cadencia.find(c => c.numero_tentativa === 1) || cadencia[0];
+          if (regra) {
+            const base = new Date(transferDate);
+            base.setHours(PERIODO_HORA[regra.periodo] || 9, 0, 0, 0);
+            // If the period already passed on transfer day, keep it (shows as overdue = immediate)
+            proximoContato = base;
+          } else {
+            proximoContato = transferDate;
+          }
+        } else {
+          proximoContato = addDays(new Date(lead.data_criacao), 1);
+        }
       }
 
       return { lead, tentativaAtual, proximoContato, ultimaInteracao };
