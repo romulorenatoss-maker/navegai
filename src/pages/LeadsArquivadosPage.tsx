@@ -111,27 +111,24 @@ export default function LeadsArquivadosPage() {
   const reactivateMutation = useMutation({
     mutationFn: async (leadId: string) => {
       if (!profile) throw new Error("Erro interno.");
-      await supabase.from("leads").update({ status_lead: "em_contato" }).eq("id", leadId);
-      const lead = leads.find((l: any) => l.id === leadId);
+      // Send to capture queue: clear responsible, set aguardando_captura
+      await supabase.from("leads").update({
+        status_lead: "aguardando_captura",
+        responsavel_id: null,
+        reserved_by: null,
+        reserved_at: null,
+      } as any).eq("id", leadId);
 
-      // Create first tarefa again
-      const { data: firstRotina } = await supabase
-        .from("rotina_tentativas_leads").select("*").eq("tentativa_numero", 1).maybeSingle();
-      if (firstRotina) {
-        const nextDate = new Date();
-        nextDate.setDate(nextDate.getDate() + Math.max(firstRotina.dias_apos_anterior || 0, 1));
-        const periodoHora = firstRotina.periodo_contato === "manha" ? 9 : firstRotina.periodo_contato === "tarde" ? 14 : 19;
-        nextDate.setHours(periodoHora, 0, 0, 0);
-        await supabase.from("lead_tarefas_contato").insert({
-          lead_id: leadId, tentativa: 1, data_contato: nextDate.toISOString(),
-          periodo: firstRotina.periodo_contato, status: "pendente", responsavel_id: profile.id,
-        });
-      }
+      // Cancel any old pending tasks
+      await supabase.from("lead_tarefas_contato")
+        .update({ status: "cancelada" } as any)
+        .eq("lead_id", leadId)
+        .in("status", ["pendente", "atrasado"]);
 
       await supabase.from("lead_historico").insert({
         lead_id: leadId, usuario_id: profile.id,
         tipo_evento: "lead_desarquivado",
-        descricao: `Lead desarquivado e rotina reiniciada por ${profile.nome} em ${new Date().toLocaleString("pt-BR")}`,
+        descricao: `Lead desarquivado por ${profile.nome} e enviado para fila de captura em ${new Date().toLocaleString("pt-BR")}`,
       });
     },
     onSuccess: () => {
