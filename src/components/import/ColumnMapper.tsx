@@ -7,8 +7,12 @@ export interface ColumnMapping {
   nome: string;
   telefone: string;
   email: string;
-  endereco: string;
+  cidade: string;
+  bairro: string;
+  rua: string;
+  numero: string;
   plano: string;
+  repetidor: string;
 }
 
 interface Props {
@@ -19,14 +23,22 @@ interface Props {
 
 const KNOWN_ALIASES: Record<keyof ColumnMapping, string[]> = {
   nome: ["nome", "name", "cliente", "razao_social", "razão social"],
-  telefone: ["telefone", "phone", "celular", "fone", "tel", "whatsapp", "numero"],
+  telefone: ["telefone", "phone", "celular", "fone", "tel", "whatsapp"],
   email: ["email", "e-mail", "e_mail", "mail"],
-  endereco: ["endereco", "endereço", "address", "logradouro", "rua"],
+  cidade: ["cidade", "city", "municipio"],
+  bairro: ["bairro", "neighborhood", "setor"],
+  rua: ["rua", "logradouro", "endereco", "endereço", "address", "street"],
+  numero: ["numero", "número", "num", "nº", "number"],
   plano: ["plano", "plan", "produto", "servico", "serviço"],
+  repetidor: ["repetidor", "repeater", "pop"],
+};
+
+export const EMPTY_MAPPING: ColumnMapping = {
+  nome: "", telefone: "", email: "", cidade: "", bairro: "", rua: "", numero: "", plano: "", repetidor: "",
 };
 
 export function autoDetectMapping(headers: string[]): ColumnMapping {
-  const mapping: ColumnMapping = { nome: "", telefone: "", email: "", endereco: "", plano: "" };
+  const mapping: ColumnMapping = { ...EMPTY_MAPPING };
   const lower = headers.map(h => h.toLowerCase().trim().replace(/[^a-zà-ú0-9_]/g, ""));
 
   for (const [field, aliases] of Object.entries(KNOWN_ALIASES) as [keyof ColumnMapping, string[]][]) {
@@ -42,8 +54,12 @@ const FIELD_LABELS: Record<keyof ColumnMapping, { label: string; required: boole
   nome: { label: "Nome", required: true },
   telefone: { label: "Telefone", required: true },
   email: { label: "Email", required: false },
-  endereco: { label: "Endereço", required: false },
+  cidade: { label: "Cidade", required: false },
+  bairro: { label: "Bairro", required: false },
+  rua: { label: "Rua", required: false },
+  numero: { label: "Número", required: false },
   plano: { label: "Plano", required: false },
+  repetidor: { label: "Repetidor", required: false },
 };
 
 export default function ColumnMapper({ headers, mapping, onChange }: Props) {
@@ -64,7 +80,7 @@ export default function ColumnMapper({ headers, mapping, onChange }: Props) {
         )}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
         {(Object.keys(FIELD_LABELS) as (keyof ColumnMapping)[]).map(field => (
           <div key={field} className="space-y-1">
             <Label className="text-xs">
