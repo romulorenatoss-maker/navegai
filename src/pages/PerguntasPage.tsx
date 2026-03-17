@@ -530,9 +530,9 @@ export default function PerguntasPage() {
                     {previewAnswer === "nao" && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
                         <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 mt-3 space-y-3">
-                          <div className="flex items-center gap-1.5 text-caption text-destructive font-medium"><AlertTriangle className="w-3.5 h-3.5" /> Ação obrigatória</div>
+                          <div className="flex items-center gap-1.5 text-caption text-destructive font-medium"><AlertTriangle className="w-3.5 h-3.5" /> Descrição obrigatória</div>
                           <div className="space-y-1.5"><Label className="text-caption">Descrição *</Label><Textarea placeholder="Descreva a irregularidade..." className="bg-card h-20 text-caption" disabled /></div>
-                          <div><Label className="text-caption mb-1.5 block">Evidência *</Label>
+                          <div><Label className="text-caption mb-1.5 block">Evidência (opcional)</Label>
                             <div className="flex gap-2">
                               <Button type="button" variant="outline" size="sm" className="text-caption" disabled><Camera className="w-3.5 h-3.5 mr-1.5" /> Foto</Button>
                               <Button type="button" variant="outline" size="sm" className="text-caption" disabled><FileVideo className="w-3.5 h-3.5 mr-1.5" /> Vídeo</Button>

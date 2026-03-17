@@ -1064,8 +1064,7 @@ export default function AvaliacaoOSPage() {
     if (unanswered.length > 0) { toast.error("Responda todas as perguntas do seu setor antes de concluir."); return; }
     const missingObs = answerableQuestions.filter(p => evalAnswers[p.id] === "nao" && !(evalObservations[p.id]?.trim()));
     if (missingObs.length > 0) { toast.error("Descreva a irregularidade para itens reprovados."); return; }
-    const missingEvidence = answerableQuestions.filter(p => evalAnswers[p.id] === "nao" && !evalEvidencias[p.id]);
-    if (missingEvidence.length > 0) { toast.error("Anexe a evidência fotográfica para todos os itens reprovados."); return; }
+    // Evidência é opcional para itens reprovados
 
     setEvalSubmitting(true);
     try {
