@@ -18,7 +18,7 @@ import {
   User, FileText, Trash2, Lock, Loader2, ShieldCheck,
   Eye, MessageSquare, CheckCircle2, Clock, AlertCircle, Shield
 } from "lucide-react";
-import PermissoesTelasTab from "@/components/PermissoesTelasTab";
+import PermissoesColaboradorTab from "@/components/PermissoesColaboradorTab";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Profile = Tables<"profiles">;
@@ -438,7 +438,7 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
 
             {/* Permissões Tab */}
             <TabsContent value="permissoes" className="mt-4">
-              <PermissoesTelasTab
+              <PermissoesColaboradorTab
                 profileId={collaborator.id}
                 isAdminProfile={collaborator.cargo === "administrador"}
               />
