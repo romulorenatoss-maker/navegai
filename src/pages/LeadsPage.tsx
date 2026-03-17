@@ -728,7 +728,7 @@ export default function LeadsPage() {
         tipo_evento: "transferencia_automatica",
         descricao: `Lead atribuído automaticamente para ${profile.nome}`,
       });
-      queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+      updateLeadInCache(lead.id, { responsavel_id: profile.id });
     }
     setSelectedLead({ ...lead, responsavel_id: profile.id });
     setSearchResults(null);
