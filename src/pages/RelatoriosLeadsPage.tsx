@@ -317,6 +317,27 @@ export default function RelatoriosLeadsPage() {
         <p className="text-body text-muted-foreground">Gerencie e exporte dados de Leads</p>
       </div>
 
+      {hasUrlDateFilter && (
+        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 flex items-center justify-between">
+          <span className="text-sm text-foreground">
+            📊 Filtro aplicado do Dashboard — Status: <strong>{STATUS_LABELS[urlStatus || ""] || urlStatus}</strong>
+            {urlStart && urlEnd && <> · Período: <strong>{format(new Date(urlStart + "T00:00:00"), "dd/MM/yyyy")} a {format(new Date(urlEnd + "T00:00:00"), "dd/MM/yyyy")}</strong></>}
+          </span>
+          <Button
+            variant="ghost" size="sm"
+            onClick={() => {
+              setSearchParams({});
+              setFilterStatus("todos");
+              setStartDate(startOfMonth(now));
+              setEndDate(endOfMonth(now));
+              setTimeout(() => fetchLeads(), 100);
+            }}
+          >
+            <X className="w-3.5 h-3.5 mr-1" /> Limpar filtro
+          </Button>
+        </div>
+      )}
+
       {hasAddressFilter && (
         <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex items-center justify-between">
           <span className="text-sm text-foreground">
