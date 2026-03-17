@@ -1099,18 +1099,19 @@ export default function LeadsPage() {
       const nextTentativa = tentativaNum + 1;
 
       if (nextTentativa > mxTentativas) {
-        const { data: configData } = await supabase
-          .from("configuracao_fluxo_leads").select("acao_apos_finalizar_tentativas").limit(1).maybeSingle();
-        const acao = configData?.acao_apos_finalizar_tentativas || "enviar_avaliador";
-        const newStatus = acao === "arquivar_lead" ? "arquivado" : "aguardando_decisao_avaliador";
-        await supabase.from("leads").update({ status_lead: newStatus }).eq("id", selectedLead.id);
+        // Last attempt done and not converted → auto-send to avaliador
+        await supabase.from("leads").update({ 
+          status_lead: "aguardando_decisao_avaliador",
+          responsavel_id: null,
+        }).eq("id", selectedLead.id);
         await supabase.from("lead_historico").insert({
           lead_id: selectedLead.id, usuario_id: profile.id,
           tipo_evento: "tentativas_finalizadas",
-          descricao: `Todas as ${mxTentativas} tentativas finalizadas. Ação: ${acao === "arquivar_lead" ? "Arquivado" : "Enviado para avaliador"}`,
+          descricao: `Todas as ${mxTentativas} tentativas finalizadas sem conversão. Lead enviado automaticamente para fila do avaliador.`,
         });
-        setSelectedLead(prev => prev ? { ...prev, status_lead: newStatus } : null);
-        toast.info(acao === "arquivar_lead" ? "Lead arquivado após todas as tentativas." : "Lead enviado para avaliação do avaliador.");
+        // Close detail panel — lead leaves atendente's screen
+        setSelectedLead(null);
+        toast.warning("Última tentativa registrada sem conversão. Lead enviado para a fila do avaliador.");
       } else {
         try {
           const { data: nextRotina } = await supabase
