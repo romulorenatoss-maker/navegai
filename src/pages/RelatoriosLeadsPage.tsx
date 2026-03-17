@@ -570,11 +570,6 @@ export default function RelatoriosLeadsPage() {
                     </td>
                   </tr>
                 )}
-                      Nenhum lead encontrado no período selecionado.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
             </table>
           </div>
         </div>
