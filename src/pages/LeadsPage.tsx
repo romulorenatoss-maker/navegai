@@ -787,7 +787,7 @@ export default function LeadsPage() {
         const oldStatus = payload.old?.status_lead;
         const newStatus = payload.new?.status_lead;
         // Invalidate capture queue when any lead enters or leaves capture/reserved states
-        const captureStates = ["aguardando_captura", "reservado"];
+        const captureStates = ["fila_captura", "reservado", "em_atendimento"];
         if (captureStates.includes(oldStatus) || captureStates.includes(newStatus)) {
           queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
         }
