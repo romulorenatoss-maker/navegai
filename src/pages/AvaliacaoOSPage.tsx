@@ -2657,7 +2657,7 @@ export default function AvaliacaoOSPage() {
             {!formFoundOS && (
               <Button
                 onClick={handleCombinedSearch}
-                disabled={!formOsNumero.trim() || cpfValidating || formValidating}
+                disabled={(!formOsNumero.trim() && !formClienteCpf.replace(/\D/g, "")) || cpfValidating || formValidating}
                 className="press-effect"
               >
                 {(cpfValidating || formValidating) ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
