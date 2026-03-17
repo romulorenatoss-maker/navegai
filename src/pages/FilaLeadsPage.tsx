@@ -324,13 +324,12 @@ export default function FilaLeadsPage() {
       .map(lead => {
         const contatos = allContatos.filter(c => c.lead_id === lead.id);
         const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
-        // Find last person who actually worked the lead (last interaction's colaborador)
-        const lastInteracao = interacoes.length > 0 ? interacoes[0] : null; // already sorted desc
+        const lastInteracao = interacoes.length > 0 ? interacoes[0] : null;
         const ultimoResponsavelNome = lastInteracao ? getProfileName((lastInteracao as any).colaborador_id) : getProfileName(lead.responsavel_id);
-        return { lead, contatos, interacoes: interacoes.length, responsavelNome: ultimoResponsavelNome };
+        const ultimaTentativaEm = lastInteracao ? (lastInteracao as any).data_interacao : null;
+        return { lead, contatos, interacoes: interacoes.length, responsavelNome: ultimoResponsavelNome, ultimaTentativaEm };
       })
       .sort((a, b) => {
-        // Not seen first
         if (!a.lead.notificacao_vista && b.lead.notificacao_vista) return -1;
         if (a.lead.notificacao_vista && !b.lead.notificacao_vista) return 1;
         return new Date(b.lead.updated_at).getTime() - new Date(a.lead.updated_at).getTime();
