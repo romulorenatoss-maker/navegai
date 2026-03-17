@@ -855,12 +855,21 @@ export default function LeadsPage() {
     const channel = supabase
       .channel("leads-reservation-realtime")
       .on("postgres_changes", {
-        event: "UPDATE",
+        event: "*",
         schema: "public",
         table: "leads",
-        filter: "status_lead=in.(aguardando_captura,reservado)",
-      }, () => {
-        queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
+      }, (payload: any) => {
+        const oldStatus = payload.old?.status_lead;
+        const newStatus = payload.new?.status_lead;
+        // Invalidate capture queue when any lead enters or leaves capture/reserved states
+        const captureStates = ["aguardando_captura", "reservado"];
+        if (captureStates.includes(oldStatus) || captureStates.includes(newStatus)) {
+          queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
+        }
+        // Also refresh the main leads list when status changes
+        if (oldStatus !== newStatus) {
+          queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+        }
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
