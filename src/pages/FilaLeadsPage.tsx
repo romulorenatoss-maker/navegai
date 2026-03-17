@@ -603,8 +603,8 @@ export default function FilaLeadsPage() {
                   </TableBody>
                 </Table>
               </div>
-          )
           )}
+        </CardContent>
         </CardContent>
       </Card>
 
