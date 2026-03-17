@@ -2597,9 +2597,11 @@ export default function AvaliacaoOSPage() {
           return;
         }
 
-        toast.info("OS não encontrada. Preencha os dados para criar.");
-        setFormValidated(true);
-        return;
+        if (!hasCpf) {
+          toast.info("OS não encontrada. Preencha os dados para criar.");
+          setFormValidated(true);
+          return;
+        }
       }
 
       // 3) CPF-only search: prioritize existing open OS and OS without number
