@@ -1311,16 +1311,29 @@ export default function LeadsPage() {
     return priorityQueue.find(q => q.lead.id === selectedLead.id) || null;
   }, [selectedLead, priorityQueue]);
 
-  // Tentativas realizadas (0 = cadastro inicial, sem interações)
+  // Tentativas realizadas TOTAL (para exibição no painel)
   const tentativasRealizadas = selectedQueueInfo ? selectedQueueInfo.tentativaAtual - 1 : leadInteracoes.length;
+
+  // Tentativas do CICLO ATUAL (após última transferência) — para o botão
+  const tentativasCicloAtual = useMemo(() => {
+    if (!selectedLead || leadHistorico.length === 0) return tentativasRealizadas;
+    // Find the last transfer event
+    const lastTransfer = leadHistorico.find(h =>
+      h.tipo_evento === "transferencia_automatica" || h.tipo_evento === "transferencia_decisao"
+    );
+    if (!lastTransfer) return tentativasRealizadas;
+    // Count interactions AFTER the last transfer
+    const transferDate = new Date(lastTransfer.data_evento);
+    return leadInteracoes.filter(i => new Date(i.data_interacao) > transferDate).length;
+  }, [selectedLead, leadHistorico, leadInteracoes, tentativasRealizadas]);
 
   // Phone options for interaction dialog
   const phoneOptions = leadContatos.filter(c => c.tipo_contato === "telefone");
 
-  // Check if all cadencia attempts are exhausted
+  // Check if all cadencia attempts are exhausted (based on cycle)
   const maxTentativas = fluxoConfig?.quantidade_tentativas || cadencia.length || 7;
-  const allAttemptsExhausted = tentativasRealizadas >= maxTentativas;
-  const isLastAttempt = tentativasRealizadas === maxTentativas - 1;
+  const allAttemptsExhausted = tentativasCicloAtual >= maxTentativas;
+  const isLastAttempt = tentativasCicloAtual === maxTentativas - 1;
 
   // Handle finalize action (after all attempts)
   const handleFinalizeAction = async (action: "reiniciar" | "arquivar") => {
