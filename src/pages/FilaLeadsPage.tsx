@@ -91,6 +91,11 @@ export default function FilaLeadsPage() {
 
   const [selectedTarefa, setSelectedTarefa] = useState<any>(null);
   const [tarefaTipo, setTarefaTipo] = useState("telefone");
+
+  const [showTarefaTransfer, setShowTarefaTransfer] = useState(false);
+  const [tarefaTransferLeadId, setTarefaTransferLeadId] = useState("");
+  const [tarefaTransferLeadName, setTarefaTransferLeadName] = useState("");
+  const [tarefaTransferTarget, setTarefaTransferTarget] = useState("");
   const [tarefaNumero, setTarefaNumero] = useState("");
   const [tarefaResultado, setTarefaResultado] = useState("");
 
@@ -369,6 +374,20 @@ export default function FilaLeadsPage() {
     onError: (err: any) => toast.error(err.message),
   });
 
+  const handleTarefaTransfer = async () => {
+    if (!tarefaTransferLeadId || !tarefaTransferTarget || !profile) return;
+    await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", tarefaTransferLeadId).eq("status", "pendente");
+    await supabase.from("leads").update({ responsavel_id: tarefaTransferTarget, status_lead: "em_contato" } as any).eq("id", tarefaTransferLeadId);
+    const targetName = profiles.find(p => p.id === tarefaTransferTarget)?.nome || "—";
+    await supabase.from("lead_historico").insert({ lead_id: tarefaTransferLeadId, usuario_id: profile.id, tipo_evento: "transferencia_automatica", descricao: `Lead transferido para ${targetName}. Contagem de tentativas reiniciada.` });
+    const firstRotina = rotinaTentativas.find((r: any) => r.tentativa_numero === 1);
+    const periodo = firstRotina?.periodo_contato || "manha";
+    await supabase.from("lead_tarefas_contato").insert({ lead_id: tarefaTransferLeadId, tentativa: 1, data_contato: new Date().toISOString(), periodo, status: "pendente", responsavel_id: tarefaTransferTarget });
+    toast.success(`Lead transferido para ${targetName}!`);
+    setShowTarefaTransfer(false); setTarefaTransferLeadId(""); setTarefaTransferTarget("");
+    queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
+  };
+
   // Mark notification as seen
   const markAsSeenMutation = useMutation({
     mutationFn: async (leadId: string) => {
@@ -635,6 +654,9 @@ export default function FilaLeadsPage() {
                                   <DropdownMenuItem onClick={() => { setSelectedTarefa(tarefa); setTarefaTipo("telefone"); setTarefaNumero(""); setTarefaResultado(""); }} className="gap-2 text-xs">
                                     <Phone className="w-3.5 h-3.5" /> Registrar Tentativa
                                   </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => { setTarefaTransferLeadId(tarefa.lead_id); setTarefaTransferLeadName(getTarefaLeadName(tarefa.lead_id)); setTarefaTransferTarget(""); setShowTarefaTransfer(true); }} className="gap-2 text-xs">
+                                    <ArrowRightLeft className="w-3.5 h-3.5" /> Transferir para
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => navigate(`/leads?id=${tarefa.lead_id}`)} className="gap-2 text-xs">
                                     <ExternalLink className="w-3.5 h-3.5" /> Abrir Lead
                                   </DropdownMenuItem>
@@ -870,6 +892,26 @@ export default function FilaLeadsPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDelay(false)}>Cancelar</Button>
             <Button variant="destructive" onClick={handleMarkDelay} className="press-effect"><AlertTriangle className="w-4 h-4 mr-1.5" /> Confirmar Atraso</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Tarefa Transfer Dialog ──────────────────── */}
+      <Dialog open={showTarefaTransfer} onOpenChange={setShowTarefaTransfer}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><ArrowRightLeft className="w-5 h-5" /> Transferir para</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm">Transferir <span className="font-semibold">{tarefaTransferLeadName}</span> para outro colaborador do setor de atendimento.</p>
+            <div className="space-y-1.5"><Label>Novo Responsável</Label>
+              <Select value={tarefaTransferTarget} onValueChange={setTarefaTransferTarget}><SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger><SelectContent>
+                {atendimentoProfiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+                {atendimentoProfiles.length === 0 && <SelectItem value="__none" disabled>Nenhum colaborador no setor Atendimento</SelectItem>}
+              </SelectContent></Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTarefaTransfer(false)}>Cancelar</Button>
+            <Button onClick={handleTarefaTransfer} disabled={!tarefaTransferTarget} className="press-effect"><ArrowRightLeft className="w-4 h-4 mr-1.5" /> Transferir</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
