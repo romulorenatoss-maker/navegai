@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Clock, LogIn, LogOut, Timer } from "lucide-react";
+import { Clock, LogIn, LogOut, Timer, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface Props {
   profileId: string;
@@ -28,15 +29,20 @@ function formatDate(dateStr: string | null): string {
   });
 }
 
+function normalizeReason(reason: string | null): string {
+  if (!reason) return "manual";
+  const r = reason.toLowerCase();
+  if (r === "inatividade" || r.includes("idle") || r.includes("inativ")) return "inatividade";
+  return "manual";
+}
+
 const reasonLabels: Record<string, { label: string; className: string }> = {
-  manual: { label: "Manual", className: "text-foreground bg-muted" },
+  manual: { label: "Saída Manual", className: "text-foreground bg-muted" },
   inatividade: { label: "Inatividade", className: "text-warning bg-warning/10" },
-  tab_closed: { label: "Aba fechada", className: "text-muted-foreground bg-muted" },
-  navigation: { label: "Navegação", className: "text-muted-foreground bg-muted" },
 };
 
 export default function SessoesUsuarioTab({ profileId, userId }: Props) {
-  const { data: sessoes = [], isLoading } = useQuery({
+  const { data: sessoes = [], isLoading, refetch, isFetching } = useQuery({
     queryKey: ["sessoes_usuario", userId],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
@@ -47,17 +53,15 @@ export default function SessoesUsuarioTab({ profileId, userId }: Props) {
         .limit(50);
       if (error) throw error;
 
-      // compute duration: use duracao_segundos if available, else calculate from login/logout, else from login to now (active)
       return (data || []).map((s: any) => {
         let dur = s.duracao_segundos;
         if (!dur && s.login_at && s.logout_at) {
           dur = Math.round((new Date(s.logout_at).getTime() - new Date(s.login_at).getTime()) / 1000);
         }
         if (!dur && s.login_at && !s.logout_at) {
-          // Active session — compute live duration
           dur = Math.round((Date.now() - new Date(s.login_at).getTime()) / 1000);
         }
-        return { ...s, _duracao: dur || 0 };
+        return { ...s, _duracao: dur || 0, _reason: normalizeReason(s.logout_reason) };
       });
     },
   });
@@ -75,6 +79,14 @@ export default function SessoesUsuarioTab({ profileId, userId }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* Header with refresh */}
+      <div className="flex items-center justify-end">
+        <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isFetching} className="h-8 text-xs px-3">
+          <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isFetching ? "animate-spin" : ""}`} />
+          Atualizar
+        </Button>
+      </div>
+
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <div className="bg-muted/30 border border-border rounded-lg p-3">
@@ -115,8 +127,8 @@ export default function SessoesUsuarioTab({ profileId, userId }: Props) {
                   <td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">Nenhuma sessão registrada.</td>
                 </tr>
               ) : sessoes.map((s: any) => {
-                const reason = reasonLabels[s.logout_reason] || { label: s.logout_reason || "—", className: "text-muted-foreground bg-muted" };
                 const isActive = !s.logout_at;
+                const reason = reasonLabels[s._reason] || reasonLabels.manual;
                 return (
                   <tr key={s.id} className="hover:bg-muted/50 transition-colors">
                     <td className="px-4 py-2.5 text-foreground font-tabular">{formatDate(s.login_at)}</td>
