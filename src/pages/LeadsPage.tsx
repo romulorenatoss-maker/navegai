@@ -1695,6 +1695,20 @@ export default function LeadsPage() {
                 <div className="space-y-1.5"><Label className="text-xs">Cidade *</Label><Input value={convForm.cidade} onChange={e => setConvForm(f => ({ ...f, cidade: e.target.value }))} /></div>
                 <div className="space-y-1.5"><Label className="text-xs">Referência *</Label><Input value={convForm.referencia} onChange={e => setConvForm(f => ({ ...f, referencia: e.target.value }))} /></div>
               </div>
+              {/* Atendente selector */}
+              <div className="space-y-1.5">
+                <Label className="text-xs">Avaliado Setor Atendimento</Label>
+                <Select value={convAtendenteId} onValueChange={setConvAtendenteId}>
+                  <SelectTrigger className="h-9"><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
+                  <SelectContent>
+                    {profiles.map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Quem será avaliado como atendente nesta OS. Sugestão: quem está convertendo.</p>
+              </div>
+              </div>
               {leadContatos.filter(c => c.tipo_contato === "telefone").length > 0 && (
                 <div className="p-3 rounded-md border bg-muted/30">
                   <p className="text-xs font-medium mb-1">Contatos que serão copiados:</p>
