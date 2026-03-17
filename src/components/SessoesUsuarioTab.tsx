@@ -77,7 +77,11 @@ export default function SessoesUsuarioTab({ profileId, userId }: Props) {
   const filterDateStr = format(filterDate, "yyyy-MM-dd");
 
   const filteredSessoes = useMemo(() => {
-    return sessoes.filter((s: any) => s.login_at?.startsWith(filterDateStr));
+    return sessoes.filter((s: any) => {
+      if (!s.login_at) return false;
+      const loginLocal = new Date(s.login_at).toLocaleDateString("en-CA"); // yyyy-MM-dd local
+      return loginLocal === filterDateStr;
+    });
   }, [sessoes, filterDateStr]);
 
   const totalDia = useMemo(() => {
