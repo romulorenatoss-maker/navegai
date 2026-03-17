@@ -1724,7 +1724,7 @@ export default function LeadsPage() {
                   <CardContent className="p-3 space-y-2.5">
                     <div className="space-y-1">
                       <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Perfil Identificado</Label>
-                      <Select value={localPlanoId || "none"} onValueChange={v => setLocalPlanoId(v === "none" ? null : v)}>
+                      <Select value={localPlanoId || "none"} onValueChange={v => setLocalPlanoId(v === "none" ? null : v)} disabled={isVisionMode}>
                         <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">Nenhum</SelectItem>
