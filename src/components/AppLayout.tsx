@@ -21,7 +21,7 @@ export function AppLayout() {
 
   const badgeCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    if (pendingEvaluations > 0) counts["/avaliacoes/minhas"] = pendingEvaluations;
+    if (pendingEvaluations > 0) counts["/avaliacoes/pesquisa"] = pendingEvaluations;
     if (pendingLeadDecisions > 0) counts["/leads/fila"] = pendingLeadDecisions;
     if (pendingMyLeads > 0) counts["/leads"] = pendingMyLeads;
     return counts;
