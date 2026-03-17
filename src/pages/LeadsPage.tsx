@@ -192,6 +192,8 @@ const EVENTO_ICONS: Record<string, typeof Phone> = {
   perfil_alterado: User,
   repetidor_alterado: RefreshCw,
   observacao_adicionada: MessageSquare,
+  dados_alterados: FileText,
+  agendamento_removido: Clock,
 };
 
 const PERIODO_HORA: Record<string, number> = { manha: 9, tarde: 14, noite: 19 };
