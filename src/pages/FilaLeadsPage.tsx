@@ -679,10 +679,13 @@ export default function FilaLeadsPage() {
               <Select value={transferTarget} onValueChange={setTransferTarget}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
-                  {profiles
+                  {atendimentoProfiles
                     .filter(p => p.id !== transferItem?.lead.responsavel_id)
                     .map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)
                   }
+                  {atendimentoProfiles.filter(p => p.id !== transferItem?.lead.responsavel_id).length === 0 && (
+                    <SelectItem value="__none" disabled>Nenhum colaborador no setor Atendimento</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
