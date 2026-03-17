@@ -319,21 +319,23 @@ function ChatMode() {
                 <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
                   <Sparkles className="w-8 h-8 text-primary" />
                 </div>
-                <h2 className="text-lg font-semibold text-foreground mb-1">Como posso ajudar?</h2>
+                <h2 className="text-lg font-semibold text-foreground mb-1">
+                  Olá, {userName}! 👋
+                </h2>
                 <p className="text-sm text-muted-foreground mb-6 max-w-sm">
-                  Faça perguntas sobre seus leads, vendas, campanhas e desempenho. As respostas são baseadas nos dados reais do sistema.
+                  Sou a <span className="font-semibold text-primary">Naví</span>, sua assistente inteligente. O que deseja fazer hoje?
                 </p>
-                <div className="flex flex-wrap gap-2 justify-center max-w-lg">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-w-lg">
                   {quickSuggestions.map((s) => (
                     <Button
                       key={s.label}
                       variant="outline"
                       size="sm"
-                      className="gap-1.5 text-xs"
+                      className="gap-1.5 text-xs h-auto py-2.5 justify-start"
                       onClick={() => send(s.question)}
                       disabled={isLoading}
                     >
-                      <s.icon className="w-3.5 h-3.5" />
+                      <s.icon className="w-4 h-4 shrink-0" />
                       {s.label}
                     </Button>
                   ))}
