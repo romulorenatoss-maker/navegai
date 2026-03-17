@@ -520,6 +520,7 @@ export default function RelatoriosLeadsPage() {
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Origem</th>
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Responsável</th>
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Data Criação</th>
+                  <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Atrasos</th>
                   <th className="px-2 py-2 w-10"></th>
                 </tr>
               </thead>
