@@ -294,7 +294,7 @@ export default function RelatoriosLeadsPage() {
   };
 
   const exportToExcel = (data: LeadRow[]) => {
-    const headers = ["Nome", "Telefone", "Status", "Origem", "Responsável", "Perfil Identificado", "Repetidor", "Data Criação"];
+    const headers = ["Nome", "Telefone", "Status", "Origem", "Responsável", "Perfil Identificado", "Repetidor", "Data Criação", "Atrasos"];
     const wsData: (string | number)[][] = [headers];
     for (const l of data) {
       wsData.push([
@@ -306,6 +306,7 @@ export default function RelatoriosLeadsPage() {
         l.plano_nome || "",
         l.repetidor ? (l.repetidor === "fast" ? "Fast" : "Dual") : "",
         format(new Date(l.data_criacao), "dd/MM/yyyy"),
+        l.atrasos > 0 ? `${l.atrasos} fora do prazo` : "No prazo",
       ]);
     }
     const wb = XLSX.utils.book_new();
