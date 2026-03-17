@@ -17,7 +17,7 @@ import { format, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Phone, MessageSquare, Loader2, ListOrdered, CalendarClock, AlertTriangle,
-  ArrowRightLeft, Clock, Search, Filter, UserCheck, ExternalLink,
+  ArrowRightLeft, Clock, Search, Filter, UserCheck, ExternalLink, Archive, RefreshCw,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -185,7 +185,16 @@ export default function FilaLeadsPage() {
       const { data, error } = await supabase
         .from("configuracao_fluxo_leads").select("*").limit(1).maybeSingle();
       if (error) throw error;
-      return data as { quantidade_tentativas: number } | null;
+      return data as { quantidade_tentativas: number; permitir_reiniciar_rotina: boolean } | null;
+    },
+  });
+
+  const { data: rotinaTentativas = [] } = useQuery({
+    queryKey: ["rotina-tentativas"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("rotina_tentativas_leads").select("*").order("tentativa_numero");
+      if (error) throw error;
+      return data;
     },
   });
 
@@ -368,6 +377,60 @@ export default function FilaLeadsPage() {
     queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
   };
 
+  // ─── Archive lead (aguardando_decisao) ────────────
+  const archiveMutation = useMutation({
+    mutationFn: async (leadId: string) => {
+      if (!profile) throw new Error("Perfil não encontrado.");
+      await supabase.from("leads").update({ status_lead: "arquivado" }).eq("id", leadId);
+      await supabase.from("lead_historico").insert({
+        lead_id: leadId,
+        usuario_id: profile.id,
+        tipo_evento: "lead_arquivado",
+        descricao: "Lead arquivado pelo avaliador.",
+      });
+    },
+    onSuccess: () => {
+      toast.success("Lead arquivado.");
+      queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  // ─── Restart routine (aguardando_decisao) ─────────
+  const restartMutation = useMutation({
+    mutationFn: async (leadId: string) => {
+      if (!profile) throw new Error("Perfil não encontrado.");
+      await supabase.from("leads").update({ status_lead: "em_contato" }).eq("id", leadId);
+      const firstRotina = rotinaTentativas.find((r: any) => r.tentativa_numero === 1);
+      const periodo = firstRotina?.periodo_contato || "manha";
+      const diasApos = firstRotina?.dias_apos_anterior || 0;
+      const nextDate = new Date();
+      nextDate.setDate(nextDate.getDate() + Math.max(diasApos, 1));
+      const periodoHora = periodo === "manha" ? 9 : periodo === "tarde" ? 14 : 19;
+      nextDate.setHours(periodoHora, 0, 0, 0);
+      await supabase.from("lead_tarefas_contato").insert({
+        lead_id: leadId,
+        tentativa: 1,
+        data_contato: nextDate.toISOString(),
+        periodo,
+        status: "pendente",
+        responsavel_id: profile.id,
+      });
+      await supabase.from("lead_historico").insert({
+        lead_id: leadId,
+        usuario_id: profile.id,
+        tipo_evento: "rotina_reiniciada",
+        descricao: "Rotina de tentativas reiniciada pelo avaliador.",
+      });
+    },
+    onSuccess: () => {
+      toast.success("Rotina reiniciada!");
+      queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
   const openAttempt = (item: QueueItem) => {
     setSelectedItem(item);
     setAttemptTipo("telefone");
@@ -441,12 +504,13 @@ export default function FilaLeadsPage() {
               </Button>
             </div>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="h-8 text-xs w-[130px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-8 text-xs w-[160px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos Status</SelectItem>
                 <SelectItem value="novo">Novo</SelectItem>
                 <SelectItem value="em_contato">Em Contato</SelectItem>
                 <SelectItem value="interessado">Interessado</SelectItem>
+                <SelectItem value="aguardando_decisao_avaliador">Aguardando Decisão</SelectItem>
               </SelectContent>
             </Select>
             <Select value={filterResponsavel} onValueChange={setFilterResponsavel}>
@@ -577,6 +641,7 @@ export default function FilaLeadsPage() {
                             <Badge className={`text-[11px] border-0 ${
                               item.lead.status_lead === "novo" ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" :
                               item.lead.status_lead === "em_contato" ? "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" :
+                              item.lead.status_lead === "aguardando_decisao_avaliador" ? "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" :
                               "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200"
                             }`}>
                               {STATUS_MAP[item.lead.status_lead] || item.lead.status_lead}
@@ -591,24 +656,47 @@ export default function FilaLeadsPage() {
                               >
                                 <ExternalLink className="w-3.5 h-3.5" />
                               </Button>
-                              <Button size="sm" variant="outline" className="h-7 text-[11px] px-2" onClick={() => openAttempt(item)}>
-                                <Phone className="w-3 h-3 mr-1" /> {item.tentativaAtual}ª Tentativa
-                              </Button>
-                              <Button
-                                size="sm" variant="ghost" className="h-7 text-[11px] px-1.5"
-                                title="Transferir para outro avaliador"
-                                onClick={() => { setTransferItem(item); setTransferTarget(""); setShowTransfer(true); }}
-                              >
-                                <ArrowRightLeft className="w-3.5 h-3.5" />
-                              </Button>
-                              {item.isOverdue && (
-                                <Button
-                                  size="sm" variant="ghost" className="h-7 text-[11px] px-1.5 text-destructive hover:text-destructive"
-                                  title="Marcar atraso do responsável"
-                                  onClick={() => { setDelayItem(item); setShowDelay(true); }}
-                                >
-                                  <AlertTriangle className="w-3.5 h-3.5" />
-                                </Button>
+                              {item.lead.status_lead === "aguardando_decisao_avaliador" ? (
+                                <>
+                                  <Button
+                                    size="sm" variant="outline" className="h-7 text-[11px] px-2"
+                                    onClick={() => archiveMutation.mutate(item.lead.id)}
+                                    disabled={archiveMutation.isPending}
+                                  >
+                                    <Archive className="w-3 h-3 mr-1" /> Arquivar
+                                  </Button>
+                                  {fluxoConfig?.permitir_reiniciar_rotina && (
+                                    <Button
+                                      size="sm" variant="secondary" className="h-7 text-[11px] px-2"
+                                      onClick={() => restartMutation.mutate(item.lead.id)}
+                                      disabled={restartMutation.isPending}
+                                    >
+                                      <RefreshCw className="w-3 h-3 mr-1" /> Reiniciar
+                                    </Button>
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  <Button size="sm" variant="outline" className="h-7 text-[11px] px-2" onClick={() => openAttempt(item)}>
+                                    <Phone className="w-3 h-3 mr-1" /> {item.tentativaAtual}ª Tentativa
+                                  </Button>
+                                  <Button
+                                    size="sm" variant="ghost" className="h-7 text-[11px] px-1.5"
+                                    title="Transferir para outro avaliador"
+                                    onClick={() => { setTransferItem(item); setTransferTarget(""); setShowTransfer(true); }}
+                                  >
+                                    <ArrowRightLeft className="w-3.5 h-3.5" />
+                                  </Button>
+                                  {item.isOverdue && (
+                                    <Button
+                                      size="sm" variant="ghost" className="h-7 text-[11px] px-1.5 text-destructive hover:text-destructive"
+                                      title="Marcar atraso do responsável"
+                                      onClick={() => { setDelayItem(item); setShowDelay(true); }}
+                                    >
+                                      <AlertTriangle className="w-3.5 h-3.5" />
+                                    </Button>
+                                  )}
+                                </>
                               )}
                             </div>
                           </TableCell>
