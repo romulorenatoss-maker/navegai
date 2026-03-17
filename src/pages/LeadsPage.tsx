@@ -332,23 +332,41 @@ export default function LeadsPage() {
       return { lead, tentativaAtual, proximoContato, ultimaInteracao };
     }).sort((a, b) => {
       const now = Date.now();
-      // Scheduled returns that have arrived get top priority
+
+      // 1) Scheduled returns: closer to now = higher priority (expired ones first)
       const aScheduled = a.lead.agendamento_retorno ? new Date(a.lead.agendamento_retorno).getTime() : null;
       const bScheduled = b.lead.agendamento_retorno ? new Date(b.lead.agendamento_retorno).getTime() : null;
-      const aReady = aScheduled && aScheduled <= now;
-      const bReady = bScheduled && bScheduled <= now;
-      if (aReady && !bReady) return -1;
-      if (!aReady && bReady) return 1;
-      if (aReady && bReady) return aScheduled! - bScheduled!;
+      const aHasSchedule = aScheduled !== null;
+      const bHasSchedule = bScheduled !== null;
 
-      // Leads without interactions first (newest leads), then by next contact date
-      if (!a.ultimaInteracao && b.ultimaInteracao) return -1;
-      if (a.ultimaInteracao && !b.ultimaInteracao) return 1;
-      if (!a.ultimaInteracao && !b.ultimaInteracao) return new Date(a.lead.created_at).getTime() - new Date(b.lead.created_at).getTime();
-      // By next contact date ascending
-      const aTime = a.proximoContato?.getTime() || Infinity;
-      const bTime = b.proximoContato?.getTime() || Infinity;
-      return aTime - bTime;
+      // Expired schedules get absolute top priority (oldest expired first)
+      const aExpired = aScheduled && aScheduled <= now;
+      const bExpired = bScheduled && bScheduled <= now;
+      if (aExpired && !bExpired) return -1;
+      if (!aExpired && bExpired) return 1;
+      if (aExpired && bExpired) return aScheduled! - bScheduled!;
+
+      // Future schedules: closer to now = higher priority (rises as time approaches)
+      if (aHasSchedule && !bHasSchedule) {
+        // Scheduled lead rises above non-scheduled if within 2h
+        const hoursUntil = (aScheduled! - now) / (1000 * 60 * 60);
+        if (hoursUntil <= 2) return -1;
+      }
+      if (!aHasSchedule && bHasSchedule) {
+        const hoursUntil = (bScheduled! - now) / (1000 * 60 * 60);
+        if (hoursUntil <= 2) return 1;
+      }
+      if (aHasSchedule && bHasSchedule) return aScheduled! - bScheduled!;
+
+      // 2) Overdue cadence contacts first (next contact already passed)
+      const aOverdue = a.proximoContato && a.proximoContato.getTime() <= now;
+      const bOverdue = b.proximoContato && b.proximoContato.getTime() <= now;
+      if (aOverdue && !bOverdue) return -1;
+      if (!aOverdue && bOverdue) return 1;
+      if (aOverdue && bOverdue) return a.proximoContato!.getTime() - b.proximoContato!.getTime();
+
+      // 3) Oldest leads first (by creation date ascending)
+      return new Date(a.lead.created_at).getTime() - new Date(b.lead.created_at).getTime();
     });
   }, [allLeads, allLeadInteracoes, cadencia]);
 
