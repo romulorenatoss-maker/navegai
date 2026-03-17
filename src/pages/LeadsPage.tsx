@@ -290,28 +290,48 @@ export default function LeadsPage() {
   } | null>(null);
 
   // ─── Queries ──────────────────────────────────────
-  const { data: allLeads = [], isLoading: loadingLeads } = useQuery({
-    queryKey: ["leads-list", profile?.id],
+
+  // Query: profiles from Atendimento sector for vision mode
+  const canUseVisionMode = isAdmin || hasRole("avaliador");
+  const { data: visionProfiles = [] } = useQuery({
+    queryKey: ["vision-atendimento-profiles"],
+    enabled: canUseVisionMode,
     queryFn: async () => {
-      if (!profile) return [] as Lead[];
+      // Find "Atendimento" sector
+      const { data: setores } = await supabase.from("setores").select("id, nome").ilike("nome", "%atendimento%").limit(1);
+      const setorId = setores?.[0]?.id;
+      if (!setorId) return [];
+      // Get profiles linked to that sector
+      const { data: colabSetores } = await supabase.from("colaborador_setores").select("profile_id").eq("setor_id", setorId);
+      if (!colabSetores || colabSetores.length === 0) return [];
+      const profileIds = colabSetores.map(cs => cs.profile_id);
+      const { data: profiles } = await supabase.from("profiles").select("id, nome, cargo").in("id", profileIds).eq("ativo", true).order("nome");
+      return (profiles || []) as { id: string; nome: string; cargo: string | null }[];
+    },
+  });
+
+  const { data: allLeads = [], isLoading: loadingLeads } = useQuery({
+    queryKey: ["leads-list", effectiveProfileId],
+    queryFn: async () => {
+      if (!effectiveProfileId) return [] as Lead[];
       const { data, error } = await supabase
         .from("leads")
         .select("*")
-        .eq("responsavel_id", profile.id)
+        .eq("responsavel_id", effectiveProfileId)
         .order("updated_at", { ascending: true });
       if (error) throw error;
       return data as Lead[];
     },
-    enabled: !!profile,
+    enabled: !!effectiveProfileId,
   });
 
   // Helper: update a single lead in cache without full refetch (prevents closing detail panel)
   const updateLeadInCache = useCallback((leadId: string, updates: Partial<Lead>) => {
-    queryClient.setQueryData(["leads-list", profile?.id], (old: Lead[] | undefined) => {
+    queryClient.setQueryData(["leads-list", effectiveProfileId], (old: Lead[] | undefined) => {
       if (!old) return old;
       return old.map(l => l.id === leadId ? { ...l, ...updates } : l);
     });
-  }, [profile?.id, queryClient]);
+  }, [effectiveProfileId, queryClient]);
 
   // Auto-select lead from URL param ?id=
   useEffect(() => {
