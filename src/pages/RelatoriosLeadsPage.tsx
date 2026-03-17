@@ -141,10 +141,11 @@ export default function RelatoriosLeadsPage() {
     const planoIds = [...new Set(leadsData.map((l) => l.plano_id).filter(Boolean))] as string[];
     const respIds = [...new Set(leadsData.map((l) => l.responsavel_id).filter(Boolean))] as string[];
 
-    const [contatosRes, planosRes, profilesRes] = await Promise.all([
+    const [contatosRes, planosRes, profilesRes, atrasosRes] = await Promise.all([
       leadIds.length > 0 ? supabase.from("lead_contatos").select("lead_id, valor").eq("tipo_contato", "telefone").in("lead_id", leadIds) : Promise.resolve({ data: [] }),
       planoIds.length > 0 ? supabase.from("planos").select("id, nome_plano").in("id", planoIds) : Promise.resolve({ data: [] }),
       respIds.length > 0 ? supabase.from("profiles").select("id, nome").in("id", respIds) : Promise.resolve({ data: [] }),
+      leadIds.length > 0 ? supabase.from("lead_tarefas_contato").select("lead_id").eq("fora_do_prazo", true).in("lead_id", leadIds) : Promise.resolve({ data: [] }),
     ]);
 
     const phoneMap: Record<string, string> = {};
@@ -153,6 +154,8 @@ export default function RelatoriosLeadsPage() {
     (planosRes.data || []).forEach((p: any) => { planoMap[p.id] = p.nome_plano; });
     const profileMap: Record<string, string> = {};
     (profilesRes.data || []).forEach((p: any) => { profileMap[p.id] = p.nome; });
+    const atrasosMap: Record<string, number> = {};
+    (atrasosRes.data || []).forEach((a: any) => { atrasosMap[a.lead_id] = (atrasosMap[a.lead_id] || 0) + 1; });
 
     setLeadsList(leadsData.map((l) => ({
       id: l.id,
@@ -164,6 +167,7 @@ export default function RelatoriosLeadsPage() {
       telefone: phoneMap[l.id] || null,
       plano_nome: l.plano_id ? planoMap[l.plano_id] || null : null,
       repetidor: (l as any).repetidor || null,
+      atrasos: atrasosMap[l.id] || 0,
     })));
     setSelected(new Set());
     setLoading(false);
