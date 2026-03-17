@@ -649,6 +649,16 @@ export default function LeadsPage() {
 
   const removeContact = async (contato: LeadContato) => {
     if (!selectedLead || !profile) return;
+
+    // Prevent removing the last phone contact
+    if (contato.tipo_contato === "telefone") {
+      const phoneContacts = (leadContatos || []).filter((c: LeadContato) => c.tipo_contato === "telefone");
+      if (phoneContacts.length <= 1) {
+        toast.error("O lead deve ter pelo menos um contato telefônico.");
+        return;
+      }
+    }
+
     const { error } = await supabase.from("lead_contatos").delete().eq("id", contato.id);
     if (error) { toast.error(error.message); return; }
     await supabase.from("lead_historico").insert({
