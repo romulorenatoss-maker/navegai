@@ -248,11 +248,14 @@ function SimpleMode() {
 
 // ─── Chat Mode Component ───
 function ChatMode() {
+  const { profile } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  
+  const userName = profile?.nome?.split(" ").slice(0, 2).join(" ") || "Colaborador";
 
   useEffect(() => {
     if (scrollRef.current) {
