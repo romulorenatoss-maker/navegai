@@ -58,6 +58,8 @@ interface QueueItem {
   isOverdue: boolean;
   isScheduled: boolean;
   scheduleReady: boolean;
+  nextAttempt: Date;
+  nextAttemptExpired: boolean;
 }
 
 // ─── Helpers ────────────────────────────────────────────
