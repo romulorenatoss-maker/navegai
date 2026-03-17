@@ -61,6 +61,7 @@ export function AppLayout() {
               onNavigate={() => setMobileOpen(false)}
               isAdmin={isAdmin}
               allowedScreens={allowedScreens}
+              canViewPath={canViewPath}
             />
           </SheetContent>
         </Sheet>
