@@ -472,7 +472,7 @@ export default function FilaLeadsPage() {
       await supabase.from("leads").update({ status_lead: "aguardando_captura", responsavel_id: null, notificacao_vista: false } as any).eq("id", leadId);
       await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "lead_reaberto_captura", descricao: "Lead reaberto e enviado para Fila de Captura. Usuários que já interagiram não poderão capturá-lo." });
     },
-    onSuccess: () => { toast.success("Lead reaberto e enviado para Fila de Captura!"); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }); },
+    onSuccess: () => { toast.success("Lead reaberto e enviado para Fila de Captura!"); setActiveTab("captura"); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }); },
     onError: (err: any) => toast.error(err.message),
   });
 
