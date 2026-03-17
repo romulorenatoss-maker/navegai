@@ -686,11 +686,11 @@ export default function LeadsPage() {
         .select("id");
       if (error) throw error;
       if (!data || data.length === 0) throw new Error("Este lead está sendo visualizado por outro usuário.");
-      // Log reservation
+      // Log reservation — "pegou"
       await supabase.from("lead_historico").insert({
         lead_id: leadId, usuario_id: profile.id,
-        tipo_evento: "lead_reservado",
-        descricao: `Lead reservado por ${profile.nome}. Aguardando primeira interação.`,
+        tipo_evento: "lead_capturado",
+        descricao: `${profile.nome} capturou o lead e está visualizando. Aguardando primeira interação.`,
       });
       return leadId;
     },
