@@ -136,6 +136,7 @@ const PERIODO_HORA: Record<string, number> = { manha: 9, tarde: 14, noite: 19 };
 export default function LeadsPage() {
   const { profile, isAdmin } = useAuth();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Search
   const [searchTerm, setSearchTerm] = useState("");
