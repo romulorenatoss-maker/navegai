@@ -1130,35 +1130,13 @@ export default function AvaliacaoOSPage() {
           status: (formFoundOS.status === "aguardando_numero" && num) ? "aberta" : formFoundOS.status,
         } as any).eq("id", osId);
       } else {
-        // Check for existing open OS for this client before creating
-        const { data: existingOpenOS } = await supabase
-          .from("ordens_servico")
-          .select("id, numero_os, status")
-          .eq("cliente_id", clienteId)
-          .in("status", ["aberta", "em_andamento", "aguardando_numero"] as any[])
-          .limit(1);
-
-        if (existingOpenOS && existingOpenOS.length > 0) {
-          const existingOS = existingOpenOS[0];
-          osId = existingOS.id;
-          // Update with new data
-          await supabase.from("ordens_servico").update({
-            atendente_id: atendenteId || null, tecnico_id: tecnicoId || null,
-            tipo_servico_id: tipoServicoId,
-            numero_os: num || existingOS.numero_os || null,
-            cliente_nome: nomeTr,
-            cliente_cpf: cpfTr,
-            status: (existingOS.status === "aguardando_numero" && num) ? "aberta" : existingOS.status,
-          } as any).eq("id", osId);
-          toast.info("OS existente encontrada. Atualizando dados...");
-        } else {
-          const { data: newOs, error: oe } = await supabase.from("ordens_servico").insert({
-            numero_os: num || null, cliente_nome: nomeTr, cliente_cpf: cpfTr, tipo_servico_id: tipoServicoId,
-            cliente_id: clienteId, atendente_id: atendenteId || null, tecnico_id: tecnicoId || null,
-          } as any).select("id").single();
-          if (oe) throw oe;
-          osId = newOs.id;
-        }
+        // No existing OS found in search — create a new one
+        const { data: newOs, error: oe } = await supabase.from("ordens_servico").insert({
+          numero_os: num || null, cliente_nome: nomeTr, cliente_cpf: cpfTr, tipo_servico_id: tipoServicoId,
+          cliente_id: clienteId, atendente_id: atendenteId || null, tecnico_id: tecnicoId || null,
+        } as any).select("id").single();
+        if (oe) throw oe;
+        osId = newOs.id;
       }
 
       // Snapshot checklist questions into os_perguntas
@@ -2711,7 +2689,7 @@ export default function AvaliacaoOSPage() {
           setShowNewClienteForm(true);
           toast.info("Cliente não encontrado. Preencha o nome para cadastrar.");
         } else {
-          toast.info("Nenhuma OS aberta encontrada para este cliente. Informe o número da OS para criar.");
+          toast.info("Nenhuma OS aberta encontrada. Selecione o tipo de serviço para criar uma nova OS.");
         }
       }
 
