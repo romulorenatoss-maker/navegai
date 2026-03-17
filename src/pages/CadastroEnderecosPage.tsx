@@ -323,7 +323,7 @@ export default function CadastroEnderecosPage() {
                           <span className="text-xs text-muted-foreground ml-2">
                             ({getBairroNome(r.bairro_id)}{bairro ? ` — ${getCidadeNome(bairro.cidade_id)}` : ""})
                           </span>
-                          {r.cep && <span className="text-xs text-muted-foreground ml-2">CEP: {r.cep}</span>}
+                          {r.cep && r.cep.length > 0 && <span className="text-xs text-muted-foreground ml-2">CEP: {r.cep.join(", ")}</span>}
                         </div>
                       </div>
                       <div className="flex gap-1">
