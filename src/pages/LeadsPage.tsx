@@ -767,14 +767,7 @@ export default function LeadsPage() {
     queryClient.invalidateQueries({ queryKey: ["leads-list"] });
   }, [profile, queryClient]);
 
-  // Ref tracking for cleanup (no auto-expiry — reservations are manual only)
-  const reservedLeadRef = useRef<{ id: string; profileId: string } | null>(null);
-  useEffect(() => {
-    if (selectedLead?.status_lead === "reservado" && selectedLead?.reserved_by === profile?.id) {
-      reservedLeadRef.current = { id: selectedLead.id, profileId: profile!.id };
-    } else {
-      reservedLeadRef.current = null;
-    }
+  // Reserved lead ref no longer needed since capture directly assigns
   }, [selectedLead?.id, selectedLead?.status_lead, selectedLead?.reserved_by, profile?.id]);
 
 
