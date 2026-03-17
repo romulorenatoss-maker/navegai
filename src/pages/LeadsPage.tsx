@@ -2744,6 +2744,20 @@ export default function LeadsPage() {
                 <Input placeholder="Nome do lead" value={createName} onChange={e => setCreateName(e.target.value)} />
               </div>
 
+              {/* Origem / Campanha */}
+              <div className="space-y-1.5">
+                <Label>Origem (Campanha)</Label>
+                <Select value={createCampanhaId} onValueChange={setCreateCampanhaId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione a origem..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">Manual (sem campanha)</SelectItem>
+                    {campanhasAtivas.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               {/* ─── Address fields ──────────────── */}
               <div className="border-t pt-3 mt-3">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Endereço</p>
