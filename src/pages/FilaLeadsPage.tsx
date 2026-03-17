@@ -107,12 +107,27 @@ export default function FilaLeadsPage() {
   const [tarefaNumero, setTarefaNumero] = useState("");
   const [tarefaResultado, setTarefaResultado] = useState("");
 
+  // ─── Realtime: auto-refresh when leads change ─────
+  useEffect(() => {
+    const channel = supabase
+      .channel("fila-leads-realtime")
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "leads",
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
+
   // ─── Queries ──────────────────────────────────────
   const { data: leads = [], isLoading: loadingLeads } = useQuery({
     queryKey: ["fila-leads"],
     queryFn: async () => {
       const { data, error } = await supabase.from("leads").select("*")
-        .in("status_lead", ["novo", "em_contato", "interessado", "aguardando_decisao_avaliador", "aguardando_captura"])
+        .in("status_lead", ["novo", "em_contato", "interessado", "aguardando_decisao_avaliador", "aguardando_captura", "reservado"])
         .order("updated_at", { ascending: true });
       if (error) throw error;
       return data as Lead[];
