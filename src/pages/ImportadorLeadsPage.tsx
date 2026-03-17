@@ -242,15 +242,63 @@ export default function ImportadorLeadsPage() {
       .from("rotina_tentativas_leads")
       .select("*").eq("tentativa_numero", 1).eq("ativo", true).maybeSingle();
 
+    // Pre-fetch lookup tables for FK resolution
+    const [{ data: allCidades }, { data: allBairros }, { data: allRuas }, { data: allPlanos }] = await Promise.all([
+      supabase.from("cidades").select("id, nome"),
+      supabase.from("bairros").select("id, nome, cidade_id"),
+      supabase.from("ruas").select("id, nome, bairro_id"),
+      supabase.from("planos").select("id, nome_plano"),
+    ]);
+
+    const cidadeMap = new Map<string, string>();
+    for (const c of allCidades || []) cidadeMap.set(c.nome.toLowerCase().trim(), c.id);
+
+    const bairroMap = new Map<string, { id: string; cidade_id: string }>();
+    for (const b of allBairros || []) bairroMap.set(b.nome.toLowerCase().trim(), { id: b.id, cidade_id: b.cidade_id });
+
+    const ruaMap = new Map<string, { id: string; bairro_id: string }>();
+    for (const r of allRuas || []) ruaMap.set(r.nome.toLowerCase().trim(), { id: r.id, bairro_id: r.bairro_id });
+
+    const planoMap = new Map<string, string>();
+    for (const p of allPlanos || []) planoMap.set(p.nome_plano.toLowerCase().trim(), p.id);
+
     for (const row of toImport) {
       try {
         const nomeFmt = toProperCase(row.nome);
+
+        // Resolve FK IDs from names
+        let cidadeId: string | null = null;
+        let bairroId: string | null = null;
+        let ruaId: string | null = null;
+        let planoId: string | null = null;
+
+        if (row.cidade) {
+          cidadeId = cidadeMap.get(row.cidade.toLowerCase().trim()) || null;
+        }
+        if (row.bairro) {
+          const b = bairroMap.get(row.bairro.toLowerCase().trim());
+          if (b) { bairroId = b.id; if (!cidadeId) cidadeId = b.cidade_id; }
+        }
+        if (row.rua) {
+          const r = ruaMap.get(row.rua.toLowerCase().trim());
+          if (r) { ruaId = r.id; if (!bairroId) bairroId = r.bairro_id; }
+        }
+        if (row.plano) {
+          planoId = planoMap.get(row.plano.toLowerCase().trim()) || null;
+        }
+
         const { data: newLead, error } = await supabase.from("leads").insert({
           nome: nomeFmt,
           status_lead: "aguardando_captura",
           responsavel_id: null,
           origem_lead: "importacao",
           campanha_id: (campanhaId && campanhaId !== "__none") ? campanhaId : null,
+          cidade_id: cidadeId,
+          bairro_id: bairroId,
+          rua_id: ruaId,
+          numero_endereco: row.numero || null,
+          plano_id: planoId,
+          repetidor: row.repetidor || null,
         } as any).select().single();
 
         if (error || !newLead) throw error || new Error("Falha ao criar lead");
