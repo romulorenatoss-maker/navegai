@@ -988,14 +988,14 @@ export default function LeadsPage() {
       toast.success("Rotina reiniciada! Lead voltou para a fila.");
     } else {
       // Archive lead
-      await supabase.from("leads").update({ status_lead: "perdido" }).eq("id", selectedLead.id);
+      await supabase.from("leads").update({ status_lead: "arquivado" }).eq("id", selectedLead.id);
       await supabase.from("lead_historico").insert({
         lead_id: selectedLead.id, usuario_id: profile.id,
         tipo_evento: "lead_arquivado",
         descricao: `Lead arquivado por ${profile.nome} após ${maxTentativas} tentativas sem sucesso.`,
       });
-      setSelectedLead(prev => prev ? { ...prev, status_lead: "perdido" } : null);
-      toast.success("Lead arquivado como perdido.");
+      setSelectedLead(prev => prev ? { ...prev, status_lead: "arquivado" } : null);
+      toast.success("Lead arquivado.");
     }
     setShowFinalize(false);
     queryClient.invalidateQueries({ queryKey: ["leads-list"] });
