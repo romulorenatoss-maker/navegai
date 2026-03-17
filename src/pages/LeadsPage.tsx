@@ -1557,68 +1557,71 @@ export default function LeadsPage() {
                   </CardHeader>
                 </Card>
 
-                {/* Ação Card */}
-                <Card>
-                  <CardHeader className="py-2 px-3 border-b">
-                    <CardTitle className="text-xs font-semibold flex items-center gap-1.5 text-muted-foreground uppercase tracking-wider">
-                      <Zap className="w-3 h-3" /> Ação
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-2 space-y-1">
-                    <Button size="sm" className="w-full justify-start text-xs h-8 press-effect" onClick={() => setShowInteraction(true)}>
-                      <PhoneCall className="w-3.5 h-3.5 mr-2" /> Registrar Tentativa {tentativasRealizadas}
-                    </Button>
-                    <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8" onClick={() => { setScheduleDate(undefined); setScheduleHour("09"); setScheduleMinute("00"); setShowSchedule(true); }}>
-                      <CalendarClock className="w-3.5 h-3.5 mr-2" /> Agendar Retorno
-                    </Button>
-                    {selectedLead.agendamento_retorno && (
-                      <div className="p-2 rounded-md bg-muted/50 border text-xs flex items-center gap-1.5">
-                        <CalendarClock className="w-3 h-3 text-primary" />
-                        <span>Retorno: <span className="font-semibold">{fmtDate(selectedLead.agendamento_retorno)}</span></span>
-                        <button className="ml-auto text-destructive/60 hover:text-destructive text-[10px] underline" onClick={async () => {
-                          await supabase.from("leads").update({ agendamento_retorno: null } as any).eq("id", selectedLead.id);
-                          if (profile) {
-                            await supabase.from("lead_historico").insert({ lead_id: selectedLead.id, usuario_id: profile.id, tipo_evento: "agendamento_removido", descricao: "Agendamento de retorno removido manualmente" });
-                          }
-                          setSelectedLead(prev => prev ? { ...prev, agendamento_retorno: null } : null);
-                          queryClient.invalidateQueries({ queryKey: ["leads-list"] });
-                          refetchHistorico();
-                          toast.success("Agendamento removido.");
-                        }}>Remover</button>
-                      </div>
-                    )}
-                    {selectedLead.status_lead !== "convertido" ? (
-                      <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8" onClick={openConversion}>
-                        <UserPlus className="w-3.5 h-3.5 mr-2" /> Converter em Cliente
+                {/* Ação Popover Button */}
+                <div className="flex items-center gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button size="sm" className="h-8 text-xs gap-1.5 press-effect">
+                        <Zap className="w-3.5 h-3.5" /> Ação
                       </Button>
-                    ) : (
-                      <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-0 w-full justify-center py-1.5">✓ Convertido</Badge>
-                    )}
-                    {allAttemptsExhausted && selectedLead.status_lead !== "perdido" && selectedLead.status_lead !== "convertido" && (
-                      <>
-                        <div className="p-2 rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
-                          <p className="text-xs text-amber-800 dark:text-amber-200 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Todas as {maxTentativas} tentativas realizadas.</p>
-                        </div>
-                        <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8 text-destructive hover:text-destructive" onClick={() => setShowFinalize(true)}>
-                          Finalizar Tentativas
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-1" align="start">
+                      <div className="space-y-0.5">
+                        <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8" onClick={() => setShowInteraction(true)}>
+                          <PhoneCall className="w-3.5 h-3.5 mr-2" /> Registrar Tentativa {tentativasRealizadas}
                         </Button>
-                      </>
-                    )}
-                    {canArchiveLead && selectedLead.status_lead !== "arquivado" && selectedLead.status_lead !== "convertido" && (
-                      <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8 text-destructive hover:text-destructive" onClick={async () => {
-                        if (!profile) return;
-                        await supabase.from("leads").update({ status_lead: "arquivado" }).eq("id", selectedLead.id);
-                        await supabase.from("lead_historico").insert({ lead_id: selectedLead.id, usuario_id: profile.id, tipo_evento: "lead_arquivado", descricao: "Lead arquivado manualmente" });
-                        setSelectedLead(prev => prev ? { ...prev, status_lead: "arquivado" } : null);
+                        <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8" onClick={() => { setScheduleDate(undefined); setScheduleHour("09"); setScheduleMinute("00"); setShowSchedule(true); }}>
+                          <CalendarClock className="w-3.5 h-3.5 mr-2" /> Agendar Retorno
+                        </Button>
+                        {selectedLead.status_lead !== "convertido" && (
+                          <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8" onClick={openConversion}>
+                            <UserPlus className="w-3.5 h-3.5 mr-2" /> Converter em Cliente
+                          </Button>
+                        )}
+                        {allAttemptsExhausted && selectedLead.status_lead !== "perdido" && selectedLead.status_lead !== "convertido" && (
+                          <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8 text-amber-600 hover:text-amber-700" onClick={() => setShowFinalize(true)}>
+                            <AlertTriangle className="w-3.5 h-3.5 mr-2" /> Finalizar Tentativas
+                          </Button>
+                        )}
+                        {canArchiveLead && selectedLead.status_lead !== "arquivado" && selectedLead.status_lead !== "convertido" && (
+                          <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8 text-destructive hover:text-destructive" onClick={async () => {
+                            if (!profile) return;
+                            await supabase.from("leads").update({ status_lead: "arquivado" }).eq("id", selectedLead.id);
+                            await supabase.from("lead_historico").insert({ lead_id: selectedLead.id, usuario_id: profile.id, tipo_evento: "lead_arquivado", descricao: "Lead arquivado manualmente" });
+                            setSelectedLead(prev => prev ? { ...prev, status_lead: "arquivado" } : null);
+                            queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                            refetchHistorico();
+                            toast.success("Lead arquivado.");
+                          }}>
+                            <Archive className="w-3.5 h-3.5 mr-2" /> Arquivar Lead
+                          </Button>
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  {selectedLead.status_lead === "convertido" && (
+                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-0 text-xs">✓ Convertido</Badge>
+                  )}
+                  {selectedLead.agendamento_retorno && (
+                    <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted/50 border text-[11px]">
+                      <CalendarClock className="w-3 h-3 text-primary" />
+                      <span className="font-medium">{fmtDate(selectedLead.agendamento_retorno)}</span>
+                      <button className="text-destructive/60 hover:text-destructive text-[10px] underline ml-1" onClick={async () => {
+                        await supabase.from("leads").update({ agendamento_retorno: null } as any).eq("id", selectedLead.id);
+                        if (profile) {
+                          await supabase.from("lead_historico").insert({ lead_id: selectedLead.id, usuario_id: profile.id, tipo_evento: "agendamento_removido", descricao: "Agendamento de retorno removido manualmente" });
+                        }
+                        setSelectedLead(prev => prev ? { ...prev, agendamento_retorno: null } : null);
                         queryClient.invalidateQueries({ queryKey: ["leads-list"] });
                         refetchHistorico();
-                        toast.success("Lead arquivado.");
-                      }}>
-                        <Archive className="w-3.5 h-3.5 mr-2" /> Arquivar Lead
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
+                        toast.success("Agendamento removido.");
+                      }}>×</button>
+                    </div>
+                  )}
+                  {allAttemptsExhausted && selectedLead.status_lead !== "perdido" && selectedLead.status_lead !== "convertido" && (
+                    <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-0 text-[10px] gap-1"><AlertTriangle className="w-3 h-3" /> {maxTentativas} tentativas</Badge>
+                  )}
+                </div>
 
                 {/* Dados do Lead - vertical stacking */}
                 <Card>
