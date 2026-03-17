@@ -5,11 +5,12 @@ import { useAuth } from "@/contexts/AuthContext";
 interface PendingCounts {
   pendingEvaluations: number;
   pendingLeadDecisions: number;
+  pendingMyLeads: number;
 }
 
 export function usePendingNotifications() {
   const { profile, isAdmin } = useAuth();
-  const [counts, setCounts] = useState<PendingCounts>({ pendingEvaluations: 0, pendingLeadDecisions: 0 });
+  const [counts, setCounts] = useState<PendingCounts>({ pendingEvaluations: 0, pendingLeadDecisions: 0, pendingMyLeads: 0 });
 
   const fetchCounts = useCallback(async () => {
     if (!profile) return;
@@ -83,7 +84,20 @@ export function usePendingNotifications() {
         .eq("status_lead", "aguardando_decisao_avaliador");
       pendingLeadDecisions = count || 0;
 
-      setCounts({ pendingEvaluations, pendingLeadDecisions });
+      // 3. My leads with pending tasks for today (assigned to me, with overdue or today's tasks)
+      let pendingMyLeads = 0;
+      const now = new Date();
+      const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
+      
+      const { count: myLeadTasksCount } = await supabase
+        .from("lead_tarefas_contato")
+        .select("id", { count: "exact", head: true })
+        .eq("responsavel_id", profile.id)
+        .eq("status", "pendente")
+        .lte("data_contato", endOfToday);
+      pendingMyLeads = myLeadTasksCount || 0;
+
+      setCounts({ pendingEvaluations, pendingLeadDecisions, pendingMyLeads });
     } catch (err) {
       console.error("Error fetching pending notifications:", err);
     }
@@ -102,6 +116,7 @@ export function usePendingNotifications() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'avaliacoes' }, fetchCounts)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, fetchCounts)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ordens_servico' }, fetchCounts)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lead_tarefas_contato' }, fetchCounts)
       .subscribe();
 
     return () => {
