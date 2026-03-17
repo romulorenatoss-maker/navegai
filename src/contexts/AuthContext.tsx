@@ -16,6 +16,7 @@ interface AuthContextType {
   permissions: EffectivePermission[];
   permissionsLoading: boolean;
   can: (resourceCode: string, action: "view" | "create" | "edit" | "delete" | "assign" | "export") => boolean;
+  getScope: (resourceCode: string) => DataScope;
   canViewPath: (path: string) => boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
