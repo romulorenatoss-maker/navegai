@@ -596,7 +596,7 @@ export default function LeadsPage() {
     queryKey: ["leads-captura"],
     queryFn: async () => {
       const { data, error } = await supabase.from("leads").select("*")
-        .eq("status_lead", "aguardando_captura")
+        .in("status_lead", ["aguardando_captura", "reservado"])
         .order("updated_at", { ascending: true });
       if (error) throw error;
       return data as Lead[];
@@ -642,35 +642,162 @@ export default function LeadsPage() {
         // Only exclude the LAST handler (person whose cycle just ended), not everyone
         const lastHandlerId = lastInteracao?.colaborador_id || null;
         const wasLastHandler = lastHandlerId === profile.id;
-        return { lead, contatos, userPreviouslyHandled: wasLastHandler, ultimaTentativaEm: lastInteracao?.data_interacao || null };
+        // Check reservation status
+        const isReservedByMe = lead.reserved_by === profile.id;
+        const isReservedByOther = !!lead.reserved_by && lead.reserved_by !== profile.id;
+        // Check if reservation expired (2 min)
+        const reservationExpired = lead.reserved_at
+          ? (Date.now() - new Date(lead.reserved_at).getTime()) > RESERVATION_TIMEOUT_MS
+          : false;
+        return {
+          lead, contatos, userPreviouslyHandled: wasLastHandler,
+          ultimaTentativaEm: lastInteracao?.data_interacao || null,
+          isReservedByMe, isReservedByOther: isReservedByOther && !reservationExpired,
+          reservationExpired,
+        };
       })
-      .filter(item => isAdmin || !item.userPreviouslyHandled);
+      .filter(item => {
+        // Hide leads reserved by other users (unless expired)
+        if (item.isReservedByOther) return false;
+        // Admin sees everything, non-admin filters out previous handler
+        return isAdmin || !item.userPreviouslyHandled || item.isReservedByMe;
+      });
   }, [capturaLeadsRaw, capturaInteracoes, capturaContatos, profile, isAdmin]);
 
-  const captureMutation = useMutation({
+  // ─── Reservation: reserve lead (not assign) ─────────────────
+  const reserveLeadMutation = useMutation({
     mutationFn: async (leadId: string) => {
       if (!profile) throw new Error("Perfil não encontrado.");
+      // Atomic: only reserve if not already reserved (or reservation expired)
       const { data, error } = await supabase
         .from("leads")
-        .update({ responsavel_id: profile.id, status_lead: "em_contato" } as any)
+        .update({
+          reserved_by: profile.id,
+          reserved_at: new Date().toISOString(),
+          status_lead: "reservado",
+        } as any)
         .eq("id", leadId)
-        .is("responsavel_id", null)
+        .or(`reserved_by.is.null,reserved_at.lt.${new Date(Date.now() - RESERVATION_TIMEOUT_MS).toISOString()}`)
         .select("id");
       if (error) throw error;
-      if (!data || data.length === 0) throw new Error("Lead já foi capturado por outro usuário.");
-      await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", leadId).in("status", ["pendente", "atrasado"]);
-      const { data: firstRotina } = await supabase.from("rotina_tentativas_leads").select("*").eq("tentativa_numero", 1).maybeSingle();
-      const periodo = (firstRotina as any)?.periodo_contato || "manha";
-      await supabase.from("lead_tarefas_contato").insert({ lead_id: leadId, tentativa: 1, data_contato: new Date().toISOString(), periodo, status: "pendente", responsavel_id: profile.id });
-      await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "lead_capturado", descricao: `Lead capturado por ${profile.nome}. Nova rotina de tentativas iniciada.` });
+      if (!data || data.length === 0) throw new Error("Este lead está sendo visualizado por outro usuário.");
+      // Log reservation
+      await supabase.from("lead_historico").insert({
+        lead_id: leadId, usuario_id: profile.id,
+        tipo_evento: "lead_reservado",
+        descricao: `Lead reservado por ${profile.nome}. Aguardando primeira interação.`,
+      });
+      return leadId;
     },
-    onSuccess: () => {
-      toast.success("Lead capturado com sucesso! Nova rotina iniciada.");
+    onSuccess: (leadId) => {
+      toast.success("Lead reservado! Registre a interação para confirmar.");
       queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
-      queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+      // Open the reserved lead for interaction
+      const lead = capturaLeadsRaw.find(l => l.id === leadId);
+      if (lead) {
+        setSelectedLead({ ...lead, reserved_by: profile!.id, reserved_at: new Date().toISOString(), status_lead: "reservado" });
+      }
     },
     onError: (err: any) => toast.error(err.message),
   });
+
+  // ─── Release reservation ─────────────────
+  const releaseReservation = useCallback(async (leadId: string, reason: string = "manual") => {
+    if (!profile) return;
+    await supabase.from("leads").update({
+      reserved_by: null,
+      reserved_at: null,
+      status_lead: "aguardando_captura",
+    } as any).eq("id", leadId).eq("reserved_by", profile.id);
+    await supabase.from("lead_historico").insert({
+      lead_id: leadId, usuario_id: profile.id,
+      tipo_evento: reason === "timeout" ? "reserva_expirada" : "reserva_liberada",
+      descricao: reason === "timeout"
+        ? `Reserva expirada após 2 minutos sem interação. Lead retornou à fila.`
+        : `Reserva liberada por ${profile.nome}. Lead retornou à fila.`,
+    });
+    queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
+  }, [profile, queryClient]);
+
+  // ─── Auto-expiry timer for reserved leads ─────────────────
+  useEffect(() => {
+    if (!selectedLead || selectedLead.status_lead !== "reservado" || selectedLead.reserved_by !== profile?.id) return;
+    const reservedAt = selectedLead.reserved_at ? new Date(selectedLead.reserved_at).getTime() : Date.now();
+    const remaining = RESERVATION_TIMEOUT_MS - (Date.now() - reservedAt);
+    if (remaining <= 0) {
+      // Already expired
+      releaseReservation(selectedLead.id, "timeout");
+      setSelectedLead(null);
+      toast.warning("Reserva expirada. Lead retornou à fila de captura.");
+      return;
+    }
+    const timer = setTimeout(() => {
+      releaseReservation(selectedLead.id, "timeout");
+      setSelectedLead(null);
+      toast.warning("Reserva expirada (2 minutos). Lead retornou à fila de captura.");
+    }, remaining);
+    return () => clearTimeout(timer);
+  }, [selectedLead?.id, selectedLead?.status_lead, selectedLead?.reserved_by, selectedLead?.reserved_at, profile?.id, releaseReservation]);
+
+  // ─── Release reservation on leaving the lead (deselecting or navigating away) ──
+  const previousSelectedLeadRef = useCallback(() => {}, []);
+  useEffect(() => {
+    // Release when user deselects or selects a different lead
+    return () => {
+      // This runs on unmount or when selectedLead changes
+    };
+  }, []);
+
+  // Release on component unmount (leaving the page)
+  useEffect(() => {
+    return () => {
+      // Use the stored ref to release on unmount
+    };
+  }, []);
+
+  // Track selected lead changes to release previous reservation
+  const prevSelectedLeadIdRef = useMemo(() => ({ current: null as string | null }), []);
+  useEffect(() => {
+    const prevId = prevSelectedLeadIdRef.current;
+    const currentId = selectedLead?.id || null;
+    const wasReservedByMe = prevId && capturaLeadsRaw.find(l => l.id === prevId)?.reserved_by === profile?.id;
+
+    if (prevId && prevId !== currentId && wasReservedByMe) {
+      // User moved away from a reserved lead without acting
+      releaseReservation(prevId, "manual");
+    }
+    prevSelectedLeadIdRef.current = currentId;
+  }, [selectedLead?.id, profile?.id]);
+
+  // Release reservation on page unload (browser close / navigate away)
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (selectedLead?.status_lead === "reservado" && selectedLead?.reserved_by === profile?.id) {
+        // Use sendBeacon for reliable cleanup
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/leads?id=eq.${selectedLead.id}&reserved_by=eq.${profile!.id}`;
+        const body = JSON.stringify({ reserved_by: null, reserved_at: null, status_lead: "aguardando_captura" });
+        navigator.sendBeacon(url, new Blob([body], { type: "application/json" }));
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [selectedLead?.id, selectedLead?.status_lead, selectedLead?.reserved_by, profile?.id]);
+
+  // ─── Realtime subscription for capture queue ─────────────────
+  useEffect(() => {
+    const channel = supabase
+      .channel("leads-reservation-realtime")
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "leads",
+        filter: "status_lead=in.(aguardando_captura,reservado)",
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
 
   // Build priority queue (cycle-aware after transfers)
   const priorityQueue = useMemo(() => {
