@@ -59,10 +59,13 @@ const allNavSections = [
     ],
   },
   {
-    title: "Relatórios Gerais",
+    title: "Sistema",
     items: [
       { to: "/relatorios", icon: BarChart3, label: "Relatórios de OS" },
       { to: "/leads/relatorios", icon: FileBarChart, label: "Relatórios de Leads" },
+      { to: "/desempenho", icon: UserCheck, label: "Desempenho" },
+      { to: "/auditoria", icon: ClipboardList, label: "Auditoria" },
+      { to: "/configuracoes", icon: Settings, label: "Configurações" },
     ],
   },
 ];
