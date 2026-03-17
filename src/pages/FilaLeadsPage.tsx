@@ -425,33 +425,48 @@ export default function FilaLeadsPage() {
     });
   }, [leads, allContatos, allInteracoes, cadencia, profiles]);
 
-  // ─── Fila de Captura (somente leads realmente disponíveis) ──
+  // ─── Fila de Captura (leads aguardando captura + reservados visíveis) ──
+  const RESERVATION_TIMEOUT_MS = 2 * 60 * 1000;
   const capturaLeads = useMemo(() => {
     if (!profile) return [];
     const capturaItems = leads
-      .filter(lead => lead.status_lead === CAPTURE_QUEUE_STATUS && !lead.reserved_by && !lead.responsavel_id)
+      .filter(lead => {
+        if (lead.status_lead === CAPTURE_QUEUE_STATUS && !lead.reserved_by && !lead.responsavel_id) return true;
+        if (lead.status_lead === "reservado" && lead.reserved_by) {
+          const expired = lead.reserved_at
+            ? (Date.now() - new Date(lead.reserved_at).getTime()) > RESERVATION_TIMEOUT_MS
+            : false;
+          if (lead.reserved_by === profile.id) return true;
+          if (isAdmin) return true;
+          if (expired) return true;
+          return false;
+        }
+        return false;
+      })
       .map(lead => {
         const contatos = allContatos.filter(c => c.lead_id === lead.id);
         const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
         const lastInteracao = interacoes[0];
         const prevHandlerIds = interacoes.map((i: any) => i.colaborador_id);
         const userPreviouslyHandled = prevHandlerIds.includes(profile.id);
+        const isReservedByMe = lead.reserved_by === profile.id;
+        const isReservedByOther = !!lead.reserved_by && lead.reserved_by !== profile.id;
+        const reservedByName = isReservedByOther ? (profiles.find(p => p.id === lead.reserved_by)?.nome || "Outro") : null;
 
         return {
-          lead,
-          contatos,
+          lead, contatos,
           totalInteracoes: interacoes.length,
           ultimaTentativaEm: lastInteracao?.data_interacao || null,
           userPreviouslyHandled,
-          isReservedByOther: false,
-          isReservedByMe: false,
-          reservedByName: null,
-          isTaken: false,
+          isReservedByOther,
+          isReservedByMe,
+          reservedByName,
+          isTaken: isReservedByOther,
         };
       });
 
     return capturaItems;
-  }, [leads, allContatos, allInteracoes, profile, isAdmin, CAPTURE_QUEUE_STATUS]);
+  }, [leads, allContatos, allInteracoes, profile, isAdmin, CAPTURE_QUEUE_STATUS, profiles]);
 
   // ─── Notificações (aguardando_decisao) ────────────
   const notificacoes = useMemo(() => {
