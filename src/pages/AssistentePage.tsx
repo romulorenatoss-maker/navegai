@@ -13,10 +13,12 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/business-ass
 type Message = { role: "user" | "assistant"; content: string };
 
 const quickSuggestions = [
-  { label: "Vendas hoje", icon: TrendingUp, question: "Quantas vendas (conversões) foram feitas hoje?" },
-  { label: "Leads na fila", icon: Users, question: "Quantos leads estão na fila aguardando atendimento?" },
-  { label: "Média de tentativas", icon: BarChart3, question: "Qual a média de tentativas por lead?" },
-  { label: "Campanha top", icon: Sparkles, question: "Qual campanha mais converteu leads?" },
+  { label: "Vendas hoje", icon: TrendingUp, question: "Quantas vendas (conversões) foram feitas hoje? Mostre um gráfico de barras e uma tabela com os leads convertidos." },
+  { label: "Leads na fila", icon: Users, question: "Quantos leads estão na fila aguardando atendimento? Mostre tabela completa com nome, telefone, campanha e tentativas." },
+  { label: "Relatório geral", icon: FileSpreadsheet, question: "Gere um relatório completo dos leads com nome, contato, tentativas, status e campanha. Inclua gráfico de distribuição por status." },
+  { label: "Campanha top", icon: Sparkles, question: "Qual campanha mais converteu leads? Mostre gráfico comparativo de conversão entre campanhas." },
+  { label: "Performance", icon: BarChart3, question: "Mostre o desempenho dos colaboradores: interações, atrasos, conversões. Inclua gráfico e tabela." },
+  { label: "Análise leads", icon: PieChart, question: "Quais leads tiveram mais interações mas não converteram? Identifique gargalos e sugira melhorias." },
 ];
 
 async function streamChat({
