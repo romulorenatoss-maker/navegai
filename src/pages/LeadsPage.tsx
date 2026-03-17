@@ -164,6 +164,7 @@ export default function LeadsPage() {
   const [createName, setCreateName] = useState("");
   const [createPhone, setCreatePhone] = useState("");
   const [createPhoneWhatsapp, setCreatePhoneWhatsapp] = useState(false);
+  const [createExtraContatos, setCreateExtraContatos] = useState<{ tipo: string; valor: string; temWhatsapp: boolean }[]>([]);
   const [createCidadeId, setCreateCidadeId] = useState<string>("");
   const [createBairroId, setCreateBairroId] = useState<string>("");
   const [createRuaId, setCreateRuaId] = useState<string>("");
