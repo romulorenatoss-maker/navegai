@@ -3094,83 +3094,91 @@ export default function AvaliacaoOSPage() {
         </AnimatePresence>
       )}
 
-      {/* Results: OS NOT found — setup new OS */}
-      {formValidated && !formFoundOS && clienteId && (
-        <AnimatePresence>
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-            <div className="border border-border rounded-lg p-4 space-y-4 mb-6">
-              <h3 className="text-body font-semibold text-foreground">Configurar Nova OS</h3>
+      {/* Nova OS */}
+      <Dialog open={showNewOsDialog && !!clienteId && !formFoundOS} onOpenChange={setShowNewOsDialog}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Nova OS</DialogTitle>
+            <DialogDescription>
+              Nenhuma OS aberta foi encontrada para este CPF. Selecione o tipo de serviço para dar continuidade.
+            </DialogDescription>
+          </DialogHeader>
 
-              <div className="space-y-2">
-                <Label className="text-body font-medium">Tipo de Serviço *</Label>
-                <div className="space-y-1 max-h-40 overflow-y-auto">
-                  {tiposServico.length === 0 ? (
-                    <p className="text-body text-muted-foreground text-center py-4">Nenhum tipo de serviço disponível.</p>
-                  ) : tiposServico.map((t) => (
-                    <button key={t.id} type="button" onClick={() => { setTipoServicoId(t.id); }}
-                      className={cn("w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-left transition-all press-effect text-sm",
-                        tipoServicoId === t.id ? "bg-primary/10 border-primary text-primary" : "bg-card border-border hover:bg-muted/50")}>
-                      <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0",
-                        tipoServicoId === t.id ? "border-primary bg-primary" : "border-muted-foreground/30")}>
-                        {tipoServicoId === t.id && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
-                      </div>
-                      <span className="font-medium truncate">{t.nome}</span>
-                      <span className="text-caption text-muted-foreground ml-auto">{(t as any).setores?.nome || ""}</span>
-                    </button>
-                  ))}
-                </div>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-body font-medium">Tipo de Serviço *</Label>
+              <div className="space-y-1 max-h-40 overflow-y-auto">
+                {tiposServico.length === 0 ? (
+                  <p className="text-body text-muted-foreground text-center py-4">Nenhum tipo de serviço disponível.</p>
+                ) : tiposServico.map((t) => (
+                  <button key={t.id} type="button" onClick={() => { setTipoServicoId(t.id); }}
+                    className={cn("w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-left transition-all press-effect text-sm",
+                      tipoServicoId === t.id ? "bg-primary/10 border-primary text-primary" : "bg-card border-border hover:bg-muted/50")}>
+                    <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0",
+                      tipoServicoId === t.id ? "border-primary bg-primary" : "border-muted-foreground/30")}>
+                      {tipoServicoId === t.id && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                    </div>
+                    <span className="font-medium truncate">{t.nome}</span>
+                    <span className="text-caption text-muted-foreground ml-auto">{(t as any).setores?.nome || ""}</span>
+                  </button>
+                ))}
               </div>
-
-              {tipoServicoId && (
-                <div className="space-y-3">
-                  {(hasAtendimentoAccess || isAdmin) && (
-                    <div className="space-y-1.5">
-                      <Label>Atendente Avaliado *</Label>
-                      {atendimentoProfiles.filter(p => p.id !== profile?.id).length === 0 ? (
-                        <p className="text-caption text-warning bg-warning/10 border border-warning/20 rounded-lg px-3 py-2">
-                          Nenhum colaborador com cargo "Avaliado" encontrado no setor Atendimento. Cadastre colaboradores avaliados nesse setor.
-                        </p>
-                      ) : (
-                        <Select value={atendenteId} onValueChange={setAtendenteId}>
-                          <SelectTrigger><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
-                          <SelectContent>
-                            {atendimentoProfiles.filter(p => p.id !== profile?.id).map(p =>
-                              <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </div>
-                  )}
-                  {(hasTecnicoAccess || isAdmin) && (
-                    <div className="space-y-1.5">
-                      <Label>Técnico Avaliado *</Label>
-                      {tecnicoProfiles.filter(p => p.id !== profile?.id).length === 0 ? (
-                        <p className="text-caption text-warning bg-warning/10 border border-warning/20 rounded-lg px-3 py-2">
-                          Nenhum colaborador com cargo "Avaliado" encontrado no setor Técnico. Cadastre colaboradores avaliados nesse setor.
-                        </p>
-                      ) : (
-                        <Select value={tecnicoId} onValueChange={setTecnicoId}>
-                          <SelectTrigger><SelectValue placeholder="Selecione o técnico" /></SelectTrigger>
-                          <SelectContent>
-                            {tecnicoProfiles.filter(p => p.id !== profile?.id).map(p =>
-                              <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <Button onClick={handleCreateAndStart} disabled={!canCreateEval} className="w-full sm:w-auto press-effect">
-                Iniciar Avaliação <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
             </div>
-          </motion.div>
-        </AnimatePresence>
-      )}
+
+            {tipoServicoId && (
+              <div className="space-y-3">
+                {(hasAtendimentoAccess || isAdmin) && (
+                  <div className="space-y-1.5">
+                    <Label>Atendente Avaliado *</Label>
+                    {atendimentoProfiles.filter(p => p.id !== profile?.id).length === 0 ? (
+                      <p className="text-caption text-warning bg-warning/10 border border-warning/20 rounded-lg px-3 py-2">
+                        Nenhum colaborador com cargo "Avaliado" encontrado no setor Atendimento. Cadastre colaboradores avaliados nesse setor.
+                      </p>
+                    ) : (
+                      <Select value={atendenteId} onValueChange={setAtendenteId}>
+                        <SelectTrigger><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
+                        <SelectContent>
+                          {atendimentoProfiles.filter(p => p.id !== profile?.id).map(p =>
+                            <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                )}
+                {(hasTecnicoAccess || isAdmin) && (
+                  <div className="space-y-1.5">
+                    <Label>Técnico Avaliado *</Label>
+                    {tecnicoProfiles.filter(p => p.id !== profile?.id).length === 0 ? (
+                      <p className="text-caption text-warning bg-warning/10 border border-warning/20 rounded-lg px-3 py-2">
+                        Nenhum colaborador com cargo "Avaliado" encontrado no setor Técnico. Cadastre colaboradores avaliados nesse setor.
+                      </p>
+                    ) : (
+                      <Select value={tecnicoId} onValueChange={setTecnicoId}>
+                        <SelectTrigger><SelectValue placeholder="Selecione o técnico" /></SelectTrigger>
+                        <SelectContent>
+                          {tecnicoProfiles.filter(p => p.id !== profile?.id).map(p =>
+                            <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setShowNewOsDialog(false)} className="w-full sm:w-auto">
+                Fechar
+              </Button>
+              <Button onClick={handleCreateAndStart} disabled={!canCreateEval} className="w-full sm:w-auto press-effect">
+                Dar continuidade <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Pending Evaluations */}
       {pendingAvaliacoes.length > 0 && (
