@@ -91,6 +91,11 @@ export default function FilaLeadsPage() {
 
   const [selectedTarefa, setSelectedTarefa] = useState<any>(null);
   const [tarefaTipo, setTarefaTipo] = useState("telefone");
+
+  const [showTarefaTransfer, setShowTarefaTransfer] = useState(false);
+  const [tarefaTransferLeadId, setTarefaTransferLeadId] = useState("");
+  const [tarefaTransferLeadName, setTarefaTransferLeadName] = useState("");
+  const [tarefaTransferTarget, setTarefaTransferTarget] = useState("");
   const [tarefaNumero, setTarefaNumero] = useState("");
   const [tarefaResultado, setTarefaResultado] = useState("");
 
