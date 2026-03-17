@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Phone, MessageSquare, Loader2, ListOrdered, SkipForward, Clock, AlertTriangle } from "lucide-react";
+import { Phone, MessageSquare, Loader2, ListOrdered, Clock, AlertTriangle } from "lucide-react";
 
 const fmtDate = (d: string | Date) => {
   try { return format(new Date(d), "dd/MM/yyyy HH:mm", { locale: ptBR }); } catch { return String(d); }
@@ -160,7 +160,10 @@ export default function FilaTarefasLeadsPage() {
       const bAtrasado = b.status === "atrasado" || isTarefaExpirada(b);
       if (aAtrasado && !bAtrasado) return -1;
       if (!aAtrasado && bAtrasado) return 1;
-      return new Date(a.data_contato).getTime() - new Date(b.data_contato).getTime();
+      // Same status: sort by scheduled date first, then by creation date
+      const dateDiff = new Date(a.data_contato).getTime() - new Date(b.data_contato).getTime();
+      if (dateDiff !== 0) return dateDiff;
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
     });
   }, [tarefas]);
 
@@ -258,17 +261,6 @@ export default function FilaTarefasLeadsPage() {
     onError: (err: any) => toast.error(err.message),
   });
 
-  // Next lead button
-  const goToNext = () => {
-    const currentIdx = sortedTarefas.findIndex((t: any) => t.id === selectedTarefa?.id);
-    const nextIdx = currentIdx + 1;
-    if (nextIdx < sortedTarefas.length) {
-      openAttempt(sortedTarefas[nextIdx]);
-    } else {
-      toast.info("Não há mais leads na fila.");
-      setSelectedTarefa(null);
-    }
-  };
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
@@ -358,7 +350,7 @@ export default function FilaTarefasLeadsPage() {
 
       {/* Attempt Dialog */}
       <Dialog open={!!selectedTarefa} onOpenChange={(o) => !o && setSelectedTarefa(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>
               Registrar Tentativa — {selectedTarefa ? getLeadName(selectedTarefa.lead_id) : ""}
@@ -416,9 +408,6 @@ export default function FilaTarefasLeadsPage() {
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setSelectedTarefa(null)}>Cancelar</Button>
-            <Button variant="secondary" onClick={goToNext} className="press-effect">
-              <SkipForward className="w-4 h-4 mr-1" /> Próximo Lead
-            </Button>
             <Button
               onClick={() => attemptMutation.mutate()}
               disabled={attemptMutation.isPending || !attemptNumero}
