@@ -109,17 +109,19 @@ export default function FilaLeadsPage() {
   const [tarefaNumero, setTarefaNumero] = useState("");
   const [tarefaResultado, setTarefaResultado] = useState("");
 
-  // ─── Realtime: auto-refresh when leads change ─────
+  // ─── Realtime: auto-refresh when leads/interactions/tasks change ─────
   useEffect(() => {
+    const invalidateAll = () => {
+      queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["fila-interacoes"] });
+      queryClient.invalidateQueries({ queryKey: ["leads-com-agendamento"] });
+    };
     const channel = supabase
       .channel("fila-leads-realtime")
-      .on("postgres_changes", {
-        event: "*",
-        schema: "public",
-        table: "leads",
-      }, () => {
-        queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
-      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, invalidateAll)
+      .on("postgres_changes", { event: "*", schema: "public", table: "lead_interacoes" }, invalidateAll)
+      .on("postgres_changes", { event: "*", schema: "public", table: "lead_tarefas_contato" }, invalidateAll)
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [queryClient]);
