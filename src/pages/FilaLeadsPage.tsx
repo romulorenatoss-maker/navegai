@@ -857,7 +857,7 @@ export default function FilaLeadsPage() {
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center justify-end gap-1">
-                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Ver lead" onClick={() => navigate(`/leads?id=${item.lead.id}`)}><Eye className="w-3.5 h-3.5" /></Button>
+                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Ver lead" onClick={() => navigate(`/leads?id=${item.lead.id}${item.lead.responsavel_id ? `&viewAs=${item.lead.responsavel_id}` : ''}`)}><Eye className="w-3.5 h-3.5" /></Button>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <Button size="sm" variant="outline" className="h-7 text-[11px] px-2 gap-1"><MoreHorizontal className="w-3.5 h-3.5" /> Ação</Button>
