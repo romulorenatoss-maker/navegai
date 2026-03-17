@@ -54,6 +54,8 @@ interface UserOverride {
   can_create: boolean | null;
   can_edit: boolean | null;
   can_delete: boolean | null;
+  can_assign: boolean | null;
+  can_export: boolean | null;
 }
 
 export default function PermissoesPage() {
