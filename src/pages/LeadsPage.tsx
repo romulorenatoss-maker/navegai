@@ -726,7 +726,20 @@ export default function LeadsPage() {
     return items;
   }, [leadHistorico, leadInteracoes]);
 
-  // ─── Search ───────────────────────────────────────
+  // Helper: cancel old tasks and create immediate task for new owner on transfer
+  const resetTasksForTransfer = useCallback(async (leadId: string, newOwnerId: string) => {
+    // Cancel all pending tasks from old owner
+    await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", leadId).eq("status", "pendente");
+    // Create immediate task for new owner
+    const { data: firstRotina } = await supabase
+      .from("rotina_tentativas_leads").select("*").eq("tentativa_numero", 1).maybeSingle();
+    const periodo = firstRotina?.periodo_contato || "manha";
+    await supabase.from("lead_tarefas_contato").insert({
+      lead_id: leadId, tentativa: 1, data_contato: new Date().toISOString(),
+      periodo, status: "pendente", responsavel_id: newOwnerId,
+    });
+  }, []);
+
   const handleSearch = useCallback(async () => {
     const term = searchTerm.trim();
     if (!term) { setSearchResults(null); return; }
