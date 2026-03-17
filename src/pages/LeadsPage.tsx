@@ -1965,16 +1965,36 @@ export default function LeadsPage() {
                   filteredQueue.map((item, idx) => {
                     const contatos = allLeadContatos.filter(c => c.lead_id === item.lead.id && c.tipo_contato === "telefone");
                     const isSelected = selectedLead?.id === item.lead.id;
-                    const isOverdue = item.proximoContato && item.proximoContato < new Date();
                     const hasSchedule = !!item.lead.agendamento_retorno;
                     const scheduleReady = hasSchedule && new Date(item.lead.agendamento_retorno!) <= new Date();
+
+                    // Urgency color: red = expired, yellow = <2h, green = >3h
+                    const urgencyRef = item.lead.agendamento_retorno
+                      ? new Date(item.lead.agendamento_retorno)
+                      : item.proximoContato;
+                    const now = new Date();
+                    const hoursLeft = urgencyRef ? (urgencyRef.getTime() - now.getTime()) / (1000 * 60 * 60) : null;
+                    let urgencyBorder = "border-l-transparent";
+                    let urgencyBg = "";
+                    if (hoursLeft !== null) {
+                      if (hoursLeft <= 0) {
+                        urgencyBorder = "border-l-red-500";
+                        urgencyBg = "bg-red-50/60 dark:bg-red-950/20";
+                      } else if (hoursLeft <= 2) {
+                        urgencyBorder = "border-l-yellow-500";
+                        urgencyBg = "bg-yellow-50/50 dark:bg-yellow-950/15";
+                      } else if (hoursLeft > 3) {
+                        urgencyBorder = "border-l-emerald-500";
+                        urgencyBg = "";
+                      }
+                    }
 
                     return (
                       <button
                         key={item.lead.id}
                         onClick={() => isVisionMode ? setSelectedLead(item.lead) : openLeadWithTransfer(item.lead)}
-                        className={`w-full text-left px-3 py-2.5 transition-colors relative ${
-                          isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-accent/50 border-l-2 border-l-transparent"
+                        className={`w-full text-left px-3 py-2.5 transition-colors relative border-l-[3px] ${
+                          isSelected ? `bg-primary/10 border-l-primary` : `hover:bg-accent/50 ${urgencyBorder} ${urgencyBg}`
                         }`}
                       >
                         <div className="flex items-start justify-between gap-1">
