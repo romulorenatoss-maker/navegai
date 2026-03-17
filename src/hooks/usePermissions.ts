@@ -8,6 +8,8 @@ export interface EffectivePermission {
   can_create: boolean;
   can_edit: boolean;
   can_delete: boolean;
+  can_assign: boolean;
+  can_export: boolean;
 }
 
 export function usePermissions(profileId: string | null) {
