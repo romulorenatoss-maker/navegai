@@ -730,7 +730,7 @@ export default function FilaLeadsPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-8">#</TableHead>
-                        <TableHead>Nome</TableHead>
+                        <TableHead>Lead</TableHead>
                         <TableHead>Telefone(s)</TableHead>
                         <TableHead>Vencimento</TableHead>
                         <TableHead>Status</TableHead>
@@ -740,10 +740,18 @@ export default function FilaLeadsPage() {
                     <TableBody>
                       {filteredQueue.map((item, idx) => {
                         const phones = item.contatos.filter(c => c.tipo_contato === "telefone");
+                        const campanha = getCampanhaNome(item.lead);
+                        const cidade = getCidadeNome(item.lead);
                         return (
                           <TableRow key={item.lead.id} className={item.nextAttemptExpired ? "bg-destructive/5" : ""}>
                             <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
-                            <TableCell><span className="font-medium text-sm">{item.lead.nome}</span></TableCell>
+                            <TableCell>
+                              <div className="flex flex-col gap-0.5">
+                                <span className="font-medium text-sm">{item.lead.nome}</span>
+                                <span className="text-[10px] text-primary/70 truncate">Origem: {campanha || "Não especificada"}</span>
+                                {cidade && <span className="text-[10px] text-muted-foreground truncate">{cidade}</span>}
+                              </div>
+                            </TableCell>
                             <TableCell>
                               <div className="flex flex-wrap gap-1">
                                 {phones.map(c => <Badge key={c.id} variant="outline" className="text-[11px] gap-0.5 font-normal"><Phone className="w-2.5 h-2.5" />{c.valor}{c.tem_whatsapp && <MessageSquare className="w-2.5 h-2.5 text-green-600" />}</Badge>)}
