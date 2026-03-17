@@ -840,12 +840,16 @@ export default function FilaLeadsPage() {
                   <TableBody>
                     {capturaLeads.map((item, idx) => {
                       const phones = item.contatos.filter(c => c.tipo_contato === "telefone");
+                      const campanha = getCampanhaNome(item.lead);
+                      const cidade = getCidadeNome(item.lead);
                       return (
                         <TableRow key={item.lead.id} className={cn("bg-purple-50/30 dark:bg-purple-950/10", item.isReservedByOther && "opacity-50")}>
                           <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
                           <TableCell>
                             <div className="flex flex-col gap-0.5">
                               <span className="font-medium text-sm">{item.lead.nome}</span>
+                              <span className="text-[10px] text-primary/70 truncate">Origem: {campanha || "Não especificada"}</span>
+                              {cidade && <span className="text-[10px] text-muted-foreground truncate">{cidade}</span>}
                               {item.isReservedByOther ? (
                                 <Badge className="w-fit text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-0">Já capturado por {item.reservedByName}</Badge>
                               ) : (
