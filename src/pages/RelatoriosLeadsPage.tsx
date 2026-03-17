@@ -305,6 +305,20 @@ export default function RelatoriosLeadsPage() {
         <p className="text-body text-muted-foreground">Gerencie e exporte dados de Leads</p>
       </div>
 
+      {hasAddressFilter && (
+        <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex items-center justify-between">
+          <span className="text-sm text-foreground">
+            🔍 Filtrando por endereço — mostrando todos os leads associados
+          </span>
+          <Button
+            variant="ghost" size="sm"
+            onClick={() => { setSearchParams({}); setStartDate(startOfMonth(now)); setEndDate(endOfMonth(now)); }}
+          >
+            <X className="w-3.5 h-3.5 mr-1" /> Limpar filtro
+          </Button>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="bg-card border border-border rounded-lg p-4 shadow-card">
         <div className="flex items-center gap-2 mb-3">
