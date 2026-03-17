@@ -772,6 +772,24 @@ export default function LeadsPage() {
     queryClient.invalidateQueries({ queryKey: ["leads-list"] });
   }, [profile, queryClient]);
 
+  // Transfer history query
+  const { data: transferHistory = [], isLoading: loadingTransfers } = useQuery({
+    queryKey: ["lead-transfer-history"],
+    enabled: showTransferHistory,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("lead_historico")
+        .select("*, leads!lead_historico_lead_id_fkey(id, nome, status_lead), profiles!lead_historico_usuario_id_fkey(nome)")
+        .in("tipo_evento", [
+          "transferencia_automatica", "transferencia_manual", "transferencia_decisao",
+          "lead_capturado", "reserva_liberada",
+        ])
+        .order("data_evento", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+  });
 
 
   // ─── Realtime subscription for capture queue ─────────────────
