@@ -39,6 +39,10 @@ interface Lead {
   created_at: string;
   updated_at: string;
   agendamento_retorno: string | null;
+  cidade_id: string | null;
+  bairro_id: string | null;
+  rua_id: string | null;
+  numero_endereco: string | null;
 }
 
 interface LeadContato {
