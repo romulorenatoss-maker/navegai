@@ -192,6 +192,9 @@ export default function LeadsPage() {
   const [scheduleHour, setScheduleHour] = useState("09");
   const [scheduleMinute, setScheduleMinute] = useState("00");
 
+  // Priority queue filter
+  const [filaFiltro, setFilaFiltro] = useState<"hoje" | "todos">("hoje");
+
   // Duplicate alert state
   const [dupeAlert, setDupeAlert] = useState<{
     type: "lead_phone" | "cliente_phone" | "cpf";
