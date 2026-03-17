@@ -905,6 +905,7 @@ export default function LeadsPage() {
           .not("status_lead", "in", '("convertido","perdido","arquivado")').single();
         if (existingLead) {
           await supabase.from("leads").update({ responsavel_id: profile.id }).eq("id", existingLead.id);
+          await resetTasksForTransfer(existingLead.id, profile.id);
           await supabase.from("lead_historico").insert({
             lead_id: existingLead.id, usuario_id: profile.id,
             tipo_evento: "transferencia_automatica",
