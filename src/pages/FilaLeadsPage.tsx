@@ -110,6 +110,22 @@ export default function FilaLeadsPage() {
   const [tarefaNumero, setTarefaNumero] = useState("");
   const [tarefaResultado, setTarefaResultado] = useState("");
 
+  // ─── Sorting state for Fila table ─────
+  const [filaSortKey, setFilaSortKey] = useState<string | null>(null);
+  const [filaSortDir, setFilaSortDir] = useState<"asc" | "desc">("asc");
+  const toggleFilaSort = (key: string) => {
+    if (filaSortKey === key) {
+      setFilaSortDir(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setFilaSortKey(key);
+      setFilaSortDir("asc");
+    }
+  };
+  const SortIcon = ({ col }: { col: string }) => {
+    if (filaSortKey !== col) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-40" />;
+    return filaSortDir === "asc" ? <ArrowUp className="w-3 h-3 ml-1" /> : <ArrowDown className="w-3 h-3 ml-1" />;
+  };
+
   // ─── Real-time countdown tick (every 30s) ─────
   const [tick, setTick] = useState(0);
   useEffect(() => {
