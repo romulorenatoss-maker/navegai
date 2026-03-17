@@ -789,7 +789,7 @@ export default function FilaLeadsPage() {
                      <SelectItem value="em_contato">Em Contato</SelectItem>
                      <SelectItem value="interessado">Interessado</SelectItem>
                      <SelectItem value="aguardando_decisao_avaliador">Aguardando Decisão</SelectItem>
-                     <SelectItem value="aguardando_captura">Aguardando Captura</SelectItem>
+                     <SelectItem value="fila_captura">Fila de Captura</SelectItem>
                      <SelectItem value="reservado">Reservado</SelectItem>
                    </SelectContent>
                 </Select>
