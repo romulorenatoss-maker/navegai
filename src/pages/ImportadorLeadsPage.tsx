@@ -362,7 +362,7 @@ export default function ImportadorLeadsPage() {
 
   const reset = () => {
     setStep("upload"); setFileName(""); setRawHeaders([]); setRawRows([]);
-    setMapping({ nome: "", telefone: "", email: "", endereco: "", plano: "" });
+    setMapping({ ...EMPTY_MAPPING });
     setPreviewRows([]); setResults([]);
   };
 
