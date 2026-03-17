@@ -1682,6 +1682,10 @@ export default function LeadsPage() {
     setConvCpfLookedUp(false);
     setConvCpfSearching(false);
     convCpfLookupRef.current = "";
+    setConvCepSearch("");
+    setConvCepNotFound(false);
+    setConvNewBairroNome("");
+    setConvNewRuaNome("");
     setShowConvert(true);
   };
 
