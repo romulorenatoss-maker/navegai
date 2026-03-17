@@ -852,6 +852,7 @@ export default function FilaLeadsPage() {
                         <TableHead>Lead</TableHead>
                         <TableHead>Telefone(s)</TableHead>
                         <TableHead>Vencimento</TableHead>
+                        <TableHead>Expiração</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
