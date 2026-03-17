@@ -311,6 +311,24 @@ export default function PermissoesPage() {
                                   />
                                 </td>
                               ))}
+                              <td className="text-center px-3 py-2">
+                                {(() => {
+                                  const perm = groupPerms.find((gp) => gp.resource_id === r.id);
+                                  const currentScope = (perm?.data_scope as DataScopeValue) || "own";
+                                  return (
+                                    <button
+                                      onClick={() => {
+                                        const idx = SCOPE_CYCLE.indexOf(currentScope);
+                                        const next = SCOPE_CYCLE[(idx + 1) % SCOPE_CYCLE.length];
+                                        toggleGroupPerm.mutate({ resourceId: r.id, action: "data_scope", value: next as any });
+                                      }}
+                                      className={`px-2 h-6 rounded text-xs font-semibold ${SCOPE_COLORS[currentScope]} hover:opacity-80 transition-opacity`}
+                                    >
+                                      {SCOPE_LABELS[currentScope]}
+                                    </button>
+                                  );
+                                })()}
+                              </td>
                             </tr>
                           ))}
                         </>
