@@ -142,6 +142,7 @@ const STATUS_OPTIONS = [
   { value: "perdido", label: "Perdido", color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" },
   { value: "arquivado", label: "Arquivado", color: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200" },
   { value: "aguardando_decisao_avaliador", label: "Aguardando Avaliador", color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
+  { value: "aguardando_captura", label: "Aguardando Captura", color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
 ];
 
 function statusBadge(status: string) {
@@ -172,6 +173,8 @@ const EVENTO_LABELS: Record<string, string> = {
   observacao_adicionada: "Observação Adicionada",
   dados_alterados: "Dados Alterados",
   agendamento_removido: "Agendamento Removido",
+  lead_reaberto_captura: "Lead Reaberto p/ Captura",
+  lead_capturado: "Lead Capturado",
 };
 
 const EVENTO_ICONS: Record<string, typeof Phone> = {

@@ -44,7 +44,7 @@ const fmtDate = (d: string | Date) => { try { return format(new Date(d), "dd/MM/
 const fmtDateShort = (d: string | Date) => { try { return format(new Date(d), "dd/MM HH:mm", { locale: ptBR }); } catch { return String(d); } };
 const PERIODO_HORA: Record<string, number> = { manha: 9, tarde: 14, noite: 19 };
 const PERIODO_LABELS: Record<string, string> = { manha: "Manhã", tarde: "Tarde", noite: "Noite" };
-const STATUS_MAP: Record<string, string> = { novo: "Novo", em_contato: "Em Contato", interessado: "Interessado", aguardando_decisao_avaliador: "Aguardando Decisão" };
+const STATUS_MAP: Record<string, string> = { novo: "Novo", em_contato: "Em Contato", interessado: "Interessado", aguardando_decisao_avaliador: "Aguardando Decisão", aguardando_captura: "Aguardando Captura" };
 
 function getPeriodoEndHour(periodo: string): number { return periodo === "manha" ? 12 : periodo === "tarde" ? 18 : 24; }
 function isTarefaExpirada(tarefa: { data_contato: string; periodo: string; status: string }): boolean {
@@ -112,7 +112,7 @@ export default function FilaLeadsPage() {
     queryKey: ["fila-leads"],
     queryFn: async () => {
       const { data, error } = await supabase.from("leads").select("*")
-        .in("status_lead", ["novo", "em_contato", "interessado", "aguardando_decisao_avaliador"])
+        .in("status_lead", ["novo", "em_contato", "interessado", "aguardando_decisao_avaliador", "aguardando_captura"])
         .order("updated_at", { ascending: true });
       if (error) throw error;
       return data as Lead[];
@@ -294,7 +294,7 @@ export default function FilaLeadsPage() {
 
   const queue = useMemo<QueueItem[]>(() => {
     const now = new Date();
-    return leads.filter(l => l.status_lead !== "aguardando_decisao_avaliador").map(lead => {
+    return leads.filter(l => l.status_lead !== "aguardando_decisao_avaliador" && l.status_lead !== "aguardando_captura").map(lead => {
       const contatos = allContatos.filter(c => c.lead_id === lead.id);
       const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
       const tentativaAtual = interacoes.length + 1;
@@ -316,6 +316,24 @@ export default function FilaLeadsPage() {
       return a.nextAttempt.getTime() - b.nextAttempt.getTime();
     });
   }, [leads, allContatos, allInteracoes, cadencia, profiles]);
+
+  // ─── Fila de Captura (aguardando_captura, exclude previous handlers) ──
+  const capturaLeads = useMemo(() => {
+    if (!profile) return [];
+    return leads
+      .filter(l => l.status_lead === "aguardando_captura")
+      .filter(lead => {
+        // Exclude current user if they previously interacted with this lead
+        const prevHandlers = allInteracoes.filter((i: any) => i.lead_id === lead.id).map((i: any) => i.colaborador_id);
+        return !prevHandlers.includes(profile.id);
+      })
+      .map(lead => {
+        const contatos = allContatos.filter(c => c.lead_id === lead.id);
+        const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
+        const lastInteracao = interacoes[0];
+        return { lead, contatos, totalInteracoes: interacoes.length, ultimaTentativaEm: lastInteracao?.data_interacao || null };
+      });
+  }, [leads, allContatos, allInteracoes, profile]);
 
   // ─── Notificações (aguardando_decisao) ────────────
   const notificacoes = useMemo(() => {
@@ -447,15 +465,13 @@ export default function FilaLeadsPage() {
   const restartMutation = useMutation({
     mutationFn: async (leadId: string) => {
       if (!profile) throw new Error("Perfil não encontrado.");
+      // Cancel pending tasks
       await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", leadId).in("status", ["pendente", "atrasado"]);
-      await supabase.from("leads").update({ status_lead: "em_contato", notificacao_vista: false, responsavel_id: profile.id } as any).eq("id", leadId);
-      const firstRotina = rotinaTentativas.find((r: any) => r.tentativa_numero === 1);
-      const periodo = firstRotina?.periodo_contato || "manha";
-      const nextDate = new Date(); nextDate.setDate(nextDate.getDate() + 1); nextDate.setHours(PERIODO_HORA[periodo] || 9, 0, 0, 0);
-      await supabase.from("lead_tarefas_contato").insert({ lead_id: leadId, tentativa: 1, data_contato: nextDate.toISOString(), periodo, status: "pendente", responsavel_id: profile.id });
-      await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "rotina_reiniciada", descricao: "Rotina de tentativas reiniciada pelo avaliador. Lead reaberto para atendimento." });
+      // Set to aguardando_captura with NO responsible — goes to shared capture queue
+      await supabase.from("leads").update({ status_lead: "aguardando_captura", responsavel_id: null, notificacao_vista: false } as any).eq("id", leadId);
+      await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "lead_reaberto_captura", descricao: "Lead reaberto e enviado para Fila de Captura. Usuários que já interagiram não poderão capturá-lo." });
     },
-    onSuccess: () => { toast.success("Lead reaberto com rotina reiniciada!"); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }); },
+    onSuccess: () => { toast.success("Lead reaberto e enviado para Fila de Captura!"); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }); },
     onError: (err: any) => toast.error(err.message),
   });
 
@@ -505,7 +521,36 @@ export default function FilaLeadsPage() {
     onError: (err: any) => toast.error(err.message),
   });
 
-  // Tarefa attempt mutation
+  // ─── Atomic Capture Mutation ──────────────────────
+  const captureMutation = useMutation({
+    mutationFn: async (leadId: string) => {
+      if (!profile) throw new Error("Perfil não encontrado.");
+      // Atomic: only assign if responsavel_id IS NULL (prevents race conditions)
+      const { data, error } = await supabase
+        .from("leads")
+        .update({ responsavel_id: profile.id, status_lead: "em_contato" } as any)
+        .eq("id", leadId)
+        .is("responsavel_id", null)
+        .select("id");
+      if (error) throw error;
+      if (!data || data.length === 0) throw new Error("Lead já foi capturado por outro usuário.");
+      // Cancel old tasks and create new cadence
+      await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", leadId).in("status", ["pendente", "atrasado"]);
+      const firstRotina = rotinaTentativas.find((r: any) => r.tentativa_numero === 1);
+      const periodo = firstRotina?.periodo_contato || "manha";
+      const now = new Date();
+      await supabase.from("lead_tarefas_contato").insert({ lead_id: leadId, tentativa: 1, data_contato: now.toISOString(), periodo, status: "pendente", responsavel_id: profile.id });
+      await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "lead_capturado", descricao: `Lead capturado por ${profile.nome}. Nova rotina de tentativas iniciada.` });
+    },
+    onSuccess: () => {
+      toast.success("Lead capturado com sucesso! Nova rotina iniciada.");
+      queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+
   const tarefaAttemptMutation = useMutation({
     mutationFn: async () => {
       if (!selectedTarefa || !profile) throw new Error("Erro interno.");
@@ -551,6 +596,7 @@ export default function FilaLeadsPage() {
           {totalTarefas > 0 && <Badge variant="outline" className="text-xs gap-1"><Clock className="w-3 h-3" /> {totalTarefas} tarefa{totalTarefas > 1 ? "s" : ""}</Badge>}
           {totalTarefasAtrasadas > 0 && <Badge variant="destructive" className="text-xs gap-1"><AlertTriangle className="w-3 h-3" /> {totalTarefasAtrasadas} atrasada{totalTarefasAtrasadas > 1 ? "s" : ""}</Badge>}
           {totalNaoVistas > 0 && <Badge className="text-xs gap-1 bg-orange-500 hover:bg-orange-600 text-white border-0"><Bell className="w-3 h-3" /> {totalNaoVistas} notificaç{totalNaoVistas > 1 ? "ões" : "ão"}</Badge>}
+          {capturaLeads.length > 0 && <Badge className="text-xs gap-1 bg-purple-500 hover:bg-purple-600 text-white border-0"><UserCheck className="w-3 h-3" /> {capturaLeads.length} p/ captura</Badge>}
         </div>
       </div>
 
@@ -558,6 +604,10 @@ export default function FilaLeadsPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="fila">Fila de Leads ({filteredQueue.length})</TabsTrigger>
+          <TabsTrigger value="captura" className="gap-1.5">
+            <UserCheck className="w-3.5 h-3.5" /> Fila de Captura ({capturaLeads.length})
+            {capturaLeads.length > 0 && <span className="ml-1 inline-flex items-center justify-center w-5 h-5 rounded-full bg-purple-500 text-white text-[10px] font-bold">{capturaLeads.length}</span>}
+          </TabsTrigger>
           <TabsTrigger value="tarefas">Tarefas do Dia ({totalTarefas}){totalTarefasAtrasadas > 0 ? ` 🔴` : ""}</TabsTrigger>
           <TabsTrigger value="notificacoes" className="gap-1.5">
             <Bell className="w-3.5 h-3.5" /> Notificações ({notificacoes.length})
@@ -695,6 +745,77 @@ export default function FilaLeadsPage() {
         </TabsContent>
 
         {/* ═══ TAB: Tarefas do Dia ═══ */}
+        {/* ═══ TAB: Fila de Captura ═══ */}
+        <TabsContent value="captura" className="space-y-4 mt-3">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <UserCheck className="w-4 h-4" /> Leads Aguardando Captura
+                <Badge variant="secondary" className="text-xs">{capturaLeads.length}</Badge>
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">Leads reabertos disponíveis para captura. Apenas usuários que nunca interagiram com o lead podem capturá-lo. A captura é atômica — apenas um usuário pode assumir cada lead.</p>
+            </CardHeader>
+            <CardContent className="p-0 overflow-auto max-h-[calc(100vh-380px)]">
+              {capturaLeads.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground text-sm">Nenhum lead aguardando captura</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-8">#</TableHead>
+                      <TableHead>Lead</TableHead>
+                      <TableHead>Telefone(s)</TableHead>
+                      <TableHead>Tentativas Anteriores</TableHead>
+                      <TableHead>Última Tentativa</TableHead>
+                      <TableHead className="text-right">Ação</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {capturaLeads.map((item, idx) => {
+                      const phones = item.contatos.filter(c => c.tipo_contato === "telefone");
+                      return (
+                        <TableRow key={item.lead.id} className="bg-purple-50/30 dark:bg-purple-950/10">
+                          <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-medium text-sm">{item.lead.nome}</span>
+                              <Badge className="w-fit text-[10px] bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border-0">Aguardando Captura</Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {phones.map(c => <Badge key={c.id} variant="outline" className="text-[11px] gap-0.5 font-normal"><Phone className="w-2.5 h-2.5" />{c.valor}{c.tem_whatsapp && <MessageSquare className="w-2.5 h-2.5 text-green-600" />}</Badge>)}
+                              {phones.length === 0 && <span className="text-[11px] text-muted-foreground">Sem tel.</span>}
+                            </div>
+                          </TableCell>
+                          <TableCell><Badge variant="secondary" className="text-xs">{item.totalInteracoes} realizadas</Badge></TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {item.ultimaTentativaEm ? format(new Date(item.ultimaTentativaEm), "dd/MM/yy HH:mm", { locale: ptBR }) : "—"}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Ver lead" onClick={() => navigate(`/leads?id=${item.lead.id}`)}><Eye className="w-3.5 h-3.5" /></Button>
+                              <Button
+                                size="sm"
+                                className="h-7 text-[11px] px-3 gap-1 bg-purple-600 hover:bg-purple-700 text-white"
+                                onClick={() => captureMutation.mutate(item.lead.id)}
+                                disabled={captureMutation.isPending}
+                              >
+                                {captureMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserCheck className="w-3.5 h-3.5" />}
+                                Capturar Lead
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="tarefas" className="space-y-3 mt-3">
           {/* Date Filters */}
           <Card>
@@ -1048,11 +1169,17 @@ export default function FilaLeadsPage() {
               <p className="text-xs text-muted-foreground">• O histórico completo será mantido para o novo responsável</p>
               <p className="text-xs text-muted-foreground">• Uma nova rotina de tentativas será iniciada automaticamente</p>
               <p className="text-xs text-muted-foreground">• O último responsável ficará registrado no histórico</p>
+              <p className="text-xs text-muted-foreground">• Usuários que já interagiram com este lead são excluídos</p>
             </div>
             <div className="space-y-1.5"><Label>Novo Responsável</Label>
               <Select value={decisionTarget} onValueChange={setDecisionTarget}><SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger><SelectContent>
-                {atendimentoProfiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
-                {atendimentoProfiles.length === 0 && <SelectItem value="__none" disabled>Nenhum colaborador no setor Atendimento</SelectItem>}
+                {(() => {
+                  const prevHandlerIds = allInteracoes.filter((i: any) => i.lead_id === decisionLeadId).map((i: any) => i.colaborador_id);
+                  const eligible = atendimentoProfiles.filter(p => !prevHandlerIds.includes(p.id));
+                  return eligible.length > 0
+                    ? eligible.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)
+                    : <SelectItem value="__none" disabled>Nenhum colaborador elegível (todos já interagiram)</SelectItem>;
+                })()}
               </SelectContent></Select>
             </div>
           </div>
