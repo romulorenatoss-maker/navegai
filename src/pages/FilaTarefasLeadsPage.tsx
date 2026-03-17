@@ -55,6 +55,12 @@ export default function FilaTarefasLeadsPage() {
   const [attemptNumero, setAttemptNumero] = useState("");
   const [attemptResultado, setAttemptResultado] = useState("");
 
+  const { data: allProfiles = [] } = useQuery({
+    queryKey: ["profiles-for-tarefas"],
+    queryFn: async () => { const { data } = await supabase.from("profiles").select("id, nome").eq("ativo", true); return data || []; },
+    staleTime: 5 * 60 * 1000,
+  });
+
   // Fetch tarefas pendentes/atrasadas and auto-mark expired
   const { data: tarefas = [], isLoading } = useQuery({
     queryKey: ["fila-tarefas-leads"],
