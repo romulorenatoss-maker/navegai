@@ -647,6 +647,18 @@ export default function FilaLeadsPage() {
     mutationFn: async (leadId: string) => {
       if (!profile) throw new Error("Perfil não encontrado.");
 
+      // Re-check lead availability before attempting capture
+      const { data: freshLead, error: checkErr } = await supabase
+        .from("leads")
+        .select("id, status_lead, reserved_by, responsavel_id")
+        .eq("id", leadId)
+        .single();
+
+      if (checkErr) throw checkErr;
+      if (!freshLead || freshLead.status_lead !== "aguardando_captura" || freshLead.reserved_by || freshLead.responsavel_id) {
+        throw new Error("Este lead já foi atribuído a outro usuário.");
+      }
+
       const { data: reserved, error: reserveErr } = await supabase.rpc("atomic_reserve_lead", {
         _lead_id: leadId,
         _user_id: profile.user_id,
@@ -654,7 +666,7 @@ export default function FilaLeadsPage() {
       });
 
       if (reserveErr) throw reserveErr;
-      if (!reserved) throw new Error("Este lead já está sendo atendido ou visualizado por outro usuário.");
+      if (!reserved) throw new Error("Este lead já foi atribuído a outro usuário.");
 
       const { error: historyErr } = await supabase.from("lead_historico").insert({
         lead_id: leadId,
@@ -664,28 +676,31 @@ export default function FilaLeadsPage() {
       });
 
       if (historyErr) throw historyErr;
+      return leadId;
     },
     onMutate: async (leadId: string) => {
       await queryClient.cancelQueries({ queryKey: ["fila-leads"] });
       const previousLeads = queryClient.getQueryData<Lead[]>(["fila-leads"]);
 
+      // Optimistically remove from capture queue
       queryClient.setQueryData<Lead[]>(["fila-leads"], (current = []) =>
         current.filter(lead => lead.id !== leadId)
       );
 
       return { previousLeads };
     },
-    onSuccess: () => {
-      toast.success("Lead reservado com sucesso.");
+    onSuccess: (_data, leadId) => {
+      toast.success("Lead capturado com sucesso!");
       queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
+      // Navigate to the lead in "Meus Leads"
+      navigate(`/leads?id=${leadId}`);
     },
     onError: (err: any, _leadId, context) => {
       if (context?.previousLeads) {
         queryClient.setQueryData(["fila-leads"], context.previousLeads);
       }
       toast.error(err.message);
-    },
-    onSettled: () => {
+      // Refresh to get latest state
       queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
     },
   });
