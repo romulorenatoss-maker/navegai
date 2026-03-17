@@ -71,6 +71,7 @@ export function AppLayout() {
               isAdmin={isAdmin}
               allowedScreens={allowedScreens}
               canViewPath={canViewPath}
+              badgeCounts={badgeCounts}
             />
           </SheetContent>
         </Sheet>
