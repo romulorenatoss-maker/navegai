@@ -199,14 +199,23 @@ export default function FilaLeadsPage() {
     queryFn: async () => { const { data } = await supabase.from("lead_contatos").select("*").in("lead_id", tarefaLeadIds); return data || []; },
   });
 
+  const dedupedTarefas = useMemo(() => {
+    const seen = new Set<string>();
+    return tarefas.filter((t: any) => {
+      if (seen.has(t.id)) return false;
+      seen.add(t.id);
+      return true;
+    });
+  }, [tarefas]);
+
   const sortedTarefas = useMemo(() => {
-    return [...tarefas].sort((a: any, b: any) => {
+    return [...dedupedTarefas].sort((a: any, b: any) => {
       const aA = a.status === "atrasado" || isTarefaExpirada(a);
       const bA = b.status === "atrasado" || isTarefaExpirada(b);
       if (aA && !bA) return -1; if (!aA && bA) return 1;
       return new Date(a.data_contato).getTime() - new Date(b.data_contato).getTime();
     });
-  }, [tarefas]);
+  }, [dedupedTarefas]);
 
   const getTarefaLeadName = (id: string) => tarefaLeads.find((l: any) => l.id === id)?.nome || "—";
   const getTarefaPhones = (id: string) => tarefaContatos.filter((c: any) => c.lead_id === id && c.tipo_contato === "telefone");
