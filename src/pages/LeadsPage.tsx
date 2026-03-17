@@ -18,7 +18,7 @@ import { ptBR } from "date-fns/locale";
 import {
   Search, Plus, Phone, User, Users, History, ArrowRight, Trash2,
   MessageSquare, PhoneCall, Clock, UserCheck, RefreshCw, Loader2, UserPlus, AlertTriangle,
-  ListOrdered, Send, FileText, ChevronRight, CalendarClock, CalendarIcon, Zap, Archive, Eye,
+  ListOrdered, Send, FileText, ChevronRight, CalendarClock, CalendarIcon, Zap, Archive, Eye, Filter,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -292,6 +292,10 @@ export default function LeadsPage() {
 
   // Priority queue filter
   const [filaFiltro, setFilaFiltro] = useState<"hoje" | "todos">("hoje");
+  const [filtroResponsavel, setFiltroResponsavel] = useState<string>("all");
+  const [filtroHandler, setFiltroHandler] = useState<string>("all");
+  const [filtroMinTentativas, setFiltroMinTentativas] = useState<string>("");
+  const [showFilaFilters, setShowFilaFilters] = useState(false);
 
   // Local editable state (saved only when registering an attempt)
   const [localPlanoId, setLocalPlanoId] = useState<string | null>(null);
@@ -548,11 +552,11 @@ export default function LeadsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("lead_interacoes")
-        .select("id, lead_id, data_interacao")
+        .select("id, lead_id, colaborador_id, data_interacao")
         .in("lead_id", activeLeadIds)
         .order("data_interacao", { ascending: false });
       if (error) throw error;
-      return data as { id: string; lead_id: string; data_interacao: string }[];
+      return data as { id: string; lead_id: string; colaborador_id: string; data_interacao: string }[];
     },
   });
 
@@ -696,7 +700,12 @@ export default function LeadsPage() {
         }
       }
 
-      return { lead, tentativaAtual, proximoContato, ultimaInteracao };
+      // Total attempts (all history, all cycles)
+      const totalTentativas = interacoes.length;
+      // Unique handlers (all collaborators who interacted)
+      const handlers = [...new Set(interacoes.map(i => i.colaborador_id))];
+
+      return { lead, tentativaAtual, proximoContato, ultimaInteracao, totalTentativas, handlers };
     }).sort((a, b) => {
       const now = Date.now();
 
@@ -737,26 +746,43 @@ export default function LeadsPage() {
     });
   }, [allLeads, allLeadInteracoes, allLeadTransfers, cadencia]);
 
-  // Filtered priority queue based on filaFiltro
+  // Filtered priority queue based on filaFiltro + additional filters
   const filteredQueue = useMemo(() => {
-    if (filaFiltro === "todos") return priorityQueue;
-    const now = new Date();
-    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-    const in8hours = new Date(now.getTime() + 8 * 60 * 60 * 1000);
-    return priorityQueue.filter((item) => {
-      // Expired schedule or schedule for today
-      if (item.lead.agendamento_retorno) {
-        const schedDate = new Date(item.lead.agendamento_retorno);
-        if (schedDate <= endOfToday) return true;
+    let result = priorityQueue;
+
+    // Time filter
+    if (filaFiltro === "hoje") {
+      const now = new Date();
+      const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      const in8hours = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+      result = result.filter((item) => {
+        if (item.lead.agendamento_retorno) {
+          return new Date(item.lead.agendamento_retorno) <= endOfToday;
+        }
+        if (item.proximoContato && (item.proximoContato <= endOfToday || item.proximoContato <= in8hours)) return true;
+        if (!item.proximoContato && !item.ultimaInteracao) return true;
         return false;
-      }
-      // Overdue cadence contact or expiring within 8 hours
-      if (item.proximoContato && (item.proximoContato <= endOfToday || item.proximoContato <= in8hours)) return true;
-      // New leads with no next contact yet (need action)
-      if (!item.proximoContato && !item.ultimaInteracao) return true;
-      return false;
-    });
-  }, [priorityQueue, filaFiltro]);
+      });
+    }
+
+    // Responsible filter
+    if (filtroResponsavel !== "all") {
+      result = result.filter(item => item.lead.responsavel_id === filtroResponsavel);
+    }
+
+    // Handler filter (leads where a specific person interacted)
+    if (filtroHandler !== "all") {
+      result = result.filter(item => item.handlers.includes(filtroHandler));
+    }
+
+    // Min total attempts filter
+    const minTent = parseInt(filtroMinTentativas);
+    if (!isNaN(minTent) && minTent > 0) {
+      result = result.filter(item => item.totalTentativas >= minTent);
+    }
+
+    return result;
+  }, [priorityQueue, filaFiltro, filtroResponsavel, filtroHandler, filtroMinTentativas]);
 
 
   const { data: leadContatos = [], refetch: refetchContatos } = useQuery({
@@ -1682,7 +1708,15 @@ export default function LeadsPage() {
                 <CardTitle className="text-xs font-semibold flex items-center gap-1.5 text-muted-foreground uppercase tracking-wider">
                   <ListOrdered className="w-3.5 h-3.5" /> Fila
                 </CardTitle>
-                <div className="flex gap-1">
+                <div className="flex gap-1 items-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn("h-6 w-6 p-0", showFilaFilters && "text-primary")}
+                    onClick={() => setShowFilaFilters(v => !v)}
+                  >
+                    <Filter className="w-3 h-3" />
+                  </Button>
                   <Button
                     variant={filaFiltro === "hoje" ? "default" : "ghost"}
                     size="sm"
@@ -1711,6 +1745,57 @@ export default function LeadsPage() {
                   </Button>
                 </div>
               </div>
+              {showFilaFilters && (
+                <div className="mt-2 space-y-1.5">
+                  <div>
+                    <label className="text-[10px] text-muted-foreground">Responsável</label>
+                    <Select value={filtroResponsavel} onValueChange={setFiltroResponsavel}>
+                      <SelectTrigger className="h-7 text-[11px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        {[...new Set(priorityQueue.map(q => q.lead.responsavel_id).filter(Boolean))].map(rId => {
+                          const p = profiles.find(pr => pr.id === rId);
+                          return p ? <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem> : null;
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground">Interagiu com</label>
+                    <Select value={filtroHandler} onValueChange={setFiltroHandler}>
+                      <SelectTrigger className="h-7 text-[11px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos</SelectItem>
+                        {[...new Set(priorityQueue.flatMap(q => q.handlers))].map(hId => {
+                          const p = profiles.find(pr => pr.id === hId);
+                          return p ? <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem> : null;
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground">Mín. tentativas totais</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      className="h-7 text-[11px]"
+                      placeholder="Ex: 3"
+                      value={filtroMinTentativas}
+                      onChange={e => setFiltroMinTentativas(e.target.value)}
+                    />
+                  </div>
+                  {(filtroResponsavel !== "all" || filtroHandler !== "all" || filtroMinTentativas) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[10px] w-full"
+                      onClick={() => { setFiltroResponsavel("all"); setFiltroHandler("all"); setFiltroMinTentativas(""); }}
+                    >
+                      Limpar filtros
+                    </Button>
+                  )}
+                </div>
+              )}
             </CardHeader>
             <ScrollArea className="flex-1">
               <div className="divide-y divide-border">
@@ -1753,9 +1838,21 @@ export default function LeadsPage() {
                           </div>
                           <div className="flex flex-col items-end gap-0.5 shrink-0">
                             {statusBadge(item.lead.status_lead)}
-                            <span className="text-[10px] text-muted-foreground">
-                              {item.tentativaAtual - 1} tent.
-                            </span>
+                            <div className="flex items-center gap-1 group/tent relative">
+                              <span className="text-[10px] text-muted-foreground">
+                                {item.tentativaAtual - 1}/{item.totalTentativas} tent.
+                              </span>
+                              {item.handlers.length > 0 && (
+                                <div className="absolute bottom-full right-0 mb-1 hidden group-hover/tent:block z-50 bg-popover border border-border text-popover-foreground text-[11px] px-2 py-1.5 rounded shadow-md whitespace-nowrap">
+                                  <p className="font-medium mb-0.5">Ciclo: {item.tentativaAtual - 1} | Total: {item.totalTentativas}</p>
+                                  <p className="text-muted-foreground">Atendentes:</p>
+                                  {item.handlers.map(hId => {
+                                    const hp = profiles.find(p => p.id === hId);
+                                    return <p key={hId} className="text-[10px]">• {hp?.nome || "—"}</p>;
+                                  })}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                         <div className="ml-5 mt-1 flex flex-col gap-0.5">
