@@ -1249,7 +1249,7 @@ export default function LeadsPage() {
       toast.success("Lead arquivado.");
     }
     setShowFinalize(false);
-    queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+    if (selectedLead) updateLeadInCache(selectedLead.id, { status_lead: selectedLead.status_lead });
     queryClient.invalidateQueries({ queryKey: ["all-lead-interacoes"] });
     refetchHistorico();
   };
