@@ -83,6 +83,8 @@ export default function RelatoriosLeadsPage() {
   const [filterStatus, setFilterStatus] = useState(urlStatus || "todos");
   const [filterOrigem, setFilterOrigem] = useState("todos");
   const [filterResponsavel, setFilterResponsavel] = useState("todos");
+  const [filterHandler, setFilterHandler] = useState("todos");
+  const [filterMinTentativas, setFilterMinTentativas] = useState("");
   const [filterNome, setFilterNome] = useState("");
 
   const [responsaveis, setResponsaveis] = useState<{ id: string; nome: string }[]>([]);
