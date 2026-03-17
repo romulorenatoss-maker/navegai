@@ -1289,6 +1289,8 @@ export default function LeadsPage() {
 
       const descParts = [`Lead "${leadNome}" criado por ${profile.nome}`];
       if (linkedClienteNome) descParts.push(`— vinculado ao cliente existente "${linkedClienteNome}"`);
+      const campanhaNome = campanhasAtivas.find(c => c.id === createCampanhaId)?.nome;
+      if (campanhaNome) descParts.push(`— origem: campanha "${campanhaNome}"`);
       await supabase.from("lead_historico").insert({
         lead_id: newLead.id, usuario_id: profile.id, tipo_evento: "criacao", descricao: descParts.join(" "),
       });
