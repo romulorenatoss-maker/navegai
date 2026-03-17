@@ -58,8 +58,8 @@ interface ImportResult {
   telefone: string;
   status: "ok" | "skipped" | "error";
   message?: string;
-}
 
+export default function ImportadorLeadsPage() {
   const { profile } = useAuth();
   const [step, setStep] = useState<Step>("upload");
   const [fileName, setFileName] = useState("");
