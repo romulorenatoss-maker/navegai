@@ -596,6 +596,7 @@ export default function FilaLeadsPage() {
           {totalTarefas > 0 && <Badge variant="outline" className="text-xs gap-1"><Clock className="w-3 h-3" /> {totalTarefas} tarefa{totalTarefas > 1 ? "s" : ""}</Badge>}
           {totalTarefasAtrasadas > 0 && <Badge variant="destructive" className="text-xs gap-1"><AlertTriangle className="w-3 h-3" /> {totalTarefasAtrasadas} atrasada{totalTarefasAtrasadas > 1 ? "s" : ""}</Badge>}
           {totalNaoVistas > 0 && <Badge className="text-xs gap-1 bg-orange-500 hover:bg-orange-600 text-white border-0"><Bell className="w-3 h-3" /> {totalNaoVistas} notificaç{totalNaoVistas > 1 ? "ões" : "ão"}</Badge>}
+          {capturaLeads.length > 0 && <Badge className="text-xs gap-1 bg-purple-500 hover:bg-purple-600 text-white border-0"><UserCheck className="w-3 h-3" /> {capturaLeads.length} p/ captura</Badge>}
         </div>
       </div>
 
