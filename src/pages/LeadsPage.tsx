@@ -1734,7 +1734,7 @@ export default function LeadsPage() {
                     </div>
                     <div className="space-y-1">
                       <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Repetidor</Label>
-                      <Select value={localRepetidor || "none"} onValueChange={v => setLocalRepetidor(v === "none" ? null : v)}>
+                      <Select value={localRepetidor || "none"} onValueChange={v => setLocalRepetidor(v === "none" ? null : v)} disabled={isVisionMode}>
                         <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">Nenhum</SelectItem>
