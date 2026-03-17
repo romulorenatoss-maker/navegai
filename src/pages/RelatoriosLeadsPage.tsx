@@ -145,11 +145,12 @@ export default function RelatoriosLeadsPage() {
     const planoIds = [...new Set(leadsData.map((l) => l.plano_id).filter(Boolean))] as string[];
     const respIds = [...new Set(leadsData.map((l) => l.responsavel_id).filter(Boolean))] as string[];
 
-    const [contatosRes, planosRes, profilesRes, atrasosRes] = await Promise.all([
+    const [contatosRes, planosRes, profilesRes, atrasosRes, interacoesRes] = await Promise.all([
       leadIds.length > 0 ? supabase.from("lead_contatos").select("lead_id, valor").eq("tipo_contato", "telefone").in("lead_id", leadIds) : Promise.resolve({ data: [] }),
       planoIds.length > 0 ? supabase.from("planos").select("id, nome_plano").in("id", planoIds) : Promise.resolve({ data: [] }),
       respIds.length > 0 ? supabase.from("profiles").select("id, nome").in("id", respIds) : Promise.resolve({ data: [] }),
       leadIds.length > 0 ? supabase.from("lead_tarefas_contato").select("lead_id").eq("fora_do_prazo", true).in("lead_id", leadIds) : Promise.resolve({ data: [] }),
+      leadIds.length > 0 ? supabase.from("lead_interacoes").select("lead_id, colaborador_id").in("lead_id", leadIds) : Promise.resolve({ data: [] }),
     ]);
 
     const phoneMap: Record<string, string> = {};
@@ -161,7 +162,16 @@ export default function RelatoriosLeadsPage() {
     const atrasosMap: Record<string, number> = {};
     (atrasosRes.data || []).forEach((a: any) => { atrasosMap[a.lead_id] = (atrasosMap[a.lead_id] || 0) + 1; });
 
-    setLeadsList(leadsData.map((l) => ({
+    // Build handler map and tentativas count per lead
+    const handlersMap: Record<string, Set<string>> = {};
+    const tentativasMap: Record<string, number> = {};
+    (interacoesRes.data || []).forEach((i: any) => {
+      if (!handlersMap[i.lead_id]) handlersMap[i.lead_id] = new Set();
+      handlersMap[i.lead_id].add(i.colaborador_id);
+      tentativasMap[i.lead_id] = (tentativasMap[i.lead_id] || 0) + 1;
+    });
+
+    let rows = leadsData.map((l) => ({
       id: l.id,
       nome: l.nome,
       status_lead: l.status_lead,
@@ -172,10 +182,25 @@ export default function RelatoriosLeadsPage() {
       plano_nome: l.plano_id ? planoMap[l.plano_id] || null : null,
       repetidor: (l as any).repetidor || null,
       atrasos: atrasosMap[l.id] || 0,
-    })));
+      handlers: [...(handlersMap[l.id] || [])],
+      tentativas: tentativasMap[l.id] || 0,
+    }));
+
+    // Apply handler filter
+    if (filterHandler !== "todos") {
+      rows = rows.filter(r => r.handlers.includes(filterHandler));
+    }
+
+    // Apply min tentativas filter
+    const minTent = parseInt(filterMinTentativas);
+    if (!isNaN(minTent) && minTent > 0) {
+      rows = rows.filter(r => r.tentativas >= minTent);
+    }
+
+    setLeadsList(rows);
     setSelected(new Set());
     setLoading(false);
-  }, [startDate, endDate, filterStatus, filterOrigem, filterResponsavel, filterNome, urlCidadeId, urlBairroId, urlRuaId]);
+  }, [startDate, endDate, filterStatus, filterOrigem, filterResponsavel, filterHandler, filterMinTentativas, filterNome, urlCidadeId, urlBairroId, urlRuaId]);
 
   useEffect(() => { fetchLeads(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
