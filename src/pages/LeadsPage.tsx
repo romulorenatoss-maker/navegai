@@ -468,8 +468,11 @@ export default function LeadsPage() {
     setLocalObjecaoId(leadObjecaoRegistro?.objecao_id || "none");
   }, [selectedLead?.id, leadObjecaoRegistro]);
 
-  // All lead contacts for queue building
-  const activeLeadIds = allLeads.filter(l => ["novo", "em_contato", "interessado"].includes(l.status_lead)).map(l => l.id);
+  // All lead contacts for queue building – memoized to prevent cascading refetches
+  const activeLeadIds = useMemo(() => {
+    const ids = allLeads.filter(l => ["novo", "em_contato", "interessado"].includes(l.status_lead)).map(l => l.id);
+    return ids;
+  }, [allLeads.map(l => l.id + l.status_lead).join(",")]);
 
   const { data: allLeadContatos = [] } = useQuery({
     queryKey: ["all-lead-contatos", activeLeadIds],
