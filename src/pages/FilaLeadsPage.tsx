@@ -30,6 +30,7 @@ interface Lead {
   id: string; nome: string; status_lead: string; responsavel_id: string | null;
   updated_at: string; created_at: string; agendamento_retorno: string | null;
   notificacao_vista?: boolean; notificacao_vista_em?: string | null; notificacao_vista_por?: string | null;
+  reserved_by?: string | null; reserved_at?: string | null;
 }
 interface LeadContato { id: string; lead_id: string; tipo_contato: string; valor: string; tem_whatsapp: boolean; }
 interface CadenciaTentativa { id: string; numero_tentativa: number; dias_apos: number; periodo: string; prioridade: number; }
