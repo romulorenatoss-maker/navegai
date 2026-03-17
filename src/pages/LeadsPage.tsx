@@ -1674,7 +1674,41 @@ export default function LeadsPage() {
     setConvBairroId(selectedLead.bairro_id || null);
     setConvRuaId(selectedLead.rua_id || null);
     setConvAtendenteId(profile?.id || "");
+    setConvCpfLookedUp(false);
+    setConvCpfSearching(false);
+    convCpfLookupRef.current = "";
     setShowConvert(true);
+  };
+
+  const handleConvCpfChange = async (cpfValue: string) => {
+    setConvForm(f => ({ ...f, cpf: cpfValue }));
+    setConvCpfLookedUp(false);
+    const digits = cpfValue.replace(/\D/g, "");
+    if (digits.length < 11) return;
+    if (convCpfLookupRef.current === digits) return;
+    convCpfLookupRef.current = digits;
+    setConvCpfSearching(true);
+    try {
+      const { data: existing } = await supabase
+        .from("clientes").select("id, nome, cpf, rg, nome_mae, numero, referencia, cidade_id, bairro_id, rua_id, cep")
+        .eq("cpf", cpfValue.trim()).maybeSingle();
+      if (existing) {
+        setConvForm(f => ({
+          ...f,
+          nome: existing.nome || f.nome,
+          rg: existing.rg || f.rg,
+          nome_mae: existing.nome_mae || f.nome_mae,
+          numero: existing.numero || f.numero,
+          referencia: existing.referencia || f.referencia,
+        }));
+        if (existing.cidade_id) setConvCidadeId(existing.cidade_id);
+        if (existing.bairro_id) setConvBairroId(existing.bairro_id);
+        if (existing.rua_id) setConvRuaId(existing.rua_id);
+        setConvCpfLookedUp(true);
+        toast.info("Cliente encontrado! Dados preenchidos automaticamente.");
+      }
+    } catch { /* ignore */ }
+    setConvCpfSearching(false);
   };
 
   // ─── Convert Lead → Client ────────────────────────
