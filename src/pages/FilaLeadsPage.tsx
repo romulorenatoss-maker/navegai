@@ -112,7 +112,7 @@ export default function FilaLeadsPage() {
     queryKey: ["fila-leads"],
     queryFn: async () => {
       const { data, error } = await supabase.from("leads").select("*")
-        .in("status_lead", ["novo", "em_contato", "interessado", "aguardando_decisao_avaliador"])
+        .in("status_lead", ["novo", "em_contato", "interessado", "aguardando_decisao_avaliador", "aguardando_captura"])
         .order("updated_at", { ascending: true });
       if (error) throw error;
       return data as Lead[];
