@@ -55,7 +55,7 @@ function isTarefaExpirada(tarefa: { data_contato: string; periodo: string; statu
 }
 
 export default function FilaLeadsPage() {
-  const { profile } = useAuth();
+  const { profile, isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -317,23 +317,24 @@ export default function FilaLeadsPage() {
     });
   }, [leads, allContatos, allInteracoes, cadencia, profiles]);
 
-  // ─── Fila de Captura (aguardando_captura, exclude previous handlers) ──
+  // ─── Fila de Captura (aguardando_captura, exclude previous handlers for non-admin) ──
   const capturaLeads = useMemo(() => {
     if (!profile) return [];
-    return leads
+    const capturaItems = leads
       .filter(l => l.status_lead === "aguardando_captura")
-      .filter(lead => {
-        // Exclude current user if they previously interacted with this lead
-        const prevHandlers = allInteracoes.filter((i: any) => i.lead_id === lead.id).map((i: any) => i.colaborador_id);
-        return !prevHandlers.includes(profile.id);
-      })
       .map(lead => {
         const contatos = allContatos.filter(c => c.lead_id === lead.id);
         const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
         const lastInteracao = interacoes[0];
-        return { lead, contatos, totalInteracoes: interacoes.length, ultimaTentativaEm: lastInteracao?.data_interacao || null };
+        const prevHandlerIds = interacoes.map((i: any) => i.colaborador_id);
+        const userPreviouslyHandled = prevHandlerIds.includes(profile.id);
+        return { lead, contatos, totalInteracoes: interacoes.length, ultimaTentativaEm: lastInteracao?.data_interacao || null, userPreviouslyHandled };
       });
-  }, [leads, allContatos, allInteracoes, profile]);
+    // Non-admin/non-avaliador: hide leads they previously handled
+    // Admin/avaliador: show all (read-only for ones they handled — they can still see status)
+    if (isAdmin) return capturaItems;
+    return capturaItems.filter(item => !item.userPreviouslyHandled);
+  }, [leads, allContatos, allInteracoes, profile, isAdmin]);
 
   // ─── Notificações (aguardando_decisao) ────────────
   const notificacoes = useMemo(() => {
@@ -471,7 +472,7 @@ export default function FilaLeadsPage() {
       await supabase.from("leads").update({ status_lead: "aguardando_captura", responsavel_id: null, notificacao_vista: false } as any).eq("id", leadId);
       await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "lead_reaberto_captura", descricao: "Lead reaberto e enviado para Fila de Captura. Usuários que já interagiram não poderão capturá-lo." });
     },
-    onSuccess: () => { toast.success("Lead reaberto e enviado para Fila de Captura!"); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }); },
+    onSuccess: () => { toast.success("Lead reaberto e enviado para Fila de Captura!"); setActiveTab("captura"); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }); },
     onError: (err: any) => toast.error(err.message),
   });
 
@@ -795,15 +796,19 @@ export default function FilaLeadsPage() {
                           <TableCell>
                             <div className="flex items-center justify-end gap-1">
                               <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Ver lead" onClick={() => navigate(`/leads?id=${item.lead.id}`)}><Eye className="w-3.5 h-3.5" /></Button>
-                              <Button
-                                size="sm"
-                                className="h-7 text-[11px] px-3 gap-1 bg-purple-600 hover:bg-purple-700 text-white"
-                                onClick={() => captureMutation.mutate(item.lead.id)}
-                                disabled={captureMutation.isPending}
-                              >
-                                {captureMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserCheck className="w-3.5 h-3.5" />}
-                                Capturar Lead
-                              </Button>
+                              {item.userPreviouslyHandled ? (
+                                <Badge variant="outline" className="text-[10px]">Você já interagiu</Badge>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-[11px] px-3 gap-1 bg-purple-600 hover:bg-purple-700 text-white"
+                                  onClick={() => captureMutation.mutate(item.lead.id)}
+                                  disabled={captureMutation.isPending}
+                                >
+                                  {captureMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserCheck className="w-3.5 h-3.5" />}
+                                  Capturar Lead
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
