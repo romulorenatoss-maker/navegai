@@ -515,7 +515,7 @@ export default function RelatoriosLeadsPage() {
                 ))}
                 {leadsList.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">
+                    <td colSpan={8} className="px-4 py-8 text-center text-body text-muted-foreground">
                       Nenhum lead encontrado no período selecionado.
                     </td>
                   </tr>
@@ -552,6 +552,69 @@ export default function RelatoriosLeadsPage() {
         description={`Você está prestes a remover ${leadsList.length} lead(s) listados e TODOS os dados vinculados (contatos, tarefas, interações, histórico, atrasos, objeções). Nada restará no sistema. Esta ação é irreversível.`}
         onConfirm={executeDeleteAllFiltered}
       />
+
+      {/* Lead Detail Dialog */}
+      <Dialog open={!!viewLeadId} onOpenChange={(o) => { if (!o) { setViewLeadId(null); setViewLeadData(null); } }}>
+        <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-4 h-4" /> Detalhes do Lead
+            </DialogTitle>
+          </DialogHeader>
+          {viewLeadLoading ? (
+            <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" /> Carregando...
+            </div>
+          ) : viewLeadData ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><span className="text-muted-foreground">Nome:</span> <span className="font-medium">{viewLeadData.nome}</span></div>
+                <div><span className="text-muted-foreground">Status:</span> <Badge variant="outline" className="ml-1 text-[10px]">{STATUS_LABELS[viewLeadData.status_lead] || viewLeadData.status_lead}</Badge></div>
+                <div><span className="text-muted-foreground">Responsável:</span> <span className="font-medium">{viewLeadData.responsavel_nome}</span></div>
+                <div><span className="text-muted-foreground">Origem:</span> {viewLeadData.origem_lead || "—"}</div>
+                <div><span className="text-muted-foreground">Cidade:</span> {viewLeadData.cidade?.nome || "—"}</div>
+                <div><span className="text-muted-foreground">Bairro:</span> {viewLeadData.bairro?.nome || "—"}</div>
+                <div><span className="text-muted-foreground">Rua:</span> {viewLeadData.rua?.nome || "—"}</div>
+                <div><span className="text-muted-foreground">Plano:</span> {viewLeadData.plano?.nome_plano || "—"}</div>
+                <div><span className="text-muted-foreground">Repetidor:</span> {viewLeadData.repetidor ? (viewLeadData.repetidor === "fast" ? "Fast" : "Dual") : "Nenhum"}</div>
+                <div><span className="text-muted-foreground">Criado em:</span> {format(new Date(viewLeadData.data_criacao), "dd/MM/yyyy HH:mm")}</div>
+              </div>
+
+              {viewLeadData.contatos?.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Contatos</p>
+                  <div className="space-y-1">
+                    {viewLeadData.contatos.map((c: any) => (
+                      <div key={c.id} className="text-sm flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px]">{c.tipo_contato}</Badge>
+                        <span>{c.valor}</span>
+                        {c.tem_whatsapp && <Badge className="text-[9px] bg-green-100 text-green-800 border-0">WhatsApp</Badge>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {viewLeadData.historico?.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Histórico Recente</p>
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                    {viewLeadData.historico.map((h: any) => (
+                      <div key={h.id} className="text-xs border-l-2 border-border pl-2">
+                        <span className="text-muted-foreground">{format(new Date(h.data_evento), "dd/MM HH:mm")}</span>
+                        {" — "}
+                        <span className="font-medium">{h.tipo_evento}</span>
+                        {h.descricao && <span className="text-muted-foreground"> — {h.descricao}</span>}
+                        <span className="text-muted-foreground ml-1">({h.usuario?.nome || "—"})</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
