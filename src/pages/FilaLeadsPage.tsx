@@ -317,23 +317,24 @@ export default function FilaLeadsPage() {
     });
   }, [leads, allContatos, allInteracoes, cadencia, profiles]);
 
-  // ─── Fila de Captura (aguardando_captura, exclude previous handlers) ──
+  // ─── Fila de Captura (aguardando_captura, exclude previous handlers for non-admin) ──
   const capturaLeads = useMemo(() => {
     if (!profile) return [];
-    return leads
+    const capturaItems = leads
       .filter(l => l.status_lead === "aguardando_captura")
-      .filter(lead => {
-        // Exclude current user if they previously interacted with this lead
-        const prevHandlers = allInteracoes.filter((i: any) => i.lead_id === lead.id).map((i: any) => i.colaborador_id);
-        return !prevHandlers.includes(profile.id);
-      })
       .map(lead => {
         const contatos = allContatos.filter(c => c.lead_id === lead.id);
         const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
         const lastInteracao = interacoes[0];
-        return { lead, contatos, totalInteracoes: interacoes.length, ultimaTentativaEm: lastInteracao?.data_interacao || null };
+        const prevHandlerIds = interacoes.map((i: any) => i.colaborador_id);
+        const userPreviouslyHandled = prevHandlerIds.includes(profile.id);
+        return { lead, contatos, totalInteracoes: interacoes.length, ultimaTentativaEm: lastInteracao?.data_interacao || null, userPreviouslyHandled };
       });
-  }, [leads, allContatos, allInteracoes, profile]);
+    // Non-admin/non-avaliador: hide leads they previously handled
+    // Admin/avaliador: show all (read-only for ones they handled — they can still see status)
+    if (isAdmin) return capturaItems;
+    return capturaItems.filter(item => !item.userPreviouslyHandled);
+  }, [leads, allContatos, allInteracoes, profile, isAdmin]);
 
   // ─── Notificações (aguardando_decisao) ────────────
   const notificacoes = useMemo(() => {
