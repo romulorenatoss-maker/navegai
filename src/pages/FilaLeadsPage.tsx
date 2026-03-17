@@ -184,8 +184,9 @@ export default function FilaLeadsPage() {
         for (const id of toUpdate) {
           const tarefa = data?.find((t: any) => t.id === id);
           if (tarefa) {
+            const responsavelNome = tarefa.responsavel_id ? (profiles.find(p => p.id === tarefa.responsavel_id)?.nome || "Desconhecido") : "Sem responsável";
             await supabase.from("registro_atraso_tentativa").insert({ lead_id: tarefa.lead_id, colaborador_id: tarefa.responsavel_id || profile.id, tentativa: tarefa.tentativa, data_programada: tarefa.data_contato, periodo: tarefa.periodo });
-            await supabase.from("lead_historico").insert({ lead_id: tarefa.lead_id, usuario_id: profile.id, tipo_evento: "tentativa_atrasada", descricao: `Tentativa ${tarefa.tentativa} (${PERIODO_LABELS[tarefa.periodo] || tarefa.periodo}) expirou sem registro` });
+            await supabase.from("lead_historico").insert({ lead_id: tarefa.lead_id, usuario_id: profile.id, tipo_evento: "tentativa_atrasada", descricao: `Tentativa ${tarefa.tentativa} (${PERIODO_LABELS[tarefa.periodo] || tarefa.periodo}) expirou sem registro. Responsável: ${responsavelNome}` });
           }
         }
         return (data || []).map((t: any) => toUpdate.includes(t.id) ? { ...t, status: "atrasado" } : t);
