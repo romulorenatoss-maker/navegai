@@ -364,13 +364,20 @@ export default function LeadsPage() {
     queryFn: async () => {
       if (!effectiveProfileId) return [] as Lead[];
 
-      let query = supabase.from("leads").select("*");
-
       if (leadsScope === "own") {
-        // Only leads where user is responsible
-        query = query.eq("responsavel_id", effectiveProfileId);
+        // Fetch leads where user is responsible OR has reserved
+        const [respRes, reservedRes] = await Promise.all([
+          supabase.from("leads").select("*").eq("responsavel_id", effectiveProfileId).order("updated_at", { ascending: true }),
+          supabase.from("leads").select("*").eq("reserved_by", effectiveProfileId).order("updated_at", { ascending: true }),
+        ]);
+        if (respRes.error) throw respRes.error;
+        if (reservedRes.error) throw reservedRes.error;
+        // Merge and deduplicate
+        const map = new Map<string, Lead>();
+        (respRes.data || []).forEach(l => map.set(l.id, l as Lead));
+        (reservedRes.data || []).forEach(l => { if (!map.has(l.id)) map.set(l.id, l as Lead); });
+        return [...map.values()].sort((a, b) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
       } else if (leadsScope === "team") {
-        // Leads from all team members (same sector)
         const { data: mySetores } = await supabase
           .from("colaborador_setores")
           .select("setor_id")
@@ -382,16 +389,19 @@ export default function LeadsPage() {
             .select("profile_id")
             .in("setor_id", setorIds);
           const teamIds = teamMembers?.map(m => m.profile_id) || [];
-          query = query.in("responsavel_id", teamIds);
+          const { data, error } = await supabase.from("leads").select("*").in("responsavel_id", teamIds).order("updated_at", { ascending: true });
+          if (error) throw error;
+          return data as Lead[];
         } else {
-          query = query.eq("responsavel_id", effectiveProfileId);
+          const { data, error } = await supabase.from("leads").select("*").eq("responsavel_id", effectiveProfileId).order("updated_at", { ascending: true });
+          if (error) throw error;
+          return data as Lead[];
         }
       } else if (leadsScope === "none") {
         return [] as Lead[];
       }
       // scope === "all" → no filter
-
-      const { data, error } = await query.order("updated_at", { ascending: true });
+      const { data, error } = await supabase.from("leads").select("*").order("updated_at", { ascending: true });
       if (error) throw error;
       return data as Lead[];
     },
