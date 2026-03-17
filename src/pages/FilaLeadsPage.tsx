@@ -604,6 +604,10 @@ export default function FilaLeadsPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="fila">Fila de Leads ({filteredQueue.length})</TabsTrigger>
+          <TabsTrigger value="captura" className="gap-1.5">
+            <UserCheck className="w-3.5 h-3.5" /> Fila de Captura ({capturaLeads.length})
+            {capturaLeads.length > 0 && <span className="ml-1 inline-flex items-center justify-center w-5 h-5 rounded-full bg-purple-500 text-white text-[10px] font-bold">{capturaLeads.length}</span>}
+          </TabsTrigger>
           <TabsTrigger value="tarefas">Tarefas do Dia ({totalTarefas}){totalTarefasAtrasadas > 0 ? ` 🔴` : ""}</TabsTrigger>
           <TabsTrigger value="notificacoes" className="gap-1.5">
             <Bell className="w-3.5 h-3.5" /> Notificações ({notificacoes.length})
