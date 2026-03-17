@@ -1757,11 +1757,6 @@ export default function LeadsPage() {
                             <UserPlus className="w-3.5 h-3.5 mr-2" /> Converter em Cliente
                           </Button>
                         )}
-                        {allAttemptsExhausted && selectedLead.status_lead !== "perdido" && selectedLead.status_lead !== "convertido" && (
-                          <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8 text-amber-600 hover:text-amber-700" onClick={() => setShowFinalize(true)}>
-                            <AlertTriangle className="w-3.5 h-3.5 mr-2" /> Finalizar Tentativas
-                          </Button>
-                        )}
                         {canArchiveLead && selectedLead.status_lead !== "arquivado" && selectedLead.status_lead !== "convertido" && (
                           <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8 text-destructive hover:text-destructive" onClick={async () => {
                             if (!profile) return;
