@@ -1471,6 +1471,7 @@ export default function AvaliacaoOSPage() {
     setFormValidated(false);
     setFormFoundOS(null);
     setFormPendingAval(null);
+    setShowNewOsDialog(false);
     setTipoServicoId("");
     // selectedTipoAvaliacaoId removed
     setAtendenteId("");
