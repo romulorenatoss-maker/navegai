@@ -655,8 +655,8 @@ export default function FilaLeadsPage() {
         .single();
 
       if (checkErr) throw checkErr;
-      if (!freshLead || freshLead.status_lead !== "aguardando_captura" || freshLead.reserved_by || freshLead.responsavel_id) {
-        throw new Error("Este lead já foi atribuído a outro usuário.");
+      if (!freshLead || freshLead.status_lead !== "fila_captura" || freshLead.reserved_by || freshLead.responsavel_id) {
+        throw new Error("Este lead já está sendo atendido por outro usuário.");
       }
 
       const { data: reserved, error: reserveErr } = await supabase.rpc("atomic_reserve_lead", {
