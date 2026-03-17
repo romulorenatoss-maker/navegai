@@ -539,19 +539,27 @@ export default function FilaLeadsPage() {
     onError: (err: any) => toast.error(err.message),
   });
 
-  // ─── Atomic Capture Mutation ──────────────────────
+  // ─── Atomic Capture Mutation (DB-level validation) ──────────────────────
   const captureMutation = useMutation({
     mutationFn: async (leadId: string) => {
       if (!profile) throw new Error("Perfil não encontrado.");
-      // Atomic: only assign if responsavel_id IS NULL (prevents race conditions)
-      const { data, error } = await supabase
+
+      // Step 1: Atomically reserve at DB level — only succeeds if reserved_by IS NULL AND responsavel_id IS NULL
+      const { data: reserved, error: reserveErr } = await supabase.rpc("atomic_reserve_lead", {
+        _lead_id: leadId,
+        _user_id: profile.user_id,
+        _profile_id: profile.id,
+      });
+      if (reserveErr) throw reserveErr;
+      if (!reserved) throw new Error("Este lead já está sendo atendido ou visualizado por outro usuário.");
+
+      // Step 2: Now assign ownership and start cadence
+      const { error: updateErr } = await supabase
         .from("leads")
-        .update({ responsavel_id: profile.id, status_lead: "em_contato" } as any)
-        .eq("id", leadId)
-        .is("responsavel_id", null)
-        .select("id");
-      if (error) throw error;
-      if (!data || data.length === 0) throw new Error("Lead já foi capturado por outro usuário.");
+        .update({ responsavel_id: profile.id, status_lead: "em_contato", reserved_by: null, reserved_at: null } as any)
+        .eq("id", leadId);
+      if (updateErr) throw updateErr;
+
       // Cancel old tasks and create new cadence
       await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", leadId).in("status", ["pendente", "atrasado"]);
       const firstRotina = rotinaTentativas.find((r: any) => r.tentativa_numero === 1);
@@ -564,6 +572,7 @@ export default function FilaLeadsPage() {
       toast.success("Lead capturado com sucesso! Nova rotina iniciada.");
       queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
       queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["fila-interacoes"] });
     },
     onError: (err: any) => toast.error(err.message),
   });
