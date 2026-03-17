@@ -36,6 +36,8 @@ interface GroupPerm {
   can_create: boolean;
   can_edit: boolean;
   can_delete: boolean;
+  can_assign: boolean;
+  can_export: boolean;
 }
 
 interface UserGroupAssignment {
