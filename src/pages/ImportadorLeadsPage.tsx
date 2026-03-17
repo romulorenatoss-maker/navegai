@@ -89,8 +89,9 @@ interface ImportResult {
   const handleFilePick = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.name.endsWith(".csv") && !file.name.endsWith(".txt")) {
-      toast.error("Formato não suportado. Use CSV.");
+    const ext = file.name.toLowerCase();
+    if (!ext.endsWith(".csv") && !ext.endsWith(".txt") && !ext.endsWith(".xls") && !ext.endsWith(".xlsx")) {
+      toast.error("Formato não suportado. Use CSV, XLS ou XLSX.");
       return;
     }
     setFileName(file.name);
