@@ -898,6 +898,22 @@ export default function FilaLeadsPage() {
                             </TableCell>
                             <TableCell>
                               {(() => {
+                                if (!_urgRef) return <span className="text-xs text-muted-foreground">—</span>;
+                                const diffMs = _urgRef.getTime() - new Date().getTime();
+                                if (diffMs <= 0) {
+                                  const absDiff = Math.abs(diffMs);
+                                  const h = Math.floor(absDiff / 3600000);
+                                  const m = Math.floor((absDiff % 3600000) / 60000);
+                                  return <span className="text-xs font-semibold text-destructive flex items-center gap-1"><AlertTriangle className="w-3 h-3" />-{h}h{String(m).padStart(2,'0')}m</span>;
+                                }
+                                const h = Math.floor(diffMs / 3600000);
+                                const m = Math.floor((diffMs % 3600000) / 60000);
+                                const color = h < 2 ? "text-yellow-600 dark:text-yellow-400 font-semibold" : "text-emerald-600 dark:text-emerald-400";
+                                return <span className={`text-xs flex items-center gap-1 ${color}`}><Clock className="w-3 h-3" />{h}h{String(m).padStart(2,'0')}m</span>;
+                              })()}
+                            </TableCell>
+                            <TableCell>
+                              {(() => {
                                 const hasInteracoes = item.tentativaAtual > 1;
                                 const isExpired = item.nextAttemptExpired || item.isOverdue;
                                 let displayStatus = item.lead.status_lead;
