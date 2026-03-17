@@ -125,11 +125,13 @@ export default function FilaLeadsPage() {
   }, [queryClient]);
 
   // ─── Queries ──────────────────────────────────────
+  const CAPTURE_QUEUE_STATUS = "aguardando_captura";
+
   const { data: leads = [], isLoading: loadingLeads } = useQuery({
     queryKey: ["fila-leads"],
     queryFn: async () => {
       const { data, error } = await supabase.from("leads").select("*")
-        .in("status_lead", ["novo", "em_contato", "interessado", "aguardando_decisao_avaliador", "aguardando_captura", "reservado"])
+        .in("status_lead", ["novo", "em_contato", "interessado", "aguardando_decisao_avaliador", CAPTURE_QUEUE_STATUS])
         .order("updated_at", { ascending: true });
       if (error) throw error;
       return data as Lead[];
@@ -362,28 +364,34 @@ export default function FilaLeadsPage() {
     });
   }, [leads, allContatos, allInteracoes, cadencia, profiles]);
 
-  // ─── Fila de Captura (aguardando_captura + reservado, show status) ──
+  // ─── Fila de Captura (somente leads realmente disponíveis) ──
   const capturaLeads = useMemo(() => {
     if (!profile) return [];
     const capturaItems = leads
-      .filter(l => l.status_lead === "aguardando_captura" || l.status_lead === "reservado")
+      .filter(lead => lead.status_lead === CAPTURE_QUEUE_STATUS && !lead.reserved_by && !lead.responsavel_id)
       .map(lead => {
         const contatos = allContatos.filter(c => c.lead_id === lead.id);
         const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
         const lastInteracao = interacoes[0];
         const prevHandlerIds = interacoes.map((i: any) => i.colaborador_id);
         const userPreviouslyHandled = prevHandlerIds.includes(profile.id);
-        const isReservedByOther = lead.status_lead === "reservado" && (lead as any).reserved_by !== profile.id;
-        const isReservedByMe = lead.status_lead === "reservado" && (lead as any).reserved_by === profile.id;
-        const hasResponsavel = !!lead.responsavel_id;
-        const reservedByName = isReservedByOther ? getProfileName((lead as any).reserved_by) : null;
-        const isTaken = isReservedByOther || (hasResponsavel && lead.responsavel_id !== profile.id);
-        return { lead, contatos, totalInteracoes: interacoes.length, ultimaTentativaEm: lastInteracao?.data_interacao || null, userPreviouslyHandled, isReservedByOther, isReservedByMe, reservedByName, isTaken };
+
+        return {
+          lead,
+          contatos,
+          totalInteracoes: interacoes.length,
+          ultimaTentativaEm: lastInteracao?.data_interacao || null,
+          userPreviouslyHandled,
+          isReservedByOther: false,
+          isReservedByMe: false,
+          reservedByName: null,
+          isTaken: false,
+        };
       });
-    // Non-admin: hide leads they previously handled (unless taken by someone — show with indicator)
+
     if (isAdmin) return capturaItems;
-    return capturaItems.filter(item => !item.userPreviouslyHandled || item.isTaken);
-  }, [leads, allContatos, allInteracoes, profile, isAdmin]);
+    return capturaItems.filter(item => !item.userPreviouslyHandled);
+  }, [leads, allContatos, allInteracoes, profile, isAdmin, CAPTURE_QUEUE_STATUS]);
 
   // ─── Notificações (aguardando_decisao) ────────────
   const notificacoes = useMemo(() => {
@@ -571,42 +579,52 @@ export default function FilaLeadsPage() {
     onError: (err: any) => toast.error(err.message),
   });
 
-  // ─── Atomic Capture Mutation (DB-level validation) ──────────────────────
+  // ─── Atomic Capture Mutation (reserva + remoção imediata da fila) ──────────────────────
   const captureMutation = useMutation({
     mutationFn: async (leadId: string) => {
       if (!profile) throw new Error("Perfil não encontrado.");
 
-      // Step 1: Atomically reserve at DB level — only succeeds if reserved_by IS NULL AND responsavel_id IS NULL
       const { data: reserved, error: reserveErr } = await supabase.rpc("atomic_reserve_lead", {
         _lead_id: leadId,
         _user_id: profile.user_id,
         _profile_id: profile.id,
       });
+
       if (reserveErr) throw reserveErr;
       if (!reserved) throw new Error("Este lead já está sendo atendido ou visualizado por outro usuário.");
 
-      // Step 2: Now assign ownership and start cadence
-      const { error: updateErr } = await supabase
-        .from("leads")
-        .update({ responsavel_id: profile.id, status_lead: "em_contato", reserved_by: null, reserved_at: null } as any)
-        .eq("id", leadId);
-      if (updateErr) throw updateErr;
+      const { error: historyErr } = await supabase.from("lead_historico").insert({
+        lead_id: leadId,
+        usuario_id: profile.id,
+        tipo_evento: "lead_reservado",
+        descricao: `Lead reservado por ${profile.nome}.`,
+      });
 
-      // Cancel old tasks and create new cadence
-      await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", leadId).in("status", ["pendente", "atrasado"]);
-      const firstRotina = rotinaTentativas.find((r: any) => r.tentativa_numero === 1);
-      const periodo = firstRotina?.periodo_contato || "manha";
-      const now = new Date();
-      await supabase.from("lead_tarefas_contato").insert({ lead_id: leadId, tentativa: 1, data_contato: now.toISOString(), periodo, status: "pendente", responsavel_id: profile.id });
-      await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "lead_capturado", descricao: `Lead capturado por ${profile.nome}. Nova rotina de tentativas iniciada.` });
+      if (historyErr) throw historyErr;
+    },
+    onMutate: async (leadId: string) => {
+      await queryClient.cancelQueries({ queryKey: ["fila-leads"] });
+      const previousLeads = queryClient.getQueryData<Lead[]>(["fila-leads"]);
+
+      queryClient.setQueryData<Lead[]>(["fila-leads"], (current = []) =>
+        current.filter(lead => lead.id !== leadId)
+      );
+
+      return { previousLeads };
     },
     onSuccess: () => {
-      toast.success("Lead capturado com sucesso! Nova rotina iniciada.");
+      toast.success("Lead reservado com sucesso.");
       queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
-      queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
-      queryClient.invalidateQueries({ queryKey: ["fila-interacoes"] });
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err: any, _leadId, context) => {
+      if (context?.previousLeads) {
+        queryClient.setQueryData(["fila-leads"], context.previousLeads);
+      }
+      toast.error(err.message);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
+    },
   });
 
 
