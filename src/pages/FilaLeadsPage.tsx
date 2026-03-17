@@ -601,10 +601,9 @@ export default function FilaLeadsPage() {
                       );
                     })}
                   </TableBody>
-                </Table>
-              </div>
+              </Table>
+            </div>
           )}
-        </CardContent>
         </CardContent>
       </Card>
 
