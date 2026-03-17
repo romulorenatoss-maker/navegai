@@ -1808,6 +1808,42 @@ export default function LeadsPage() {
                 <Switch checked={createPhoneWhatsapp} onCheckedChange={setCreatePhoneWhatsapp} />
                 <Label className="text-sm">Tem WhatsApp</Label>
               </div>
+
+              {/* Extra contacts */}
+              {createExtraContatos.map((contato, idx) => (
+                <div key={idx} className="border rounded-md p-2 space-y-1.5 bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-medium">Contato extra #{idx + 1}</Label>
+                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCreateExtraContatos(prev => prev.filter((_, i) => i !== idx))}>
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                  <Select value={contato.tipo} onValueChange={v => setCreateExtraContatos(prev => prev.map((c, i) => i === idx ? { ...c, tipo: v, temWhatsapp: v !== "telefone" ? false : c.temWhatsapp } : c))}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="telefone">Telefone</SelectItem>
+                      <SelectItem value="email">E-mail</SelectItem>
+                      <SelectItem value="outro">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    className="h-8 text-xs"
+                    placeholder={contato.tipo === "telefone" ? "(00) 00000-0000" : contato.tipo === "email" ? "email@exemplo.com" : "Contato..."}
+                    value={contato.valor}
+                    onChange={e => setCreateExtraContatos(prev => prev.map((c, i) => i === idx ? { ...c, valor: contato.tipo === "telefone" ? applyPhoneMask(e.target.value) : e.target.value } : c))}
+                  />
+                  {contato.tipo === "telefone" && (
+                    <div className="flex items-center gap-2">
+                      <Switch checked={contato.temWhatsapp} onCheckedChange={v => setCreateExtraContatos(prev => prev.map((c, i) => i === idx ? { ...c, temWhatsapp: v } : c))} />
+                      <Label className="text-xs">WhatsApp</Label>
+                    </div>
+                  )}
+                </div>
+              ))}
+              <Button type="button" variant="outline" size="sm" className="h-7 text-xs w-full" onClick={() => setCreateExtraContatos(prev => [...prev, { tipo: "telefone", valor: "", temWhatsapp: false }])}>
+                <Plus className="w-3 h-3 mr-1" /> Adicionar contato
+              </Button>
+
               <div className="space-y-1.5">
                 <Label>Nome *</Label>
                 <Input placeholder="Nome do lead" value={createName} onChange={e => setCreateName(e.target.value)} />
