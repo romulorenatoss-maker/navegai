@@ -1369,10 +1369,10 @@ export default function LeadsPage() {
       // If lead is reserved (from capture queue), confirm assignment on first interaction
       const isReservedCapture = selectedLead.status_lead === "reservado" && selectedLead.reserved_by === profile.id;
       if (isReservedCapture) {
-        // Officially assign the lead
+        // Officially assign the lead with em_atendimento status
         await supabase.from("leads").update({
           responsavel_id: profile.id,
-          status_lead: "em_contato",
+          status_lead: "em_atendimento",
           reserved_by: null,
           reserved_at: null,
         } as any).eq("id", selectedLead.id);
@@ -1387,10 +1387,10 @@ export default function LeadsPage() {
         await supabase.from("lead_historico").insert({
           lead_id: selectedLead.id, usuario_id: profile.id,
           tipo_evento: "lead_capturado",
-          descricao: `Lead capturado e atribuído a ${profile.nome} após primeira interação. Nova rotina iniciada.`,
+          descricao: `Lead capturado e atribuído a ${profile.nome}. Status: Em Atendimento. Nova rotina iniciada.`,
         });
         // Update local state
-        setSelectedLead(prev => prev ? { ...prev, responsavel_id: profile.id, status_lead: "em_contato", reserved_by: null, reserved_at: null } : null);
+        setSelectedLead(prev => prev ? { ...prev, responsavel_id: profile.id, status_lead: "em_atendimento", reserved_by: null, reserved_at: null } : null);
         queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
         queryClient.invalidateQueries({ queryKey: ["leads-list"] });
       }
