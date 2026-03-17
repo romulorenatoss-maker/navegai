@@ -18,7 +18,7 @@ import { ptBR } from "date-fns/locale";
 import {
   Search, Plus, Phone, User, Users, History, ArrowRight, Trash2,
   MessageSquare, PhoneCall, Clock, UserCheck, RefreshCw, Loader2, UserPlus, AlertTriangle,
-  ListOrdered, Send, FileText, ChevronRight, CalendarClock, CalendarIcon, Zap, Archive,
+  ListOrdered, Send, FileText, ChevronRight, CalendarClock, CalendarIcon, Zap, Archive, Eye,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -204,6 +204,11 @@ export default function LeadsPage() {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // Vision mode: view leads as another user
+  const [viewAsProfileId, setViewAsProfileId] = useState<string | null>(null);
+  const isVisionMode = !!viewAsProfileId;
+  const effectiveProfileId = viewAsProfileId || profile?.id || null;
+
   // Search
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<(Lead & { contatos: LeadContato[] })[] | null>(null);
@@ -285,28 +290,48 @@ export default function LeadsPage() {
   } | null>(null);
 
   // ─── Queries ──────────────────────────────────────
-  const { data: allLeads = [], isLoading: loadingLeads } = useQuery({
-    queryKey: ["leads-list", profile?.id],
+
+  // Query: profiles from Atendimento sector for vision mode
+  const canUseVisionMode = isAdmin || hasRole("avaliador");
+  const { data: visionProfiles = [] } = useQuery({
+    queryKey: ["vision-atendimento-profiles"],
+    enabled: canUseVisionMode,
     queryFn: async () => {
-      if (!profile) return [] as Lead[];
+      // Find "Atendimento" sector
+      const { data: setores } = await supabase.from("setores").select("id, nome").ilike("nome", "%atendimento%").limit(1);
+      const setorId = setores?.[0]?.id;
+      if (!setorId) return [];
+      // Get profiles linked to that sector
+      const { data: colabSetores } = await supabase.from("colaborador_setores").select("profile_id").eq("setor_id", setorId);
+      if (!colabSetores || colabSetores.length === 0) return [];
+      const profileIds = colabSetores.map(cs => cs.profile_id);
+      const { data: profiles } = await supabase.from("profiles").select("id, nome, cargo").in("id", profileIds).eq("ativo", true).order("nome");
+      return (profiles || []) as { id: string; nome: string; cargo: string | null }[];
+    },
+  });
+
+  const { data: allLeads = [], isLoading: loadingLeads } = useQuery({
+    queryKey: ["leads-list", effectiveProfileId],
+    queryFn: async () => {
+      if (!effectiveProfileId) return [] as Lead[];
       const { data, error } = await supabase
         .from("leads")
         .select("*")
-        .eq("responsavel_id", profile.id)
+        .eq("responsavel_id", effectiveProfileId)
         .order("updated_at", { ascending: true });
       if (error) throw error;
       return data as Lead[];
     },
-    enabled: !!profile,
+    enabled: !!effectiveProfileId,
   });
 
   // Helper: update a single lead in cache without full refetch (prevents closing detail panel)
   const updateLeadInCache = useCallback((leadId: string, updates: Partial<Lead>) => {
-    queryClient.setQueryData(["leads-list", profile?.id], (old: Lead[] | undefined) => {
+    queryClient.setQueryData(["leads-list", effectiveProfileId], (old: Lead[] | undefined) => {
       if (!old) return old;
       return old.map(l => l.id === leadId ? { ...l, ...updates } : l);
     });
-  }, [profile?.id, queryClient]);
+  }, [effectiveProfileId, queryClient]);
 
   // Auto-select lead from URL param ?id=
   useEffect(() => {
@@ -1260,52 +1285,97 @@ export default function LeadsPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <h1 className="text-lg font-bold text-foreground">Meus Leads</h1>
+          <h1 className="text-lg font-bold text-foreground">
+            {isVisionMode ? `Visão: ${visionProfiles.find(p => p.id === viewAsProfileId)?.nome || ""}` : "Meus Leads"}
+          </h1>
+          {isVisionMode && (
+            <Badge variant="outline" className="text-xs gap-1 border-primary/40 text-primary">
+              <Eye className="w-3 h-3" /> Modo Visão (somente leitura)
+            </Badge>
+          )}
           <Badge variant="secondary" className="text-xs">{filteredQueue.length} na fila</Badge>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="relative w-64">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Buscar telefone ou nome..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleSearch()}
-              className="pl-8 h-8 text-sm"
-            />
-            {/* Search dropdown */}
-            {searchResults !== null && (
-              <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto">
-                {searchResults.length === 0 ? (
-                  <div className="p-3 text-sm text-muted-foreground">
-                    Nenhum encontrado.{" "}
-                    <button onClick={() => { setShowCreate(true); setSearchResults(null); }} className="text-primary underline">Criar?</button>
+          {/* Vision Mode Button */}
+          {canUseVisionMode && visionProfiles.length > 0 && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant={isVisionMode ? "default" : "ghost"} size="icon" className="h-7 w-7">
+                  <Eye className="w-4 h-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-1" align="start">
+                <div className="space-y-0.5">
+                  <Button
+                    size="sm" variant={!isVisionMode ? "secondary" : "ghost"}
+                    className="w-full justify-start text-xs h-8"
+                    onClick={() => { setViewAsProfileId(null); setSelectedLead(null); }}
+                  >
+                    <User className="w-3.5 h-3.5 mr-2" /> Minha visão
+                  </Button>
+                  <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    Atendimento
                   </div>
-                ) : (
-                  searchResults.map(lead => (
-                    <button
-                      key={lead.id}
-                      onClick={() => openLeadWithTransfer(lead)}
-                      className="w-full text-left px-3 py-2 hover:bg-accent/50 transition-colors flex items-center justify-between border-b last:border-0"
+                  {visionProfiles.map(vp => (
+                    <Button
+                      key={vp.id}
+                      size="sm"
+                      variant={viewAsProfileId === vp.id ? "secondary" : "ghost"}
+                      className="w-full justify-start text-xs h-8"
+                      disabled={!canUseVisionMode && vp.id !== profile?.id}
+                      onClick={() => { setViewAsProfileId(vp.id); setSelectedLead(null); }}
                     >
-                      <div>
-                        <p className="text-sm font-medium">{lead.nome}</p>
-                        <p className="text-xs text-muted-foreground">{lead.contatos.map(c => c.valor).join(", ")}</p>
-                      </div>
-                      {statusBadge(lead.status_lead)}
-                    </button>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
-          <Button onClick={handleSearch} disabled={searching} size="sm" variant="outline" className="h-8">
-            {searching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
-          </Button>
-          <Button onClick={() => setShowCreate(true)} size="sm" className="h-8 press-effect">
-            <Plus className="w-3.5 h-3.5 mr-1" /> Novo Lead
-          </Button>
+                      <Users className="w-3.5 h-3.5 mr-2" /> {vp.nome}
+                    </Button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
         </div>
+        {!isVisionMode && (
+          <div className="flex items-center gap-2">
+            <div className="relative w-64">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Buscar telefone ou nome..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleSearch()}
+                className="pl-8 h-8 text-sm"
+              />
+              {/* Search dropdown */}
+              {searchResults !== null && (
+                <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                  {searchResults.length === 0 ? (
+                    <div className="p-3 text-sm text-muted-foreground">
+                      Nenhum encontrado.{" "}
+                      <button onClick={() => { setShowCreate(true); setSearchResults(null); }} className="text-primary underline">Criar?</button>
+                    </div>
+                  ) : (
+                    searchResults.map(lead => (
+                      <button
+                        key={lead.id}
+                        onClick={() => openLeadWithTransfer(lead)}
+                        className="w-full text-left px-3 py-2 hover:bg-accent/50 transition-colors flex items-center justify-between border-b last:border-0"
+                      >
+                        <div>
+                          <p className="text-sm font-medium">{lead.nome}</p>
+                          <p className="text-xs text-muted-foreground">{lead.contatos.map(c => c.valor).join(", ")}</p>
+                        </div>
+                        {statusBadge(lead.status_lead)}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+            <Button onClick={handleSearch} disabled={searching} size="sm" variant="outline" className="h-8">
+              {searching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+            </Button>
+            <Button onClick={() => setShowCreate(true)} size="sm" className="h-8 press-effect">
+              <Plus className="w-3.5 h-3.5 mr-1" /> Novo Lead
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* 3-Panel Layout */}
@@ -1365,7 +1435,7 @@ export default function LeadsPage() {
                     return (
                       <button
                         key={item.lead.id}
-                        onClick={() => openLeadWithTransfer(item.lead)}
+                        onClick={() => isVisionMode ? setSelectedLead(item.lead) : openLeadWithTransfer(item.lead)}
                         className={`w-full text-left px-3 py-2.5 transition-colors relative ${
                           isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-accent/50 border-l-2 border-l-transparent"
                         }`}
@@ -1579,7 +1649,7 @@ export default function LeadsPage() {
                 </Card>
 
                 {/* Ação Popover Button */}
-                <div className="flex items-center gap-2">
+                {!isVisionMode && <div className="flex items-center gap-2">
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button size="sm" className="h-8 text-xs gap-1.5 press-effect">
@@ -1642,7 +1712,7 @@ export default function LeadsPage() {
                   {allAttemptsExhausted && selectedLead.status_lead !== "perdido" && selectedLead.status_lead !== "convertido" && (
                     <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-0 text-[10px] gap-1"><AlertTriangle className="w-3 h-3" /> {maxTentativas} tentativas</Badge>
                   )}
-                </div>
+                </div>}
 
                 {/* Dados do Lead - vertical stacking */}
                 <Card>
@@ -1654,7 +1724,7 @@ export default function LeadsPage() {
                   <CardContent className="p-3 space-y-2.5">
                     <div className="space-y-1">
                       <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Perfil Identificado</Label>
-                      <Select value={localPlanoId || "none"} onValueChange={v => setLocalPlanoId(v === "none" ? null : v)}>
+                      <Select value={localPlanoId || "none"} onValueChange={v => setLocalPlanoId(v === "none" ? null : v)} disabled={isVisionMode}>
                         <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">Nenhum</SelectItem>
@@ -1664,7 +1734,7 @@ export default function LeadsPage() {
                     </div>
                     <div className="space-y-1">
                       <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Repetidor</Label>
-                      <Select value={localRepetidor || "none"} onValueChange={v => setLocalRepetidor(v === "none" ? null : v)}>
+                      <Select value={localRepetidor || "none"} onValueChange={v => setLocalRepetidor(v === "none" ? null : v)} disabled={isVisionMode}>
                         <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">Nenhum</SelectItem>
@@ -1675,7 +1745,7 @@ export default function LeadsPage() {
                     </div>
                     <div className="space-y-1">
                       <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Objeção</Label>
-                      <Select value={localObjecaoId} onValueChange={v => setLocalObjecaoId(v)}>
+                      <Select value={localObjecaoId} onValueChange={v => setLocalObjecaoId(v)} disabled={isVisionMode}>
                         <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">Nenhuma</SelectItem>
@@ -1694,16 +1764,16 @@ export default function LeadsPage() {
                             <Select value={localCidadeId || "none"} onValueChange={v => {
                               const val = v === "none" ? null : v;
                               setLocalCidadeId(val); setLocalBairroId(null); setLocalRuaId(null);
-                            }}>
+                            }} disabled={isVisionMode}>
                               <SelectTrigger className="h-8 text-xs flex-1"><SelectValue placeholder="—" /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="none">Nenhuma</SelectItem>
                                 {endCidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
                               </SelectContent>
                             </Select>
-                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { setDetailQuickAddType("cidade"); setDetailQuickAddNome(""); }}>
+                            {!isVisionMode && <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { setDetailQuickAddType("cidade"); setDetailQuickAddNome(""); }}>
                               <Plus className="w-3.5 h-3.5" />
-                            </Button>
+                            </Button>}
                           </div>
                         </div>
                         <div className="space-y-1">
@@ -1712,36 +1782,36 @@ export default function LeadsPage() {
                             <Select value={localBairroId || "none"} onValueChange={v => {
                               const val = v === "none" ? null : v;
                               setLocalBairroId(val); setLocalRuaId(null);
-                            }} disabled={!localCidadeId}>
+                            }} disabled={!localCidadeId || isVisionMode}>
                               <SelectTrigger className="h-8 text-xs flex-1"><SelectValue placeholder="—" /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="none">Nenhum</SelectItem>
                                 {endBairros.filter(b => b.cidade_id === localCidadeId).map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}
                               </SelectContent>
                             </Select>
-                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { setDetailQuickAddType("bairro"); setDetailQuickAddNome(""); }} disabled={!localCidadeId}>
+                            {!isVisionMode && <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { setDetailQuickAddType("bairro"); setDetailQuickAddNome(""); }} disabled={!localCidadeId}>
                               <Plus className="w-3.5 h-3.5" />
-                            </Button>
+                            </Button>}
                           </div>
                         </div>
                         <div className="space-y-1">
                           <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Rua</Label>
                           <div className="flex gap-1">
-                            <Select value={localRuaId || "none"} onValueChange={v => setLocalRuaId(v === "none" ? null : v)} disabled={!localBairroId}>
+                            <Select value={localRuaId || "none"} onValueChange={v => setLocalRuaId(v === "none" ? null : v)} disabled={!localBairroId || isVisionMode}>
                               <SelectTrigger className="h-8 text-xs flex-1"><SelectValue placeholder="—" /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="none">Nenhuma</SelectItem>
                                 {endRuas.filter(r => r.bairro_id === localBairroId).map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
                               </SelectContent>
                             </Select>
-                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { setDetailQuickAddType("rua"); setDetailQuickAddNome(""); }} disabled={!localBairroId}>
+                            {!isVisionMode && <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { setDetailQuickAddType("rua"); setDetailQuickAddNome(""); }} disabled={!localBairroId}>
                               <Plus className="w-3.5 h-3.5" />
-                            </Button>
+                            </Button>}
                           </div>
                         </div>
                         <div className="space-y-1">
                           <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Nº</Label>
-                          <Input className="h-8 text-xs" value={localNumeroEnd} onChange={e => setLocalNumeroEnd(e.target.value)} placeholder="Nº" />
+                          <Input className="h-8 text-xs" value={localNumeroEnd} onChange={e => setLocalNumeroEnd(e.target.value)} placeholder="Nº" disabled={isVisionMode} />
                         </div>
                       </div>
 
@@ -1785,9 +1855,9 @@ export default function LeadsPage() {
                     <CardTitle className="text-xs font-semibold flex items-center gap-1.5 text-muted-foreground uppercase tracking-wider">
                       <Phone className="w-3 h-3" /> Contatos
                     </CardTitle>
-                    <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={() => setShowAddPhone(true)}>
+                    {!isVisionMode && <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={() => setShowAddPhone(true)}>
                       <Plus className="w-3 h-3 mr-0.5" /> Adicionar
-                    </Button>
+                    </Button>}
                   </CardHeader>
                   <CardContent className="p-2">
                     {leadContatos.length === 0 ? (
@@ -1801,7 +1871,7 @@ export default function LeadsPage() {
                               <span className="text-xs">{c.valor}</span>
                               {c.tem_whatsapp && <Badge variant="outline" className="text-[9px] px-1 py-0">WA</Badge>}
                             </div>
-                            {isAdmin && (
+                            {isAdmin && !isVisionMode && (
                               <button onClick={() => removeContact(c)} className="text-destructive/60 hover:text-destructive transition-colors">
                                 <Trash2 className="w-3 h-3" />
                               </button>
