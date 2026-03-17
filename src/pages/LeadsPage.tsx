@@ -681,7 +681,11 @@ export default function LeadsPage() {
 
       const leadNome = linkedClienteNome || createName.trim();
       const { data: newLead, error: e1 } = await supabase
-        .from("leads").insert({ nome: leadNome, status_lead: "novo", responsavel_id: profile.id, cliente_id: linkedClienteId })
+        .from("leads").insert({
+          nome: leadNome, status_lead: "novo", responsavel_id: profile.id, cliente_id: linkedClienteId,
+          cidade_id: createCidadeId || null, bairro_id: createBairroId || null, rua_id: createRuaId || null,
+          numero_endereco: createNumeroEnd.trim() || null,
+        } as any)
         .select().single();
       if (e1) throw e1;
 
