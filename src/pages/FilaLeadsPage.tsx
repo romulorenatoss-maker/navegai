@@ -389,8 +389,7 @@ export default function FilaLeadsPage() {
         };
       });
 
-    if (isAdmin) return capturaItems;
-    return capturaItems.filter(item => !item.userPreviouslyHandled);
+    return capturaItems;
   }, [leads, allContatos, allInteracoes, profile, isAdmin, CAPTURE_QUEUE_STATUS]);
 
   // ─── Notificações (aguardando_decisao) ────────────
