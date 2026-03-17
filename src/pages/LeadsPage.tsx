@@ -164,6 +164,13 @@ export default function LeadsPage() {
   const [createName, setCreateName] = useState("");
   const [createPhone, setCreatePhone] = useState("");
   const [createPhoneWhatsapp, setCreatePhoneWhatsapp] = useState(false);
+  const [createCidadeId, setCreateCidadeId] = useState<string>("");
+  const [createBairroId, setCreateBairroId] = useState<string>("");
+  const [createRuaId, setCreateRuaId] = useState<string>("");
+  const [createNumeroEnd, setCreateNumeroEnd] = useState("");
+  // Quick-add address dialogs
+  const [quickAddType, setQuickAddType] = useState<"cidade" | "bairro" | "rua" | null>(null);
+  const [quickAddNome, setQuickAddNome] = useState("");
 
   // Detail view
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
