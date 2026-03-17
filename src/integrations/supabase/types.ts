@@ -451,8 +451,10 @@ export type Database = {
       }
       clientes: {
         Row: {
+          bairro_id: string | null
           cep: string | null
           cidade: string | null
+          cidade_id: string | null
           cpf: string | null
           created_at: string
           endereco: string | null
@@ -462,11 +464,14 @@ export type Database = {
           numero: string | null
           referencia: string | null
           rg: string | null
+          rua_id: string | null
           updated_at: string
         }
         Insert: {
+          bairro_id?: string | null
           cep?: string | null
           cidade?: string | null
+          cidade_id?: string | null
           cpf?: string | null
           created_at?: string
           endereco?: string | null
@@ -476,11 +481,14 @@ export type Database = {
           numero?: string | null
           referencia?: string | null
           rg?: string | null
+          rua_id?: string | null
           updated_at?: string
         }
         Update: {
+          bairro_id?: string | null
           cep?: string | null
           cidade?: string | null
+          cidade_id?: string | null
           cpf?: string | null
           created_at?: string
           endereco?: string | null
@@ -490,9 +498,32 @@ export type Database = {
           numero?: string | null
           referencia?: string | null
           rg?: string | null
+          rua_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clientes_bairro_id_fkey"
+            columns: ["bairro_id"]
+            isOneToOne: false
+            referencedRelation: "bairros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clientes_cidade_id_fkey"
+            columns: ["cidade_id"]
+            isOneToOne: false
+            referencedRelation: "cidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clientes_rua_id_fkey"
+            columns: ["rua_id"]
+            isOneToOne: false
+            referencedRelation: "ruas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       colaborador_setores: {
         Row: {
