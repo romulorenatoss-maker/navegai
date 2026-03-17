@@ -355,21 +355,15 @@ export default function CadastroEnderecosPage() {
               <Input value={formNome} onChange={e => setFormNome(e.target.value)} placeholder={`Nome ${tabLabel.toLowerCase()}`} autoFocus />
             </div>
             {tab === "bairros" && (
-              <>
-                <div className="space-y-1.5">
-                  <Label>Cidade *</Label>
-                  <Select value={formCidadeId} onValueChange={setFormCidadeId}>
-                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                    <SelectContent>
-                      {cidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>CEP</Label>
-                  <Input value={formCep} onChange={e => setFormCep(e.target.value)} placeholder="00000-000" />
-                </div>
-              </>
+              <div className="space-y-1.5">
+                <Label>Cidade *</Label>
+                <Select value={formCidadeId} onValueChange={setFormCidadeId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>
+                    {cidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
             {tab === "ruas" && (
               <>
