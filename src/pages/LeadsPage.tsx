@@ -299,8 +299,11 @@ export default function LeadsPage() {
   const [showConvert, setShowConvert] = useState(false);
   const [convAtendenteId, setConvAtendenteId] = useState<string>("");
   const [convForm, setConvForm] = useState({
-    nome: "", cpf: "", rg: "", nome_mae: "", endereco: "", numero: "", cep: "", cidade: "", referencia: "",
+    nome: "", cpf: "", rg: "", nome_mae: "", numero: "", referencia: "",
   });
+  const [convCidadeId, setConvCidadeId] = useState<string | null>(null);
+  const [convBairroId, setConvBairroId] = useState<string | null>(null);
+  const [convRuaId, setConvRuaId] = useState<string | null>(null);
 
   // Finalize dialog (when all attempts done)
   const [showFinalize, setShowFinalize] = useState(false);
