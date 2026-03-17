@@ -1443,14 +1443,20 @@ export default function LeadsPage() {
       });
       if (error) throw error;
 
-      // Compute cycle-based attempt count (after last transfer)
-      const lastTransferEvt = leadHistorico.find(h =>
-        h.tipo_evento === "transferencia_automatica" || h.tipo_evento === "transferencia_decisao"
-      );
-      const cycleInteractions = lastTransferEvt
-        ? leadInteracoes.filter(i => new Date(i.data_interacao) > new Date(lastTransferEvt.data_evento)).length
-        : leadInteracoes.length;
-      const tentativaNum = cycleInteractions + 1;
+      // Compute cycle-based attempt count (after last transfer or capture)
+      let tentativaNum: number;
+      if (isReservedCapture) {
+        // This IS the first interaction of a new capture cycle
+        tentativaNum = 1;
+      } else {
+        const lastCycleEvt = leadHistorico.find(h =>
+          h.tipo_evento === "transferencia_automatica" || h.tipo_evento === "transferencia_decisao" || h.tipo_evento === "lead_capturado"
+        );
+        const cycleInteractions = lastCycleEvt
+          ? leadInteracoes.filter(i => new Date(i.data_interacao) > new Date(lastCycleEvt.data_evento)).length
+          : leadInteracoes.length;
+        tentativaNum = cycleInteractions + 1;
+      }
       await supabase.from("lead_historico").insert({
         lead_id: selectedLead.id, usuario_id: profile.id,
         tipo_evento: "tentativa_contato",
