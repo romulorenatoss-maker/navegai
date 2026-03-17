@@ -204,6 +204,11 @@ export default function LeadsPage() {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // Vision mode: view leads as another user
+  const [viewAsProfileId, setViewAsProfileId] = useState<string | null>(null);
+  const isVisionMode = !!viewAsProfileId;
+  const effectiveProfileId = viewAsProfileId || profile?.id || null;
+
   // Search
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<(Lead & { contatos: LeadContato[] })[] | null>(null);
