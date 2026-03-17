@@ -1188,12 +1188,15 @@ export default function LeadsPage() {
     return priorityQueue.find(q => q.lead.id === selectedLead.id) || null;
   }, [selectedLead, priorityQueue]);
 
+  // Tentativas realizadas (0 = cadastro inicial, sem interações)
+  const tentativasRealizadas = selectedQueueInfo ? selectedQueueInfo.tentativaAtual - 1 : leadInteracoes.length;
+
   // Phone options for interaction dialog
   const phoneOptions = leadContatos.filter(c => c.tipo_contato === "telefone");
 
   // Check if all cadencia attempts are exhausted
   const maxTentativas = fluxoConfig?.quantidade_tentativas || cadencia.length || 7;
-  const allAttemptsExhausted = selectedQueueInfo ? selectedQueueInfo.tentativaAtual > maxTentativas : false;
+  const allAttemptsExhausted = tentativasRealizadas >= maxTentativas;
 
   // Handle finalize action (after all attempts)
   const handleFinalizeAction = async (action: "reiniciar" | "arquivar") => {
