@@ -209,6 +209,38 @@ export type Database = {
           },
         ]
       }
+      bairros: {
+        Row: {
+          cep: string | null
+          cidade_id: string
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          cep?: string | null
+          cidade_id: string
+          created_at?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          cep?: string | null
+          cidade_id?: string
+          created_at?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bairros_cidade_id_fkey"
+            columns: ["cidade_id"]
+            isOneToOne: false
+            referencedRelation: "cidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cadencia_tentativas: {
         Row: {
           created_at: string
@@ -366,6 +398,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      cidades: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: []
       }
       cliente_contatos: {
         Row: {
@@ -792,47 +842,73 @@ export type Database = {
       leads: {
         Row: {
           agendamento_retorno: string | null
+          bairro_id: string | null
+          cidade_id: string | null
           cliente_id: string | null
           created_at: string
           data_criacao: string
           id: string
           nome: string
+          numero_endereco: string | null
           origem_lead: string | null
           plano_id: string | null
           repetidor: string | null
           responsavel_id: string | null
+          rua_id: string | null
           status_lead: string
           updated_at: string
         }
         Insert: {
           agendamento_retorno?: string | null
+          bairro_id?: string | null
+          cidade_id?: string | null
           cliente_id?: string | null
           created_at?: string
           data_criacao?: string
           id?: string
           nome: string
+          numero_endereco?: string | null
           origem_lead?: string | null
           plano_id?: string | null
           repetidor?: string | null
           responsavel_id?: string | null
+          rua_id?: string | null
           status_lead?: string
           updated_at?: string
         }
         Update: {
           agendamento_retorno?: string | null
+          bairro_id?: string | null
+          cidade_id?: string | null
           cliente_id?: string | null
           created_at?: string
           data_criacao?: string
           id?: string
           nome?: string
+          numero_endereco?: string | null
           origem_lead?: string | null
           plano_id?: string | null
           repetidor?: string | null
           responsavel_id?: string | null
+          rua_id?: string | null
           status_lead?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "leads_bairro_id_fkey"
+            columns: ["bairro_id"]
+            isOneToOne: false
+            referencedRelation: "bairros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_cidade_id_fkey"
+            columns: ["cidade_id"]
+            isOneToOne: false
+            referencedRelation: "cidades"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "leads_cliente_id_fkey"
             columns: ["cliente_id"]
@@ -852,6 +928,13 @@ export type Database = {
             columns: ["responsavel_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_rua_id_fkey"
+            columns: ["rua_id"]
+            isOneToOne: false
+            referencedRelation: "ruas"
             referencedColumns: ["id"]
           },
         ]
@@ -1393,6 +1476,38 @@ export type Database = {
           tentativa_numero?: number
         }
         Relationships: []
+      }
+      ruas: {
+        Row: {
+          bairro_id: string
+          cep: string | null
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          bairro_id: string
+          cep?: string | null
+          created_at?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          bairro_id?: string
+          cep?: string | null
+          created_at?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ruas_bairro_id_fkey"
+            columns: ["bairro_id"]
+            isOneToOne: false
+            referencedRelation: "bairros"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sessoes_usuario: {
         Row: {

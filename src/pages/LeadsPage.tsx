@@ -39,6 +39,10 @@ interface Lead {
   created_at: string;
   updated_at: string;
   agendamento_retorno: string | null;
+  cidade_id: string | null;
+  bairro_id: string | null;
+  rua_id: string | null;
+  numero_endereco: string | null;
 }
 
 interface LeadContato {
@@ -160,6 +164,13 @@ export default function LeadsPage() {
   const [createName, setCreateName] = useState("");
   const [createPhone, setCreatePhone] = useState("");
   const [createPhoneWhatsapp, setCreatePhoneWhatsapp] = useState(false);
+  const [createCidadeId, setCreateCidadeId] = useState<string>("");
+  const [createBairroId, setCreateBairroId] = useState<string>("");
+  const [createRuaId, setCreateRuaId] = useState<string>("");
+  const [createNumeroEnd, setCreateNumeroEnd] = useState("");
+  // Quick-add address dialogs
+  const [quickAddType, setQuickAddType] = useState<"cidade" | "bairro" | "rua" | null>(null);
+  const [quickAddNome, setQuickAddNome] = useState("");
 
   // Detail view
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -293,6 +304,32 @@ export default function LeadsPage() {
   });
 
   const canArchiveLead = isAdmin || (hasRole("avaliador") && userSetor?.nome?.toLowerCase().includes("atendimento"));
+
+  // Address queries
+  const { data: endCidades = [] } = useQuery({
+    queryKey: ["enderecos-cidades"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("cidades").select("*").order("nome");
+      if (error) throw error;
+      return data as { id: string; nome: string }[];
+    },
+  });
+  const { data: endBairros = [] } = useQuery({
+    queryKey: ["enderecos-bairros"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("bairros").select("*").order("nome");
+      if (error) throw error;
+      return data as { id: string; nome: string; cidade_id: string; cep: string | null }[];
+    },
+  });
+  const { data: endRuas = [] } = useQuery({
+    queryKey: ["enderecos-ruas"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("ruas").select("*").order("nome");
+      if (error) throw error;
+      return data as { id: string; nome: string; bairro_id: string; cep: string | null }[];
+    },
+  });
 
   const { data: leadObjecaoRegistro, refetch: refetchObjecao } = useQuery({
     queryKey: ["lead-objecao-registro", selectedLead?.id],
@@ -644,7 +681,11 @@ export default function LeadsPage() {
 
       const leadNome = linkedClienteNome || createName.trim();
       const { data: newLead, error: e1 } = await supabase
-        .from("leads").insert({ nome: leadNome, status_lead: "novo", responsavel_id: profile.id, cliente_id: linkedClienteId })
+        .from("leads").insert({
+          nome: leadNome, status_lead: "novo", responsavel_id: profile.id, cliente_id: linkedClienteId,
+          cidade_id: createCidadeId || null, bairro_id: createBairroId || null, rua_id: createRuaId || null,
+          numero_endereco: createNumeroEnd.trim() || null,
+        } as any)
         .select().single();
       if (e1) throw e1;
 
@@ -682,6 +723,7 @@ export default function LeadsPage() {
     onSuccess: (newLead) => {
       toast.success("Lead criado com sucesso!");
       setShowCreate(false); setCreateName(""); setCreatePhone(""); setCreatePhoneWhatsapp(false);
+      setCreateCidadeId(""); setCreateBairroId(""); setCreateRuaId(""); setCreateNumeroEnd("");
       queryClient.invalidateQueries({ queryKey: ["leads-list"] });
       setSelectedLead(newLead);
     },
@@ -1441,6 +1483,68 @@ export default function LeadsPage() {
                       </Select>
                     </div>
                   </div>
+                  {/* Address display */}
+                  <div className="grid grid-cols-4 gap-2 pt-2 border-t">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Cidade</Label>
+                      <Select value={selectedLead.cidade_id || "none"} onValueChange={async (v) => {
+                        if (!selectedLead || !profile) return;
+                        const val = v === "none" ? null : v;
+                        await supabase.from("leads").update({ cidade_id: val, bairro_id: null, rua_id: null } as any).eq("id", selectedLead.id);
+                        setSelectedLead(prev => prev ? { ...prev, cidade_id: val, bairro_id: null, rua_id: null } : null);
+                        queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                      }}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhuma</SelectItem>
+                          {endCidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Bairro</Label>
+                      <Select value={selectedLead.bairro_id || "none"} onValueChange={async (v) => {
+                        if (!selectedLead || !profile) return;
+                        const val = v === "none" ? null : v;
+                        await supabase.from("leads").update({ bairro_id: val, rua_id: null } as any).eq("id", selectedLead.id);
+                        setSelectedLead(prev => prev ? { ...prev, bairro_id: val, rua_id: null } : null);
+                        queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                      }} disabled={!selectedLead.cidade_id}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhum</SelectItem>
+                          {endBairros.filter(b => b.cidade_id === selectedLead.cidade_id).map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Rua</Label>
+                      <Select value={selectedLead.rua_id || "none"} onValueChange={async (v) => {
+                        if (!selectedLead || !profile) return;
+                        const val = v === "none" ? null : v;
+                        await supabase.from("leads").update({ rua_id: val } as any).eq("id", selectedLead.id);
+                        setSelectedLead(prev => prev ? { ...prev, rua_id: val } : null);
+                        queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                      }} disabled={!selectedLead.bairro_id}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhuma</SelectItem>
+                          {endRuas.filter(r => r.bairro_id === selectedLead.bairro_id).map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Nº</Label>
+                      <Input className="h-8 text-xs" value={selectedLead.numero_endereco || ""} onChange={async (e) => {
+                        const val = e.target.value;
+                        setSelectedLead(prev => prev ? { ...prev, numero_endereco: val } : null);
+                      }} onBlur={async () => {
+                        if (!selectedLead) return;
+                        await supabase.from("leads").update({ numero_endereco: selectedLead.numero_endereco || null } as any).eq("id", selectedLead.id);
+                        queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                      }} placeholder="Nº" />
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -1658,34 +1762,143 @@ export default function LeadsPage() {
 
       {/* Create Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[90vh]">
           <DialogHeader><DialogTitle>Novo Lead</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label>Telefone *</Label>
-              <Input placeholder="(00) 00000-0000" value={createPhone} onChange={e => setCreatePhone(applyPhoneMask(e.target.value))} />
-              {normalizePhone(createPhone).length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Tipo: {getPhoneTypeLabel(normalizePhone(createPhone))}
-                  {!isValidPhone(normalizePhone(createPhone)) && normalizePhone(createPhone).length >= 8 && (
-                    <span className="text-destructive ml-2">— formato inválido</span>
-                  )}
-                </p>
-              )}
+          <ScrollArea className="max-h-[65vh] pr-3">
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label>Telefone *</Label>
+                <Input placeholder="(00) 00000-0000" value={createPhone} onChange={e => setCreatePhone(applyPhoneMask(e.target.value))} />
+                {normalizePhone(createPhone).length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Tipo: {getPhoneTypeLabel(normalizePhone(createPhone))}
+                    {!isValidPhone(normalizePhone(createPhone)) && normalizePhone(createPhone).length >= 8 && (
+                      <span className="text-destructive ml-2">— formato inválido</span>
+                    )}
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch checked={createPhoneWhatsapp} onCheckedChange={setCreatePhoneWhatsapp} />
+                <Label className="text-sm">Tem WhatsApp</Label>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Nome *</Label>
+                <Input placeholder="Nome do lead" value={createName} onChange={e => setCreateName(e.target.value)} />
+              </div>
+
+              {/* ─── Address fields ──────────────── */}
+              <div className="border-t pt-3 mt-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Endereço</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Cidade</Label>
+                    <div className="flex gap-1">
+                      <Select value={createCidadeId || "none"} onValueChange={v => {
+                        setCreateCidadeId(v === "none" ? "" : v);
+                        setCreateBairroId(""); setCreateRuaId("");
+                      }}>
+                        <SelectTrigger className="h-8 text-xs flex-1"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhuma</SelectItem>
+                          {endCidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { setQuickAddType("cidade"); setQuickAddNome(""); }}>
+                        <Plus className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Bairro</Label>
+                    <div className="flex gap-1">
+                      <Select value={createBairroId || "none"} onValueChange={v => { setCreateBairroId(v === "none" ? "" : v); setCreateRuaId(""); }} disabled={!createCidadeId}>
+                        <SelectTrigger className="h-8 text-xs flex-1"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhum</SelectItem>
+                          {endBairros.filter(b => b.cidade_id === createCidadeId).map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { setQuickAddType("bairro"); setQuickAddNome(""); }} disabled={!createCidadeId}>
+                        <Plus className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Rua</Label>
+                    <div className="flex gap-1">
+                      <Select value={createRuaId || "none"} onValueChange={v => setCreateRuaId(v === "none" ? "" : v)} disabled={!createBairroId}>
+                        <SelectTrigger className="h-8 text-xs flex-1"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhuma</SelectItem>
+                          {endRuas.filter(r => r.bairro_id === createBairroId).map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { setQuickAddType("rua"); setQuickAddNome(""); }} disabled={!createBairroId}>
+                        <Plus className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Número</Label>
+                    <Input className="h-8 text-xs" placeholder="Nº" value={createNumeroEnd} onChange={e => setCreateNumeroEnd(e.target.value)} />
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Switch checked={createPhoneWhatsapp} onCheckedChange={setCreatePhoneWhatsapp} />
-              <Label className="text-sm">Tem WhatsApp</Label>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Nome *</Label>
-              <Input placeholder="Nome do lead" value={createName} onChange={e => setCreateName(e.target.value)} />
-            </div>
-          </div>
+          </ScrollArea>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreate(false)}>Cancelar</Button>
             <Button onClick={() => createLeadMutation.mutate()} disabled={createLeadMutation.isPending || !createName.trim() || !createPhone.trim()} className="press-effect">
               {createLeadMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />} Criar Lead
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Quick Add Address Dialog */}
+      <Dialog open={!!quickAddType} onOpenChange={v => !v && setQuickAddType(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Adicionar {quickAddType === "cidade" ? "Cidade" : quickAddType === "bairro" ? "Bairro" : "Rua"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Nome *</Label>
+              <Input value={quickAddNome} onChange={e => setQuickAddNome(e.target.value)} placeholder="Digite o nome..." autoFocus />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setQuickAddType(null)}>Cancelar</Button>
+            <Button
+              disabled={!quickAddNome.trim()}
+              onClick={async () => {
+                try {
+                  if (quickAddType === "cidade") {
+                    const { data, error } = await supabase.from("cidades").insert({ nome: quickAddNome.trim() }).select().single();
+                    if (error) throw error;
+                    queryClient.invalidateQueries({ queryKey: ["enderecos-cidades"] });
+                    setCreateCidadeId(data.id);
+                  } else if (quickAddType === "bairro" && createCidadeId) {
+                    const { data, error } = await supabase.from("bairros").insert({ nome: quickAddNome.trim(), cidade_id: createCidadeId }).select().single();
+                    if (error) throw error;
+                    queryClient.invalidateQueries({ queryKey: ["enderecos-bairros"] });
+                    setCreateBairroId(data.id);
+                  } else if (quickAddType === "rua" && createBairroId) {
+                    const { data, error } = await supabase.from("ruas").insert({ nome: quickAddNome.trim(), bairro_id: createBairroId }).select().single();
+                    if (error) throw error;
+                    queryClient.invalidateQueries({ queryKey: ["enderecos-ruas"] });
+                    setCreateRuaId(data.id);
+                  }
+                  toast.success("Cadastrado!");
+                  setQuickAddType(null);
+                } catch (err: any) {
+                  toast.error(err.message?.includes("duplicate") ? "Já existe um registro com esse nome." : err.message);
+                }
+              }}
+              className="press-effect"
+            >
+              <Plus className="w-4 h-4 mr-1" /> Cadastrar
             </Button>
           </DialogFooter>
         </DialogContent>

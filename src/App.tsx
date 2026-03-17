@@ -15,6 +15,7 @@ import TiposServicoPage from "./pages/TiposServicoPage";
 
 import PerguntasPage from "./pages/PerguntasPage";
 import ChecklistsCadastroPage from "./pages/ChecklistsCadastroPage";
+import CadastroEnderecosPage from "./pages/CadastroEnderecosPage";
 import ClientesPage from "./pages/ClientesPage";
 import MinhasAvaliacoesPage from "./pages/MinhasAvaliacoesPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
@@ -65,6 +66,7 @@ const App = () => (
               <Route path="/cadastros/colaboradores" element={<ColaboradoresPage />} />
               <Route path="/cadastros/clientes" element={<ClientesPage />} />
               <Route path="/cadastros/servicos" element={<TiposServicoPage />} />
+              <Route path="/cadastros/enderecos" element={<CadastroEnderecosPage />} />
               
               <Route path="/relatorios" element={<RelatoriosPage />} />
               <Route path="/leads" element={<LeadsPage />} />

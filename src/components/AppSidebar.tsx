@@ -3,7 +3,7 @@ import {
   LayoutDashboard, ClipboardCheck, FileSearch, ListChecks, PlayCircle, FolderKanban,
   BarChart3, Building2, Users, HelpCircle, Wrench, LogOut, Star,
   PanelLeftClose, PanelLeft, UserPlus, ListOrdered, LayoutGrid, Settings, UserCheck, ClipboardList,
-  FileUp, MessageSquare, FileBarChart, Archive,
+  FileUp, MessageSquare, FileBarChart, Archive, MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -39,6 +39,7 @@ const allNavSections = [
       { to: "/cadastros/colaboradores", icon: Users, label: "Colaboradores" },
       { to: "/cadastros/clientes", icon: ClipboardCheck, label: "Clientes" },
       { to: "/cadastros/servicos", icon: Wrench, label: "Tipos de Serviço" },
+      { to: "/cadastros/enderecos", icon: MapPin, label: "Endereços" },
     ],
   },
   {
