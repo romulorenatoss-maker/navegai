@@ -89,6 +89,7 @@ export default function FilaLeadsPage() {
   const [filterResponsavel, setFilterResponsavel] = useState("todos");
   const [filterAgendamento, setFilterAgendamento] = useState("todos");
   const [searchTerm, setSearchTerm] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
 
   // Dialogs
   const [selectedItem, setSelectedItem] = useState<QueueItem | null>(null);
