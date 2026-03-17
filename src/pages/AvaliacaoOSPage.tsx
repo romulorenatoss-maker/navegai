@@ -2731,12 +2731,25 @@ export default function AvaliacaoOSPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>CPF do Cliente</Label>
-              <Input
-                value={formClienteCpf}
-                onChange={e => {
-                  setFormClienteCpf(formatCpf(e.target.value));
-                  if (cpfValidated) { setCpfValidated(false); setFormFoundCliente(null); setShowNewClienteForm(false); setClienteId(null); setFormValidated(false); setFormFoundOS(null); }
-                }}
+                <Input
+                  value={formClienteCpf}
+                  onChange={e => {
+                    setFormClienteCpf(formatCpf(e.target.value));
+                    if (cpfValidated || formValidated || !!formFoundOS || showNewOsDialog) {
+                      setCpfValidated(false);
+                      setFormFoundCliente(null);
+                      setShowNewClienteForm(false);
+                      setClienteId(null);
+                      setFormOsNumero("");
+                      setFormValidated(false);
+                      setFormFoundOS(null);
+                      setFormPendingAval(null);
+                      setShowNewOsDialog(false);
+                      setTipoServicoId("");
+                      setAtendenteId("");
+                      setTecnicoId("");
+                    }
+                  }}
                 placeholder="000.000.000-00"
                 maxLength={14}
                 disabled={!!formFoundOS}
