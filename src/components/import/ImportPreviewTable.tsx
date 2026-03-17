@@ -13,6 +13,12 @@ export interface PreviewRow {
   telefone: string;
   phoneNormalized: string;
   email: string;
+  cidade: string;
+  bairro: string;
+  rua: string;
+  numero: string;
+  plano: string;
+  repetidor: string;
   status: RowStatus;
   action: RowAction;
   duplicateInfo?: {
