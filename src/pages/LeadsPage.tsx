@@ -1155,7 +1155,7 @@ export default function LeadsPage() {
       setSelectedLead(newLead);
     },
     onError: (err: any) => {
-      if (err.message === "__DUPLICATE_LEAD__") { toast.info("Lead existente aberto automaticamente."); return; }
+      if (err.message === "__DUPLICATE_LEAD__") return; // modal handles it
       if (err.message === "__DUPLICATE_CLIENTE__") return;
       toast.error(err.message);
     },
