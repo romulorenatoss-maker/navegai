@@ -666,16 +666,54 @@ export default function FilaLeadsPage() {
         </TabsContent>
 
         {/* ═══ TAB: Tarefas do Dia ═══ */}
-        <TabsContent value="tarefas" className="mt-3">
+        <TabsContent value="tarefas" className="space-y-3 mt-3">
+          {/* Date Filters */}
+          <Card>
+            <CardContent className="p-3">
+              <div className="flex items-center gap-3 flex-wrap">
+                <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">De:</span>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="h-8 text-xs w-[130px] justify-start gap-1">
+                        <CalendarIcon className="w-3.5 h-3.5" />
+                        {format(tarefaDateStart, "dd/MM/yyyy")}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar mode="single" selected={tarefaDateStart} onSelect={(d) => d && setTarefaDateStart(startOfDay(d))} className={cn("p-3 pointer-events-auto")} />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Até:</span>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="h-8 text-xs w-[130px] justify-start gap-1">
+                        <CalendarIcon className="w-3.5 h-3.5" />
+                        {format(tarefaDateEnd, "dd/MM/yyyy")}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar mode="single" selected={tarefaDateEnd} onSelect={(d) => d && setTarefaDateEnd(endOfDay(d))} className={cn("p-3 pointer-events-auto")} />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setTarefaDateStart(startOfDay(new Date())); setTarefaDateEnd(endOfDay(new Date())); }}>Hoje</Button>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">Tarefas de Contato <Badge variant="secondary" className="text-xs">{sortedTarefas.length}</Badge></CardTitle>
             </CardHeader>
-            <CardContent className="p-0 overflow-auto max-h-[calc(100vh-360px)]">
+            <CardContent className="p-0 overflow-auto max-h-[calc(100vh-420px)]">
               {loadingTarefas ? (
                 <div className="p-8 text-center text-muted-foreground text-sm">Carregando tarefas...</div>
               ) : sortedTarefas.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground text-sm">Nenhuma tarefa pendente</div>
+                <div className="p-8 text-center text-muted-foreground text-sm">Nenhuma tarefa no período selecionado</div>
               ) : (
                 <Table>
                   <TableHeader>
@@ -684,61 +722,72 @@ export default function FilaLeadsPage() {
                       <TableHead>Lead</TableHead>
                       <TableHead>Telefone(s)</TableHead>
                       <TableHead className="text-center">Tentativa</TableHead>
-                      <TableHead>Período</TableHead>
-                      <TableHead>Data</TableHead>
+                      <TableHead>Data / Hora</TableHead>
+                      <TableHead>Agenda</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Prazo</TableHead>
-                      <TableHead>Atribuído a</TableHead>
+                      <TableHead>Responsável</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {sortedTarefas.map((tarefa: any, idx: number) => {
-                      const isOv = tarefa.status === "atrasado" || isTarefaExpirada(tarefa);
-                      const responsavelNome = tarefa.responsavel_id ? (profiles.find(p => p.id === tarefa.responsavel_id)?.nome || "—") : "Sem responsável";
+                      const isOv = tarefa.status === "atrasado" || (tarefa.periodo && isTarefaExpirada(tarefa));
+                      const responsavelNome = tarefa._responsavel_id ? (profiles.find(p => p.id === tarefa._responsavel_id)?.nome || "—") : "Sem responsável";
+                      const isManual = tarefa._tipo_agenda === "manual";
                       return (
                         <TableRow key={tarefa.id} className={isOv ? "bg-destructive/5" : ""}>
                           <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
-                          <TableCell className="font-medium text-sm">{getTarefaLeadName(tarefa.lead_id)}</TableCell>
+                          <TableCell className="font-medium text-sm">{tarefa._lead_nome || getTarefaLeadName(tarefa.lead_id)}</TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
                               {getTarefaPhones(tarefa.lead_id).map((c: any) => <Badge key={c.id} variant="outline" className="text-xs gap-1"><Phone className="w-3 h-3" />{c.valor}{c.tem_whatsapp && <MessageSquare className="w-3 h-3 text-green-600" />}</Badge>)}
                               {getTarefaPhones(tarefa.lead_id).length === 0 && <span className="text-xs text-muted-foreground">Sem telefone</span>}
                             </div>
                           </TableCell>
-                          <TableCell className="text-center"><Badge variant="secondary" className="text-xs">{tarefa.tentativa}ª</Badge></TableCell>
-                          <TableCell className="text-xs">{PERIODO_LABELS[tarefa.periodo] || tarefa.periodo}</TableCell>
-                          <TableCell className="text-xs">{fmtDateShort(tarefa.data_contato)}</TableCell>
+                          <TableCell className="text-center">
+                            {tarefa.tentativa ? <Badge variant="secondary" className="text-xs">{tarefa.tentativa}ª</Badge> : <span className="text-xs text-muted-foreground">—</span>}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            <div>{fmtDateShort(tarefa.data_contato)}</div>
+                            {tarefa.periodo && <div className="text-muted-foreground">{PERIODO_LABELS[tarefa.periodo] || tarefa.periodo}</div>}
+                          </TableCell>
                           <TableCell>
-                            <Badge className={`text-xs border-0 ${isOv ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"}`}>
+                            <Badge variant="outline" className={`text-[10px] ${isManual ? "border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-300" : "border-muted-foreground/30 text-muted-foreground"}`}>
+                              {isManual ? "Manual" : "Automático"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={`text-xs border-0 ${isOv ? "bg-destructive/10 text-destructive" : "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200"}`}>
                               {isOv ? <span className="flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Atrasado</span> : "Pendente"}
                             </Badge>
                           </TableCell>
-                          <TableCell>
-                            <Badge className={`text-xs border-0 ${isOv ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200"}`}>
-                              {isOv ? "Fora do Prazo" : "No Prazo"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{responsavelNome}</TableCell>
+                          <TableCell className="text-xs font-medium">{responsavelNome}</TableCell>
                           <TableCell>
                             <div className="flex items-center justify-end gap-1">
                               <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Ver lead" onClick={() => navigate(`/leads?id=${tarefa.lead_id}`)}><Eye className="w-3.5 h-3.5" /></Button>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button size="sm" variant="outline" className="h-7 text-[11px] px-2 gap-1"><MoreHorizontal className="w-3.5 h-3.5" /> Ação</Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => { setSelectedTarefa(tarefa); setTarefaTipo("telefone"); setTarefaNumero(""); setTarefaResultado(""); }} className="gap-2 text-xs">
-                                    <Phone className="w-3.5 h-3.5" /> Registrar Tentativa
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => { setTarefaTransferLeadId(tarefa.lead_id); setTarefaTransferLeadName(getTarefaLeadName(tarefa.lead_id)); setTarefaTransferTarget(""); setShowTarefaTransfer(true); }} className="gap-2 text-xs">
-                                    <ArrowRightLeft className="w-3.5 h-3.5" /> Transferir para
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => navigate(`/leads?id=${tarefa.lead_id}`)} className="gap-2 text-xs">
-                                    <ExternalLink className="w-3.5 h-3.5" /> Abrir Lead
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                              {!isManual && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button size="sm" variant="outline" className="h-7 text-[11px] px-2 gap-1"><MoreHorizontal className="w-3.5 h-3.5" /> Ação</Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => { setSelectedTarefa(tarefa); setTarefaTipo("telefone"); setTarefaNumero(""); setTarefaResultado(""); }} className="gap-2 text-xs">
+                                      <Phone className="w-3.5 h-3.5" /> Registrar Tentativa
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => { setTarefaTransferLeadId(tarefa.lead_id); setTarefaTransferLeadName(getTarefaLeadName(tarefa.lead_id)); setTarefaTransferTarget(""); setShowTarefaTransfer(true); }} className="gap-2 text-xs">
+                                      <ArrowRightLeft className="w-3.5 h-3.5" /> Transferir para
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => navigate(`/leads?id=${tarefa.lead_id}`)} className="gap-2 text-xs">
+                                      <ExternalLink className="w-3.5 h-3.5" /> Abrir Lead
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
+                              {isManual && (
+                                <Button size="sm" variant="outline" className="h-7 text-[11px] px-2 gap-1" onClick={() => navigate(`/leads?id=${tarefa.lead_id}`)}>
+                                  <ExternalLink className="w-3.5 h-3.5" /> Abrir
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
