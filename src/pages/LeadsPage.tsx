@@ -1712,7 +1712,7 @@ export default function LeadsPage() {
                   {allAttemptsExhausted && selectedLead.status_lead !== "perdido" && selectedLead.status_lead !== "convertido" && (
                     <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-0 text-[10px] gap-1"><AlertTriangle className="w-3 h-3" /> {maxTentativas} tentativas</Badge>
                   )}
-                </div>
+                </div>}
 
                 {/* Dados do Lead - vertical stacking */}
                 <Card>
