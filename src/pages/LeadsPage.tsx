@@ -2386,6 +2386,7 @@ export default function LeadsPage() {
 
                 {/* Ação Popover Button */}
                 {!isVisionMode && <div className="flex items-center gap-2">
+                  {selectedLead.status_lead !== "convertido" && (
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button size="sm" className="h-8 text-xs gap-1.5 press-effect">
@@ -2421,6 +2422,7 @@ export default function LeadsPage() {
                       </div>
                     </PopoverContent>
                   </Popover>
+                  )}
                   {selectedLead.status_lead === "convertido" && (
                     <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-0 text-xs">✓ Convertido</Badge>
                   )}
