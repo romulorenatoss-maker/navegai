@@ -10,7 +10,7 @@ interface PendingCounts {
 
 export function usePendingNotifications() {
   const { profile, isAdmin } = useAuth();
-  const [counts, setCounts] = useState<PendingCounts>({ pendingEvaluations: 0, pendingLeadDecisions: 0 });
+  const [counts, setCounts] = useState<PendingCounts>({ pendingEvaluations: 0, pendingLeadDecisions: 0, pendingMyLeads: 0 });
 
   const fetchCounts = useCallback(async () => {
     if (!profile) return;
