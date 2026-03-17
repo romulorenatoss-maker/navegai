@@ -47,13 +47,17 @@ export default function SessoesUsuarioTab({ profileId, userId }: Props) {
         .limit(50);
       if (error) throw error;
 
-      // compute duration
+      // compute duration: use duracao_segundos if available, else calculate from login/logout, else from login to now (active)
       return (data || []).map((s: any) => {
         let dur = s.duracao_segundos;
         if (!dur && s.login_at && s.logout_at) {
           dur = Math.round((new Date(s.logout_at).getTime() - new Date(s.login_at).getTime()) / 1000);
         }
-        return { ...s, _duracao: dur };
+        if (!dur && s.login_at && !s.logout_at) {
+          // Active session — compute live duration
+          dur = Math.round((Date.now() - new Date(s.login_at).getTime()) / 1000);
+        }
+        return { ...s, _duracao: dur || 0 };
       });
     },
   });
