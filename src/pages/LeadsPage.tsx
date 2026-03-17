@@ -1373,34 +1373,7 @@ export default function LeadsPage() {
         throw new Error("Você não tem permissão para interagir com este lead. Ele pertence a outro usuário.");
       }
 
-      // If lead is reserved (from capture queue), confirm assignment on first interaction
-      const isReservedCapture = selectedLead.status_lead === "reservado" && selectedLead.reserved_by === profile.id;
-      if (isReservedCapture) {
-        // Officially assign the lead with em_atendimento status
-        await supabase.from("leads").update({
-          responsavel_id: profile.id,
-          status_lead: "em_atendimento",
-          reserved_by: null,
-          reserved_at: null,
-        } as any).eq("id", selectedLead.id);
-        // Cancel old tasks and start cadence
-        await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", selectedLead.id).in("status", ["pendente", "atrasado"]);
-        const { data: firstRotina } = await supabase.from("rotina_tentativas_leads").select("*").eq("tentativa_numero", 1).maybeSingle();
-        const periodo = (firstRotina as any)?.periodo_contato || "manha";
-        await supabase.from("lead_tarefas_contato").insert({
-          lead_id: selectedLead.id, tentativa: 1, data_contato: new Date().toISOString(),
-          periodo, status: "pendente", responsavel_id: profile.id,
-        });
-        await supabase.from("lead_historico").insert({
-          lead_id: selectedLead.id, usuario_id: profile.id,
-          tipo_evento: "lead_capturado",
-          descricao: `Lead capturado e atribuído a ${profile.nome}. Status: Em tratativa. Nova rotina iniciada.`,
-        });
-        // Update local state
-        setSelectedLead(prev => prev ? { ...prev, responsavel_id: profile.id, status_lead: "em_atendimento", reserved_by: null, reserved_at: null } : null);
-        queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
-        queryClient.invalidateQueries({ queryKey: ["leads-list"] });
-      }
+      // No longer need reservado→em_atendimento transition since capture now directly assigns
 
       // Save pending field changes first
       const changes: string[] = [];
