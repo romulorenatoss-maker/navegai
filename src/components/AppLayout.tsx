@@ -10,7 +10,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "sonner";
 
 export function AppLayout() {
-  const { profile, user, signOut, isAdmin, allowedScreens } = useAuth();
+  const { profile, user, signOut, isAdmin, allowedScreens, canViewPath } = useAuth();
   const isMobile = useIsMobile();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
