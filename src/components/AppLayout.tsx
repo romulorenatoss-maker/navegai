@@ -49,6 +49,28 @@ export function AppLayout() {
     await signOut();
   }, [endSession, signOut]);
 
+  const handleChangePassword = useCallback(async () => {
+    if (!newPassword || newPassword.length < 6) {
+      toast.error("A senha deve ter pelo menos 6 caracteres.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("As senhas não coincidem.");
+      return;
+    }
+    setChangingPassword(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setChangingPassword(false);
+    if (error) {
+      toast.error("Erro ao alterar senha: " + error.message);
+    } else {
+      toast.success("Senha alterada com sucesso!");
+      setPasswordDialogOpen(false);
+      setNewPassword("");
+      setConfirmPassword("");
+    }
+  }, [newPassword, confirmPassword]);
+
   const userNameDisplay = profile?.nome || "Usuário";
   const userCargoDisplay = profile?.cargo
     ? profile.cargo.charAt(0).toUpperCase() + profile.cargo.slice(1)
