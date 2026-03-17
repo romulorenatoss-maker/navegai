@@ -387,7 +387,12 @@ export default function FilaLeadsPage() {
   }, [filteredTarefas]);
 
   const getTarefaLeadName = (id: string) => tarefaLeads.find((l: any) => l.id === id)?.nome || "—";
-  const getTarefaPhones = (id: string) => tarefaContatos.filter((c: any) => c.lead_id === id && c.tipo_contato === "telefone");
+  const getTarefaPhones = (id: string) => {
+    const fromTarefaContatos = tarefaContatos.filter((c: any) => c.lead_id === id && c.tipo_contato === "telefone");
+    if (fromTarefaContatos.length > 0) return fromTarefaContatos;
+    // Fallback to allContatos for cadencia-based items
+    return allContatos.filter((c: any) => c.lead_id === id && c.tipo_contato === "telefone");
+  };
 
   // ─── Queue logic ──────────────────────────────────
   const maxTentativas = (fluxoConfig as any)?.quantidade_tentativas || cadencia.length || 7;
