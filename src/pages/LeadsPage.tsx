@@ -2111,45 +2111,23 @@ export default function LeadsPage() {
                   <div className="divide-y divide-border">
                     {capturaQueue.map(item => {
                       const phones = item.contatos.filter(c => c.tipo_contato === "telefone");
-                      const isReservedByMe = item.isReservedByMe;
                       return (
                         <div key={item.lead.id} className="px-3 py-2 flex items-center justify-between gap-2">
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium truncate">{item.lead.nome}</p>
                             <p className="text-[10px] text-muted-foreground">
                               {phones.length > 0 ? phones[0].valor : "Sem telefone"}
-                              {item.ultimaTentativaEm && ` · Última: ${format(new Date(item.ultimaTentativaEm), "dd/MM HH:mm", { locale: ptBR })}`}
                             </p>
-                            {isReservedByMe && (
-                              <Badge className="text-[9px] bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 border-0 mt-0.5">
-                                <Clock className="w-2.5 h-2.5 mr-0.5" /> Reservado por você
-                              </Badge>
-                            )}
                           </div>
-                          {item.userPreviouslyHandled && !isReservedByMe ? (
-                            <Badge variant="outline" className="text-[9px] shrink-0">Já interagiu</Badge>
-                          ) : isReservedByMe ? (
-                            <div className="flex gap-1">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-[10px] px-2 gap-1 text-destructive border-destructive/30"
-                                onClick={() => { releaseReservation(item.lead.id, "manual"); if (selectedLead?.id === item.lead.id) setSelectedLead(null); }}
-                              >
-                                Liberar
-                              </Button>
-                            </div>
-                          ) : (
-                            <Button
-                              size="sm"
-                              className="h-7 text-[10px] px-2 gap-1"
-                              onClick={() => reserveLeadMutation.mutate(item.lead.id)}
-                              disabled={reserveLeadMutation.isPending}
-                            >
-                              {reserveLeadMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserCheck className="w-3 h-3" />}
-                              Capturar
-                            </Button>
-                          )}
+                          <Button
+                            size="sm"
+                            className="h-7 text-[10px] px-2 gap-1"
+                            onClick={() => reserveLeadMutation.mutate(item.lead.id)}
+                            disabled={reserveLeadMutation.isPending}
+                          >
+                            {reserveLeadMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserCheck className="w-3 h-3" />}
+                            Capturar
+                          </Button>
                         </div>
                       );
                     })}
