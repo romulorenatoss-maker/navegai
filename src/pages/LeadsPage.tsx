@@ -1320,6 +1320,7 @@ export default function LeadsPage() {
   // Check if all cadencia attempts are exhausted
   const maxTentativas = fluxoConfig?.quantidade_tentativas || cadencia.length || 7;
   const allAttemptsExhausted = tentativasRealizadas >= maxTentativas;
+  const isLastAttempt = tentativasRealizadas === maxTentativas - 1;
 
   // Handle finalize action (after all attempts)
   const handleFinalizeAction = async (action: "reiniciar" | "arquivar") => {
