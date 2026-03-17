@@ -27,7 +27,7 @@ export function usePermissions(profileId: string | null) {
     staleTime: 5 * 60 * 1000,
   });
 
-  const can = (resourceCode: string, action: "view" | "create" | "edit" | "delete"): boolean => {
+  const can = (resourceCode: string, action: "view" | "create" | "edit" | "delete" | "assign" | "export"): boolean => {
     const perm = permissions.find((p) => p.resource_code === resourceCode);
     if (!perm) return false;
     switch (action) {
@@ -35,6 +35,8 @@ export function usePermissions(profileId: string | null) {
       case "create": return perm.can_create;
       case "edit": return perm.can_edit;
       case "delete": return perm.can_delete;
+      case "assign": return perm.can_assign;
+      case "export": return perm.can_export;
       default: return false;
     }
   };

@@ -15,7 +15,7 @@ interface AuthContextType {
   allowedScreens: string[];
   permissions: EffectivePermission[];
   permissionsLoading: boolean;
-  can: (resourceCode: string, action: "view" | "create" | "edit" | "delete") => boolean;
+  can: (resourceCode: string, action: "view" | "create" | "edit" | "delete" | "assign" | "export") => boolean;
   canViewPath: (path: string) => boolean;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
