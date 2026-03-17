@@ -46,7 +46,7 @@ const fmtDate = (d: string | Date) => { try { return format(new Date(d), "dd/MM/
 const fmtDateShort = (d: string | Date) => { try { return format(new Date(d), "dd/MM HH:mm", { locale: ptBR }); } catch { return String(d); } };
 const PERIODO_HORA: Record<string, number> = { manha: 9, tarde: 14, noite: 19 };
 const PERIODO_LABELS: Record<string, string> = { manha: "Manhã", tarde: "Tarde", noite: "Noite" };
-const STATUS_MAP: Record<string, string> = { novo: "Novo", em_contato: "Em Contato", interessado: "Interessado", aguardando_decisao_avaliador: "Aguardando Decisão", aguardando_captura: "Aguardando Captura" };
+const STATUS_MAP: Record<string, string> = { novo: "Novo", em_contato: "Em Contato", interessado: "Interessado", aguardando_decisao_avaliador: "Aguardando Decisão", aguardando_captura: "Aguardando Captura", reservado: "Reservado" };
 
 function getPeriodoEndHour(periodo: string): number { return periodo === "manha" ? 12 : periodo === "tarde" ? 18 : 24; }
 function isTarefaExpirada(tarefa: { data_contato: string; periodo: string; status: string }): boolean {
@@ -131,7 +131,7 @@ export default function FilaLeadsPage() {
     queryKey: ["fila-leads"],
     queryFn: async () => {
       const { data, error } = await supabase.from("leads").select("*")
-        .in("status_lead", ["novo", "em_contato", "interessado", "aguardando_decisao_avaliador", CAPTURE_QUEUE_STATUS])
+        .in("status_lead", ["novo", "em_contato", "interessado", "aguardando_decisao_avaliador", CAPTURE_QUEUE_STATUS, "reservado"])
         .order("updated_at", { ascending: true });
       if (error) throw error;
       return data as Lead[];
@@ -341,7 +341,7 @@ export default function FilaLeadsPage() {
 
   const queue = useMemo<QueueItem[]>(() => {
     const now = new Date();
-    return leads.filter(l => l.status_lead !== "aguardando_decisao_avaliador" && l.status_lead !== "aguardando_captura" && l.status_lead !== "reservado").map(lead => {
+    return leads.map(lead => {
       const contatos = allContatos.filter(c => c.lead_id === lead.id);
       const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
       const tentativaAtual = interacoes.length + 1;
@@ -535,10 +535,12 @@ export default function FilaLeadsPage() {
   const markAsLostMutation = useMutation({
     mutationFn: async (leadId: string) => {
       if (!profile) throw new Error("Perfil não encontrado.");
+      // Cancel pending tasks
+      await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", leadId).in("status", ["pendente", "atrasado", "aguardando_visualizacao"]);
       await supabase.from("leads").update({ status_lead: "perdido" }).eq("id", leadId);
-      await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "lead_perdido", descricao: "Lead marcado como perdido pelo avaliador após avaliação final." });
+      await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "lead_perdido", descricao: "Lead marcado como perdido e arquivado automaticamente." });
     },
-    onSuccess: () => { toast.success("Lead marcado como perdido."); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); },
+    onSuccess: () => { toast.success("Lead marcado como perdido e arquivado."); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }); queryClient.invalidateQueries({ queryKey: ["leads-arquivados"] }); },
     onError: (err: any) => toast.error(err.message),
   });
 
@@ -705,11 +707,14 @@ export default function FilaLeadsPage() {
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
                   <SelectTrigger className="h-8 text-xs w-[160px]"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="todos">Todos Status</SelectItem>
-                    <SelectItem value="novo">Novo</SelectItem>
-                    <SelectItem value="em_contato">Em Contato</SelectItem>
-                    <SelectItem value="interessado">Interessado</SelectItem>
-                  </SelectContent>
+                     <SelectItem value="todos">Todos Status</SelectItem>
+                     <SelectItem value="novo">Novo</SelectItem>
+                     <SelectItem value="em_contato">Em Contato</SelectItem>
+                     <SelectItem value="interessado">Interessado</SelectItem>
+                     <SelectItem value="aguardando_decisao_avaliador">Aguardando Decisão</SelectItem>
+                     <SelectItem value="aguardando_captura">Aguardando Captura</SelectItem>
+                     <SelectItem value="reservado">Reservado</SelectItem>
+                   </SelectContent>
                 </Select>
                 <Select value={filterResponsavel} onValueChange={setFilterResponsavel}>
                   <SelectTrigger className="h-8 text-xs w-[160px]"><SelectValue /></SelectTrigger>
