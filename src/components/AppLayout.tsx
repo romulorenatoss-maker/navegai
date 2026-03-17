@@ -20,6 +20,10 @@ export function AppLayout() {
   const isMobile = useIsMobile();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const { endSession } = useSessionTracker(user?.id || null, profile?.id || null);
   const { pendingEvaluations, pendingLeadDecisions, pendingMyLeads } = usePendingNotifications();
