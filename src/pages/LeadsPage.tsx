@@ -628,11 +628,12 @@ export default function LeadsPage() {
     return capturaLeadsRaw
       .map(lead => {
         const interacoes = capturaInteracoes.filter(i => i.lead_id === lead.id);
-        const prevHandlerIds = interacoes.map(i => i.colaborador_id);
-        const userPreviouslyHandled = prevHandlerIds.includes(profile.id);
         const contatos = capturaContatos.filter(c => c.lead_id === lead.id);
         const lastInteracao = interacoes[0];
-        return { lead, contatos, userPreviouslyHandled, ultimaTentativaEm: lastInteracao?.data_interacao || null };
+        // Only exclude the LAST handler (person whose cycle just ended), not everyone
+        const lastHandlerId = lastInteracao?.colaborador_id || null;
+        const wasLastHandler = lastHandlerId === profile.id;
+        return { lead, contatos, userPreviouslyHandled: wasLastHandler, ultimaTentativaEm: lastInteracao?.data_interacao || null };
       })
       .filter(item => isAdmin || !item.userPreviouslyHandled);
   }, [capturaLeadsRaw, capturaInteracoes, capturaContatos, profile, isAdmin]);
