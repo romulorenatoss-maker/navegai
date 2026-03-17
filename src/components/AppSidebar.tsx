@@ -59,7 +59,7 @@ const allNavSections = [
     ],
   },
   {
-    title: "Sistema",
+    title: "Relatórios Gerais",
     items: [
       { to: "/relatorios", icon: BarChart3, label: "Relatórios de OS" },
       { to: "/leads/relatorios", icon: FileBarChart, label: "Relatórios de Leads" },
