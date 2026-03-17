@@ -489,7 +489,8 @@ export default function FilaLeadsPage() {
 
   const filteredQueue = useMemo(() => {
     return queue.filter(item => {
-      if (filterStatus !== "todos" && item.lead.status_lead !== filterStatus) return false;
+      if (filterStatus === "expirado" && !(item.nextAttemptExpired || item.isOverdue)) return false;
+      if (filterStatus !== "todos" && filterStatus !== "expirado" && item.lead.status_lead !== filterStatus) return false;
       if (filterResponsavel !== "todos" && item.lead.responsavel_id !== filterResponsavel) return false;
       if (filterAgendamento === "agendado" && !item.isScheduled) return false;
       if (filterAgendamento === "sem_agendamento" && item.isScheduled) return false;
