@@ -2045,10 +2045,10 @@ export default function LeadsPage() {
                               </>
                             ) : (
                               <>
-                                <Clock className={`w-2.5 h-2.5 ${isOverdue ? "text-destructive" : "text-muted-foreground"}`} />
-                                <span className={`text-[10px] ${isOverdue ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                                <Clock className={`w-2.5 h-2.5 ${hoursLeft !== null && hoursLeft <= 0 ? "text-destructive" : "text-muted-foreground"}`} />
+                                <span className={`text-[10px] ${hoursLeft !== null && hoursLeft <= 0 ? "text-destructive font-medium" : "text-muted-foreground"}`}>
                                   {item.proximoContato
-                                    ? (isOverdue
+                                    ? (hoursLeft !== null && hoursLeft <= 0
                                       ? `Expirado ${formatCountdown(item.proximoContato, now)}`
                                       : `Expira em ${formatCountdown(item.proximoContato, now)}`)
                                     : "Sem prazo"}
