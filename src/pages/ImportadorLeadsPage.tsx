@@ -146,7 +146,7 @@ export default function ImportadorLeadsPage() {
     const seenInFile = new Map<string, number>();
 
     const rows: PreviewRow[] = rawRows.map((raw, i) => {
-      const nome = raw[mapping.nome] || "";
+      const nome = toProperCase(raw[mapping.nome] || "");
       const telefone = raw[mapping.telefone] || "";
       const email = mapping.email ? raw[mapping.email] || "" : "";
       const phoneNorm = normalizePhone(telefone);
