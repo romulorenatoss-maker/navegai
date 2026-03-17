@@ -398,7 +398,34 @@ export default function LeadsPage() {
     enabled: !!effectiveProfileId,
   });
 
-  // Helper: update a single lead in cache without full refetch (prevents closing detail panel)
+  // Campanhas for source tracking
+  const { data: campanhasAtivas = [] } = useQuery({
+    queryKey: ["campanhas-ativas"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("campanhas").select("id, nome").eq("ativo", true).order("nome");
+      if (error) throw error;
+      return data as { id: string; nome: string }[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // All campanhas (including inactive) for display
+  const { data: allCampanhas = [] } = useQuery({
+    queryKey: ["campanhas-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("campanhas").select("id, nome").order("nome");
+      if (error) throw error;
+      return data as { id: string; nome: string }[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const getCampanhaNome = useCallback((lead: Lead) => {
+    const cId = (lead as any).campanha_id;
+    if (!cId) return null;
+    return allCampanhas.find(c => c.id === cId)?.nome || null;
+  }, [allCampanhas]);
+
   const updateLeadInCache = useCallback((leadId: string, updates: Partial<Lead>) => {
     queryClient.setQueryData(["leads-list", effectiveProfileId], (old: Lead[] | undefined) => {
       if (!old) return old;
