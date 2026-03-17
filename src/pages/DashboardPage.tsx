@@ -76,6 +76,7 @@ interface SectorPending {
 
 // --- Helpers ---
 import { getScoreColorClass, getScoreBgClass } from "@/lib/score-colors";
+import { calculateAverage, calculateWeightedAverage } from "@/lib/calculate-average";
 
 const getScoreColor = getScoreColorClass;
 const getScoreBg = getScoreBgClass;
