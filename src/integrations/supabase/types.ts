@@ -2101,6 +2101,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      atomic_reserve_lead: {
+        Args: { _lead_id: string; _profile_id: string; _user_id: string }
+        Returns: boolean
+      }
       calcular_notas_por_setor: {
         Args: { p_data_fim?: string; p_data_inicio?: string }
         Returns: {

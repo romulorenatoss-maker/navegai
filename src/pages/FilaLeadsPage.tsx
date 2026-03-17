@@ -345,12 +345,15 @@ export default function FilaLeadsPage() {
         const prevHandlerIds = interacoes.map((i: any) => i.colaborador_id);
         const userPreviouslyHandled = prevHandlerIds.includes(profile.id);
         const isReservedByOther = lead.status_lead === "reservado" && (lead as any).reserved_by !== profile.id;
+        const isReservedByMe = lead.status_lead === "reservado" && (lead as any).reserved_by === profile.id;
+        const hasResponsavel = !!lead.responsavel_id;
         const reservedByName = isReservedByOther ? getProfileName((lead as any).reserved_by) : null;
-        return { lead, contatos, totalInteracoes: interacoes.length, ultimaTentativaEm: lastInteracao?.data_interacao || null, userPreviouslyHandled, isReservedByOther, reservedByName };
+        const isTaken = isReservedByOther || (hasResponsavel && lead.responsavel_id !== profile.id);
+        return { lead, contatos, totalInteracoes: interacoes.length, ultimaTentativaEm: lastInteracao?.data_interacao || null, userPreviouslyHandled, isReservedByOther, isReservedByMe, reservedByName, isTaken };
       });
-    // Non-admin: hide leads they previously handled, but show reserved leads (with indicator)
+    // Non-admin: hide leads they previously handled (unless taken by someone — show with indicator)
     if (isAdmin) return capturaItems;
-    return capturaItems.filter(item => !item.userPreviouslyHandled || item.isReservedByOther);
+    return capturaItems.filter(item => !item.userPreviouslyHandled || item.isTaken);
   }, [leads, allContatos, allInteracoes, profile, isAdmin]);
 
   // ─── Notificações (aguardando_decisao) ────────────
@@ -539,19 +542,27 @@ export default function FilaLeadsPage() {
     onError: (err: any) => toast.error(err.message),
   });
 
-  // ─── Atomic Capture Mutation ──────────────────────
+  // ─── Atomic Capture Mutation (DB-level validation) ──────────────────────
   const captureMutation = useMutation({
     mutationFn: async (leadId: string) => {
       if (!profile) throw new Error("Perfil não encontrado.");
-      // Atomic: only assign if responsavel_id IS NULL (prevents race conditions)
-      const { data, error } = await supabase
+
+      // Step 1: Atomically reserve at DB level — only succeeds if reserved_by IS NULL AND responsavel_id IS NULL
+      const { data: reserved, error: reserveErr } = await supabase.rpc("atomic_reserve_lead", {
+        _lead_id: leadId,
+        _user_id: profile.user_id,
+        _profile_id: profile.id,
+      });
+      if (reserveErr) throw reserveErr;
+      if (!reserved) throw new Error("Este lead já está sendo atendido ou visualizado por outro usuário.");
+
+      // Step 2: Now assign ownership and start cadence
+      const { error: updateErr } = await supabase
         .from("leads")
-        .update({ responsavel_id: profile.id, status_lead: "em_contato" } as any)
-        .eq("id", leadId)
-        .is("responsavel_id", null)
-        .select("id");
-      if (error) throw error;
-      if (!data || data.length === 0) throw new Error("Lead já foi capturado por outro usuário.");
+        .update({ responsavel_id: profile.id, status_lead: "em_contato", reserved_by: null, reserved_at: null } as any)
+        .eq("id", leadId);
+      if (updateErr) throw updateErr;
+
       // Cancel old tasks and create new cadence
       await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", leadId).in("status", ["pendente", "atrasado"]);
       const firstRotina = rotinaTentativas.find((r: any) => r.tentativa_numero === 1);
@@ -564,6 +575,7 @@ export default function FilaLeadsPage() {
       toast.success("Lead capturado com sucesso! Nova rotina iniciada.");
       queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
       queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["fila-interacoes"] });
     },
     onError: (err: any) => toast.error(err.message),
   });
@@ -816,23 +828,22 @@ export default function FilaLeadsPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center justify-end gap-1">
-                              {item.isReservedByOther ? (
-                                <Badge variant="outline" className="text-[10px] text-amber-600">Em atendimento</Badge>
+                              {item.isTaken ? (
+                                <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300">
+                                  {item.reservedByName ? `Já capturado por ${item.reservedByName}` : "Em atendimento"}
+                                </Badge>
                               ) : item.userPreviouslyHandled ? (
                                 <Badge variant="outline" className="text-[10px]">Você já interagiu</Badge>
                               ) : (
-                                <>
-                                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Ver lead" onClick={() => navigate(`/leads?id=${item.lead.id}`)}><Eye className="w-3.5 h-3.5" /></Button>
-                                  <Button
-                                    size="sm"
-                                    className="h-7 text-[11px] px-3 gap-1 bg-purple-600 hover:bg-purple-700 text-white"
-                                    onClick={() => captureMutation.mutate(item.lead.id)}
-                                    disabled={captureMutation.isPending}
-                                  >
-                                    {captureMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserCheck className="w-3.5 h-3.5" />}
-                                    Capturar Lead
-                                  </Button>
-                                </>
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-[11px] px-3 gap-1 bg-purple-600 hover:bg-purple-700 text-white"
+                                  onClick={() => captureMutation.mutate(item.lead.id)}
+                                  disabled={captureMutation.isPending}
+                                >
+                                  {captureMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserCheck className="w-3.5 h-3.5" />}
+                                  Capturar Lead
+                                </Button>
                               )}
                             </div>
                           </TableCell>
