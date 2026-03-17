@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Phone, MessageSquare, Loader2, ListOrdered, SkipForward, Clock, AlertTriangle } from "lucide-react";
+import { Phone, MessageSquare, Loader2, ListOrdered, Clock, AlertTriangle } from "lucide-react";
 
 const fmtDate = (d: string | Date) => {
   try { return format(new Date(d), "dd/MM/yyyy HH:mm", { locale: ptBR }); } catch { return String(d); }
