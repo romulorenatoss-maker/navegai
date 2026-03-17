@@ -268,6 +268,19 @@ export default function LeadsPage() {
     },
   });
 
+  // Check if user is avaliador from setor atendimento
+  const { data: userSetor } = useQuery({
+    queryKey: ["user-setor", profile?.setor_id],
+    enabled: !!profile?.setor_id,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("setores").select("id, nome").eq("id", profile!.setor_id!).single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const canArchiveLead = isAdmin || (hasRole("avaliador") && userSetor?.nome?.toLowerCase().includes("atendimento"));
+
   const { data: leadObjecaoRegistro, refetch: refetchObjecao } = useQuery({
     queryKey: ["lead-objecao-registro", selectedLead?.id],
     enabled: !!selectedLead,
