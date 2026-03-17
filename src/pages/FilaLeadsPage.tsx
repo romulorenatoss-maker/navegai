@@ -24,6 +24,7 @@ import {
   Phone, MessageSquare, Loader2, ListOrdered, CalendarClock, AlertTriangle,
   ArrowRightLeft, Clock, Search, Filter, Eye, Archive, RefreshCw,
   MoreHorizontal, Bell, CheckCircle2, ExternalLink, CalendarIcon, XCircle, UserCheck,
+  ArrowUpDown, ArrowUp, ArrowDown,
 } from "lucide-react";
 import { startOfDay, endOfDay, isWithinInterval } from "date-fns";
 interface Lead {
@@ -108,6 +109,22 @@ export default function FilaLeadsPage() {
   const [tarefaTransferTarget, setTarefaTransferTarget] = useState("");
   const [tarefaNumero, setTarefaNumero] = useState("");
   const [tarefaResultado, setTarefaResultado] = useState("");
+
+  // ─── Sorting state for Fila table ─────
+  const [filaSortKey, setFilaSortKey] = useState<string | null>(null);
+  const [filaSortDir, setFilaSortDir] = useState<"asc" | "desc">("asc");
+  const toggleFilaSort = (key: string) => {
+    if (filaSortKey === key) {
+      setFilaSortDir(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setFilaSortKey(key);
+      setFilaSortDir("asc");
+    }
+  };
+  const SortIcon = ({ col }: { col: string }) => {
+    if (filaSortKey !== col) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-40" />;
+    return filaSortDir === "asc" ? <ArrowUp className="w-3 h-3 ml-1" /> : <ArrowDown className="w-3 h-3 ml-1" />;
+  };
 
   // ─── Real-time countdown tick (every 30s) ─────
   const [tick, setTick] = useState(0);
@@ -849,16 +866,33 @@ export default function FilaLeadsPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-8">#</TableHead>
-                        <TableHead>Lead</TableHead>
+                        <TableHead className="cursor-pointer select-none" onClick={() => toggleFilaSort("nome")}><span className="flex items-center">Lead<SortIcon col="nome" /></span></TableHead>
                         <TableHead>Telefone(s)</TableHead>
-                        <TableHead>Vencimento</TableHead>
-                        <TableHead>Expiração</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead className="cursor-pointer select-none" onClick={() => toggleFilaSort("vencimento")}><span className="flex items-center">Vencimento<SortIcon col="vencimento" /></span></TableHead>
+                        <TableHead className="cursor-pointer select-none" onClick={() => toggleFilaSort("expiracao")}><span className="flex items-center">Expiração<SortIcon col="expiracao" /></span></TableHead>
+                        <TableHead className="cursor-pointer select-none" onClick={() => toggleFilaSort("status")}><span className="flex items-center">Status<SortIcon col="status" /></span></TableHead>
                         <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredQueue.map((item, idx) => {
+                      {(() => {
+                        const getUrgMs = (item: QueueItem) => {
+                          const s = item.lead.agendamento_retorno ? new Date(item.lead.agendamento_retorno).getTime() : null;
+                          const n = item.nextAttempt ? new Date(item.nextAttempt).getTime() : null;
+                          return s || n || Infinity;
+                        };
+                        let sorted = [...filteredQueue];
+                        if (filaSortKey) {
+                          sorted.sort((a, b) => {
+                            let cmp = 0;
+                            if (filaSortKey === "nome") cmp = a.lead.nome.localeCompare(b.lead.nome);
+                            else if (filaSortKey === "vencimento") cmp = (new Date(a.nextAttempt).getTime()) - (new Date(b.nextAttempt).getTime());
+                            else if (filaSortKey === "expiracao") cmp = getUrgMs(a) - getUrgMs(b);
+                            else if (filaSortKey === "status") cmp = a.lead.status_lead.localeCompare(b.lead.status_lead);
+                            return filaSortDir === "asc" ? cmp : -cmp;
+                          });
+                        }
+                        return sorted.map((item, idx) => {
                         const phones = item.contatos.filter(c => c.tipo_contato === "telefone");
                         const campanha = getCampanhaNome(item.lead);
                         const cidade = getCidadeNome(item.lead);
@@ -869,9 +903,9 @@ export default function FilaLeadsPage() {
                         const _hrsLeft = _urgRef ? (_urgRef.getTime() - _now2.getTime()) / (1000 * 60 * 60) : null;
                         let rowBg = "";
                         if (_hrsLeft !== null) {
-                          if (_hrsLeft <= 0) rowBg = "bg-red-50/70 dark:bg-red-950/25 border-l-[3px] border-l-red-500";
-                          else if (_hrsLeft <= 2) rowBg = "bg-yellow-50/60 dark:bg-yellow-950/20 border-l-[3px] border-l-yellow-500";
-                          else if (_hrsLeft > 3) rowBg = "border-l-[3px] border-l-emerald-500";
+                          if (_hrsLeft <= 1) rowBg = "bg-red-50/70 dark:bg-red-950/25 border-l-[3px] border-l-red-500";
+                          else if (_hrsLeft <= 3) rowBg = "bg-yellow-50/60 dark:bg-yellow-950/20 border-l-[3px] border-l-yellow-500";
+                          else rowBg = "border-l-[3px] border-l-emerald-500";
                         }
                         return (
                           <TableRow key={item.lead.id} className={rowBg}>
@@ -908,7 +942,7 @@ export default function FilaLeadsPage() {
                                 }
                                 const h = Math.floor(diffMs / 3600000);
                                 const m = Math.floor((diffMs % 3600000) / 60000);
-                                const color = h < 2 ? "text-yellow-600 dark:text-yellow-400 font-semibold" : "text-emerald-600 dark:text-emerald-400";
+                                const color = h < 1 ? "text-yellow-600 dark:text-yellow-400 font-semibold" : h < 3 ? "text-yellow-600 dark:text-yellow-400" : "text-emerald-600 dark:text-emerald-400";
                                 return <span className={`text-xs flex items-center gap-1 ${color}`}><Clock className="w-3 h-3" />{h}h{String(m).padStart(2,'0')}m</span>;
                               })()}
                             </TableCell>
@@ -967,7 +1001,8 @@ export default function FilaLeadsPage() {
                             </TableCell>
                           </TableRow>
                         );
-                      })}
+                      });
+                      })()}
                     </TableBody>
                   </Table>
                 </div>
