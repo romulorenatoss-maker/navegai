@@ -18,7 +18,7 @@ export function AppLayout() {
   const { endSession } = useSessionTracker(user?.id || null, profile?.id || null);
 
   const handleIdleLogout = useCallback(async () => {
-    toast.info("Sessão encerrada por inatividade (10 min).");
+    toast.info("Sessão encerrada por inatividade (5 min).");
     await endSession("inatividade");
     await signOut();
   }, [endSession, signOut]);
