@@ -1687,6 +1687,7 @@ export default function LeadsPage() {
     setConvCepNotFound(false);
     setConvNewBairroNome("");
     setConvNewRuaNome("");
+    setConvStep("form");
     setShowConvert(true);
   };
 
