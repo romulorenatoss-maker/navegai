@@ -50,7 +50,7 @@ serve(async (req) => {
     ] = await Promise.all([
       supabase.from("leads").select("*", { count: "exact", head: true }),
       supabase.from("leads").select("*", { count: "exact", head: true }).gte("created_at", todayStart).lte("created_at", todayEnd),
-      supabase.from("leads").select("*", { count: "exact", head: true }).in("status_lead", ["novo", "aguardando_captura", "reservado", "em_contato"]),
+      supabase.from("leads").select("*", { count: "exact", head: true }).in("status_lead", ["novo", "fila_captura", "reservado", "em_contato", "em_atendimento"]),
       supabase.from("leads").select("*", { count: "exact", head: true }).eq("status_lead", "convertido"),
       supabase.from("leads").select("*", { count: "exact", head: true }).eq("status_lead", "convertido").gte("updated_at", todayStart).lte("updated_at", todayEnd),
       supabase.from("leads").select("*", { count: "exact", head: true }).eq("status_lead", "perdido"),

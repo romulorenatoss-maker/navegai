@@ -111,9 +111,9 @@ export default function LeadsArquivadosPage() {
   const reactivateMutation = useMutation({
     mutationFn: async (leadId: string) => {
       if (!profile) throw new Error("Erro interno.");
-      // Send to capture queue: clear responsible, set aguardando_captura
+      // Send to capture queue: clear responsible, set fila_captura
       await supabase.from("leads").update({
-        status_lead: "aguardando_captura",
+        status_lead: "fila_captura",
         responsavel_id: null,
         reserved_by: null,
         reserved_at: null,

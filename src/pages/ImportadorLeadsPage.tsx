@@ -289,7 +289,7 @@ export default function ImportadorLeadsPage() {
 
         const { data: newLead, error } = await supabase.from("leads").insert({
           nome: nomeFmt,
-          status_lead: "aguardando_captura",
+          status_lead: "fila_captura",
           responsavel_id: null,
           origem_lead: "importacao",
           campanha_id: (campanhaId && campanhaId !== "__none") ? campanhaId : null,
