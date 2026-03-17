@@ -23,6 +23,7 @@ interface Rua { id: string; nome: string; bairro_id: string; cep: string[] | nul
 export default function CadastroEnderecosPage() {
   const { isAdmin } = useAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [tab, setTab] = useState("cidades");
   const [search, setSearch] = useState("");
 
