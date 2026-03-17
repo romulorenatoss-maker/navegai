@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -108,6 +108,13 @@ export default function FilaLeadsPage() {
   const [tarefaTransferTarget, setTarefaTransferTarget] = useState("");
   const [tarefaNumero, setTarefaNumero] = useState("");
   const [tarefaResultado, setTarefaResultado] = useState("");
+
+  // ─── Real-time countdown tick (every 30s) ─────
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const iv = setInterval(() => setTick(t => t + 1), 30000);
+    return () => clearInterval(iv);
+  }, []);
 
   // ─── Realtime: auto-refresh when leads/interactions/tasks change ─────
   useEffect(() => {
@@ -845,6 +852,7 @@ export default function FilaLeadsPage() {
                         <TableHead>Lead</TableHead>
                         <TableHead>Telefone(s)</TableHead>
                         <TableHead>Vencimento</TableHead>
+                        <TableHead>Expiração</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
@@ -887,6 +895,22 @@ export default function FilaLeadsPage() {
                               ) : (
                                 <span className="text-xs flex items-center gap-1 text-muted-foreground"><Clock className="w-3 h-3" />{fmtDate(item.nextAttempt)}</span>
                               )}
+                            </TableCell>
+                            <TableCell>
+                              {(() => {
+                                if (!_urgRef) return <span className="text-xs text-muted-foreground">—</span>;
+                                const diffMs = _urgRef.getTime() - new Date().getTime();
+                                if (diffMs <= 0) {
+                                  const absDiff = Math.abs(diffMs);
+                                  const h = Math.floor(absDiff / 3600000);
+                                  const m = Math.floor((absDiff % 3600000) / 60000);
+                                  return <span className="text-xs font-semibold text-destructive flex items-center gap-1"><AlertTriangle className="w-3 h-3" />-{h}h{String(m).padStart(2,'0')}m</span>;
+                                }
+                                const h = Math.floor(diffMs / 3600000);
+                                const m = Math.floor((diffMs % 3600000) / 60000);
+                                const color = h < 2 ? "text-yellow-600 dark:text-yellow-400 font-semibold" : "text-emerald-600 dark:text-emerald-400";
+                                return <span className={`text-xs flex items-center gap-1 ${color}`}><Clock className="w-3 h-3" />{h}h{String(m).padStart(2,'0')}m</span>;
+                              })()}
                             </TableCell>
                             <TableCell>
                               {(() => {
