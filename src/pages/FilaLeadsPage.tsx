@@ -874,7 +874,7 @@ export default function FilaLeadsPage() {
             <div className="p-3 rounded-md bg-muted/50 border border-border space-y-1">
               <p className="text-xs text-muted-foreground">• O histórico completo será mantido para o novo responsável</p>
               <p className="text-xs text-muted-foreground">• Uma nova rotina de tentativas será iniciada automaticamente</p>
-              <p className="text-xs text-muted-foreground">• O responsável anterior ficará registrado no histórico</p>
+              <p className="text-xs text-muted-foreground">• O último responsável ficará registrado no histórico</p>
             </div>
             <div className="space-y-1.5"><Label>Novo Responsável</Label>
               <Select value={decisionTarget} onValueChange={setDecisionTarget}><SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger><SelectContent>
