@@ -604,9 +604,11 @@ export type Database = {
       }
       group_permissions: {
         Row: {
+          can_assign: boolean
           can_create: boolean
           can_delete: boolean
           can_edit: boolean
+          can_export: boolean
           can_view: boolean
           created_at: string
           group_id: string
@@ -614,9 +616,11 @@ export type Database = {
           resource_id: string
         }
         Insert: {
+          can_assign?: boolean
           can_create?: boolean
           can_delete?: boolean
           can_edit?: boolean
+          can_export?: boolean
           can_view?: boolean
           created_at?: string
           group_id: string
@@ -624,9 +628,11 @@ export type Database = {
           resource_id: string
         }
         Update: {
+          can_assign?: boolean
           can_create?: boolean
           can_delete?: boolean
           can_edit?: boolean
+          can_export?: boolean
           can_view?: boolean
           created_at?: string
           group_id?: string
@@ -1898,9 +1904,11 @@ export type Database = {
       }
       user_permission_overrides: {
         Row: {
+          can_assign: boolean | null
           can_create: boolean | null
           can_delete: boolean | null
           can_edit: boolean | null
+          can_export: boolean | null
           can_view: boolean | null
           created_at: string
           id: string
@@ -1908,9 +1916,11 @@ export type Database = {
           resource_id: string
         }
         Insert: {
+          can_assign?: boolean | null
           can_create?: boolean | null
           can_delete?: boolean | null
           can_edit?: boolean | null
+          can_export?: boolean | null
           can_view?: boolean | null
           created_at?: string
           id?: string
@@ -1918,9 +1928,11 @@ export type Database = {
           resource_id: string
         }
         Update: {
+          can_assign?: boolean | null
           can_create?: boolean | null
           can_delete?: boolean | null
           can_edit?: boolean | null
+          can_export?: boolean | null
           can_view?: boolean | null
           created_at?: string
           id?: string
@@ -1993,9 +2005,11 @@ export type Database = {
       get_user_effective_permissions: {
         Args: { _profile_id: string }
         Returns: {
+          can_assign: boolean
           can_create: boolean
           can_delete: boolean
           can_edit: boolean
+          can_export: boolean
           can_view: boolean
           resource_code: string
           resource_path: string

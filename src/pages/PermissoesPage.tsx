@@ -36,6 +36,8 @@ interface GroupPerm {
   can_create: boolean;
   can_edit: boolean;
   can_delete: boolean;
+  can_assign: boolean;
+  can_export: boolean;
 }
 
 interface UserGroupAssignment {
@@ -52,6 +54,8 @@ interface UserOverride {
   can_create: boolean | null;
   can_edit: boolean | null;
   can_delete: boolean | null;
+  can_assign: boolean | null;
+  can_export: boolean | null;
 }
 
 export default function PermissoesPage() {
@@ -273,18 +277,20 @@ export default function PermissoesPage() {
                         <th className="text-center px-3 py-2 text-muted-foreground font-medium w-20">Criar</th>
                         <th className="text-center px-3 py-2 text-muted-foreground font-medium w-20">Editar</th>
                         <th className="text-center px-3 py-2 text-muted-foreground font-medium w-20">Excluir</th>
+                        <th className="text-center px-3 py-2 text-muted-foreground font-medium w-20">Atribuir</th>
+                        <th className="text-center px-3 py-2 text-muted-foreground font-medium w-20">Exportar</th>
                       </tr>
                     </thead>
                     <tbody>
                       {Object.entries(resourcesByModule).map(([module, res]) => (
                         <>
                           <tr key={module}>
-                            <td colSpan={5} className="px-3 py-1.5 bg-muted/30 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{module}</td>
+                            <td colSpan={7} className="px-3 py-1.5 bg-muted/30 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{module}</td>
                           </tr>
                           {res.map((r) => (
                             <tr key={r.id} className="border-b border-border/50 hover:bg-muted/20">
                               <td className="px-3 py-2 text-foreground">{r.label}</td>
-                              {(["can_view", "can_create", "can_edit", "can_delete"] as const).map((action) => (
+                              {(["can_view", "can_create", "can_edit", "can_delete", "can_assign", "can_export"] as const).map((action) => (
                                 <td key={action} className="text-center px-3 py-2">
                                   <Switch
                                     checked={getPermValue(r.id, action)}
@@ -353,13 +359,15 @@ export default function PermissoesPage() {
                           <th className="text-center px-2 py-1.5 text-muted-foreground font-medium text-xs w-16">Criar</th>
                           <th className="text-center px-2 py-1.5 text-muted-foreground font-medium text-xs w-16">Editar</th>
                           <th className="text-center px-2 py-1.5 text-muted-foreground font-medium text-xs w-16">Excluir</th>
+                          <th className="text-center px-2 py-1.5 text-muted-foreground font-medium text-xs w-16">Atribuir</th>
+                          <th className="text-center px-2 py-1.5 text-muted-foreground font-medium text-xs w-16">Exportar</th>
                         </tr>
                       </thead>
                       <tbody>
                         {resources.map((r) => (
                           <tr key={r.id} className="border-b border-border/50">
                             <td className="px-2 py-1.5 text-foreground text-xs">{r.label}</td>
-                            {(["can_view", "can_create", "can_edit", "can_delete"] as const).map((action) => {
+                            {(["can_view", "can_create", "can_edit", "can_delete", "can_assign", "can_export"] as const).map((action) => {
                               const val = getOverrideValue(r.id, action);
                               const label = val === null ? "—" : val ? "✓" : "✗";
                               const cls = val === null ? "text-muted-foreground bg-muted/30" : val ? "text-success bg-success/10" : "text-destructive bg-destructive/10";
