@@ -2515,6 +2515,7 @@ export default function AvaliacaoOSPage() {
     setFormValidated(false);
     setFormFoundOS(null);
     setFormPendingAval(null);
+    setShowNewOsDialog(false);
 
     try {
       // 1) Validate/find client (normalized CPF)
