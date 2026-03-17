@@ -787,6 +787,7 @@ export default function FilaLeadsPage() {
                      <SelectItem value="todos">Todos Status</SelectItem>
                      <SelectItem value="novo">Novo</SelectItem>
                      <SelectItem value="em_contato">Em Contato</SelectItem>
+                     <SelectItem value="em_atendimento">Em tratativa</SelectItem>
                      <SelectItem value="interessado">Interessado</SelectItem>
                      <SelectItem value="aguardando_decisao_avaliador">Aguardando Decisão</SelectItem>
                      <SelectItem value="fila_captura">Fila de Captura</SelectItem>
