@@ -13,6 +13,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { Shield, Users, Eye, PenLine, Plus, Trash2, Save, Lock } from "lucide-react";
 
+type DataScopeValue = "none" | "own" | "team" | "all";
+const SCOPE_LABELS: Record<DataScopeValue, string> = { none: "Nenhum", own: "Próprio", team: "Equipe", all: "Todos" };
+const SCOPE_CYCLE: DataScopeValue[] = ["none", "own", "team", "all"];
+const SCOPE_COLORS: Record<DataScopeValue, string> = {
+  none: "text-muted-foreground bg-muted/30",
+  own: "text-primary bg-primary/10",
+  team: "text-amber-600 bg-amber-500/10",
+  all: "text-emerald-600 bg-emerald-500/10",
+};
+
 interface Resource {
   id: string;
   code: string;
