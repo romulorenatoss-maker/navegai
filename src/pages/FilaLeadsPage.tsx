@@ -268,6 +268,8 @@ export default function FilaLeadsPage() {
         descricao: `Tentativa ${selectedItem.tentativaAtual} via ${attemptTipo}: ${attemptResultado.trim() || "sem resultado"}`,
       });
 
+      const hadAgendamento = !!selectedItem.lead.agendamento_retorno;
+
       await supabase
         .from("leads")
         .update({
@@ -275,6 +277,15 @@ export default function FilaLeadsPage() {
           agendamento_retorno: null,
         } as any)
         .eq("id", selectedItem.lead.id);
+
+      if (hadAgendamento) {
+        await supabase.from("lead_historico").insert({
+          lead_id: selectedItem.lead.id,
+          usuario_id: profile.id,
+          tipo_evento: "agendamento_removido",
+          descricao: `Agendamento de retorno removido ao registrar tentativa ${selectedItem.tentativaAtual}`,
+        });
+      }
     },
     onSuccess: () => {
       toast.success("Tentativa registrada! Lead movido para o final da fila.");
