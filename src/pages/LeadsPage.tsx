@@ -2495,7 +2495,7 @@ export default function LeadsPage() {
       <Dialog open={showInteraction} onOpenChange={setShowInteraction}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{tentativasRealizadas === 0 ? "Registrar Lead" : `Registrar Tentativa ${tentativasRealizadas}`} — {selectedLead?.nome}</DialogTitle>
+            <DialogTitle>{tentativasCicloAtual === 0 ? "Registrar Lead" : `Registrar Tentativa ${tentativasCicloAtual}`} — {selectedLead?.nome}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
