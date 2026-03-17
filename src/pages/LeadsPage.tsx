@@ -3356,10 +3356,17 @@ export default function LeadsPage() {
           </DialogHeader>
           <ScrollArea className="max-h-[60vh] pr-3">
             <div className="space-y-3">
-              <p className="text-xs text-muted-foreground">Todos os campos são obrigatórios para conversão.</p>
+              <p className="text-xs text-muted-foreground">Preencha o CPF para buscar dados de cliente existente.</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">CPF *</Label>
+                  <div className="relative">
+                    <Input placeholder="000.000.000-00" value={convForm.cpf} onChange={e => handleConvCpfChange(e.target.value)} />
+                    {convCpfSearching && <Loader2 className="w-3.5 h-3.5 animate-spin absolute right-2 top-3 text-muted-foreground" />}
+                  </div>
+                  {convCpfLookedUp && <p className="text-xs text-green-600 flex items-center gap-1"><UserCheck className="w-3 h-3" /> Cliente encontrado — dados preenchidos</p>}
+                </div>
                 <div className="space-y-1.5"><Label className="text-xs">Nome *</Label><Input value={convForm.nome} onChange={e => setConvForm(f => ({ ...f, nome: e.target.value }))} /></div>
-                <div className="space-y-1.5"><Label className="text-xs">CPF *</Label><Input placeholder="000.000.000-00" value={convForm.cpf} onChange={e => setConvForm(f => ({ ...f, cpf: e.target.value }))} /></div>
                 <div className="space-y-1.5"><Label className="text-xs">RG *</Label><Input value={convForm.rg} onChange={e => setConvForm(f => ({ ...f, rg: e.target.value }))} /></div>
                 <div className="space-y-1.5"><Label className="text-xs">Nome da Mãe *</Label><Input value={convForm.nome_mae} onChange={e => setConvForm(f => ({ ...f, nome_mae: e.target.value }))} /></div>
               </div>
