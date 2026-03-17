@@ -3324,11 +3324,47 @@ export default function LeadsPage() {
                 <div className="space-y-1.5"><Label className="text-xs">CPF *</Label><Input placeholder="000.000.000-00" value={convForm.cpf} onChange={e => setConvForm(f => ({ ...f, cpf: e.target.value }))} /></div>
                 <div className="space-y-1.5"><Label className="text-xs">RG *</Label><Input value={convForm.rg} onChange={e => setConvForm(f => ({ ...f, rg: e.target.value }))} /></div>
                 <div className="space-y-1.5"><Label className="text-xs">Nome da Mãe *</Label><Input value={convForm.nome_mae} onChange={e => setConvForm(f => ({ ...f, nome_mae: e.target.value }))} /></div>
-                <div className="space-y-1.5 sm:col-span-2"><Label className="text-xs">Endereço *</Label><Input value={convForm.endereco} onChange={e => setConvForm(f => ({ ...f, endereco: e.target.value }))} /></div>
-                <div className="space-y-1.5"><Label className="text-xs">Número *</Label><Input value={convForm.numero} onChange={e => setConvForm(f => ({ ...f, numero: e.target.value }))} /></div>
-                <div className="space-y-1.5"><Label className="text-xs">CEP *</Label><Input placeholder="00000-000" value={convForm.cep} onChange={e => setConvForm(f => ({ ...f, cep: e.target.value }))} /></div>
-                <div className="space-y-1.5"><Label className="text-xs">Cidade *</Label><Input value={convForm.cidade} onChange={e => setConvForm(f => ({ ...f, cidade: e.target.value }))} /></div>
-                <div className="space-y-1.5"><Label className="text-xs">Referência *</Label><Input value={convForm.referencia} onChange={e => setConvForm(f => ({ ...f, referencia: e.target.value }))} /></div>
+              </div>
+              <div className="border rounded-md p-3 space-y-3 bg-muted/20">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Endereço</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Cidade *</Label>
+                    <Select value={convCidadeId || "none"} onValueChange={v => { setConvCidadeId(v === "none" ? null : v); setConvBairroId(null); setConvRuaId(null); }}>
+                      <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhuma</SelectItem>
+                        {endCidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">CEP</Label>
+                    <Input value={(() => { const rua = endRuas.find(r => r.id === convRuaId); return rua?.cep?.[0] || ""; })()} disabled placeholder="Preenchido pela rua" className="h-9 bg-muted/50" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Bairro *</Label>
+                    <Select value={convBairroId || "none"} onValueChange={v => { setConvBairroId(v === "none" ? null : v); setConvRuaId(null); }} disabled={!convCidadeId}>
+                      <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum</SelectItem>
+                        {endBairros.filter(b => b.cidade_id === convCidadeId).map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Rua *</Label>
+                    <Select value={convRuaId || "none"} onValueChange={v => setConvRuaId(v === "none" ? null : v)} disabled={!convBairroId}>
+                      <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhuma</SelectItem>
+                        {endRuas.filter(r => r.bairro_id === convBairroId).map(r => <SelectItem key={r.id} value={r.id}>{r.nome}{r.cep?.[0] ? ` (${r.cep[0]})` : ""}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5"><Label className="text-xs">Número *</Label><Input value={convForm.numero} onChange={e => setConvForm(f => ({ ...f, numero: e.target.value }))} className="h-9" /></div>
+                  <div className="space-y-1.5"><Label className="text-xs">Referência *</Label><Input value={convForm.referencia} onChange={e => setConvForm(f => ({ ...f, referencia: e.target.value }))} className="h-9" /></div>
+                </div>
               </div>
               {/* Atendente selector */}
               <div className="space-y-1.5">
