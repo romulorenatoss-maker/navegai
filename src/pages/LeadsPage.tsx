@@ -1888,7 +1888,7 @@ export default function LeadsPage() {
                   descricao: `Retorno agendado para ${format(dt, "dd/MM/yyyy HH:mm", { locale: ptBR })}`,
                 });
                 setSelectedLead(prev => prev ? { ...prev, agendamento_retorno: dt.toISOString() } : null);
-                queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                updateLeadInCache(selectedLead!.id, { agendamento_retorno: dt.toISOString() });
                 refetchHistorico();
                 setShowSchedule(false);
                 toast.success(`Retorno agendado para ${format(dt, "dd/MM/yyyy HH:mm", { locale: ptBR })}`);
