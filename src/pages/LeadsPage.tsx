@@ -1067,7 +1067,8 @@ export default function LeadsPage() {
       const { data: newCliente, error: e1 } = await supabase.from("clientes").insert({
         nome: f.nome.trim(), cpf: f.cpf.trim(), rg: f.rg.trim(), nome_mae: f.nome_mae.trim(),
         endereco: f.endereco.trim(), numero: f.numero.trim(), cep: f.cep.trim(), cidade: f.cidade.trim(), referencia: f.referencia.trim(),
-      }).select("id").single();
+        cidade_id: selectedLead.cidade_id || null, bairro_id: selectedLead.bairro_id || null, rua_id: selectedLead.rua_id || null,
+      } as any).select("id").single();
       if (e1) throw e1;
 
       const leadPhoneContatos = leadContatos.filter(c => c.tipo_contato === "telefone");
