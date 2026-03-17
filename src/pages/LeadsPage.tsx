@@ -1582,12 +1582,13 @@ export default function LeadsPage() {
                     onClick={() => setFilaFiltro("hoje")}
                   >
                     Hoje ({priorityQueue.filter((item) => {
-                      const now = new Date();
-                      const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+                      const _now = new Date();
+                      const endOfToday = new Date(_now.getFullYear(), _now.getMonth(), _now.getDate(), 23, 59, 59, 999);
+                      const in8hours = new Date(_now.getTime() + 8 * 60 * 60 * 1000);
                       if (item.lead.agendamento_retorno) {
                         return new Date(item.lead.agendamento_retorno) <= endOfToday;
                       }
-                      if (item.proximoContato && item.proximoContato <= endOfToday) return true;
+                      if (item.proximoContato && (item.proximoContato <= endOfToday || item.proximoContato <= in8hours)) return true;
                       if (!item.proximoContato && !item.ultimaInteracao) return true;
                       return false;
                     }).length})
