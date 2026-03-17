@@ -305,12 +305,21 @@ export default function FilaLeadsPage() {
 
   const handleTransfer = async () => {
     if (!transferItem || !transferTarget || !profile) return;
-    await supabase.from("leads").update({ responsavel_id: transferTarget } as any).eq("id", transferItem.lead.id);
+    // Mark all pending tasks as cancelled so attempt count resets for new owner
+    await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", transferItem.lead.id).eq("status", "pendente");
+    await supabase.from("leads").update({ responsavel_id: transferTarget, status_lead: "em_contato" } as any).eq("id", transferItem.lead.id);
     const targetName = profiles.find(p => p.id === transferTarget)?.nome || "—";
-    await supabase.from("lead_historico").insert({ lead_id: transferItem.lead.id, usuario_id: profile.id, tipo_evento: "transferencia_automatica", descricao: `Lead transferido para ${targetName}. Histórico anterior mantido.` });
-    toast.success(`Lead transferido para ${targetName}`);
+    await supabase.from("lead_historico").insert({ lead_id: transferItem.lead.id, usuario_id: profile.id, tipo_evento: "transferencia_automatica", descricao: `Lead transferido para ${targetName}. Contagem de tentativas reiniciada. Histórico anterior mantido.` });
+    // Schedule first attempt for the new owner (D+1)
+    const firstRotina = rotinaTentativas.find((r: any) => r.tentativa_numero === 1);
+    const periodo = firstRotina?.periodo_contato || "manha";
+    const nextDate = new Date();
+    nextDate.setDate(nextDate.getDate() + 1);
+    nextDate.setHours(PERIODO_HORA[periodo] || 9, 0, 0, 0);
+    await supabase.from("lead_tarefas_contato").insert({ lead_id: transferItem.lead.id, tentativa: 1, data_contato: nextDate.toISOString(), periodo, status: "pendente", responsavel_id: transferTarget });
+    toast.success(`Lead transferido para ${targetName} com rotina reiniciada!`);
     setShowTransfer(false); setTransferItem(null); setTransferTarget("");
-    queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
+    queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
   };
 
   const handleDecisionTransfer = async () => {
