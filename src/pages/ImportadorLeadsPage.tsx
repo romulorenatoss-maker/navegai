@@ -347,8 +347,8 @@ interface ImportResult {
               <CardContent className="space-y-4">
                 <label className="flex items-center gap-2 px-4 py-6 rounded-lg border-2 border-dashed border-border hover:border-primary cursor-pointer transition-colors justify-center">
                   <FileSpreadsheet className="w-5 h-5 text-muted-foreground" />
-                  <span className="text-sm">{fileName || "Escolher arquivo CSV"}</span>
-                  <input type="file" accept=".csv,.txt" className="hidden" onChange={handleFilePick} />
+                  <span className="text-sm">{fileName || "Escolher arquivo CSV, XLS ou XLSX"}</span>
+                  <input type="file" accept=".csv,.txt,.xls,.xlsx" className="hidden" onChange={handleFilePick} />
                 </label>
 
                 <div className="space-y-1.5">
