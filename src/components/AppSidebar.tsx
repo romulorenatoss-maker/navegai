@@ -25,9 +25,8 @@ const allNavSections = [
     ],
   },
   {
-    title: "Perguntas & Checklists",
+    title: "Checklists",
     items: [
-      { to: "/avaliacoes/perguntas", icon: HelpCircle, label: "Perguntas" },
       { to: "/checklists/cadastro", icon: ListChecks, label: "Cadastro" },
       { to: "/checklists/execucao", icon: PlayCircle, label: "Execução" },
       { to: "/checklists/gestao", icon: FolderKanban, label: "Gestão" },
@@ -37,9 +36,10 @@ const allNavSections = [
     title: "Cadastros",
     items: [
       { to: "/cadastros/setores", icon: Building2, label: "Setores" },
-      { to: "/cadastros/colaboradores", icon: Users, label: "Colaboradores" },
-      { to: "/cadastros/clientes", icon: ClipboardCheck, label: "Clientes" },
       { to: "/cadastros/servicos", icon: Wrench, label: "Tipos de Serviço" },
+      { to: "/avaliacoes/perguntas", icon: HelpCircle, label: "Perguntas" },
+      { to: "/leads/objecoes", icon: MessageSquare, label: "Cadastro de Objeções" },
+      { to: "/cadastros/clientes", icon: ClipboardCheck, label: "Clientes" },
       { to: "/cadastros/enderecos", icon: MapPin, label: "Endereços" },
     ],
   },
@@ -47,7 +47,6 @@ const allNavSections = [
     title: "Leads",
     items: [
       { to: "/leads/fila", icon: ListOrdered, label: "Gerenciador de Leads" },
-      
       { to: "/leads/arquivados", icon: Archive, label: "Leads Arquivados" },
       { to: "/leads/importador", icon: FileUp, label: "Importador de Leads" },
     ],
@@ -55,8 +54,8 @@ const allNavSections = [
   {
     title: "Configurações",
     items: [
+      { to: "/cadastros/colaboradores", icon: Users, label: "Colaboradores" },
       { to: "/leads/rotina", icon: Settings, label: "Rotina de Tentativas" },
-      { to: "/leads/objecoes", icon: MessageSquare, label: "Cadastro de Objeções" },
     ],
   },
   {
