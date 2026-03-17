@@ -67,6 +67,7 @@ interface UserOverride {
   can_delete: boolean | null;
   can_assign: boolean | null;
   can_export: boolean | null;
+  data_scope: DataScopeValue | null;
 }
 
 export default function PermissoesPage() {
