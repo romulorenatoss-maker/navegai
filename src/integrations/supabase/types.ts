@@ -893,6 +893,7 @@ export type Database = {
           created_at: string
           data_contato: string
           data_criacao: string
+          fora_do_prazo: boolean
           id: string
           lead_id: string
           periodo: string
@@ -904,6 +905,7 @@ export type Database = {
           created_at?: string
           data_contato?: string
           data_criacao?: string
+          fora_do_prazo?: boolean
           id?: string
           lead_id: string
           periodo?: string
@@ -915,6 +917,7 @@ export type Database = {
           created_at?: string
           data_contato?: string
           data_criacao?: string
+          fora_do_prazo?: boolean
           id?: string
           lead_id?: string
           periodo?: string

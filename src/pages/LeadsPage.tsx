@@ -1096,8 +1096,12 @@ export default function LeadsPage() {
         .order("tentativa", { ascending: true })
         .limit(1);
       if (pendingTarefas && pendingTarefas.length > 0) {
+        const taskDate = new Date(pendingTarefas[0].data_contato);
+        const endHour = pendingTarefas[0].periodo === "manha" ? 12 : pendingTarefas[0].periodo === "tarde" ? 18 : 24;
+        taskDate.setHours(endHour, 0, 0, 0);
+        const wasLate = pendingTarefas[0].status === "atrasado" || new Date() > taskDate;
         await supabase.from("lead_tarefas_contato")
-          .update({ status: "realizado" })
+          .update({ status: "realizado", fora_do_prazo: wasLate } as any)
           .eq("id", pendingTarefas[0].id);
       }
 

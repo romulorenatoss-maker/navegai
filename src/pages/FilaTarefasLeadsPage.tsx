@@ -195,10 +195,11 @@ export default function FilaTarefasLeadsPage() {
       });
       if (e1) throw e1;
 
-      // Update tarefa as realizado
+      // Update tarefa as realizado and track if it was late
+      const wasLate = selectedTarefa.status === "atrasado" || isTarefaExpirada(selectedTarefa);
       const { error: e2 } = await supabase
         .from("lead_tarefas_contato")
-        .update({ status: "realizado" })
+        .update({ status: "realizado", fora_do_prazo: wasLate } as any)
         .eq("id", selectedTarefa.id);
       if (e2) throw e2;
 
@@ -297,6 +298,7 @@ export default function FilaTarefasLeadsPage() {
                     <TableHead>Período</TableHead>
                     <TableHead>Data Contato</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Prazo</TableHead>
                     <TableHead className="text-right">Ação</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -331,6 +333,11 @@ export default function FilaTarefasLeadsPage() {
                             {isOverdue ? (
                               <span className="flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Atrasado</span>
                             ) : "Pendente"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={`text-xs border-0 ${isOverdue ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200"}`}>
+                            {isOverdue ? "Fora do Prazo" : "No Prazo"}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
