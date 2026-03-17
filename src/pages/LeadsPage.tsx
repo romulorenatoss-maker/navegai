@@ -327,10 +327,6 @@ export default function LeadsPage() {
 
   // Priority queue filter
   const [filaFiltro, setFilaFiltro] = useState<"hoje" | "todos">("hoje");
-  const [filtroResponsavel, setFiltroResponsavel] = useState<string>("all");
-  const [filtroHandler, setFiltroHandler] = useState<string>("all");
-  const [filtroMinTentativas, setFiltroMinTentativas] = useState<string>("");
-  const [showFilaFilters, setShowFilaFilters] = useState(false);
 
   // Local editable state (saved only when registering an attempt)
   const [localPlanoId, setLocalPlanoId] = useState<string | null>(null);
