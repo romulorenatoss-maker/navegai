@@ -306,6 +306,9 @@ export default function LeadsPage() {
   const [convRuaId, setConvRuaId] = useState<string | null>(null);
   const [convQuickAddType, setConvQuickAddType] = useState<"cidade" | "bairro" | "rua" | null>(null);
   const [convQuickAddNome, setConvQuickAddNome] = useState("");
+  const [convCpfLookedUp, setConvCpfLookedUp] = useState(false);
+  const [convCpfSearching, setConvCpfSearching] = useState(false);
+  const convCpfLookupRef = useRef("");
 
   // Finalize dialog (when all attempts done)
   const [showFinalize, setShowFinalize] = useState(false);
@@ -1671,7 +1674,41 @@ export default function LeadsPage() {
     setConvBairroId(selectedLead.bairro_id || null);
     setConvRuaId(selectedLead.rua_id || null);
     setConvAtendenteId(profile?.id || "");
+    setConvCpfLookedUp(false);
+    setConvCpfSearching(false);
+    convCpfLookupRef.current = "";
     setShowConvert(true);
+  };
+
+  const handleConvCpfChange = async (cpfValue: string) => {
+    setConvForm(f => ({ ...f, cpf: cpfValue }));
+    setConvCpfLookedUp(false);
+    const digits = cpfValue.replace(/\D/g, "");
+    if (digits.length < 11) return;
+    if (convCpfLookupRef.current === digits) return;
+    convCpfLookupRef.current = digits;
+    setConvCpfSearching(true);
+    try {
+      const { data: existing } = await supabase
+        .from("clientes").select("id, nome, cpf, rg, nome_mae, numero, referencia, cidade_id, bairro_id, rua_id, cep")
+        .eq("cpf", cpfValue.trim()).maybeSingle();
+      if (existing) {
+        setConvForm(f => ({
+          ...f,
+          nome: existing.nome || f.nome,
+          rg: existing.rg || f.rg,
+          nome_mae: existing.nome_mae || f.nome_mae,
+          numero: existing.numero || f.numero,
+          referencia: existing.referencia || f.referencia,
+        }));
+        if (existing.cidade_id) setConvCidadeId(existing.cidade_id);
+        if (existing.bairro_id) setConvBairroId(existing.bairro_id);
+        if (existing.rua_id) setConvRuaId(existing.rua_id);
+        setConvCpfLookedUp(true);
+        toast.info("Cliente encontrado! Dados preenchidos automaticamente.");
+      }
+    } catch { /* ignore */ }
+    setConvCpfSearching(false);
   };
 
   // ─── Convert Lead → Client ────────────────────────
@@ -3319,10 +3356,17 @@ export default function LeadsPage() {
           </DialogHeader>
           <ScrollArea className="max-h-[60vh] pr-3">
             <div className="space-y-3">
-              <p className="text-xs text-muted-foreground">Todos os campos são obrigatórios para conversão.</p>
+              <p className="text-xs text-muted-foreground">Preencha o CPF para buscar dados de cliente existente.</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">CPF *</Label>
+                  <div className="relative">
+                    <Input placeholder="000.000.000-00" value={convForm.cpf} onChange={e => handleConvCpfChange(e.target.value)} />
+                    {convCpfSearching && <Loader2 className="w-3.5 h-3.5 animate-spin absolute right-2 top-3 text-muted-foreground" />}
+                  </div>
+                  {convCpfLookedUp && <p className="text-xs text-green-600 flex items-center gap-1"><UserCheck className="w-3 h-3" /> Cliente encontrado — dados preenchidos</p>}
+                </div>
                 <div className="space-y-1.5"><Label className="text-xs">Nome *</Label><Input value={convForm.nome} onChange={e => setConvForm(f => ({ ...f, nome: e.target.value }))} /></div>
-                <div className="space-y-1.5"><Label className="text-xs">CPF *</Label><Input placeholder="000.000.000-00" value={convForm.cpf} onChange={e => setConvForm(f => ({ ...f, cpf: e.target.value }))} /></div>
                 <div className="space-y-1.5"><Label className="text-xs">RG *</Label><Input value={convForm.rg} onChange={e => setConvForm(f => ({ ...f, rg: e.target.value }))} /></div>
                 <div className="space-y-1.5"><Label className="text-xs">Nome da Mãe *</Label><Input value={convForm.nome_mae} onChange={e => setConvForm(f => ({ ...f, nome_mae: e.target.value }))} /></div>
               </div>
