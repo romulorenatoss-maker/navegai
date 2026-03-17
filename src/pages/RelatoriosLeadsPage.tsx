@@ -506,6 +506,11 @@ export default function RelatoriosLeadsPage() {
                     <td className="px-4 py-3 text-body text-muted-foreground font-tabular">
                       {format(new Date(item.data_criacao), "dd/MM/yyyy")}
                     </td>
+                    <td className="px-2 py-3">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" title="Ver detalhes" onClick={() => openLeadDetail(item.id)}>
+                        <Eye className="w-3.5 h-3.5" />
+                      </Button>
+                    </td>
                   </tr>
                 ))}
                 {leadsList.length === 0 && (
