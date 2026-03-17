@@ -379,8 +379,8 @@ export default function CadastroEnderecosPage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>CEP</Label>
-                  <Input value={formCep} onChange={e => setFormCep(e.target.value)} placeholder="00000-000" />
+                  <Label>CEPs <span className="text-xs text-muted-foreground">(separe por vírgula se houver mais de um)</span></Label>
+                  <Input value={formCep} onChange={e => setFormCep(e.target.value)} placeholder="00000-000, 00000-001" />
                 </div>
               </>
             )}
