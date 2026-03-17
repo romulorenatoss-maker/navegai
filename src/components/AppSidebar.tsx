@@ -133,21 +133,34 @@ export function AppSidebar({ userName = "Usuário", onSignOut, onNavigate, isAdm
               <div className="space-y-0.5">
                 {section.items.map((item) => {
                   const isActive = location.pathname === item.to;
+                  const badgeCount = badgeCounts[item.to] || 0;
                   const linkContent = (
                     <NavLink
                       key={item.to}
                       to={item.to}
                       onClick={onNavigate}
                       className={cn(
-                        "flex items-center gap-3 rounded-md text-sm transition-colors",
+                        "flex items-center gap-3 rounded-md text-sm transition-colors relative",
                         collapsed ? "justify-center px-2 py-2.5" : "px-3 py-2",
                         isActive
                           ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                           : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                       )}
                     >
-                      <item.icon className="w-4 h-4 shrink-0" />
-                      {!collapsed && <span>{item.label}</span>}
+                      <span className="relative shrink-0">
+                        <item.icon className="w-4 h-4" />
+                        {badgeCount > 0 && collapsed && (
+                          <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1 animate-pulse">
+                            {badgeCount}
+                          </span>
+                        )}
+                      </span>
+                      {!collapsed && <span className="flex-1">{item.label}</span>}
+                      {!collapsed && badgeCount > 0 && (
+                        <span className="min-w-[20px] h-5 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 animate-pulse">
+                          {badgeCount}
+                        </span>
+                      )}
                     </NavLink>
                   );
 
@@ -157,6 +170,7 @@ export function AppSidebar({ userName = "Usuário", onSignOut, onNavigate, isAdm
                         <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
                         <TooltipContent side="right" sideOffset={8}>
                           {item.label}
+                          {badgeCount > 0 && <span className="ml-1 text-destructive font-bold">({badgeCount})</span>}
                         </TooltipContent>
                       </Tooltip>
                     );
