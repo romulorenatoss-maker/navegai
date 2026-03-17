@@ -707,35 +707,11 @@ export default function LeadsPage() {
 
   const capturaQueue = useMemo(() => {
     if (!profile) return [];
-    return capturaLeadsRaw
-      .map(lead => {
-        const interacoes = capturaInteracoes.filter(i => i.lead_id === lead.id);
-        const contatos = capturaContatos.filter(c => c.lead_id === lead.id);
-        const lastInteracao = interacoes[0];
-        // Exclude users who performed REAL interactions (lead_interacoes), not just views/captures
-        const prevHandlerIds = interacoes.map(i => i.colaborador_id);
-        const wasLastHandler = prevHandlerIds.includes(profile.id);
-        // Check reservation status
-        const isReservedByMe = lead.reserved_by === profile.id;
-        const isReservedByOther = !!lead.reserved_by && lead.reserved_by !== profile.id;
-        // Check if reservation expired (2 min)
-        const reservationExpired = lead.reserved_at
-          ? (Date.now() - new Date(lead.reserved_at).getTime()) > RESERVATION_TIMEOUT_MS
-          : false;
-        return {
-          lead, contatos, userPreviouslyHandled: wasLastHandler,
-          ultimaTentativaEm: lastInteracao?.data_interacao || null,
-          isReservedByMe, isReservedByOther: isReservedByOther && !reservationExpired,
-          reservationExpired,
-        };
-      })
-      .filter(item => {
-        // Hide leads reserved by other users (unless expired)
-        if (item.isReservedByOther) return false;
-        // Admin sees everything, non-admin filters out previous handler
-        return isAdmin || !item.userPreviouslyHandled || item.isReservedByMe;
-      });
-  }, [capturaLeadsRaw, capturaInteracoes, capturaContatos, profile, isAdmin]);
+    return capturaLeadsRaw.map(lead => {
+      const contatos = capturaContatos.filter(c => c.lead_id === lead.id);
+      return { lead, contatos };
+    });
+  }, [capturaLeadsRaw, capturaContatos, profile]);
 
   // ─── Reservation: reserve lead (not assign) ─────────────────
   const reserveLeadMutation = useMutation({
