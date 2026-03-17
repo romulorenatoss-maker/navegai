@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import * as XLSX from "xlsx";
 import { motion } from "framer-motion";
 import {
   CalendarIcon, Filter, Trash2, Download, Loader2,
-  FileText, Search, Users,
+  FileText, Search, Users, Eye, X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,6 +14,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import AdminPasswordDialog from "@/components/AdminPasswordDialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
