@@ -1149,6 +1149,7 @@ export default function AvaliacaoOSPage() {
       } as any).select("id").single();
       if (ae) throw ae;
 
+      setShowNewOsDialog(false);
       toast.success("Avaliação criada! Iniciando...");
       await openEvaluation(newAval.id, osId);
     } catch (err: any) {
