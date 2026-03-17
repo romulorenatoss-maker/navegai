@@ -3006,6 +3006,68 @@ export default function LeadsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Transfer History Dialog */}
+      <Dialog open={showTransferHistory} onOpenChange={setShowTransferHistory}>
+        <DialogContent className="sm:max-w-3xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowRightLeft className="w-5 h-5" /> Histórico de Transferências
+            </DialogTitle>
+            <DialogDescription>
+              Registro de todas as movimentações de leads entre responsáveis
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh]">
+            {loadingTransfers ? (
+              <div className="p-8 text-center text-muted-foreground"><Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" /> Carregando...</div>
+            ) : transferHistory.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground text-sm">Nenhuma transferência registrada.</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data/Hora</TableHead>
+                    <TableHead>Lead</TableHead>
+                    <TableHead>Ação</TableHead>
+                    <TableHead>Executado por</TableHead>
+                    <TableHead>Detalhes</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {transferHistory.map((t: any) => {
+                    const acaoMap: Record<string, { label: string; color: string }> = {
+                      transferencia_automatica: { label: "Transferência", color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
+                      transferencia_manual: { label: "Transferência Manual", color: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200" },
+                      transferencia_decisao: { label: "Decisão Avaliador", color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
+                      lead_capturado: { label: "Captura", color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200" },
+                      reserva_liberada: { label: "Reserva Liberada", color: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" },
+                    };
+                    const acao = acaoMap[t.tipo_evento] || { label: t.tipo_evento, color: "bg-muted text-muted-foreground" };
+                    return (
+                      <TableRow key={t.id}>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                          {format(new Date(t.data_evento), "dd/MM/yy HH:mm", { locale: ptBR })}
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm font-medium">{t.leads?.nome || "—"}</span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={`text-[10px] border-0 ${acao.color}`}>{acao.label}</Badge>
+                        </TableCell>
+                        <TableCell className="text-xs">{t.profiles?.nome || "—"}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground max-w-[250px] truncate" title={t.descricao || ""}>
+                          {t.descricao || "—"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
       {/* Duplicate Phone Detection Modal */}
       <Dialog open={showDuplicateModal} onOpenChange={v => { if (!v) { setShowDuplicateModal(false); setDuplicateLeadData(null); } }}>
         <DialogContent className="sm:max-w-md">
