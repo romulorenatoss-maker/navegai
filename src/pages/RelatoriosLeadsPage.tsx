@@ -478,6 +478,15 @@ export default function RelatoriosLeadsPage() {
         description={`Informe sua senha para exportar ${selected.size} lead(s) selecionado(s).`}
         onConfirm={handleExportSelected}
       />
+
+      {/* Delete ALL filtered Password Dialog */}
+      <AdminPasswordDialog
+        open={deleteAllDialogOpen}
+        onOpenChange={setDeleteAllDialogOpen}
+        title="Remover Todos os Dados"
+        description={`Você está prestes a remover ${leadsList.length} lead(s) listados e TODOS os dados vinculados (contatos, tarefas, interações, histórico, atrasos, objeções). Nada restará no sistema. Esta ação é irreversível.`}
+        onConfirm={executeDeleteAllFiltered}
+      />
     </div>
   );
 }
