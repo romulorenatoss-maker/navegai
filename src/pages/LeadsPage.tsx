@@ -1168,7 +1168,7 @@ export default function LeadsPage() {
     onSuccess: () => {
       toast.success("Lead convertido em cliente com sucesso!");
       setShowConvert(false); setSelectedLead(prev => prev ? { ...prev, status_lead: "convertido" } : null);
-      queryClient.invalidateQueries({ queryKey: ["leads-list"] }); refetchHistorico();
+      updateLeadInCache(selectedLead!.id, { status_lead: "convertido" }); refetchHistorico();
     },
     onError: (err: any) => {
       if (err.message === "__DUPLICATE_CPF__") { toast.info("Lead vinculado ao cliente existente."); return; }
