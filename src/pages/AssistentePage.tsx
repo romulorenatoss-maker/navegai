@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bot, Send, User, Loader2, Sparkles, TrendingUp, Users, BarChart3, FileSpreadsheet, PieChart, MessageSquare, TableProperties, Download } from "lucide-react";
+import { Bot, Send, User, Loader2, Sparkles, TrendingUp, Users, BarChart3, FileSpreadsheet, PieChart, MessageSquare, TableProperties, Download, Trophy, Target } from "lucide-react";
 import { toast } from "sonner";
 import { AssistenteMessageRenderer } from "@/components/assistente/AssistenteMessageRenderer";
+import { useAuth } from "@/contexts/AuthContext";
 import * as XLSX from "xlsx";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/business-assistant`;
@@ -15,12 +16,12 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/business-ass
 type Message = { role: "user" | "assistant"; content: string };
 
 const quickSuggestions = [
-  { label: "Vendas hoje", icon: TrendingUp, question: "Quantas vendas (conversões) foram feitas hoje? Mostre um gráfico de barras e uma tabela com os leads convertidos." },
-  { label: "Leads na fila", icon: Users, question: "Quantos leads estão na fila aguardando atendimento? Mostre tabela completa com nome, telefone, campanha e tentativas." },
-  { label: "Relatório geral", icon: FileSpreadsheet, question: "Gere um relatório completo dos leads com nome, contato, tentativas, status e campanha. Inclua gráfico de distribuição por status." },
-  { label: "Campanha top", icon: Sparkles, question: "Qual campanha mais converteu leads? Mostre gráfico comparativo de conversão entre campanhas." },
-  { label: "Performance", icon: BarChart3, question: "Mostre o desempenho dos colaboradores: interações, atrasos, conversões. Inclua gráfico e tabela." },
-  { label: "Análise leads", icon: PieChart, question: "Quais leads tiveram mais interações mas não converteram? Identifique gargalos e sugira melhorias." },
+  { label: "📊 Gráfico de vendas", icon: TrendingUp, question: "Quantas vendas (conversões) foram feitas hoje? Mostre um gráfico de barras e uma tabela com os leads convertidos." },
+  { label: "🏆 Ranking performance", icon: Trophy, question: "Mostre o ranking de desempenho dos colaboradores com interações, conversões e atrasos. Inclua gráfico comparativo." },
+  { label: "👥 Leads na fila", icon: Users, question: "Quantos leads estão na fila aguardando atendimento? Mostre tabela completa com nome, telefone, campanha e tentativas." },
+  { label: "📋 Relatório geral", icon: FileSpreadsheet, question: "Gere um relatório completo dos leads com nome, contato, tentativas, status e campanha. Inclua gráfico de distribuição por status." },
+  { label: "🎯 Campanha top", icon: Target, question: "Qual campanha mais converteu leads? Mostre gráfico comparativo de conversão entre campanhas." },
+  { label: "📈 Análise leads", icon: PieChart, question: "Quais leads tiveram mais interações mas não converteram? Identifique gargalos e sugira melhorias." },
 ];
 
 async function streamChat({
@@ -247,11 +248,14 @@ function SimpleMode() {
 
 // ─── Chat Mode Component ───
 function ChatMode() {
+  const { profile } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  
+  const userName = profile?.nome?.split(" ").slice(0, 2).join(" ") || "Colaborador";
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -315,21 +319,23 @@ function ChatMode() {
                 <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
                   <Sparkles className="w-8 h-8 text-primary" />
                 </div>
-                <h2 className="text-lg font-semibold text-foreground mb-1">Como posso ajudar?</h2>
+                <h2 className="text-lg font-semibold text-foreground mb-1">
+                  Olá, {userName}! 👋
+                </h2>
                 <p className="text-sm text-muted-foreground mb-6 max-w-sm">
-                  Faça perguntas sobre seus leads, vendas, campanhas e desempenho. As respostas são baseadas nos dados reais do sistema.
+                  Sou a <span className="font-semibold text-primary">Naví</span>, sua assistente inteligente. O que deseja fazer hoje?
                 </p>
-                <div className="flex flex-wrap gap-2 justify-center max-w-lg">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-w-lg">
                   {quickSuggestions.map((s) => (
                     <Button
                       key={s.label}
                       variant="outline"
                       size="sm"
-                      className="gap-1.5 text-xs"
+                      className="gap-1.5 text-xs h-auto py-2.5 justify-start"
                       onClick={() => send(s.question)}
                       disabled={isLoading}
                     >
-                      <s.icon className="w-3.5 h-3.5" />
+                      <s.icon className="w-4 h-4 shrink-0" />
                       {s.label}
                     </Button>
                   ))}
@@ -430,8 +436,8 @@ export default function AssistentePage() {
             <Bot className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-foreground">Assistente Inteligente</h1>
-            <p className="text-xs text-muted-foreground">Pergunte sobre vendas, leads ou desempenho do negócio</p>
+            <h1 className="text-xl font-bold text-foreground">Naví</h1>
+            <p className="text-xs text-muted-foreground">Sua assistente inteligente de negócios</p>
           </div>
         </div>
       </div>
