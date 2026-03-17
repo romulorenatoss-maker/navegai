@@ -662,12 +662,14 @@ export default function LeadsPage() {
     },
   });
 
-  // ─── Capture Queue: leads aguardando_captura (visible to atendentes) ──
+   // ─── Capture Queue: leads fila_captura (visible to all) ──
   const { data: capturaLeadsRaw = [] } = useQuery({
     queryKey: ["leads-captura"],
     queryFn: async () => {
       const { data, error } = await supabase.from("leads").select("*")
-        .in("status_lead", ["aguardando_captura", "reservado"])
+        .eq("status_lead", "fila_captura")
+        .is("reserved_by", null)
+        .is("responsavel_id", null)
         .order("updated_at", { ascending: true });
       if (error) throw error;
       return data as Lead[];
