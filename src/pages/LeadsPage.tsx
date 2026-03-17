@@ -1183,6 +1183,7 @@ export default function LeadsPage() {
                         const isInteracao = item.type === "interacao" || item.evento === "tentativa_contato";
                         const isTransfer = item.evento === "transferencia_automatica";
                         const isCriacao = item.evento === "criacao";
+                        const isCriacaoVinculado = isCriacao && item.descricao?.includes("vinculado ao cliente existente");
                         const isConversao = item.evento === "conversao_cliente";
 
                         // Determine attempt number from description
@@ -1196,6 +1197,7 @@ export default function LeadsPage() {
                           <div key={item.id} className="relative pl-10 pb-4 last:pb-0">
                             {/* Icon node */}
                             <div className={`absolute left-1.5 w-5 h-5 rounded-full flex items-center justify-center ring-2 ring-background ${
+                              isCriacaoVinculado ? "bg-amber-500" :
                               isCriacao ? "bg-blue-500" :
                               isConversao ? "bg-green-500" :
                               isTransfer ? "bg-amber-500" :
@@ -1208,15 +1210,16 @@ export default function LeadsPage() {
                             <div className={`rounded-lg p-2.5 border ${
                               isInteracao ? "bg-primary/5 border-primary/20" :
                               isTransfer ? "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800" :
+                              isCriacaoVinculado ? "bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-700" :
                               isCriacao ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800" :
                               isConversao ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800" :
                               "bg-card border-border"
                             }`}>
                               <div className="flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                  <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${isCriacaoVinculado ? "border-amber-400 text-amber-700 dark:text-amber-300" : ""}`}>
                                     {item.type === "historico"
-                                      ? (EVENTO_LABELS[item.evento || ""] || item.evento)
+                                      ? (isCriacaoVinculado ? "⚠️ Cliente já cadastrado na base" : (EVENTO_LABELS[item.evento || ""] || item.evento))
                                       : `${item.tipo_contato === "whatsapp" ? "WhatsApp" : "Telefone"}`}
                                   </Badge>
                                   {attemptNum && (
