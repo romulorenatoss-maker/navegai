@@ -1285,8 +1285,51 @@ export default function LeadsPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <h1 className="text-lg font-bold text-foreground">Meus Leads</h1>
+          <h1 className="text-lg font-bold text-foreground">
+            {isVisionMode ? `Visão: ${visionProfiles.find(p => p.id === viewAsProfileId)?.nome || ""}` : "Meus Leads"}
+          </h1>
+          {isVisionMode && (
+            <Badge variant="outline" className="text-xs gap-1 border-primary/40 text-primary">
+              <Eye className="w-3 h-3" /> Modo Visão (somente leitura)
+            </Badge>
+          )}
           <Badge variant="secondary" className="text-xs">{filteredQueue.length} na fila</Badge>
+          {/* Vision Mode Button */}
+          {canUseVisionMode && visionProfiles.length > 0 && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant={isVisionMode ? "default" : "ghost"} size="icon" className="h-7 w-7">
+                  <Eye className="w-4 h-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-1" align="start">
+                <div className="space-y-0.5">
+                  <Button
+                    size="sm" variant={!isVisionMode ? "secondary" : "ghost"}
+                    className="w-full justify-start text-xs h-8"
+                    onClick={() => { setViewAsProfileId(null); setSelectedLead(null); }}
+                  >
+                    <User className="w-3.5 h-3.5 mr-2" /> Minha visão
+                  </Button>
+                  <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    Atendimento
+                  </div>
+                  {visionProfiles.map(vp => (
+                    <Button
+                      key={vp.id}
+                      size="sm"
+                      variant={viewAsProfileId === vp.id ? "secondary" : "ghost"}
+                      className="w-full justify-start text-xs h-8"
+                      disabled={!canUseVisionMode && vp.id !== profile?.id}
+                      onClick={() => { setViewAsProfileId(vp.id); setSelectedLead(null); }}
+                    >
+                      <Users className="w-3.5 h-3.5 mr-2" /> {vp.nome}
+                    </Button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <div className="relative w-64">
