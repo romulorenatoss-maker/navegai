@@ -122,7 +122,7 @@ export default function ImportadorLeadsPage() {
           status_lead: "novo",
           responsavel_id: null,
           origem_lead: "importacao",
-          campanha_id: campanhaId || null,
+          campanha_id: (campanhaId && campanhaId !== "__none") ? campanhaId : null,
         } as any).select().single();
 
         if (error || !newLead) throw error || new Error("Falha ao criar lead");
