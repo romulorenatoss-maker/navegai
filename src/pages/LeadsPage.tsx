@@ -19,7 +19,9 @@ import {
   Search, Plus, Phone, User, Users, History, ArrowRight, Trash2,
   MessageSquare, PhoneCall, Clock, UserCheck, RefreshCw, Loader2, UserPlus, AlertTriangle,
   ListOrdered, Send, FileText, ChevronRight, CalendarClock, CalendarIcon, Zap, Archive, Eye, Filter,
+  ArrowRightLeft,
 } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
@@ -250,6 +252,9 @@ export default function LeadsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<(Lead & { contatos: LeadContato[] })[] | null>(null);
   const [searching, setSearching] = useState(false);
+
+  // Transfer history dialog
+  const [showTransferHistory, setShowTransferHistory] = useState(false);
 
   // Create dialog
   const [showCreate, setShowCreate] = useState(false);
@@ -767,6 +772,24 @@ export default function LeadsPage() {
     queryClient.invalidateQueries({ queryKey: ["leads-list"] });
   }, [profile, queryClient]);
 
+  // Transfer history query
+  const { data: transferHistory = [], isLoading: loadingTransfers } = useQuery({
+    queryKey: ["lead-transfer-history"],
+    enabled: showTransferHistory,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("lead_historico")
+        .select("*, leads!lead_historico_lead_id_fkey(id, nome, status_lead), profiles!lead_historico_usuario_id_fkey(nome)")
+        .in("tipo_evento", [
+          "transferencia_automatica", "transferencia_manual", "transferencia_decisao",
+          "lead_capturado", "reserva_liberada",
+        ])
+        .order("data_evento", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+  });
 
 
   // ─── Realtime subscription for capture queue ─────────────────
@@ -1937,6 +1960,9 @@ export default function LeadsPage() {
             <Button onClick={handleSearch} disabled={searching} size="sm" variant="outline" className="h-8">
               {searching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
             </Button>
+            <Button onClick={() => setShowTransferHistory(true)} size="sm" variant="outline" className="h-8 gap-1">
+              <ArrowRightLeft className="w-3.5 h-3.5" /> Transferências
+            </Button>
             <Button onClick={() => setShowCreate(true)} size="sm" className="h-8 press-effect">
               <Plus className="w-3.5 h-3.5 mr-1" /> Novo Lead
             </Button>
@@ -2977,6 +3003,68 @@ export default function LeadsPage() {
               {createLeadMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />} Criar Lead
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Transfer History Dialog */}
+      <Dialog open={showTransferHistory} onOpenChange={setShowTransferHistory}>
+        <DialogContent className="sm:max-w-3xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowRightLeft className="w-5 h-5" /> Histórico de Transferências
+            </DialogTitle>
+            <DialogDescription>
+              Registro de todas as movimentações de leads entre responsáveis
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh]">
+            {loadingTransfers ? (
+              <div className="p-8 text-center text-muted-foreground"><Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" /> Carregando...</div>
+            ) : transferHistory.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground text-sm">Nenhuma transferência registrada.</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data/Hora</TableHead>
+                    <TableHead>Lead</TableHead>
+                    <TableHead>Ação</TableHead>
+                    <TableHead>Executado por</TableHead>
+                    <TableHead>Detalhes</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {transferHistory.map((t: any) => {
+                    const acaoMap: Record<string, { label: string; color: string }> = {
+                      transferencia_automatica: { label: "Transferência", color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
+                      transferencia_manual: { label: "Transferência Manual", color: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200" },
+                      transferencia_decisao: { label: "Decisão Avaliador", color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
+                      lead_capturado: { label: "Captura", color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200" },
+                      reserva_liberada: { label: "Reserva Liberada", color: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" },
+                    };
+                    const acao = acaoMap[t.tipo_evento] || { label: t.tipo_evento, color: "bg-muted text-muted-foreground" };
+                    return (
+                      <TableRow key={t.id}>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                          {format(new Date(t.data_evento), "dd/MM/yy HH:mm", { locale: ptBR })}
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm font-medium">{t.leads?.nome || "—"}</span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={`text-[10px] border-0 ${acao.color}`}>{acao.label}</Badge>
+                        </TableCell>
+                        <TableCell className="text-xs">{t.profiles?.nome || "—"}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground max-w-[250px] truncate" title={t.descricao || ""}>
+                          {t.descricao || "—"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 
