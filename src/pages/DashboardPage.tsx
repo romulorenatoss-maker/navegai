@@ -536,7 +536,7 @@ export default function DashboardPage() {
 
       const sMedias: SetorMedia[] = Object.entries(setorAvgs).map(([id, v]) => ({
         setor_id: id, setor_nome: v.nome,
-        media: v.avgs.reduce((a, b) => a + b, 0) / v.avgs.length,
+        media: calculateAverage(v.avgs),
         total_avaliacoes: finalMedias.filter(t => {
           const pSetores = profileSetores[t.profile_id] || [];
           const sqlSetores = profileSqlSetores[t.profile_id] ? [...profileSqlSetores[t.profile_id]] : [];
