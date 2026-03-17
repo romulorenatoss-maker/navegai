@@ -174,6 +174,35 @@ export default function RelatoriosLeadsPage() {
     fetchLeads();
   };
 
+  // ─── Delete ALL filtered leads and ALL related records ─
+  const executeDeleteAllFiltered = async () => {
+    if (!user) return;
+    const ids = leadsList.map((l) => l.id);
+    if (ids.length === 0) return;
+
+    await supabase.from("lead_tarefas_contato").delete().in("lead_id", ids);
+    await supabase.from("lead_interacoes").delete().in("lead_id", ids);
+    await supabase.from("lead_historico").delete().in("lead_id", ids);
+    await supabase.from("lead_contatos").delete().in("lead_id", ids);
+    await supabase.from("registro_atraso_tentativa").delete().in("lead_id", ids);
+    await supabase.from("registro_objecao_lead").delete().in("lead_id", ids);
+    await supabase.from("leads").delete().in("id", ids);
+
+    for (const id of ids) {
+      const info = leadsList.find((l) => l.id === id);
+      await supabase.from("audit_logs").insert({
+        user_id: user.id,
+        acao: "exclusao_lead_relatorio_massa",
+        tabela: "leads",
+        registro_id: id,
+        dados_anteriores: info ? { nome: info.nome, status: info.status_lead } : null,
+      });
+    }
+
+    toast.success(`${ids.length} lead(s) e todos os dados vinculados foram removidos do sistema.`);
+    fetchLeads();
+  };
+
   // ─── Export selected to Excel ───────────────────────
   const handleExportSelected = async () => {
     if (selected.size === 0) return;
