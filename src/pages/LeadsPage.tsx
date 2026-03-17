@@ -527,13 +527,39 @@ export default function LeadsPage() {
     },
   });
 
-  // Build priority queue
+  // Fetch latest transfer event per lead for cycle-based attempt counting
+  const { data: allLeadTransfers = [] } = useQuery({
+    queryKey: ["all-lead-transfers", activeLeadIds],
+    enabled: activeLeadIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("lead_historico")
+        .select("lead_id, data_evento, tipo_evento")
+        .in("lead_id", activeLeadIds)
+        .in("tipo_evento", ["transferencia_automatica", "transferencia_decisao"])
+        .order("data_evento", { ascending: false });
+      if (error) throw error;
+      return data as { lead_id: string; data_evento: string; tipo_evento: string }[];
+    },
+  });
+
+  // Build priority queue (cycle-aware after transfers)
   const priorityQueue = useMemo(() => {
     const activeLeads = allLeads.filter(l => ["novo", "em_contato", "interessado"].includes(l.status_lead));
     return activeLeads.map((lead) => {
       const interacoes = allLeadInteracoes.filter(i => i.lead_id === lead.id);
-      const tentativaAtual = interacoes.length + 1;
-      const ultimaInteracao = interacoes[0]?.data_interacao || null;
+      
+      // Find latest transfer for this lead to determine cycle
+      const lastTransfer = allLeadTransfers.find(t => t.lead_id === lead.id);
+      const transferDate = lastTransfer ? new Date(lastTransfer.data_evento) : null;
+      
+      // Cycle-based: only count interactions after last transfer
+      const cycleInteracoes = transferDate
+        ? interacoes.filter(i => new Date(i.data_interacao) > transferDate)
+        : interacoes;
+      
+      const tentativaAtual = cycleInteracoes.length + 1;
+      const ultimaInteracao = cycleInteracoes[0]?.data_interacao || null;
 
       let proximoContato: Date | null = null;
       if (ultimaInteracao && cadencia.length > 0) {
@@ -584,7 +610,7 @@ export default function LeadsPage() {
       // 3) Oldest leads first (by creation date ascending)
       return new Date(a.lead.created_at).getTime() - new Date(b.lead.created_at).getTime();
     });
-  }, [allLeads, allLeadInteracoes, cadencia]);
+  }, [allLeads, allLeadInteracoes, allLeadTransfers, cadencia]);
 
   // Filtered priority queue based on filaFiltro
   const filteredQueue = useMemo(() => {
