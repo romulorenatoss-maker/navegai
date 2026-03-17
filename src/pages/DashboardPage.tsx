@@ -887,7 +887,7 @@ export default function DashboardPage() {
 
           // Média de Equipe: average between both sectors (when both exist)
           const equipeMedia = atendiSetor && tecnicoSetor
-            ? (atendiSetor.media + tecnicoSetor.media) / 2
+            ? calculateAverage([atendiSetor.media, tecnicoSetor.media])
             : atendiSetor ? atendiSetor.media : tecnicoSetor ? tecnicoSetor.media : null;
           const equipeTotal = (atendiSetor?.total_avaliacoes || 0) + (tecnicoSetor?.total_avaliacoes || 0);
 
