@@ -447,14 +447,25 @@ export default function FilaLeadsPage() {
   const restartMutation = useMutation({
     mutationFn: async (leadId: string) => {
       if (!profile) throw new Error("Perfil não encontrado.");
-      await supabase.from("leads").update({ status_lead: "em_contato", notificacao_vista: false } as any).eq("id", leadId);
+      await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", leadId).in("status", ["pendente", "atrasado"]);
+      await supabase.from("leads").update({ status_lead: "em_contato", notificacao_vista: false, responsavel_id: profile.id } as any).eq("id", leadId);
       const firstRotina = rotinaTentativas.find((r: any) => r.tentativa_numero === 1);
       const periodo = firstRotina?.periodo_contato || "manha";
       const nextDate = new Date(); nextDate.setDate(nextDate.getDate() + 1); nextDate.setHours(PERIODO_HORA[periodo] || 9, 0, 0, 0);
       await supabase.from("lead_tarefas_contato").insert({ lead_id: leadId, tentativa: 1, data_contato: nextDate.toISOString(), periodo, status: "pendente", responsavel_id: profile.id });
-      await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "rotina_reiniciada", descricao: "Rotina de tentativas reiniciada pelo avaliador." });
+      await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "rotina_reiniciada", descricao: "Rotina de tentativas reiniciada pelo avaliador. Lead reaberto para atendimento." });
     },
-    onSuccess: () => { toast.success("Rotina reiniciada!"); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }); },
+    onSuccess: () => { toast.success("Lead reaberto com rotina reiniciada!"); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }); },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const markAsLostMutation = useMutation({
+    mutationFn: async (leadId: string) => {
+      if (!profile) throw new Error("Perfil não encontrado.");
+      await supabase.from("leads").update({ status_lead: "perdido" }).eq("id", leadId);
+      await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "lead_perdido", descricao: "Lead marcado como perdido pelo avaliador após avaliação final." });
+    },
+    onSuccess: () => { toast.success("Lead marcado como perdido."); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); },
     onError: (err: any) => toast.error(err.message),
   });
 
