@@ -392,6 +392,7 @@ export default function PermissoesPage() {
                           <th className="text-center px-2 py-1.5 text-muted-foreground font-medium text-xs w-16">Excluir</th>
                           <th className="text-center px-2 py-1.5 text-muted-foreground font-medium text-xs w-16">Atribuir</th>
                           <th className="text-center px-2 py-1.5 text-muted-foreground font-medium text-xs w-16">Exportar</th>
+                          <th className="text-center px-2 py-1.5 text-muted-foreground font-medium text-xs w-20">Escopo</th>
                         </tr>
                       </thead>
                       <tbody>
