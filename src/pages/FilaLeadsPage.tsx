@@ -603,7 +603,7 @@ export default function FilaLeadsPage() {
                   </TableBody>
                 </Table>
               </div>
-            </ScrollArea>
+          )
           )}
         </CardContent>
       </Card>
