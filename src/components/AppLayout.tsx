@@ -86,6 +86,7 @@ export function AppLayout() {
           onSignOut={handleSignOut}
           isAdmin={isAdmin}
           allowedScreens={allowedScreens}
+          canViewPath={canViewPath}
           collapsed={collapsed}
           onToggleCollapse={() => setCollapsed(prev => !prev)}
         />
