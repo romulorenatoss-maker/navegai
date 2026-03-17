@@ -73,17 +73,22 @@ interface AppSidebarProps {
   onNavigate?: () => void;
   isAdmin?: boolean;
   allowedScreens?: string[];
+  canViewPath?: (path: string) => boolean;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }
 
-export function AppSidebar({ userName = "Usuário", onSignOut, onNavigate, isAdmin = false, allowedScreens = [], collapsed = false, onToggleCollapse }: AppSidebarProps) {
+export function AppSidebar({ userName = "Usuário", onSignOut, onNavigate, isAdmin = false, allowedScreens = [], canViewPath, collapsed = false, onToggleCollapse }: AppSidebarProps) {
   const location = useLocation();
 
   const navSections = allNavSections
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => isAdmin || allowedScreens.includes(item.to)),
+      items: section.items.filter((item) => {
+        if (isAdmin) return true;
+        if (canViewPath) return canViewPath(item.to);
+        return allowedScreens.includes(item.to);
+      }),
     }))
     .filter((section) => section.items.length > 0);
 

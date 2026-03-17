@@ -10,7 +10,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "sonner";
 
 export function AppLayout() {
-  const { profile, user, signOut, isAdmin, allowedScreens } = useAuth();
+  const { profile, user, signOut, isAdmin, allowedScreens, canViewPath } = useAuth();
   const isMobile = useIsMobile();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -18,12 +18,12 @@ export function AppLayout() {
   const { endSession } = useSessionTracker(user?.id || null, profile?.id || null);
 
   const handleIdleLogout = useCallback(async () => {
-    toast.info("Sessão encerrada por inatividade (5 min).");
+    toast.info("Sessão encerrada por inatividade (15 min).");
     await endSession("inatividade");
     await signOut();
   }, [endSession, signOut]);
 
-  useIdleTimeout(handleIdleLogout, 5 * 60 * 1000);
+  useIdleTimeout(handleIdleLogout);
 
   const handleSignOut = useCallback(async () => {
     await endSession("manual");
@@ -61,6 +61,7 @@ export function AppLayout() {
               onNavigate={() => setMobileOpen(false)}
               isAdmin={isAdmin}
               allowedScreens={allowedScreens}
+              canViewPath={canViewPath}
             />
           </SheetContent>
         </Sheet>
@@ -85,6 +86,7 @@ export function AppLayout() {
           onSignOut={handleSignOut}
           isAdmin={isAdmin}
           allowedScreens={allowedScreens}
+          canViewPath={canViewPath}
           collapsed={collapsed}
           onToggleCollapse={() => setCollapsed(prev => !prev)}
         />
