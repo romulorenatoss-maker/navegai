@@ -299,8 +299,11 @@ export default function LeadsPage() {
   const [showConvert, setShowConvert] = useState(false);
   const [convAtendenteId, setConvAtendenteId] = useState<string>("");
   const [convForm, setConvForm] = useState({
-    nome: "", cpf: "", rg: "", nome_mae: "", endereco: "", numero: "", cep: "", cidade: "", referencia: "",
+    nome: "", cpf: "", rg: "", nome_mae: "", numero: "", referencia: "",
   });
+  const [convCidadeId, setConvCidadeId] = useState<string | null>(null);
+  const [convBairroId, setConvBairroId] = useState<string | null>(null);
+  const [convRuaId, setConvRuaId] = useState<string | null>(null);
 
   // Finalize dialog (when all attempts done)
   const [showFinalize, setShowFinalize] = useState(false);
@@ -1661,7 +1664,10 @@ export default function LeadsPage() {
 
   const openConversion = () => {
     if (!selectedLead) return;
-    setConvForm({ nome: selectedLead.nome, cpf: "", rg: "", nome_mae: "", endereco: "", numero: "", cep: "", cidade: "", referencia: "" });
+    setConvForm({ nome: selectedLead.nome, cpf: "", rg: "", nome_mae: "", numero: selectedLead.numero_endereco || "", referencia: "" });
+    setConvCidadeId(selectedLead.cidade_id || null);
+    setConvBairroId(selectedLead.bairro_id || null);
+    setConvRuaId(selectedLead.rua_id || null);
     setConvAtendenteId(profile?.id || "");
     setShowConvert(true);
   };
@@ -1675,11 +1681,17 @@ export default function LeadsPage() {
       if (!f.cpf.trim()) throw new Error("CPF é obrigatório.");
       if (!f.rg.trim()) throw new Error("RG é obrigatório.");
       if (!f.nome_mae.trim()) throw new Error("Nome da mãe é obrigatório.");
-      if (!f.endereco.trim()) throw new Error("Endereço é obrigatório.");
+      if (!convCidadeId) throw new Error("Cidade é obrigatória.");
+      if (!convBairroId) throw new Error("Bairro é obrigatório.");
+      if (!convRuaId) throw new Error("Rua é obrigatória.");
       if (!f.numero.trim()) throw new Error("Número é obrigatório.");
-      if (!f.cep.trim()) throw new Error("CEP é obrigatório.");
-      if (!f.cidade.trim()) throw new Error("Cidade é obrigatória.");
       if (!f.referencia.trim()) throw new Error("Referência é obrigatória.");
+
+      // Resolve CEP from rua
+      const selectedRua = endRuas.find(r => r.id === convRuaId);
+      const cepValue = selectedRua?.cep?.[0] || null;
+      // Resolve cidade name
+      const selectedCidade = endCidades.find(c => c.id === convCidadeId);
 
       const phoneContatos = leadContatos.filter(c => c.tipo_contato === "telefone");
       const phoneDigitsArr = phoneContatos.map(c => normalizePhone(c.valor));
@@ -1730,8 +1742,9 @@ export default function LeadsPage() {
 
       const { data: newCliente, error: e1 } = await supabase.from("clientes").insert({
         nome: f.nome.trim(), cpf: f.cpf.trim(), rg: f.rg.trim(), nome_mae: f.nome_mae.trim(),
-        endereco: f.endereco.trim(), numero: f.numero.trim(), cep: f.cep.trim(), cidade: f.cidade.trim(), referencia: f.referencia.trim(),
-        cidade_id: selectedLead.cidade_id || null, bairro_id: selectedLead.bairro_id || null, rua_id: selectedLead.rua_id || null,
+        numero: f.numero.trim(), referencia: f.referencia.trim(),
+        cep: cepValue, cidade: selectedCidade?.nome || null,
+        cidade_id: convCidadeId, bairro_id: convBairroId, rua_id: convRuaId,
       } as any).select("id").single();
       if (e1) throw e1;
 
@@ -3311,11 +3324,47 @@ export default function LeadsPage() {
                 <div className="space-y-1.5"><Label className="text-xs">CPF *</Label><Input placeholder="000.000.000-00" value={convForm.cpf} onChange={e => setConvForm(f => ({ ...f, cpf: e.target.value }))} /></div>
                 <div className="space-y-1.5"><Label className="text-xs">RG *</Label><Input value={convForm.rg} onChange={e => setConvForm(f => ({ ...f, rg: e.target.value }))} /></div>
                 <div className="space-y-1.5"><Label className="text-xs">Nome da Mãe *</Label><Input value={convForm.nome_mae} onChange={e => setConvForm(f => ({ ...f, nome_mae: e.target.value }))} /></div>
-                <div className="space-y-1.5 sm:col-span-2"><Label className="text-xs">Endereço *</Label><Input value={convForm.endereco} onChange={e => setConvForm(f => ({ ...f, endereco: e.target.value }))} /></div>
-                <div className="space-y-1.5"><Label className="text-xs">Número *</Label><Input value={convForm.numero} onChange={e => setConvForm(f => ({ ...f, numero: e.target.value }))} /></div>
-                <div className="space-y-1.5"><Label className="text-xs">CEP *</Label><Input placeholder="00000-000" value={convForm.cep} onChange={e => setConvForm(f => ({ ...f, cep: e.target.value }))} /></div>
-                <div className="space-y-1.5"><Label className="text-xs">Cidade *</Label><Input value={convForm.cidade} onChange={e => setConvForm(f => ({ ...f, cidade: e.target.value }))} /></div>
-                <div className="space-y-1.5"><Label className="text-xs">Referência *</Label><Input value={convForm.referencia} onChange={e => setConvForm(f => ({ ...f, referencia: e.target.value }))} /></div>
+              </div>
+              <div className="border rounded-md p-3 space-y-3 bg-muted/20">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Endereço</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Cidade *</Label>
+                    <Select value={convCidadeId || "none"} onValueChange={v => { setConvCidadeId(v === "none" ? null : v); setConvBairroId(null); setConvRuaId(null); }}>
+                      <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhuma</SelectItem>
+                        {endCidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">CEP</Label>
+                    <Input value={(() => { const rua = endRuas.find(r => r.id === convRuaId); return rua?.cep?.[0] || ""; })()} disabled placeholder="Preenchido pela rua" className="h-9 bg-muted/50" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Bairro *</Label>
+                    <Select value={convBairroId || "none"} onValueChange={v => { setConvBairroId(v === "none" ? null : v); setConvRuaId(null); }} disabled={!convCidadeId}>
+                      <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhum</SelectItem>
+                        {endBairros.filter(b => b.cidade_id === convCidadeId).map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Rua *</Label>
+                    <Select value={convRuaId || "none"} onValueChange={v => setConvRuaId(v === "none" ? null : v)} disabled={!convBairroId}>
+                      <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nenhuma</SelectItem>
+                        {endRuas.filter(r => r.bairro_id === convBairroId).map(r => <SelectItem key={r.id} value={r.id}>{r.nome}{r.cep?.[0] ? ` (${r.cep[0]})` : ""}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5"><Label className="text-xs">Número *</Label><Input value={convForm.numero} onChange={e => setConvForm(f => ({ ...f, numero: e.target.value }))} className="h-9" /></div>
+                  <div className="space-y-1.5"><Label className="text-xs">Referência *</Label><Input value={convForm.referencia} onChange={e => setConvForm(f => ({ ...f, referencia: e.target.value }))} className="h-9" /></div>
+                </div>
               </div>
               {/* Atendente selector */}
               <div className="space-y-1.5">
