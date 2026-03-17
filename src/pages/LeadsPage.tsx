@@ -1420,10 +1420,37 @@ export default function LeadsPage() {
         ? leadInteracoes.filter(i => new Date(i.data_interacao) > new Date(lastCycleEvt.data_evento)).length
         : leadInteracoes.length;
       tentativaNum = cycleInteractions + 1;
+      // Calculate timing relative to deadline
+      let timingInfo = "";
+      const now = new Date();
+      if (selectedLead.agendamento_retorno) {
+        const deadlineDate = new Date(selectedLead.agendamento_retorno);
+        const diffMin = Math.round((deadlineDate.getTime() - now.getTime()) / 60000);
+        const absH = Math.floor(Math.abs(diffMin) / 60);
+        const absM = Math.abs(diffMin) % 60;
+        if (diffMin < 0) {
+          timingInfo = ` | ⏱️ Registrada ${absH}h${String(absM).padStart(2,'0')}m APÓS expiração (agendamento manual)`;
+        } else {
+          timingInfo = ` | ⏱️ Registrada ${absH}h${String(absM).padStart(2,'0')}m ANTES da expiração (agendamento manual)`;
+        }
+      } else if (pendingTarefas && pendingTarefas.length > 0) {
+        const taskDeadline = new Date(pendingTarefas[0].data_contato);
+        const endHr = pendingTarefas[0].periodo === "manha" ? 12 : pendingTarefas[0].periodo === "tarde" ? 18 : 24;
+        taskDeadline.setHours(endHr, 0, 0, 0);
+        const diffMin = Math.round((taskDeadline.getTime() - now.getTime()) / 60000);
+        const absH = Math.floor(Math.abs(diffMin) / 60);
+        const absM = Math.abs(diffMin) % 60;
+        if (diffMin < 0) {
+          timingInfo = ` | ⏱️ Registrada ${absH}h${String(absM).padStart(2,'0')}m APÓS expiração (cadência automática)`;
+        } else {
+          timingInfo = ` | ⏱️ Registrada ${absH}h${String(absM).padStart(2,'0')}m ANTES da expiração (cadência automática)`;
+        }
+      }
+
       await supabase.from("lead_historico").insert({
         lead_id: selectedLead.id, usuario_id: profile.id,
         tipo_evento: "tentativa_contato",
-        descricao: `Tentativa #${tentativaNum} via ${interTipo}${interResultado ? ": " + interResultado.trim() : ""}`,
+        descricao: `Tentativa #${tentativaNum} via ${interTipo}${interResultado ? ": " + interResultado.trim() : ""}${timingInfo}`,
       });
 
       if (selectedLead.status_lead === "novo") {
