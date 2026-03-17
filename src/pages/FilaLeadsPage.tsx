@@ -185,7 +185,16 @@ export default function FilaLeadsPage() {
       const { data, error } = await supabase
         .from("configuracao_fluxo_leads").select("*").limit(1).maybeSingle();
       if (error) throw error;
-      return data as { quantidade_tentativas: number } | null;
+      return data as { quantidade_tentativas: number; permitir_reiniciar_rotina: boolean } | null;
+    },
+  });
+
+  const { data: rotinaTentativas = [] } = useQuery({
+    queryKey: ["rotina-tentativas"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("rotina_tentativas_leads").select("*").order("tentativa_numero");
+      if (error) throw error;
+      return data;
     },
   });
 
