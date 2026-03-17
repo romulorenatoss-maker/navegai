@@ -1855,9 +1855,9 @@ export default function LeadsPage() {
                     <CardTitle className="text-xs font-semibold flex items-center gap-1.5 text-muted-foreground uppercase tracking-wider">
                       <Phone className="w-3 h-3" /> Contatos
                     </CardTitle>
-                    <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={() => setShowAddPhone(true)}>
+                    {!isVisionMode && <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={() => setShowAddPhone(true)}>
                       <Plus className="w-3 h-3 mr-0.5" /> Adicionar
-                    </Button>
+                    </Button>}
                   </CardHeader>
                   <CardContent className="p-2">
                     {leadContatos.length === 0 ? (
