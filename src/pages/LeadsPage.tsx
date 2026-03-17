@@ -18,7 +18,7 @@ import { ptBR } from "date-fns/locale";
 import {
   Search, Plus, Phone, User, Users, History, ArrowRight, Trash2,
   MessageSquare, PhoneCall, Clock, UserCheck, RefreshCw, Loader2, UserPlus, AlertTriangle,
-  ListOrdered, Send, FileText, ChevronRight, CalendarClock, CalendarIcon,
+  ListOrdered, Send, FileText, ChevronRight, CalendarClock, CalendarIcon, Zap, Archive,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -170,6 +170,8 @@ const EVENTO_LABELS: Record<string, string> = {
   perfil_alterado: "Perfil Alterado",
   repetidor_alterado: "Repetidor Alterado",
   observacao_adicionada: "Observação Adicionada",
+  dados_alterados: "Dados Alterados",
+  agendamento_removido: "Agendamento Removido",
 };
 
 const EVENTO_ICONS: Record<string, typeof Phone> = {
@@ -190,6 +192,8 @@ const EVENTO_ICONS: Record<string, typeof Phone> = {
   perfil_alterado: User,
   repetidor_alterado: RefreshCw,
   observacao_adicionada: MessageSquare,
+  dados_alterados: FileText,
+  agendamento_removido: Clock,
 };
 
 const PERIODO_HORA: Record<string, number> = { manha: 9, tarde: 14, noite: 19 };
@@ -258,6 +262,15 @@ export default function LeadsPage() {
 
   // Priority queue filter
   const [filaFiltro, setFilaFiltro] = useState<"hoje" | "todos">("hoje");
+
+  // Local editable state (saved only when registering an attempt)
+  const [localPlanoId, setLocalPlanoId] = useState<string | null>(null);
+  const [localRepetidor, setLocalRepetidor] = useState<string | null>(null);
+  const [localObjecaoId, setLocalObjecaoId] = useState<string>("none");
+  const [localCidadeId, setLocalCidadeId] = useState<string | null>(null);
+  const [localBairroId, setLocalBairroId] = useState<string | null>(null);
+  const [localRuaId, setLocalRuaId] = useState<string | null>(null);
+  const [localNumeroEnd, setLocalNumeroEnd] = useState("");
 
   // Duplicate alert state
   const [dupeAlert, setDupeAlert] = useState<{
@@ -402,6 +415,22 @@ export default function LeadsPage() {
       return data as { id: string; objecao_id: string; lead_id: string } | null;
     },
   });
+
+  // Sync local state when selected lead changes
+  useEffect(() => {
+    if (selectedLead) {
+      setLocalPlanoId(selectedLead.plano_id);
+      setLocalRepetidor(selectedLead.repetidor);
+      setLocalCidadeId(selectedLead.cidade_id);
+      setLocalBairroId(selectedLead.bairro_id);
+      setLocalRuaId(selectedLead.rua_id);
+      setLocalNumeroEnd(selectedLead.numero_endereco || "");
+    }
+  }, [selectedLead?.id]);
+
+  useEffect(() => {
+    setLocalObjecaoId(leadObjecaoRegistro?.objecao_id || "none");
+  }, [selectedLead?.id, leadObjecaoRegistro]);
 
   // All lead contacts for queue building
   const activeLeadIds = allLeads.filter(l => ["novo", "em_contato", "interessado"].includes(l.status_lead)).map(l => l.id);
@@ -867,6 +896,50 @@ export default function LeadsPage() {
   const interactionMutation = useMutation({
     mutationFn: async () => {
       if (!selectedLead || !profile) throw new Error("Erro interno.");
+
+      // Save pending field changes first
+      const changes: string[] = [];
+      const leadUpdates: Record<string, any> = {};
+
+      if (localPlanoId !== selectedLead.plano_id) {
+        leadUpdates.plano_id = localPlanoId;
+        const oldP = planos.find(p => p.id === selectedLead.plano_id)?.nome_plano || "Nenhum";
+        const newP = planos.find(p => p.id === localPlanoId)?.nome_plano || "Nenhum";
+        changes.push(`Perfil: "${oldP}" → "${newP}"`);
+      }
+      if (localRepetidor !== selectedLead.repetidor) {
+        leadUpdates.repetidor = localRepetidor;
+        changes.push(`Repetidor: "${selectedLead.repetidor || "Nenhum"}" → "${localRepetidor || "Nenhum"}"`);
+      }
+      if (localCidadeId !== selectedLead.cidade_id || localBairroId !== selectedLead.bairro_id || localRuaId !== selectedLead.rua_id || localNumeroEnd !== (selectedLead.numero_endereco || "")) {
+        leadUpdates.cidade_id = localCidadeId;
+        leadUpdates.bairro_id = localBairroId;
+        leadUpdates.rua_id = localRuaId;
+        leadUpdates.numero_endereco = localNumeroEnd || null;
+        changes.push("Endereço atualizado");
+      }
+
+      if (Object.keys(leadUpdates).length > 0) {
+        await supabase.from("leads").update(leadUpdates as any).eq("id", selectedLead.id);
+      }
+
+      // Save objeção if changed
+      if (localObjecaoId !== "none" && localObjecaoId !== (leadObjecaoRegistro?.objecao_id || "none")) {
+        await supabase.from("registro_objecao_lead").insert({
+          lead_id: selectedLead.id, objecao_id: localObjecaoId, colaborador_id: profile.id,
+        });
+        changes.push(`Objeção: ${objecoes.find(o => o.id === localObjecaoId)?.descricao || localObjecaoId}`);
+      }
+
+      if (changes.length > 0) {
+        await supabase.from("lead_historico").insert({
+          lead_id: selectedLead.id, usuario_id: profile.id,
+          tipo_evento: "dados_alterados",
+          descricao: changes.join(" | "),
+        });
+      }
+
+      // Register interaction
       const { error } = await supabase.from("lead_interacoes").insert({
         lead_id: selectedLead.id, colaborador_id: profile.id,
         tipo_contato: interTipo, numero_utilizado: interNumero.trim() || null, resultado: interResultado.trim() || null,
@@ -904,7 +977,6 @@ export default function LeadsPage() {
       const nextTentativa = tentativaNum + 1;
 
       if (nextTentativa > mxTentativas) {
-        // All attempts exhausted — archive or send to evaluator
         const { data: configData } = await supabase
           .from("configuracao_fluxo_leads").select("acao_apos_finalizar_tentativas").limit(1).maybeSingle();
         const acao = configData?.acao_apos_finalizar_tentativas || "enviar_avaliador";
@@ -918,7 +990,6 @@ export default function LeadsPage() {
         setSelectedLead(prev => prev ? { ...prev, status_lead: newStatus } : null);
         toast.info(acao === "arquivar_lead" ? "Lead arquivado após todas as tentativas." : "Lead enviado para avaliação do avaliador.");
       } else {
-        // Create next tarefa based on rotina
         try {
           const { data: nextRotina } = await supabase
             .from("rotina_tentativas_leads").select("*").eq("tentativa_numero", nextTentativa).maybeSingle();
@@ -933,16 +1004,25 @@ export default function LeadsPage() {
             periodo, status: "pendente", responsavel_id: profile.id,
           });
         } catch { /* ignore */ }
-        // Touch updated_at
         await supabase.from("leads").update({ status_lead: selectedLead.status_lead === "novo" ? "em_contato" : selectedLead.status_lead }).eq("id", selectedLead.id);
       }
 
+      // Update local selectedLead with saved changes
+      setSelectedLead(prev => prev ? {
+        ...prev,
+        plano_id: localPlanoId,
+        repetidor: localRepetidor,
+        cidade_id: localCidadeId,
+        bairro_id: localBairroId,
+        rua_id: localRuaId,
+        numero_endereco: localNumeroEnd || null,
+      } : null);
       queryClient.invalidateQueries({ queryKey: ["leads-list"] });
     },
     onSuccess: () => {
-      toast.success("Interação registrada!");
+      toast.success("Tentativa registrada!");
       setShowInteraction(false); setInterNumero(""); setInterResultado("");
-      refetchInteracoes(); refetchHistorico();
+      refetchInteracoes(); refetchHistorico(); refetchObjecao();
       queryClient.invalidateQueries({ queryKey: ["all-lead-interacoes"] });
     },
     onError: (err: any) => toast.error(err.message),
@@ -963,37 +1043,7 @@ export default function LeadsPage() {
     toast.success("Status atualizado.");
   };
 
-  const updatePlano = async (planoId: string) => {
-    if (!selectedLead || !profile) return;
-    const val = planoId === "none" ? null : planoId;
-    const oldPlano = planos.find(p => p.id === selectedLead.plano_id);
-    const newPlano = planos.find(p => p.id === val);
-    await supabase.from("leads").update({ plano_id: val }).eq("id", selectedLead.id);
-    await supabase.from("lead_historico").insert({
-      lead_id: selectedLead.id, usuario_id: profile.id,
-      tipo_evento: "perfil_alterado",
-      descricao: `Perfil alterado de "${oldPlano?.nome_plano || "Nenhum"}" para "${newPlano?.nome_plano || "Nenhum"}" por ${profile.nome}`,
-    });
-    setSelectedLead(prev => prev ? { ...prev, plano_id: val } : null);
-    queryClient.invalidateQueries({ queryKey: ["leads-list"] });
-    refetchHistorico();
-  };
-
-  const updateRepetidor = async (value: string) => {
-    if (!selectedLead || !profile) return;
-    const val = value === "none" ? null : value;
-    const oldVal = selectedLead.repetidor || "Nenhum";
-    const newVal = val || "Nenhum";
-    await supabase.from("leads").update({ repetidor: val } as any).eq("id", selectedLead.id);
-    await supabase.from("lead_historico").insert({
-      lead_id: selectedLead.id, usuario_id: profile.id,
-      tipo_evento: "repetidor_alterado",
-      descricao: `Repetidor alterado de "${oldVal}" para "${newVal}" por ${profile.nome}`,
-    });
-    setSelectedLead(prev => prev ? { ...prev, repetidor: val } : null);
-    queryClient.invalidateQueries({ queryKey: ["leads-list"] });
-    refetchHistorico();
-  };
+  // updatePlano and updateRepetidor removed — fields now use local state, saved on interaction registration
 
   const openConversion = () => {
     if (!selectedLead) return;
@@ -1138,12 +1188,15 @@ export default function LeadsPage() {
     return priorityQueue.find(q => q.lead.id === selectedLead.id) || null;
   }, [selectedLead, priorityQueue]);
 
+  // Tentativas realizadas (0 = cadastro inicial, sem interações)
+  const tentativasRealizadas = selectedQueueInfo ? selectedQueueInfo.tentativaAtual - 1 : leadInteracoes.length;
+
   // Phone options for interaction dialog
   const phoneOptions = leadContatos.filter(c => c.tipo_contato === "telefone");
 
   // Check if all cadencia attempts are exhausted
   const maxTentativas = fluxoConfig?.quantidade_tentativas || cadencia.length || 7;
-  const allAttemptsExhausted = selectedQueueInfo ? selectedQueueInfo.tentativaAtual > maxTentativas : false;
+  const allAttemptsExhausted = tentativasRealizadas >= maxTentativas;
 
   // Handle finalize action (after all attempts)
   const handleFinalizeAction = async (action: "reiniciar" | "arquivar") => {
@@ -1326,7 +1379,7 @@ export default function LeadsPage() {
                           <div className="flex flex-col items-end gap-0.5 shrink-0">
                             {statusBadge(item.lead.status_lead)}
                             <span className="text-[10px] text-muted-foreground">
-                              {item.tentativaAtual}ª tent.
+                              {item.tentativaAtual - 1} tent.
                             </span>
                           </div>
                         </div>
@@ -1471,8 +1524,8 @@ export default function LeadsPage() {
           </Card>
         </div>
 
-        {/* ─── RIGHT: Actions & Follow-up ────────── */}
-        <div className="col-span-4 flex flex-col min-h-0 gap-3">
+        {/* ─── RIGHT: Lead Details & Actions ────────── */}
+        <div className="col-span-4 flex flex-col min-h-0">
           {!selectedLead ? (
             <Card className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
               <div className="text-center space-y-2">
@@ -1481,34 +1534,103 @@ export default function LeadsPage() {
               </div>
             </Card>
           ) : (
-            <>
-              {/* Lead Info Card */}
-              <Card>
-                <CardHeader className="py-2.5 px-3 border-b">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-semibold">{selectedLead.nome}</CardTitle>
-                    {statusBadge(selectedLead.status_lead)}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    Responsável: {getProfileName(selectedLead.responsavel_id)} · Criado em {fmtDate(selectedLead.data_criacao)}
-                  </p>
-                  {selectedQueueInfo && (
-                    <p className="text-[11px] text-muted-foreground">
-                      Tentativa atual: <span className="font-semibold">{selectedQueueInfo.tentativaAtual}ª</span>
-                      {selectedQueueInfo.proximoContato && (
-                        <> · Próximo contato: <span className={`font-semibold ${selectedQueueInfo.proximoContato < new Date() ? "text-destructive" : ""}`}>
-                          {fmtDateShort(selectedQueueInfo.proximoContato)}
-                        </span></>
-                      )}
-                    </p>
-                  )}
-                </CardHeader>
-                <CardContent className="p-3 space-y-3">
-                  {/* Perfil, Repetidor & Objeção */}
-                  <div className="grid grid-cols-3 gap-2">
+            <ScrollArea className="flex-1">
+              <div className="space-y-3 pr-2">
+                {/* Lead Header */}
+                <Card>
+                  <CardHeader className="py-2.5 px-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-sm font-semibold">{selectedLead.nome}</CardTitle>
+                        <p className="text-[11px] text-muted-foreground">
+                          Responsável: {getProfileName(selectedLead.responsavel_id)} · Criado em {fmtDate(selectedLead.data_criacao)}
+                        </p>
+                      </div>
+                      {statusBadge(selectedLead.status_lead)}
+                    </div>
+                    {selectedQueueInfo && (
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        Tentativas realizadas: <span className="font-semibold">{tentativasRealizadas}</span>
+                        {selectedQueueInfo.proximoContato && (<> · Próximo: <span className={`font-semibold ${selectedQueueInfo.proximoContato < new Date() ? "text-destructive" : ""}`}>{fmtDateShort(selectedQueueInfo.proximoContato)}</span></>)}
+                      </p>
+                    )}
+                  </CardHeader>
+                </Card>
+
+                {/* Ação Card */}
+                <Card>
+                  <CardHeader className="py-2 px-3 border-b">
+                    <CardTitle className="text-xs font-semibold flex items-center gap-1.5 text-muted-foreground uppercase tracking-wider">
+                      <Zap className="w-3 h-3" /> Ação
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-2 space-y-1">
+                    <Button size="sm" className="w-full justify-start text-xs h-8 press-effect" onClick={() => setShowInteraction(true)}>
+                      <PhoneCall className="w-3.5 h-3.5 mr-2" /> Registrar Tentativa {tentativasRealizadas}
+                    </Button>
+                    <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8" onClick={() => { setScheduleDate(undefined); setScheduleHour("09"); setScheduleMinute("00"); setShowSchedule(true); }}>
+                      <CalendarClock className="w-3.5 h-3.5 mr-2" /> Agendar Retorno
+                    </Button>
+                    {selectedLead.agendamento_retorno && (
+                      <div className="p-2 rounded-md bg-muted/50 border text-xs flex items-center gap-1.5">
+                        <CalendarClock className="w-3 h-3 text-primary" />
+                        <span>Retorno: <span className="font-semibold">{fmtDate(selectedLead.agendamento_retorno)}</span></span>
+                        <button className="ml-auto text-destructive/60 hover:text-destructive text-[10px] underline" onClick={async () => {
+                          await supabase.from("leads").update({ agendamento_retorno: null } as any).eq("id", selectedLead.id);
+                          if (profile) {
+                            await supabase.from("lead_historico").insert({ lead_id: selectedLead.id, usuario_id: profile.id, tipo_evento: "agendamento_removido", descricao: "Agendamento de retorno removido manualmente" });
+                          }
+                          setSelectedLead(prev => prev ? { ...prev, agendamento_retorno: null } : null);
+                          queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                          refetchHistorico();
+                          toast.success("Agendamento removido.");
+                        }}>Remover</button>
+                      </div>
+                    )}
+                    {selectedLead.status_lead !== "convertido" ? (
+                      <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8" onClick={openConversion}>
+                        <UserPlus className="w-3.5 h-3.5 mr-2" /> Converter em Cliente
+                      </Button>
+                    ) : (
+                      <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-0 w-full justify-center py-1.5">✓ Convertido</Badge>
+                    )}
+                    {allAttemptsExhausted && selectedLead.status_lead !== "perdido" && selectedLead.status_lead !== "convertido" && (
+                      <>
+                        <div className="p-2 rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+                          <p className="text-xs text-amber-800 dark:text-amber-200 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Todas as {maxTentativas} tentativas realizadas.</p>
+                        </div>
+                        <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8 text-destructive hover:text-destructive" onClick={() => setShowFinalize(true)}>
+                          Finalizar Tentativas
+                        </Button>
+                      </>
+                    )}
+                    {canArchiveLead && selectedLead.status_lead !== "arquivado" && selectedLead.status_lead !== "convertido" && (
+                      <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8 text-destructive hover:text-destructive" onClick={async () => {
+                        if (!profile) return;
+                        await supabase.from("leads").update({ status_lead: "arquivado" }).eq("id", selectedLead.id);
+                        await supabase.from("lead_historico").insert({ lead_id: selectedLead.id, usuario_id: profile.id, tipo_evento: "lead_arquivado", descricao: "Lead arquivado manualmente" });
+                        setSelectedLead(prev => prev ? { ...prev, status_lead: "arquivado" } : null);
+                        queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                        refetchHistorico();
+                        toast.success("Lead arquivado.");
+                      }}>
+                        <Archive className="w-3.5 h-3.5 mr-2" /> Arquivar Lead
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Dados do Lead - vertical stacking */}
+                <Card>
+                  <CardHeader className="py-2 px-3 border-b">
+                    <CardTitle className="text-xs font-semibold flex items-center gap-1.5 text-muted-foreground uppercase tracking-wider">
+                      <User className="w-3 h-3" /> Dados do Lead
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-3 space-y-2.5">
                     <div className="space-y-1">
-                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Perfil</Label>
-                      <Select value={selectedLead.plano_id || "none"} onValueChange={updatePlano}>
+                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Perfil Identificado</Label>
+                      <Select value={localPlanoId || "none"} onValueChange={v => setLocalPlanoId(v === "none" ? null : v)}>
                         <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">Nenhum</SelectItem>
@@ -1518,7 +1640,7 @@ export default function LeadsPage() {
                     </div>
                     <div className="space-y-1">
                       <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Repetidor</Label>
-                      <Select value={selectedLead.repetidor || "none"} onValueChange={updateRepetidor}>
+                      <Select value={localRepetidor || "none"} onValueChange={v => setLocalRepetidor(v === "none" ? null : v)}>
                         <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">Nenhum</SelectItem>
@@ -1528,26 +1650,8 @@ export default function LeadsPage() {
                       </Select>
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Objeção *</Label>
-                      <Select
-                        value={leadObjecaoRegistro?.objecao_id || "none"}
-                        onValueChange={async (val) => {
-                          if (!selectedLead || !profile) return;
-                          if (val === "none") return;
-                          await supabase.from("registro_objecao_lead").insert({
-                            lead_id: selectedLead.id,
-                            objecao_id: val,
-                            colaborador_id: profile.id,
-                          });
-                          await supabase.from("lead_historico").insert({
-                            lead_id: selectedLead.id, usuario_id: profile.id,
-                            tipo_evento: "objecao_registrada",
-                            descricao: `Objeção registrada: ${objecoes.find(o => o.id === val)?.descricao || val}`,
-                          });
-                          refetchObjecao(); refetchHistorico();
-                          toast.success("Objeção registrada.");
-                        }}
-                      >
+                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Objeção</Label>
+                      <Select value={localObjecaoId} onValueChange={v => setLocalObjecaoId(v)}>
                         <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">Nenhuma</SelectItem>
@@ -1555,238 +1659,122 @@ export default function LeadsPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
-                  {/* Address display */}
-                  <div className="space-y-2 pt-2 border-t">
-                    <div className="grid grid-cols-4 gap-2">
-                      <div className="space-y-1">
-                        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Cidade</Label>
-                        <Select value={selectedLead.cidade_id || "none"} onValueChange={async (v) => {
-                          if (!selectedLead || !profile) return;
-                          const val = v === "none" ? null : v;
-                          await supabase.from("leads").update({ cidade_id: val, bairro_id: null, rua_id: null } as any).eq("id", selectedLead.id);
-                          setSelectedLead(prev => prev ? { ...prev, cidade_id: val, bairro_id: null, rua_id: null } : null);
-                          queryClient.invalidateQueries({ queryKey: ["leads-list"] });
-                        }}>
-                          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Nenhuma</SelectItem>
-                            {endCidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Bairro</Label>
-                        <Select value={selectedLead.bairro_id || "none"} onValueChange={async (v) => {
-                          if (!selectedLead || !profile) return;
-                          const val = v === "none" ? null : v;
-                          await supabase.from("leads").update({ bairro_id: val, rua_id: null } as any).eq("id", selectedLead.id);
-                          setSelectedLead(prev => prev ? { ...prev, bairro_id: val, rua_id: null } : null);
-                          queryClient.invalidateQueries({ queryKey: ["leads-list"] });
-                        }} disabled={!selectedLead.cidade_id}>
-                          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Nenhum</SelectItem>
-                            {endBairros.filter(b => b.cidade_id === selectedLead.cidade_id).map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Rua</Label>
-                        <Select value={selectedLead.rua_id || "none"} onValueChange={async (v) => {
-                          if (!selectedLead || !profile) return;
-                          const val = v === "none" ? null : v;
-                          await supabase.from("leads").update({ rua_id: val } as any).eq("id", selectedLead.id);
-                          setSelectedLead(prev => prev ? { ...prev, rua_id: val } : null);
-                          queryClient.invalidateQueries({ queryKey: ["leads-list"] });
-                        }} disabled={!selectedLead.bairro_id}>
-                          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Nenhuma</SelectItem>
-                            {endRuas.filter(r => r.bairro_id === selectedLead.bairro_id).map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Nº</Label>
-                        <Input className="h-8 text-xs" value={selectedLead.numero_endereco || ""} onChange={async (e) => {
-                          const val = e.target.value;
-                          setSelectedLead(prev => prev ? { ...prev, numero_endereco: val } : null);
-                        }} onBlur={async () => {
-                          if (!selectedLead) return;
-                          await supabase.from("leads").update({ numero_endereco: selectedLead.numero_endereco || null } as any).eq("id", selectedLead.id);
-                          queryClient.invalidateQueries({ queryKey: ["leads-list"] });
-                        }} placeholder="Nº" />
-                      </div>
-                    </div>
 
-                    {/* CEP section - show when rua is selected */}
-                    {selectedLead.rua_id && (() => {
-                      const ruaSelecionada = endRuas.find(r => r.id === selectedLead.rua_id);
-                      const ceps = ruaSelecionada?.cep || [];
-                      return (
-                        <div className="bg-muted/30 rounded-lg p-2.5 space-y-2">
-                          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">CEPs vinculados à rua</Label>
-                          {ceps.length > 0 ? (
-                            <div className="flex flex-wrap gap-1.5">
-                              {ceps.map((c, idx) => (
-                                <Badge key={idx} variant="secondary" className="text-xs font-mono gap-1">
-                                  {c}
-                                  <button
-                                    className="ml-0.5 hover:text-destructive transition-colors"
-                                    title="Remover CEP"
-                                    onClick={async () => {
+                    {/* Address */}
+                    <div className="space-y-2 pt-2 border-t">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Endereço</p>
+                      <div className="space-y-2">
+                        <div className="space-y-1">
+                          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Cidade</Label>
+                          <Select value={localCidadeId || "none"} onValueChange={v => {
+                            const val = v === "none" ? null : v;
+                            setLocalCidadeId(val); setLocalBairroId(null); setLocalRuaId(null);
+                          }}>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Nenhuma</SelectItem>
+                              {endCidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Bairro</Label>
+                          <Select value={localBairroId || "none"} onValueChange={v => {
+                            const val = v === "none" ? null : v;
+                            setLocalBairroId(val); setLocalRuaId(null);
+                          }} disabled={!localCidadeId}>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Nenhum</SelectItem>
+                              {endBairros.filter(b => b.cidade_id === localCidadeId).map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Rua</Label>
+                          <Select value={localRuaId || "none"} onValueChange={v => setLocalRuaId(v === "none" ? null : v)} disabled={!localBairroId}>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Nenhuma</SelectItem>
+                              {endRuas.filter(r => r.bairro_id === localBairroId).map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Nº</Label>
+                          <Input className="h-8 text-xs" value={localNumeroEnd} onChange={e => setLocalNumeroEnd(e.target.value)} placeholder="Nº" />
+                        </div>
+                      </div>
+
+                      {/* CEP section */}
+                      {localRuaId && (() => {
+                        const ruaSelecionada = endRuas.find(r => r.id === localRuaId);
+                        const ceps = ruaSelecionada?.cep || [];
+                        return (
+                          <div className="bg-muted/30 rounded-lg p-2.5 space-y-2">
+                            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">CEPs da rua</Label>
+                            {ceps.length > 0 ? (
+                              <div className="flex flex-wrap gap-1.5">
+                                {ceps.map((c, idx) => (
+                                  <Badge key={idx} variant="secondary" className="text-xs font-mono gap-1">
+                                    {c}
+                                    <button className="ml-0.5 hover:text-destructive transition-colors" title="Remover CEP" onClick={async () => {
                                       const newCeps = ceps.filter((_, i) => i !== idx);
-                                      await supabase.from("ruas").update({ cep: newCeps }).eq("id", selectedLead.rua_id!);
+                                      await supabase.from("ruas").update({ cep: newCeps }).eq("id", localRuaId!);
                                       queryClient.invalidateQueries({ queryKey: ["enderecos-ruas"] });
                                       toast.success("CEP removido.");
-                                    }}
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                </Badge>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-xs text-muted-foreground italic">Nenhum CEP cadastrado para esta rua</p>
-                          )}
-                          <AddCepInline
-                            ruaId={selectedLead.rua_id!}
-                            existingCeps={ceps}
-                            onSaved={() => queryClient.invalidateQueries({ queryKey: ["enderecos-ruas"] })}
-                          />
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Contacts Card */}
-              <Card>
-                <CardHeader className="py-2 px-3 border-b flex-row items-center justify-between">
-                  <CardTitle className="text-xs font-semibold flex items-center gap-1.5 text-muted-foreground uppercase tracking-wider">
-                    <Phone className="w-3 h-3" /> Contatos
-                  </CardTitle>
-                  <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={() => setShowAddPhone(true)}>
-                    <Plus className="w-3 h-3 mr-0.5" /> Adicionar
-                  </Button>
-                </CardHeader>
-                <CardContent className="p-2">
-                  {leadContatos.length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-2">Nenhum contato</p>
-                  ) : (
-                    <div className="space-y-1">
-                      {leadContatos.map(c => (
-                        <div key={c.id} className="flex items-center justify-between p-2 rounded-md bg-muted/30 border">
-                          <div className="flex items-center gap-1.5">
-                            {c.tipo_contato === "telefone" ? <Phone className="w-3 h-3 text-muted-foreground" /> : <MessageSquare className="w-3 h-3 text-muted-foreground" />}
-                            <span className="text-xs">{c.valor}</span>
-                            {c.tem_whatsapp && <Badge variant="outline" className="text-[9px] px-1 py-0">WA</Badge>}
+                                    }}>
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </Badge>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-muted-foreground italic">Nenhum CEP</p>
+                            )}
+                            <AddCepInline ruaId={localRuaId!} existingCeps={ceps} onSaved={() => queryClient.invalidateQueries({ queryKey: ["enderecos-ruas"] })} />
                           </div>
-                          {isAdmin && (
-                            <button onClick={() => removeContact(c)} className="text-destructive/60 hover:text-destructive transition-colors">
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })()}
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
 
-              {/* Actions Card */}
-              <Card className="flex-1">
-                <CardHeader className="py-2 px-3 border-b">
-                  <CardTitle className="text-xs font-semibold flex items-center gap-1.5 text-muted-foreground uppercase tracking-wider">
-                    <Send className="w-3 h-3" /> Ações
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 space-y-2">
-                  <Button size="sm" className="w-full press-effect" onClick={() => setShowInteraction(true)}>
-                    <PhoneCall className="w-4 h-4 mr-1.5" /> Registrar {selectedQueueInfo?.tentativaAtual || 1}ª Tentativa
-                  </Button>
-                  <Button size="sm" variant="outline" className="w-full press-effect" onClick={() => {
-                    setScheduleDate(undefined);
-                    setScheduleHour("09");
-                    setScheduleMinute("00");
-                    setShowSchedule(true);
-                  }}>
-                    <CalendarClock className="w-4 h-4 mr-1.5" /> Agendar Retorno
-                  </Button>
-                  {selectedLead.agendamento_retorno && (
-                    <div className="p-2 rounded-md bg-muted/50 border text-xs flex items-center gap-1.5">
-                      <CalendarClock className="w-3 h-3 text-primary" />
-                      <span>Retorno agendado: <span className="font-semibold">{fmtDate(selectedLead.agendamento_retorno)}</span></span>
-                      <button
-                        className="ml-auto text-destructive/60 hover:text-destructive text-[10px] underline"
-                        onClick={async () => {
-                          await supabase.from("leads").update({ agendamento_retorno: null } as any).eq("id", selectedLead.id);
-                          if (profile) {
-                            await supabase.from("lead_historico").insert({
-                              lead_id: selectedLead.id,
-                              usuario_id: profile.id,
-                              tipo_evento: "agendamento_removido",
-                              descricao: `Agendamento de retorno removido manualmente`,
-                            });
-                          }
-                          setSelectedLead(prev => prev ? { ...prev, agendamento_retorno: null } : null);
-                          queryClient.invalidateQueries({ queryKey: ["leads-list"] });
-                          toast.success("Agendamento removido.");
-                        }}
-                      >Remover</button>
-                    </div>
-                  )}
-                  {selectedLead.status_lead !== "convertido" ? (
-                    <Button size="sm" variant="secondary" className="w-full press-effect" onClick={openConversion}>
-                      <UserPlus className="w-4 h-4 mr-1.5" /> Converter em Cliente
+                {/* Contacts Card */}
+                <Card>
+                  <CardHeader className="py-2 px-3 border-b flex-row items-center justify-between">
+                    <CardTitle className="text-xs font-semibold flex items-center gap-1.5 text-muted-foreground uppercase tracking-wider">
+                      <Phone className="w-3 h-3" /> Contatos
+                    </CardTitle>
+                    <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={() => setShowAddPhone(true)}>
+                      <Plus className="w-3 h-3 mr-0.5" /> Adicionar
                     </Button>
-                  ) : (
-                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-0 w-full justify-center py-1.5">
-                      ✓ Convertido em Cliente
-                    </Badge>
-                  )}
-                  {allAttemptsExhausted && selectedLead.status_lead !== "perdido" && selectedLead.status_lead !== "convertido" && (
-                    <div className="space-y-2">
-                      <div className="p-2 rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
-                        <p className="text-xs text-amber-800 dark:text-amber-200 flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3" />
-                          Todas as {maxTentativas} tentativas foram realizadas.
-                        </p>
+                  </CardHeader>
+                  <CardContent className="p-2">
+                    {leadContatos.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-2">Nenhum contato</p>
+                    ) : (
+                      <div className="space-y-1">
+                        {leadContatos.map(c => (
+                          <div key={c.id} className="flex items-center justify-between p-2 rounded-md bg-muted/30 border">
+                            <div className="flex items-center gap-1.5">
+                              {c.tipo_contato === "telefone" ? <Phone className="w-3 h-3 text-muted-foreground" /> : <MessageSquare className="w-3 h-3 text-muted-foreground" />}
+                              <span className="text-xs">{c.valor}</span>
+                              {c.tem_whatsapp && <Badge variant="outline" className="text-[9px] px-1 py-0">WA</Badge>}
+                            </div>
+                            {isAdmin && (
+                              <button onClick={() => removeContact(c)} className="text-destructive/60 hover:text-destructive transition-colors">
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                      <Button
-                        size="sm" variant="outline"
-                        className="w-full text-destructive hover:text-destructive"
-                        onClick={() => setShowFinalize(true)}
-                      >
-                        Finalizar Tentativas
-                      </Button>
-                    </div>
-                  )}
-                  {canArchiveLead && selectedLead.status_lead !== "arquivado" && selectedLead.status_lead !== "convertido" && (
-                    <Button
-                      size="sm" variant="outline"
-                      className="w-full text-destructive hover:text-destructive border-destructive/30"
-                      onClick={async () => {
-                        if (!profile) return;
-                        await supabase.from("leads").update({ status_lead: "arquivado" }).eq("id", selectedLead.id);
-                        await supabase.from("lead_historico").insert({
-                          lead_id: selectedLead.id, usuario_id: profile.id,
-                          tipo_evento: "lead_arquivado",
-                          descricao: "Lead arquivado manualmente (erro de cadastro ou decisão do avaliador)",
-                        });
-                        setSelectedLead(prev => prev ? { ...prev, status_lead: "arquivado" } : null);
-                        queryClient.invalidateQueries({ queryKey: ["leads-list"] });
-                        toast.success("Lead arquivado.");
-                      }}
-                    >
-                      <FileText className="w-4 h-4 mr-1.5" /> Arquivar Lead
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            </>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </ScrollArea>
           )}
         </div>
       </div>
@@ -2302,14 +2290,12 @@ export default function LeadsPage() {
       <Dialog open={showInteraction} onOpenChange={setShowInteraction}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Registrar {selectedQueueInfo?.tentativaAtual || 1}ª Tentativa — {selectedLead?.nome}</DialogTitle>
+            <DialogTitle>Registrar Tentativa {tentativasRealizadas} — {selectedLead?.nome}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            {selectedQueueInfo && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                Tentativa: <Badge variant="secondary">{selectedQueueInfo.tentativaAtual}ª</Badge>
-              </div>
-            )}
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              Tentativa: <Badge variant="secondary">{tentativasRealizadas}</Badge>
+            </div>
             <div className="space-y-1.5">
               <Label>Tipo de Contato</Label>
               <Select value={interTipo} onValueChange={setInterTipo}>
@@ -2341,7 +2327,7 @@ export default function LeadsPage() {
             <Button variant="outline" onClick={() => setShowInteraction(false)}>Cancelar</Button>
             <Button onClick={() => interactionMutation.mutate()} disabled={interactionMutation.isPending || !interNumero} className="press-effect">
               {interactionMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <PhoneCall className="w-4 h-4 mr-1" />}
-              Registrar {selectedQueueInfo?.tentativaAtual || 1}ª Tentativa
+              Registrar Tentativa {tentativasRealizadas}
             </Button>
           </DialogFooter>
         </DialogContent>
