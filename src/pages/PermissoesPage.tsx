@@ -417,6 +417,26 @@ export default function PermissoesPage() {
                                 </td>
                               );
                             })}
+                            <td className="text-center px-2 py-1.5">
+                              {(() => {
+                                const o = userOverrides.find((ov) => ov.resource_id === r.id);
+                                const scopeVal = (o?.data_scope as DataScopeValue | null) ?? null;
+                                const label = scopeVal === null ? "—" : SCOPE_LABELS[scopeVal];
+                                const cls = scopeVal === null ? "text-muted-foreground bg-muted/30" : SCOPE_COLORS[scopeVal];
+                                return (
+                                  <button
+                                    onClick={() => {
+                                      const idx = scopeVal === null ? 0 : SCOPE_CYCLE.indexOf(scopeVal) + 1;
+                                      const next = idx >= SCOPE_CYCLE.length ? null : SCOPE_CYCLE[idx];
+                                      setUserOverride.mutate({ resourceId: r.id, action: "data_scope", value: next as any });
+                                    }}
+                                    className={`px-1.5 h-6 rounded text-[10px] font-semibold ${cls} hover:opacity-80 transition-opacity`}
+                                  >
+                                    {label}
+                                  </button>
+                                );
+                              })()}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
