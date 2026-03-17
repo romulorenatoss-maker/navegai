@@ -421,14 +421,23 @@ export default function FilaLeadsPage() {
         <CardContent className="p-3">
           <div className="flex items-center gap-2 flex-wrap">
             <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
-            <div className="relative flex-1 min-w-[180px] max-w-[280px]">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <div className="relative flex-1 min-w-[180px] max-w-[280px] flex gap-1">
               <Input
-                placeholder="Buscar nome ou telefone..."
+                placeholder="Buscar lead ou telefone..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="h-8 text-xs pl-8"
+                onKeyDown={e => { if (e.key === "Enter") setAppliedSearch(searchTerm); }}
+                className="h-8 text-xs"
               />
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 w-8 p-0 shrink-0"
+                onClick={() => setAppliedSearch(searchTerm)}
+                title="Buscar"
+              >
+                <Search className="w-3.5 h-3.5" />
+              </Button>
             </div>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
               <SelectTrigger className="h-8 text-xs w-[130px]"><SelectValue /></SelectTrigger>
