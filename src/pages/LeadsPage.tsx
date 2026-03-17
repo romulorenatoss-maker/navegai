@@ -168,6 +168,8 @@ export default function LeadsPage() {
   const [createBairroId, setCreateBairroId] = useState<string>("");
   const [createRuaId, setCreateRuaId] = useState<string>("");
   const [createNumeroEnd, setCreateNumeroEnd] = useState("");
+  const [createBairroSearch, setCreateBairroSearch] = useState("");
+  const [createRuaSearch, setCreateRuaSearch] = useState("");
   // Quick-add address dialogs
   const [quickAddType, setQuickAddType] = useState<"cidade" | "bairro" | "rua" | null>(null);
   const [quickAddNome, setQuickAddNome] = useState("");
@@ -727,6 +729,7 @@ export default function LeadsPage() {
       toast.success("Lead criado com sucesso!");
       setShowCreate(false); setCreateName(""); setCreatePhone(""); setCreatePhoneWhatsapp(false);
       setCreateCidadeId(""); setCreateBairroId(""); setCreateRuaId(""); setCreateNumeroEnd("");
+      setCreateBairroSearch(""); setCreateRuaSearch("");
       queryClient.invalidateQueries({ queryKey: ["leads-list"] });
       setSelectedLead(newLead);
     },
@@ -1793,13 +1796,13 @@ export default function LeadsPage() {
               {/* ─── Address fields ──────────────── */}
               <div className="border-t pt-3 mt-3">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Endereço</p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
                   <div className="space-y-1">
                     <Label className="text-xs">Cidade</Label>
                     <div className="flex gap-1">
                       <Select value={createCidadeId || "none"} onValueChange={v => {
                         setCreateCidadeId(v === "none" ? "" : v);
-                        setCreateBairroId(""); setCreateRuaId("");
+                        setCreateBairroId(""); setCreateRuaId(""); setCreateBairroSearch(""); setCreateRuaSearch("");
                       }}>
                         <SelectTrigger className="h-8 text-xs flex-1"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                         <SelectContent>
@@ -1815,13 +1818,29 @@ export default function LeadsPage() {
                   <div className="space-y-1">
                     <Label className="text-xs">Bairro</Label>
                     <div className="flex gap-1">
-                      <Select value={createBairroId || "none"} onValueChange={v => { setCreateBairroId(v === "none" ? "" : v); setCreateRuaId(""); }} disabled={!createCidadeId}>
-                        <SelectTrigger className="h-8 text-xs flex-1"><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Nenhum</SelectItem>
-                          {endBairros.filter(b => b.cidade_id === createCidadeId).map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                      <div className="flex-1 relative">
+                        <Input
+                          className="h-8 text-xs"
+                          placeholder="Digite para buscar bairro..."
+                          value={createBairroSearch}
+                          onChange={e => { setCreateBairroSearch(e.target.value); setCreateBairroId(""); setCreateRuaId(""); setCreateRuaSearch(""); }}
+                          disabled={!createCidadeId}
+                        />
+                        {createBairroSearch && !createBairroId && createCidadeId && (() => {
+                          const term = createBairroSearch.toLowerCase();
+                          const matches = endBairros.filter(b => b.cidade_id === createCidadeId && b.nome.toLowerCase().includes(term));
+                          if (matches.length === 0) return null;
+                          return (
+                            <div className="absolute z-50 top-full left-0 right-0 bg-popover border rounded-md shadow-md max-h-40 overflow-auto mt-0.5">
+                              {matches.map(b => (
+                                <button key={b.id} type="button" className="w-full text-left px-2 py-1.5 text-xs hover:bg-accent" onClick={() => { setCreateBairroId(b.id); setCreateBairroSearch(b.nome); setCreateRuaId(""); setCreateRuaSearch(""); }}>
+                                  {b.nome}
+                                </button>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </div>
                       <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { setQuickAddType("bairro"); setQuickAddNome(""); }} disabled={!createCidadeId}>
                         <Plus className="w-3.5 h-3.5" />
                       </Button>
@@ -1830,17 +1849,40 @@ export default function LeadsPage() {
                   <div className="space-y-1">
                     <Label className="text-xs">Rua</Label>
                     <div className="flex gap-1">
-                      <Select value={createRuaId || "none"} onValueChange={v => setCreateRuaId(v === "none" ? "" : v)} disabled={!createBairroId}>
-                        <SelectTrigger className="h-8 text-xs flex-1"><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Nenhuma</SelectItem>
-                          {endRuas.filter(r => r.bairro_id === createBairroId).map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                      <div className="flex-1 relative">
+                        <Input
+                          className="h-8 text-xs"
+                          placeholder="Digite para buscar rua..."
+                          value={createRuaSearch}
+                          onChange={e => { setCreateRuaSearch(e.target.value); setCreateRuaId(""); }}
+                          disabled={!createBairroId}
+                        />
+                        {createRuaSearch && !createRuaId && createBairroId && (() => {
+                          const term = createRuaSearch.toLowerCase();
+                          const matches = endRuas.filter(r => r.bairro_id === createBairroId && r.nome.toLowerCase().includes(term));
+                          if (matches.length === 0) return null;
+                          return (
+                            <div className="absolute z-50 top-full left-0 right-0 bg-popover border rounded-md shadow-md max-h-40 overflow-auto mt-0.5">
+                              {matches.map(r => (
+                                <button key={r.id} type="button" className="w-full text-left px-2 py-1.5 text-xs hover:bg-accent" onClick={() => { setCreateRuaId(r.id); setCreateRuaSearch(r.nome); }}>
+                                  {r.nome}{r.cep && r.cep.length > 0 ? ` (CEP: ${r.cep.join(", ")})` : ""}
+                                </button>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </div>
                       <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { setQuickAddType("rua"); setQuickAddNome(""); }} disabled={!createBairroId}>
                         <Plus className="w-3.5 h-3.5" />
                       </Button>
                     </div>
+                    {createRuaId && (() => {
+                      const selectedRua = endRuas.find(r => r.id === createRuaId);
+                      if (selectedRua?.cep && selectedRua.cep.length > 0) {
+                        return <p className="text-xs text-muted-foreground mt-0.5">CEP: {selectedRua.cep.join(", ")}</p>;
+                      }
+                      return <p className="text-xs text-muted-foreground mt-0.5">Sem CEP cadastrado</p>;
+                    })()}
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Número</Label>
@@ -1887,11 +1929,13 @@ export default function LeadsPage() {
                     if (error) throw error;
                     queryClient.invalidateQueries({ queryKey: ["enderecos-bairros"] });
                     setCreateBairroId(data.id);
+                    setCreateBairroSearch(quickAddNome.trim());
                   } else if (quickAddType === "rua" && createBairroId) {
                     const { data, error } = await supabase.from("ruas").insert({ nome: quickAddNome.trim(), bairro_id: createBairroId }).select().single();
                     if (error) throw error;
                     queryClient.invalidateQueries({ queryKey: ["enderecos-ruas"] });
                     setCreateRuaId(data.id);
+                    setCreateRuaSearch(quickAddNome.trim());
                   }
                   toast.success("Cadastrado!");
                   setQuickAddType(null);
