@@ -31,6 +31,7 @@ import LeadsArquivadosPage from "./pages/LeadsArquivadosPage";
 import ImportadorLeadsPage from "./pages/ImportadorLeadsPage";
 import ObjecoesLeadsPage from "./pages/ObjecoesLeadsPage";
 import RelatoriosLeadsPage from "./pages/RelatoriosLeadsPage";
+import CampanhasPage from "./pages/CampanhasPage";
 import PermissoesPage from "./pages/PermissoesPage";
 import NotFound from "./pages/NotFound";
 
