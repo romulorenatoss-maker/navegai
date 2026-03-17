@@ -374,6 +374,20 @@ export default function FilaLeadsPage() {
     onError: (err: any) => toast.error(err.message),
   });
 
+  const handleTarefaTransfer = async () => {
+    if (!tarefaTransferLeadId || !tarefaTransferTarget || !profile) return;
+    await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", tarefaTransferLeadId).eq("status", "pendente");
+    await supabase.from("leads").update({ responsavel_id: tarefaTransferTarget, status_lead: "em_contato" } as any).eq("id", tarefaTransferLeadId);
+    const targetName = profiles.find(p => p.id === tarefaTransferTarget)?.nome || "—";
+    await supabase.from("lead_historico").insert({ lead_id: tarefaTransferLeadId, usuario_id: profile.id, tipo_evento: "transferencia_automatica", descricao: `Lead transferido para ${targetName}. Contagem de tentativas reiniciada.` });
+    const firstRotina = rotinaTentativas.find((r: any) => r.tentativa_numero === 1);
+    const periodo = firstRotina?.periodo_contato || "manha";
+    await supabase.from("lead_tarefas_contato").insert({ lead_id: tarefaTransferLeadId, tentativa: 1, data_contato: new Date().toISOString(), periodo, status: "pendente", responsavel_id: tarefaTransferTarget });
+    toast.success(`Lead transferido para ${targetName}!`);
+    setShowTarefaTransfer(false); setTarefaTransferLeadId(""); setTarefaTransferTarget("");
+    queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
+  };
+
   // Mark notification as seen
   const markAsSeenMutation = useMutation({
     mutationFn: async (leadId: string) => {
