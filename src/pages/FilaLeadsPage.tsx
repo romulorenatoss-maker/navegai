@@ -741,11 +741,6 @@ export default function FilaLeadsPage() {
                                   <DropdownMenuItem onClick={() => { setDecisionLeadId(item.lead.id); setDecisionLeadName(item.lead.nome); setDecisionTarget(""); setShowDecisionTransfer(true); }} className="gap-2 text-xs">
                                     <ArrowRightLeft className="w-3.5 h-3.5" /> Transferir para Atendimento
                                   </DropdownMenuItem>
-                                  {(fluxoConfig as any)?.permitir_reiniciar_rotina && (
-                                    <DropdownMenuItem onClick={() => restartMutation.mutate(item.lead.id)} className="gap-2 text-xs">
-                                      <RefreshCw className="w-3.5 h-3.5" /> Reiniciar Rotina
-                                    </DropdownMenuItem>
-                                  )}
                                   <DropdownMenuItem onClick={() => navigate(`/leads?id=${item.lead.id}`)} className="gap-2 text-xs">
                                     <ExternalLink className="w-3.5 h-3.5" /> Abrir Lead
                                   </DropdownMenuItem>
