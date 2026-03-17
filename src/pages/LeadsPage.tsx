@@ -2469,6 +2469,54 @@ export default function LeadsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Detail Panel Quick Add Address Dialog */}
+      <Dialog open={!!detailQuickAddType} onOpenChange={v => !v && setDetailQuickAddType(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Adicionar {detailQuickAddType === "cidade" ? "Cidade" : detailQuickAddType === "bairro" ? "Bairro" : "Rua"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Nome *</Label>
+              <Input value={detailQuickAddNome} onChange={e => setDetailQuickAddNome(e.target.value)} placeholder="Digite o nome..." autoFocus />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailQuickAddType(null)}>Cancelar</Button>
+            <Button
+              disabled={!detailQuickAddNome.trim()}
+              onClick={async () => {
+                try {
+                  if (detailQuickAddType === "cidade") {
+                    const { data, error } = await supabase.from("cidades").insert({ nome: detailQuickAddNome.trim() }).select().single();
+                    if (error) throw error;
+                    queryClient.invalidateQueries({ queryKey: ["enderecos-cidades"] });
+                    setLocalCidadeId(data.id); setLocalBairroId(null); setLocalRuaId(null);
+                  } else if (detailQuickAddType === "bairro" && localCidadeId) {
+                    const { data, error } = await supabase.from("bairros").insert({ nome: detailQuickAddNome.trim(), cidade_id: localCidadeId }).select().single();
+                    if (error) throw error;
+                    queryClient.invalidateQueries({ queryKey: ["enderecos-bairros"] });
+                    setLocalBairroId(data.id); setLocalRuaId(null);
+                  } else if (detailQuickAddType === "rua" && localBairroId) {
+                    const { data, error } = await supabase.from("ruas").insert({ nome: detailQuickAddNome.trim(), bairro_id: localBairroId }).select().single();
+                    if (error) throw error;
+                    queryClient.invalidateQueries({ queryKey: ["enderecos-ruas"] });
+                    setLocalRuaId(data.id);
+                  }
+                  toast.success("Cadastrado!");
+                  setDetailQuickAddType(null);
+                } catch (err: any) {
+                  toast.error(err.message?.includes("duplicate") ? "Já existe um registro com esse nome." : err.message);
+                }
+              }}
+              className="press-effect"
+            >
+              <Plus className="w-4 h-4 mr-1" /> Cadastrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
