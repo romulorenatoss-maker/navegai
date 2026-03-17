@@ -4,16 +4,20 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   UserPlus, PhoneCall, CheckCircle2, ArrowRightLeft,
-  TrendingUp, Clock, Users, Target, AlertTriangle, X, ExternalLink,
+  TrendingUp, Clock, Users, Target, AlertTriangle, ExternalLink, Search,
+  CalendarIcon,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 // ─── Types ───
 interface DrillDownConfig {
@@ -21,86 +25,6 @@ interface DrillDownConfig {
   filter: string;
   filterValue?: string;
 }
-
-// ─── Fetch helpers ───
-const fetchLeadsAggregated = async () => {
-  const today = new Date();
-  const startToday = startOfDay(today).toISOString();
-  const endToday = endOfDay(today).toISOString();
-
-  const [
-    { count: totalLeads },
-    { count: leadsHoje },
-    { count: emAtendimento },
-    { count: convertidos },
-    { count: convertidosHoje },
-    { count: tentativas },
-    { count: tentativasHoje },
-    { data: statusBreakdown },
-    { count: leadsSemana },
-    { count: leadsMes },
-    { data: topObjecoes },
-  ] = await Promise.all([
-    supabase.from("leads").select("*", { count: "exact", head: true }),
-    supabase.from("leads").select("*", { count: "exact", head: true })
-      .gte("data_criacao", startToday).lte("data_criacao", endToday),
-    supabase.from("leads").select("*", { count: "exact", head: true })
-      .eq("status_lead", "em_atendimento"),
-    supabase.from("leads").select("*", { count: "exact", head: true })
-      .eq("status_lead", "convertido"),
-    supabase.from("leads").select("*", { count: "exact", head: true })
-      .eq("status_lead", "convertido")
-      .gte("updated_at", startToday).lte("updated_at", endToday),
-    supabase.from("lead_interacoes").select("*", { count: "exact", head: true }),
-    supabase.from("lead_interacoes").select("*", { count: "exact", head: true })
-      .gte("data_interacao", startToday).lte("data_interacao", endToday),
-    supabase.from("leads").select("status_lead"),
-    supabase.from("leads").select("*", { count: "exact", head: true })
-      .gte("data_criacao", startOfWeek(today, { weekStartsOn: 1 }).toISOString())
-      .lte("data_criacao", endOfWeek(today, { weekStartsOn: 1 }).toISOString()),
-    supabase.from("leads").select("*", { count: "exact", head: true })
-      .gte("data_criacao", startOfMonth(today).toISOString())
-      .lte("data_criacao", endOfMonth(today).toISOString()),
-    supabase.from("registro_objecao_lead").select("objecao_id, lead_objecoes(descricao)"),
-  ]);
-
-  const statusCounts: Record<string, number> = {};
-  (statusBreakdown || []).forEach((l) => {
-    statusCounts[l.status_lead] = (statusCounts[l.status_lead] || 0) + 1;
-  });
-
-  const objecaoCounts: Record<string, number> = {};
-  (topObjecoes || []).forEach((o: any) => {
-    const desc = o.lead_objecoes?.descricao || "Outra";
-    objecaoCounts[desc] = (objecaoCounts[desc] || 0) + 1;
-  });
-
-  const taxaConversao = (totalLeads || 0) > 0
-    ? ((convertidos || 0) / (totalLeads || 1) * 100).toFixed(1)
-    : "0.0";
-
-  return {
-    totalLeads: totalLeads || 0,
-    leadsHoje: leadsHoje || 0,
-    emAtendimento: emAtendimento || 0,
-    convertidos: convertidos || 0,
-    convertidosHoje: convertidosHoje || 0,
-    tentativas: tentativas || 0,
-    tentativasHoje: tentativasHoje || 0,
-    taxaConversao,
-    statusCounts,
-    leadsSemana: leadsSemana || 0,
-    leadsMes: leadsMes || 0,
-    objecaoCounts,
-  };
-};
-
-const fetchOSAguardando = async () => {
-  const { count } = await supabase.from("ordens_servico")
-    .select("*", { count: "exact", head: true })
-    .eq("status", "aguardando_numero");
-  return count || 0;
-};
 
 // ─── Status label map ───
 const STATUS_LABELS: Record<string, string> = {
@@ -132,76 +56,53 @@ function DrillDownDialog({
   open,
   onClose,
   config,
+  dateRange,
 }: {
   open: boolean;
   onClose: () => void;
   config: DrillDownConfig | null;
+  dateRange: { start: string; end: string };
 }) {
   const navigate = useNavigate();
 
   const { data: drillData, isLoading } = useQuery({
-    queryKey: ["drill-down", config?.filter, config?.filterValue],
+    queryKey: ["drill-down", config?.filter, config?.filterValue, dateRange.start, dateRange.end],
     enabled: open && !!config,
     queryFn: async () => {
       if (!config) return { leads: [], interacoes: [], os: [] };
 
-      const today = new Date();
-      const startToday = startOfDay(today).toISOString();
-      const endToday = endOfDay(today).toISOString();
+      const { start, end } = dateRange;
 
-      // Leads drill-down
-      if (config.filter === "leads_hoje") {
+      if (config.filter === "leads_periodo") {
         const { data } = await supabase.from("leads").select("id, nome, status_lead, data_criacao, responsavel_id")
-          .gte("data_criacao", startToday).lte("data_criacao", endToday).order("data_criacao", { ascending: false });
-        return { leads: data || [], type: "leads" };
-      }
-      if (config.filter === "leads_semana") {
-        const { data } = await supabase.from("leads").select("id, nome, status_lead, data_criacao, responsavel_id")
-          .gte("data_criacao", startOfWeek(today, { weekStartsOn: 1 }).toISOString())
-          .lte("data_criacao", endOfWeek(today, { weekStartsOn: 1 }).toISOString())
-          .order("data_criacao", { ascending: false });
-        return { leads: data || [], type: "leads" };
-      }
-      if (config.filter === "leads_mes") {
-        const { data } = await supabase.from("leads").select("id, nome, status_lead, data_criacao, responsavel_id")
-          .gte("data_criacao", startOfMonth(today).toISOString())
-          .lte("data_criacao", endOfMonth(today).toISOString())
-          .order("data_criacao", { ascending: false });
+          .gte("data_criacao", start).lte("data_criacao", end).order("data_criacao", { ascending: false });
         return { leads: data || [], type: "leads" };
       }
       if (config.filter === "status") {
         const { data } = await supabase.from("leads").select("id, nome, status_lead, data_criacao, updated_at, responsavel_id")
-          .eq("status_lead", config.filterValue || "").order("updated_at", { ascending: false });
+          .eq("status_lead", config.filterValue || "")
+          .gte("data_criacao", start).lte("data_criacao", end)
+          .order("updated_at", { ascending: false });
         return { leads: data || [], type: "leads" };
       }
       if (config.filter === "convertidos") {
         const { data } = await supabase.from("leads").select("id, nome, status_lead, data_criacao, updated_at, responsavel_id")
-          .eq("status_lead", "convertido").order("updated_at", { ascending: false });
-        return { leads: data || [], type: "leads" };
-      }
-      if (config.filter === "convertidos_hoje") {
-        const { data } = await supabase.from("leads").select("id, nome, status_lead, data_criacao, updated_at, responsavel_id")
           .eq("status_lead", "convertido")
-          .gte("updated_at", startToday).lte("updated_at", endToday)
+          .gte("updated_at", start).lte("updated_at", end)
           .order("updated_at", { ascending: false });
         return { leads: data || [], type: "leads" };
       }
       if (config.filter === "total_leads") {
         const { data } = await supabase.from("leads").select("id, nome, status_lead, data_criacao, responsavel_id")
-          .order("data_criacao", { ascending: false }).limit(100);
+          .gte("data_criacao", start).lte("data_criacao", end)
+          .order("data_criacao", { ascending: false }).limit(200);
         return { leads: data || [], type: "leads" };
       }
       if (config.filter === "tentativas") {
         const { data } = await supabase.from("lead_interacoes")
           .select("id, lead_id, tipo_contato, resultado, data_interacao, colaborador_id, leads(nome)")
-          .order("data_interacao", { ascending: false }).limit(100);
-        return { interacoes: data || [], type: "interacoes" };
-      }
-      if (config.filter === "tentativas_hoje") {
-        const { data } = await supabase.from("lead_interacoes")
-          .select("id, lead_id, tipo_contato, resultado, data_interacao, colaborador_id, leads(nome)")
-          .gte("data_interacao", startToday).lte("data_interacao", endToday)
-          .order("data_interacao", { ascending: false });
+          .gte("data_interacao", start).lte("data_interacao", end)
+          .order("data_interacao", { ascending: false }).limit(200);
         return { interacoes: data || [], type: "interacoes" };
       }
       if (config.filter === "os_aguardando") {
@@ -214,7 +115,8 @@ function DrillDownDialog({
       if (config.filter === "objecao") {
         const { data } = await supabase.from("registro_objecao_lead")
           .select("id, lead_id, data_registro, colaborador_id, lead_objecoes(descricao), leads(nome)")
-          .order("data_registro", { ascending: false }).limit(100);
+          .gte("data_registro", start).lte("data_registro", end)
+          .order("data_registro", { ascending: false }).limit(200);
         const filtered = config.filterValue
           ? (data || []).filter((o: any) => o.lead_objecoes?.descricao === config.filterValue)
           : data || [];
@@ -222,14 +124,15 @@ function DrillDownDialog({
       }
       if (config.filter === "taxa_conversao") {
         const { data } = await supabase.from("leads").select("id, nome, status_lead, data_criacao, updated_at, responsavel_id")
-          .eq("status_lead", "convertido").order("updated_at", { ascending: false });
+          .eq("status_lead", "convertido")
+          .gte("updated_at", start).lte("updated_at", end)
+          .order("updated_at", { ascending: false });
         return { leads: data || [], type: "leads" };
       }
       return { leads: [], type: "leads" };
     },
   });
 
-  // Fetch profiles for name resolution
   const { data: profilesList = [] } = useQuery({
     queryKey: ["drill-profiles"],
     enabled: open,
@@ -433,9 +336,9 @@ function StatusBar({ statusCounts, total, onStatusClick }: {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.4, duration: 0.3 }}
-      className="bg-card rounded-xl border border-border p-5 shadow-sm"
+      className="bg-card rounded-xl border border-border p-5 shadow-sm lg:col-span-2"
     >
-      <h3 className="text-sm font-semibold text-foreground mb-4">Distribuição por Status</h3>
+      <h3 className="text-sm font-semibold text-foreground mb-4">Distribuição por Status (no período)</h3>
       <div className="h-4 rounded-full overflow-hidden flex bg-muted">
         {statuses.map((s) => {
           const count = statusCounts[s.key] || 0;
@@ -472,36 +375,26 @@ function StatusBar({ statusCounts, total, onStatusClick }: {
   );
 }
 
-// ─── Period summary ───
-function PeriodSummary({ leadsHoje, leadsSemana, leadsMes, onPeriodClick }: {
-  leadsHoje: number; leadsSemana: number; leadsMes: number;
-  onPeriodClick: (filter: string, title: string) => void;
-}) {
+// ─── Date picker helper ───
+function DatePickerField({ date, onSelect, label }: { date: Date; onSelect: (d: Date) => void; label: string }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.5, duration: 0.3 }}
-      className="bg-card rounded-xl border border-border p-5 shadow-sm"
-    >
-      <h3 className="text-sm font-semibold text-foreground mb-4">Leads por Período</h3>
-      <div className="grid grid-cols-3 gap-4">
-        {[
-          { label: "Hoje", value: leadsHoje, filter: "leads_hoje" },
-          { label: "Esta Semana", value: leadsSemana, filter: "leads_semana" },
-          { label: "Este Mês", value: leadsMes, filter: "leads_mes" },
-        ].map((p) => (
-          <button
-            key={p.label}
-            onClick={() => onPeriodClick(p.filter, `Leads — ${p.label}`)}
-            className="text-center p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
-          >
-            <p className="text-2xl font-bold text-foreground">{p.value}</p>
-            <p className="text-xs text-muted-foreground mt-1">{p.label}</p>
-          </button>
-        ))}
-      </div>
-    </motion.div>
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 min-w-[130px] justify-start font-normal">
+          <CalendarIcon className="w-3.5 h-3.5" />
+          {format(date, "dd/MM/yyyy", { locale: ptBR })}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={date}
+          onSelect={(d) => d && onSelect(d)}
+          initialFocus
+          className={cn("p-3 pointer-events-auto")}
+        />
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -511,19 +404,89 @@ export default function DashboardLeadsPage() {
   const { profile } = useAuth();
 
   const [drillDown, setDrillDown] = useState<DrillDownConfig | null>(null);
+  const [dateStart, setDateStart] = useState<Date>(() => startOfDay(new Date()));
+  const [dateEnd, setDateEnd] = useState<Date>(() => endOfDay(new Date()));
 
-  const { data: metrics, isLoading } = useQuery({
-    queryKey: ["dashboard-leads-metrics"],
-    queryFn: fetchLeadsAggregated,
-    refetchInterval: 5 * 60 * 1000,
-    staleTime: 60 * 1000,
+  // Computed ISO range
+  const dateRange = useMemo(() => ({
+    start: startOfDay(dateStart).toISOString(),
+    end: endOfDay(dateEnd).toISOString(),
+  }), [dateStart, dateEnd]);
+
+  const periodLabel = useMemo(() => {
+    const s = format(dateStart, "dd/MM/yyyy", { locale: ptBR });
+    const e = format(dateEnd, "dd/MM/yyyy", { locale: ptBR });
+    return s === e ? s : `${s} a ${e}`;
+  }, [dateStart, dateEnd]);
+
+  const { data: metrics, isLoading, refetch } = useQuery({
+    queryKey: ["dashboard-leads-metrics", dateRange.start, dateRange.end],
+    queryFn: async () => {
+      const { start, end } = dateRange;
+
+      const [
+        { count: leadsNoPeriodo },
+        { count: emAtendimento },
+        { count: convertidos },
+        { count: tentativas },
+        { data: statusBreakdown },
+        { data: topObjecoes },
+      ] = await Promise.all([
+        supabase.from("leads").select("*", { count: "exact", head: true })
+          .gte("data_criacao", start).lte("data_criacao", end),
+        supabase.from("leads").select("*", { count: "exact", head: true })
+          .eq("status_lead", "em_atendimento")
+          .gte("data_criacao", start).lte("data_criacao", end),
+        supabase.from("leads").select("*", { count: "exact", head: true })
+          .eq("status_lead", "convertido")
+          .gte("updated_at", start).lte("updated_at", end),
+        supabase.from("lead_interacoes").select("*", { count: "exact", head: true })
+          .gte("data_interacao", start).lte("data_interacao", end),
+        supabase.from("leads").select("status_lead")
+          .gte("data_criacao", start).lte("data_criacao", end),
+        supabase.from("registro_objecao_lead").select("objecao_id, lead_objecoes(descricao)")
+          .gte("data_registro", start).lte("data_registro", end),
+      ]);
+
+      const statusCounts: Record<string, number> = {};
+      (statusBreakdown || []).forEach((l) => {
+        statusCounts[l.status_lead] = (statusCounts[l.status_lead] || 0) + 1;
+      });
+
+      const objecaoCounts: Record<string, number> = {};
+      (topObjecoes || []).forEach((o: any) => {
+        const desc = o.lead_objecoes?.descricao || "Outra";
+        objecaoCounts[desc] = (objecaoCounts[desc] || 0) + 1;
+      });
+
+      const total = leadsNoPeriodo || 0;
+      const taxaConversao = total > 0
+        ? ((convertidos || 0) / total * 100).toFixed(1)
+        : "0.0";
+
+      return {
+        leadsNoPeriodo: total,
+        emAtendimento: emAtendimento || 0,
+        convertidos: convertidos || 0,
+        tentativas: tentativas || 0,
+        taxaConversao,
+        statusCounts,
+        objecaoCounts,
+      };
+    },
+    staleTime: 60_000,
   });
 
   const { data: osAguardando } = useQuery({
     queryKey: ["dashboard-leads-os-aguardando"],
-    queryFn: fetchOSAguardando,
+    queryFn: async () => {
+      const { count } = await supabase.from("ordens_servico")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "aguardando_numero");
+      return count || 0;
+    },
     refetchInterval: 5 * 60 * 1000,
-    staleTime: 60 * 1000,
+    staleTime: 60_000,
   });
 
   const { data: meusAtrasos = [] } = useQuery({
@@ -548,10 +511,8 @@ export default function DashboardLeadsPage() {
   });
 
   const m = metrics || {
-    totalLeads: 0, leadsHoje: 0, emAtendimento: 0, convertidos: 0,
-    convertidosHoje: 0, tentativas: 0, tentativasHoje: 0,
-    taxaConversao: "0.0", statusCounts: {}, leadsSemana: 0, leadsMes: 0,
-    objecaoCounts: {},
+    leadsNoPeriodo: 0, emAtendimento: 0, convertidos: 0,
+    tentativas: 0, taxaConversao: "0.0", statusCounts: {}, objecaoCounts: {},
   };
 
   const openDrill = (filter: string, title: string, filterValue?: string) => {
@@ -562,24 +523,28 @@ export default function DashboardLeadsPage() {
     <div className="flex-1 min-h-screen bg-background">
       <div className="max-w-7xl mx-auto p-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Painel Operacional de Leads</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Dados agregados • Clique nos indicadores para ver detalhes
-              {metrics && (
-                <span className="ml-2 text-xs opacity-60">
-                  Última: {format(new Date(), "HH:mm", { locale: ptBR })}
-                </span>
-              )}
+              Dados do período selecionado • Clique nos indicadores para ver detalhes
             </p>
           </div>
-          {isLoading && (
-            <div className="flex items-center gap-2 text-muted-foreground text-sm">
-              <Clock className="w-4 h-4 animate-spin" />
-              Carregando...
-            </div>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-muted-foreground">De:</span>
+            <DatePickerField date={dateStart} onSelect={setDateStart} label="Início" />
+            <span className="text-xs text-muted-foreground">Até:</span>
+            <DatePickerField date={dateEnd} onSelect={setDateEnd} label="Fim" />
+            <Button size="sm" className="h-8 text-xs" onClick={() => refetch()}>
+              <Search className="w-3.5 h-3.5 mr-1" /> Buscar
+            </Button>
+            {isLoading && <Clock className="w-4 h-4 animate-spin text-muted-foreground" />}
+          </div>
+        </div>
+
+        {/* Period indicator */}
+        <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-1.5 inline-block">
+          Exibindo dados de: <strong className="text-foreground">{periodLabel}</strong>
         </div>
 
         {/* Atrasos Alert */}
@@ -622,13 +587,12 @@ export default function DashboardLeadsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard
             icon={UserPlus}
-            label="Leads Recebidos Hoje"
-            value={m.leadsHoje}
-            subValue={`${m.totalLeads} total`}
+            label="Leads Recebidos"
+            value={m.leadsNoPeriodo}
+            subValue="No período selecionado"
             color="bg-primary/10 text-primary"
             delay={0}
-            onClick={() => openDrill("leads_hoje", "Leads Recebidos Hoje")}
-            onSubClick={() => openDrill("total_leads", "Todos os Leads (últimos 100)")}
+            onClick={() => openDrill("leads_periodo", "Leads Recebidos no Período")}
           />
           <KpiCard
             icon={PhoneCall}
@@ -644,21 +608,19 @@ export default function DashboardLeadsPage() {
             icon={CheckCircle2}
             label="Convertidos"
             value={m.convertidos}
-            subValue={`${m.convertidosHoje} hoje`}
+            subValue="No período selecionado"
             color="bg-emerald-500/10 text-emerald-600"
             delay={0.2}
-            onClick={() => openDrill("convertidos", "Leads Convertidos")}
-            onSubClick={() => openDrill("convertidos_hoje", "Convertidos Hoje")}
+            onClick={() => openDrill("convertidos", "Leads Convertidos no Período")}
           />
           <KpiCard
             icon={ArrowRightLeft}
             label="Tentativas Realizadas"
             value={m.tentativas}
-            subValue={`${m.tentativasHoje} hoje`}
+            subValue="No período selecionado"
             color="bg-violet-500/10 text-violet-600"
             delay={0.3}
-            onClick={() => openDrill("tentativas", "Tentativas Realizadas (últimas 100)")}
-            onSubClick={() => openDrill("tentativas_hoje", "Tentativas de Hoje")}
+            onClick={() => openDrill("tentativas", "Tentativas no Período")}
           />
         </div>
 
@@ -668,6 +630,7 @@ export default function DashboardLeadsPage() {
             icon={Target}
             label="Taxa de Conversão"
             value={`${m.taxaConversao}%`}
+            subValue="No período selecionado"
             color="bg-emerald-500/10 text-emerald-600"
             delay={0.15}
             onClick={() => openDrill("taxa_conversao", "Leads Convertidos (Taxa de Conversão)")}
@@ -683,16 +646,18 @@ export default function DashboardLeadsPage() {
           />
           <KpiCard
             icon={Users}
-            label="Leads Sem Interesse"
+            label="Sem Interesse"
             value={m.statusCounts["sem_interesse"] || 0}
+            subValue="No período selecionado"
             color="bg-red-400/10 text-red-500"
             delay={0.35}
             onClick={() => openDrill("status", "Leads Sem Interesse", "sem_interesse")}
           />
           <KpiCard
             icon={Clock}
-            label="Leads Perdidos"
+            label="Perdidos"
             value={m.statusCounts["perdido"] || 0}
+            subValue="No período selecionado"
             color="bg-muted text-muted-foreground"
             delay={0.45}
             onClick={() => openDrill("status", "Leads Perdidos", "perdido")}
@@ -703,14 +668,8 @@ export default function DashboardLeadsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <StatusBar
             statusCounts={m.statusCounts}
-            total={m.totalLeads}
+            total={m.leadsNoPeriodo}
             onStatusClick={(key, label) => openDrill("status", `Leads — ${label}`, key)}
-          />
-          <PeriodSummary
-            leadsHoje={m.leadsHoje}
-            leadsSemana={m.leadsSemana}
-            leadsMes={m.leadsMes}
-            onPeriodClick={openDrill}
           />
           {/* Top Objeções */}
           <motion.div
@@ -721,7 +680,7 @@ export default function DashboardLeadsPage() {
           >
             <h3 className="text-sm font-semibold text-foreground mb-4">Principais Objeções</h3>
             {Object.keys(m.objecaoCounts).length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">Nenhuma objeção registrada</p>
+              <p className="text-xs text-muted-foreground text-center py-4">Nenhuma objeção registrada no período</p>
             ) : (
               <div className="space-y-2">
                 {Object.entries(m.objecaoCounts).sort((a, b) => (b[1] as number) - (a[1] as number)).slice(0, 5).map(([desc, count]) => (
@@ -745,6 +704,7 @@ export default function DashboardLeadsPage() {
         open={!!drillDown}
         onClose={() => setDrillDown(null)}
         config={drillDown}
+        dateRange={dateRange}
       />
     </div>
   );
