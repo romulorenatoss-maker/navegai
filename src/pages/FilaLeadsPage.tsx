@@ -586,7 +586,7 @@ export default function FilaLeadsPage() {
     const now = new Date();
     await supabase.from("lead_tarefas_contato").insert({ lead_id: transferItem.lead.id, tentativa: 1, data_contato: now.toISOString(), periodo, status: "pendente", responsavel_id: transferTarget });
     toast.success(`Lead transferido para ${targetName} com rotina reiniciada!`);
-    setShowTransfer(false); setTransferItem(null); setTransferTarget("");
+    setShowTransfer(false); setTransferItem(null); setTransferTarget(""); setTransferMotivo("");
     queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
   };
 
