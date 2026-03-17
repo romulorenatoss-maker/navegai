@@ -2519,6 +2519,15 @@ export default function LeadsPage() {
               <Label>Resultado</Label>
               <Textarea placeholder="Descreva o resultado..." value={interResultado} onChange={e => setInterResultado(e.target.value)} rows={3} />
             </div>
+            {isLastAttempt && selectedLead?.status_lead !== "convertido" && (
+              <Alert className="border-amber-300 bg-amber-50 dark:bg-amber-950/30">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertTitle className="text-amber-800 dark:text-amber-200 text-xs">Última tentativa!</AlertTitle>
+                <AlertDescription className="text-amber-700 dark:text-amber-300 text-xs">
+                  Se não houver conversão, o lead será enviado automaticamente para a fila do avaliador e sairá da sua tela.
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowInteraction(false)}>Cancelar</Button>
