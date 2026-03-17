@@ -2541,7 +2541,7 @@ export default function LeadsPage() {
             <Button variant="outline" onClick={() => setShowInteraction(false)}>Cancelar</Button>
             <Button onClick={() => interactionMutation.mutate()} disabled={interactionMutation.isPending || !interNumero} className="press-effect">
               {interactionMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <PhoneCall className="w-4 h-4 mr-1" />}
-              {tentativasRealizadas === 0 ? "Registrar Lead" : `Registrar Tentativa ${tentativasRealizadas}`}
+              {tentativasCicloAtual === 0 ? "Registrar Lead" : `Registrar Tentativa ${tentativasCicloAtual}`}
             </Button>
           </DialogFooter>
         </DialogContent>
