@@ -367,7 +367,7 @@ export default function PermissoesPage() {
                         {resources.map((r) => (
                           <tr key={r.id} className="border-b border-border/50">
                             <td className="px-2 py-1.5 text-foreground text-xs">{r.label}</td>
-                            {(["can_view", "can_create", "can_edit", "can_delete"] as const).map((action) => {
+                            {(["can_view", "can_create", "can_edit", "can_delete", "can_assign", "can_export"] as const).map((action) => {
                               const val = getOverrideValue(r.id, action);
                               const label = val === null ? "—" : val ? "✓" : "✗";
                               const cls = val === null ? "text-muted-foreground bg-muted/30" : val ? "text-success bg-success/10" : "text-destructive bg-destructive/10";
