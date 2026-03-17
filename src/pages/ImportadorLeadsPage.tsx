@@ -450,44 +450,66 @@ export default function ImportadorLeadsPage() {
               <CardHeader>
                 <CardTitle className="text-base">Resultado da Importação</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="flex gap-3 mb-4">
-                  <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-200">
-                    {results.filter(r => r.status === "ok").length} criados
-                  </Badge>
-                  <Badge variant="outline" className="bg-slate-500/10 text-slate-500 border-slate-200">
-                    {results.filter(r => r.status === "skipped").length} pulados
-                  </Badge>
-                  <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-200">
-                    {results.filter(r => r.status === "error").length} erros
-                  </Badge>
+              <CardContent className="space-y-4">
+                {/* Summary */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="rounded-lg border p-3 text-center">
+                    <p className="text-2xl font-bold text-emerald-600">{results.filter(r => r.status === "ok").length}</p>
+                    <p className="text-xs text-muted-foreground">Criados</p>
+                  </div>
+                  <div className="rounded-lg border p-3 text-center">
+                    <p className="text-2xl font-bold text-muted-foreground">{results.filter(r => r.status === "skipped").length}</p>
+                    <p className="text-xs text-muted-foreground">Pulados</p>
+                  </div>
+                  <div className="rounded-lg border p-3 text-center">
+                    <p className="text-2xl font-bold text-destructive">{results.filter(r => r.status === "error").length}</p>
+                    <p className="text-xs text-muted-foreground">Erros</p>
+                  </div>
                 </div>
-                <div className="max-h-[350px] overflow-auto border rounded-md">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Nome</TableHead>
-                        <TableHead>Telefone</TableHead>
-                        <TableHead className="text-center">Status</TableHead>
-                        <TableHead>Detalhe</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {results.map((r, i) => (
-                        <TableRow key={i}>
-                          <TableCell className="text-sm">{r.nome}</TableCell>
-                          <TableCell className="text-sm">{r.telefone}</TableCell>
-                          <TableCell className="text-center">
-                            {r.status === "ok" && <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" />}
-                            {r.status === "skipped" && <AlertTriangle className="w-4 h-4 text-slate-400 mx-auto" />}
-                            {r.status === "error" && <X className="w-4 h-4 text-red-500 mx-auto" />}
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{r.message || "Importado"}</TableCell>
+
+                {selectedCampanhaNome && (
+                  <p className="text-xs text-muted-foreground">Campanha: <span className="font-semibold text-foreground">{selectedCampanhaNome}</span></p>
+                )}
+
+                {/* Expandable details */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setShowResultDetails(v => !v)}
+                >
+                  <ChevronDown className={`w-4 h-4 mr-2 transition-transform ${showResultDetails ? "rotate-180" : ""}`} />
+                  {showResultDetails ? "Ocultar detalhes" : "Ver leads importados"}
+                </Button>
+
+                {showResultDetails && (
+                  <div className="max-h-[350px] overflow-auto border rounded-md">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Nome</TableHead>
+                          <TableHead>Telefone</TableHead>
+                          <TableHead className="text-center">Status</TableHead>
+                          <TableHead>Detalhe</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                      </TableHeader>
+                      <TableBody>
+                        {results.map((r, i) => (
+                          <TableRow key={i}>
+                            <TableCell className="text-sm">{r.nome}</TableCell>
+                            <TableCell className="text-sm">{r.telefone}</TableCell>
+                            <TableCell className="text-center">
+                              {r.status === "ok" && <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto" />}
+                              {r.status === "skipped" && <AlertTriangle className="w-4 h-4 text-muted-foreground mx-auto" />}
+                              {r.status === "error" && <X className="w-4 h-4 text-destructive mx-auto" />}
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground">{r.message || "Importado"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
