@@ -288,7 +288,6 @@ export default function CadastroEnderecosPage() {
                       <div>
                         <span className="text-sm font-medium">{b.nome}</span>
                         <span className="text-xs text-muted-foreground ml-2">({getCidadeNome(b.cidade_id)})</span>
-                        {b.cep && <span className="text-xs text-muted-foreground ml-2">CEP: {b.cep}</span>}
                       </div>
                       <Badge variant="outline" className="text-[10px]">{ruas.filter(r => r.bairro_id === b.id).length} ruas</Badge>
                     </div>
