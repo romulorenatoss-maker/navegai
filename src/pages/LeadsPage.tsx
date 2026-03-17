@@ -1420,6 +1420,16 @@ export default function LeadsPage() {
         ? leadInteracoes.filter(i => new Date(i.data_interacao) > new Date(lastCycleEvt.data_evento)).length
         : leadInteracoes.length;
       tentativaNum = cycleInteractions + 1;
+
+      // Fetch pending tarefa FIRST (needed for timing calc)
+      const { data: pendingTarefas } = await supabase
+        .from("lead_tarefas_contato")
+        .select("*")
+        .eq("lead_id", selectedLead.id)
+        .in("status", ["pendente", "atrasado"])
+        .order("tentativa", { ascending: true })
+        .limit(1);
+
       // Calculate timing relative to deadline
       let timingInfo = "";
       const now = new Date();
@@ -1459,13 +1469,6 @@ export default function LeadsPage() {
       }
 
       // Mark current pending tarefa as "realizado"
-      const { data: pendingTarefas } = await supabase
-        .from("lead_tarefas_contato")
-        .select("*")
-        .eq("lead_id", selectedLead.id)
-        .in("status", ["pendente", "atrasado"])
-        .order("tentativa", { ascending: true })
-        .limit(1);
       if (pendingTarefas && pendingTarefas.length > 0) {
         const taskDate = new Date(pendingTarefas[0].data_contato);
         const endHour = pendingTarefas[0].periodo === "manha" ? 12 : pendingTarefas[0].periodo === "tarde" ? 18 : 24;
