@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bot, Send, User, Loader2, Sparkles, TrendingUp, Users, BarChart3, FileSpreadsheet, PieChart, MessageSquare, TableProperties, Download } from "lucide-react";
+import { Bot, Send, User, Loader2, Sparkles, TrendingUp, Users, BarChart3, FileSpreadsheet, PieChart, MessageSquare, TableProperties, Download, Trophy, Target } from "lucide-react";
 import { toast } from "sonner";
 import { AssistenteMessageRenderer } from "@/components/assistente/AssistenteMessageRenderer";
+import { useAuth } from "@/contexts/AuthContext";
 import * as XLSX from "xlsx";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/business-assistant`;
