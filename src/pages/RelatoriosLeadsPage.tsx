@@ -472,6 +472,24 @@ export default function RelatoriosLeadsPage() {
             <label className="text-caption font-medium text-muted-foreground">Nome do Lead</label>
             <Input className="h-9" placeholder="Buscar..." value={filterNome} onChange={(e) => setFilterNome(e.target.value)} />
           </div>
+
+          <div className="flex flex-col gap-1.5 min-w-[160px]">
+            <label className="text-caption font-medium text-muted-foreground">Interagiu com</label>
+            <Select value={filterHandler} onValueChange={setFilterHandler}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                {responsaveis.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-col gap-1.5 min-w-[120px]">
+            <label className="text-caption font-medium text-muted-foreground">Mín. tentativas</label>
+            <Input type="number" min={0} className="h-9" placeholder="Ex: 3" value={filterMinTentativas} onChange={(e) => setFilterMinTentativas(e.target.value)} />
+          </div>
         </div>
       </div>
 
