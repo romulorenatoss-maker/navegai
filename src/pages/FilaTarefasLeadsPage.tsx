@@ -408,9 +408,6 @@ export default function FilaTarefasLeadsPage() {
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setSelectedTarefa(null)}>Cancelar</Button>
-            <Button variant="secondary" onClick={goToNext} className="press-effect">
-              <SkipForward className="w-4 h-4 mr-1" /> Próximo Lead
-            </Button>
             <Button
               onClick={() => attemptMutation.mutate()}
               disabled={attemptMutation.isPending || !attemptNumero}
