@@ -304,6 +304,8 @@ export default function LeadsPage() {
   const [convCidadeId, setConvCidadeId] = useState<string | null>(null);
   const [convBairroId, setConvBairroId] = useState<string | null>(null);
   const [convRuaId, setConvRuaId] = useState<string | null>(null);
+  const [convQuickAddType, setConvQuickAddType] = useState<"cidade" | "bairro" | "rua" | null>(null);
+  const [convQuickAddNome, setConvQuickAddNome] = useState("");
 
   // Finalize dialog (when all attempts done)
   const [showFinalize, setShowFinalize] = useState(false);
@@ -1685,7 +1687,6 @@ export default function LeadsPage() {
       if (!convBairroId) throw new Error("Bairro é obrigatório.");
       if (!convRuaId) throw new Error("Rua é obrigatória.");
       if (!f.numero.trim()) throw new Error("Número é obrigatório.");
-      if (!f.referencia.trim()) throw new Error("Referência é obrigatória.");
 
       // Resolve CEP from rua
       const selectedRua = endRuas.find(r => r.id === convRuaId);
@@ -1742,7 +1743,7 @@ export default function LeadsPage() {
 
       const { data: newCliente, error: e1 } = await supabase.from("clientes").insert({
         nome: f.nome.trim(), cpf: f.cpf.trim(), rg: f.rg.trim(), nome_mae: f.nome_mae.trim(),
-        numero: f.numero.trim(), referencia: f.referencia.trim(),
+        numero: f.numero.trim(), referencia: f.referencia?.trim() || null,
         cep: cepValue, cidade: selectedCidade?.nome || null,
         cidade_id: convCidadeId, bairro_id: convBairroId, rua_id: convRuaId,
       } as any).select("id").single();
@@ -3330,13 +3331,16 @@ export default function LeadsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs">Cidade *</Label>
-                    <Select value={convCidadeId || "none"} onValueChange={v => { setConvCidadeId(v === "none" ? null : v); setConvBairroId(null); setConvRuaId(null); }}>
-                      <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Nenhuma</SelectItem>
-                        {endCidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-1">
+                      <Select value={convCidadeId || "none"} onValueChange={v => { setConvCidadeId(v === "none" ? null : v); setConvBairroId(null); setConvRuaId(null); }}>
+                        <SelectTrigger className="h-9 flex-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhuma</SelectItem>
+                          {endCidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => { setConvQuickAddType("cidade"); setConvQuickAddNome(""); }}><Plus className="w-3.5 h-3.5" /></Button>
+                    </div>
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">CEP</Label>
@@ -3344,26 +3348,32 @@ export default function LeadsPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Bairro *</Label>
-                    <Select value={convBairroId || "none"} onValueChange={v => { setConvBairroId(v === "none" ? null : v); setConvRuaId(null); }} disabled={!convCidadeId}>
-                      <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Nenhum</SelectItem>
-                        {endBairros.filter(b => b.cidade_id === convCidadeId).map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-1">
+                      <Select value={convBairroId || "none"} onValueChange={v => { setConvBairroId(v === "none" ? null : v); setConvRuaId(null); }} disabled={!convCidadeId}>
+                        <SelectTrigger className="h-9 flex-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhum</SelectItem>
+                          {endBairros.filter(b => b.cidade_id === convCidadeId).map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => { setConvQuickAddType("bairro"); setConvQuickAddNome(""); }} disabled={!convCidadeId}><Plus className="w-3.5 h-3.5" /></Button>
+                    </div>
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Rua *</Label>
-                    <Select value={convRuaId || "none"} onValueChange={v => setConvRuaId(v === "none" ? null : v)} disabled={!convBairroId}>
-                      <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Nenhuma</SelectItem>
-                        {endRuas.filter(r => r.bairro_id === convBairroId).map(r => <SelectItem key={r.id} value={r.id}>{r.nome}{r.cep?.[0] ? ` (${r.cep[0]})` : ""}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-1">
+                      <Select value={convRuaId || "none"} onValueChange={v => setConvRuaId(v === "none" ? null : v)} disabled={!convBairroId}>
+                        <SelectTrigger className="h-9 flex-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhuma</SelectItem>
+                          {endRuas.filter(r => r.bairro_id === convBairroId).map(r => <SelectItem key={r.id} value={r.id}>{r.nome}{r.cep?.[0] ? ` (${r.cep[0]})` : ""}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => { setConvQuickAddType("rua"); setConvQuickAddNome(""); }} disabled={!convBairroId}><Plus className="w-3.5 h-3.5" /></Button>
+                    </div>
                   </div>
                   <div className="space-y-1.5"><Label className="text-xs">Número *</Label><Input value={convForm.numero} onChange={e => setConvForm(f => ({ ...f, numero: e.target.value }))} className="h-9" /></div>
-                  <div className="space-y-1.5"><Label className="text-xs">Referência *</Label><Input value={convForm.referencia} onChange={e => setConvForm(f => ({ ...f, referencia: e.target.value }))} className="h-9" /></div>
+                  <div className="space-y-1.5"><Label className="text-xs">Referência</Label><Input value={convForm.referencia} onChange={e => setConvForm(f => ({ ...f, referencia: e.target.value }))} className="h-9" /></div>
                 </div>
               </div>
               {/* Atendente selector */}
@@ -3394,6 +3404,49 @@ export default function LeadsPage() {
             <Button onClick={() => convertMutation.mutate()} disabled={convertMutation.isPending} className="press-effect">
               {convertMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <UserPlus className="w-4 h-4 mr-1" />} Converter em Cliente
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Conversion Quick Add Address Dialog */}
+      <Dialog open={!!convQuickAddType} onOpenChange={v => !v && setConvQuickAddType(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Adicionar {convQuickAddType === "cidade" ? "Cidade" : convQuickAddType === "bairro" ? "Bairro" : "Rua"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Nome *</Label>
+              <Input value={convQuickAddNome} onChange={e => setConvQuickAddNome(e.target.value)} placeholder="Digite o nome..." autoFocus />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConvQuickAddType(null)}>Cancelar</Button>
+            <Button
+              disabled={!convQuickAddNome.trim()}
+              onClick={async () => {
+                try {
+                  if (convQuickAddType === "cidade") {
+                    const { data, error } = await supabase.from("cidades").insert({ nome: convQuickAddNome.trim() }).select().single();
+                    if (error) throw error;
+                    queryClient.invalidateQueries({ queryKey: ["enderecos-cidades"] });
+                    setConvCidadeId(data.id); setConvBairroId(null); setConvRuaId(null);
+                  } else if (convQuickAddType === "bairro" && convCidadeId) {
+                    const { data, error } = await supabase.from("bairros").insert({ nome: convQuickAddNome.trim(), cidade_id: convCidadeId }).select().single();
+                    if (error) throw error;
+                    queryClient.invalidateQueries({ queryKey: ["enderecos-bairros"] });
+                    setConvBairroId(data.id); setConvRuaId(null);
+                  } else if (convQuickAddType === "rua" && convBairroId) {
+                    const { data, error } = await supabase.from("ruas").insert({ nome: convQuickAddNome.trim(), bairro_id: convBairroId }).select().single();
+                    if (error) throw error;
+                    queryClient.invalidateQueries({ queryKey: ["enderecos-ruas"] });
+                    setConvRuaId(data.id);
+                  }
+                  toast.success("Adicionado com sucesso!");
+                  setConvQuickAddType(null);
+                } catch (err: any) { toast.error(err.message); }
+              }}
+            >Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
