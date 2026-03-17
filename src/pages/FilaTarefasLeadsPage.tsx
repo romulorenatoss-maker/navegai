@@ -195,10 +195,11 @@ export default function FilaTarefasLeadsPage() {
       });
       if (e1) throw e1;
 
-      // Update tarefa as realizado
+      // Update tarefa as realizado and track if it was late
+      const wasLate = selectedTarefa.status === "atrasado" || isTarefaExpirada(selectedTarefa);
       const { error: e2 } = await supabase
         .from("lead_tarefas_contato")
-        .update({ status: "realizado" })
+        .update({ status: "realizado", fora_do_prazo: wasLate } as any)
         .eq("id", selectedTarefa.id);
       if (e2) throw e2;
 
