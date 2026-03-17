@@ -310,7 +310,7 @@ export default function LeadsPage() {
     },
   });
 
-  const leadsScope = isVisionMode ? "own" : (isAdmin ? "all" : "own");
+  const leadsScope: string = isVisionMode ? "own" : (isAdmin ? "all" : "own");
 
   const { data: allLeads = [], isLoading: loadingLeads } = useQuery({
     queryKey: ["leads-list", effectiveProfileId, leadsScope],
