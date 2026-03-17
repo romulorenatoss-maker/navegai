@@ -1687,7 +1687,6 @@ export default function LeadsPage() {
       if (!convBairroId) throw new Error("Bairro é obrigatório.");
       if (!convRuaId) throw new Error("Rua é obrigatória.");
       if (!f.numero.trim()) throw new Error("Número é obrigatório.");
-      if (!f.referencia.trim()) throw new Error("Referência é obrigatória.");
 
       // Resolve CEP from rua
       const selectedRua = endRuas.find(r => r.id === convRuaId);
