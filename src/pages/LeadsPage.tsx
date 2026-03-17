@@ -310,15 +310,41 @@ export default function LeadsPage() {
     },
   });
 
+  const leadsScope = isVisionMode ? "own" : getScope("meus_leads");
+
   const { data: allLeads = [], isLoading: loadingLeads } = useQuery({
-    queryKey: ["leads-list", effectiveProfileId],
+    queryKey: ["leads-list", effectiveProfileId, leadsScope],
     queryFn: async () => {
       if (!effectiveProfileId) return [] as Lead[];
-      const { data, error } = await supabase
-        .from("leads")
-        .select("*")
-        .eq("responsavel_id", effectiveProfileId)
-        .order("updated_at", { ascending: true });
+
+      let query = supabase.from("leads").select("*");
+
+      if (leadsScope === "own") {
+        // Only leads where user is responsible
+        query = query.eq("responsavel_id", effectiveProfileId);
+      } else if (leadsScope === "team") {
+        // Leads from all team members (same sector)
+        const { data: mySetores } = await supabase
+          .from("colaborador_setores")
+          .select("setor_id")
+          .eq("profile_id", effectiveProfileId);
+        if (mySetores && mySetores.length > 0) {
+          const setorIds = mySetores.map(s => s.setor_id);
+          const { data: teamMembers } = await supabase
+            .from("colaborador_setores")
+            .select("profile_id")
+            .in("setor_id", setorIds);
+          const teamIds = teamMembers?.map(m => m.profile_id) || [];
+          query = query.in("responsavel_id", teamIds);
+        } else {
+          query = query.eq("responsavel_id", effectiveProfileId);
+        }
+      } else if (leadsScope === "none") {
+        return [] as Lead[];
+      }
+      // scope === "all" → no filter
+
+      const { data, error } = await query.order("updated_at", { ascending: true });
       if (error) throw error;
       return data as Lead[];
     },
