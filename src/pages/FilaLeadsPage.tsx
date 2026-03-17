@@ -745,6 +745,77 @@ export default function FilaLeadsPage() {
         </TabsContent>
 
         {/* ═══ TAB: Tarefas do Dia ═══ */}
+        {/* ═══ TAB: Fila de Captura ═══ */}
+        <TabsContent value="captura" className="space-y-4 mt-3">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <UserCheck className="w-4 h-4" /> Leads Aguardando Captura
+                <Badge variant="secondary" className="text-xs">{capturaLeads.length}</Badge>
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">Leads reabertos disponíveis para captura. Apenas usuários que nunca interagiram com o lead podem capturá-lo. A captura é atômica — apenas um usuário pode assumir cada lead.</p>
+            </CardHeader>
+            <CardContent className="p-0 overflow-auto max-h-[calc(100vh-380px)]">
+              {capturaLeads.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground text-sm">Nenhum lead aguardando captura</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-8">#</TableHead>
+                      <TableHead>Lead</TableHead>
+                      <TableHead>Telefone(s)</TableHead>
+                      <TableHead>Tentativas Anteriores</TableHead>
+                      <TableHead>Última Tentativa</TableHead>
+                      <TableHead className="text-right">Ação</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {capturaLeads.map((item, idx) => {
+                      const phones = item.contatos.filter(c => c.tipo_contato === "telefone");
+                      return (
+                        <TableRow key={item.lead.id} className="bg-purple-50/30 dark:bg-purple-950/10">
+                          <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-medium text-sm">{item.lead.nome}</span>
+                              <Badge className="w-fit text-[10px] bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border-0">Aguardando Captura</Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {phones.map(c => <Badge key={c.id} variant="outline" className="text-[11px] gap-0.5 font-normal"><Phone className="w-2.5 h-2.5" />{c.valor}{c.tem_whatsapp && <MessageSquare className="w-2.5 h-2.5 text-green-600" />}</Badge>)}
+                              {phones.length === 0 && <span className="text-[11px] text-muted-foreground">Sem tel.</span>}
+                            </div>
+                          </TableCell>
+                          <TableCell><Badge variant="secondary" className="text-xs">{item.totalInteracoes} realizadas</Badge></TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {item.ultimaTentativaEm ? format(new Date(item.ultimaTentativaEm), "dd/MM/yy HH:mm", { locale: ptBR }) : "—"}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Ver lead" onClick={() => navigate(`/leads?id=${item.lead.id}`)}><Eye className="w-3.5 h-3.5" /></Button>
+                              <Button
+                                size="sm"
+                                className="h-7 text-[11px] px-3 gap-1 bg-purple-600 hover:bg-purple-700 text-white"
+                                onClick={() => captureMutation.mutate(item.lead.id)}
+                                disabled={captureMutation.isPending}
+                              >
+                                {captureMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserCheck className="w-3.5 h-3.5" />}
+                                Capturar Lead
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="tarefas" className="space-y-3 mt-3">
           {/* Date Filters */}
           <Card>
