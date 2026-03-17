@@ -304,6 +304,8 @@ export default function LeadsPage() {
   const [convCidadeId, setConvCidadeId] = useState<string | null>(null);
   const [convBairroId, setConvBairroId] = useState<string | null>(null);
   const [convRuaId, setConvRuaId] = useState<string | null>(null);
+  const [convQuickAddType, setConvQuickAddType] = useState<"cidade" | "bairro" | "rua" | null>(null);
+  const [convQuickAddNome, setConvQuickAddNome] = useState("");
 
   // Finalize dialog (when all attempts done)
   const [showFinalize, setShowFinalize] = useState(false);
