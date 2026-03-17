@@ -94,6 +94,7 @@ export function AppLayout() {
         <AppSidebar
           userName={userNameDisplay}
           onSignOut={handleSignOut}
+          badgeCounts={badgeCounts}
           isAdmin={isAdmin}
           allowedScreens={allowedScreens}
           canViewPath={canViewPath}
