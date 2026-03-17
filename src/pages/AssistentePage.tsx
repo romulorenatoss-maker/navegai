@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Send, User, Loader2, Sparkles, TrendingUp, Users, BarChart3, FileSpreadsheet, PieChart } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Bot, Send, User, Loader2, Sparkles, TrendingUp, Users, BarChart3, FileSpreadsheet, PieChart, MessageSquare, TableProperties, Download } from "lucide-react";
 import { toast } from "sonner";
 import { AssistenteMessageRenderer } from "@/components/assistente/AssistenteMessageRenderer";
+import * as XLSX from "xlsx";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/business-assistant`;
 
@@ -86,7 +88,6 @@ async function streamChat({
     }
   }
 
-  // Final flush
   if (textBuffer.trim()) {
     for (let raw of textBuffer.split("\n")) {
       if (!raw) continue;
@@ -106,7 +107,146 @@ async function streamChat({
   onDone();
 }
 
-export default function AssistentePage() {
+// ─── Simple Mode Component ───
+function SimpleMode() {
+  const [pergunta, setPergunta] = useState("");
+  const [resposta, setResposta] = useState("");
+  const [dados, setDados] = useState<Record<string, any>[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  async function perguntarIA() {
+    if (!pergunta.trim() || loading) return;
+    setLoading(true);
+    setResposta("");
+    setDados([]);
+    try {
+      const res = await fetch(CHAT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ question: pergunta, mode: "simple" }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        toast.error(body.error || "Erro ao consultar o assistente.");
+        setLoading(false);
+        return;
+      }
+
+      const data = await res.json();
+      setResposta(data.texto || "");
+      setDados(Array.isArray(data.dados) ? data.dados : []);
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro de conexão com o assistente.");
+    }
+    setLoading(false);
+  }
+
+  function exportarExcel() {
+    if (dados.length === 0) return;
+    const ws = XLSX.utils.json_to_sheet(dados);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Relatorio");
+    XLSX.writeFile(wb, "relatorio.xlsx");
+  }
+
+  return (
+    <div className="flex flex-col gap-4 h-full">
+      <div className="flex gap-2 shrink-0">
+        <Input
+          placeholder="Pergunte sobre vendas, leads, desempenho..."
+          value={pergunta}
+          onChange={(e) => setPergunta(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && perguntarIA()}
+          disabled={loading}
+          className="flex-1"
+        />
+        <Button onClick={perguntarIA} disabled={loading || !pergunta.trim()} className="gap-1.5 shrink-0">
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          Perguntar
+        </Button>
+      </div>
+
+      {/* Quick suggestions */}
+      <div className="flex flex-wrap gap-1.5 shrink-0">
+        {quickSuggestions.map((s) => (
+          <Badge
+            key={s.label}
+            variant="outline"
+            className="cursor-pointer hover:bg-primary/10 transition-colors text-xs py-0.5"
+            onClick={() => { setPergunta(s.question); }}
+          >
+            <s.icon className="w-3 h-3 mr-1" />
+            {s.label}
+          </Badge>
+        ))}
+      </div>
+
+      {loading && (
+        <Card className="bg-muted/50">
+          <CardContent className="p-4 flex items-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin text-primary" />
+            <span className="text-sm text-muted-foreground">Processando consulta...</span>
+          </CardContent>
+        </Card>
+      )}
+
+      {resposta && (
+        <Card>
+          <CardContent className="p-4">
+            <h3 className="text-sm font-semibold text-foreground mb-2">📋 Resposta</h3>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{resposta}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {dados.length > 0 && (
+        <div className="flex flex-col gap-2 flex-1 min-h-0">
+          <div className="flex items-center justify-between shrink-0">
+            <span className="text-sm font-medium text-foreground">{dados.length} registro(s)</span>
+            <Button variant="outline" size="sm" onClick={exportarExcel} className="gap-1.5">
+              <Download className="w-4 h-4" />
+              Baixar Excel
+            </Button>
+          </div>
+          <ScrollArea className="flex-1 border rounded-md">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    {Object.keys(dados[0]).map((col) => (
+                      <th key={col} className="px-3 py-2 text-left font-medium text-foreground whitespace-nowrap">
+                        {col}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {dados.map((row, i) => (
+                    <tr key={i} className="border-b last:border-0 hover:bg-muted/30">
+                      {Object.values(row).map((v, j) => (
+                        <td key={j} className="px-3 py-2 text-muted-foreground whitespace-nowrap">
+                          {String(v ?? "-")}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </ScrollArea>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Chat Mode Component ───
+function ChatMode() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -165,22 +305,9 @@ export default function AssistentePage() {
   };
 
   return (
-    <div className="flex flex-col h-full max-h-[calc(100vh-4rem)]">
-      {/* Header */}
-      <div className="px-4 pt-4 pb-2 shrink-0">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-            <Bot className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-foreground">Assistente Inteligente</h1>
-            <p className="text-xs text-muted-foreground">Pergunte sobre vendas, leads ou desempenho do negócio</p>
-          </div>
-        </div>
-      </div>
-
+    <div className="flex flex-col h-full">
       {/* Chat area */}
-      <div className="flex-1 overflow-hidden px-4">
+      <div className="flex-1 overflow-hidden">
         <ScrollArea className="h-full" ref={scrollRef}>
           <div className="space-y-4 py-4">
             {messages.length === 0 && (
@@ -253,7 +380,7 @@ export default function AssistentePage() {
 
       {/* Quick suggestions (when there are messages) */}
       {messages.length > 0 && !isLoading && (
-        <div className="px-4 py-1 shrink-0">
+        <div className="py-1 shrink-0">
           <div className="flex gap-1.5 flex-wrap">
             {quickSuggestions.map((s) => (
               <Badge
@@ -271,7 +398,7 @@ export default function AssistentePage() {
       )}
 
       {/* Input */}
-      <div className="px-4 pb-4 pt-2 shrink-0">
+      <div className="pb-2 pt-2 shrink-0">
         <div className="flex gap-2">
           <Input
             ref={inputRef}
@@ -287,6 +414,47 @@ export default function AssistentePage() {
             Perguntar
           </Button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Page ───
+export default function AssistentePage() {
+  return (
+    <div className="flex flex-col h-full max-h-[calc(100vh-4rem)]">
+      {/* Header */}
+      <div className="px-4 pt-4 pb-2 shrink-0">
+        <div className="flex items-center gap-3 mb-1">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Bot className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-foreground">Assistente Inteligente</h1>
+            <p className="text-xs text-muted-foreground">Pergunte sobre vendas, leads ou desempenho do negócio</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-hidden px-4 pb-4">
+        <Tabs defaultValue="chat" className="flex flex-col h-full">
+          <TabsList className="shrink-0 w-fit">
+            <TabsTrigger value="chat" className="gap-1.5">
+              <MessageSquare className="w-4 h-4" />
+              Chat IA
+            </TabsTrigger>
+            <TabsTrigger value="simple" className="gap-1.5">
+              <TableProperties className="w-4 h-4" />
+              Consulta Rápida
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="chat" className="flex-1 overflow-hidden mt-2">
+            <ChatMode />
+          </TabsContent>
+          <TabsContent value="simple" className="flex-1 overflow-hidden mt-2">
+            <SimpleMode />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
