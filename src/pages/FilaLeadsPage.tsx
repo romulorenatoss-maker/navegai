@@ -13,18 +13,21 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { format, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Phone, MessageSquare, Loader2, ListOrdered, CalendarClock, AlertTriangle,
-  ArrowRightLeft, Clock, Search, Filter, ExternalLink, Archive, RefreshCw,
+  ArrowRightLeft, Clock, Search, Filter, Eye, Archive, RefreshCw,
+  MoreHorizontal, Bell, CheckCircle2, ExternalLink,
 } from "lucide-react";
 
 // ─── Types ──────────────────────────────────────────────
 interface Lead {
   id: string; nome: string; status_lead: string; responsavel_id: string | null;
   updated_at: string; created_at: string; agendamento_retorno: string | null;
+  notificacao_vista?: boolean; notificacao_vista_em?: string | null; notificacao_vista_por?: string | null;
 }
 interface LeadContato { id: string; lead_id: string; tipo_contato: string; valor: string; tem_whatsapp: boolean; }
 interface CadenciaTentativa { id: string; numero_tentativa: number; dias_apos: number; periodo: string; prioridade: number; }
@@ -54,7 +57,6 @@ export default function FilaLeadsPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  // Active tab
   const [activeTab, setActiveTab] = useState("fila");
 
   // Filters
@@ -63,6 +65,11 @@ export default function FilaLeadsPage() {
   const [filterAgendamento, setFilterAgendamento] = useState("todos");
   const [searchTerm, setSearchTerm] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
+
+  // Notificações filters
+  const [notifFilterVisto, setNotifFilterVisto] = useState("todos");
+  const [notifSearch, setNotifSearch] = useState("");
+  const [notifAppliedSearch, setNotifAppliedSearch] = useState("");
 
   // Dialogs
   const [selectedItem, setSelectedItem] = useState<QueueItem | null>(null);
@@ -74,7 +81,6 @@ export default function FilaLeadsPage() {
   const [transferItem, setTransferItem] = useState<QueueItem | null>(null);
   const [transferTarget, setTransferTarget] = useState("");
 
-  // Decision transfer for aguardando_decisao
   const [showDecisionTransfer, setShowDecisionTransfer] = useState(false);
   const [decisionLeadId, setDecisionLeadId] = useState("");
   const [decisionLeadName, setDecisionLeadName] = useState("");
@@ -83,7 +89,6 @@ export default function FilaLeadsPage() {
   const [showDelay, setShowDelay] = useState(false);
   const [delayItem, setDelayItem] = useState<QueueItem | null>(null);
 
-  // Tarefa dialog
   const [selectedTarefa, setSelectedTarefa] = useState<any>(null);
   const [tarefaTipo, setTarefaTipo] = useState("telefone");
   const [tarefaNumero, setTarefaNumero] = useState("");
@@ -159,7 +164,6 @@ export default function FilaLeadsPage() {
     queryFn: async () => {
       const { data, error } = await supabase.from("lead_tarefas_contato").select("*").in("status", ["pendente", "atrasado"]).order("data_contato", { ascending: true });
       if (error) throw error;
-      // Auto-mark expired
       const toUpdate: string[] = [];
       (data || []).forEach((t: any) => { if (t.status === "pendente" && isTarefaExpirada(t)) toUpdate.push(t.id); });
       if (toUpdate.length > 0 && profile) {
@@ -208,7 +212,7 @@ export default function FilaLeadsPage() {
 
   const queue = useMemo<QueueItem[]>(() => {
     const now = new Date();
-    return leads.map(lead => {
+    return leads.filter(l => l.status_lead !== "aguardando_decisao_avaliador").map(lead => {
       const contatos = allContatos.filter(c => c.lead_id === lead.id);
       const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
       const tentativaAtual = interacoes.length + 1;
@@ -231,6 +235,37 @@ export default function FilaLeadsPage() {
     });
   }, [leads, allContatos, allInteracoes, cadencia, profiles]);
 
+  // ─── Notificações (aguardando_decisao) ────────────
+  const notificacoes = useMemo(() => {
+    return leads
+      .filter(l => l.status_lead === "aguardando_decisao_avaliador")
+      .map(lead => {
+        const contatos = allContatos.filter(c => c.lead_id === lead.id);
+        const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
+        return { lead, contatos, interacoes: interacoes.length, responsavelNome: getProfileName(lead.responsavel_id) };
+      })
+      .sort((a, b) => {
+        // Not seen first
+        if (!a.lead.notificacao_vista && b.lead.notificacao_vista) return -1;
+        if (a.lead.notificacao_vista && !b.lead.notificacao_vista) return 1;
+        return new Date(b.lead.updated_at).getTime() - new Date(a.lead.updated_at).getTime();
+      });
+  }, [leads, allContatos, allInteracoes, profiles]);
+
+  const filteredNotificacoes = useMemo(() => {
+    return notificacoes.filter(item => {
+      if (notifFilterVisto === "nao_visto" && item.lead.notificacao_vista) return false;
+      if (notifFilterVisto === "visto" && !item.lead.notificacao_vista) return false;
+      if (notifAppliedSearch) {
+        const t = notifAppliedSearch.toLowerCase();
+        if (!item.lead.nome.toLowerCase().includes(t) && !item.contatos.some(c => c.valor.includes(t))) return false;
+      }
+      return true;
+    });
+  }, [notificacoes, notifFilterVisto, notifAppliedSearch]);
+
+  const totalNaoVistas = notificacoes.filter(n => !n.lead.notificacao_vista).length;
+
   const filteredQueue = useMemo(() => {
     return queue.filter(item => {
       if (filterStatus !== "todos" && item.lead.status_lead !== filterStatus) return false;
@@ -245,12 +280,11 @@ export default function FilaLeadsPage() {
 
   const totalAtrasados = queue.filter(i => i.isOverdue).length;
   const totalAgendados = queue.filter(i => i.isScheduled).length;
-  const totalProntos = queue.filter(i => i.scheduleReady).length;
   const totalTarefas = sortedTarefas.length;
   const totalTarefasAtrasadas = sortedTarefas.filter((t: any) => t.status === "atrasado" || isTarefaExpirada(t)).length;
 
   const responsaveisNoLeads = useMemo(() => {
-    const ids = [...new Set(leads.map(l => l.responsavel_id).filter(Boolean))];
+    const ids = [...new Set(leads.filter(l => l.status_lead !== "aguardando_decisao_avaliador").map(l => l.responsavel_id).filter(Boolean))];
     return ids.map(id => ({ id: id!, nome: getProfileName(id) }));
   }, [leads, profiles]);
 
@@ -279,13 +313,11 @@ export default function FilaLeadsPage() {
     queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
   };
 
-  // Decision transfer (for aguardando_decisao leads)
   const handleDecisionTransfer = async () => {
     if (!decisionLeadId || !decisionTarget || !profile) return;
-    await supabase.from("leads").update({ responsavel_id: decisionTarget, status_lead: "em_contato" } as any).eq("id", decisionLeadId);
+    await supabase.from("leads").update({ responsavel_id: decisionTarget, status_lead: "em_contato", notificacao_vista: false } as any).eq("id", decisionLeadId);
     const targetName = profiles.find(p => p.id === decisionTarget)?.nome || "—";
     await supabase.from("lead_historico").insert({ lead_id: decisionLeadId, usuario_id: profile.id, tipo_evento: "transferencia_decisao", descricao: `Lead transferido para ${targetName} após finalizar tentativas. Todo o histórico anterior foi mantido para auditoria.` });
-    // Create first task for new responsible
     const firstRotina = rotinaTentativas.find((r: any) => r.tentativa_numero === 1);
     const periodo = firstRotina?.periodo_contato || "manha";
     const nextDate = new Date();
@@ -319,7 +351,7 @@ export default function FilaLeadsPage() {
   const restartMutation = useMutation({
     mutationFn: async (leadId: string) => {
       if (!profile) throw new Error("Perfil não encontrado.");
-      await supabase.from("leads").update({ status_lead: "em_contato" }).eq("id", leadId);
+      await supabase.from("leads").update({ status_lead: "em_contato", notificacao_vista: false } as any).eq("id", leadId);
       const firstRotina = rotinaTentativas.find((r: any) => r.tentativa_numero === 1);
       const periodo = firstRotina?.periodo_contato || "manha";
       const nextDate = new Date(); nextDate.setDate(nextDate.getDate() + 1); nextDate.setHours(PERIODO_HORA[periodo] || 9, 0, 0, 0);
@@ -327,6 +359,17 @@ export default function FilaLeadsPage() {
       await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "rotina_reiniciada", descricao: "Rotina de tentativas reiniciada pelo avaliador." });
     },
     onSuccess: () => { toast.success("Rotina reiniciada!"); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }); },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  // Mark notification as seen
+  const markAsSeenMutation = useMutation({
+    mutationFn: async (leadId: string) => {
+      if (!profile) throw new Error("Perfil não encontrado.");
+      await supabase.from("leads").update({ notificacao_vista: true, notificacao_vista_em: new Date().toISOString(), notificacao_vista_por: profile.id } as any).eq("id", leadId);
+      await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "notificacao_vista", descricao: "Notificação marcada como vista pelo avaliador." });
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); },
     onError: (err: any) => toast.error(err.message),
   });
 
@@ -375,7 +418,7 @@ export default function FilaLeadsPage() {
           <Badge variant="secondary" className="text-xs gap-1"><ListOrdered className="w-3 h-3" /> {queue.length} na fila</Badge>
           {totalTarefas > 0 && <Badge variant="outline" className="text-xs gap-1"><Clock className="w-3 h-3" /> {totalTarefas} tarefa{totalTarefas > 1 ? "s" : ""}</Badge>}
           {totalTarefasAtrasadas > 0 && <Badge variant="destructive" className="text-xs gap-1"><AlertTriangle className="w-3 h-3" /> {totalTarefasAtrasadas} atrasada{totalTarefasAtrasadas > 1 ? "s" : ""}</Badge>}
-          {totalAtrasados > 0 && <Badge variant="destructive" className="text-xs gap-1"><AlertTriangle className="w-3 h-3" /> {totalAtrasados} lead{totalAtrasados > 1 ? "s" : ""} atrasado{totalAtrasados > 1 ? "s" : ""}</Badge>}
+          {totalNaoVistas > 0 && <Badge className="text-xs gap-1 bg-orange-500 hover:bg-orange-600 text-white border-0"><Bell className="w-3 h-3" /> {totalNaoVistas} notificaç{totalNaoVistas > 1 ? "ões" : "ão"}</Badge>}
         </div>
       </div>
 
@@ -384,6 +427,10 @@ export default function FilaLeadsPage() {
         <TabsList>
           <TabsTrigger value="fila">Fila de Leads ({filteredQueue.length})</TabsTrigger>
           <TabsTrigger value="tarefas">Tarefas do Dia ({totalTarefas}){totalTarefasAtrasadas > 0 ? ` 🔴` : ""}</TabsTrigger>
+          <TabsTrigger value="notificacoes" className="gap-1.5">
+            <Bell className="w-3.5 h-3.5" /> Notificações ({notificacoes.length})
+            {totalNaoVistas > 0 && <span className="ml-1 inline-flex items-center justify-center w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-bold">{totalNaoVistas}</span>}
+          </TabsTrigger>
         </TabsList>
 
         {/* ═══ TAB: Fila de Leads ═══ */}
@@ -404,7 +451,6 @@ export default function FilaLeadsPage() {
                     <SelectItem value="novo">Novo</SelectItem>
                     <SelectItem value="em_contato">Em Contato</SelectItem>
                     <SelectItem value="interessado">Interessado</SelectItem>
-                    <SelectItem value="aguardando_decisao_avaliador">Aguardando Decisão</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={filterResponsavel} onValueChange={setFilterResponsavel}>
@@ -474,7 +520,6 @@ export default function FilaLeadsPage() {
                               <Badge className={`text-[11px] border-0 ${
                                 item.lead.status_lead === "novo" ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" :
                                 item.lead.status_lead === "em_contato" ? "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" :
-                                item.lead.status_lead === "aguardando_decisao_avaliador" ? "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" :
                                 "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200"
                               }`}>
                                 {STATUS_MAP[item.lead.status_lead] || item.lead.status_lead}
@@ -482,24 +527,28 @@ export default function FilaLeadsPage() {
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center justify-end gap-1">
-                                <Button size="sm" variant="ghost" className="h-7 text-[11px] px-1.5" title="Abrir lead" onClick={() => navigate(`/leads?id=${item.lead.id}`)}><ExternalLink className="w-3.5 h-3.5" /></Button>
-                                {item.lead.status_lead === "aguardando_decisao_avaliador" ? (
-                                  <>
-                                    <Button size="sm" variant="outline" className="h-7 text-[11px] px-2" onClick={() => archiveMutation.mutate(item.lead.id)} disabled={archiveMutation.isPending}><Archive className="w-3 h-3 mr-1" /> Arquivar</Button>
-                                    <Button size="sm" variant="secondary" className="h-7 text-[11px] px-2" onClick={() => { setDecisionLeadId(item.lead.id); setDecisionLeadName(item.lead.nome); setDecisionTarget(""); setShowDecisionTransfer(true); }}>
-                                      <ArrowRightLeft className="w-3 h-3 mr-1" /> Transferir
-                                    </Button>
-                                    {(fluxoConfig as any)?.permitir_reiniciar_rotina && (
-                                      <Button size="sm" variant="ghost" className="h-7 text-[11px] px-2" onClick={() => restartMutation.mutate(item.lead.id)} disabled={restartMutation.isPending}><RefreshCw className="w-3 h-3 mr-1" /> Reiniciar</Button>
+                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Ver lead" onClick={() => navigate(`/leads?id=${item.lead.id}`)}><Eye className="w-3.5 h-3.5" /></Button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button size="sm" variant="outline" className="h-7 text-[11px] px-2 gap-1"><MoreHorizontal className="w-3.5 h-3.5" /> Ação</Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => openAttempt(item)} className="gap-2 text-xs">
+                                      <Phone className="w-3.5 h-3.5" /> Registrar {item.tentativaAtual}ª Tentativa
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => { setTransferItem(item); setTransferTarget(""); setShowTransfer(true); }} className="gap-2 text-xs">
+                                      <ArrowRightLeft className="w-3.5 h-3.5" /> Transferir Lead
+                                    </DropdownMenuItem>
+                                    {item.isOverdue && (
+                                      <DropdownMenuItem onClick={() => { setDelayItem(item); setShowDelay(true); }} className="gap-2 text-xs text-destructive">
+                                        <AlertTriangle className="w-3.5 h-3.5" /> Registrar Atraso
+                                      </DropdownMenuItem>
                                     )}
-                                  </>
-                                ) : (
-                                  <>
-                                    <Button size="sm" variant="outline" className="h-7 text-[11px] px-2" onClick={() => openAttempt(item)}><Phone className="w-3 h-3 mr-1" /> {item.tentativaAtual}ª Tentativa</Button>
-                                    <Button size="sm" variant="ghost" className="h-7 text-[11px] px-1.5" title="Transferir" onClick={() => { setTransferItem(item); setTransferTarget(""); setShowTransfer(true); }}><ArrowRightLeft className="w-3.5 h-3.5" /></Button>
-                                    {item.isOverdue && <Button size="sm" variant="ghost" className="h-7 text-[11px] px-1.5 text-destructive hover:text-destructive" title="Marcar atraso" onClick={() => { setDelayItem(item); setShowDelay(true); }}><AlertTriangle className="w-3.5 h-3.5" /></Button>}
-                                  </>
-                                )}
+                                    <DropdownMenuItem onClick={() => archiveMutation.mutate(item.lead.id)} className="gap-2 text-xs text-destructive">
+                                      <Archive className="w-3.5 h-3.5" /> Arquivar Lead
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </div>
                             </TableCell>
                           </TableRow>
@@ -535,7 +584,7 @@ export default function FilaLeadsPage() {
                       <TableHead>Período</TableHead>
                       <TableHead>Data</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Ação</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -559,10 +608,139 @@ export default function FilaLeadsPage() {
                               {isOv ? <span className="flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Atrasado</span> : "Pendente"}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-right">
-                            <Button size="sm" variant="outline" onClick={() => { setSelectedTarefa(tarefa); setTarefaTipo("telefone"); setTarefaNumero(""); setTarefaResultado(""); }} className="press-effect">
-                              <Phone className="w-3.5 h-3.5 mr-1" /> Atender
-                            </Button>
+                          <TableCell>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Ver lead" onClick={() => navigate(`/leads?id=${tarefa.lead_id}`)}><Eye className="w-3.5 h-3.5" /></Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button size="sm" variant="outline" className="h-7 text-[11px] px-2 gap-1"><MoreHorizontal className="w-3.5 h-3.5" /> Ação</Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => { setSelectedTarefa(tarefa); setTarefaTipo("telefone"); setTarefaNumero(""); setTarefaResultado(""); }} className="gap-2 text-xs">
+                                    <Phone className="w-3.5 h-3.5" /> Registrar Tentativa
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => navigate(`/leads?id=${tarefa.lead_id}`)} className="gap-2 text-xs">
+                                    <ExternalLink className="w-3.5 h-3.5" /> Abrir Lead
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ═══ TAB: Notificações do Avaliador ═══ */}
+        <TabsContent value="notificacoes" className="space-y-4 mt-3">
+          {/* Filters */}
+          <Card>
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
+                <div className="relative flex-1 min-w-[180px] max-w-[280px] flex gap-1">
+                  <Input placeholder="Buscar lead..." value={notifSearch} onChange={e => setNotifSearch(e.target.value)} onKeyDown={e => { if (e.key === "Enter") setNotifAppliedSearch(notifSearch); }} className="h-8 text-xs" />
+                  <Button size="sm" variant="outline" className="h-8 w-8 p-0 shrink-0" onClick={() => setNotifAppliedSearch(notifSearch)}><Search className="w-3.5 h-3.5" /></Button>
+                </div>
+                <Select value={notifFilterVisto} onValueChange={setNotifFilterVisto}>
+                  <SelectTrigger className="h-8 text-xs w-[160px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="nao_visto">Não Vistos</SelectItem>
+                    <SelectItem value="visto">Já Vistos</SelectItem>
+                  </SelectContent>
+                </Select>
+                {(notifFilterVisto !== "todos" || notifAppliedSearch) && (
+                  <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setNotifFilterVisto("todos"); setNotifSearch(""); setNotifAppliedSearch(""); }}>Limpar</Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-0 overflow-auto max-h-[calc(100vh-360px)]">
+              {filteredNotificacoes.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground text-sm">Nenhuma notificação</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-8">#</TableHead>
+                      <TableHead>Lead</TableHead>
+                      <TableHead>Telefone(s)</TableHead>
+                      <TableHead>Responsável Anterior</TableHead>
+                      <TableHead>Tentativas</TableHead>
+                      <TableHead className="text-center">Visto</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredNotificacoes.map((item, idx) => {
+                      const phones = item.contatos.filter(c => c.tipo_contato === "telefone");
+                      const isVisto = item.lead.notificacao_vista;
+                      return (
+                        <TableRow key={item.lead.id} className={!isVisto ? "bg-orange-50 dark:bg-orange-950/20" : ""}>
+                          <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {!isVisto && <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />}
+                              <span className="font-medium text-sm">{item.lead.nome}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {phones.map(c => <Badge key={c.id} variant="outline" className="text-[11px] gap-0.5 font-normal"><Phone className="w-2.5 h-2.5" />{c.valor}</Badge>)}
+                              {phones.length === 0 && <span className="text-[11px] text-muted-foreground">Sem tel.</span>}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-xs">{item.responsavelNome}</TableCell>
+                          <TableCell><Badge variant="secondary" className="text-xs">{item.interacoes} realizadas</Badge></TableCell>
+                          <TableCell className="text-center">
+                            {isVisto ? (
+                              <Badge className="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 border-0 gap-1">
+                                <CheckCircle2 className="w-3 h-3" /> Visto
+                              </Badge>
+                            ) : (
+                              <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2 gap-1 text-orange-600 hover:text-orange-700" onClick={() => markAsSeenMutation.mutate(item.lead.id)}>
+                                <Eye className="w-3 h-3" /> Marcar visto
+                              </Button>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Ver lead" onClick={() => navigate(`/leads?id=${item.lead.id}`)}><Eye className="w-3.5 h-3.5" /></Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button size="sm" variant="outline" className="h-7 text-[11px] px-2 gap-1"><MoreHorizontal className="w-3.5 h-3.5" /> Ação</Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  {!isVisto && (
+                                    <DropdownMenuItem onClick={() => markAsSeenMutation.mutate(item.lead.id)} className="gap-2 text-xs">
+                                      <Eye className="w-3.5 h-3.5" /> Marcar como Visto
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem onClick={() => archiveMutation.mutate(item.lead.id)} className="gap-2 text-xs">
+                                    <Archive className="w-3.5 h-3.5" /> Arquivar Lead
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => { setDecisionLeadId(item.lead.id); setDecisionLeadName(item.lead.nome); setDecisionTarget(""); setShowDecisionTransfer(true); }} className="gap-2 text-xs">
+                                    <ArrowRightLeft className="w-3.5 h-3.5" /> Transferir para Atendimento
+                                  </DropdownMenuItem>
+                                  {(fluxoConfig as any)?.permitir_reiniciar_rotina && (
+                                    <DropdownMenuItem onClick={() => restartMutation.mutate(item.lead.id)} className="gap-2 text-xs">
+                                      <RefreshCw className="w-3.5 h-3.5" /> Reiniciar Rotina
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem onClick={() => navigate(`/leads?id=${item.lead.id}`)} className="gap-2 text-xs">
+                                    <ExternalLink className="w-3.5 h-3.5" /> Abrir Lead
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
@@ -642,7 +820,7 @@ export default function FilaLeadsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ─── Decision Transfer Dialog (aguardando_decisao) ── */}
+      {/* ─── Decision Transfer Dialog ── */}
       <Dialog open={showDecisionTransfer} onOpenChange={setShowDecisionTransfer}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><ArrowRightLeft className="w-5 h-5" /> Transferir para Tratativa</DialogTitle></DialogHeader>
