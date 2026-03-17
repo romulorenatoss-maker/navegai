@@ -43,6 +43,8 @@ interface Lead {
   bairro_id: string | null;
   rua_id: string | null;
   numero_endereco: string | null;
+  reserved_by: string | null;
+  reserved_at: string | null;
 }
 
 interface LeadContato {
@@ -143,7 +145,10 @@ const STATUS_OPTIONS = [
   { value: "arquivado", label: "Arquivado", color: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200" },
   { value: "aguardando_decisao_avaliador", label: "Aguardando Avaliador", color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
   { value: "aguardando_captura", label: "Aguardando Captura", color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
+  { value: "reservado", label: "Reservado", color: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200" },
 ];
+
+const RESERVATION_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes
 
 function statusBadge(status: string) {
   const s = STATUS_OPTIONS.find((o) => o.value === status) || STATUS_OPTIONS[0];
@@ -175,6 +180,10 @@ const EVENTO_LABELS: Record<string, string> = {
   agendamento_removido: "Agendamento Removido",
   lead_reaberto_captura: "Lead Reaberto p/ Captura",
   lead_capturado: "Lead Capturado",
+  lead_reservado: "Lead Reservado",
+  reserva_liberada: "Reserva Liberada",
+  reserva_expirada: "Reserva Expirada",
+  transferencia_manual: "Transferência Manual",
 };
 
 const EVENTO_ICONS: Record<string, typeof Phone> = {
@@ -197,6 +206,11 @@ const EVENTO_ICONS: Record<string, typeof Phone> = {
   observacao_adicionada: MessageSquare,
   dados_alterados: FileText,
   agendamento_removido: Clock,
+  lead_reservado: Eye,
+  reserva_liberada: RefreshCw,
+  reserva_expirada: Clock,
+  transferencia_manual: ArrowRight,
+  lead_capturado: UserCheck,
 };
 
 const PERIODO_HORA: Record<string, number> = { manha: 9, tarde: 14, noite: 19 };
@@ -587,7 +601,7 @@ export default function LeadsPage() {
     queryKey: ["leads-captura"],
     queryFn: async () => {
       const { data, error } = await supabase.from("leads").select("*")
-        .eq("status_lead", "aguardando_captura")
+        .in("status_lead", ["aguardando_captura", "reservado"])
         .order("updated_at", { ascending: true });
       if (error) throw error;
       return data as Lead[];
@@ -633,35 +647,162 @@ export default function LeadsPage() {
         // Only exclude the LAST handler (person whose cycle just ended), not everyone
         const lastHandlerId = lastInteracao?.colaborador_id || null;
         const wasLastHandler = lastHandlerId === profile.id;
-        return { lead, contatos, userPreviouslyHandled: wasLastHandler, ultimaTentativaEm: lastInteracao?.data_interacao || null };
+        // Check reservation status
+        const isReservedByMe = lead.reserved_by === profile.id;
+        const isReservedByOther = !!lead.reserved_by && lead.reserved_by !== profile.id;
+        // Check if reservation expired (2 min)
+        const reservationExpired = lead.reserved_at
+          ? (Date.now() - new Date(lead.reserved_at).getTime()) > RESERVATION_TIMEOUT_MS
+          : false;
+        return {
+          lead, contatos, userPreviouslyHandled: wasLastHandler,
+          ultimaTentativaEm: lastInteracao?.data_interacao || null,
+          isReservedByMe, isReservedByOther: isReservedByOther && !reservationExpired,
+          reservationExpired,
+        };
       })
-      .filter(item => isAdmin || !item.userPreviouslyHandled);
+      .filter(item => {
+        // Hide leads reserved by other users (unless expired)
+        if (item.isReservedByOther) return false;
+        // Admin sees everything, non-admin filters out previous handler
+        return isAdmin || !item.userPreviouslyHandled || item.isReservedByMe;
+      });
   }, [capturaLeadsRaw, capturaInteracoes, capturaContatos, profile, isAdmin]);
 
-  const captureMutation = useMutation({
+  // ─── Reservation: reserve lead (not assign) ─────────────────
+  const reserveLeadMutation = useMutation({
     mutationFn: async (leadId: string) => {
       if (!profile) throw new Error("Perfil não encontrado.");
+      // Atomic: only reserve if not already reserved (or reservation expired)
       const { data, error } = await supabase
         .from("leads")
-        .update({ responsavel_id: profile.id, status_lead: "em_contato" } as any)
+        .update({
+          reserved_by: profile.id,
+          reserved_at: new Date().toISOString(),
+          status_lead: "reservado",
+        } as any)
         .eq("id", leadId)
-        .is("responsavel_id", null)
+        .or(`reserved_by.is.null,reserved_at.lt.${new Date(Date.now() - RESERVATION_TIMEOUT_MS).toISOString()}`)
         .select("id");
       if (error) throw error;
-      if (!data || data.length === 0) throw new Error("Lead já foi capturado por outro usuário.");
-      await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", leadId).in("status", ["pendente", "atrasado"]);
-      const { data: firstRotina } = await supabase.from("rotina_tentativas_leads").select("*").eq("tentativa_numero", 1).maybeSingle();
-      const periodo = (firstRotina as any)?.periodo_contato || "manha";
-      await supabase.from("lead_tarefas_contato").insert({ lead_id: leadId, tentativa: 1, data_contato: new Date().toISOString(), periodo, status: "pendente", responsavel_id: profile.id });
-      await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "lead_capturado", descricao: `Lead capturado por ${profile.nome}. Nova rotina de tentativas iniciada.` });
+      if (!data || data.length === 0) throw new Error("Este lead está sendo visualizado por outro usuário.");
+      // Log reservation
+      await supabase.from("lead_historico").insert({
+        lead_id: leadId, usuario_id: profile.id,
+        tipo_evento: "lead_reservado",
+        descricao: `Lead reservado por ${profile.nome}. Aguardando primeira interação.`,
+      });
+      return leadId;
     },
-    onSuccess: () => {
-      toast.success("Lead capturado com sucesso! Nova rotina iniciada.");
+    onSuccess: (leadId) => {
+      toast.success("Lead reservado! Registre a interação para confirmar.");
       queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
-      queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+      // Open the reserved lead for interaction
+      const lead = capturaLeadsRaw.find(l => l.id === leadId);
+      if (lead) {
+        setSelectedLead({ ...lead, reserved_by: profile!.id, reserved_at: new Date().toISOString(), status_lead: "reservado" });
+      }
     },
     onError: (err: any) => toast.error(err.message),
   });
+
+  // ─── Release reservation ─────────────────
+  const releaseReservation = useCallback(async (leadId: string, reason: string = "manual") => {
+    if (!profile) return;
+    await supabase.from("leads").update({
+      reserved_by: null,
+      reserved_at: null,
+      status_lead: "aguardando_captura",
+    } as any).eq("id", leadId).eq("reserved_by", profile.id);
+    await supabase.from("lead_historico").insert({
+      lead_id: leadId, usuario_id: profile.id,
+      tipo_evento: reason === "timeout" ? "reserva_expirada" : "reserva_liberada",
+      descricao: reason === "timeout"
+        ? `Reserva expirada após 2 minutos sem interação. Lead retornou à fila.`
+        : `Reserva liberada por ${profile.nome}. Lead retornou à fila.`,
+    });
+    queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
+  }, [profile, queryClient]);
+
+  // ─── Auto-expiry timer for reserved leads ─────────────────
+  useEffect(() => {
+    if (!selectedLead || selectedLead.status_lead !== "reservado" || selectedLead.reserved_by !== profile?.id) return;
+    const reservedAt = selectedLead.reserved_at ? new Date(selectedLead.reserved_at).getTime() : Date.now();
+    const remaining = RESERVATION_TIMEOUT_MS - (Date.now() - reservedAt);
+    if (remaining <= 0) {
+      // Already expired
+      releaseReservation(selectedLead.id, "timeout");
+      setSelectedLead(null);
+      toast.warning("Reserva expirada. Lead retornou à fila de captura.");
+      return;
+    }
+    const timer = setTimeout(() => {
+      releaseReservation(selectedLead.id, "timeout");
+      setSelectedLead(null);
+      toast.warning("Reserva expirada (2 minutos). Lead retornou à fila de captura.");
+    }, remaining);
+    return () => clearTimeout(timer);
+  }, [selectedLead?.id, selectedLead?.status_lead, selectedLead?.reserved_by, selectedLead?.reserved_at, profile?.id, releaseReservation]);
+
+  // ─── Release reservation on leaving the lead (deselecting or navigating away) ──
+  const previousSelectedLeadRef = useCallback(() => {}, []);
+  useEffect(() => {
+    // Release when user deselects or selects a different lead
+    return () => {
+      // This runs on unmount or when selectedLead changes
+    };
+  }, []);
+
+  // Release on component unmount (leaving the page)
+  useEffect(() => {
+    return () => {
+      // Use the stored ref to release on unmount
+    };
+  }, []);
+
+  // Track selected lead changes to release previous reservation
+  const prevSelectedLeadIdRef = useMemo(() => ({ current: null as string | null }), []);
+  useEffect(() => {
+    const prevId = prevSelectedLeadIdRef.current;
+    const currentId = selectedLead?.id || null;
+    const wasReservedByMe = prevId && capturaLeadsRaw.find(l => l.id === prevId)?.reserved_by === profile?.id;
+
+    if (prevId && prevId !== currentId && wasReservedByMe) {
+      // User moved away from a reserved lead without acting
+      releaseReservation(prevId, "manual");
+    }
+    prevSelectedLeadIdRef.current = currentId;
+  }, [selectedLead?.id, profile?.id]);
+
+  // Release reservation on page unload (browser close / navigate away)
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (selectedLead?.status_lead === "reservado" && selectedLead?.reserved_by === profile?.id) {
+        // Use sendBeacon for reliable cleanup
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/leads?id=eq.${selectedLead.id}&reserved_by=eq.${profile!.id}`;
+        const body = JSON.stringify({ reserved_by: null, reserved_at: null, status_lead: "aguardando_captura" });
+        navigator.sendBeacon(url, new Blob([body], { type: "application/json" }));
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [selectedLead?.id, selectedLead?.status_lead, selectedLead?.reserved_by, profile?.id]);
+
+  // ─── Realtime subscription for capture queue ─────────────────
+  useEffect(() => {
+    const channel = supabase
+      .channel("leads-reservation-realtime")
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "leads",
+        filter: "status_lead=in.(aguardando_captura,reservado)",
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
 
   // Build priority queue (cycle-aware after transfers)
   const priorityQueue = useMemo(() => {
@@ -1223,6 +1364,35 @@ export default function LeadsPage() {
   const interactionMutation = useMutation({
     mutationFn: async () => {
       if (!selectedLead || !profile) throw new Error("Erro interno.");
+
+      // If lead is reserved (from capture queue), confirm assignment on first interaction
+      const isReservedCapture = selectedLead.status_lead === "reservado" && selectedLead.reserved_by === profile.id;
+      if (isReservedCapture) {
+        // Officially assign the lead
+        await supabase.from("leads").update({
+          responsavel_id: profile.id,
+          status_lead: "em_contato",
+          reserved_by: null,
+          reserved_at: null,
+        } as any).eq("id", selectedLead.id);
+        // Cancel old tasks and start cadence
+        await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", selectedLead.id).in("status", ["pendente", "atrasado"]);
+        const { data: firstRotina } = await supabase.from("rotina_tentativas_leads").select("*").eq("tentativa_numero", 1).maybeSingle();
+        const periodo = (firstRotina as any)?.periodo_contato || "manha";
+        await supabase.from("lead_tarefas_contato").insert({
+          lead_id: selectedLead.id, tentativa: 1, data_contato: new Date().toISOString(),
+          periodo, status: "pendente", responsavel_id: profile.id,
+        });
+        await supabase.from("lead_historico").insert({
+          lead_id: selectedLead.id, usuario_id: profile.id,
+          tipo_evento: "lead_capturado",
+          descricao: `Lead capturado e atribuído a ${profile.nome} após primeira interação. Nova rotina iniciada.`,
+        });
+        // Update local state
+        setSelectedLead(prev => prev ? { ...prev, responsavel_id: profile.id, status_lead: "em_contato", reserved_by: null, reserved_at: null } : null);
+        queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
+        queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+      }
 
       // Save pending field changes first
       const changes: string[] = [];
@@ -1924,6 +2094,7 @@ export default function LeadsPage() {
                   <div className="divide-y divide-border">
                     {capturaQueue.map(item => {
                       const phones = item.contatos.filter(c => c.tipo_contato === "telefone");
+                      const isReservedByMe = item.isReservedByMe;
                       return (
                         <div key={item.lead.id} className="px-3 py-2 flex items-center justify-between gap-2">
                           <div className="min-w-0 flex-1">
@@ -1932,17 +2103,33 @@ export default function LeadsPage() {
                               {phones.length > 0 ? phones[0].valor : "Sem telefone"}
                               {item.ultimaTentativaEm && ` · Última: ${format(new Date(item.ultimaTentativaEm), "dd/MM HH:mm", { locale: ptBR })}`}
                             </p>
+                            {isReservedByMe && (
+                              <Badge className="text-[9px] bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 border-0 mt-0.5">
+                                <Clock className="w-2.5 h-2.5 mr-0.5" /> Reservado por você
+                              </Badge>
+                            )}
                           </div>
-                          {item.userPreviouslyHandled ? (
+                          {item.userPreviouslyHandled && !isReservedByMe ? (
                             <Badge variant="outline" className="text-[9px] shrink-0">Já interagiu</Badge>
+                          ) : isReservedByMe ? (
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-[10px] px-2 gap-1 text-destructive border-destructive/30"
+                                onClick={() => { releaseReservation(item.lead.id, "manual"); if (selectedLead?.id === item.lead.id) setSelectedLead(null); }}
+                              >
+                                Liberar
+                              </Button>
+                            </div>
                           ) : (
                             <Button
                               size="sm"
                               className="h-7 text-[10px] px-2 gap-1"
-                              onClick={() => captureMutation.mutate(item.lead.id)}
-                              disabled={captureMutation.isPending}
+                              onClick={() => reserveLeadMutation.mutate(item.lead.id)}
+                              disabled={reserveLeadMutation.isPending}
                             >
-                              {captureMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserCheck className="w-3 h-3" />}
+                              {reserveLeadMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserCheck className="w-3 h-3" />}
                               Capturar
                             </Button>
                           )}

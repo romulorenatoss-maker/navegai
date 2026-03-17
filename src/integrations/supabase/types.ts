@@ -959,6 +959,8 @@ export type Database = {
           origem_lead: string | null
           plano_id: string | null
           repetidor: string | null
+          reserved_at: string | null
+          reserved_by: string | null
           responsavel_id: string | null
           rua_id: string | null
           status_lead: string
@@ -980,6 +982,8 @@ export type Database = {
           origem_lead?: string | null
           plano_id?: string | null
           repetidor?: string | null
+          reserved_at?: string | null
+          reserved_by?: string | null
           responsavel_id?: string | null
           rua_id?: string | null
           status_lead?: string
@@ -1001,6 +1005,8 @@ export type Database = {
           origem_lead?: string | null
           plano_id?: string | null
           repetidor?: string | null
+          reserved_at?: string | null
+          reserved_by?: string | null
           responsavel_id?: string | null
           rua_id?: string | null
           status_lead?: string
@@ -1033,6 +1039,13 @@ export type Database = {
             columns: ["plano_id"]
             isOneToOne: false
             referencedRelation: "planos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_reserved_by_fkey"
+            columns: ["reserved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
