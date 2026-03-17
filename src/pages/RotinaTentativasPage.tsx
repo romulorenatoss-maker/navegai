@@ -129,7 +129,8 @@ export default function RotinaTentativasPage() {
           acao_quando_atrasar: localConfig.acao_quando_atrasar,
           acao_apos_finalizar_tentativas: localConfig.acao_apos_finalizar_tentativas,
           permitir_reiniciar_rotina: localConfig.permitir_reiniciar_rotina,
-        })
+          tipo_servico_conversao_id: localConfig.tipo_servico_conversao_id,
+        } as any)
         .eq("id", config.id);
       if (e1) throw e1;
 
