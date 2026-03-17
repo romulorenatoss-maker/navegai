@@ -249,8 +249,8 @@ export default function FilaLeadsPage() {
       if (filterAgendamento === "agendado" && !item.isScheduled) return false;
       if (filterAgendamento === "sem_agendamento" && item.isScheduled) return false;
       if (filterAgendamento === "atrasado" && !item.isOverdue) return false;
-      if (searchTerm) {
-        const term = searchTerm.toLowerCase();
+      if (appliedSearch) {
+        const term = appliedSearch.toLowerCase();
         const matchName = item.lead.nome.toLowerCase().includes(term);
         const matchPhone = item.contatos.some(c => c.valor.includes(term));
         if (!matchName && !matchPhone) return false;
