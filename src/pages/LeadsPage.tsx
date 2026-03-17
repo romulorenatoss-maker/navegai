@@ -1082,7 +1082,7 @@ export default function LeadsPage() {
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <h1 className="text-lg font-bold text-foreground">Gestão de Leads</h1>
-          <Badge variant="secondary" className="text-xs">{priorityQueue.length} na fila</Badge>
+          <Badge variant="secondary" className="text-xs">{filteredQueue.length} na fila</Badge>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative w-64">
