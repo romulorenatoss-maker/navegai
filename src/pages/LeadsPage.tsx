@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -252,6 +252,12 @@ export default function LeadsPage() {
   const [cepNotFound, setCepNotFound] = useState(false);
   const [newRuaNomeFromCep, setNewRuaNomeFromCep] = useState("");
   const [newBairroNomeFromCep, setNewBairroNomeFromCep] = useState("");
+  // Duplicate phone detection modal
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [duplicateLeadData, setDuplicateLeadData] = useState<{
+    lead: any; contatos: any[]; responsavel: string | null; ultimaInteracao: any | null;
+  } | null>(null);
+  const [forceCreateLead, setForceCreateLead] = useState(false);
   // Quick-add address dialogs
   const [quickAddType, setQuickAddType] = useState<"cidade" | "bairro" | "rua" | null>(null);
   const [quickAddNome, setQuickAddNome] = useState("");
@@ -1048,27 +1054,30 @@ export default function LeadsPage() {
       const phoneNorm = normalizePhone(createPhone);
       if (phoneNorm.length < 8) throw new Error("Telefone inválido.");
 
-      const { data: existingLeadContatos } = await supabase
-        .from("lead_contatos").select("lead_id, valor").eq("tipo_contato", "telefone");
-      const matchedLeadContato = (existingLeadContatos || []).find(c => normalizePhone(c.valor) === phoneNorm);
-      if (matchedLeadContato) {
-        const { data: existingLead } = await supabase
-          .from("leads").select("*").eq("id", matchedLeadContato.lead_id)
-          .not("status_lead", "in", '("convertido","perdido","arquivado")').single();
-        if (existingLead) {
-          await supabase.from("leads").update({ responsavel_id: profile.id }).eq("id", existingLead.id);
-          await resetTasksForTransfer(existingLead.id, profile.id);
-          await supabase.from("lead_historico").insert({
-            lead_id: existingLead.id, usuario_id: profile.id,
-            tipo_evento: "transferencia_automatica",
-            descricao: "Lead assumido automaticamente por telefone existente",
-          });
-          setShowCreate(false);
-          setSelectedLead({ ...existingLead, responsavel_id: profile.id });
-          queryClient.invalidateQueries({ queryKey: ["leads-list"] });
-          throw new Error("__DUPLICATE_LEAD__");
+      // Skip duplicate check if force-creating
+      if (!forceCreateLead) {
+        const { data: existingLeadContatos } = await supabase
+          .from("lead_contatos").select("lead_id, valor").eq("tipo_contato", "telefone");
+        const matchedLeadContato = (existingLeadContatos || []).find(c => normalizePhone(c.valor) === phoneNorm);
+        if (matchedLeadContato) {
+          const { data: existingLead } = await supabase
+            .from("leads").select("*").eq("id", matchedLeadContato.lead_id).single();
+          if (existingLead) {
+            // Fetch details for modal
+            const { data: contatos } = await supabase.from("lead_contatos").select("*").eq("lead_id", existingLead.id);
+            const respName = existingLead.responsavel_id
+              ? (profiles || []).find((p: any) => p.id === existingLead.responsavel_id)?.nome || null
+              : null;
+            const { data: lastInteraction } = await supabase
+              .from("lead_interacoes").select("*").eq("lead_id", existingLead.id)
+              .order("data_interacao", { ascending: false }).limit(1).maybeSingle();
+            setDuplicateLeadData({ lead: existingLead, contatos: contatos || [], responsavel: respName, ultimaInteracao: lastInteraction });
+            setShowDuplicateModal(true);
+            throw new Error("__DUPLICATE_LEAD__");
+          }
         }
       }
+      setForceCreateLead(false);
 
       let linkedClienteId: string | null = null;
       let linkedClienteNome: string | null = null;
@@ -1146,7 +1155,7 @@ export default function LeadsPage() {
       setSelectedLead(newLead);
     },
     onError: (err: any) => {
-      if (err.message === "__DUPLICATE_LEAD__") { toast.info("Lead existente aberto automaticamente."); return; }
+      if (err.message === "__DUPLICATE_LEAD__") return; // modal handles it
       if (err.message === "__DUPLICATE_CLIENTE__") return;
       toast.error(err.message);
     },
@@ -2759,7 +2768,91 @@ export default function LeadsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Quick Add Address Dialog */}
+      {/* Duplicate Phone Detection Modal */}
+      <Dialog open={showDuplicateModal} onOpenChange={v => { if (!v) { setShowDuplicateModal(false); setDuplicateLeadData(null); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" /> Telefone já cadastrado
+            </DialogTitle>
+            <DialogDescription>
+              Um lead com este telefone já existe no sistema. O que deseja fazer?
+            </DialogDescription>
+          </DialogHeader>
+          {duplicateLeadData && (
+            <div className="space-y-3">
+              <div className="rounded-lg border bg-muted/30 p-3 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Nome:</span>
+                  <span className="font-medium">{duplicateLeadData.lead.nome}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Telefone:</span>
+                  <span className="font-medium">{duplicateLeadData.contatos.find((c: any) => c.tipo_contato === "telefone")?.valor || "—"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Status:</span>
+                  <Badge variant="outline" className="text-xs">{duplicateLeadData.lead.status_lead}</Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Responsável:</span>
+                  <span className="font-medium">{duplicateLeadData.responsavel || "Sem responsável"}</span>
+                </div>
+                {duplicateLeadData.ultimaInteracao && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Última interação:</span>
+                    <span className="text-xs">{new Date(duplicateLeadData.ultimaInteracao.data_interacao).toLocaleDateString("pt-BR")} — {duplicateLeadData.ultimaInteracao.tipo_contato}</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <Button
+                  className="w-full press-effect"
+                  onClick={async () => {
+                    if (!profile || !duplicateLeadData) return;
+                    try {
+                      const lead = duplicateLeadData.lead;
+                      const prevResponsavel = duplicateLeadData.responsavel || "nenhum";
+                      await supabase.from("leads").update({ responsavel_id: profile.id, status_lead: "em_contato" }).eq("id", lead.id);
+                      await resetTasksForTransfer(lead.id, profile.id);
+                      await supabase.from("lead_historico").insert({
+                        lead_id: lead.id, usuario_id: profile.id,
+                        tipo_evento: "transferencia_manual",
+                        descricao: `Lead transferido manualmente de "${prevResponsavel}" para "${profile.nome}" via detecção de duplicidade`,
+                      });
+                      queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                      setShowDuplicateModal(false); setShowCreate(false); setDuplicateLeadData(null);
+                      setSelectedLead({ ...lead, responsavel_id: profile.id, status_lead: "em_contato" });
+                      toast.success("Lead assumido com sucesso!");
+                    } catch (err: any) { toast.error(err.message); }
+                  }}
+                >
+                  <UserCheck className="w-4 h-4 mr-2" /> Assumir Lead
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    setShowDuplicateModal(false); setDuplicateLeadData(null);
+                    setForceCreateLead(true);
+                    setTimeout(() => createLeadMutation.mutate(), 50);
+                  }}
+                >
+                  <Plus className="w-4 h-4 mr-2" /> Criar Novo Mesmo Assim
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => { setShowDuplicateModal(false); setDuplicateLeadData(null); }}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!quickAddType} onOpenChange={v => !v && setQuickAddType(null)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
