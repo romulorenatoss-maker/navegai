@@ -23,7 +23,7 @@ export function AppLayout() {
     await signOut();
   }, [endSession, signOut]);
 
-  useIdleTimeout(handleIdleLogout, 5 * 60 * 1000);
+  useIdleTimeout(handleIdleLogout);
 
   const handleSignOut = useCallback(async () => {
     await endSession("manual");
