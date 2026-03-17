@@ -543,13 +543,23 @@ export default function LeadsPage() {
     },
   });
 
-  // Build priority queue
+  // Build priority queue (cycle-aware after transfers)
   const priorityQueue = useMemo(() => {
     const activeLeads = allLeads.filter(l => ["novo", "em_contato", "interessado"].includes(l.status_lead));
     return activeLeads.map((lead) => {
       const interacoes = allLeadInteracoes.filter(i => i.lead_id === lead.id);
-      const tentativaAtual = interacoes.length + 1;
-      const ultimaInteracao = interacoes[0]?.data_interacao || null;
+      
+      // Find latest transfer for this lead to determine cycle
+      const lastTransfer = allLeadTransfers.find(t => t.lead_id === lead.id);
+      const transferDate = lastTransfer ? new Date(lastTransfer.data_evento) : null;
+      
+      // Cycle-based: only count interactions after last transfer
+      const cycleInteracoes = transferDate
+        ? interacoes.filter(i => new Date(i.data_interacao) > transferDate)
+        : interacoes;
+      
+      const tentativaAtual = cycleInteracoes.length + 1;
+      const ultimaInteracao = cycleInteracoes[0]?.data_interacao || null;
 
       let proximoContato: Date | null = null;
       if (ultimaInteracao && cadencia.length > 0) {
