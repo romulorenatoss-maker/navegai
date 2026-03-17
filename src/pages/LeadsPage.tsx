@@ -527,6 +527,22 @@ export default function LeadsPage() {
     },
   });
 
+  // Fetch latest transfer event per lead for cycle-based attempt counting
+  const { data: allLeadTransfers = [] } = useQuery({
+    queryKey: ["all-lead-transfers", activeLeadIds],
+    enabled: activeLeadIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("lead_historico")
+        .select("lead_id, data_evento, tipo_evento")
+        .in("lead_id", activeLeadIds)
+        .in("tipo_evento", ["transferencia_automatica", "transferencia_decisao"])
+        .order("data_evento", { ascending: false });
+      if (error) throw error;
+      return data as { lead_id: string; data_evento: string; tipo_evento: string }[];
+    },
+  });
+
   // Build priority queue
   const priorityQueue = useMemo(() => {
     const activeLeads = allLeads.filter(l => ["novo", "em_contato", "interessado"].includes(l.status_lead));
