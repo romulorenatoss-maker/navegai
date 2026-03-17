@@ -126,7 +126,6 @@ export default function FilaLeadsPage() {
 
   // ─── Queries ──────────────────────────────────────
   const CAPTURE_QUEUE_STATUS = "aguardando_captura";
-  const RESERVED_STATUS = "reservado";
 
   const { data: leads = [], isLoading: loadingLeads } = useQuery({
     queryKey: ["fila-leads"],
