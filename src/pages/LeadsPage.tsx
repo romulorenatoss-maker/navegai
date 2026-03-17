@@ -87,6 +87,52 @@ interface CadenciaTentativa {
   prioridade: number;
 }
 
+// ─── Inline CEP adder ──────────────────────────────────
+function AddCepInline({ ruaId, existingCeps, onSaved }: { ruaId: string; existingCeps: string[]; onSaved: () => void }) {
+  const [newCep, setNewCep] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const handleAdd = async () => {
+    const clean = newCep.replace(/\D/g, "");
+    if (clean.length < 5) { toast.error("CEP inválido."); return; }
+    const formatted = clean.length >= 8 ? `${clean.slice(0, 5)}-${clean.slice(5, 8)}` : clean;
+    if (existingCeps.some(c => c.replace(/\D/g, "") === clean)) { toast.error("CEP já vinculado."); return; }
+    setSaving(true);
+    try {
+      const updated = [...existingCeps, formatted];
+      const { error } = await supabase.from("ruas").update({ cep: updated }).eq("id", ruaId);
+      if (error) throw error;
+      setNewCep("");
+      onSaved();
+      toast.success("CEP adicionado!");
+    } catch (err: any) {
+      toast.error("Erro ao salvar CEP: " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <Input
+        className="h-7 text-xs flex-1 font-mono"
+        placeholder="Novo CEP (ex: 12345-678)"
+        value={newCep}
+        onChange={(e) => {
+          let v = e.target.value.replace(/\D/g, "").slice(0, 8);
+          if (v.length > 5) v = v.slice(0, 5) + "-" + v.slice(5);
+          setNewCep(v);
+        }}
+        onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+      />
+      <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={handleAdd} disabled={saving || !newCep.trim()}>
+        {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3 mr-0.5" />}
+        Add CEP
+      </Button>
+    </div>
+  );
+}
+
 // ─── Status helpers ────────────────────────────────────
 const STATUS_OPTIONS = [
   { value: "novo", label: "Novo", color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
@@ -1510,66 +1556,107 @@ export default function LeadsPage() {
                     </div>
                   </div>
                   {/* Address display */}
-                  <div className="grid grid-cols-4 gap-2 pt-2 border-t">
-                    <div className="space-y-1">
-                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Cidade</Label>
-                      <Select value={selectedLead.cidade_id || "none"} onValueChange={async (v) => {
-                        if (!selectedLead || !profile) return;
-                        const val = v === "none" ? null : v;
-                        await supabase.from("leads").update({ cidade_id: val, bairro_id: null, rua_id: null } as any).eq("id", selectedLead.id);
-                        setSelectedLead(prev => prev ? { ...prev, cidade_id: val, bairro_id: null, rua_id: null } : null);
-                        queryClient.invalidateQueries({ queryKey: ["leads-list"] });
-                      }}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Nenhuma</SelectItem>
-                          {endCidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                  <div className="space-y-2 pt-2 border-t">
+                    <div className="grid grid-cols-4 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Cidade</Label>
+                        <Select value={selectedLead.cidade_id || "none"} onValueChange={async (v) => {
+                          if (!selectedLead || !profile) return;
+                          const val = v === "none" ? null : v;
+                          await supabase.from("leads").update({ cidade_id: val, bairro_id: null, rua_id: null } as any).eq("id", selectedLead.id);
+                          setSelectedLead(prev => prev ? { ...prev, cidade_id: val, bairro_id: null, rua_id: null } : null);
+                          queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                        }}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Nenhuma</SelectItem>
+                            {endCidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Bairro</Label>
+                        <Select value={selectedLead.bairro_id || "none"} onValueChange={async (v) => {
+                          if (!selectedLead || !profile) return;
+                          const val = v === "none" ? null : v;
+                          await supabase.from("leads").update({ bairro_id: val, rua_id: null } as any).eq("id", selectedLead.id);
+                          setSelectedLead(prev => prev ? { ...prev, bairro_id: val, rua_id: null } : null);
+                          queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                        }} disabled={!selectedLead.cidade_id}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Nenhum</SelectItem>
+                            {endBairros.filter(b => b.cidade_id === selectedLead.cidade_id).map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Rua</Label>
+                        <Select value={selectedLead.rua_id || "none"} onValueChange={async (v) => {
+                          if (!selectedLead || !profile) return;
+                          const val = v === "none" ? null : v;
+                          await supabase.from("leads").update({ rua_id: val } as any).eq("id", selectedLead.id);
+                          setSelectedLead(prev => prev ? { ...prev, rua_id: val } : null);
+                          queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                        }} disabled={!selectedLead.bairro_id}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Nenhuma</SelectItem>
+                            {endRuas.filter(r => r.bairro_id === selectedLead.bairro_id).map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Nº</Label>
+                        <Input className="h-8 text-xs" value={selectedLead.numero_endereco || ""} onChange={async (e) => {
+                          const val = e.target.value;
+                          setSelectedLead(prev => prev ? { ...prev, numero_endereco: val } : null);
+                        }} onBlur={async () => {
+                          if (!selectedLead) return;
+                          await supabase.from("leads").update({ numero_endereco: selectedLead.numero_endereco || null } as any).eq("id", selectedLead.id);
+                          queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                        }} placeholder="Nº" />
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Bairro</Label>
-                      <Select value={selectedLead.bairro_id || "none"} onValueChange={async (v) => {
-                        if (!selectedLead || !profile) return;
-                        const val = v === "none" ? null : v;
-                        await supabase.from("leads").update({ bairro_id: val, rua_id: null } as any).eq("id", selectedLead.id);
-                        setSelectedLead(prev => prev ? { ...prev, bairro_id: val, rua_id: null } : null);
-                        queryClient.invalidateQueries({ queryKey: ["leads-list"] });
-                      }} disabled={!selectedLead.cidade_id}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Nenhum</SelectItem>
-                          {endBairros.filter(b => b.cidade_id === selectedLead.cidade_id).map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Rua</Label>
-                      <Select value={selectedLead.rua_id || "none"} onValueChange={async (v) => {
-                        if (!selectedLead || !profile) return;
-                        const val = v === "none" ? null : v;
-                        await supabase.from("leads").update({ rua_id: val } as any).eq("id", selectedLead.id);
-                        setSelectedLead(prev => prev ? { ...prev, rua_id: val } : null);
-                        queryClient.invalidateQueries({ queryKey: ["leads-list"] });
-                      }} disabled={!selectedLead.bairro_id}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Nenhuma</SelectItem>
-                          {endRuas.filter(r => r.bairro_id === selectedLead.bairro_id).map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Nº</Label>
-                      <Input className="h-8 text-xs" value={selectedLead.numero_endereco || ""} onChange={async (e) => {
-                        const val = e.target.value;
-                        setSelectedLead(prev => prev ? { ...prev, numero_endereco: val } : null);
-                      }} onBlur={async () => {
-                        if (!selectedLead) return;
-                        await supabase.from("leads").update({ numero_endereco: selectedLead.numero_endereco || null } as any).eq("id", selectedLead.id);
-                        queryClient.invalidateQueries({ queryKey: ["leads-list"] });
-                      }} placeholder="Nº" />
-                    </div>
+
+                    {/* CEP section - show when rua is selected */}
+                    {selectedLead.rua_id && (() => {
+                      const ruaSelecionada = endRuas.find(r => r.id === selectedLead.rua_id);
+                      const ceps = ruaSelecionada?.cep || [];
+                      return (
+                        <div className="bg-muted/30 rounded-lg p-2.5 space-y-2">
+                          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">CEPs vinculados à rua</Label>
+                          {ceps.length > 0 ? (
+                            <div className="flex flex-wrap gap-1.5">
+                              {ceps.map((c, idx) => (
+                                <Badge key={idx} variant="secondary" className="text-xs font-mono gap-1">
+                                  {c}
+                                  <button
+                                    className="ml-0.5 hover:text-destructive transition-colors"
+                                    title="Remover CEP"
+                                    onClick={async () => {
+                                      const newCeps = ceps.filter((_, i) => i !== idx);
+                                      await supabase.from("ruas").update({ cep: newCeps }).eq("id", selectedLead.rua_id!);
+                                      queryClient.invalidateQueries({ queryKey: ["enderecos-ruas"] });
+                                      toast.success("CEP removido.");
+                                    }}
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground italic">Nenhum CEP cadastrado para esta rua</p>
+                          )}
+                          <AddCepInline
+                            ruaId={selectedLead.rua_id!}
+                            existingCeps={ceps}
+                            onSaved={() => queryClient.invalidateQueries({ queryKey: ["enderecos-ruas"] })}
+                          />
+                        </div>
+                      );
+                    })()}
                   </div>
                 </CardContent>
               </Card>
