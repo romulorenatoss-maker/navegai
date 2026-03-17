@@ -38,7 +38,7 @@ const allNavSections = [
       { to: "/cadastros/setores", icon: Building2, label: "Setores" },
       { to: "/cadastros/servicos", icon: Wrench, label: "Tipos de Serviço" },
       { to: "/avaliacoes/perguntas", icon: HelpCircle, label: "Perguntas" },
-      { to: "/leads/objecoes", icon: MessageSquare, label: "Cadastro de Objeções" },
+      { to: "/leads/objecoes", icon: MessageSquare, label: "Objeções" },
       { to: "/cadastros/clientes", icon: ClipboardCheck, label: "Clientes" },
       { to: "/cadastros/enderecos", icon: MapPin, label: "Endereços" },
     ],

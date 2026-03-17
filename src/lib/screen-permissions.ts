@@ -23,7 +23,7 @@ export const ALL_SCREENS: ScreenDef[] = [
   { path: "/cadastros/setores", label: "Setores", group: "Cadastros" },
   { path: "/cadastros/servicos", label: "Tipos de Serviço", group: "Cadastros" },
   { path: "/avaliacoes/perguntas", label: "Perguntas", group: "Cadastros" },
-  { path: "/leads/objecoes", label: "Cadastro de Objeções", group: "Cadastros" },
+  { path: "/leads/objecoes", label: "Objeções", group: "Cadastros" },
   { path: "/cadastros/clientes", label: "Clientes", group: "Cadastros" },
   { path: "/cadastros/enderecos", label: "Endereços", group: "Cadastros" },
   // Leads
