@@ -1764,16 +1764,16 @@ export default function LeadsPage() {
                             <Select value={localCidadeId || "none"} onValueChange={v => {
                               const val = v === "none" ? null : v;
                               setLocalCidadeId(val); setLocalBairroId(null); setLocalRuaId(null);
-                            }}>
+                            }} disabled={isVisionMode}>
                               <SelectTrigger className="h-8 text-xs flex-1"><SelectValue placeholder="—" /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="none">Nenhuma</SelectItem>
                                 {endCidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
                               </SelectContent>
                             </Select>
-                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { setDetailQuickAddType("cidade"); setDetailQuickAddNome(""); }}>
+                            {!isVisionMode && <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { setDetailQuickAddType("cidade"); setDetailQuickAddNome(""); }}>
                               <Plus className="w-3.5 h-3.5" />
-                            </Button>
+                            </Button>}
                           </div>
                         </div>
                         <div className="space-y-1">
@@ -1782,36 +1782,36 @@ export default function LeadsPage() {
                             <Select value={localBairroId || "none"} onValueChange={v => {
                               const val = v === "none" ? null : v;
                               setLocalBairroId(val); setLocalRuaId(null);
-                            }} disabled={!localCidadeId}>
+                            }} disabled={!localCidadeId || isVisionMode}>
                               <SelectTrigger className="h-8 text-xs flex-1"><SelectValue placeholder="—" /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="none">Nenhum</SelectItem>
                                 {endBairros.filter(b => b.cidade_id === localCidadeId).map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}
                               </SelectContent>
                             </Select>
-                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { setDetailQuickAddType("bairro"); setDetailQuickAddNome(""); }} disabled={!localCidadeId}>
+                            {!isVisionMode && <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { setDetailQuickAddType("bairro"); setDetailQuickAddNome(""); }} disabled={!localCidadeId}>
                               <Plus className="w-3.5 h-3.5" />
-                            </Button>
+                            </Button>}
                           </div>
                         </div>
                         <div className="space-y-1">
                           <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Rua</Label>
                           <div className="flex gap-1">
-                            <Select value={localRuaId || "none"} onValueChange={v => setLocalRuaId(v === "none" ? null : v)} disabled={!localBairroId}>
+                            <Select value={localRuaId || "none"} onValueChange={v => setLocalRuaId(v === "none" ? null : v)} disabled={!localBairroId || isVisionMode}>
                               <SelectTrigger className="h-8 text-xs flex-1"><SelectValue placeholder="—" /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="none">Nenhuma</SelectItem>
                                 {endRuas.filter(r => r.bairro_id === localBairroId).map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
                               </SelectContent>
                             </Select>
-                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { setDetailQuickAddType("rua"); setDetailQuickAddNome(""); }} disabled={!localBairroId}>
+                            {!isVisionMode && <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { setDetailQuickAddType("rua"); setDetailQuickAddNome(""); }} disabled={!localBairroId}>
                               <Plus className="w-3.5 h-3.5" />
-                            </Button>
+                            </Button>}
                           </div>
                         </div>
                         <div className="space-y-1">
                           <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Nº</Label>
-                          <Input className="h-8 text-xs" value={localNumeroEnd} onChange={e => setLocalNumeroEnd(e.target.value)} placeholder="Nº" />
+                          <Input className="h-8 text-xs" value={localNumeroEnd} onChange={e => setLocalNumeroEnd(e.target.value)} placeholder="Nº" disabled={isVisionMode} />
                         </div>
                       </div>
 
