@@ -28,6 +28,7 @@ interface Lead {
   status_lead: string;
   responsavel_id: string | null;
   updated_at: string;
+  created_at: string;
   agendamento_retorno: string | null;
 }
 
