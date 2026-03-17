@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Search, ArrowRightLeft, Loader2, MapPin, Building2, Map } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, ArrowRightLeft, Loader2, MapPin, Building2, Map, ExternalLink } from "lucide-react";
 import AdminPasswordDialog from "@/components/AdminPasswordDialog";
 
 interface Cidade { id: string; nome: string; }
