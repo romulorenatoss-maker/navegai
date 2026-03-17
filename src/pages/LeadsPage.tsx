@@ -827,26 +827,7 @@ export default function LeadsPage() {
     prevSelectedLeadIdRef.current = currentId;
   }, [selectedLead?.id, profile?.id]);
 
-  // Release reservation on page unload (browser close / tab close)
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (reservedLeadRef.current) {
-        const { id: leadId } = reservedLeadRef.current;
-        const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/leads?id=eq.${leadId}&reserved_by=eq.${profile!.id}`;
-        const body = JSON.stringify({ reserved_by: null, reserved_at: null, status_lead: "aguardando_captura" });
-        const headers = {
-          "Content-Type": "application/json",
-          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          "Authorization": `Bearer ${(supabase as any).auth?.currentSession?.access_token || ""}`,
-          "Prefer": "return=minimal",
-        };
-        // sendBeacon doesn't support custom headers, use fetch with keepalive instead
-        fetch(url, { method: "PATCH", headers, body, keepalive: true }).catch(() => {});
-      }
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [profile?.id]);
+   // beforeunload does NOT release reservation – the 2-min timer handles expiry
 
   // ─── Realtime subscription for capture queue ─────────────────
   useEffect(() => {
