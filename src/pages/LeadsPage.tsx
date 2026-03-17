@@ -726,7 +726,20 @@ export default function LeadsPage() {
     return items;
   }, [leadHistorico, leadInteracoes]);
 
-  // ─── Search ───────────────────────────────────────
+  // Helper: cancel old tasks and create immediate task for new owner on transfer
+  const resetTasksForTransfer = useCallback(async (leadId: string, newOwnerId: string) => {
+    // Cancel all pending tasks from old owner
+    await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", leadId).eq("status", "pendente");
+    // Create immediate task for new owner
+    const { data: firstRotina } = await supabase
+      .from("rotina_tentativas_leads").select("*").eq("tentativa_numero", 1).maybeSingle();
+    const periodo = firstRotina?.periodo_contato || "manha";
+    await supabase.from("lead_tarefas_contato").insert({
+      lead_id: leadId, tentativa: 1, data_contato: new Date().toISOString(),
+      periodo, status: "pendente", responsavel_id: newOwnerId,
+    });
+  }, []);
+
   const handleSearch = useCallback(async () => {
     const term = searchTerm.trim();
     if (!term) { setSearchResults(null); return; }
@@ -758,8 +771,9 @@ export default function LeadsPage() {
                 const { data: oldProfile } = await supabase.from("profiles").select("nome").eq("id", oldResponsavelId).single();
                 if (oldProfile) oldResponsavelNome = oldProfile.nome;
               }
-              await supabase.from("leads").update({ responsavel_id: profile.id }).eq("id", lead.id);
-              await supabase.from("lead_historico").insert({
+               await supabase.from("leads").update({ responsavel_id: profile.id }).eq("id", lead.id);
+               await resetTasksForTransfer(lead.id, profile.id);
+               await supabase.from("lead_historico").insert({
                 lead_id: lead.id, usuario_id: profile.id,
                 tipo_evento: "transferencia_automatica",
                 descricao: `Lead transferido de "${oldResponsavelNome}" para "${profile.nome}" via busca por telefone`,
@@ -851,6 +865,7 @@ export default function LeadsPage() {
     if (!profile) return;
     if (lead.responsavel_id && lead.responsavel_id !== profile.id) {
       await supabase.from("leads").update({ responsavel_id: profile.id }).eq("id", lead.id);
+      await resetTasksForTransfer(lead.id, profile.id);
       await supabase.from("lead_historico").insert({
         lead_id: lead.id, usuario_id: profile.id,
         tipo_evento: "transferencia_automatica",
@@ -860,6 +875,7 @@ export default function LeadsPage() {
       updateLeadInCache(lead.id, { responsavel_id: profile.id });
     } else if (!lead.responsavel_id) {
       await supabase.from("leads").update({ responsavel_id: profile.id }).eq("id", lead.id);
+      await resetTasksForTransfer(lead.id, profile.id);
       await supabase.from("lead_historico").insert({
         lead_id: lead.id, usuario_id: profile.id,
         tipo_evento: "transferencia_automatica",
@@ -889,6 +905,7 @@ export default function LeadsPage() {
           .not("status_lead", "in", '("convertido","perdido","arquivado")').single();
         if (existingLead) {
           await supabase.from("leads").update({ responsavel_id: profile.id }).eq("id", existingLead.id);
+          await resetTasksForTransfer(existingLead.id, profile.id);
           await supabase.from("lead_historico").insert({
             lead_id: existingLead.id, usuario_id: profile.id,
             tipo_evento: "transferencia_automatica",
