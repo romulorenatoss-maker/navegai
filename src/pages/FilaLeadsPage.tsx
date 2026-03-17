@@ -332,23 +332,24 @@ export default function FilaLeadsPage() {
     });
   }, [leads, allContatos, allInteracoes, cadencia, profiles]);
 
-  // ─── Fila de Captura (aguardando_captura, exclude previous handlers for non-admin) ──
+  // ─── Fila de Captura (aguardando_captura + reservado, show status) ──
   const capturaLeads = useMemo(() => {
     if (!profile) return [];
     const capturaItems = leads
-      .filter(l => l.status_lead === "aguardando_captura")
+      .filter(l => l.status_lead === "aguardando_captura" || l.status_lead === "reservado")
       .map(lead => {
         const contatos = allContatos.filter(c => c.lead_id === lead.id);
         const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
         const lastInteracao = interacoes[0];
         const prevHandlerIds = interacoes.map((i: any) => i.colaborador_id);
         const userPreviouslyHandled = prevHandlerIds.includes(profile.id);
-        return { lead, contatos, totalInteracoes: interacoes.length, ultimaTentativaEm: lastInteracao?.data_interacao || null, userPreviouslyHandled };
+        const isReservedByOther = lead.status_lead === "reservado" && (lead as any).reserved_by !== profile.id;
+        const reservedByName = isReservedByOther ? getProfileName((lead as any).reserved_by) : null;
+        return { lead, contatos, totalInteracoes: interacoes.length, ultimaTentativaEm: lastInteracao?.data_interacao || null, userPreviouslyHandled, isReservedByOther, reservedByName };
       });
-    // Non-admin/non-avaliador: hide leads they previously handled
-    // Admin/avaliador: show all (read-only for ones they handled — they can still see status)
+    // Non-admin: hide leads they previously handled, but show reserved leads (with indicator)
     if (isAdmin) return capturaItems;
-    return capturaItems.filter(item => !item.userPreviouslyHandled);
+    return capturaItems.filter(item => !item.userPreviouslyHandled || item.isReservedByOther);
   }, [leads, allContatos, allInteracoes, profile, isAdmin]);
 
   // ─── Notificações (aguardando_decisao) ────────────
