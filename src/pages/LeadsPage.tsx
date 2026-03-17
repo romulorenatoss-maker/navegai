@@ -729,6 +729,7 @@ export default function LeadsPage() {
       toast.success("Lead criado com sucesso!");
       setShowCreate(false); setCreateName(""); setCreatePhone(""); setCreatePhoneWhatsapp(false);
       setCreateCidadeId(""); setCreateBairroId(""); setCreateRuaId(""); setCreateNumeroEnd("");
+      setCreateBairroSearch(""); setCreateRuaSearch("");
       queryClient.invalidateQueries({ queryKey: ["leads-list"] });
       setSelectedLead(newLead);
     },
