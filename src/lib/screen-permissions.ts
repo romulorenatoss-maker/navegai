@@ -26,7 +26,6 @@ export const ALL_SCREENS: ScreenDef[] = [
   // Leads
   { path: "/leads", label: "Meus Leads", group: "Avaliações" },
   { path: "/leads/fila", label: "Gerenciador de Leads", group: "Leads" },
-  { path: "/leads/fila-tarefas", label: "Fila de Tarefas", group: "Leads" },
   
   { path: "/leads/arquivados", label: "Leads Arquivados", group: "Leads" },
   // Sistema
