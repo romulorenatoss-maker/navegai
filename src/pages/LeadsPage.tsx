@@ -2563,7 +2563,7 @@ export default function LeadsPage() {
                 <Select value={scheduleMinute} onValueChange={setScheduleMinute}>
                   <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {["00", "15", "30", "45"].map(m => (
+                    {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => (
                       <SelectItem key={m} value={m}>{m}min</SelectItem>
                     ))}
                   </SelectContent>
