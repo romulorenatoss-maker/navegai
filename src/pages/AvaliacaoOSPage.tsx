@@ -2483,86 +2483,97 @@ export default function AvaliacaoOSPage() {
         } else {
           toast.info("OS não encontrada. Preencha os dados para criar.");
         }
-      } else if (hasCpf && cliente) {
-        // CPF-only search: check if client has OS aguardando_numero
-        const { data: osAguardando } = await supabase
-          .from("ordens_servico")
-          .select("*")
-          .eq("cliente_id", cliente.id)
-          .eq("status", "aguardando_numero" as any)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+      } else if (hasCpf) {
+        // CPF-only search: find ALL OS for this CPF (by cliente_id OR cliente_cpf)
+        // Priority: OS without number first, then by most recent
+        const cpfFormatted = formClienteCpf.trim();
+        
+        let allOsForCpf: any[] = [];
 
-        if (osAguardando) {
-          toast.info("OS aguardando número encontrada para este cliente. Preencha o número abaixo.");
-          setFillNumeroOsId(osAguardando.id);
-          setFillNumeroValue("");
-          setCpfValidating(false);
-          setFormValidating(false);
-          setFormValidated(true);
-          return;
+        if (cliente) {
+          // Search by cliente_id
+          const { data: osByClienteId } = await supabase
+            .from("ordens_servico")
+            .select("*")
+            .eq("cliente_id", cliente.id)
+            .order("created_at", { ascending: false });
+          if (osByClienteId?.length) allOsForCpf.push(...osByClienteId);
         }
 
-        // Also check for any existing OS with this client
-        const { data: existingClienteOS } = await supabase
+        // Also search by cliente_cpf directly (covers cases where cliente_id wasn't linked)
+        const { data: osByCpf } = await supabase
           .from("ordens_servico")
           .select("*")
-          .eq("cliente_id", cliente.id)
-          .not("status", "eq", "aguardando_numero")
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          .eq("cliente_cpf", cpfFormatted)
+          .order("created_at", { ascending: false });
+        if (osByCpf?.length) {
+          const existingIds = new Set(allOsForCpf.map(o => o.id));
+          osByCpf.forEach(o => { if (!existingIds.has(o.id)) allOsForCpf.push(o); });
+        }
 
-        if (existingClienteOS) {
-          setFormFoundOS(existingClienteOS);
-          if (existingClienteOS.tipo_servico_id) setTipoServicoId(existingClienteOS.tipo_servico_id);
-          if (existingClienteOS.atendente_id) setAtendenteId(existingClienteOS.atendente_id);
-          if (existingClienteOS.tecnico_id) setTecnicoId(existingClienteOS.tecnico_id);
+        if (allOsForCpf.length > 0) {
+          // Priority 1: OS with status aguardando_numero OR with null numero_os and not concluida
+          const osNeedingNumber = allOsForCpf.find(o => 
+            o.status === "aguardando_numero" || 
+            (!o.numero_os && o.status !== "concluida")
+          );
 
+          if (osNeedingNumber) {
+            // Link client to OS if missing
+            if (cliente && !osNeedingNumber.cliente_id) {
+              await supabase.from("ordens_servico").update({
+                cliente_id: cliente.id,
+                cliente_nome: cliente.nome,
+                cliente_cpf: cliente.cpf,
+              } as any).eq("id", osNeedingNumber.id);
+            }
+
+            toast.info("OS encontrada aguardando número para este CPF. Preencha o número abaixo.");
+            setFillNumeroOsId(osNeedingNumber.id);
+            setFillNumeroValue("");
+            setCpfValidating(false);
+            setFormValidating(false);
+            setFormValidated(true);
+            return;
+          }
+
+          // Priority 2: OS with pending evaluation for current user
           if (profile) {
-            const { data: pendingAval } = await supabase
-              .from("avaliacoes")
-              .select("id, tipo_avaliacao_id, concluida, nota_final")
-              .eq("ordem_servico_id", existingClienteOS.id)
-              .eq("avaliador_id", profile.id)
-              .eq("concluida", false)
-              .limit(1)
-              .maybeSingle();
+            for (const os of allOsForCpf) {
+              const { data: pendingAval } = await supabase
+                .from("avaliacoes")
+                .select("id, tipo_avaliacao_id, concluida, nota_final")
+                .eq("ordem_servico_id", os.id)
+                .eq("avaliador_id", profile.id)
+                .eq("concluida", false)
+                .limit(1)
+                .maybeSingle();
 
-            if (pendingAval) {
-              setFormPendingAval(pendingAval);
-              toast.info("Avaliação pendente encontrada. Abrindo...");
-              setCpfValidating(false);
-              setFormValidating(false);
-              setFormValidated(true);
-              await openEvaluation(pendingAval.id, existingClienteOS.id);
-              return;
+              if (pendingAval) {
+                setFormFoundOS(os);
+                setFormPendingAval(pendingAval);
+                toast.info("Avaliação pendente encontrada. Abrindo...");
+                setCpfValidating(false);
+                setFormValidating(false);
+                setFormValidated(true);
+                await openEvaluation(pendingAval.id, os.id);
+                return;
+              }
             }
           }
-          toast.success(`OS ${existingClienteOS.numero_os} encontrada para o cliente!`);
+
+          // Priority 3: Most recent non-concluded OS
+          const openOs = allOsForCpf.find(o => o.status !== "concluida") || allOsForCpf[0];
+          setFormFoundOS(openOs);
+          if (openOs.tipo_servico_id) setTipoServicoId(openOs.tipo_servico_id);
+          if (openOs.atendente_id) setAtendenteId(openOs.atendente_id);
+          if (openOs.tecnico_id) setTecnicoId(openOs.tecnico_id);
+          toast.success(`OS ${openOs.numero_os || "(sem número)"} encontrada para o cliente!`);
+        } else if (!cliente) {
+          // No client AND no OS found — only now allow new registration
+          toast.info("Cliente não encontrado. Preencha o nome para cadastrar.");
         } else {
           toast.info("Nenhuma OS encontrada para este cliente. Informe o número da OS para criar.");
-        }
-      } else if (hasCpf && !cliente) {
-        // CPF not found in clients - also search by cpf in OS directly
-        const { data: osAguardandoByCpf } = await supabase
-          .from("ordens_servico")
-          .select("*")
-          .eq("cliente_cpf", formClienteCpf.trim())
-          .eq("status", "aguardando_numero" as any)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (osAguardandoByCpf) {
-          toast.info("OS aguardando número encontrada para este CPF. Preencha o número abaixo.");
-          setFillNumeroOsId(osAguardandoByCpf.id);
-          setFillNumeroValue("");
-          setCpfValidating(false);
-          setFormValidating(false);
-          setFormValidated(true);
-          return;
         }
       }
 
