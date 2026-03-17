@@ -300,6 +300,14 @@ export default function LeadsPage() {
     enabled: !!profile,
   });
 
+  // Helper: update a single lead in cache without full refetch (prevents closing detail panel)
+  const updateLeadInCache = useCallback((leadId: string, updates: Partial<Lead>) => {
+    queryClient.setQueryData(["leads-list", profile?.id], (old: Lead[] | undefined) => {
+      if (!old) return old;
+      return old.map(l => l.id === leadId ? { ...l, ...updates } : l);
+    });
+  }, [profile?.id, queryClient]);
+
   // Auto-select lead from URL param ?id=
   useEffect(() => {
     const leadId = searchParams.get("id");
@@ -712,7 +720,7 @@ export default function LeadsPage() {
         descricao: `Lead transferido automaticamente para ${profile.nome}`,
       });
       toast.info("Lead transferido automaticamente para você.");
-      queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+      updateLeadInCache(lead.id, { responsavel_id: profile.id });
     } else if (!lead.responsavel_id) {
       await supabase.from("leads").update({ responsavel_id: profile.id }).eq("id", lead.id);
       await supabase.from("lead_historico").insert({
@@ -720,7 +728,7 @@ export default function LeadsPage() {
         tipo_evento: "transferencia_automatica",
         descricao: `Lead atribuído automaticamente para ${profile.nome}`,
       });
-      queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+      updateLeadInCache(lead.id, { responsavel_id: profile.id });
     }
     setSelectedLead({ ...lead, responsavel_id: profile.id });
     setSearchResults(null);
@@ -1020,7 +1028,7 @@ export default function LeadsPage() {
         rua_id: localRuaId,
         numero_endereco: localNumeroEnd || null,
       } : null);
-      queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+      updateLeadInCache(selectedLead!.id, { plano_id: localPlanoId, repetidor: localRepetidor, cidade_id: localCidadeId, bairro_id: localBairroId, rua_id: localRuaId, numero_endereco: localNumeroEnd || null });
     },
     onSuccess: () => {
       toast.success("Tentativa registrada!");
@@ -1042,7 +1050,7 @@ export default function LeadsPage() {
       descricao: `Status alterado para: ${STATUS_OPTIONS.find(s => s.value === newStatus)?.label || newStatus}`,
     });
     setSelectedLead(prev => prev ? { ...prev, status_lead: newStatus } : null);
-    queryClient.invalidateQueries({ queryKey: ["leads-list"] }); refetchHistorico();
+    updateLeadInCache(selectedLead.id, { status_lead: newStatus }); refetchHistorico();
     toast.success("Status atualizado.");
   };
 
@@ -1091,7 +1099,7 @@ export default function LeadsPage() {
               setDupeAlert({ type: "cpf", message: `Telefone já cadastrado para o cliente "${existingCliente.nome}". O lead foi vinculado ao cliente existente.`, clienteId: existingCliente.id, clienteNome: existingCliente.nome });
               setShowConvert(false);
               setSelectedLead(prev => prev ? { ...prev, status_lead: "convertido" } : null);
-              queryClient.invalidateQueries({ queryKey: ["leads-list"] }); refetchHistorico();
+              updateLeadInCache(selectedLead.id, { status_lead: "convertido" }); refetchHistorico();
               throw new Error("__DUPLICATE_CPF__");
             }
           }
@@ -1112,7 +1120,7 @@ export default function LeadsPage() {
           setDupeAlert({ type: "cpf", message: `CPF já cadastrado para o cliente "${existingCliente.nome}". O lead foi vinculado ao cliente existente.`, clienteId: existingCliente.id, clienteNome: existingCliente.nome });
           setShowConvert(false);
           setSelectedLead(prev => prev ? { ...prev, status_lead: "convertido" } : null);
-          queryClient.invalidateQueries({ queryKey: ["leads-list"] }); refetchHistorico();
+          updateLeadInCache(selectedLead.id, { status_lead: "convertido" }); refetchHistorico();
           throw new Error("__DUPLICATE_CPF__");
         }
       }
@@ -1160,7 +1168,7 @@ export default function LeadsPage() {
     onSuccess: () => {
       toast.success("Lead convertido em cliente com sucesso!");
       setShowConvert(false); setSelectedLead(prev => prev ? { ...prev, status_lead: "convertido" } : null);
-      queryClient.invalidateQueries({ queryKey: ["leads-list"] }); refetchHistorico();
+      updateLeadInCache(selectedLead!.id, { status_lead: "convertido" }); refetchHistorico();
     },
     onError: (err: any) => {
       if (err.message === "__DUPLICATE_CPF__") { toast.info("Lead vinculado ao cliente existente."); return; }
@@ -1241,7 +1249,7 @@ export default function LeadsPage() {
       toast.success("Lead arquivado.");
     }
     setShowFinalize(false);
-    queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+    if (selectedLead) updateLeadInCache(selectedLead.id, { status_lead: selectedLead.status_lead });
     queryClient.invalidateQueries({ queryKey: ["all-lead-interacoes"] });
     refetchHistorico();
   };
@@ -1602,7 +1610,7 @@ export default function LeadsPage() {
                             await supabase.from("leads").update({ status_lead: "arquivado" }).eq("id", selectedLead.id);
                             await supabase.from("lead_historico").insert({ lead_id: selectedLead.id, usuario_id: profile.id, tipo_evento: "lead_arquivado", descricao: "Lead arquivado manualmente" });
                             setSelectedLead(prev => prev ? { ...prev, status_lead: "arquivado" } : null);
-                            queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                            updateLeadInCache(selectedLead.id, { status_lead: "arquivado" });
                             refetchHistorico();
                             toast.success("Lead arquivado.");
                           }}>
@@ -1625,7 +1633,7 @@ export default function LeadsPage() {
                           await supabase.from("lead_historico").insert({ lead_id: selectedLead.id, usuario_id: profile.id, tipo_evento: "agendamento_removido", descricao: "Agendamento de retorno removido manualmente" });
                         }
                         setSelectedLead(prev => prev ? { ...prev, agendamento_retorno: null } : null);
-                        queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                        updateLeadInCache(selectedLead.id, { agendamento_retorno: null });
                         refetchHistorico();
                         toast.success("Agendamento removido.");
                       }}>×</button>
@@ -1880,7 +1888,7 @@ export default function LeadsPage() {
                   descricao: `Retorno agendado para ${format(dt, "dd/MM/yyyy HH:mm", { locale: ptBR })}`,
                 });
                 setSelectedLead(prev => prev ? { ...prev, agendamento_retorno: dt.toISOString() } : null);
-                queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+                updateLeadInCache(selectedLead!.id, { agendamento_retorno: dt.toISOString() });
                 refetchHistorico();
                 setShowSchedule(false);
                 toast.success(`Retorno agendado para ${format(dt, "dd/MM/yyyy HH:mm", { locale: ptBR })}`);
