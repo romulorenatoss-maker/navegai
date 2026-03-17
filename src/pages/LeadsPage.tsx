@@ -704,6 +704,20 @@ export default function LeadsPage() {
       });
       if (e2) throw e2;
 
+      // Insert extra contacts
+      if (createExtraContatos.length > 0) {
+        const extras = createExtraContatos.filter(c => c.valor.trim()).map(c => ({
+          lead_id: newLead.id,
+          tipo_contato: c.tipo,
+          valor: c.tipo === "telefone" ? c.valor.trim() : c.valor.trim(),
+          tem_whatsapp: c.tipo === "telefone" ? c.temWhatsapp : false,
+        }));
+        if (extras.length > 0) {
+          const { error: eExtra } = await supabase.from("lead_contatos").insert(extras);
+          if (eExtra) throw eExtra;
+        }
+      }
+
       const descParts = [`Lead "${leadNome}" criado por ${profile.nome}`];
       if (linkedClienteNome) descParts.push(`— vinculado ao cliente existente "${linkedClienteNome}"`);
       await supabase.from("lead_historico").insert({
