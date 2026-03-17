@@ -6,21 +6,22 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useIdleTimeout } from "@/hooks/useIdleTimeout";
 import { useSessionTracker } from "@/hooks/useSessionTracker";
 import { usePendingNotifications } from "@/hooks/usePendingNotifications";
-import { Menu, User, KeyRound } from "lucide-react";
+import { Menu, User, Settings } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "sonner";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
+import SessoesUsuarioTab from "@/components/SessoesUsuarioTab";
 
 export function AppLayout() {
   const { profile, user, signOut, isAdmin, allowedScreens, canViewPath } = useAuth();
   const isMobile = useIsMobile();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
@@ -65,7 +66,6 @@ export function AppLayout() {
       toast.error("Erro ao alterar senha: " + error.message);
     } else {
       toast.success("Senha alterada com sucesso!");
-      setPasswordDialogOpen(false);
       setNewPassword("");
       setConfirmPassword("");
     }
@@ -75,6 +75,45 @@ export function AppLayout() {
   const userCargoDisplay = profile?.cargo
     ? profile.cargo.charAt(0).toUpperCase() + profile.cargo.slice(1)
     : "";
+
+  const settingsDialog = (
+    <Dialog open={settingsOpen} onOpenChange={(open) => { setSettingsOpen(open); if (!open) { setNewPassword(""); setConfirmPassword(""); } }}>
+      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Configurações da Conta</DialogTitle>
+        </DialogHeader>
+        <Tabs defaultValue="senha" className="w-full">
+          <TabsList className="w-full">
+            <TabsTrigger value="senha" className="flex-1">Editar Senha</TabsTrigger>
+            <TabsTrigger value="sessoes" className="flex-1">Sessões</TabsTrigger>
+          </TabsList>
+          <TabsContent value="senha" className="space-y-4 pt-4">
+            <div>
+              <label className="text-sm font-medium">Nova Senha</label>
+              <Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Confirmar Senha</label>
+              <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Repita a nova senha" />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setSettingsOpen(false)}>Cancelar</Button>
+              <Button onClick={handleChangePassword} disabled={changingPassword}>
+                {changingPassword ? "Salvando..." : "Salvar Senha"}
+              </Button>
+            </div>
+          </TabsContent>
+          <TabsContent value="sessoes" className="pt-4">
+            {user?.id && profile?.id ? (
+              <SessoesUsuarioTab profileId={profile.id} userId={user.id} />
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">Dados do usuário não disponíveis.</p>
+            )}
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
 
   if (isMobile) {
     return (
@@ -91,17 +130,12 @@ export function AppLayout() {
               <span className="font-semibold text-sm">Nexus Ops</span>
             </div>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="text-xs text-sidebar-foreground/80 max-w-[120px] truncate">{userNameDisplay}</button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setPasswordDialogOpen(true)}>
-                <KeyRound className="w-4 h-4 mr-2" />
-                Editar Senha
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-sidebar-foreground/80 max-w-[100px] truncate">{userNameDisplay}</span>
+            <button onClick={() => setSettingsOpen(true)} className="p-1 rounded-md hover:bg-sidebar-accent/50 transition-colors">
+              <Settings className="w-4 h-4 text-sidebar-foreground/70" />
+            </button>
+          </div>
         </header>
 
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -121,6 +155,7 @@ export function AppLayout() {
         <main className="min-h-[calc(100vh-3.5rem)]">
           <Outlet />
         </main>
+        {settingsDialog}
       </div>
     );
   }
@@ -147,52 +182,29 @@ export function AppLayout() {
 
       <div className="flex-1 min-w-0 flex flex-col">
         <header className="sticky top-0 z-30 flex items-center justify-end h-12 px-6 bg-background border-b border-border shrink-0">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-                <User className="w-4 h-4" />
-                <span className="font-medium">{userNameDisplay}</span>
-                {userCargoDisplay && (
-                  <span className="text-xs text-muted-foreground/60">· {userCargoDisplay}</span>
-                )}
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setPasswordDialogOpen(true)}>
-                <KeyRound className="w-4 h-4 mr-2" />
-                Editar Senha
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <User className="w-4 h-4" />
+              <span className="font-medium">{userNameDisplay}</span>
+              {userCargoDisplay && (
+                <span className="text-xs text-muted-foreground/60">· {userCargoDisplay}</span>
+              )}
+            </div>
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+              title="Configurações da conta"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+          </div>
         </header>
         <main className="flex-1 min-w-0">
           <Outlet />
         </main>
       </div>
 
-      <Dialog open={passwordDialogOpen} onOpenChange={(open) => { setPasswordDialogOpen(open); if (!open) { setNewPassword(""); setConfirmPassword(""); } }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Editar Senha</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <label className="text-sm font-medium">Nova Senha</label>
-              <Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Confirmar Senha</label>
-              <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Repita a nova senha" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPasswordDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleChangePassword} disabled={changingPassword}>
-              {changingPassword ? "Salvando..." : "Salvar"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {settingsDialog}
     </div>
   );
 }
