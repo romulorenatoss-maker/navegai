@@ -1135,10 +1135,39 @@ export default function LeadsPage() {
         {/* ─── LEFT: Priority Queue ──────────────── */}
         <div className="col-span-3 flex flex-col min-h-0">
           <Card className="flex-1 flex flex-col min-h-0">
-            <CardHeader className="py-2.5 px-3 border-b">
-              <CardTitle className="text-xs font-semibold flex items-center gap-1.5 text-muted-foreground uppercase tracking-wider">
-                <ListOrdered className="w-3.5 h-3.5" /> Fila de Prioridade
-              </CardTitle>
+            <CardHeader className="py-2 px-3 border-b">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs font-semibold flex items-center gap-1.5 text-muted-foreground uppercase tracking-wider">
+                  <ListOrdered className="w-3.5 h-3.5" /> Fila
+                </CardTitle>
+                <div className="flex gap-1">
+                  <Button
+                    variant={filaFiltro === "hoje" ? "default" : "ghost"}
+                    size="sm"
+                    className="h-6 text-[10px] px-2"
+                    onClick={() => setFilaFiltro("hoje")}
+                  >
+                    Hoje ({priorityQueue.filter((item) => {
+                      const now = new Date();
+                      const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+                      if (item.lead.agendamento_retorno) {
+                        return new Date(item.lead.agendamento_retorno) <= endOfToday;
+                      }
+                      if (item.proximoContato && item.proximoContato <= endOfToday) return true;
+                      if (!item.proximoContato && !item.ultimaInteracao) return true;
+                      return false;
+                    }).length})
+                  </Button>
+                  <Button
+                    variant={filaFiltro === "todos" ? "default" : "ghost"}
+                    size="sm"
+                    className="h-6 text-[10px] px-2"
+                    onClick={() => setFilaFiltro("todos")}
+                  >
+                    Todos ({priorityQueue.length})
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <ScrollArea className="flex-1">
               <div className="divide-y divide-border">
