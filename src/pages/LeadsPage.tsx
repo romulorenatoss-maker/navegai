@@ -473,14 +473,10 @@ export default function LeadsPage() {
     }
   }, [searchParams, allLeads, selectedLead]);
 
-  // Auto-select reserved lead when returning to the page
+  // Auto-select lead when returning to page (e.g. after capture redirect)
   useEffect(() => {
     if (selectedLead || !allLeads.length || !profile?.id) return;
     if (searchParams.get("id")) return;
-    const myReserved = allLeads.find(l => l.status_lead === "reservado" && l.reserved_by === profile.id);
-    if (myReserved) {
-      setSelectedLead(myReserved);
-    }
   }, [allLeads, profile?.id, selectedLead]);
 
   const { data: planos = [] } = useQuery({
@@ -727,18 +723,25 @@ export default function LeadsPage() {
       if (!reserved) throw new Error("Este lead já está sendo atendido por outro usuário.");
       await supabase.from("lead_historico").insert({
         lead_id: leadId, usuario_id: profile.id,
-        tipo_evento: "lead_reservado",
-        descricao: `${profile.nome} capturou o lead.`,
+        tipo_evento: "lead_capturado",
+        descricao: `${profile.nome} capturou o lead. Status: Em tratativa.`,
+      });
+      // Start cadence
+      const { data: firstRotina } = await supabase.from("rotina_tentativas_leads").select("*").eq("tentativa_numero", 1).maybeSingle();
+      const periodo = (firstRotina as any)?.periodo_contato || "manha";
+      await supabase.from("lead_tarefas_contato").insert({
+        lead_id: leadId, tentativa: 1, data_contato: new Date().toISOString(),
+        periodo, status: "pendente", responsavel_id: profile.id,
       });
       return leadId;
     },
     onSuccess: (leadId) => {
-      toast.success("Lead capturado! Registre a interação para confirmar.");
+      toast.success("Lead capturado com sucesso!");
       queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
       queryClient.invalidateQueries({ queryKey: ["leads-list"] });
       const lead = capturaLeadsRaw.find(l => l.id === leadId);
       if (lead) {
-        setSelectedLead({ ...lead, reserved_by: profile!.id, reserved_at: new Date().toISOString(), status_lead: "reservado" });
+        setSelectedLead({ ...lead, responsavel_id: profile!.id, reserved_by: null, reserved_at: null, status_lead: "em_atendimento" });
       }
     },
     onError: (err: any) => {
@@ -764,15 +767,6 @@ export default function LeadsPage() {
     queryClient.invalidateQueries({ queryKey: ["leads-list"] });
   }, [profile, queryClient]);
 
-  // Ref tracking for cleanup (no auto-expiry — reservations are manual only)
-  const reservedLeadRef = useRef<{ id: string; profileId: string } | null>(null);
-  useEffect(() => {
-    if (selectedLead?.status_lead === "reservado" && selectedLead?.reserved_by === profile?.id) {
-      reservedLeadRef.current = { id: selectedLead.id, profileId: profile!.id };
-    } else {
-      reservedLeadRef.current = null;
-    }
-  }, [selectedLead?.id, selectedLead?.status_lead, selectedLead?.reserved_by, profile?.id]);
 
 
   // ─── Realtime subscription for capture queue ─────────────────
@@ -1366,34 +1360,7 @@ export default function LeadsPage() {
         throw new Error("Você não tem permissão para interagir com este lead. Ele pertence a outro usuário.");
       }
 
-      // If lead is reserved (from capture queue), confirm assignment on first interaction
-      const isReservedCapture = selectedLead.status_lead === "reservado" && selectedLead.reserved_by === profile.id;
-      if (isReservedCapture) {
-        // Officially assign the lead with em_atendimento status
-        await supabase.from("leads").update({
-          responsavel_id: profile.id,
-          status_lead: "em_atendimento",
-          reserved_by: null,
-          reserved_at: null,
-        } as any).eq("id", selectedLead.id);
-        // Cancel old tasks and start cadence
-        await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", selectedLead.id).in("status", ["pendente", "atrasado"]);
-        const { data: firstRotina } = await supabase.from("rotina_tentativas_leads").select("*").eq("tentativa_numero", 1).maybeSingle();
-        const periodo = (firstRotina as any)?.periodo_contato || "manha";
-        await supabase.from("lead_tarefas_contato").insert({
-          lead_id: selectedLead.id, tentativa: 1, data_contato: new Date().toISOString(),
-          periodo, status: "pendente", responsavel_id: profile.id,
-        });
-        await supabase.from("lead_historico").insert({
-          lead_id: selectedLead.id, usuario_id: profile.id,
-          tipo_evento: "lead_capturado",
-          descricao: `Lead capturado e atribuído a ${profile.nome}. Status: Em tratativa. Nova rotina iniciada.`,
-        });
-        // Update local state
-        setSelectedLead(prev => prev ? { ...prev, responsavel_id: profile.id, status_lead: "em_atendimento", reserved_by: null, reserved_at: null } : null);
-        queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
-        queryClient.invalidateQueries({ queryKey: ["leads-list"] });
-      }
+      // No longer need reservado→em_atendimento transition since capture now directly assigns
 
       // Save pending field changes first
       const changes: string[] = [];
@@ -1446,18 +1413,13 @@ export default function LeadsPage() {
 
       // Compute cycle-based attempt count (after last transfer or capture)
       let tentativaNum: number;
-      if (isReservedCapture) {
-        // This IS the first interaction of a new capture cycle
-        tentativaNum = 1;
-      } else {
-        const lastCycleEvt = leadHistorico.find(h =>
-          h.tipo_evento === "transferencia_automatica" || h.tipo_evento === "transferencia_decisao" || h.tipo_evento === "lead_capturado"
-        );
-        const cycleInteractions = lastCycleEvt
-          ? leadInteracoes.filter(i => new Date(i.data_interacao) > new Date(lastCycleEvt.data_evento)).length
-          : leadInteracoes.length;
-        tentativaNum = cycleInteractions + 1;
-      }
+      const lastCycleEvt = leadHistorico.find(h =>
+        h.tipo_evento === "transferencia_automatica" || h.tipo_evento === "transferencia_decisao" || h.tipo_evento === "lead_capturado"
+      );
+      const cycleInteractions = lastCycleEvt
+        ? leadInteracoes.filter(i => new Date(i.data_interacao) > new Date(lastCycleEvt.data_evento)).length
+        : leadInteracoes.length;
+      tentativaNum = cycleInteractions + 1;
       await supabase.from("lead_historico").insert({
         lead_id: selectedLead.id, usuario_id: profile.id,
         tipo_evento: "tentativa_contato",

@@ -674,11 +674,19 @@ export default function FilaLeadsPage() {
       const { error: historyErr } = await supabase.from("lead_historico").insert({
         lead_id: leadId,
         usuario_id: profile.id,
-        tipo_evento: "lead_reservado",
-        descricao: `Lead reservado por ${profile.nome}.`,
+        tipo_evento: "lead_capturado",
+        descricao: `Lead capturado e atribuído a ${profile.nome}. Status: Em tratativa.`,
       });
 
       if (historyErr) throw historyErr;
+
+      // Start cadence: create first task
+      const { data: firstRotina } = await supabase.from("rotina_tentativas_leads").select("*").eq("tentativa_numero", 1).maybeSingle();
+      const periodo = (firstRotina as any)?.periodo_contato || "manha";
+      await supabase.from("lead_tarefas_contato").insert({
+        lead_id: leadId, tentativa: 1, data_contato: new Date().toISOString(),
+        periodo, status: "pendente", responsavel_id: profile.id,
+      });
       return leadId;
     },
     onMutate: async (leadId: string) => {
