@@ -48,7 +48,18 @@ function parseFileToJSON(buffer: ArrayBuffer, fileName: string): { headers: stri
   return { headers, rows };
 }
 
-export default function ImportadorLeadsPage() {
+import ImportPreviewTable, { type PreviewRow, type RowAction, type RowStatus } from "@/components/import/ImportPreviewTable";
+import { TooltipProvider } from "@/components/ui/tooltip";
+
+type Step = "upload" | "mapping" | "preview" | "results";
+
+interface ImportResult {
+  nome: string;
+  telefone: string;
+  status: "ok" | "skipped" | "error";
+  message?: string;
+}
+
   const { profile } = useAuth();
   const [step, setStep] = useState<Step>("upload");
   const [fileName, setFileName] = useState("");
