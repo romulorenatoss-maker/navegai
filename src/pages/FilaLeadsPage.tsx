@@ -447,15 +447,13 @@ export default function FilaLeadsPage() {
   const restartMutation = useMutation({
     mutationFn: async (leadId: string) => {
       if (!profile) throw new Error("Perfil não encontrado.");
+      // Cancel pending tasks
       await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", leadId).in("status", ["pendente", "atrasado"]);
-      await supabase.from("leads").update({ status_lead: "em_contato", notificacao_vista: false, responsavel_id: profile.id } as any).eq("id", leadId);
-      const firstRotina = rotinaTentativas.find((r: any) => r.tentativa_numero === 1);
-      const periodo = firstRotina?.periodo_contato || "manha";
-      const nextDate = new Date(); nextDate.setDate(nextDate.getDate() + 1); nextDate.setHours(PERIODO_HORA[periodo] || 9, 0, 0, 0);
-      await supabase.from("lead_tarefas_contato").insert({ lead_id: leadId, tentativa: 1, data_contato: nextDate.toISOString(), periodo, status: "pendente", responsavel_id: profile.id });
-      await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "rotina_reiniciada", descricao: "Rotina de tentativas reiniciada pelo avaliador. Lead reaberto para atendimento." });
+      // Set to aguardando_captura with NO responsible — goes to shared capture queue
+      await supabase.from("leads").update({ status_lead: "aguardando_captura", responsavel_id: null, notificacao_vista: false } as any).eq("id", leadId);
+      await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "lead_reaberto_captura", descricao: "Lead reaberto e enviado para Fila de Captura. Usuários que já interagiram não poderão capturá-lo." });
     },
-    onSuccess: () => { toast.success("Lead reaberto com rotina reiniciada!"); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }); },
+    onSuccess: () => { toast.success("Lead reaberto e enviado para Fila de Captura!"); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }); },
     onError: (err: any) => toast.error(err.message),
   });
 
