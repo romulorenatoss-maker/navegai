@@ -32,6 +32,7 @@ interface LeadRow {
   telefone: string | null;
   plano_nome: string | null;
   repetidor: string | null;
+  atrasos: number;
 }
 
 const STATUS_LABELS: Record<string, string> = {
