@@ -3095,37 +3095,80 @@ export default function AvaliacaoOSPage() {
         </AnimatePresence>
       )}
 
-      {/* Nova OS */}
-      <Dialog open={showNewOsDialog && !!clienteId && !formFoundOS} onOpenChange={setShowNewOsDialog}>
+      {/* Dialog unificado: Nova OS ou Preencher Número */}
+      <Dialog open={showNewOsDialog} onOpenChange={(open) => { setShowNewOsDialog(open); if (!open) { setTipoServicoId(""); setAtendenteId(""); setTecnicoId(""); } }}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Nova OS</DialogTitle>
+            <DialogTitle>{fillNumeroOsId ? "Preencher Número da OS" : "Nova OS"}</DialogTitle>
             <DialogDescription>
-              Nenhuma OS aberta foi encontrada para este CPF. Selecione o tipo de serviço para dar continuidade.
+              {fillNumeroOsId
+                ? "Esta OS está aguardando o número definitivo. Preencha abaixo para dar continuidade à avaliação."
+                : "Nenhuma OS aberta foi encontrada para este CPF. Selecione o tipo de serviço para dar continuidade."}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-body font-medium">Tipo de Serviço *</Label>
-              <div className="space-y-1 max-h-40 overflow-y-auto">
-                {tiposServico.length === 0 ? (
-                  <p className="text-body text-muted-foreground text-center py-4">Nenhum tipo de serviço disponível.</p>
-                ) : tiposServico.map((t) => (
-                  <button key={t.id} type="button" onClick={() => { setTipoServicoId(t.id); }}
-                    className={cn("w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-left transition-all press-effect text-sm",
-                      tipoServicoId === t.id ? "bg-primary/10 border-primary text-primary" : "bg-card border-border hover:bg-muted/50")}>
-                    <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0",
-                      tipoServicoId === t.id ? "border-primary bg-primary" : "border-muted-foreground/30")}>
-                      {tipoServicoId === t.id && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
-                    </div>
-                    <span className="font-medium truncate">{t.nome}</span>
-                    <span className="text-caption text-muted-foreground ml-auto">{(t as any).setores?.nome || ""}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* Modo: Preencher número de OS existente */}
+            {fillNumeroOsId && (
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label>Número da OS *</Label>
+                  <Input
+                    value={fillNumeroValue}
+                    onChange={e => setFillNumeroValue(e.target.value.replace(/\D/g, ""))}
+                    placeholder="Ex: 12345"
+                    onKeyDown={e => e.key === "Enter" && handleFillNumeroOS()}
+                    autoFocus
+                  />
+                </div>
 
+                {/* Show tipo_servico selector if OS doesn't have one */}
+                {formFoundOS && !formFoundOS.tipo_servico_id && (
+                  <div className="space-y-2">
+                    <Label className="text-body font-medium">Tipo de Serviço *</Label>
+                    <div className="space-y-1 max-h-40 overflow-y-auto">
+                      {tiposServico.map((t) => (
+                        <button key={t.id} type="button" onClick={() => setTipoServicoId(t.id)}
+                          className={cn("w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-left transition-all press-effect text-sm",
+                            tipoServicoId === t.id ? "bg-primary/10 border-primary text-primary" : "bg-card border-border hover:bg-muted/50")}>
+                          <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0",
+                            tipoServicoId === t.id ? "border-primary bg-primary" : "border-muted-foreground/30")}>
+                            {tipoServicoId === t.id && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                          </div>
+                          <span className="font-medium truncate">{t.nome}</span>
+                          <span className="text-caption text-muted-foreground ml-auto">{(t as any).setores?.nome || ""}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Modo: Nova OS — selecionar tipo de serviço */}
+            {!fillNumeroOsId && (
+              <div className="space-y-2">
+                <Label className="text-body font-medium">Tipo de Serviço *</Label>
+                <div className="space-y-1 max-h-40 overflow-y-auto">
+                  {tiposServico.length === 0 ? (
+                    <p className="text-body text-muted-foreground text-center py-4">Nenhum tipo de serviço disponível.</p>
+                  ) : tiposServico.map((t) => (
+                    <button key={t.id} type="button" onClick={() => setTipoServicoId(t.id)}
+                      className={cn("w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-left transition-all press-effect text-sm",
+                        tipoServicoId === t.id ? "bg-primary/10 border-primary text-primary" : "bg-card border-border hover:bg-muted/50")}>
+                      <div className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0",
+                        tipoServicoId === t.id ? "border-primary bg-primary" : "border-muted-foreground/30")}>
+                        {tipoServicoId === t.id && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                      </div>
+                      <span className="font-medium truncate">{t.nome}</span>
+                      <span className="text-caption text-muted-foreground ml-auto">{(t as any).setores?.nome || ""}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Seleção de colaboradores (ambos os modos) */}
             {tipoServicoId && (
               <div className="space-y-3">
                 {(hasAtendimentoAccess || isAdmin) && (
@@ -3133,7 +3176,7 @@ export default function AvaliacaoOSPage() {
                     <Label>Atendente Avaliado *</Label>
                     {atendimentoProfiles.filter(p => p.id !== profile?.id).length === 0 ? (
                       <p className="text-caption text-warning bg-warning/10 border border-warning/20 rounded-lg px-3 py-2">
-                        Nenhum colaborador com cargo "Avaliado" encontrado no setor Atendimento. Cadastre colaboradores avaliados nesse setor.
+                        Nenhum colaborador com cargo "Avaliado" encontrado no setor Atendimento.
                       </p>
                     ) : (
                       <Select value={atendenteId} onValueChange={setAtendenteId}>
@@ -3152,7 +3195,7 @@ export default function AvaliacaoOSPage() {
                     <Label>Técnico Avaliado *</Label>
                     {tecnicoProfiles.filter(p => p.id !== profile?.id).length === 0 ? (
                       <p className="text-caption text-warning bg-warning/10 border border-warning/20 rounded-lg px-3 py-2">
-                        Nenhum colaborador com cargo "Avaliado" encontrado no setor Técnico. Cadastre colaboradores avaliados nesse setor.
+                        Nenhum colaborador com cargo "Avaliado" encontrado no setor Técnico.
                       </p>
                     ) : (
                       <Select value={tecnicoId} onValueChange={setTecnicoId}>
@@ -3170,12 +3213,45 @@ export default function AvaliacaoOSPage() {
             )}
 
             <DialogFooter className="gap-2">
-              <Button variant="outline" onClick={() => setShowNewOsDialog(false)} className="w-full sm:w-auto">
+              <Button variant="outline" onClick={() => { setShowNewOsDialog(false); setFillNumeroOsId(null); setFillNumeroValue(""); }} className="w-full sm:w-auto">
                 Fechar
               </Button>
-              <Button onClick={handleCreateAndStart} disabled={!canCreateEval} className="w-full sm:w-auto press-effect">
-                Dar continuidade <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
+              {fillNumeroOsId ? (
+                <Button
+                  onClick={async () => {
+                    await handleFillNumeroOS();
+                    if (fillNumeroValue.trim() && formFoundOS) {
+                      setShowNewOsDialog(false);
+                      // Update formFoundOS with the number and start evaluation
+                      const updatedOS = { ...formFoundOS, numero_os: fillNumeroValue.trim(), status: "aberta" };
+                      if (tipoServicoId && !formFoundOS.tipo_servico_id) {
+                        await supabase.from("ordens_servico").update({ tipo_servico_id: tipoServicoId } as any).eq("id", formFoundOS.id);
+                        updatedOS.tipo_servico_id = tipoServicoId;
+                      }
+                      if (atendenteId) {
+                        await supabase.from("ordens_servico").update({ atendente_id: atendenteId } as any).eq("id", formFoundOS.id);
+                        updatedOS.atendente_id = atendenteId;
+                      }
+                      if (tecnicoId) {
+                        await supabase.from("ordens_servico").update({ tecnico_id: tecnicoId } as any).eq("id", formFoundOS.id);
+                        updatedOS.tecnico_id = tecnicoId;
+                      }
+                      setFormFoundOS(updatedOS);
+                      setFormOsNumero(fillNumeroValue.trim());
+                      await startMyEvaluation(updatedOS);
+                    }
+                  }}
+                  disabled={!fillNumeroValue.trim() || fillNumeroLoading}
+                  className="w-full sm:w-auto press-effect"
+                >
+                  {fillNumeroLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                  Ir para Avaliação <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              ) : (
+                <Button onClick={handleCreateAndStart} disabled={!canCreateEval} className="w-full sm:w-auto press-effect">
+                  Dar continuidade <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              )}
             </DialogFooter>
           </div>
         </DialogContent>
