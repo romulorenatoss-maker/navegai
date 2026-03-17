@@ -1320,6 +1320,14 @@ export default function LeadsPage() {
                         className="ml-auto text-destructive/60 hover:text-destructive text-[10px] underline"
                         onClick={async () => {
                           await supabase.from("leads").update({ agendamento_retorno: null } as any).eq("id", selectedLead.id);
+                          if (profile) {
+                            await supabase.from("lead_historico").insert({
+                              lead_id: selectedLead.id,
+                              usuario_id: profile.id,
+                              tipo_evento: "agendamento_removido",
+                              descricao: `Agendamento de retorno removido manualmente`,
+                            });
+                          }
                           setSelectedLead(prev => prev ? { ...prev, agendamento_retorno: null } : null);
                           queryClient.invalidateQueries({ queryKey: ["leads-list"] });
                           toast.success("Agendamento removido.");
