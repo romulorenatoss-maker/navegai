@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Search, Plus, User, FileText, Pencil, Trash2, Lock } from "lucide-react";
+import { Search, Plus, User, FileText, Pencil, Trash2, Lock, MapPin, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function ClientesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -16,13 +17,11 @@ export default function ClientesPage() {
   const selectedId = searchParams.get("id");
   const [search, setSearch] = useState("");
   const [showNew, setShowNew] = useState(false);
-  const [newNome, setNewNome] = useState("");
-  const [newCpf, setNewCpf] = useState("");
+  const [newForm, setNewForm] = useState({ nome: "", cpf: "", rg: "", nome_mae: "", endereco: "", numero: "", cep: "", cidade: "", referencia: "" });
 
   // Edit state
   const [editOpen, setEditOpen] = useState(false);
-  const [editNome, setEditNome] = useState("");
-  const [editCpf, setEditCpf] = useState("");
+  const [editForm, setEditForm] = useState({ nome: "", cpf: "", rg: "", nome_mae: "", endereco: "", numero: "", cep: "", cidade: "", referencia: "" });
 
   // Delete state
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -39,6 +38,17 @@ export default function ClientesPage() {
   });
 
   const selectedCliente = clientes.find((c: any) => c.id === selectedId);
+
+  // Contatos do cliente
+  const { data: clienteContatos = [] } = useQuery({
+    queryKey: ["cliente_contatos", selectedId],
+    queryFn: async () => {
+      if (!selectedId) return [];
+      const { data } = await supabase.from("cliente_contatos").select("*").eq("cliente_id", selectedId).order("created_at");
+      return data || [];
+    },
+    enabled: !!selectedId,
+  });
 
   const { data: osDoCliente = [] } = useQuery({
     queryKey: ["os_cliente", selectedId],
@@ -80,26 +90,44 @@ export default function ClientesPage() {
   );
 
   const handleCreate = async () => {
-    if (!newNome.trim()) { toast.error("Nome obrigatório"); return; }
-    const { error } = await supabase.from("clientes").insert({ nome: newNome.trim(), cpf: newCpf.trim() || null });
+    if (!newForm.nome.trim()) { toast.error("Nome obrigatório"); return; }
+    const { error } = await supabase.from("clientes").insert({
+      nome: newForm.nome.trim(), cpf: newForm.cpf.trim() || null, rg: newForm.rg.trim() || null,
+      nome_mae: newForm.nome_mae.trim() || null, endereco: newForm.endereco.trim() || null,
+      numero: newForm.numero.trim() || null, cep: newForm.cep.trim() || null,
+      cidade: newForm.cidade.trim() || null, referencia: newForm.referencia.trim() || null,
+    });
     if (error) { toast.error("Erro: " + error.message); return; }
     toast.success("Cliente criado!");
     setShowNew(false);
-    setNewNome("");
-    setNewCpf("");
+    setNewForm({ nome: "", cpf: "", rg: "", nome_mae: "", endereco: "", numero: "", cep: "", cidade: "", referencia: "" });
     refetch();
   };
 
   const openEdit = () => {
     if (!selectedCliente) return;
-    setEditNome(selectedCliente.nome);
-    setEditCpf(selectedCliente.cpf || "");
+    setEditForm({
+      nome: selectedCliente.nome || "",
+      cpf: selectedCliente.cpf || "",
+      rg: selectedCliente.rg || "",
+      nome_mae: selectedCliente.nome_mae || "",
+      endereco: selectedCliente.endereco || "",
+      numero: selectedCliente.numero || "",
+      cep: selectedCliente.cep || "",
+      cidade: selectedCliente.cidade || "",
+      referencia: selectedCliente.referencia || "",
+    });
     setEditOpen(true);
   };
 
   const handleEdit = async () => {
-    if (!selectedId || !editNome.trim()) { toast.error("Nome obrigatório"); return; }
-    const { error } = await supabase.from("clientes").update({ nome: editNome.trim(), cpf: editCpf.trim() || null }).eq("id", selectedId);
+    if (!selectedId || !editForm.nome.trim()) { toast.error("Nome obrigatório"); return; }
+    const { error } = await supabase.from("clientes").update({
+      nome: editForm.nome.trim(), cpf: editForm.cpf.trim() || null, rg: editForm.rg.trim() || null,
+      nome_mae: editForm.nome_mae.trim() || null, endereco: editForm.endereco.trim() || null,
+      numero: editForm.numero.trim() || null, cep: editForm.cep.trim() || null,
+      cidade: editForm.cidade.trim() || null, referencia: editForm.referencia.trim() || null,
+    }).eq("id", selectedId);
     if (error) { toast.error("Erro: " + error.message); return; }
     toast.success("Cliente atualizado!");
     setEditOpen(false);
@@ -121,9 +149,7 @@ export default function ClientesPage() {
 
     setDeleteLoading(true);
     try {
-      // Nullify FK references in ordens_servico
       await supabase.from("ordens_servico").update({ cliente_id: null, cliente_nome: null } as any).eq("cliente_id", selectedId!);
-      // Delete the cliente
       const { error } = await supabase.from("clientes").delete().eq("id", selectedId!);
       if (error) throw error;
       toast.success("Cliente excluído.");
@@ -147,6 +173,37 @@ export default function ClientesPage() {
     em_andamento: "Em andamento",
     concluida: "Concluída",
   };
+
+  const InfoRow = ({ label, value }: { label: string; value?: string | null }) => (
+    value ? (
+      <div className="flex items-start gap-2">
+        <span className="text-caption text-muted-foreground min-w-[90px] shrink-0">{label}:</span>
+        <span className="text-body text-foreground">{value}</span>
+      </div>
+    ) : null
+  );
+
+  const FormFields = ({ form, setForm }: { form: typeof editForm; setForm: (f: typeof editForm) => void }) => (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div><Label>Nome *</Label><Input value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} placeholder="Nome completo" /></div>
+        <div><Label>CPF</Label><Input value={form.cpf} onChange={e => setForm({ ...form, cpf: e.target.value })} placeholder="000.000.000-00" /></div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div><Label>RG</Label><Input value={form.rg} onChange={e => setForm({ ...form, rg: e.target.value })} placeholder="RG" /></div>
+        <div><Label>Nome da Mãe</Label><Input value={form.nome_mae} onChange={e => setForm({ ...form, nome_mae: e.target.value })} placeholder="Nome da mãe" /></div>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <div className="col-span-2"><Label>Endereço</Label><Input value={form.endereco} onChange={e => setForm({ ...form, endereco: e.target.value })} placeholder="Rua / Avenida" /></div>
+        <div><Label>Nº</Label><Input value={form.numero} onChange={e => setForm({ ...form, numero: e.target.value })} placeholder="Nº" /></div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div><Label>CEP</Label><Input value={form.cep} onChange={e => setForm({ ...form, cep: e.target.value })} placeholder="00000-000" /></div>
+        <div><Label>Cidade</Label><Input value={form.cidade} onChange={e => setForm({ ...form, cidade: e.target.value })} placeholder="Cidade" /></div>
+      </div>
+      <div><Label>Referência</Label><Input value={form.referencia} onChange={e => setForm({ ...form, referencia: e.target.value })} placeholder="Ponto de referência" /></div>
+    </div>
+  );
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -208,10 +265,64 @@ export default function ClientesPage() {
                 </div>
               </div>
 
-              <Tabs defaultValue="os" className="p-4">
+              <Tabs defaultValue="dados" className="p-4">
                 <TabsList>
-                  <TabsTrigger value="os">Ordens de Serviço ({osDoCliente.length})</TabsTrigger>
+                  <TabsTrigger value="dados">Dados Cadastrais</TabsTrigger>
+                  <TabsTrigger value="os">OS ({osDoCliente.length})</TabsTrigger>
                 </TabsList>
+
+                <TabsContent value="dados" className="mt-3 space-y-4">
+                  {/* Documentos */}
+                  <div className="bg-muted/30 rounded-lg p-4 space-y-2">
+                    <h3 className="text-caption font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5" /> Documentos
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                      <InfoRow label="CPF" value={selectedCliente.cpf} />
+                      <InfoRow label="RG" value={selectedCliente.rg} />
+                      <InfoRow label="Nome da Mãe" value={selectedCliente.nome_mae} />
+                    </div>
+                    {!selectedCliente.cpf && !selectedCliente.rg && !selectedCliente.nome_mae && (
+                      <p className="text-caption text-muted-foreground italic">Nenhum documento cadastrado.</p>
+                    )}
+                  </div>
+
+                  {/* Endereço */}
+                  <div className="bg-muted/30 rounded-lg p-4 space-y-2">
+                    <h3 className="text-caption font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5" /> Endereço
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                      <InfoRow label="Endereço" value={selectedCliente.endereco} />
+                      <InfoRow label="Número" value={selectedCliente.numero} />
+                      <InfoRow label="CEP" value={selectedCliente.cep} />
+                      <InfoRow label="Cidade" value={selectedCliente.cidade} />
+                      <InfoRow label="Referência" value={selectedCliente.referencia} />
+                    </div>
+                    {!selectedCliente.endereco && !selectedCliente.cep && !selectedCliente.cidade && (
+                      <p className="text-caption text-muted-foreground italic">Nenhum endereço cadastrado.</p>
+                    )}
+                  </div>
+
+                  {/* Contatos */}
+                  {clienteContatos.length > 0 && (
+                    <div className="bg-muted/30 rounded-lg p-4 space-y-2">
+                      <h3 className="text-caption font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5" /> Contatos
+                      </h3>
+                      <div className="space-y-1">
+                        {clienteContatos.map((ct: any) => (
+                          <div key={ct.id} className="flex items-center gap-2 text-body text-foreground">
+                            <span>{ct.valor}</span>
+                            {ct.tem_whatsapp && <span className="text-caption text-success font-medium">WhatsApp</span>}
+                            <span className="text-caption text-muted-foreground">({ct.tipo})</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+
                 <TabsContent value="os">
                   <div className="overflow-x-auto mt-2">
                     <table className="w-full">
@@ -265,7 +376,7 @@ export default function ClientesPage() {
           ) : (
             <div className="bg-card border border-border rounded-lg shadow-card p-12 text-center">
               <FileText className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-body text-muted-foreground">Selecione um cliente para ver o histórico de OS.</p>
+              <p className="text-body text-muted-foreground">Selecione um cliente para ver os dados.</p>
             </div>
           )}
         </div>
@@ -273,12 +384,11 @@ export default function ClientesPage() {
 
       {/* Dialog novo cliente */}
       <Dialog open={showNew} onOpenChange={setShowNew}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[90vh]">
           <DialogHeader><DialogTitle>Novo Cliente</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div><Label>Nome *</Label><Input value={newNome} onChange={(e) => setNewNome(e.target.value)} placeholder="Nome do cliente" /></div>
-            <div><Label>CPF</Label><Input value={newCpf} onChange={(e) => setNewCpf(e.target.value)} placeholder="000.000.000-00" /></div>
-          </div>
+          <ScrollArea className="max-h-[60vh] pr-3">
+            <FormFields form={newForm} setForm={setNewForm} />
+          </ScrollArea>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNew(false)}>Cancelar</Button>
             <Button onClick={handleCreate}>Criar</Button>
@@ -288,12 +398,11 @@ export default function ClientesPage() {
 
       {/* Dialog editar cliente */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[90vh]">
           <DialogHeader><DialogTitle>Editar Cliente</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div><Label>Nome *</Label><Input value={editNome} onChange={(e) => setEditNome(e.target.value)} /></div>
-            <div><Label>CPF</Label><Input value={editCpf} onChange={(e) => setEditCpf(e.target.value)} placeholder="000.000.000-00" /></div>
-          </div>
+          <ScrollArea className="max-h-[60vh] pr-3">
+            <FormFields form={editForm} setForm={setEditForm} />
+          </ScrollArea>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
             <Button onClick={handleEdit} className="press-effect">Salvar</Button>
