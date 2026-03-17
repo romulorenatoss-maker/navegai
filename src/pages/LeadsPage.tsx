@@ -145,7 +145,10 @@ const STATUS_OPTIONS = [
   { value: "arquivado", label: "Arquivado", color: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200" },
   { value: "aguardando_decisao_avaliador", label: "Aguardando Avaliador", color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
   { value: "aguardando_captura", label: "Aguardando Captura", color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
+  { value: "reservado", label: "Reservado", color: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200" },
 ];
+
+const RESERVATION_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes
 
 function statusBadge(status: string) {
   const s = STATUS_OPTIONS.find((o) => o.value === status) || STATUS_OPTIONS[0];
