@@ -655,24 +655,47 @@ export default function FilaLeadsPage() {
                               >
                                 <ExternalLink className="w-3.5 h-3.5" />
                               </Button>
-                              <Button size="sm" variant="outline" className="h-7 text-[11px] px-2" onClick={() => openAttempt(item)}>
-                                <Phone className="w-3 h-3 mr-1" /> {item.tentativaAtual}ª Tentativa
-                              </Button>
-                              <Button
-                                size="sm" variant="ghost" className="h-7 text-[11px] px-1.5"
-                                title="Transferir para outro avaliador"
-                                onClick={() => { setTransferItem(item); setTransferTarget(""); setShowTransfer(true); }}
-                              >
-                                <ArrowRightLeft className="w-3.5 h-3.5" />
-                              </Button>
-                              {item.isOverdue && (
-                                <Button
-                                  size="sm" variant="ghost" className="h-7 text-[11px] px-1.5 text-destructive hover:text-destructive"
-                                  title="Marcar atraso do responsável"
-                                  onClick={() => { setDelayItem(item); setShowDelay(true); }}
-                                >
-                                  <AlertTriangle className="w-3.5 h-3.5" />
-                                </Button>
+                              {item.lead.status_lead === "aguardando_decisao_avaliador" ? (
+                                <>
+                                  <Button
+                                    size="sm" variant="outline" className="h-7 text-[11px] px-2"
+                                    onClick={() => archiveMutation.mutate(item.lead.id)}
+                                    disabled={archiveMutation.isPending}
+                                  >
+                                    <Archive className="w-3 h-3 mr-1" /> Arquivar
+                                  </Button>
+                                  {fluxoConfig?.permitir_reiniciar_rotina && (
+                                    <Button
+                                      size="sm" variant="secondary" className="h-7 text-[11px] px-2"
+                                      onClick={() => restartMutation.mutate(item.lead.id)}
+                                      disabled={restartMutation.isPending}
+                                    >
+                                      <RefreshCw className="w-3 h-3 mr-1" /> Reiniciar
+                                    </Button>
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  <Button size="sm" variant="outline" className="h-7 text-[11px] px-2" onClick={() => openAttempt(item)}>
+                                    <Phone className="w-3 h-3 mr-1" /> {item.tentativaAtual}ª Tentativa
+                                  </Button>
+                                  <Button
+                                    size="sm" variant="ghost" className="h-7 text-[11px] px-1.5"
+                                    title="Transferir para outro avaliador"
+                                    onClick={() => { setTransferItem(item); setTransferTarget(""); setShowTransfer(true); }}
+                                  >
+                                    <ArrowRightLeft className="w-3.5 h-3.5" />
+                                  </Button>
+                                  {item.isOverdue && (
+                                    <Button
+                                      size="sm" variant="ghost" className="h-7 text-[11px] px-1.5 text-destructive hover:text-destructive"
+                                      title="Marcar atraso do responsável"
+                                      onClick={() => { setDelayItem(item); setShowDelay(true); }}
+                                    >
+                                      <AlertTriangle className="w-3.5 h-3.5" />
+                                    </Button>
+                                  )}
+                                </>
                               )}
                             </div>
                           </TableCell>
