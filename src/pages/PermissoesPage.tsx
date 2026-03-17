@@ -13,6 +13,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { Shield, Users, Eye, PenLine, Plus, Trash2, Save, Lock } from "lucide-react";
 
+type DataScopeValue = "none" | "own" | "team" | "all";
+const SCOPE_LABELS: Record<DataScopeValue, string> = { none: "Nenhum", own: "Próprio", team: "Equipe", all: "Todos" };
+const SCOPE_CYCLE: DataScopeValue[] = ["none", "own", "team", "all"];
+const SCOPE_COLORS: Record<DataScopeValue, string> = {
+  none: "text-muted-foreground bg-muted/30",
+  own: "text-primary bg-primary/10",
+  team: "text-amber-600 bg-amber-500/10",
+  all: "text-emerald-600 bg-emerald-500/10",
+};
+
 interface Resource {
   id: string;
   code: string;
@@ -38,6 +48,7 @@ interface GroupPerm {
   can_delete: boolean;
   can_assign: boolean;
   can_export: boolean;
+  data_scope: DataScopeValue;
 }
 
 interface UserGroupAssignment {
@@ -56,6 +67,7 @@ interface UserOverride {
   can_delete: boolean | null;
   can_assign: boolean | null;
   can_export: boolean | null;
+  data_scope: DataScopeValue | null;
 }
 
 export default function PermissoesPage() {
@@ -279,13 +291,14 @@ export default function PermissoesPage() {
                         <th className="text-center px-3 py-2 text-muted-foreground font-medium w-20">Excluir</th>
                         <th className="text-center px-3 py-2 text-muted-foreground font-medium w-20">Atribuir</th>
                         <th className="text-center px-3 py-2 text-muted-foreground font-medium w-20">Exportar</th>
+                        <th className="text-center px-3 py-2 text-muted-foreground font-medium w-24">Escopo</th>
                       </tr>
                     </thead>
                     <tbody>
                       {Object.entries(resourcesByModule).map(([module, res]) => (
                         <>
                           <tr key={module}>
-                            <td colSpan={7} className="px-3 py-1.5 bg-muted/30 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{module}</td>
+                            <td colSpan={8} className="px-3 py-1.5 bg-muted/30 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{module}</td>
                           </tr>
                           {res.map((r) => (
                             <tr key={r.id} className="border-b border-border/50 hover:bg-muted/20">
@@ -298,6 +311,24 @@ export default function PermissoesPage() {
                                   />
                                 </td>
                               ))}
+                              <td className="text-center px-3 py-2">
+                                {(() => {
+                                  const perm = groupPerms.find((gp) => gp.resource_id === r.id);
+                                  const currentScope = (perm?.data_scope as DataScopeValue) || "own";
+                                  return (
+                                    <button
+                                      onClick={() => {
+                                        const idx = SCOPE_CYCLE.indexOf(currentScope);
+                                        const next = SCOPE_CYCLE[(idx + 1) % SCOPE_CYCLE.length];
+                                        toggleGroupPerm.mutate({ resourceId: r.id, action: "data_scope", value: next as any });
+                                      }}
+                                      className={`px-2 h-6 rounded text-xs font-semibold ${SCOPE_COLORS[currentScope]} hover:opacity-80 transition-opacity`}
+                                    >
+                                      {SCOPE_LABELS[currentScope]}
+                                    </button>
+                                  );
+                                })()}
+                              </td>
                             </tr>
                           ))}
                         </>
@@ -361,6 +392,7 @@ export default function PermissoesPage() {
                           <th className="text-center px-2 py-1.5 text-muted-foreground font-medium text-xs w-16">Excluir</th>
                           <th className="text-center px-2 py-1.5 text-muted-foreground font-medium text-xs w-16">Atribuir</th>
                           <th className="text-center px-2 py-1.5 text-muted-foreground font-medium text-xs w-16">Exportar</th>
+                          <th className="text-center px-2 py-1.5 text-muted-foreground font-medium text-xs w-20">Escopo</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -385,6 +417,26 @@ export default function PermissoesPage() {
                                 </td>
                               );
                             })}
+                            <td className="text-center px-2 py-1.5">
+                              {(() => {
+                                const o = userOverrides.find((ov) => ov.resource_id === r.id);
+                                const scopeVal = (o?.data_scope as DataScopeValue | null) ?? null;
+                                const label = scopeVal === null ? "—" : SCOPE_LABELS[scopeVal];
+                                const cls = scopeVal === null ? "text-muted-foreground bg-muted/30" : SCOPE_COLORS[scopeVal];
+                                return (
+                                  <button
+                                    onClick={() => {
+                                      const idx = scopeVal === null ? 0 : SCOPE_CYCLE.indexOf(scopeVal) + 1;
+                                      const next = idx >= SCOPE_CYCLE.length ? null : SCOPE_CYCLE[idx];
+                                      setUserOverride.mutate({ resourceId: r.id, action: "data_scope", value: next as any });
+                                    }}
+                                    className={`px-1.5 h-6 rounded text-[10px] font-semibold ${cls} hover:opacity-80 transition-opacity`}
+                                  >
+                                    {label}
+                                  </button>
+                                );
+                              })()}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
