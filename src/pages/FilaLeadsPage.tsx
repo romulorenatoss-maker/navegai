@@ -543,17 +543,31 @@ export default function FilaLeadsPage() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <span className={`text-xs flex items-center gap-1 ${item.isOverdue ? "text-destructive font-medium" : "text-muted-foreground"}`}>
-                              <Clock className="w-3 h-3" />
-                              {item.proximoContato ? fmtDateShort(item.proximoContato) : "Sem cadência"}
-                            </span>
+                            {item.isOverdue ? (
+                              <span className="text-xs flex items-center gap-1 text-destructive font-semibold bg-destructive/10 border border-destructive/30 rounded px-1.5 py-0.5 w-fit">
+                                <AlertTriangle className="w-3 h-3" />
+                                {item.proximoContato ? fmtDateShort(item.proximoContato) : "Atrasado"}
+                              </span>
+                            ) : (
+                              <span className="text-xs flex items-center gap-1 text-muted-foreground">
+                                <Clock className="w-3 h-3" />
+                                {item.proximoContato ? fmtDateShort(item.proximoContato) : "Sem cadência"}
+                              </span>
+                            )}
                           </TableCell>
                           <TableCell>
                             {item.isScheduled ? (
-                              <span className={`text-xs flex items-center gap-1 ${item.scheduleReady ? "text-primary font-semibold" : "text-muted-foreground"}`}>
-                                <CalendarClock className="w-3 h-3" />
-                                {item.scheduleReady ? "⬆ Retorno agora" : fmtDateShort(new Date(item.lead.agendamento_retorno!))}
-                              </span>
+                              item.scheduleReady ? (
+                                <span className="text-xs flex items-center gap-1 text-destructive font-semibold bg-destructive/10 border border-destructive/30 rounded px-1.5 py-0.5 w-fit">
+                                  <AlertTriangle className="w-3 h-3" />
+                                  Retorno expirado
+                                </span>
+                              ) : (
+                                <span className="text-xs flex items-center gap-1 text-muted-foreground">
+                                  <CalendarClock className="w-3 h-3" />
+                                  {fmtDateShort(new Date(item.lead.agendamento_retorno!))}
+                                </span>
+                              )
                             ) : (
                               <span className="text-[11px] text-muted-foreground">—</span>
                             )}
