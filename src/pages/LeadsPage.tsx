@@ -610,7 +610,7 @@ export default function LeadsPage() {
       // 3) Oldest leads first (by creation date ascending)
       return new Date(a.lead.created_at).getTime() - new Date(b.lead.created_at).getTime();
     });
-  }, [allLeads, allLeadInteracoes, cadencia]);
+  }, [allLeads, allLeadInteracoes, allLeadTransfers, cadencia]);
 
   // Filtered priority queue based on filaFiltro
   const filteredQueue = useMemo(() => {
