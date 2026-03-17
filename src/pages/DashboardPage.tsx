@@ -76,6 +76,7 @@ interface SectorPending {
 
 // --- Helpers ---
 import { getScoreColorClass, getScoreBgClass } from "@/lib/score-colors";
+import { calculateAverage, calculateWeightedAverage } from "@/lib/calculate-average";
 
 const getScoreColor = getScoreColorClass;
 const getScoreBg = getScoreBgClass;
@@ -502,7 +503,10 @@ export default function DashboardPage() {
         } else {
           // Merge: weighted average
           const totalEvals = existing.total_avaliacoes + t.total_avaliacoes;
-          existing.media = (existing.media * existing.total_avaliacoes + t.media * t.total_avaliacoes) / totalEvals;
+          existing.media = calculateWeightedAverage([
+            { value: existing.media, weight: existing.total_avaliacoes },
+            { value: t.media, weight: t.total_avaliacoes },
+          ]);
           existing.total_avaliacoes = totalEvals;
         }
       });
@@ -536,7 +540,7 @@ export default function DashboardPage() {
 
       const sMedias: SetorMedia[] = Object.entries(setorAvgs).map(([id, v]) => ({
         setor_id: id, setor_nome: v.nome,
-        media: v.avgs.reduce((a, b) => a + b, 0) / v.avgs.length,
+        media: calculateAverage(v.avgs),
         total_avaliacoes: finalMedias.filter(t => {
           const pSetores = profileSetores[t.profile_id] || [];
           const sqlSetores = profileSqlSetores[t.profile_id] ? [...profileSqlSetores[t.profile_id]] : [];
@@ -887,7 +891,7 @@ export default function DashboardPage() {
 
           // Média de Equipe: average between both sectors (when both exist)
           const equipeMedia = atendiSetor && tecnicoSetor
-            ? (atendiSetor.media + tecnicoSetor.media) / 2
+            ? calculateAverage([atendiSetor.media, tecnicoSetor.media])
             : atendiSetor ? atendiSetor.media : tecnicoSetor ? tecnicoSetor.media : null;
           const equipeTotal = (atendiSetor?.total_avaliacoes || 0) + (tecnicoSetor?.total_avaliacoes || 0);
 

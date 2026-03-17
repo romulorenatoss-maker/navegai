@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { calculateAverage } from "@/lib/calculate-average";
 
 interface NotaPorSetor {
   tipo: string;
@@ -60,7 +61,7 @@ export function calcularMediaColaborador(
 ): number | null {
   const filtered = notas.filter(n => n.profile_id === profileId);
   if (filtered.length === 0) return null;
-  return filtered.reduce((acc, n) => acc + Number(n.nota), 0) / filtered.length;
+  return calculateAverage(filtered.map(n => n.nota));
 }
 
 /**
@@ -73,5 +74,5 @@ export function calcularNotaPorOS(
 ): number | null {
   const filtered = notas.filter(n => n.profile_id === profileId && n.os_id === osId);
   if (filtered.length === 0) return null;
-  return filtered.reduce((acc, n) => acc + Number(n.nota), 0) / filtered.length;
+  return calculateAverage(filtered.map(n => n.nota));
 }
