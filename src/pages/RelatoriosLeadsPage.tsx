@@ -76,6 +76,7 @@ export default function RelatoriosLeadsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [exportAllLoading, setExportAllLoading] = useState(false);
@@ -170,6 +171,35 @@ export default function RelatoriosLeadsPage() {
     }
 
     toast.success(`${ids.length} lead(s) e todos os dados vinculados foram excluídos.`);
+    fetchLeads();
+  };
+
+  // ─── Delete ALL filtered leads and ALL related records ─
+  const executeDeleteAllFiltered = async () => {
+    if (!user) return;
+    const ids = leadsList.map((l) => l.id);
+    if (ids.length === 0) return;
+
+    await supabase.from("lead_tarefas_contato").delete().in("lead_id", ids);
+    await supabase.from("lead_interacoes").delete().in("lead_id", ids);
+    await supabase.from("lead_historico").delete().in("lead_id", ids);
+    await supabase.from("lead_contatos").delete().in("lead_id", ids);
+    await supabase.from("registro_atraso_tentativa").delete().in("lead_id", ids);
+    await supabase.from("registro_objecao_lead").delete().in("lead_id", ids);
+    await supabase.from("leads").delete().in("id", ids);
+
+    for (const id of ids) {
+      const info = leadsList.find((l) => l.id === id);
+      await supabase.from("audit_logs").insert({
+        user_id: user.id,
+        acao: "exclusao_lead_relatorio_massa",
+        tabela: "leads",
+        registro_id: id,
+        dados_anteriores: info ? { nome: info.nome, status: info.status_lead } : null,
+      });
+    }
+
+    toast.success(`${ids.length} lead(s) e todos os dados vinculados foram removidos do sistema.`);
     fetchLeads();
   };
 
@@ -352,15 +382,28 @@ export default function RelatoriosLeadsPage() {
               <Users className="w-4 h-4 text-primary" />
               Leads ({leadsList.length})
             </h2>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportAllFiltered}
-              disabled={exportAllLoading || leadsList.length === 0}
-            >
-              {exportAllLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
-              Exportar Relatório ({leadsList.length})
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportAllFiltered}
+                disabled={exportAllLoading || leadsList.length === 0}
+              >
+                {exportAllLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
+                Exportar Relatório ({leadsList.length})
+              </Button>
+              {isAdmin && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setDeleteAllDialogOpen(true)}
+                  disabled={leadsList.length === 0}
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Remover Dados ({leadsList.length})
+                </Button>
+              )}
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -434,6 +477,15 @@ export default function RelatoriosLeadsPage() {
         title="Confirmar Exportação"
         description={`Informe sua senha para exportar ${selected.size} lead(s) selecionado(s).`}
         onConfirm={handleExportSelected}
+      />
+
+      {/* Delete ALL filtered Password Dialog */}
+      <AdminPasswordDialog
+        open={deleteAllDialogOpen}
+        onOpenChange={setDeleteAllDialogOpen}
+        title="Remover Todos os Dados"
+        description={`Você está prestes a remover ${leadsList.length} lead(s) listados e TODOS os dados vinculados (contatos, tarefas, interações, histórico, atrasos, objeções). Nada restará no sistema. Esta ação é irreversível.`}
+        onConfirm={executeDeleteAllFiltered}
       />
     </div>
   );
