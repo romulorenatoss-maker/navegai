@@ -1758,9 +1758,21 @@ export default function LeadsPage() {
                           </div>
                           <div className="flex flex-col items-end gap-0.5 shrink-0">
                             {statusBadge(item.lead.status_lead)}
-                            <span className="text-[10px] text-muted-foreground">
-                              {item.tentativaAtual - 1} tent.
-                            </span>
+                            <div className="flex items-center gap-1 group/tent relative">
+                              <span className="text-[10px] text-muted-foreground">
+                                {item.tentativaAtual - 1}/{item.totalTentativas} tent.
+                              </span>
+                              {item.handlers.length > 0 && (
+                                <div className="absolute bottom-full right-0 mb-1 hidden group-hover/tent:block z-50 bg-popover border border-border text-popover-foreground text-[11px] px-2 py-1.5 rounded shadow-md whitespace-nowrap">
+                                  <p className="font-medium mb-0.5">Ciclo: {item.tentativaAtual - 1} | Total: {item.totalTentativas}</p>
+                                  <p className="text-muted-foreground">Atendentes:</p>
+                                  {item.handlers.map(hId => {
+                                    const hp = profiles.find(p => p.id === hId);
+                                    return <p key={hId} className="text-[10px]">• {hp?.nome || "—"}</p>;
+                                  })}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                         <div className="ml-5 mt-1 flex flex-col gap-0.5">
