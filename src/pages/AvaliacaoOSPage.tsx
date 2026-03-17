@@ -1110,13 +1110,13 @@ export default function AvaliacaoOSPage() {
     if (!tipoServicoId) { toast.error("Selecione o tipo de serviço."); return; }
     if ((hasAtendimentoAccess || isAdmin) && !atendenteId) { toast.error("Selecione o atendente avaliado."); return; }
     if ((hasTecnicoAccess || isAdmin) && !tecnicoId) { toast.error("Selecione o técnico avaliado."); return; }
-    // Only require at least one collaborator if the evaluator has atendimento/tecnico access
     if ((hasAtendimentoAccess || hasTecnicoAccess || isAdmin) && !atendenteId && !tecnicoId) { toast.error("Selecione pelo menos um colaborador avaliado."); return; }
 
     try {
       const num = formOsNumero.trim();
       const nomeTr = formClienteNome.trim() || null;
-      const cpfTr = formClienteCpf.trim() || null;
+      const cpfDigits = formClienteCpf.replace(/\D/g, "");
+      const cpfTr = cpfDigits.length === 11 ? formatCpf(cpfDigits) : formClienteCpf.trim() || null;
 
       let osId: string;
       if (formFoundOS) {
@@ -1124,14 +1124,41 @@ export default function AvaliacaoOSPage() {
         await supabase.from("ordens_servico").update({
           atendente_id: atendenteId || null, tecnico_id: tecnicoId || null,
           tipo_servico_id: tipoServicoId, cliente_id: clienteId,
+          numero_os: num || formFoundOS.numero_os || null,
+          cliente_nome: nomeTr || formFoundOS.cliente_nome,
+          cliente_cpf: cpfTr || formFoundOS.cliente_cpf,
+          status: (formFoundOS.status === "aguardando_numero" && num) ? "aberta" : formFoundOS.status,
         } as any).eq("id", osId);
       } else {
-        const { data: newOs, error: oe } = await supabase.from("ordens_servico").insert({
-          numero_os: num, cliente_nome: nomeTr, cliente_cpf: cpfTr, tipo_servico_id: tipoServicoId,
-          cliente_id: clienteId, atendente_id: atendenteId || null, tecnico_id: tecnicoId || null,
-        } as any).select("id").single();
-        if (oe) throw oe;
-        osId = newOs.id;
+        // Check for existing open OS for this client before creating
+        const { data: existingOpenOS } = await supabase
+          .from("ordens_servico")
+          .select("id, numero_os, status")
+          .eq("cliente_id", clienteId)
+          .in("status", ["aberta", "em_andamento", "aguardando_numero"] as any[])
+          .limit(1);
+
+        if (existingOpenOS && existingOpenOS.length > 0) {
+          const existingOS = existingOpenOS[0];
+          osId = existingOS.id;
+          // Update with new data
+          await supabase.from("ordens_servico").update({
+            atendente_id: atendenteId || null, tecnico_id: tecnicoId || null,
+            tipo_servico_id: tipoServicoId,
+            numero_os: num || existingOS.numero_os || null,
+            cliente_nome: nomeTr,
+            cliente_cpf: cpfTr,
+            status: (existingOS.status === "aguardando_numero" && num) ? "aberta" : existingOS.status,
+          } as any).eq("id", osId);
+          toast.info("OS existente encontrada. Atualizando dados...");
+        } else {
+          const { data: newOs, error: oe } = await supabase.from("ordens_servico").insert({
+            numero_os: num || null, cliente_nome: nomeTr, cliente_cpf: cpfTr, tipo_servico_id: tipoServicoId,
+            cliente_id: clienteId, atendente_id: atendenteId || null, tecnico_id: tecnicoId || null,
+          } as any).select("id").single();
+          if (oe) throw oe;
+          osId = newOs.id;
+        }
       }
 
       // Snapshot checklist questions into os_perguntas
