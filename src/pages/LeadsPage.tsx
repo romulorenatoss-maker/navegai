@@ -3381,52 +3381,177 @@ export default function LeadsPage() {
               </div>
               <div className="border rounded-md p-3 space-y-3 bg-muted/20">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Endereço</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Cidade *</Label>
+                <div className="space-y-2">
+                  {/* CEP search */}
+                  <div className="space-y-1">
+                    <Label className="text-xs">Buscar por CEP</Label>
                     <div className="flex gap-1">
-                      <Select value={convCidadeId || "none"} onValueChange={v => { setConvCidadeId(v === "none" ? null : v); setConvBairroId(null); setConvRuaId(null); }}>
-                        <SelectTrigger className="h-9 flex-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Nenhuma</SelectItem>
-                          {endCidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => { setConvQuickAddType("cidade"); setConvQuickAddNome(""); }}><Plus className="w-3.5 h-3.5" /></Button>
+                      <Input
+                        className="h-8 text-xs flex-1"
+                        placeholder="Digite o CEP..."
+                        value={convCepSearch}
+                        onChange={e => {
+                          const v = e.target.value.replace(/\D/g, "").slice(0, 8);
+                          setConvCepSearch(v);
+                          setConvCepNotFound(false);
+                          setConvNewBairroNome("");
+                          setConvNewRuaNome("");
+                        }}
+                      />
+                      <Button
+                        type="button" variant="outline" size="sm" className="h-8 text-xs"
+                        disabled={convCepSearch.length < 5}
+                        onClick={() => {
+                          const cep = convCepSearch.trim();
+                          const match = endRuas.find(r => r.cep && r.cep.some(c => c.replace(/\D/g, "").includes(cep)));
+                          if (match) {
+                            const bairro = endBairros.find(b => b.id === match.bairro_id);
+                            if (bairro) { setConvCidadeId(bairro.cidade_id); setConvBairroId(bairro.id); }
+                            setConvRuaId(match.id);
+                            setConvCepNotFound(false);
+                            toast.success(`CEP encontrado: ${match.nome}`);
+                          } else {
+                            setConvCepNotFound(true);
+                          }
+                        }}
+                      >
+                        <Search className="w-3 h-3 mr-1" /> Buscar
+                      </Button>
                     </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">CEP</Label>
-                    <Input value={(() => { const rua = endRuas.find(r => r.id === convRuaId); return rua?.cep?.[0] || ""; })()} disabled placeholder="Preenchido pela rua" className="h-9 bg-muted/50" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Bairro *</Label>
-                    <div className="flex gap-1">
-                      <Select value={convBairroId || "none"} onValueChange={v => { setConvBairroId(v === "none" ? null : v); setConvRuaId(null); }} disabled={!convCidadeId}>
-                        <SelectTrigger className="h-9 flex-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Nenhum</SelectItem>
-                          {endBairros.filter(b => b.cidade_id === convCidadeId).map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => { setConvQuickAddType("bairro"); setConvQuickAddNome(""); }} disabled={!convCidadeId}><Plus className="w-3.5 h-3.5" /></Button>
+
+                  {/* Show resolved address or not-found flow */}
+                  {convRuaId && !convCepNotFound && (() => {
+                    const rua = endRuas.find(r => r.id === convRuaId);
+                    const bairro = endBairros.find(b => b.id === convBairroId);
+                    const cidade = endCidades.find(c => c.id === convCidadeId);
+                    return (
+                      <div className="p-2 rounded-md border bg-muted/30 space-y-1">
+                        <p className="text-xs"><span className="font-medium">Cidade:</span> {cidade?.nome || "—"}</p>
+                        <p className="text-xs"><span className="font-medium">Bairro:</span> {bairro?.nome || "—"}</p>
+                        <p className="text-xs"><span className="font-medium">Rua:</span> {rua?.nome || "—"}</p>
+                        <p className="text-xs"><span className="font-medium">CEP:</span> {rua?.cep?.[0] || "—"}</p>
+                        <Button type="button" variant="link" size="sm" className="h-6 text-xs p-0" onClick={() => {
+                          setConvCidadeId(null); setConvBairroId(null); setConvRuaId(null); setConvCepSearch(""); setConvCepNotFound(false);
+                        }}>Alterar endereço</Button>
+                      </div>
+                    );
+                  })()}
+
+                  {convCepNotFound && (
+                    <div className="border border-dashed border-destructive/40 rounded-md p-2 space-y-2 bg-destructive/5">
+                      <p className="text-xs text-destructive font-medium">CEP não encontrado. Busque ou cadastre o endereço:</p>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Cidade</Label>
+                        <Select value={convCidadeId || "none"} onValueChange={v => {
+                          setConvCidadeId(v === "none" ? null : v);
+                          setConvBairroId(null); setConvRuaId(null);
+                          setConvNewBairroNome(""); setConvNewRuaNome("");
+                        }}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Nenhuma</SelectItem>
+                            {endCidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {/* Bairro fuzzy */}
+                      <div className="space-y-1">
+                        <Label className="text-xs">Bairro *</Label>
+                        <div className="relative">
+                          <Input className="h-8 text-xs" placeholder="Digite para buscar ou criar bairro..."
+                            value={convNewBairroNome}
+                            onChange={e => { setConvNewBairroNome(e.target.value); setConvBairroId(null); setConvRuaId(null); setConvNewRuaNome(""); }}
+                            disabled={!convCidadeId}
+                          />
+                          {convNewBairroNome.length >= 2 && !convBairroId && convCidadeId && (() => {
+                            const term = convNewBairroNome.toLowerCase();
+                            const matches = endBairros.filter(b => b.cidade_id === convCidadeId && b.nome.toLowerCase().includes(term));
+                            return (matches.length > 0 || convNewBairroNome.trim().length >= 2) ? (
+                              <div className="absolute z-50 w-full bg-popover border border-border rounded-md shadow-md mt-0.5 max-h-32 overflow-y-auto">
+                                {matches.map(b => (
+                                  <button key={b.id} type="button" className="w-full text-left px-2 py-1.5 text-xs hover:bg-muted/50 transition-colors"
+                                    onClick={() => { setConvBairroId(b.id); setConvNewBairroNome(b.nome); }}>
+                                    {b.nome}
+                                  </button>
+                                ))}
+                                {!matches.some(b => b.nome.toLowerCase() === term) && convNewBairroNome.trim().length >= 2 && (
+                                  <button type="button" className="w-full text-left px-2 py-1.5 text-xs hover:bg-muted/50 transition-colors text-primary font-medium"
+                                    onClick={async () => {
+                                      try {
+                                        const { data: nb, error } = await supabase.from("bairros").insert({ nome: convNewBairroNome.trim(), cidade_id: convCidadeId! }).select().single();
+                                        if (error) throw error;
+                                        queryClient.invalidateQueries({ queryKey: ["enderecos-bairros"] });
+                                        setConvBairroId(nb.id); setConvNewBairroNome(nb.nome);
+                                        toast.success("Bairro criado!");
+                                      } catch (err: any) { toast.error(err.message); }
+                                    }}>
+                                    <Plus className="w-3 h-3 inline mr-1" /> Criar "{convNewBairroNome.trim()}"
+                                  </button>
+                                )}
+                              </div>
+                            ) : null;
+                          })()}
+                        </div>
+                      </div>
+                      {/* Rua fuzzy */}
+                      <div className="space-y-1">
+                        <Label className="text-xs">Rua *</Label>
+                        <div className="relative">
+                          <Input className="h-8 text-xs" placeholder="Digite para buscar ou criar rua..."
+                            value={convNewRuaNome}
+                            onChange={e => { setConvNewRuaNome(e.target.value); setConvRuaId(null); }}
+                            disabled={!convBairroId}
+                          />
+                          {convNewRuaNome.length >= 2 && !convRuaId && convBairroId && (() => {
+                            const term = convNewRuaNome.toLowerCase();
+                            const matches = endRuas.filter(r => r.bairro_id === convBairroId && r.nome.toLowerCase().includes(term));
+                            return (matches.length > 0 || convNewRuaNome.trim().length >= 2) ? (
+                              <div className="absolute z-50 w-full bg-popover border border-border rounded-md shadow-md mt-0.5 max-h-32 overflow-y-auto">
+                                {matches.map(r => (
+                                  <button key={r.id} type="button" className="w-full text-left px-2 py-1.5 text-xs hover:bg-muted/50 transition-colors"
+                                    onClick={async () => {
+                                      setConvRuaId(r.id); setConvNewRuaNome(r.nome);
+                                      const existingCeps = r.cep || [];
+                                      const cepNorm = convCepSearch.trim();
+                                      if (cepNorm && !existingCeps.some(c => c.replace(/\D/g, "") === cepNorm)) {
+                                        await supabase.from("ruas").update({ cep: [...existingCeps, cepNorm] }).eq("id", r.id);
+                                        queryClient.invalidateQueries({ queryKey: ["enderecos-ruas"] });
+                                        toast.success(`CEP vinculado à rua ${r.nome}`);
+                                      }
+                                      setConvCepNotFound(false);
+                                    }}>
+                                    {r.nome} {r.cep?.length ? `(${r.cep.join(", ")})` : ""}
+                                  </button>
+                                ))}
+                                {!matches.some(r => r.nome.toLowerCase() === term) && convNewRuaNome.trim().length >= 2 && (
+                                  <button type="button" className="w-full text-left px-2 py-1.5 text-xs hover:bg-muted/50 transition-colors text-primary font-medium"
+                                    onClick={async () => {
+                                      try {
+                                        const { data: nr, error } = await supabase.from("ruas").insert({ nome: convNewRuaNome.trim(), bairro_id: convBairroId!, cep: convCepSearch.trim() ? [convCepSearch.trim()] : [] }).select().single();
+                                        if (error) throw error;
+                                        queryClient.invalidateQueries({ queryKey: ["enderecos-ruas"] });
+                                        setConvRuaId(nr.id); setConvNewRuaNome(nr.nome);
+                                        setConvCepNotFound(false);
+                                        toast.success("Rua criada com CEP vinculado!");
+                                      } catch (err: any) { toast.error(err.message); }
+                                    }}>
+                                    <Plus className="w-3 h-3 inline mr-1" /> Criar "{convNewRuaNome.trim()}"
+                                  </button>
+                                )}
+                              </div>
+                            ) : null;
+                          })()}
+                        </div>
+                      </div>
                     </div>
+                  )}
+
+                  {/* Número e Referência sempre visíveis */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1"><Label className="text-xs">Número *</Label><Input value={convForm.numero} onChange={e => setConvForm(f => ({ ...f, numero: e.target.value }))} className="h-8 text-xs" /></div>
+                    <div className="space-y-1"><Label className="text-xs">Referência</Label><Input value={convForm.referencia} onChange={e => setConvForm(f => ({ ...f, referencia: e.target.value }))} className="h-8 text-xs" /></div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Rua *</Label>
-                    <div className="flex gap-1">
-                      <Select value={convRuaId || "none"} onValueChange={v => setConvRuaId(v === "none" ? null : v)} disabled={!convBairroId}>
-                        <SelectTrigger className="h-9 flex-1"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Nenhuma</SelectItem>
-                          {endRuas.filter(r => r.bairro_id === convBairroId).map(r => <SelectItem key={r.id} value={r.id}>{r.nome}{r.cep?.[0] ? ` (${r.cep[0]})` : ""}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => { setConvQuickAddType("rua"); setConvQuickAddNome(""); }} disabled={!convBairroId}><Plus className="w-3.5 h-3.5" /></Button>
-                    </div>
-                  </div>
-                  <div className="space-y-1.5"><Label className="text-xs">Número *</Label><Input value={convForm.numero} onChange={e => setConvForm(f => ({ ...f, numero: e.target.value }))} className="h-9" /></div>
-                  <div className="space-y-1.5"><Label className="text-xs">Referência</Label><Input value={convForm.referencia} onChange={e => setConvForm(f => ({ ...f, referencia: e.target.value }))} className="h-9" /></div>
                 </div>
               </div>
               {/* Atendente selector */}
