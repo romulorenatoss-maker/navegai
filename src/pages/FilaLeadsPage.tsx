@@ -193,35 +193,94 @@ export default function FilaLeadsPage() {
     refetchInterval: 60_000,
   });
 
-  const tarefaLeadIds = useMemo(() => [...new Set(tarefas.map((t: any) => t.lead_id))], [tarefas]);
+  // Also fetch leads with manual agendamento_retorno (not in tarefas_contato)
+  const { data: leadsComAgendamento = [] } = useQuery({
+    queryKey: ["leads-com-agendamento"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("leads").select("id, nome, status_lead, responsavel_id, agendamento_retorno")
+        .not("agendamento_retorno", "is", null)
+        .in("status_lead", ["novo", "em_contato", "interessado"]);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Merge: all task lead IDs + agendamento lead IDs
+  const allTarefaLeadIds = useMemo(() => {
+    const ids = new Set(tarefas.map((t: any) => t.lead_id));
+    leadsComAgendamento.forEach(l => ids.add(l.id));
+    return [...ids];
+  }, [tarefas, leadsComAgendamento]);
+
   const { data: tarefaLeads = [] } = useQuery({
-    queryKey: ["fila-tarefas-leads-names", tarefaLeadIds],
-    enabled: tarefaLeadIds.length > 0,
-    queryFn: async () => { const { data } = await supabase.from("leads").select("id, nome, status_lead").in("id", tarefaLeadIds); return data || []; },
+    queryKey: ["fila-tarefas-leads-names", allTarefaLeadIds],
+    enabled: allTarefaLeadIds.length > 0,
+    queryFn: async () => { const { data } = await supabase.from("leads").select("id, nome, status_lead, responsavel_id, agendamento_retorno").in("id", allTarefaLeadIds); return data || []; },
   });
   const { data: tarefaContatos = [] } = useQuery({
-    queryKey: ["fila-tarefas-leads-contatos", tarefaLeadIds],
-    enabled: tarefaLeadIds.length > 0,
-    queryFn: async () => { const { data } = await supabase.from("lead_contatos").select("*").in("lead_id", tarefaLeadIds); return data || []; },
+    queryKey: ["fila-tarefas-leads-contatos", allTarefaLeadIds],
+    enabled: allTarefaLeadIds.length > 0,
+    queryFn: async () => { const { data } = await supabase.from("lead_contatos").select("*").in("lead_id", allTarefaLeadIds); return data || []; },
   });
 
-  const dedupedTarefas = useMemo(() => {
+  // Build unified task list: automatic (from lead_tarefas_contato) + manual (agendamento_retorno)
+  const unifiedTarefas = useMemo(() => {
     const seen = new Set<string>();
-    return tarefas.filter((t: any) => {
-      if (seen.has(t.id)) return false;
-      seen.add(t.id);
-      return true;
-    });
-  }, [tarefas]);
+    const items: any[] = [];
 
-  const sortedTarefas = useMemo(() => {
-    return [...dedupedTarefas].sort((a: any, b: any) => {
-      const aA = a.status === "atrasado" || isTarefaExpirada(a);
-      const bA = b.status === "atrasado" || isTarefaExpirada(b);
-      if (aA && !bA) return -1; if (!aA && bA) return 1;
-      return new Date(a.data_contato).getTime() - new Date(b.data_contato).getTime();
+    // 1. Automatic tasks from lead_tarefas_contato
+    tarefas.forEach((t: any) => {
+      if (seen.has(t.id)) return;
+      seen.add(t.id);
+      const lead = tarefaLeads.find((l: any) => l.id === t.lead_id);
+      items.push({
+        ...t,
+        _tipo_agenda: "automatico" as const,
+        _lead_nome: lead?.nome || "—",
+        _responsavel_id: t.responsavel_id || lead?.responsavel_id || null,
+        _data_referencia: new Date(t.data_contato),
+      });
     });
-  }, [dedupedTarefas]);
+
+    // 2. Manual agendamentos (only if not already covered by a tarefa for that lead)
+    const tarefaLeadIdSet = new Set(tarefas.map((t: any) => t.lead_id));
+    leadsComAgendamento.forEach(lead => {
+      if (!lead.agendamento_retorno) return;
+      // Add as a separate entry even if lead has automatic tasks
+      items.push({
+        id: `agenda-${lead.id}`,
+        lead_id: lead.id,
+        tentativa: null,
+        data_contato: lead.agendamento_retorno,
+        periodo: null,
+        status: new Date(lead.agendamento_retorno) < new Date() ? "atrasado" : "pendente",
+        _tipo_agenda: "manual" as const,
+        _lead_nome: lead.nome,
+        _responsavel_id: lead.responsavel_id,
+        _data_referencia: new Date(lead.agendamento_retorno),
+      });
+    });
+
+    return items;
+  }, [tarefas, leadsComAgendamento, tarefaLeads]);
+
+  // Filter by date range
+  const filteredTarefas = useMemo(() => {
+    return unifiedTarefas.filter((t: any) => {
+      const d = t._data_referencia;
+      return d >= tarefaDateStart && d <= tarefaDateEnd;
+    });
+  }, [unifiedTarefas, tarefaDateStart, tarefaDateEnd]);
+
+  // Sort by priority: atrasado first, then by date ascending
+  const sortedTarefas = useMemo(() => {
+    return [...filteredTarefas].sort((a: any, b: any) => {
+      const aA = a.status === "atrasado" || (a.periodo && isTarefaExpirada(a));
+      const bA = b.status === "atrasado" || (b.periodo && isTarefaExpirada(b));
+      if (aA && !bA) return -1; if (!aA && bA) return 1;
+      return a._data_referencia.getTime() - b._data_referencia.getTime();
+    });
+  }, [filteredTarefas]);
 
   const getTarefaLeadName = (id: string) => tarefaLeads.find((l: any) => l.id === id)?.nome || "—";
   const getTarefaPhones = (id: string) => tarefaContatos.filter((c: any) => c.lead_id === id && c.tipo_contato === "telefone");
