@@ -2580,7 +2580,7 @@ export default function AvaliacaoOSPage() {
     <div className="p-4 sm:p-6 max-w-4xl mx-auto">
       <div className="mb-4 sm:mb-6">
         <h1 className="text-lg sm:text-section font-semibold text-foreground">Avaliação de OS</h1>
-        <p className="text-sm sm:text-body text-muted-foreground">Informe o número da OS para iniciar. O CPF do cliente é opcional.</p>
+        <p className="text-sm sm:text-body text-muted-foreground">Informe o número da OS ou o CPF do cliente para buscar.</p>
       </div>
 
       {/* Step 1: CPF + OS Number combined */}
