@@ -925,7 +925,7 @@ export default function FilaLeadsPage() {
                                 }
                                 const h = Math.floor(diffMs / 3600000);
                                 const m = Math.floor((diffMs % 3600000) / 60000);
-                                const color = h < 2 ? "text-yellow-600 dark:text-yellow-400 font-semibold" : "text-emerald-600 dark:text-emerald-400";
+                                const color = h < 1 ? "text-yellow-600 dark:text-yellow-400 font-semibold" : h < 3 ? "text-yellow-600 dark:text-yellow-400" : "text-emerald-600 dark:text-emerald-400";
                                 return <span className={`text-xs flex items-center gap-1 ${color}`}><Clock className="w-3 h-3" />{h}h{String(m).padStart(2,'0')}m</span>;
                               })()}
                             </TableCell>
