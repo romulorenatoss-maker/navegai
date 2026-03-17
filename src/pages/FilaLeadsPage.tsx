@@ -273,9 +273,9 @@ export default function FilaLeadsPage() {
     queryFn: async () => { const { data } = await supabase.from("lead_contatos").select("*").in("lead_id", allTarefaLeadIds); return data || []; },
   });
 
-  // Build unified task list: automatic (from lead_tarefas_contato) + manual (agendamento_retorno)
+  // Build unified task list: automatic tasks + manual agendamentos + leads from priority queue (matching "Hoje" logic)
   const unifiedTarefas = useMemo(() => {
-    const seen = new Set<string>();
+    const seen = new Set<string>(); // track lead_ids already added
     const items: any[] = [];
 
     // 1. Automatic tasks from lead_tarefas_contato
@@ -292,11 +292,9 @@ export default function FilaLeadsPage() {
       });
     });
 
-    // 2. Manual agendamentos (only if not already covered by a tarefa for that lead)
-    const tarefaLeadIdSet = new Set(tarefas.map((t: any) => t.lead_id));
+    // 2. Manual agendamentos
     leadsComAgendamento.forEach(lead => {
       if (!lead.agendamento_retorno) return;
-      // Add as a separate entry even if lead has automatic tasks
       items.push({
         id: `agenda-${lead.id}`,
         lead_id: lead.id,
@@ -311,8 +309,64 @@ export default function FilaLeadsPage() {
       });
     });
 
+    // 3. Active leads from queue that match "Hoje" logic but have no explicit tarefa
+    //    This mirrors the attendant's view: overdue cadence, new leads without interactions, etc.
+    const tarefaLeadIdSet = new Set(items.map((t: any) => t.lead_id));
+    const now = new Date();
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    const in8hours = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+
+    leads.forEach(lead => {
+      if (tarefaLeadIdSet.has(lead.id)) return; // already has a tarefa entry
+      if (!["novo", "em_contato", "interessado", "reservado"].includes(lead.status_lead)) return;
+      if (!lead.responsavel_id && !lead.reserved_by) return; // unassigned, skip
+
+      const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
+      const tentativaAtual = interacoes.length + 1;
+      const ultimaInteracao = interacoes[0]?.data_interacao || null;
+
+      let proximoContato: Date | null = null;
+      if (ultimaInteracao && cadencia.length > 0) {
+        const regra = cadencia.find(c => c.numero_tentativa === tentativaAtual) || cadencia[cadencia.length - 1];
+        if (regra) {
+          const base = addDays(new Date(ultimaInteracao), regra.dias_apos);
+          base.setHours(PERIODO_HORA[regra.periodo] || 9, 0, 0, 0);
+          proximoContato = base;
+        }
+      }
+
+      // Match "Hoje" filter logic from attendant's view
+      let showToday = false;
+      if (lead.agendamento_retorno && new Date(lead.agendamento_retorno) <= endOfToday) {
+        showToday = true;
+      } else if (proximoContato && (proximoContato <= endOfToday || proximoContato <= in8hours)) {
+        showToday = true;
+      } else if (!proximoContato && !ultimaInteracao) {
+        // New lead with no interactions — always show
+        showToday = true;
+      }
+
+      if (!showToday) return;
+
+      const isOverdue = !!proximoContato && proximoContato < now;
+      const refDate = proximoContato || new Date(lead.created_at);
+
+      items.push({
+        id: `queue-${lead.id}`,
+        lead_id: lead.id,
+        tentativa: tentativaAtual,
+        data_contato: refDate.toISOString(),
+        periodo: null,
+        status: isOverdue ? "atrasado" : "pendente",
+        _tipo_agenda: "cadencia" as const,
+        _lead_nome: lead.nome,
+        _responsavel_id: lead.responsavel_id || lead.reserved_by,
+        _data_referencia: refDate,
+      });
+    });
+
     return items;
-  }, [tarefas, leadsComAgendamento, tarefaLeads]);
+  }, [tarefas, leadsComAgendamento, tarefaLeads, leads, allInteracoes, cadencia]);
 
   // Filter by date range
   const filteredTarefas = useMemo(() => {
@@ -333,7 +387,12 @@ export default function FilaLeadsPage() {
   }, [filteredTarefas]);
 
   const getTarefaLeadName = (id: string) => tarefaLeads.find((l: any) => l.id === id)?.nome || "—";
-  const getTarefaPhones = (id: string) => tarefaContatos.filter((c: any) => c.lead_id === id && c.tipo_contato === "telefone");
+  const getTarefaPhones = (id: string) => {
+    const fromTarefaContatos = tarefaContatos.filter((c: any) => c.lead_id === id && c.tipo_contato === "telefone");
+    if (fromTarefaContatos.length > 0) return fromTarefaContatos;
+    // Fallback to allContatos for cadencia-based items
+    return allContatos.filter((c: any) => c.lead_id === id && c.tipo_contato === "telefone");
+  };
 
   // ─── Queue logic ──────────────────────────────────
   const maxTentativas = (fluxoConfig as any)?.quantidade_tentativas || cadencia.length || 7;
@@ -990,6 +1049,7 @@ export default function FilaLeadsPage() {
                       const isOv = !isAguardando && (tarefa.status === "atrasado" || (tarefa.periodo && isTarefaExpirada(tarefa)));
                       const responsavelNome = tarefa._responsavel_id ? (profiles.find(p => p.id === tarefa._responsavel_id)?.nome || "—") : "Sem responsável";
                       const isManual = tarefa._tipo_agenda === "manual";
+                      const isCadencia = tarefa._tipo_agenda === "cadencia";
                       return (
                         <TableRow key={tarefa.id} className={isOv ? "bg-destructive/5" : isAguardando ? "bg-blue-50/50 dark:bg-blue-950/20" : ""}>
                           <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
@@ -1009,7 +1069,7 @@ export default function FilaLeadsPage() {
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline" className={`text-[10px] ${isManual ? "border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-300" : "border-muted-foreground/30 text-muted-foreground"}`}>
-                              {isManual ? "Manual" : "Automático"}
+                              {isManual ? "Agendamento" : isCadencia ? "Cadência" : "Automático"}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -1031,7 +1091,7 @@ export default function FilaLeadsPage() {
                           <TableCell>
                             <div className="flex items-center justify-end gap-1">
                               <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Ver lead" onClick={() => navigate(`/leads?id=${tarefa.lead_id}`)}><Eye className="w-3.5 h-3.5" /></Button>
-                              {!isManual && (
+                              {(!isManual) && (
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <Button size="sm" variant="outline" className="h-7 text-[11px] px-2 gap-1"><MoreHorizontal className="w-3.5 h-3.5" /> Ação</Button>
