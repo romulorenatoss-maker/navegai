@@ -102,19 +102,24 @@ export default function RelatoriosLeadsPage() {
 
     let query = supabase
       .from("leads")
-      .select("id, nome, status_lead, origem_lead, responsavel_id, data_criacao, plano_id, repetidor");
+      .select("id, nome, status_lead, origem_lead, responsavel_id, data_criacao, plano_id, repetidor, cidade_id, bairro_id, rua_id");
+
+    // Address filters from URL
+    if (urlCidadeId) query = query.eq("cidade_id", urlCidadeId);
+    if (urlBairroId) query = query.eq("bairro_id", urlBairroId);
+    if (urlRuaId) query = query.eq("rua_id", urlRuaId);
 
     if (isDirectSearch) {
       query = query.ilike("nome", `%${filterNome.trim()}%`);
-    } else {
+    } else if (!hasAddressFilter) {
       const from = startDate ? startOfDay(startDate).toISOString() : startOfDay(startOfMonth(now)).toISOString();
       const to = endDate ? endOfDay(endDate).toISOString() : endOfDay(endOfMonth(now)).toISOString();
       query = query.gte("data_criacao", from).lte("data_criacao", to);
-
-      if (filterStatus !== "todos") query = query.eq("status_lead", filterStatus);
-      if (filterOrigem !== "todos") query = query.eq("origem_lead", filterOrigem);
-      if (filterResponsavel !== "todos") query = query.eq("responsavel_id", filterResponsavel);
     }
+
+    if (filterStatus !== "todos") query = query.eq("status_lead", filterStatus);
+    if (filterOrigem !== "todos") query = query.eq("origem_lead", filterOrigem);
+    if (filterResponsavel !== "todos") query = query.eq("responsavel_id", filterResponsavel);
 
     const { data: leadsData } = await query.order("data_criacao", { ascending: false });
     if (!leadsData) { setLeadsList([]); setLoading(false); return; }
