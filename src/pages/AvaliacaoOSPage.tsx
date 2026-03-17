@@ -1287,9 +1287,54 @@ export default function AvaliacaoOSPage() {
   const handleViewCliente = async (clienteId: string) => {
     const { data: cliente } = await supabase.from("clientes").select("*").eq("id", clienteId).single();
     if (!cliente) { toast.error("Cliente não encontrado."); return; }
-    // Also fetch contacts
+    // Fetch contacts
     const { data: contatos } = await supabase.from("cliente_contatos").select("*").eq("cliente_id", clienteId);
-    setViewClienteData({ ...cliente, contatos: contatos || [] });
+    // Fetch lead linked to this client
+    const { data: lead } = await supabase.from("leads").select("id, nome, responsavel_id, status_lead, origem_lead, created_at, plano_id, repetidor").eq("cliente_id", clienteId).limit(1).single();
+    let leadHistory: any[] = [];
+    let leadInteracoes: any[] = [];
+    let leadContatos: any[] = [];
+    let conversorNome = "—";
+    let planoNome = "—";
+    if (lead) {
+      // Fetch lead history, interactions, contacts in parallel
+      const [histRes, intRes, lcRes] = await Promise.all([
+        supabase.from("lead_historico").select("id, tipo_evento, descricao, data_evento, usuario_id").eq("lead_id", lead.id).order("data_evento", { ascending: false }).limit(50),
+        supabase.from("lead_interacoes").select("id, tipo_contato, resultado, data_interacao, colaborador_id, numero_utilizado").eq("lead_id", lead.id).order("data_interacao", { ascending: false }).limit(50),
+        supabase.from("lead_contatos").select("id, tipo_contato, valor, tem_whatsapp").eq("lead_id", lead.id),
+      ]);
+      leadHistory = histRes.data || [];
+      leadInteracoes = intRes.data || [];
+      leadContatos = lcRes.data || [];
+      // Get names for user IDs
+      const allUserIds = [...new Set([
+        lead.responsavel_id,
+        ...leadHistory.map((h: any) => h.usuario_id),
+        ...leadInteracoes.map((i: any) => i.colaborador_id),
+      ].filter(Boolean))];
+      if (allUserIds.length > 0) {
+        const { data: profs } = await supabase.from("profiles").select("id, nome").in("id", allUserIds);
+        const nameMap: Record<string, string> = {};
+        profs?.forEach(p => { nameMap[p.id] = p.nome; });
+        conversorNome = lead.responsavel_id ? (nameMap[lead.responsavel_id] || "—") : "—";
+        leadHistory = leadHistory.map((h: any) => ({ ...h, _usuario_nome: nameMap[h.usuario_id] || "—" }));
+        leadInteracoes = leadInteracoes.map((i: any) => ({ ...i, _colaborador_nome: nameMap[i.colaborador_id] || "—" }));
+      }
+      if (lead.plano_id) {
+        const { data: plano } = await supabase.from("planos").select("nome_plano").eq("id", lead.plano_id).single();
+        planoNome = plano?.nome_plano || "—";
+      }
+    }
+    setViewClienteData({
+      ...cliente,
+      contatos: contatos || [],
+      lead,
+      leadHistory,
+      leadInteracoes,
+      leadContatos,
+      conversorNome,
+      planoNome,
+    });
     setViewClienteOpen(true);
   };
 
@@ -2592,14 +2637,15 @@ export default function AvaliacaoOSPage() {
 
       {/* View Cliente Dialog */}
       <Dialog open={viewClienteOpen} onOpenChange={setViewClienteOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <User className="w-5 h-5 text-primary" /> Dados do Cliente
             </DialogTitle>
           </DialogHeader>
           {viewClienteData && (
-            <div className="space-y-3 text-sm">
+            <div className="space-y-4 text-sm">
+              {/* Client data */}
               <div className="grid grid-cols-2 gap-3">
                 <div><span className="text-muted-foreground">Nome:</span><p className="font-medium">{viewClienteData.nome}</p></div>
                 <div><span className="text-muted-foreground">CPF:</span><p className="font-medium">{viewClienteData.cpf || "—"}</p></div>
@@ -2613,7 +2659,7 @@ export default function AvaliacaoOSPage() {
               </div>
               {viewClienteData.contatos?.length > 0 && (
                 <div className="border-t border-border pt-3">
-                  <span className="text-muted-foreground font-medium">Contatos:</span>
+                  <span className="text-muted-foreground font-medium">Contatos do Cliente:</span>
                   <div className="mt-1 space-y-1">
                     {viewClienteData.contatos.map((c: any) => (
                       <div key={c.id} className="flex items-center gap-2">
@@ -2623,6 +2669,91 @@ export default function AvaliacaoOSPage() {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Lead Info Section */}
+              {viewClienteData.lead && (
+                <>
+                  <div className="border-t border-border pt-3">
+                    <h3 className="font-semibold text-foreground flex items-center gap-2 mb-2">
+                      <Users className="w-4 h-4 text-primary" /> Histórico como Lead
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><span className="text-muted-foreground">Nome do Lead:</span><p className="font-medium">{viewClienteData.lead.nome}</p></div>
+                      <div><span className="text-muted-foreground">Origem:</span><p className="font-medium">{viewClienteData.lead.origem_lead || "—"}</p></div>
+                      <div><span className="text-muted-foreground">Plano:</span><p className="font-medium">{viewClienteData.planoNome}</p></div>
+                      <div><span className="text-muted-foreground">Repetidor:</span><p className="font-medium">{viewClienteData.lead.repetidor || "Nenhum"}</p></div>
+                      <div><span className="text-muted-foreground">Criado em:</span><p className="font-medium">{format(new Date(viewClienteData.lead.created_at), "dd/MM/yyyy HH:mm")}</p></div>
+                      <div>
+                        <span className="text-muted-foreground">Convertido por:</span>
+                        <p className="font-medium text-primary">{viewClienteData.conversorNome}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Lead contacts */}
+                  {viewClienteData.leadContatos?.length > 0 && (
+                    <div className="border-t border-border pt-3">
+                      <span className="text-muted-foreground font-medium">Contatos do Lead:</span>
+                      <div className="mt-1 space-y-1">
+                        {viewClienteData.leadContatos.map((c: any) => (
+                          <div key={c.id} className="flex items-center gap-2">
+                            <Phone className="w-3.5 h-3.5 text-muted-foreground" />
+                            <span>{c.valor}</span>
+                            {c.tem_whatsapp && <Badge variant="secondary" className="text-[10px]">WhatsApp</Badge>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Lead Interactions */}
+                  {viewClienteData.leadInteracoes?.length > 0 && (
+                    <div className="border-t border-border pt-3">
+                      <span className="text-muted-foreground font-medium">Interações ({viewClienteData.leadInteracoes.length}):</span>
+                      <div className="mt-2 space-y-2 max-h-40 overflow-y-auto">
+                        {viewClienteData.leadInteracoes.map((i: any) => (
+                          <div key={i.id} className="bg-muted/50 rounded p-2 text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium">{i._colaborador_nome}</span>
+                              <span className="text-muted-foreground">{format(new Date(i.data_interacao), "dd/MM/yyyy HH:mm")}</span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <Badge variant="outline" className="text-[10px]">{i.tipo_contato}</Badge>
+                              {i.resultado && <span className="text-muted-foreground">{i.resultado}</span>}
+                              {i.numero_utilizado && <span className="text-muted-foreground">• {i.numero_utilizado}</span>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Lead History */}
+                  {viewClienteData.leadHistory?.length > 0 && (
+                    <div className="border-t border-border pt-3">
+                      <span className="text-muted-foreground font-medium">Histórico de Eventos ({viewClienteData.leadHistory.length}):</span>
+                      <div className="mt-2 space-y-2 max-h-40 overflow-y-auto">
+                        {viewClienteData.leadHistory.map((h: any) => (
+                          <div key={h.id} className="bg-muted/50 rounded p-2 text-xs">
+                            <div className="flex items-center justify-between">
+                              <Badge variant="outline" className="text-[10px]">{h.tipo_evento}</Badge>
+                              <span className="text-muted-foreground">{format(new Date(h.data_evento), "dd/MM/yyyy HH:mm")}</span>
+                            </div>
+                            {h.descricao && <p className="mt-0.5 text-muted-foreground">{h.descricao}</p>}
+                            <p className="mt-0.5 text-muted-foreground italic">por {h._usuario_nome}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {!viewClienteData.lead && (
+                <div className="border-t border-border pt-3 text-muted-foreground text-center py-3">
+                  Este cliente não possui histórico como lead.
                 </div>
               )}
             </div>

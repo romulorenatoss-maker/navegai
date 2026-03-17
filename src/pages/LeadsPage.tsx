@@ -907,9 +907,12 @@ export default function LeadsPage() {
 
       const { data: tipoVenda } = await supabase
         .from("tipos_servico").select("id").or("nome.ilike.%venda%,nome.ilike.%instalac%").limit(1).single();
+      // Save the lead's responsavel (who converted the sale) as atendente on the OS
+      const converterId = selectedLead.responsavel_id || profile.id;
       const { data: newOS, error: osErr } = await supabase.from("ordens_servico").insert({
         cliente_id: newCliente.id, cliente_nome: f.nome.trim(), cliente_cpf: f.cpf.trim(),
         tipo_servico_id: tipoVenda?.id || null, numero_os: null, status: "aguardando_numero" as any,
+        atendente_id: converterId,
       } as any).select("id, numero_os").single();
       if (osErr) console.warn("Erro ao criar OS automática:", osErr.message);
 
