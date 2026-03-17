@@ -61,30 +61,40 @@ export default function ImportadorLeadsPage() {
   });
 
   const selectedCampanhaNome = campanhas.find(c => c.id === campanhaId)?.nome || null;
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
 
-  // Step 1: File upload
-  const handleFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Pick file (no processing yet)
+  const handleFilePick = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setFileName(file.name);
-    setResults([]);
-
-    if (file.name.endsWith(".csv") || file.name.endsWith(".txt")) {
-      const text = await file.text();
-      const { headers, rows } = parseCSVRaw(text);
-      if (headers.length === 0 || rows.length === 0) {
-        toast.error("Arquivo vazio ou sem dados válidos.");
-        return;
-      }
-      setRawHeaders(headers);
-      setRawRows(rows);
-      const detected = autoDetectMapping(headers);
-      setMapping(detected);
-      setStep("mapping");
-    } else {
+    if (!file.name.endsWith(".csv") && !file.name.endsWith(".txt")) {
       toast.error("Formato não suportado. Use CSV.");
+      return;
     }
+    setFileName(file.name);
+    setPendingFile(file);
+    setResults([]);
   }, []);
+
+  // Process file on button click
+  const handleLoadFile = useCallback(async () => {
+    if (!pendingFile) return;
+    if (!campanhaId || campanhaId === "__none") {
+      toast.error("Selecione uma campanha antes de carregar.");
+      return;
+    }
+    const text = await pendingFile.text();
+    const { headers, rows } = parseCSVRaw(text);
+    if (headers.length === 0 || rows.length === 0) {
+      toast.error("Arquivo vazio ou sem dados válidos.");
+      return;
+    }
+    setRawHeaders(headers);
+    setRawRows(rows);
+    const detected = autoDetectMapping(headers);
+    setMapping(detected);
+    setStep("mapping");
+  }, [pendingFile, campanhaId]);
 
   // Step 2: Build preview with duplicate detection
   const buildPreview = useCallback(async () => {
