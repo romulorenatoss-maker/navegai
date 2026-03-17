@@ -109,17 +109,19 @@ export default function FilaLeadsPage() {
   const [tarefaNumero, setTarefaNumero] = useState("");
   const [tarefaResultado, setTarefaResultado] = useState("");
 
-  // ─── Realtime: auto-refresh when leads change ─────
+  // ─── Realtime: auto-refresh when leads/interactions/tasks change ─────
   useEffect(() => {
+    const invalidateAll = () => {
+      queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["fila-interacoes"] });
+      queryClient.invalidateQueries({ queryKey: ["leads-com-agendamento"] });
+    };
     const channel = supabase
       .channel("fila-leads-realtime")
-      .on("postgres_changes", {
-        event: "*",
-        schema: "public",
-        table: "leads",
-      }, () => {
-        queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
-      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, invalidateAll)
+      .on("postgres_changes", { event: "*", schema: "public", table: "lead_interacoes" }, invalidateAll)
+      .on("postgres_changes", { event: "*", schema: "public", table: "lead_tarefas_contato" }, invalidateAll)
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [queryClient]);
@@ -517,7 +519,7 @@ export default function FilaLeadsPage() {
       await supabase.from("leads").update({ status_lead: selectedItem.lead.status_lead === "novo" ? "em_contato" : selectedItem.lead.status_lead, agendamento_retorno: null } as any).eq("id", selectedItem.lead.id);
       if (hadAgendamento) { await supabase.from("lead_historico").insert({ lead_id: selectedItem.lead.id, usuario_id: profile.id, tipo_evento: "agendamento_removido", descricao: `Agendamento removido ao registrar tentativa ${selectedItem.tentativaAtual}` }); }
     },
-    onSuccess: () => { toast.success("Tentativa registrada!"); setSelectedItem(null); setAttemptNumero(""); setAttemptResultado(""); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-interacoes"] }); },
+    onSuccess: () => { toast.success("Tentativa registrada!"); setSelectedItem(null); setAttemptNumero(""); setAttemptResultado(""); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-interacoes"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }); queryClient.invalidateQueries({ queryKey: ["leads-com-agendamento"] }); },
     onError: (err: any) => toast.error(err.message),
   });
 
@@ -712,7 +714,7 @@ export default function FilaLeadsPage() {
       const leadStatus = tarefaLeads.find((l: any) => l.id === selectedTarefa.lead_id)?.status_lead;
       if (leadStatus === "novo") await supabase.from("leads").update({ status_lead: "em_contato" }).eq("id", selectedTarefa.lead_id);
     },
-    onSuccess: () => { toast.success("Tentativa registrada!"); setSelectedTarefa(null); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); },
+    onSuccess: () => { toast.success("Tentativa registrada!"); setSelectedTarefa(null); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-interacoes"] }); queryClient.invalidateQueries({ queryKey: ["leads-com-agendamento"] }); },
     onError: (err: any) => toast.error(err.message),
   });
 
