@@ -473,14 +473,10 @@ export default function LeadsPage() {
     }
   }, [searchParams, allLeads, selectedLead]);
 
-  // Auto-select reserved lead when returning to the page
+  // Auto-select lead when returning to page (e.g. after capture redirect)
   useEffect(() => {
     if (selectedLead || !allLeads.length || !profile?.id) return;
     if (searchParams.get("id")) return;
-    const myReserved = allLeads.find(l => l.status_lead === "reservado" && l.reserved_by === profile.id);
-    if (myReserved) {
-      setSelectedLead(myReserved);
-    }
   }, [allLeads, profile?.id, selectedLead]);
 
   const { data: planos = [] } = useQuery({
