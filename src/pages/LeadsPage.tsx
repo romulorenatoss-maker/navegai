@@ -43,6 +43,8 @@ interface Lead {
   bairro_id: string | null;
   rua_id: string | null;
   numero_endereco: string | null;
+  reserved_by: string | null;
+  reserved_at: string | null;
 }
 
 interface LeadContato {
