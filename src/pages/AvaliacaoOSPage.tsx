@@ -2711,7 +2711,7 @@ export default function AvaliacaoOSPage() {
           setShowNewClienteForm(true);
           toast.info("Cliente não encontrado. Preencha o nome para cadastrar.");
         } else {
-          toast.info("Nenhuma OS aberta encontrada para este cliente. Informe o número da OS para criar.");
+          toast.info("Nenhuma OS aberta encontrada. Selecione o tipo de serviço para criar uma nova OS.");
         }
       }
 
