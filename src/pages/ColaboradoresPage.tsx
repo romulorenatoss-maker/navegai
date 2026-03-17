@@ -28,6 +28,7 @@ export default function ColaboradoresPage() {
   const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [sessionViewOpen, setSessionViewOpen] = useState(false);
   const [sortColumn, setSortColumn] = useState<string>("nome");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [detailViewOpen, setDetailViewOpen] = useState(false);
