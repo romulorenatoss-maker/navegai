@@ -222,9 +222,7 @@ export default function AssistentePage() {
                     {msg.role === "user" ? (
                       <p className="text-sm">{msg.content}</p>
                     ) : (
-                      <div className="prose prose-sm dark:prose-invert max-w-none text-sm [&_table]:text-xs [&_th]:px-2 [&_th]:py-1 [&_td]:px-2 [&_td]:py-1 [&_table]:border [&_th]:border [&_td]:border [&_table]:border-border">
-                        <ReactMarkdown>{msg.content}</ReactMarkdown>
-                      </div>
+                      <AssistenteMessageRenderer content={msg.content} />
                     )}
                   </CardContent>
                 </Card>
