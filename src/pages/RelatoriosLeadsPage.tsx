@@ -76,6 +76,7 @@ export default function RelatoriosLeadsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [exportAllLoading, setExportAllLoading] = useState(false);
