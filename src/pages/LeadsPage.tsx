@@ -1669,39 +1669,54 @@ export default function LeadsPage() {
                       <div className="space-y-2">
                         <div className="space-y-1">
                           <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Cidade</Label>
-                          <Select value={localCidadeId || "none"} onValueChange={v => {
-                            const val = v === "none" ? null : v;
-                            setLocalCidadeId(val); setLocalBairroId(null); setLocalRuaId(null);
-                          }}>
-                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">Nenhuma</SelectItem>
-                              {endCidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
+                          <div className="flex gap-1">
+                            <Select value={localCidadeId || "none"} onValueChange={v => {
+                              const val = v === "none" ? null : v;
+                              setLocalCidadeId(val); setLocalBairroId(null); setLocalRuaId(null);
+                            }}>
+                              <SelectTrigger className="h-8 text-xs flex-1"><SelectValue placeholder="—" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Nenhuma</SelectItem>
+                                {endCidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { setDetailQuickAddType("cidade"); setDetailQuickAddNome(""); }}>
+                              <Plus className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
                         </div>
                         <div className="space-y-1">
                           <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Bairro</Label>
-                          <Select value={localBairroId || "none"} onValueChange={v => {
-                            const val = v === "none" ? null : v;
-                            setLocalBairroId(val); setLocalRuaId(null);
-                          }} disabled={!localCidadeId}>
-                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">Nenhum</SelectItem>
-                              {endBairros.filter(b => b.cidade_id === localCidadeId).map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
+                          <div className="flex gap-1">
+                            <Select value={localBairroId || "none"} onValueChange={v => {
+                              const val = v === "none" ? null : v;
+                              setLocalBairroId(val); setLocalRuaId(null);
+                            }} disabled={!localCidadeId}>
+                              <SelectTrigger className="h-8 text-xs flex-1"><SelectValue placeholder="—" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Nenhum</SelectItem>
+                                {endBairros.filter(b => b.cidade_id === localCidadeId).map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { setDetailQuickAddType("bairro"); setDetailQuickAddNome(""); }} disabled={!localCidadeId}>
+                              <Plus className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
                         </div>
                         <div className="space-y-1">
                           <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Rua</Label>
-                          <Select value={localRuaId || "none"} onValueChange={v => setLocalRuaId(v === "none" ? null : v)} disabled={!localBairroId}>
-                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">Nenhuma</SelectItem>
-                              {endRuas.filter(r => r.bairro_id === localBairroId).map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
+                          <div className="flex gap-1">
+                            <Select value={localRuaId || "none"} onValueChange={v => setLocalRuaId(v === "none" ? null : v)} disabled={!localBairroId}>
+                              <SelectTrigger className="h-8 text-xs flex-1"><SelectValue placeholder="—" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Nenhuma</SelectItem>
+                                {endRuas.filter(r => r.bairro_id === localBairroId).map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { setDetailQuickAddType("rua"); setDetailQuickAddNome(""); }} disabled={!localBairroId}>
+                              <Plus className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
                         </div>
                         <div className="space-y-1">
                           <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Nº</Label>
