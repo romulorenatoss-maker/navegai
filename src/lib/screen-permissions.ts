@@ -15,6 +15,7 @@ export const ALL_SCREENS: ScreenDef[] = [
   { path: "/avaliacoes/pesquisa", label: "Criar OS / Buscar", group: "Avaliações" },
   { path: "/avaliacoes/minhas", label: "Minhas Avaliações", group: "Avaliações" },
   { path: "/leads", label: "Meus Leads", group: "Avaliações" },
+  { path: "/assistente", label: "Assistente", group: "Avaliações" },
   // Checklists
   { path: "/checklists/cadastro", label: "Cadastro de Checklists", group: "Checklists" },
   { path: "/checklists/execucao", label: "Execução", group: "Checklists" },
