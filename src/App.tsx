@@ -84,6 +84,7 @@ const App = () => (
               <Route path="/leads/objecoes" element={<ObjecoesLeadsPage />} />
               <Route path="/leads/relatorios" element={<RelatoriosLeadsPage />} />
               <Route path="/desempenho" element={<DesempenhoColaboradorPage />} />
+              <Route path="/assistente" element={<AssistentePage />} />
               <Route path="/auditoria" element={<PlaceholderPage title="Auditoria" description="Registro completo de todas as ações do sistema." />} />
               <Route path="/configuracoes" element={<PermissoesPage />} />
             </Route>

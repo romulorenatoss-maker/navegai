@@ -62,6 +62,7 @@ const allNavSections = [
   {
     title: "Sistema",
     items: [
+      { to: "/assistente", icon: Bot, label: "Assistente" },
       { to: "/relatorios", icon: BarChart3, label: "Relatórios de OS" },
       { to: "/leads/relatorios", icon: FileBarChart, label: "Relatórios de Leads" },
       { to: "/desempenho", icon: UserCheck, label: "Desempenho" },
