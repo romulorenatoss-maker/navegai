@@ -350,7 +350,7 @@ export default function FilaTarefasLeadsPage() {
 
       {/* Attempt Dialog */}
       <Dialog open={!!selectedTarefa} onOpenChange={(o) => !o && setSelectedTarefa(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>
               Registrar Tentativa — {selectedTarefa ? getLeadName(selectedTarefa.lead_id) : ""}
