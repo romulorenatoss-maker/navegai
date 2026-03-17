@@ -211,21 +211,18 @@ export type Database = {
       }
       bairros: {
         Row: {
-          cep: string | null
           cidade_id: string
           created_at: string
           id: string
           nome: string
         }
         Insert: {
-          cep?: string | null
           cidade_id: string
           created_at?: string
           id?: string
           nome: string
         }
         Update: {
-          cep?: string | null
           cidade_id?: string
           created_at?: string
           id?: string
@@ -1480,21 +1477,21 @@ export type Database = {
       ruas: {
         Row: {
           bairro_id: string
-          cep: string | null
+          cep: string[] | null
           created_at: string
           id: string
           nome: string
         }
         Insert: {
           bairro_id: string
-          cep?: string | null
+          cep?: string[] | null
           created_at?: string
           id?: string
           nome: string
         }
         Update: {
           bairro_id?: string
-          cep?: string | null
+          cep?: string[] | null
           created_at?: string
           id?: string
           nome?: string

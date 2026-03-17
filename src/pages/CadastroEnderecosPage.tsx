@@ -16,8 +16,8 @@ import { Plus, Pencil, Trash2, Search, ArrowRightLeft, Loader2, MapPin, Building
 import AdminPasswordDialog from "@/components/AdminPasswordDialog";
 
 interface Cidade { id: string; nome: string; }
-interface Bairro { id: string; nome: string; cidade_id: string; cep: string | null; }
-interface Rua { id: string; nome: string; bairro_id: string; cep: string | null; }
+interface Bairro { id: string; nome: string; cidade_id: string; }
+interface Rua { id: string; nome: string; bairro_id: string; cep: string[] | null; }
 
 export default function CadastroEnderecosPage() {
   const { isAdmin } = useAuth();
@@ -96,7 +96,7 @@ export default function CadastroEnderecosPage() {
   const openEdit = (item: any) => {
     setEditingId(item.id);
     setFormNome(item.nome);
-    setFormCep(item.cep || "");
+    setFormCep(tab === "ruas" && item.cep ? (item.cep as string[]).join(", ") : "");
     if (tab === "bairros") setFormCidadeId(item.cidade_id);
     if (tab === "ruas") setFormBairroId(item.bairro_id);
     setShowForm(true);
@@ -117,7 +117,7 @@ export default function CadastroEnderecosPage() {
         }
       } else if (tab === "bairros") {
         if (!formCidadeId) { toast.error("Selecione a cidade."); setSaving(false); return; }
-        const payload = { nome: formNome.trim(), cidade_id: formCidadeId, cep: formCep.trim() || null };
+        const payload = { nome: formNome.trim(), cidade_id: formCidadeId };
         if (editingId) {
           const { error } = await supabase.from("bairros").update(payload).eq("id", editingId);
           if (error) throw error;
@@ -127,7 +127,8 @@ export default function CadastroEnderecosPage() {
         }
       } else if (tab === "ruas") {
         if (!formBairroId) { toast.error("Selecione o bairro."); setSaving(false); return; }
-        const payload = { nome: formNome.trim(), bairro_id: formBairroId, cep: formCep.trim() || null };
+        const cepsArr = formCep.split(",").map(c => c.trim()).filter(Boolean);
+        const payload = { nome: formNome.trim(), bairro_id: formBairroId, cep: cepsArr.length > 0 ? cepsArr : null };
         if (editingId) {
           const { error } = await supabase.from("ruas").update(payload).eq("id", editingId);
           if (error) throw error;
@@ -287,7 +288,6 @@ export default function CadastroEnderecosPage() {
                       <div>
                         <span className="text-sm font-medium">{b.nome}</span>
                         <span className="text-xs text-muted-foreground ml-2">({getCidadeNome(b.cidade_id)})</span>
-                        {b.cep && <span className="text-xs text-muted-foreground ml-2">CEP: {b.cep}</span>}
                       </div>
                       <Badge variant="outline" className="text-[10px]">{ruas.filter(r => r.bairro_id === b.id).length} ruas</Badge>
                     </div>
@@ -323,7 +323,7 @@ export default function CadastroEnderecosPage() {
                           <span className="text-xs text-muted-foreground ml-2">
                             ({getBairroNome(r.bairro_id)}{bairro ? ` — ${getCidadeNome(bairro.cidade_id)}` : ""})
                           </span>
-                          {r.cep && <span className="text-xs text-muted-foreground ml-2">CEP: {r.cep}</span>}
+                          {r.cep && r.cep.length > 0 && <span className="text-xs text-muted-foreground ml-2">CEP: {r.cep.join(", ")}</span>}
                         </div>
                       </div>
                       <div className="flex gap-1">
@@ -355,21 +355,15 @@ export default function CadastroEnderecosPage() {
               <Input value={formNome} onChange={e => setFormNome(e.target.value)} placeholder={`Nome ${tabLabel.toLowerCase()}`} autoFocus />
             </div>
             {tab === "bairros" && (
-              <>
-                <div className="space-y-1.5">
-                  <Label>Cidade *</Label>
-                  <Select value={formCidadeId} onValueChange={setFormCidadeId}>
-                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                    <SelectContent>
-                      {cidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>CEP</Label>
-                  <Input value={formCep} onChange={e => setFormCep(e.target.value)} placeholder="00000-000" />
-                </div>
-              </>
+              <div className="space-y-1.5">
+                <Label>Cidade *</Label>
+                <Select value={formCidadeId} onValueChange={setFormCidadeId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>
+                    {cidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
             {tab === "ruas" && (
               <>
@@ -385,8 +379,8 @@ export default function CadastroEnderecosPage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>CEP</Label>
-                  <Input value={formCep} onChange={e => setFormCep(e.target.value)} placeholder="00000-000" />
+                  <Label>CEPs <span className="text-xs text-muted-foreground">(separe por vírgula se houver mais de um)</span></Label>
+                  <Input value={formCep} onChange={e => setFormCep(e.target.value)} placeholder="00000-000, 00000-001" />
                 </div>
               </>
             )}

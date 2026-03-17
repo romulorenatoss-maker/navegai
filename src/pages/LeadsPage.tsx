@@ -322,7 +322,7 @@ export default function LeadsPage() {
     queryFn: async () => {
       const { data, error } = await supabase.from("bairros").select("*").order("nome");
       if (error) throw error;
-      return data as { id: string; nome: string; cidade_id: string; cep: string | null }[];
+      return data as { id: string; nome: string; cidade_id: string }[];
     },
   });
   const { data: endRuas = [] } = useQuery({
@@ -330,7 +330,7 @@ export default function LeadsPage() {
     queryFn: async () => {
       const { data, error } = await supabase.from("ruas").select("*").order("nome");
       if (error) throw error;
-      return data as { id: string; nome: string; bairro_id: string; cep: string | null }[];
+      return data as { id: string; nome: string; bairro_id: string; cep: string[] | null }[];
     },
   });
 
