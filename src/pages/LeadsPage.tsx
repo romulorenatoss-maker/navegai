@@ -1387,7 +1387,7 @@ export default function LeadsPage() {
         await supabase.from("lead_historico").insert({
           lead_id: selectedLead.id, usuario_id: profile.id,
           tipo_evento: "lead_capturado",
-          descricao: `Lead capturado e atribuído a ${profile.nome}. Status: Em Atendimento. Nova rotina iniciada.`,
+          descricao: `Lead capturado e atribuído a ${profile.nome}. Status: Em tratativa. Nova rotina iniciada.`,
         });
         // Update local state
         setSelectedLead(prev => prev ? { ...prev, responsavel_id: profile.id, status_lead: "em_atendimento", reserved_by: null, reserved_at: null } : null);

@@ -517,7 +517,9 @@ export default function FilaLeadsPage() {
       await supabase.from("lead_interacoes").insert({ lead_id: selectedItem.lead.id, colaborador_id: profile.id, tipo_contato: attemptTipo, numero_utilizado: attemptNumero, resultado: attemptResultado.trim() || null });
       await supabase.from("lead_historico").insert({ lead_id: selectedItem.lead.id, usuario_id: profile.id, tipo_evento: "tentativa_contato", descricao: `Tentativa ${selectedItem.tentativaAtual} via ${attemptTipo}: ${attemptResultado.trim() || "sem resultado"}` });
       const hadAgendamento = !!selectedItem.lead.agendamento_retorno;
-      await supabase.from("leads").update({ status_lead: selectedItem.lead.status_lead === "novo" ? "em_contato" : selectedItem.lead.status_lead, agendamento_retorno: null } as any).eq("id", selectedItem.lead.id);
+      const currentStatus = selectedItem.lead.status_lead;
+      const newStatus = (currentStatus === "novo" || currentStatus === "reservado") ? "em_atendimento" : currentStatus;
+      await supabase.from("leads").update({ status_lead: newStatus, agendamento_retorno: null } as any).eq("id", selectedItem.lead.id);
       if (hadAgendamento) { await supabase.from("lead_historico").insert({ lead_id: selectedItem.lead.id, usuario_id: profile.id, tipo_evento: "agendamento_removido", descricao: `Agendamento removido ao registrar tentativa ${selectedItem.tentativaAtual}` }); }
     },
     onSuccess: () => { toast.success("Tentativa registrada!"); setSelectedItem(null); setAttemptNumero(""); setAttemptResultado(""); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-interacoes"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }); queryClient.invalidateQueries({ queryKey: ["leads-com-agendamento"] }); },
@@ -728,7 +730,7 @@ export default function FilaLeadsPage() {
         await supabase.from("lead_tarefas_contato").insert({ lead_id: selectedTarefa.lead_id, tentativa: nextT, data_contato: nd.toISOString(), periodo: per, status: "pendente", responsavel_id: profile.id });
       }
       const leadStatus = tarefaLeads.find((l: any) => l.id === selectedTarefa.lead_id)?.status_lead;
-      if (leadStatus === "novo") await supabase.from("leads").update({ status_lead: "em_contato" }).eq("id", selectedTarefa.lead_id);
+      if (leadStatus === "novo" || leadStatus === "reservado") await supabase.from("leads").update({ status_lead: "em_atendimento" }).eq("id", selectedTarefa.lead_id);
     },
     onSuccess: () => { toast.success("Tentativa registrada!"); setSelectedTarefa(null); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-interacoes"] }); queryClient.invalidateQueries({ queryKey: ["leads-com-agendamento"] }); },
     onError: (err: any) => toast.error(err.message),
@@ -787,6 +789,7 @@ export default function FilaLeadsPage() {
                      <SelectItem value="todos">Todos Status</SelectItem>
                      <SelectItem value="novo">Novo</SelectItem>
                      <SelectItem value="em_contato">Em Contato</SelectItem>
+                     <SelectItem value="em_atendimento">Em tratativa</SelectItem>
                      <SelectItem value="interessado">Interessado</SelectItem>
                      <SelectItem value="aguardando_decisao_avaliador">Aguardando Decisão</SelectItem>
                      <SelectItem value="fila_captura">Fila de Captura</SelectItem>
