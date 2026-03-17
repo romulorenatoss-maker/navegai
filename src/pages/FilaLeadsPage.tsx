@@ -466,9 +466,9 @@ export default function FilaLeadsPage() {
                 <SelectItem value="atrasado">Atrasados</SelectItem>
               </SelectContent>
             </Select>
-            {(filterStatus !== "todos" || filterResponsavel !== "todos" || filterAgendamento !== "todos" || searchTerm) && (
+            {(filterStatus !== "todos" || filterResponsavel !== "todos" || filterAgendamento !== "todos" || appliedSearch) && (
               <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => {
-                setFilterStatus("todos"); setFilterResponsavel("todos"); setFilterAgendamento("todos"); setSearchTerm("");
+                setFilterStatus("todos"); setFilterResponsavel("todos"); setFilterAgendamento("todos"); setSearchTerm(""); setAppliedSearch("");
               }}>Limpar</Button>
             )}
           </div>
