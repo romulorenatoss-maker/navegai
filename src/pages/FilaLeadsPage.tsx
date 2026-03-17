@@ -895,6 +895,26 @@ export default function FilaLeadsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ─── Tarefa Transfer Dialog ──────────────────── */}
+      <Dialog open={showTarefaTransfer} onOpenChange={setShowTarefaTransfer}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><ArrowRightLeft className="w-5 h-5" /> Transferir para</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm">Transferir <span className="font-semibold">{tarefaTransferLeadName}</span> para outro colaborador do setor de atendimento.</p>
+            <div className="space-y-1.5"><Label>Novo Responsável</Label>
+              <Select value={tarefaTransferTarget} onValueChange={setTarefaTransferTarget}><SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger><SelectContent>
+                {atendimentoProfiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+                {atendimentoProfiles.length === 0 && <SelectItem value="__none" disabled>Nenhum colaborador no setor Atendimento</SelectItem>}
+              </SelectContent></Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTarefaTransfer(false)}>Cancelar</Button>
+            <Button onClick={handleTarefaTransfer} disabled={!tarefaTransferTarget} className="press-effect"><ArrowRightLeft className="w-4 h-4 mr-1.5" /> Transferir</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
