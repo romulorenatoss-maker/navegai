@@ -257,7 +257,7 @@ export default function FilaLeadsPage() {
       }
       return true;
     });
-  }, [queue, filterStatus, filterResponsavel, filterAgendamento, searchTerm]);
+  }, [queue, filterStatus, filterResponsavel, filterAgendamento, appliedSearch]);
 
   // Stats
   const totalAtrasados = queue.filter(i => i.isOverdue).length;
