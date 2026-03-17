@@ -686,11 +686,11 @@ export default function LeadsPage() {
         .select("id");
       if (error) throw error;
       if (!data || data.length === 0) throw new Error("Este lead está sendo visualizado por outro usuário.");
-      // Log reservation
+      // Log reservation — "pegou"
       await supabase.from("lead_historico").insert({
         lead_id: leadId, usuario_id: profile.id,
-        tipo_evento: "lead_reservado",
-        descricao: `Lead reservado por ${profile.nome}. Aguardando primeira interação.`,
+        tipo_evento: "lead_capturado",
+        descricao: `${profile.nome} capturou o lead e está visualizando. Aguardando primeira interação.`,
       });
       return leadId;
     },
@@ -716,10 +716,10 @@ export default function LeadsPage() {
     } as any).eq("id", leadId).eq("reserved_by", profile.id);
     await supabase.from("lead_historico").insert({
       lead_id: leadId, usuario_id: profile.id,
-      tipo_evento: reason === "timeout" ? "reserva_expirada" : "reserva_liberada",
+      tipo_evento: reason === "timeout" ? "reserva_expirada" : "lead_visualizado_nao_pegou",
       descricao: reason === "timeout"
-        ? `Reserva expirada após 2 minutos sem interação. Lead retornou à fila.`
-        : `Reserva liberada por ${profile.nome}. Lead retornou à fila.`,
+        ? `Reserva expirada após 2 minutos sem interação. ${profile.nome} visualizou e não pegou o lead.`
+        : `${profile.nome} visualizou o lead e não pegou. Lead retornou à fila.`,
     });
     queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
   }, [profile, queryClient]);
