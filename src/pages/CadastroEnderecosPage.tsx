@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Search, ArrowRightLeft, Loader2, MapPin, Building2, Map } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, ArrowRightLeft, Loader2, MapPin, Building2, Map, ExternalLink } from "lucide-react";
 import AdminPasswordDialog from "@/components/AdminPasswordDialog";
 
 interface Cidade { id: string; nome: string; }
@@ -22,6 +23,7 @@ interface Rua { id: string; nome: string; bairro_id: string; cep: string[] | nul
 export default function CadastroEnderecosPage() {
   const { isAdmin } = useAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [tab, setTab] = useState("cidades");
   const [search, setSearch] = useState("");
 
@@ -51,6 +53,30 @@ export default function CadastroEnderecosPage() {
     },
   });
 
+  // Lead counts per bairro and rua
+  const { data: leadCounts } = useQuery({
+    queryKey: ["enderecos-lead-counts"],
+    queryFn: async () => {
+      const { data: leads, error } = await supabase
+        .from("leads")
+        .select("id, cidade_id, bairro_id, rua_id");
+      if (error) throw error;
+      const byCidade: Record<string, number> = {};
+      const byBairro: Record<string, number> = {};
+      const byRua: Record<string, number> = {};
+      for (const l of leads || []) {
+        if (l.cidade_id) byCidade[l.cidade_id] = (byCidade[l.cidade_id] || 0) + 1;
+        if (l.bairro_id) byBairro[l.bairro_id] = (byBairro[l.bairro_id] || 0) + 1;
+        if (l.rua_id) byRua[l.rua_id] = (byRua[l.rua_id] || 0) + 1;
+      }
+      return { byCidade, byBairro, byRua };
+    },
+  });
+
+  const cidadeLeadCount = (id: string) => leadCounts?.byCidade[id] || 0;
+  const bairroLeadCount = (id: string) => leadCounts?.byBairro[id] || 0;
+  const ruaLeadCount = (id: string) => leadCounts?.byRua[id] || 0;
+
   // ─── CRUD State ─────────────────
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -74,6 +100,7 @@ export default function CadastroEnderecosPage() {
     qc.invalidateQueries({ queryKey: ["enderecos-cidades"] });
     qc.invalidateQueries({ queryKey: ["enderecos-bairros"] });
     qc.invalidateQueries({ queryKey: ["enderecos-ruas"] });
+    qc.invalidateQueries({ queryKey: ["enderecos-lead-counts"] });
   };
 
   // ─── Filtered lists ─────────────
@@ -151,15 +178,40 @@ export default function CadastroEnderecosPage() {
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
-      const table = tab === "cidades" ? "cidades" : tab === "bairros" ? "bairros" : "ruas";
-      // Before deleting, update leads that reference this item
+      // Check if there are associated leads
+      let hasLeads = false;
       if (tab === "cidades") {
-        await supabase.from("leads").update({ cidade_id: null } as any).eq("cidade_id", deleteId);
+        const { count } = await supabase.from("leads").select("id", { count: "exact", head: true }).eq("cidade_id", deleteId);
+        hasLeads = (count || 0) > 0;
       } else if (tab === "bairros") {
-        await supabase.from("leads").update({ bairro_id: null } as any).eq("bairro_id", deleteId);
+        const { count } = await supabase.from("leads").select("id", { count: "exact", head: true }).eq("bairro_id", deleteId);
+        hasLeads = (count || 0) > 0;
       } else {
-        await supabase.from("leads").update({ rua_id: null } as any).eq("rua_id", deleteId);
+        const { count } = await supabase.from("leads").select("id", { count: "exact", head: true }).eq("rua_id", deleteId);
+        hasLeads = (count || 0) > 0;
       }
+      if (hasLeads) {
+        toast.error("Não é possível remover: existem leads associados a este registro. Migre os leads primeiro.");
+        setDeleteId(null);
+        return;
+      }
+      // Check child records (bairros in cidade, ruas in bairro)
+      if (tab === "cidades") {
+        const { count } = await supabase.from("bairros").select("id", { count: "exact", head: true }).eq("cidade_id", deleteId);
+        if ((count || 0) > 0) {
+          toast.error("Não é possível remover: existem bairros associados a esta cidade.");
+          setDeleteId(null);
+          return;
+        }
+      } else if (tab === "bairros") {
+        const { count } = await supabase.from("ruas").select("id", { count: "exact", head: true }).eq("bairro_id", deleteId);
+        if ((count || 0) > 0) {
+          toast.error("Não é possível remover: existem ruas associadas a este bairro.");
+          setDeleteId(null);
+          return;
+        }
+      }
+      const table = tab === "cidades" ? "cidades" : tab === "bairros" ? "bairros" : "ruas";
       const { error } = await supabase.from(table).delete().eq("id", deleteId);
       if (error) throw error;
       toast.success("Removido com sucesso!");
@@ -253,12 +305,24 @@ export default function CadastroEnderecosPage() {
               <div className="divide-y">
                 {filteredCidades.length === 0 ? (
                   <p className="p-4 text-sm text-muted-foreground text-center">Nenhuma cidade encontrada.</p>
-                ) : filteredCidades.map(c => (
+                 ) : filteredCidades.map(c => {
+                  const lc = cidadeLeadCount(c.id);
+                  return (
                   <div key={c.id} className="flex items-center justify-between px-4 py-2.5 hover:bg-muted/30">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Building2 className="w-4 h-4 text-muted-foreground" />
                       <span className="text-sm font-medium">{c.nome}</span>
                       <Badge variant="outline" className="text-[10px]">{bairros.filter(b => b.cidade_id === c.id).length} bairros</Badge>
+                      {lc > 0 ? (
+                        <Badge
+                          variant="secondary" className="text-[10px] cursor-pointer hover:bg-primary/20"
+                          onClick={() => navigate(`/leads/relatorios?cidade_id=${c.id}`)}
+                        >
+                          {lc} lead{lc > 1 ? "s" : ""} <ExternalLink className="w-2.5 h-2.5 ml-0.5" />
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] text-muted-foreground">0 leads</Badge>
+                      )}
                     </div>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(c)}><Pencil className="w-3.5 h-3.5" /></Button>
@@ -269,7 +333,8 @@ export default function CadastroEnderecosPage() {
                       )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </ScrollArea>
           </Card>
@@ -281,15 +346,27 @@ export default function CadastroEnderecosPage() {
               <div className="divide-y">
                 {filteredBairros.length === 0 ? (
                   <p className="p-4 text-sm text-muted-foreground text-center">Nenhum bairro encontrado.</p>
-                ) : filteredBairros.map(b => (
+                 ) : filteredBairros.map(b => {
+                  const lc = bairroLeadCount(b.id);
+                  return (
                   <div key={b.id} className="flex items-center justify-between px-4 py-2.5 hover:bg-muted/30">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Map className="w-4 h-4 text-muted-foreground" />
                       <div>
                         <span className="text-sm font-medium">{b.nome}</span>
                         <span className="text-xs text-muted-foreground ml-2">({getCidadeNome(b.cidade_id)})</span>
                       </div>
                       <Badge variant="outline" className="text-[10px]">{ruas.filter(r => r.bairro_id === b.id).length} ruas</Badge>
+                      {lc > 0 ? (
+                        <Badge
+                          variant="secondary" className="text-[10px] cursor-pointer hover:bg-primary/20"
+                          onClick={() => navigate(`/leads/relatorios?bairro_id=${b.id}`)}
+                        >
+                          {lc} lead{lc > 1 ? "s" : ""} <ExternalLink className="w-2.5 h-2.5 ml-0.5" />
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] text-muted-foreground">0 leads</Badge>
+                      )}
                     </div>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(b)}><Pencil className="w-3.5 h-3.5" /></Button>
@@ -300,7 +377,8 @@ export default function CadastroEnderecosPage() {
                       )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </ScrollArea>
           </Card>
@@ -312,11 +390,12 @@ export default function CadastroEnderecosPage() {
               <div className="divide-y">
                 {filteredRuas.length === 0 ? (
                   <p className="p-4 text-sm text-muted-foreground text-center">Nenhuma rua encontrada.</p>
-                ) : filteredRuas.map(r => {
+                 ) : filteredRuas.map(r => {
                   const bairro = bairros.find(b => b.id === r.bairro_id);
+                  const lc = ruaLeadCount(r.id);
                   return (
                     <div key={r.id} className="flex items-center justify-between px-4 py-2.5 hover:bg-muted/30">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <MapPin className="w-4 h-4 text-muted-foreground" />
                         <div>
                           <span className="text-sm font-medium">{r.nome}</span>
@@ -325,6 +404,16 @@ export default function CadastroEnderecosPage() {
                           </span>
                           {r.cep && r.cep.length > 0 && <span className="text-xs text-muted-foreground ml-2">CEP: {r.cep.join(", ")}</span>}
                         </div>
+                        {lc > 0 ? (
+                          <Badge
+                            variant="secondary" className="text-[10px] cursor-pointer hover:bg-primary/20"
+                            onClick={() => navigate(`/leads/relatorios?rua_id=${r.id}`)}
+                          >
+                            {lc} lead{lc > 1 ? "s" : ""} <ExternalLink className="w-2.5 h-2.5 ml-0.5" />
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[10px] text-muted-foreground">0 leads</Badge>
+                        )}
                       </div>
                       <div className="flex gap-1">
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(r)}><Pencil className="w-3.5 h-3.5" /></Button>
@@ -400,7 +489,7 @@ export default function CadastroEnderecosPage() {
         open={showDeleteConfirm}
         onOpenChange={v => { setShowDeleteConfirm(v); if (!v) setDeleteId(null); }}
         title={`Excluir ${tabLabel}`}
-        description={`Esta ação removerá o registro e desvinculará leads associados. Informe a senha de administrador.`}
+        description={`Só é possível excluir se não houver leads, bairros ou ruas associados. Informe a senha de administrador.`}
         onConfirm={handleDelete}
       />
 

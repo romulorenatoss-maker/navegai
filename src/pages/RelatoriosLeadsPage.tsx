@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import * as XLSX from "xlsx";
 import { motion } from "framer-motion";
 import {
   CalendarIcon, Filter, Trash2, Download, Loader2,
-  FileText, Search, Users,
+  FileText, Search, Users, Eye, X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,6 +14,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import AdminPasswordDialog from "@/components/AdminPasswordDialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -54,9 +57,15 @@ const STATUS_BADGE: Record<string, string> = {
 export default function RelatoriosLeadsPage() {
   const { isAdmin, user } = useAuth();
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlCidadeId = searchParams.get("cidade_id");
+  const urlBairroId = searchParams.get("bairro_id");
+  const urlRuaId = searchParams.get("rua_id");
+  const hasAddressFilter = !!(urlCidadeId || urlBairroId || urlRuaId);
+
   const now = new Date();
-  const [startDate, setStartDate] = useState<Date | undefined>(startOfMonth(now));
-  const [endDate, setEndDate] = useState<Date | undefined>(endOfMonth(now));
+  const [startDate, setStartDate] = useState<Date | undefined>(hasAddressFilter ? undefined : startOfMonth(now));
+  const [endDate, setEndDate] = useState<Date | undefined>(hasAddressFilter ? undefined : endOfMonth(now));
 
   const [filterStatus, setFilterStatus] = useState("todos");
   const [filterOrigem, setFilterOrigem] = useState("todos");
@@ -64,6 +73,11 @@ export default function RelatoriosLeadsPage() {
   const [filterNome, setFilterNome] = useState("");
 
   const [responsaveis, setResponsaveis] = useState<{ id: string; nome: string }[]>([]);
+
+  // Lead detail dialog
+  const [viewLeadId, setViewLeadId] = useState<string | null>(null);
+  const [viewLeadData, setViewLeadData] = useState<any>(null);
+  const [viewLeadLoading, setViewLeadLoading] = useState(false);
 
   useEffect(() => {
     supabase.from("profiles").select("id, nome").eq("ativo", true).order("nome").then(({ data }) => {
@@ -88,19 +102,24 @@ export default function RelatoriosLeadsPage() {
 
     let query = supabase
       .from("leads")
-      .select("id, nome, status_lead, origem_lead, responsavel_id, data_criacao, plano_id, repetidor");
+      .select("id, nome, status_lead, origem_lead, responsavel_id, data_criacao, plano_id, repetidor, cidade_id, bairro_id, rua_id");
+
+    // Address filters from URL
+    if (urlCidadeId) query = query.eq("cidade_id", urlCidadeId);
+    if (urlBairroId) query = query.eq("bairro_id", urlBairroId);
+    if (urlRuaId) query = query.eq("rua_id", urlRuaId);
 
     if (isDirectSearch) {
       query = query.ilike("nome", `%${filterNome.trim()}%`);
-    } else {
+    } else if (!hasAddressFilter) {
       const from = startDate ? startOfDay(startDate).toISOString() : startOfDay(startOfMonth(now)).toISOString();
       const to = endDate ? endOfDay(endDate).toISOString() : endOfDay(endOfMonth(now)).toISOString();
       query = query.gte("data_criacao", from).lte("data_criacao", to);
-
-      if (filterStatus !== "todos") query = query.eq("status_lead", filterStatus);
-      if (filterOrigem !== "todos") query = query.eq("origem_lead", filterOrigem);
-      if (filterResponsavel !== "todos") query = query.eq("responsavel_id", filterResponsavel);
     }
+
+    if (filterStatus !== "todos") query = query.eq("status_lead", filterStatus);
+    if (filterOrigem !== "todos") query = query.eq("origem_lead", filterOrigem);
+    if (filterResponsavel !== "todos") query = query.eq("responsavel_id", filterResponsavel);
 
     const { data: leadsData } = await query.order("data_criacao", { ascending: false });
     if (!leadsData) { setLeadsList([]); setLoading(false); return; }
@@ -135,9 +154,35 @@ export default function RelatoriosLeadsPage() {
     })));
     setSelected(new Set());
     setLoading(false);
-  }, [startDate, endDate, filterStatus, filterOrigem, filterResponsavel, filterNome]);
+  }, [startDate, endDate, filterStatus, filterOrigem, filterResponsavel, filterNome, urlCidadeId, urlBairroId, urlRuaId]);
 
   useEffect(() => { fetchLeads(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── View Lead Detail ──────────────────────────────
+  const openLeadDetail = async (leadId: string) => {
+    setViewLeadId(leadId);
+    setViewLeadLoading(true);
+    try {
+      const [leadRes, contatosRes, historicoRes] = await Promise.all([
+        supabase.from("leads").select("*, cidade:cidades(nome), bairro:bairros(nome), rua:ruas(nome), plano:planos(nome_plano)").eq("id", leadId).single(),
+        supabase.from("lead_contatos").select("*").eq("lead_id", leadId),
+        supabase.from("lead_historico").select("*, usuario:profiles(nome)").eq("lead_id", leadId).order("data_evento", { ascending: false }).limit(20),
+      ]);
+      const responsavelNome = leadRes.data?.responsavel_id
+        ? responsaveis.find(r => r.id === leadRes.data.responsavel_id)?.nome || "—"
+        : "—";
+      setViewLeadData({
+        ...leadRes.data,
+        responsavel_nome: responsavelNome,
+        contatos: contatosRes.data || [],
+        historico: historicoRes.data || [],
+      });
+    } catch {
+      toast.error("Erro ao carregar detalhes do lead.");
+    } finally {
+      setViewLeadLoading(false);
+    }
+  };
 
   const allSelected = leadsList.length > 0 && selected.size === leadsList.length;
   const someSelected = selected.size > 0 && !allSelected;
@@ -259,6 +304,20 @@ export default function RelatoriosLeadsPage() {
         <h1 className="text-section font-semibold text-foreground">Relatórios de Leads</h1>
         <p className="text-body text-muted-foreground">Gerencie e exporte dados de Leads</p>
       </div>
+
+      {hasAddressFilter && (
+        <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex items-center justify-between">
+          <span className="text-sm text-foreground">
+            🔍 Filtrando por endereço — mostrando todos os leads associados
+          </span>
+          <Button
+            variant="ghost" size="sm"
+            onClick={() => { setSearchParams({}); setStartDate(startOfMonth(now)); setEndDate(endOfMonth(now)); }}
+          >
+            <X className="w-3.5 h-3.5 mr-1" /> Limpar filtro
+          </Button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="bg-card border border-border rounded-lg p-4 shadow-card">
@@ -423,6 +482,7 @@ export default function RelatoriosLeadsPage() {
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Origem</th>
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Responsável</th>
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Data Criação</th>
+                  <th className="px-2 py-2 w-10"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -446,11 +506,16 @@ export default function RelatoriosLeadsPage() {
                     <td className="px-4 py-3 text-body text-muted-foreground font-tabular">
                       {format(new Date(item.data_criacao), "dd/MM/yyyy")}
                     </td>
+                    <td className="px-2 py-3">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" title="Ver detalhes" onClick={() => openLeadDetail(item.id)}>
+                        <Eye className="w-3.5 h-3.5" />
+                      </Button>
+                    </td>
                   </tr>
                 ))}
                 {leadsList.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">
+                    <td colSpan={8} className="px-4 py-8 text-center text-body text-muted-foreground">
                       Nenhum lead encontrado no período selecionado.
                     </td>
                   </tr>
@@ -487,6 +552,69 @@ export default function RelatoriosLeadsPage() {
         description={`Você está prestes a remover ${leadsList.length} lead(s) listados e TODOS os dados vinculados (contatos, tarefas, interações, histórico, atrasos, objeções). Nada restará no sistema. Esta ação é irreversível.`}
         onConfirm={executeDeleteAllFiltered}
       />
+
+      {/* Lead Detail Dialog */}
+      <Dialog open={!!viewLeadId} onOpenChange={(o) => { if (!o) { setViewLeadId(null); setViewLeadData(null); } }}>
+        <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-4 h-4" /> Detalhes do Lead
+            </DialogTitle>
+          </DialogHeader>
+          {viewLeadLoading ? (
+            <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" /> Carregando...
+            </div>
+          ) : viewLeadData ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><span className="text-muted-foreground">Nome:</span> <span className="font-medium">{viewLeadData.nome}</span></div>
+                <div><span className="text-muted-foreground">Status:</span> <Badge variant="outline" className="ml-1 text-[10px]">{STATUS_LABELS[viewLeadData.status_lead] || viewLeadData.status_lead}</Badge></div>
+                <div><span className="text-muted-foreground">Responsável:</span> <span className="font-medium">{viewLeadData.responsavel_nome}</span></div>
+                <div><span className="text-muted-foreground">Origem:</span> {viewLeadData.origem_lead || "—"}</div>
+                <div><span className="text-muted-foreground">Cidade:</span> {viewLeadData.cidade?.nome || "—"}</div>
+                <div><span className="text-muted-foreground">Bairro:</span> {viewLeadData.bairro?.nome || "—"}</div>
+                <div><span className="text-muted-foreground">Rua:</span> {viewLeadData.rua?.nome || "—"}</div>
+                <div><span className="text-muted-foreground">Plano:</span> {viewLeadData.plano?.nome_plano || "—"}</div>
+                <div><span className="text-muted-foreground">Repetidor:</span> {viewLeadData.repetidor ? (viewLeadData.repetidor === "fast" ? "Fast" : "Dual") : "Nenhum"}</div>
+                <div><span className="text-muted-foreground">Criado em:</span> {format(new Date(viewLeadData.data_criacao), "dd/MM/yyyy HH:mm")}</div>
+              </div>
+
+              {viewLeadData.contatos?.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Contatos</p>
+                  <div className="space-y-1">
+                    {viewLeadData.contatos.map((c: any) => (
+                      <div key={c.id} className="text-sm flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px]">{c.tipo_contato}</Badge>
+                        <span>{c.valor}</span>
+                        {c.tem_whatsapp && <Badge className="text-[9px] bg-green-100 text-green-800 border-0">WhatsApp</Badge>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {viewLeadData.historico?.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Histórico Recente</p>
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                    {viewLeadData.historico.map((h: any) => (
+                      <div key={h.id} className="text-xs border-l-2 border-border pl-2">
+                        <span className="text-muted-foreground">{format(new Date(h.data_evento), "dd/MM HH:mm")}</span>
+                        {" — "}
+                        <span className="font-medium">{h.tipo_evento}</span>
+                        {h.descricao && <span className="text-muted-foreground"> — {h.descricao}</span>}
+                        <span className="text-muted-foreground ml-1">({h.usuario?.nome || "—"})</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
