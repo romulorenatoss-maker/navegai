@@ -55,7 +55,7 @@ function isTarefaExpirada(tarefa: { data_contato: string; periodo: string; statu
 }
 
 export default function FilaLeadsPage() {
-  const { profile } = useAuth();
+  const { profile, isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
