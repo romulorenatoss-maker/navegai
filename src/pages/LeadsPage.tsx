@@ -1173,10 +1173,10 @@ export default function LeadsPage() {
               <div className="divide-y divide-border">
                 {loadingLeads ? (
                   <div className="p-6 text-center text-muted-foreground text-sm">Carregando...</div>
-                ) : priorityQueue.length === 0 ? (
-                  <div className="p-6 text-center text-muted-foreground text-sm">Nenhum lead na fila</div>
+                ) : filteredQueue.length === 0 ? (
+                  <div className="p-6 text-center text-muted-foreground text-sm">Nenhum lead para {filaFiltro === "hoje" ? "hoje" : "exibir"}</div>
                 ) : (
-                  priorityQueue.map((item, idx) => {
+                  filteredQueue.map((item, idx) => {
                     const contatos = allLeadContatos.filter(c => c.lead_id === item.lead.id && c.tipo_contato === "telefone");
                     const isSelected = selectedLead?.id === item.lead.id;
                     const isOverdue = item.proximoContato && item.proximoContato < new Date();
