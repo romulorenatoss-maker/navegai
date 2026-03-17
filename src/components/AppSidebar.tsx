@@ -21,6 +21,7 @@ const allNavSections = [
     items: [
       { to: "/avaliacoes/pesquisa", icon: FileSearch, label: "Criar OS / Buscar" },
       { to: "/avaliacoes/minhas", icon: Star, label: "Minhas Avaliações" },
+      { to: "/leads", icon: UserPlus, label: "Meus Leads" },
     ],
   },
   {
@@ -45,8 +46,7 @@ const allNavSections = [
   {
     title: "Leads",
     items: [
-      { to: "/leads", icon: UserPlus, label: "Gestão de Leads" },
-      { to: "/leads/fila", icon: ListOrdered, label: "Fila de Atendimento" },
+      { to: "/leads/fila", icon: ListOrdered, label: "Gerenciador de Leads" },
       { to: "/leads/fila-tarefas", icon: ClipboardList, label: "Fila de Tarefas" },
       { to: "/leads/finalizados", icon: UserCheck, label: "Leads Finalizados" },
       { to: "/leads/arquivados", icon: Archive, label: "Leads Arquivados" },

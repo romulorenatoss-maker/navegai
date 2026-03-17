@@ -217,15 +217,18 @@ export default function LeadsPage() {
 
   // ─── Queries ──────────────────────────────────────
   const { data: allLeads = [], isLoading: loadingLeads } = useQuery({
-    queryKey: ["leads-list"],
+    queryKey: ["leads-list", profile?.id],
     queryFn: async () => {
+      if (!profile) return [] as Lead[];
       const { data, error } = await supabase
         .from("leads")
         .select("*")
+        .eq("responsavel_id", profile.id)
         .order("updated_at", { ascending: true });
       if (error) throw error;
       return data as Lead[];
     },
+    enabled: !!profile,
   });
 
   // Auto-select lead from URL param ?id=
@@ -1123,7 +1126,7 @@ export default function LeadsPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <h1 className="text-lg font-bold text-foreground">Gestão de Leads</h1>
+          <h1 className="text-lg font-bold text-foreground">Meus Leads</h1>
           <Badge variant="secondary" className="text-xs">{filteredQueue.length} na fila</Badge>
         </div>
         <div className="flex items-center gap-2">
