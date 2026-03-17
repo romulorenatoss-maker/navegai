@@ -2067,6 +2067,9 @@ export default function LeadsPage() {
                               <span className="text-[10px] font-mono text-muted-foreground w-4 shrink-0">#{idx + 1}</span>
                               <span className="text-sm font-medium truncate">{item.lead.nome}</span>
                             </div>
+                            {getCampanhaNome(item.lead) && (
+                              <p className="text-[10px] text-primary/70 ml-5 truncate">Origem: {getCampanhaNome(item.lead)}</p>
+                            )}
                             <div className="flex items-center gap-1.5 mt-0.5 ml-5">
                               {contatos.length > 0 ? (
                                 <span className="text-[11px] text-muted-foreground flex items-center gap-0.5">
