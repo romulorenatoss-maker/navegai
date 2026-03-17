@@ -1664,7 +1664,10 @@ export default function LeadsPage() {
 
   const openConversion = () => {
     if (!selectedLead) return;
-    setConvForm({ nome: selectedLead.nome, cpf: "", rg: "", nome_mae: "", endereco: "", numero: "", cep: "", cidade: "", referencia: "" });
+    setConvForm({ nome: selectedLead.nome, cpf: "", rg: "", nome_mae: "", numero: selectedLead.numero_endereco || "", referencia: "" });
+    setConvCidadeId(selectedLead.cidade_id || null);
+    setConvBairroId(selectedLead.bairro_id || null);
+    setConvRuaId(selectedLead.rua_id || null);
     setConvAtendenteId(profile?.id || "");
     setShowConvert(true);
   };
