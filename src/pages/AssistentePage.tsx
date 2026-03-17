@@ -436,8 +436,8 @@ export default function AssistentePage() {
             <Bot className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-foreground">Assistente Inteligente</h1>
-            <p className="text-xs text-muted-foreground">Pergunte sobre vendas, leads ou desempenho do negócio</p>
+            <h1 className="text-xl font-bold text-foreground">Naví</h1>
+            <p className="text-xs text-muted-foreground">Sua assistente inteligente de negócios</p>
           </div>
         </div>
       </div>
