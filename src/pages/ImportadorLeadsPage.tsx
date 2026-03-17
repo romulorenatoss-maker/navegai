@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChevronDown } from "lucide-react";
 import * as XLSX from "xlsx";
-import ColumnMapper, { autoDetectMapping, type ColumnMapping } from "@/components/import/ColumnMapper";
+import ColumnMapper, { autoDetectMapping, EMPTY_MAPPING, type ColumnMapping } from "@/components/import/ColumnMapper";
 
 const PREPOSITIONS = new Set(["de", "da", "do", "das", "dos", "e", "em", "na", "no", "nas", "nos", "com", "para", "por"]);
 
@@ -66,7 +66,7 @@ export default function ImportadorLeadsPage() {
   const [fileName, setFileName] = useState("");
   const [rawHeaders, setRawHeaders] = useState<string[]>([]);
   const [rawRows, setRawRows] = useState<Record<string, string>[]>([]);
-  const [mapping, setMapping] = useState<ColumnMapping>({ nome: "", telefone: "", email: "", endereco: "", plano: "" });
+  const [mapping, setMapping] = useState<ColumnMapping>({ ...EMPTY_MAPPING });
   const [previewRows, setPreviewRows] = useState<PreviewRow[]>([]);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -156,12 +156,20 @@ export default function ImportadorLeadsPage() {
       const nome = toProperCase(raw[mapping.nome] || "");
       const telefone = raw[mapping.telefone] || "";
       const email = mapping.email ? raw[mapping.email] || "" : "";
+      const cidade = mapping.cidade ? toProperCase(raw[mapping.cidade] || "") : "";
+      const bairro = mapping.bairro ? toProperCase(raw[mapping.bairro] || "") : "";
+      const rua = mapping.rua ? toProperCase(raw[mapping.rua] || "") : "";
+      const numero = mapping.numero ? raw[mapping.numero] || "" : "";
+      const plano = mapping.plano ? raw[mapping.plano] || "" : "";
+      const repetidor = mapping.repetidor ? raw[mapping.repetidor] || "" : "";
       const phoneNorm = normalizePhone(telefone);
+
+      const extraFields = { cidade, bairro, rua, numero, plano, repetidor };
 
       // Validate
       if (!nome.trim() || phoneNorm.length < 8) {
         return {
-          index: i, nome, telefone, phoneNormalized: phoneNorm, email,
+          index: i, nome, telefone, phoneNormalized: phoneNorm, email, ...extraFields,
           status: "invalid" as RowStatus, action: "skip" as RowAction,
           error: !nome.trim() ? "Nome vazio" : "Telefone inválido",
         };
@@ -170,7 +178,7 @@ export default function ImportadorLeadsPage() {
       // Intra-file duplicate
       if (seenInFile.has(phoneNorm)) {
         return {
-          index: i, nome, telefone, phoneNormalized: phoneNorm, email,
+          index: i, nome, telefone, phoneNormalized: phoneNorm, email, ...extraFields,
           status: "duplicate_active" as RowStatus, action: "skip" as RowAction,
           duplicateInfo: { leadNome: rawRows[seenInFile.get(phoneNorm)!][mapping.nome], statusLead: "duplicado no arquivo", responsavelNome: "" },
         };
@@ -188,7 +196,7 @@ export default function ImportadorLeadsPage() {
           };
           const rowStatus: RowStatus = statusMap[lead.status_lead] || "duplicate_active";
           return {
-            index: i, nome, telefone, phoneNormalized: phoneNorm, email,
+            index: i, nome, telefone, phoneNormalized: phoneNorm, email, ...extraFields,
             status: rowStatus,
             action: rowStatus === "duplicate_archived" || rowStatus === "duplicate_lost" ? "import" as RowAction : "skip" as RowAction,
             duplicateInfo: {
@@ -202,14 +210,14 @@ export default function ImportadorLeadsPage() {
       // Check existing clients
       if (clientPhoneSet.has(phoneNorm)) {
         return {
-          index: i, nome, telefone, phoneNormalized: phoneNorm, email,
+          index: i, nome, telefone, phoneNormalized: phoneNorm, email, ...extraFields,
           status: "duplicate_client" as RowStatus, action: "import_alert" as RowAction,
           duplicateInfo: { isClient: true },
         };
       }
 
       return {
-        index: i, nome, telefone, phoneNormalized: phoneNorm, email,
+        index: i, nome, telefone, phoneNormalized: phoneNorm, email, ...extraFields,
         status: "new" as RowStatus, action: "import" as RowAction,
       };
     });
@@ -234,15 +242,63 @@ export default function ImportadorLeadsPage() {
       .from("rotina_tentativas_leads")
       .select("*").eq("tentativa_numero", 1).eq("ativo", true).maybeSingle();
 
+    // Pre-fetch lookup tables for FK resolution
+    const [{ data: allCidades }, { data: allBairros }, { data: allRuas }, { data: allPlanos }] = await Promise.all([
+      supabase.from("cidades").select("id, nome"),
+      supabase.from("bairros").select("id, nome, cidade_id"),
+      supabase.from("ruas").select("id, nome, bairro_id"),
+      supabase.from("planos").select("id, nome_plano"),
+    ]);
+
+    const cidadeMap = new Map<string, string>();
+    for (const c of allCidades || []) cidadeMap.set(c.nome.toLowerCase().trim(), c.id);
+
+    const bairroMap = new Map<string, { id: string; cidade_id: string }>();
+    for (const b of allBairros || []) bairroMap.set(b.nome.toLowerCase().trim(), { id: b.id, cidade_id: b.cidade_id });
+
+    const ruaMap = new Map<string, { id: string; bairro_id: string }>();
+    for (const r of allRuas || []) ruaMap.set(r.nome.toLowerCase().trim(), { id: r.id, bairro_id: r.bairro_id });
+
+    const planoMap = new Map<string, string>();
+    for (const p of allPlanos || []) planoMap.set(p.nome_plano.toLowerCase().trim(), p.id);
+
     for (const row of toImport) {
       try {
         const nomeFmt = toProperCase(row.nome);
+
+        // Resolve FK IDs from names
+        let cidadeId: string | null = null;
+        let bairroId: string | null = null;
+        let ruaId: string | null = null;
+        let planoId: string | null = null;
+
+        if (row.cidade) {
+          cidadeId = cidadeMap.get(row.cidade.toLowerCase().trim()) || null;
+        }
+        if (row.bairro) {
+          const b = bairroMap.get(row.bairro.toLowerCase().trim());
+          if (b) { bairroId = b.id; if (!cidadeId) cidadeId = b.cidade_id; }
+        }
+        if (row.rua) {
+          const r = ruaMap.get(row.rua.toLowerCase().trim());
+          if (r) { ruaId = r.id; if (!bairroId) bairroId = r.bairro_id; }
+        }
+        if (row.plano) {
+          planoId = planoMap.get(row.plano.toLowerCase().trim()) || null;
+        }
+
         const { data: newLead, error } = await supabase.from("leads").insert({
           nome: nomeFmt,
           status_lead: "aguardando_captura",
           responsavel_id: null,
           origem_lead: "importacao",
           campanha_id: (campanhaId && campanhaId !== "__none") ? campanhaId : null,
+          cidade_id: cidadeId,
+          bairro_id: bairroId,
+          rua_id: ruaId,
+          numero_endereco: row.numero || null,
+          plano_id: planoId,
+          repetidor: row.repetidor || null,
         } as any).select().single();
 
         if (error || !newLead) throw error || new Error("Falha ao criar lead");
@@ -306,7 +362,7 @@ export default function ImportadorLeadsPage() {
 
   const reset = () => {
     setStep("upload"); setFileName(""); setRawHeaders([]); setRawRows([]);
-    setMapping({ nome: "", telefone: "", email: "", endereco: "", plano: "" });
+    setMapping({ ...EMPTY_MAPPING });
     setPreviewRows([]); setResults([]);
   };
 
@@ -382,8 +438,8 @@ export default function ImportadorLeadsPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const headers = ["Nome", "Telefone", "Email", "CEP", "Cidade", "Estado", "Endereco", "Bairro", "Perfil", "Plano", "Campanha", "Observacoes"];
-                      const sample = ["João da Silva", "(11) 99999-0000", "joao@email.com", "01001-000", "São Paulo", "SP", "Rua Exemplo, 123", "Centro", "Residencial", "100 Mega", "Campanha Verão", "Lead interessado"];
+                      const headers = ["Nome", "Telefone", "Email", "Cidade", "Bairro", "Rua", "Numero", "Plano", "Repetidor"];
+                      const sample = ["João da Silva", "(11) 99999-0000", "joao@email.com", "São Paulo", "Centro", "Rua Exemplo", "123", "100 Mega", "POP-01"];
                       const ws = XLSX.utils.aoa_to_sheet([headers, sample]);
                       ws["!cols"] = headers.map(() => ({ wch: 18 }));
                       const wb = XLSX.utils.book_new();
