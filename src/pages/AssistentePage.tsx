@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Bot, Send, User, Loader2, Sparkles, TrendingUp, Users, BarChart3 } from "lucide-react";
-import ReactMarkdown from "react-markdown";
+import { Bot, Send, User, Loader2, Sparkles, TrendingUp, Users, BarChart3, FileSpreadsheet, PieChart } from "lucide-react";
 import { toast } from "sonner";
+import { AssistenteMessageRenderer } from "@/components/assistente/AssistenteMessageRenderer";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/business-assistant`;
 
