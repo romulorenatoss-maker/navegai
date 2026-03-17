@@ -260,6 +260,7 @@ export default function LeadsPage() {
   const [createBairroId, setCreateBairroId] = useState<string>("");
   const [createRuaId, setCreateRuaId] = useState<string>("");
   const [createNumeroEnd, setCreateNumeroEnd] = useState("");
+  const [createCampanhaId, setCreateCampanhaId] = useState("");
   const [createBairroSearch, setCreateBairroSearch] = useState("");
   const [createRuaSearch, setCreateRuaSearch] = useState("");
   const [createCepSearch, setCreateCepSearch] = useState("");
