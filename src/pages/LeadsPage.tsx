@@ -1210,6 +1210,7 @@ export default function LeadsPage() {
                             <div className={`rounded-lg p-2.5 border ${
                               isInteracao ? "bg-primary/5 border-primary/20" :
                               isTransfer ? "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800" :
+                              isCriacaoVinculado ? "bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-700" :
                               isCriacao ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800" :
                               isConversao ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800" :
                               "bg-card border-border"
