@@ -2605,15 +2605,7 @@ export default function LeadsPage() {
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setShowFinalize(false)}>Cancelar</Button>
-            {fluxoConfig?.permitir_reiniciar_rotina !== false && (
-              <Button
-                variant="secondary"
-                onClick={() => handleFinalizeAction("reiniciar")}
-                className="press-effect"
-              >
-                <RefreshCw className="w-4 h-4 mr-1.5" /> Voltar para Fila
-              </Button>
-            )}
+            
             <Button
               variant="destructive"
               onClick={() => handleFinalizeAction("arquivar")}
