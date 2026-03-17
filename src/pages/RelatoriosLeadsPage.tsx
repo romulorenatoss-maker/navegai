@@ -570,6 +570,7 @@ export default function RelatoriosLeadsPage() {
                     </td>
                   </tr>
                 )}
+              </tbody>
             </table>
           </div>
         </div>
