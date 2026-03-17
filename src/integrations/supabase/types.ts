@@ -280,6 +280,30 @@ export type Database = {
         }
         Relationships: []
       }
+      campanhas: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       checklist_itens: {
         Row: {
           checklist_id: string
@@ -946,6 +970,7 @@ export type Database = {
         Row: {
           agendamento_retorno: string | null
           bairro_id: string | null
+          campanha_id: string | null
           cidade_id: string | null
           cliente_id: string | null
           created_at: string
@@ -969,6 +994,7 @@ export type Database = {
         Insert: {
           agendamento_retorno?: string | null
           bairro_id?: string | null
+          campanha_id?: string | null
           cidade_id?: string | null
           cliente_id?: string | null
           created_at?: string
@@ -992,6 +1018,7 @@ export type Database = {
         Update: {
           agendamento_retorno?: string | null
           bairro_id?: string | null
+          campanha_id?: string | null
           cidade_id?: string | null
           cliente_id?: string | null
           created_at?: string
@@ -1018,6 +1045,13 @@ export type Database = {
             columns: ["bairro_id"]
             isOneToOne: false
             referencedRelation: "bairros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_campanha_id_fkey"
+            columns: ["campanha_id"]
+            isOneToOne: false
+            referencedRelation: "campanhas"
             referencedColumns: ["id"]
           },
           {
