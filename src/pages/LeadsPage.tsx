@@ -18,7 +18,7 @@ import { ptBR } from "date-fns/locale";
 import {
   Search, Plus, Phone, User, Users, History, ArrowRight, Trash2,
   MessageSquare, PhoneCall, Clock, UserCheck, RefreshCw, Loader2, UserPlus, AlertTriangle,
-  ListOrdered, Send, FileText, ChevronRight, CalendarClock, CalendarIcon, Zap, Archive,
+  ListOrdered, Send, FileText, ChevronRight, CalendarClock, CalendarIcon, Zap, Archive, Eye,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
