@@ -33,6 +33,8 @@ interface LeadRow {
   plano_nome: string | null;
   repetidor: string | null;
   atrasos: number;
+  handlers: string[];
+  tentativas: number;
 }
 
 const STATUS_LABELS: Record<string, string> = {
