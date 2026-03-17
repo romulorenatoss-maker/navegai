@@ -206,6 +206,11 @@ const EVENTO_ICONS: Record<string, typeof Phone> = {
   observacao_adicionada: MessageSquare,
   dados_alterados: FileText,
   agendamento_removido: Clock,
+  lead_reservado: Eye,
+  reserva_liberada: RefreshCw,
+  reserva_expirada: Clock,
+  transferencia_manual: ArrowRight,
+  lead_capturado: UserCheck,
 };
 
 const PERIODO_HORA: Record<string, number> = { manha: 9, tarde: 14, noite: 19 };
