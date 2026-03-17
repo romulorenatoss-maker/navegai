@@ -73,10 +73,12 @@ export default function FilaLeadsPage() {
   const [notifSearch, setNotifSearch] = useState("");
   const [notifAppliedSearch, setNotifAppliedSearch] = useState("");
 
-  // Tarefas do Dia filters
+  // Tarefas do Dia filters (picker state vs applied state)
   const today = useMemo(() => new Date(), []);
   const [tarefaDateStart, setTarefaDateStart] = useState<Date>(startOfDay(today));
   const [tarefaDateEnd, setTarefaDateEnd] = useState<Date>(endOfDay(today));
+  const [appliedDateStart, setAppliedDateStart] = useState<Date>(startOfDay(today));
+  const [appliedDateEnd, setAppliedDateEnd] = useState<Date>(endOfDay(today));
 
   const [selectedItem, setSelectedItem] = useState<QueueItem | null>(null);
   const [attemptTipo, setAttemptTipo] = useState("telefone");
@@ -268,9 +270,9 @@ export default function FilaLeadsPage() {
   const filteredTarefas = useMemo(() => {
     return unifiedTarefas.filter((t: any) => {
       const d = t._data_referencia;
-      return d >= tarefaDateStart && d <= tarefaDateEnd;
+      return d >= appliedDateStart && d <= appliedDateEnd;
     });
-  }, [unifiedTarefas, tarefaDateStart, tarefaDateEnd]);
+  }, [unifiedTarefas, appliedDateStart, appliedDateEnd]);
 
   // Sort by priority: atrasado first, then by date ascending
   const sortedTarefas = useMemo(() => {
@@ -716,7 +718,8 @@ export default function FilaLeadsPage() {
                     </PopoverContent>
                   </Popover>
                 </div>
-                <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setTarefaDateStart(startOfDay(new Date())); setTarefaDateEnd(endOfDay(new Date())); }}>Hoje</Button>
+                <Button size="sm" variant="default" className="h-8 text-xs px-3 gap-1" onClick={() => { setAppliedDateStart(tarefaDateStart); setAppliedDateEnd(tarefaDateEnd); }}><Search className="w-3.5 h-3.5" /> Buscar</Button>
+                <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { const t = new Date(); setTarefaDateStart(startOfDay(t)); setTarefaDateEnd(endOfDay(t)); setAppliedDateStart(startOfDay(t)); setAppliedDateEnd(endOfDay(t)); }}>Hoje</Button>
               </div>
             </CardContent>
           </Card>
