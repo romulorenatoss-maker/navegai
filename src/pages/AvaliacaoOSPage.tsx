@@ -2664,7 +2664,8 @@ export default function AvaliacaoOSPage() {
           if (!targetOS.numero_os) {
             setFillNumeroOsId(targetOS.id);
             setFillNumeroValue("");
-            toast.info("OS existente encontrada aguardando número para este CPF.");
+            setShowNewOsDialog(true);
+            toast.info("OS existente encontrada aguardando número.");
             return;
           }
 
