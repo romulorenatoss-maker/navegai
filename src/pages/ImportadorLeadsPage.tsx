@@ -12,7 +12,23 @@ import { Upload, FileSpreadsheet, Loader2, X, CheckCircle2, AlertTriangle } from
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ChevronDown } from "lucide-react";
 import ColumnMapper, { autoDetectMapping, type ColumnMapping } from "@/components/import/ColumnMapper";
+
+const PREPOSITIONS = new Set(["de", "da", "do", "das", "dos", "e", "em", "na", "no", "nas", "nos", "com", "para", "por"]);
+
+/** "JOÃO DA SILVA" → "João da Silva", "rua das flores" → "Rua das Flores" */
+function toProperCase(text: string): string {
+  if (!text) return text;
+  return text
+    .toLowerCase()
+    .split(/\s+/)
+    .map((word, i) => {
+      if (i > 0 && PREPOSITIONS.has(word)) return word;
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(" ");
+}
 import ImportPreviewTable, { type PreviewRow, type RowAction, type RowStatus } from "@/components/import/ImportPreviewTable";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
