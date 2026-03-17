@@ -1183,6 +1183,7 @@ export default function LeadsPage() {
                         const isInteracao = item.type === "interacao" || item.evento === "tentativa_contato";
                         const isTransfer = item.evento === "transferencia_automatica";
                         const isCriacao = item.evento === "criacao";
+                        const isCriacaoVinculado = isCriacao && item.descricao?.includes("vinculado ao cliente existente");
                         const isConversao = item.evento === "conversao_cliente";
 
                         // Determine attempt number from description
