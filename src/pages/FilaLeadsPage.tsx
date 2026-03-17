@@ -828,23 +828,22 @@ export default function FilaLeadsPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center justify-end gap-1">
-                              {item.isReservedByOther ? (
-                                <Badge variant="outline" className="text-[10px] text-amber-600">Em atendimento</Badge>
+                              {item.isTaken ? (
+                                <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300">
+                                  {item.reservedByName ? `Já capturado por ${item.reservedByName}` : "Em atendimento"}
+                                </Badge>
                               ) : item.userPreviouslyHandled ? (
                                 <Badge variant="outline" className="text-[10px]">Você já interagiu</Badge>
                               ) : (
-                                <>
-                                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Ver lead" onClick={() => navigate(`/leads?id=${item.lead.id}`)}><Eye className="w-3.5 h-3.5" /></Button>
-                                  <Button
-                                    size="sm"
-                                    className="h-7 text-[11px] px-3 gap-1 bg-purple-600 hover:bg-purple-700 text-white"
-                                    onClick={() => captureMutation.mutate(item.lead.id)}
-                                    disabled={captureMutation.isPending}
-                                  >
-                                    {captureMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserCheck className="w-3.5 h-3.5" />}
-                                    Capturar Lead
-                                  </Button>
-                                </>
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-[11px] px-3 gap-1 bg-purple-600 hover:bg-purple-700 text-white"
+                                  onClick={() => captureMutation.mutate(item.lead.id)}
+                                  disabled={captureMutation.isPending}
+                                >
+                                  {captureMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserCheck className="w-3.5 h-3.5" />}
+                                  Capturar Lead
+                                </Button>
                               )}
                             </div>
                           </TableCell>
