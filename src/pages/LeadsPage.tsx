@@ -19,7 +19,9 @@ import {
   Search, Plus, Phone, User, Users, History, ArrowRight, Trash2,
   MessageSquare, PhoneCall, Clock, UserCheck, RefreshCw, Loader2, UserPlus, AlertTriangle,
   ListOrdered, Send, FileText, ChevronRight, CalendarClock, CalendarIcon, Zap, Archive, Eye, Filter,
+  ArrowRightLeft,
 } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
