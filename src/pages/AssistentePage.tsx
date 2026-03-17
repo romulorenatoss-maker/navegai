@@ -380,7 +380,7 @@ function ChatMode() {
               </div>
             )}
           </div>
-        </ScrollArea>
+        </div>
       </div>
 
       {/* Quick suggestions (when there are messages) */}
