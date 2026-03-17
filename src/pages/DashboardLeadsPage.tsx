@@ -642,7 +642,7 @@ export default function DashboardLeadsPage() {
             subValue="No período selecionado"
             color="bg-emerald-500/10 text-emerald-600"
             delay={0.15}
-            onClick={() => navigate(`/leads/relatorios?status=convertido&start=${format(dateStart, "yyyy-MM-dd")}&end=${format(dateEnd, "yyyy-MM-dd")}`)}
+            onClick={() => toRelatorios("convertido")}
           />
           <KpiCard
             icon={TrendingUp}
@@ -660,7 +660,7 @@ export default function DashboardLeadsPage() {
             subValue="No período selecionado"
             color="bg-red-400/10 text-red-500"
             delay={0.35}
-            onClick={() => openDrill("status", "Leads Sem Interesse", "sem_interesse")}
+            onClick={() => toRelatorios("sem_interesse")}
           />
           <KpiCard
             icon={Clock}
@@ -669,7 +669,7 @@ export default function DashboardLeadsPage() {
             subValue="No período selecionado"
             color="bg-muted text-muted-foreground"
             delay={0.45}
-            onClick={() => openDrill("status", "Leads Perdidos", "perdido")}
+            onClick={() => toRelatorios("perdido")}
           />
         </div>
 
@@ -678,7 +678,7 @@ export default function DashboardLeadsPage() {
           <StatusBar
             statusCounts={m.statusCounts}
             total={m.leadsNoPeriodo}
-            onStatusClick={(key, label) => openDrill("status", `Leads — ${label}`, key)}
+            onStatusClick={(key) => toRelatorios(key)}
           />
           {/* Top Objeções */}
           <motion.div
