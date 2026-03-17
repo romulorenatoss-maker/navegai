@@ -61,13 +61,25 @@ export default function RelatoriosLeadsPage() {
   const urlCidadeId = searchParams.get("cidade_id");
   const urlBairroId = searchParams.get("bairro_id");
   const urlRuaId = searchParams.get("rua_id");
+  const urlStatus = searchParams.get("status");
+  const urlStart = searchParams.get("start");
+  const urlEnd = searchParams.get("end");
   const hasAddressFilter = !!(urlCidadeId || urlBairroId || urlRuaId);
+  const hasUrlDateFilter = !!(urlStart || urlEnd);
 
   const now = new Date();
-  const [startDate, setStartDate] = useState<Date | undefined>(hasAddressFilter ? undefined : startOfMonth(now));
-  const [endDate, setEndDate] = useState<Date | undefined>(hasAddressFilter ? undefined : endOfMonth(now));
+  const [startDate, setStartDate] = useState<Date | undefined>(() => {
+    if (urlStart) return startOfDay(new Date(urlStart + "T00:00:00"));
+    if (hasAddressFilter) return undefined;
+    return startOfMonth(now);
+  });
+  const [endDate, setEndDate] = useState<Date | undefined>(() => {
+    if (urlEnd) return endOfDay(new Date(urlEnd + "T00:00:00"));
+    if (hasAddressFilter) return undefined;
+    return endOfMonth(now);
+  });
 
-  const [filterStatus, setFilterStatus] = useState("todos");
+  const [filterStatus, setFilterStatus] = useState(urlStatus || "todos");
   const [filterOrigem, setFilterOrigem] = useState("todos");
   const [filterResponsavel, setFilterResponsavel] = useState("todos");
   const [filterNome, setFilterNome] = useState("");
