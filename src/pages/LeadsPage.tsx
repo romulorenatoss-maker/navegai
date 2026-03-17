@@ -720,7 +720,7 @@ export default function LeadsPage() {
         descricao: `Lead transferido automaticamente para ${profile.nome}`,
       });
       toast.info("Lead transferido automaticamente para você.");
-      queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+      updateLeadInCache(lead.id, { responsavel_id: profile.id });
     } else if (!lead.responsavel_id) {
       await supabase.from("leads").update({ responsavel_id: profile.id }).eq("id", lead.id);
       await supabase.from("lead_historico").insert({
