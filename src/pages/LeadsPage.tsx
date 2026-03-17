@@ -746,26 +746,43 @@ export default function LeadsPage() {
     });
   }, [allLeads, allLeadInteracoes, allLeadTransfers, cadencia]);
 
-  // Filtered priority queue based on filaFiltro
+  // Filtered priority queue based on filaFiltro + additional filters
   const filteredQueue = useMemo(() => {
-    if (filaFiltro === "todos") return priorityQueue;
-    const now = new Date();
-    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-    const in8hours = new Date(now.getTime() + 8 * 60 * 60 * 1000);
-    return priorityQueue.filter((item) => {
-      // Expired schedule or schedule for today
-      if (item.lead.agendamento_retorno) {
-        const schedDate = new Date(item.lead.agendamento_retorno);
-        if (schedDate <= endOfToday) return true;
+    let result = priorityQueue;
+
+    // Time filter
+    if (filaFiltro === "hoje") {
+      const now = new Date();
+      const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      const in8hours = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+      result = result.filter((item) => {
+        if (item.lead.agendamento_retorno) {
+          return new Date(item.lead.agendamento_retorno) <= endOfToday;
+        }
+        if (item.proximoContato && (item.proximoContato <= endOfToday || item.proximoContato <= in8hours)) return true;
+        if (!item.proximoContato && !item.ultimaInteracao) return true;
         return false;
-      }
-      // Overdue cadence contact or expiring within 8 hours
-      if (item.proximoContato && (item.proximoContato <= endOfToday || item.proximoContato <= in8hours)) return true;
-      // New leads with no next contact yet (need action)
-      if (!item.proximoContato && !item.ultimaInteracao) return true;
-      return false;
-    });
-  }, [priorityQueue, filaFiltro]);
+      });
+    }
+
+    // Responsible filter
+    if (filtroResponsavel !== "all") {
+      result = result.filter(item => item.lead.responsavel_id === filtroResponsavel);
+    }
+
+    // Handler filter (leads where a specific person interacted)
+    if (filtroHandler !== "all") {
+      result = result.filter(item => item.handlers.includes(filtroHandler));
+    }
+
+    // Min total attempts filter
+    const minTent = parseInt(filtroMinTentativas);
+    if (!isNaN(minTent) && minTent > 0) {
+      result = result.filter(item => item.totalTentativas >= minTent);
+    }
+
+    return result;
+  }, [priorityQueue, filaFiltro, filtroResponsavel, filtroHandler, filtroMinTentativas]);
 
 
   const { data: leadContatos = [], refetch: refetchContatos } = useQuery({
