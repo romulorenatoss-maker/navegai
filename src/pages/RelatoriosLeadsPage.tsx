@@ -382,15 +382,28 @@ export default function RelatoriosLeadsPage() {
               <Users className="w-4 h-4 text-primary" />
               Leads ({leadsList.length})
             </h2>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportAllFiltered}
-              disabled={exportAllLoading || leadsList.length === 0}
-            >
-              {exportAllLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
-              Exportar Relatório ({leadsList.length})
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportAllFiltered}
+                disabled={exportAllLoading || leadsList.length === 0}
+              >
+                {exportAllLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
+                Exportar Relatório ({leadsList.length})
+              </Button>
+              {isAdmin && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setDeleteAllDialogOpen(true)}
+                  disabled={leadsList.length === 0}
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Remover Dados ({leadsList.length})
+                </Button>
+              )}
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
