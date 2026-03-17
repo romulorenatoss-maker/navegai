@@ -399,7 +399,27 @@ export default function LeadsPage() {
     });
   }, [allLeads, allLeadInteracoes, cadencia]);
 
-  // Lead contatos (for selected lead)
+  // Filtered priority queue based on filaFiltro
+  const filteredQueue = useMemo(() => {
+    if (filaFiltro === "todos") return priorityQueue;
+    const now = new Date();
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    return priorityQueue.filter((item) => {
+      // Expired schedule or schedule for today
+      if (item.lead.agendamento_retorno) {
+        const schedDate = new Date(item.lead.agendamento_retorno);
+        if (schedDate <= endOfToday) return true;
+        return false;
+      }
+      // Overdue cadence contact
+      if (item.proximoContato && item.proximoContato <= endOfToday) return true;
+      // New leads with no next contact yet (need action)
+      if (!item.proximoContato && !item.ultimaInteracao) return true;
+      return false;
+    });
+  }, [priorityQueue, filaFiltro]);
+
+
   const { data: leadContatos = [], refetch: refetchContatos } = useQuery({
     queryKey: ["lead-contatos", selectedLead?.id],
     enabled: !!selectedLead,
