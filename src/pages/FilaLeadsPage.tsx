@@ -868,13 +868,31 @@ export default function FilaLeadsPage() {
                               )}
                             </TableCell>
                             <TableCell>
-                              <Badge className={`text-[11px] border-0 ${
-                                item.lead.status_lead === "novo" ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" :
-                                item.lead.status_lead === "em_contato" ? "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" :
-                                "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200"
-                              }`}>
-                                {STATUS_MAP[item.lead.status_lead] || item.lead.status_lead}
-                              </Badge>
+                              {(() => {
+                                const hasInteracoes = item.tentativaAtual > 1;
+                                const isExpired = item.nextAttemptExpired || item.isOverdue;
+                                let displayStatus = item.lead.status_lead;
+                                let badgeClass = "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200";
+                                
+                                if (isExpired) {
+                                  displayStatus = "expirado";
+                                  badgeClass = "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+                                } else if (hasInteracoes || displayStatus === "em_atendimento" || displayStatus === "em_contato") {
+                                  displayStatus = "em_atendimento";
+                                  badgeClass = "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200";
+                                } else if (displayStatus === "novo") {
+                                  badgeClass = "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+                                } else if (displayStatus === "reservado") {
+                                  badgeClass = "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200";
+                                }
+                                
+                                return (
+                                  <Badge className={`text-[11px] border-0 ${badgeClass}`}>
+                                    {isExpired && <AlertTriangle className="w-3 h-3 mr-0.5" />}
+                                    {STATUS_MAP[displayStatus] || displayStatus}
+                                  </Badge>
+                                );
+                              })()}
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center justify-end gap-1">
