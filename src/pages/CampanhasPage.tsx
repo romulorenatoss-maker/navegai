@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,12 @@ interface Campanha {
   created_at: string;
 }
 
+interface LeadRow {
+  id: string;
+  campanha_id: string | null;
+  status_lead: string;
+}
+
 export default function CampanhasPage() {
   const queryClient = useQueryClient();
   const [showDialog, setShowDialog] = useState(false);
@@ -39,6 +45,33 @@ export default function CampanhasPage() {
       return data as Campanha[];
     },
   });
+
+  // Fetch all leads with campanha_id to compute stats
+  const { data: allLeads = [] } = useQuery({
+    queryKey: ["campanhas-leads-stats"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("leads")
+        .select("id, campanha_id, status_lead");
+      if (error) throw error;
+      return data as LeadRow[];
+    },
+  });
+
+  // Compute stats per campaign
+  const statsMap = useMemo(() => {
+    const map: Record<string, { total: number; convertidos: number; arquivados: number; perdidos: number }> = {};
+    for (const lead of allLeads) {
+      if (!lead.campanha_id) continue;
+      if (!map[lead.campanha_id]) map[lead.campanha_id] = { total: 0, convertidos: 0, arquivados: 0, perdidos: 0 };
+      const s = map[lead.campanha_id];
+      s.total++;
+      if (lead.status_lead === "convertido") s.convertidos++;
+      if (lead.status_lead === "arquivado") s.arquivados++;
+      if (lead.status_lead === "perdido") s.perdidos++;
+    }
+    return map;
+  }, [allLeads]);
 
   const openCreate = () => {
     setEditId(null);
@@ -74,13 +107,14 @@ export default function CampanhasPage() {
       toast.success(editId ? "Campanha atualizada!" : "Campanha criada!");
       setShowDialog(false);
       queryClient.invalidateQueries({ queryKey: ["campanhas"] });
+      queryClient.invalidateQueries({ queryKey: ["campanhas-ativas"] });
     },
     onError: (err: any) => toast.error(err.message),
   });
 
   return (
     <div className="flex-1 min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
+      <div className="max-w-5xl mx-auto p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
@@ -113,29 +147,52 @@ export default function CampanhasPage() {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead className="text-center">Status</TableHead>
+                    <TableHead className="text-center">Leads</TableHead>
+                    <TableHead className="text-center">Convertidos</TableHead>
+                    <TableHead className="text-center">Arquivados</TableHead>
+                    <TableHead className="text-center">Perdidos</TableHead>
                     <TableHead>Criada em</TableHead>
                     <TableHead className="text-right">Ação</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {campanhas.map((c) => (
-                    <TableRow key={c.id}>
-                      <TableCell className="font-medium">{c.nome}</TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant={c.ativo ? "default" : "secondary"} className="text-xs">
-                          {c.ativo ? "Ativa" : "Inativa"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {format(new Date(c.created_at), "dd/MM/yyyy", { locale: ptBR })}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button size="sm" variant="ghost" onClick={() => openEdit(c)}>
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {campanhas.map((c) => {
+                    const stats = statsMap[c.id] || { total: 0, convertidos: 0, arquivados: 0, perdidos: 0 };
+                    return (
+                      <TableRow key={c.id}>
+                        <TableCell className="font-medium">{c.nome}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant={c.ativo ? "default" : "secondary"} className="text-xs">
+                            {c.ativo ? "Ativa" : "Inativa"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center font-semibold">{stats.total}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-300 dark:text-emerald-400 dark:border-emerald-700">
+                            {stats.convertidos}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className="text-xs text-muted-foreground">
+                            {stats.arquivados}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className="text-xs text-destructive border-destructive/30">
+                            {stats.perdidos}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {format(new Date(c.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button size="sm" variant="ghost" onClick={() => openEdit(c)}>
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}
