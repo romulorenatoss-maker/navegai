@@ -866,16 +866,33 @@ export default function FilaLeadsPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-8">#</TableHead>
-                        <TableHead>Lead</TableHead>
+                        <TableHead className="cursor-pointer select-none" onClick={() => toggleFilaSort("nome")}><span className="flex items-center">Lead<SortIcon col="nome" /></span></TableHead>
                         <TableHead>Telefone(s)</TableHead>
-                        <TableHead>Vencimento</TableHead>
-                        <TableHead>Expiração</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead className="cursor-pointer select-none" onClick={() => toggleFilaSort("vencimento")}><span className="flex items-center">Vencimento<SortIcon col="vencimento" /></span></TableHead>
+                        <TableHead className="cursor-pointer select-none" onClick={() => toggleFilaSort("expiracao")}><span className="flex items-center">Expiração<SortIcon col="expiracao" /></span></TableHead>
+                        <TableHead className="cursor-pointer select-none" onClick={() => toggleFilaSort("status")}><span className="flex items-center">Status<SortIcon col="status" /></span></TableHead>
                         <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredQueue.map((item, idx) => {
+                      {(() => {
+                        const getUrgMs = (item: QueueItem) => {
+                          const s = item.lead.agendamento_retorno ? new Date(item.lead.agendamento_retorno).getTime() : null;
+                          const n = item.nextAttempt ? new Date(item.nextAttempt).getTime() : null;
+                          return s || n || Infinity;
+                        };
+                        let sorted = [...filteredQueue];
+                        if (filaSortKey) {
+                          sorted.sort((a, b) => {
+                            let cmp = 0;
+                            if (filaSortKey === "nome") cmp = a.lead.nome.localeCompare(b.lead.nome);
+                            else if (filaSortKey === "vencimento") cmp = (new Date(a.nextAttempt).getTime()) - (new Date(b.nextAttempt).getTime());
+                            else if (filaSortKey === "expiracao") cmp = getUrgMs(a) - getUrgMs(b);
+                            else if (filaSortKey === "status") cmp = a.lead.status_lead.localeCompare(b.lead.status_lead);
+                            return filaSortDir === "asc" ? cmp : -cmp;
+                          });
+                        }
+                        return sorted.map((item, idx) => {
                         const phones = item.contatos.filter(c => c.tipo_contato === "telefone");
                         const campanha = getCampanhaNome(item.lead);
                         const cidade = getCidadeNome(item.lead);
