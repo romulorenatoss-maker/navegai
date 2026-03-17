@@ -48,6 +48,7 @@ interface GroupPerm {
   can_delete: boolean;
   can_assign: boolean;
   can_export: boolean;
+  data_scope: DataScopeValue;
 }
 
 interface UserGroupAssignment {
