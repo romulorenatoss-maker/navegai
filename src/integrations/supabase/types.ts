@@ -1514,6 +1514,21 @@ export type Database = {
           },
         ]
       }
+      resources: {
+        Row: {
+          id: string
+          name: string
+        }
+        Insert: {
+          id?: string
+          name: string
+        }
+        Update: {
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       respostas_avaliacao: {
         Row: {
           avaliacao_id: string | null
