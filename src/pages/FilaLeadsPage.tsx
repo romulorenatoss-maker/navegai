@@ -795,6 +795,7 @@ export default function FilaLeadsPage() {
                      <SelectItem value="aguardando_decisao_avaliador">Aguardando Decisão</SelectItem>
                      <SelectItem value="fila_captura">Fila de Captura</SelectItem>
                      <SelectItem value="reservado">Reservado</SelectItem>
+                     <SelectItem value="expirado">Expirado</SelectItem>
                    </SelectContent>
                 </Select>
                 <Select value={filterResponsavel} onValueChange={setFilterResponsavel}>
