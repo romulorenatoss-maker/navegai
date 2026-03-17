@@ -134,7 +134,12 @@ const EVENTO_ICONS: Record<string, typeof Phone> = {
   tentativas_finalizadas: Clock,
   rotina_reiniciada: RefreshCw,
   lead_arquivado: FileText,
+  lead_desarquivado: RefreshCw,
   agendamento_retorno: CalendarClock,
+  objecao_registrada: AlertTriangle,
+  perfil_alterado: User,
+  repetidor_alterado: RefreshCw,
+  observacao_adicionada: MessageSquare,
 };
 
 const PERIODO_HORA: Record<string, number> = { manha: 9, tarde: 14, noite: 19 };
