@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 interface PendingCounts {
   pendingEvaluations: number;
   pendingLeadDecisions: number;
+  pendingMyLeads: number;
 }
 
 export function usePendingNotifications() {
