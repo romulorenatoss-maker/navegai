@@ -360,8 +360,6 @@ export default function ImportadorLeadsPage() {
                     <Upload className="w-4 h-4 mr-2" /> Carregar Arquivo
                   </Button>
                 </div>
-                  </AlertDescription>
-                </Alert>
               </CardContent>
             </Card>
           )}
