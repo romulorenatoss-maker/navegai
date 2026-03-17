@@ -2386,6 +2386,7 @@ export default function LeadsPage() {
 
                 {/* Ação Popover Button */}
                 {!isVisionMode && <div className="flex items-center gap-2">
+                  {selectedLead.status_lead !== "convertido" && (
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button size="sm" className="h-8 text-xs gap-1.5 press-effect">
