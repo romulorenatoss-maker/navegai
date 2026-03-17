@@ -346,15 +346,27 @@ export default function CadastroEnderecosPage() {
               <div className="divide-y">
                 {filteredBairros.length === 0 ? (
                   <p className="p-4 text-sm text-muted-foreground text-center">Nenhum bairro encontrado.</p>
-                ) : filteredBairros.map(b => (
+                 ) : filteredBairros.map(b => {
+                  const lc = bairroLeadCount(b.id);
+                  return (
                   <div key={b.id} className="flex items-center justify-between px-4 py-2.5 hover:bg-muted/30">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Map className="w-4 h-4 text-muted-foreground" />
                       <div>
                         <span className="text-sm font-medium">{b.nome}</span>
                         <span className="text-xs text-muted-foreground ml-2">({getCidadeNome(b.cidade_id)})</span>
                       </div>
                       <Badge variant="outline" className="text-[10px]">{ruas.filter(r => r.bairro_id === b.id).length} ruas</Badge>
+                      {lc > 0 ? (
+                        <Badge
+                          variant="secondary" className="text-[10px] cursor-pointer hover:bg-primary/20"
+                          onClick={() => navigate(`/leads/relatorios?bairro_id=${b.id}`)}
+                        >
+                          {lc} lead{lc > 1 ? "s" : ""} <ExternalLink className="w-2.5 h-2.5 ml-0.5" />
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] text-muted-foreground">0 leads</Badge>
+                      )}
                     </div>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(b)}><Pencil className="w-3.5 h-3.5" /></Button>
@@ -365,7 +377,8 @@ export default function CadastroEnderecosPage() {
                       )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </ScrollArea>
           </Card>
