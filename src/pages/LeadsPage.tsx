@@ -192,6 +192,9 @@ export default function LeadsPage() {
   const [scheduleHour, setScheduleHour] = useState("09");
   const [scheduleMinute, setScheduleMinute] = useState("00");
 
+  // Priority queue filter
+  const [filaFiltro, setFilaFiltro] = useState<"hoje" | "todos">("hoje");
+
   // Duplicate alert state
   const [dupeAlert, setDupeAlert] = useState<{
     type: "lead_phone" | "cliente_phone" | "cpf";
@@ -396,7 +399,27 @@ export default function LeadsPage() {
     });
   }, [allLeads, allLeadInteracoes, cadencia]);
 
-  // Lead contatos (for selected lead)
+  // Filtered priority queue based on filaFiltro
+  const filteredQueue = useMemo(() => {
+    if (filaFiltro === "todos") return priorityQueue;
+    const now = new Date();
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    return priorityQueue.filter((item) => {
+      // Expired schedule or schedule for today
+      if (item.lead.agendamento_retorno) {
+        const schedDate = new Date(item.lead.agendamento_retorno);
+        if (schedDate <= endOfToday) return true;
+        return false;
+      }
+      // Overdue cadence contact
+      if (item.proximoContato && item.proximoContato <= endOfToday) return true;
+      // New leads with no next contact yet (need action)
+      if (!item.proximoContato && !item.ultimaInteracao) return true;
+      return false;
+    });
+  }, [priorityQueue, filaFiltro]);
+
+
   const { data: leadContatos = [], refetch: refetchContatos } = useQuery({
     queryKey: ["lead-contatos", selectedLead?.id],
     enabled: !!selectedLead,
@@ -1059,7 +1082,7 @@ export default function LeadsPage() {
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <h1 className="text-lg font-bold text-foreground">Gestão de Leads</h1>
-          <Badge variant="secondary" className="text-xs">{priorityQueue.length} na fila</Badge>
+          <Badge variant="secondary" className="text-xs">{filteredQueue.length} na fila</Badge>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative w-64">
@@ -1112,19 +1135,48 @@ export default function LeadsPage() {
         {/* ─── LEFT: Priority Queue ──────────────── */}
         <div className="col-span-3 flex flex-col min-h-0">
           <Card className="flex-1 flex flex-col min-h-0">
-            <CardHeader className="py-2.5 px-3 border-b">
-              <CardTitle className="text-xs font-semibold flex items-center gap-1.5 text-muted-foreground uppercase tracking-wider">
-                <ListOrdered className="w-3.5 h-3.5" /> Fila de Prioridade
-              </CardTitle>
+            <CardHeader className="py-2 px-3 border-b">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs font-semibold flex items-center gap-1.5 text-muted-foreground uppercase tracking-wider">
+                  <ListOrdered className="w-3.5 h-3.5" /> Fila
+                </CardTitle>
+                <div className="flex gap-1">
+                  <Button
+                    variant={filaFiltro === "hoje" ? "default" : "ghost"}
+                    size="sm"
+                    className="h-6 text-[10px] px-2"
+                    onClick={() => setFilaFiltro("hoje")}
+                  >
+                    Hoje ({priorityQueue.filter((item) => {
+                      const now = new Date();
+                      const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+                      if (item.lead.agendamento_retorno) {
+                        return new Date(item.lead.agendamento_retorno) <= endOfToday;
+                      }
+                      if (item.proximoContato && item.proximoContato <= endOfToday) return true;
+                      if (!item.proximoContato && !item.ultimaInteracao) return true;
+                      return false;
+                    }).length})
+                  </Button>
+                  <Button
+                    variant={filaFiltro === "todos" ? "default" : "ghost"}
+                    size="sm"
+                    className="h-6 text-[10px] px-2"
+                    onClick={() => setFilaFiltro("todos")}
+                  >
+                    Todos ({priorityQueue.length})
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <ScrollArea className="flex-1">
               <div className="divide-y divide-border">
                 {loadingLeads ? (
                   <div className="p-6 text-center text-muted-foreground text-sm">Carregando...</div>
-                ) : priorityQueue.length === 0 ? (
-                  <div className="p-6 text-center text-muted-foreground text-sm">Nenhum lead na fila</div>
+                ) : filteredQueue.length === 0 ? (
+                  <div className="p-6 text-center text-muted-foreground text-sm">Nenhum lead para {filaFiltro === "hoje" ? "hoje" : "exibir"}</div>
                 ) : (
-                  priorityQueue.map((item, idx) => {
+                  filteredQueue.map((item, idx) => {
                     const contatos = allLeadContatos.filter(c => c.lead_id === item.lead.id && c.tipo_contato === "telefone");
                     const isSelected = selectedLead?.id === item.lead.id;
                     const isOverdue = item.proximoContato && item.proximoContato < new Date();
