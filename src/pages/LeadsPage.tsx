@@ -652,7 +652,7 @@ export default function LeadsPage() {
 
     // Prevent removing the last phone contact
     if (contato.tipo_contato === "telefone") {
-      const phoneContacts = (selectedContatos || []).filter((c: LeadContato) => c.tipo_contato === "telefone");
+      const phoneContacts = (leadContatos || []).filter((c: LeadContato) => c.tipo_contato === "telefone");
       if (phoneContacts.length <= 1) {
         toast.error("O lead deve ter pelo menos um contato telefônico.");
         return;
