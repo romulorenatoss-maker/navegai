@@ -438,8 +438,8 @@ export default function ImportadorLeadsPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const headers = ["Nome", "Telefone", "Email", "CEP", "Cidade", "Estado", "Endereco", "Bairro", "Perfil", "Plano", "Campanha", "Observacoes"];
-                      const sample = ["João da Silva", "(11) 99999-0000", "joao@email.com", "01001-000", "São Paulo", "SP", "Rua Exemplo, 123", "Centro", "Residencial", "100 Mega", "Campanha Verão", "Lead interessado"];
+                      const headers = ["Nome", "Telefone", "Email", "Cidade", "Bairro", "Rua", "Numero", "Plano", "Repetidor"];
+                      const sample = ["João da Silva", "(11) 99999-0000", "joao@email.com", "São Paulo", "Centro", "Rua Exemplo", "123", "100 Mega", "POP-01"];
                       const ws = XLSX.utils.aoa_to_sheet([headers, sample]);
                       ws["!cols"] = headers.map(() => ({ wch: 18 }));
                       const wb = XLSX.utils.book_new();
