@@ -1064,7 +1064,7 @@ export default function FilaLeadsPage() {
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline" className={`text-[10px] ${isManual ? "border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-300" : "border-muted-foreground/30 text-muted-foreground"}`}>
-                              {isManual ? "Manual" : "Automático"}
+                              {isManual ? "Agendamento" : isCadencia ? "Cadência" : "Automático"}
                             </Badge>
                           </TableCell>
                           <TableCell>
