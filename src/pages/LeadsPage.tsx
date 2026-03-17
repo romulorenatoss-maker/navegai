@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -745,20 +745,37 @@ export default function LeadsPage() {
   }, [selectedLead?.id, selectedLead?.status_lead, selectedLead?.reserved_by, selectedLead?.reserved_at, profile?.id, releaseReservation]);
 
   // ─── Release reservation on leaving the lead (deselecting or navigating away) ──
-  const previousSelectedLeadRef = useCallback(() => {}, []);
+  // Store current reserved lead id in a ref so cleanup effects can access it
+  const reservedLeadRef = useRef<{ id: string; profileId: string } | null>(null);
   useEffect(() => {
-    // Release when user deselects or selects a different lead
-    return () => {
-      // This runs on unmount or when selectedLead changes
-    };
-  }, []);
+    if (selectedLead?.status_lead === "reservado" && selectedLead?.reserved_by === profile?.id) {
+      reservedLeadRef.current = { id: selectedLead.id, profileId: profile!.id };
+    } else {
+      reservedLeadRef.current = null;
+    }
+  }, [selectedLead?.id, selectedLead?.status_lead, selectedLead?.reserved_by, profile?.id]);
 
-  // Release on component unmount (leaving the page)
+  // Release on component unmount (leaving the page via SPA navigation)
   useEffect(() => {
     return () => {
-      // Use the stored ref to release on unmount
+      if (reservedLeadRef.current) {
+        const { id: leadId, profileId } = reservedLeadRef.current;
+        // Fire-and-forget release
+        supabase.from("leads").update({
+          reserved_by: null,
+          reserved_at: null,
+          status_lead: "aguardando_captura",
+        } as any).eq("id", leadId).eq("reserved_by", profileId).then(() => {
+          // Log that user left without interacting
+          supabase.from("lead_historico").insert({
+            lead_id: leadId, usuario_id: profileId,
+            tipo_evento: "lead_visualizado_nao_pegou",
+            descricao: "Usuário saiu da tela sem interagir. Lead retornou à fila de captura.",
+          });
+        });
+      }
     };
-  }, []);
+  }, []); // Empty deps = only runs on unmount
 
   // Track selected lead changes to release previous reservation
   const prevSelectedLeadIdRef = useMemo(() => ({ current: null as string | null }), []);
@@ -774,19 +791,26 @@ export default function LeadsPage() {
     prevSelectedLeadIdRef.current = currentId;
   }, [selectedLead?.id, profile?.id]);
 
-  // Release reservation on page unload (browser close / navigate away)
+  // Release reservation on page unload (browser close / tab close)
   useEffect(() => {
     const handleBeforeUnload = () => {
-      if (selectedLead?.status_lead === "reservado" && selectedLead?.reserved_by === profile?.id) {
-        // Use sendBeacon for reliable cleanup
-        const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/leads?id=eq.${selectedLead.id}&reserved_by=eq.${profile!.id}`;
+      if (reservedLeadRef.current) {
+        const { id: leadId } = reservedLeadRef.current;
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/leads?id=eq.${leadId}&reserved_by=eq.${profile!.id}`;
         const body = JSON.stringify({ reserved_by: null, reserved_at: null, status_lead: "aguardando_captura" });
-        navigator.sendBeacon(url, new Blob([body], { type: "application/json" }));
+        const headers = {
+          "Content-Type": "application/json",
+          "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          "Authorization": `Bearer ${(supabase as any).auth?.currentSession?.access_token || ""}`,
+          "Prefer": "return=minimal",
+        };
+        // sendBeacon doesn't support custom headers, use fetch with keepalive instead
+        fetch(url, { method: "PATCH", headers, body, keepalive: true }).catch(() => {});
       }
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [selectedLead?.id, selectedLead?.status_lead, selectedLead?.reserved_by, profile?.id]);
+  }, [profile?.id]);
 
   // ─── Realtime subscription for capture queue ─────────────────
   useEffect(() => {
