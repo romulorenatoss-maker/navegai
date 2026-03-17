@@ -297,6 +297,7 @@ export default function FilaTarefasLeadsPage() {
                     <TableHead>Período</TableHead>
                     <TableHead>Data Contato</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Prazo</TableHead>
                     <TableHead className="text-right">Ação</TableHead>
                   </TableRow>
                 </TableHeader>
