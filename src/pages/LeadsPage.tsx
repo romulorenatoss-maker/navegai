@@ -253,6 +253,9 @@ export default function LeadsPage() {
   const [searchResults, setSearchResults] = useState<(Lead & { contatos: LeadContato[] })[] | null>(null);
   const [searching, setSearching] = useState(false);
 
+  // Transfer history dialog
+  const [showTransferHistory, setShowTransferHistory] = useState(false);
+
   // Create dialog
   const [showCreate, setShowCreate] = useState(false);
   const [createName, setCreateName] = useState("");
