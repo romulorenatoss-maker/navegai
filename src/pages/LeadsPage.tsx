@@ -1745,7 +1745,7 @@ export default function LeadsPage() {
                     </div>
                     <div className="space-y-1">
                       <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Objeção</Label>
-                      <Select value={localObjecaoId} onValueChange={v => setLocalObjecaoId(v)}>
+                      <Select value={localObjecaoId} onValueChange={v => setLocalObjecaoId(v)} disabled={isVisionMode}>
                         <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">Nenhuma</SelectItem>
