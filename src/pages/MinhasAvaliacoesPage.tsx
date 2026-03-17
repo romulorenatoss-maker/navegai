@@ -125,6 +125,20 @@ export default function MinhasAvaliacoesPage() {
     return calcularMediaColaborador(notasPorSetorData, targetProfileId);
   }, [notasPorSetorData, targetProfileId]);
 
+  // Calculate ranking position among all evaluated employees
+  const rankingPosition = useMemo(() => {
+    if (!targetProfileId || !notasPorSetorData.length) return null;
+    const profileIds = [...new Set(notasPorSetorData.map(n => n.profile_id))];
+    const averages = profileIds.map(pid => ({
+      pid,
+      avg: calcularMediaColaborador(notasPorSetorData, pid),
+    })).filter(x => x.avg !== null) as { pid: string; avg: number }[];
+    averages.sort((a, b) => b.avg - a.avg);
+    const pos = averages.findIndex(x => x.pid === targetProfileId);
+    if (pos === -1) return null;
+    return { position: pos + 1, total: averages.length };
+  }, [notasPorSetorData, targetProfileId]);
+
   // Most frequent errors
   const { data: frequentErrors = [] } = useQuery({
     queryKey: ["minhas_errors", targetProfileId, appliedStart?.toISOString(), appliedEnd?.toISOString()],
