@@ -3408,6 +3408,49 @@ export default function LeadsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Conversion Quick Add Address Dialog */}
+      <Dialog open={!!convQuickAddType} onOpenChange={v => !v && setConvQuickAddType(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Adicionar {convQuickAddType === "cidade" ? "Cidade" : convQuickAddType === "bairro" ? "Bairro" : "Rua"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Nome *</Label>
+              <Input value={convQuickAddNome} onChange={e => setConvQuickAddNome(e.target.value)} placeholder="Digite o nome..." autoFocus />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConvQuickAddType(null)}>Cancelar</Button>
+            <Button
+              disabled={!convQuickAddNome.trim()}
+              onClick={async () => {
+                try {
+                  if (convQuickAddType === "cidade") {
+                    const { data, error } = await supabase.from("cidades").insert({ nome: convQuickAddNome.trim() }).select().single();
+                    if (error) throw error;
+                    queryClient.invalidateQueries({ queryKey: ["enderecos-cidades"] });
+                    setConvCidadeId(data.id); setConvBairroId(null); setConvRuaId(null);
+                  } else if (convQuickAddType === "bairro" && convCidadeId) {
+                    const { data, error } = await supabase.from("bairros").insert({ nome: convQuickAddNome.trim(), cidade_id: convCidadeId }).select().single();
+                    if (error) throw error;
+                    queryClient.invalidateQueries({ queryKey: ["enderecos-bairros"] });
+                    setConvBairroId(data.id); setConvRuaId(null);
+                  } else if (convQuickAddType === "rua" && convBairroId) {
+                    const { data, error } = await supabase.from("ruas").insert({ nome: convQuickAddNome.trim(), bairro_id: convBairroId }).select().single();
+                    if (error) throw error;
+                    queryClient.invalidateQueries({ queryKey: ["enderecos-ruas"] });
+                    setConvRuaId(data.id);
+                  }
+                  toast.success("Adicionado com sucesso!");
+                  setConvQuickAddType(null);
+                } catch (err: any) { toast.error(err.message); }
+              }}
+            >Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Finalize Dialog (all attempts exhausted) */}
       <Dialog open={showFinalize} onOpenChange={setShowFinalize}>
         <DialogContent className="sm:max-w-md">
