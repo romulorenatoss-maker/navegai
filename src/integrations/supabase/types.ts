@@ -602,6 +602,54 @@ export type Database = {
           },
         ]
       }
+      group_permissions: {
+        Row: {
+          can_create: boolean
+          can_delete: boolean
+          can_edit: boolean
+          can_view: boolean
+          created_at: string
+          group_id: string
+          id: string
+          resource_id: string
+        }
+        Insert: {
+          can_create?: boolean
+          can_delete?: boolean
+          can_edit?: boolean
+          can_view?: boolean
+          created_at?: string
+          group_id: string
+          id?: string
+          resource_id: string
+        }
+        Update: {
+          can_create?: boolean
+          can_delete?: boolean
+          can_edit?: boolean
+          can_view?: boolean
+          created_at?: string
+          group_id?: string
+          id?: string
+          resource_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_permissions_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "permission_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_permissions_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "permission_resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inconsistencias_vinculadas: {
         Row: {
           avaliacao_id: string | null
@@ -1206,6 +1254,57 @@ export type Database = {
           },
         ]
       }
+      permission_groups: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_system: boolean
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          name?: string
+        }
+        Relationships: []
+      }
+      permission_resources: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          label: string
+          module: string
+          path: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          label: string
+          module: string
+          path?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          label?: string
+          module?: string
+          path?: string | null
+        }
+        Relationships: []
+      }
       permissoes_tela: {
         Row: {
           created_at: string
@@ -1761,6 +1860,90 @@ export type Database = {
           },
         ]
       }
+      user_group_assignments: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          profile_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          profile_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_group_assignments_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "permission_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_group_assignments_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_permission_overrides: {
+        Row: {
+          can_create: boolean | null
+          can_delete: boolean | null
+          can_edit: boolean | null
+          can_view: boolean | null
+          created_at: string
+          id: string
+          profile_id: string
+          resource_id: string
+        }
+        Insert: {
+          can_create?: boolean | null
+          can_delete?: boolean | null
+          can_edit?: boolean | null
+          can_view?: boolean | null
+          created_at?: string
+          id?: string
+          profile_id: string
+          resource_id: string
+        }
+        Update: {
+          can_create?: boolean | null
+          can_delete?: boolean | null
+          can_edit?: boolean | null
+          can_view?: boolean | null
+          created_at?: string
+          id?: string
+          profile_id?: string
+          resource_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_permission_overrides_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_permission_overrides_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "permission_resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -1805,6 +1988,17 @@ export type Database = {
           setor_nome: string
           tipo: string
           total_os: number
+        }[]
+      }
+      get_user_effective_permissions: {
+        Args: { _profile_id: string }
+        Returns: {
+          can_create: boolean
+          can_delete: boolean
+          can_edit: boolean
+          can_view: boolean
+          resource_code: string
+          resource_path: string
         }[]
       }
       has_role: {
