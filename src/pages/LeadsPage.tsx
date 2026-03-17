@@ -1054,27 +1054,30 @@ export default function LeadsPage() {
       const phoneNorm = normalizePhone(createPhone);
       if (phoneNorm.length < 8) throw new Error("Telefone inválido.");
 
-      const { data: existingLeadContatos } = await supabase
-        .from("lead_contatos").select("lead_id, valor").eq("tipo_contato", "telefone");
-      const matchedLeadContato = (existingLeadContatos || []).find(c => normalizePhone(c.valor) === phoneNorm);
-      if (matchedLeadContato) {
-        const { data: existingLead } = await supabase
-          .from("leads").select("*").eq("id", matchedLeadContato.lead_id)
-          .not("status_lead", "in", '("convertido","perdido","arquivado")').single();
-        if (existingLead) {
-          await supabase.from("leads").update({ responsavel_id: profile.id }).eq("id", existingLead.id);
-          await resetTasksForTransfer(existingLead.id, profile.id);
-          await supabase.from("lead_historico").insert({
-            lead_id: existingLead.id, usuario_id: profile.id,
-            tipo_evento: "transferencia_automatica",
-            descricao: "Lead assumido automaticamente por telefone existente",
-          });
-          setShowCreate(false);
-          setSelectedLead({ ...existingLead, responsavel_id: profile.id });
-          queryClient.invalidateQueries({ queryKey: ["leads-list"] });
-          throw new Error("__DUPLICATE_LEAD__");
+      // Skip duplicate check if force-creating
+      if (!forceCreateLead) {
+        const { data: existingLeadContatos } = await supabase
+          .from("lead_contatos").select("lead_id, valor").eq("tipo_contato", "telefone");
+        const matchedLeadContato = (existingLeadContatos || []).find(c => normalizePhone(c.valor) === phoneNorm);
+        if (matchedLeadContato) {
+          const { data: existingLead } = await supabase
+            .from("leads").select("*").eq("id", matchedLeadContato.lead_id).single();
+          if (existingLead) {
+            // Fetch details for modal
+            const { data: contatos } = await supabase.from("lead_contatos").select("*").eq("lead_id", existingLead.id);
+            const respName = existingLead.responsavel_id
+              ? (profiles || []).find((p: any) => p.id === existingLead.responsavel_id)?.nome || null
+              : null;
+            const { data: lastInteraction } = await supabase
+              .from("lead_interacoes").select("*").eq("lead_id", existingLead.id)
+              .order("data_interacao", { ascending: false }).limit(1).maybeSingle();
+            setDuplicateLeadData({ lead: existingLead, contatos: contatos || [], responsavel: respName, ultimaInteracao: lastInteraction });
+            setShowDuplicateModal(true);
+            throw new Error("__DUPLICATE_LEAD__");
+          }
         }
       }
+      setForceCreateLead(false);
 
       let linkedClienteId: string | null = null;
       let linkedClienteNome: string | null = null;
