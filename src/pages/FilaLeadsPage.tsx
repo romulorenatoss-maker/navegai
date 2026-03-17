@@ -714,7 +714,7 @@ export default function FilaLeadsPage() {
       const leadStatus = tarefaLeads.find((l: any) => l.id === selectedTarefa.lead_id)?.status_lead;
       if (leadStatus === "novo") await supabase.from("leads").update({ status_lead: "em_contato" }).eq("id", selectedTarefa.lead_id);
     },
-    onSuccess: () => { toast.success("Tentativa registrada!"); setSelectedTarefa(null); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); },
+    onSuccess: () => { toast.success("Tentativa registrada!"); setSelectedTarefa(null); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-interacoes"] }); queryClient.invalidateQueries({ queryKey: ["leads-com-agendamento"] }); },
     onError: (err: any) => toast.error(err.message),
   });
 
