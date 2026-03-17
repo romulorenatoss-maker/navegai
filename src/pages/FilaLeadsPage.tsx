@@ -109,6 +109,13 @@ export default function FilaLeadsPage() {
   const [tarefaNumero, setTarefaNumero] = useState("");
   const [tarefaResultado, setTarefaResultado] = useState("");
 
+  // ─── Real-time countdown tick (every 30s) ─────
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const iv = setInterval(() => setTick(t => t + 1), 30000);
+    return () => clearInterval(iv);
+  }, []);
+
   // ─── Realtime: auto-refresh when leads/interactions/tasks change ─────
   useEffect(() => {
     const invalidateAll = () => {
