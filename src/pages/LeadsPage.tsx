@@ -982,7 +982,7 @@ export default function LeadsPage() {
     });
   }, [allLeads, allLeadInteracoes, allLeadTransfers, cadencia]);
 
-  // Filtered priority queue based on filaFiltro + additional filters
+  // Filtered priority queue based on filaFiltro
   const filteredQueue = useMemo(() => {
     let result = priorityQueue;
 
@@ -1001,24 +1001,8 @@ export default function LeadsPage() {
       });
     }
 
-    // Responsible filter
-    if (filtroResponsavel !== "all") {
-      result = result.filter(item => item.lead.responsavel_id === filtroResponsavel);
-    }
-
-    // Handler filter (leads where a specific person interacted)
-    if (filtroHandler !== "all") {
-      result = result.filter(item => item.handlers.includes(filtroHandler));
-    }
-
-    // Min total attempts filter
-    const minTent = parseInt(filtroMinTentativas);
-    if (!isNaN(minTent) && minTent > 0) {
-      result = result.filter(item => item.totalTentativas >= minTent);
-    }
-
     return result;
-  }, [priorityQueue, filaFiltro, filtroResponsavel, filtroHandler, filtroMinTentativas]);
+  }, [priorityQueue, filaFiltro]);
 
 
   const { data: leadContatos = [], refetch: refetchContatos } = useQuery({
