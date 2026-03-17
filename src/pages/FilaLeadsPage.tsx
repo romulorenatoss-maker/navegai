@@ -503,12 +503,13 @@ export default function FilaLeadsPage() {
               </Button>
             </div>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="h-8 text-xs w-[130px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-8 text-xs w-[160px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos Status</SelectItem>
                 <SelectItem value="novo">Novo</SelectItem>
                 <SelectItem value="em_contato">Em Contato</SelectItem>
                 <SelectItem value="interessado">Interessado</SelectItem>
+                <SelectItem value="aguardando_decisao_avaliador">Aguardando Decisão</SelectItem>
               </SelectContent>
             </Select>
             <Select value={filterResponsavel} onValueChange={setFilterResponsavel}>
