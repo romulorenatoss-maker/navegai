@@ -268,11 +268,6 @@ export default function FilaTarefasLeadsPage() {
     onError: (err: any) => toast.error(err.message),
   });
 
-  const { data: allProfiles = [] } = useQuery({
-    queryKey: ["profiles-for-tarefas"],
-    queryFn: async () => { const { data } = await supabase.from("profiles").select("id, nome").eq("ativo", true); return data || []; },
-    staleTime: 5 * 60 * 1000,
-  });
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
