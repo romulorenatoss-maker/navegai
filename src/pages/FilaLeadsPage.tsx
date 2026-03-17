@@ -232,25 +232,27 @@ export default function FilaLeadsPage() {
       const isScheduled = !!lead.agendamento_retorno;
       const scheduleReady = isScheduled && new Date(lead.agendamento_retorno!) <= now;
 
+      // Compute nextAttempt: if scheduled use that, otherwise created_at + 1 day (same time)
+      let nextAttempt: Date;
+      if (lead.agendamento_retorno) {
+        nextAttempt = new Date(lead.agendamento_retorno);
+      } else {
+        nextAttempt = addDays(new Date(lead.created_at), 1);
+      }
+      const nextAttemptExpired = nextAttempt < now;
+
       return {
         lead, contatos, tentativaAtual, proximoContato, ultimaInteracao,
         responsavelNome: getProfileName(lead.responsavel_id),
         isOverdue, isScheduled, scheduleReady,
+        nextAttempt, nextAttemptExpired,
       };
     }).sort((a, b) => {
-      // Scheduled and ready → top
-      if (a.scheduleReady && !b.scheduleReady) return -1;
-      if (!a.scheduleReady && b.scheduleReady) return 1;
-      // Overdue → next
-      if (a.isOverdue && !b.isOverdue) return -1;
-      if (!a.isOverdue && b.isOverdue) return 1;
-      // New leads first
-      if (!a.ultimaInteracao && b.ultimaInteracao) return -1;
-      if (a.ultimaInteracao && !b.ultimaInteracao) return 1;
-      // By next contact
-      const aTime = a.proximoContato?.getTime() || Infinity;
-      const bTime = b.proximoContato?.getTime() || Infinity;
-      return aTime - bTime;
+      // Expired nextAttempt first
+      if (a.nextAttemptExpired && !b.nextAttemptExpired) return -1;
+      if (!a.nextAttemptExpired && b.nextAttemptExpired) return 1;
+      // Then by nextAttempt ASC
+      return a.nextAttempt.getTime() - b.nextAttempt.getTime();
     });
   }, [leads, allContatos, allInteracoes, cadencia, profiles]);
 
