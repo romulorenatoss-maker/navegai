@@ -565,7 +565,7 @@ export default function LeadsPage() {
         .from("lead_historico")
         .select("lead_id, data_evento, tipo_evento")
         .in("lead_id", activeLeadIds)
-        .in("tipo_evento", ["transferencia_automatica", "transferencia_decisao"])
+        .in("tipo_evento", ["transferencia_automatica", "transferencia_decisao", "lead_capturado"])
         .order("data_evento", { ascending: false });
       if (error) throw error;
       return data as { lead_id: string; data_evento: string; tipo_evento: string }[];
