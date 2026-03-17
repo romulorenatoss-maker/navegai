@@ -1708,7 +1708,6 @@ export default function LeadsPage() {
                 </Select>
                 <p className="text-xs text-muted-foreground">Quem será avaliado como atendente nesta OS. Sugestão: quem está convertendo.</p>
               </div>
-              </div>
               {leadContatos.filter(c => c.tipo_contato === "telefone").length > 0 && (
                 <div className="p-3 rounded-md border bg-muted/30">
                   <p className="text-xs font-medium mb-1">Contatos que serão copiados:</p>
