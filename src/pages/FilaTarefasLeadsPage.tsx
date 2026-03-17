@@ -334,6 +334,11 @@ export default function FilaTarefasLeadsPage() {
                             ) : "Pendente"}
                           </Badge>
                         </TableCell>
+                        <TableCell>
+                          <Badge className={`text-xs border-0 ${isOverdue ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200"}`}>
+                            {isOverdue ? "Fora do Prazo" : "No Prazo"}
+                          </Badge>
+                        </TableCell>
                         <TableCell className="text-right">
                           <Button size="sm" variant="outline" onClick={() => openAttempt(tarefa)} className="press-effect">
                             <Phone className="w-3.5 h-3.5 mr-1" /> Atender
