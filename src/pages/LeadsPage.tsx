@@ -170,6 +170,8 @@ const EVENTO_LABELS: Record<string, string> = {
   perfil_alterado: "Perfil Alterado",
   repetidor_alterado: "Repetidor Alterado",
   observacao_adicionada: "Observação Adicionada",
+  dados_alterados: "Dados Alterados",
+  agendamento_removido: "Agendamento Removido",
 };
 
 const EVENTO_ICONS: Record<string, typeof Phone> = {
