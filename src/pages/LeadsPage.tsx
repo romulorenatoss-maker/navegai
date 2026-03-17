@@ -252,6 +252,12 @@ export default function LeadsPage() {
   const [cepNotFound, setCepNotFound] = useState(false);
   const [newRuaNomeFromCep, setNewRuaNomeFromCep] = useState("");
   const [newBairroNomeFromCep, setNewBairroNomeFromCep] = useState("");
+  // Duplicate phone detection modal
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [duplicateLeadData, setDuplicateLeadData] = useState<{
+    lead: any; contatos: any[]; responsavel: string | null; ultimaInteracao: any | null;
+  } | null>(null);
+  const [forceCreateLead, setForceCreateLead] = useState(false);
   // Quick-add address dialogs
   const [quickAddType, setQuickAddType] = useState<"cidade" | "bairro" | "rua" | null>(null);
   const [quickAddNome, setQuickAddNome] = useState("");
