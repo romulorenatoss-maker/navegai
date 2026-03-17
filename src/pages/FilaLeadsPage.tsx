@@ -73,7 +73,11 @@ export default function FilaLeadsPage() {
   const [notifSearch, setNotifSearch] = useState("");
   const [notifAppliedSearch, setNotifAppliedSearch] = useState("");
 
-  // Dialogs
+  // Tarefas do Dia filters
+  const today = useMemo(() => new Date(), []);
+  const [tarefaDateStart, setTarefaDateStart] = useState<Date>(startOfDay(today));
+  const [tarefaDateEnd, setTarefaDateEnd] = useState<Date>(endOfDay(today));
+
   const [selectedItem, setSelectedItem] = useState<QueueItem | null>(null);
   const [attemptTipo, setAttemptTipo] = useState("telefone");
   const [attemptNumero, setAttemptNumero] = useState("");
