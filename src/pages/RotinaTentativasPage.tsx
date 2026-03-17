@@ -44,6 +44,15 @@ export default function RotinaTentativasPage() {
   const [localTentativas, setLocalTentativas] = useState<Omit<RotinaTentativa, "id">[]>([]);
   const [localConfig, setLocalConfig] = useState<Omit<ConfigFluxo, "id"> | null>(null);
 
+  const { data: tiposServico = [] } = useQuery({
+    queryKey: ["tipos_servico_rotina"],
+    queryFn: async () => {
+      const { data } = await supabase.from("tipos_servico").select("id, nome").eq("ativo", true).order("nome");
+      return data || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   const { data: tentativas = [], isLoading: loadingTentativas } = useQuery({
     queryKey: ["rotina-tentativas"],
     queryFn: async () => {
