@@ -77,6 +77,7 @@ const STATUS_MAP: Record<string, string> = {
   novo: "Novo",
   em_contato: "Em Contato",
   interessado: "Interessado",
+  aguardando_decisao_avaliador: "Aguardando Decisão",
 };
 
 export default function FilaLeadsPage() {

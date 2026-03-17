@@ -24,8 +24,8 @@ export const ALL_SCREENS: ScreenDef[] = [
   { path: "/avaliacoes/pesquisa", label: "Criar OS / Buscar", group: "Avaliações" },
   { path: "/avaliacoes/minhas", label: "Minhas Avaliações", group: "Avaliações" },
   // Leads
-  { path: "/leads", label: "Gestão de Leads", group: "Leads" },
-  { path: "/leads/fila", label: "Fila de Atendimento", group: "Leads" },
+  { path: "/leads", label: "Meus Leads", group: "Avaliações" },
+  { path: "/leads/fila", label: "Gerenciador de Leads", group: "Leads" },
   { path: "/leads/fila-tarefas", label: "Fila de Tarefas", group: "Leads" },
   { path: "/leads/finalizados", label: "Leads Finalizados", group: "Leads" },
   { path: "/leads/arquivados", label: "Leads Arquivados", group: "Leads" },

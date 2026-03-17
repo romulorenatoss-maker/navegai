@@ -217,15 +217,18 @@ export default function LeadsPage() {
 
   // ─── Queries ──────────────────────────────────────
   const { data: allLeads = [], isLoading: loadingLeads } = useQuery({
-    queryKey: ["leads-list"],
+    queryKey: ["leads-list", profile?.id],
     queryFn: async () => {
+      if (!profile) return [] as Lead[];
       const { data, error } = await supabase
         .from("leads")
         .select("*")
+        .eq("responsavel_id", profile.id)
         .order("updated_at", { ascending: true });
       if (error) throw error;
       return data as Lead[];
     },
+    enabled: !!profile,
   });
 
   // Auto-select lead from URL param ?id=
