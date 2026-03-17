@@ -942,18 +942,14 @@ export default function FilaLeadsPage() {
                       const campanha = getCampanhaNome(item.lead);
                       const cidade = getCidadeNome(item.lead);
                       return (
-                        <TableRow key={item.lead.id} className={cn("bg-purple-50/30 dark:bg-purple-950/10", item.isReservedByOther && "opacity-50")}>
+                        <TableRow key={item.lead.id} className="bg-purple-50/30 dark:bg-purple-950/10">
                           <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
                           <TableCell>
                             <div className="flex flex-col gap-0.5">
                               <span className="font-medium text-sm">{item.lead.nome}</span>
                               <span className="text-[10px] text-primary/70 truncate">Origem: {campanha || "Não especificada"}</span>
                               {cidade && <span className="text-[10px] text-muted-foreground truncate">{cidade}</span>}
-                              {item.isReservedByOther ? (
-                                <Badge className="w-fit text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-0">Já capturado por {item.reservedByName}</Badge>
-                              ) : (
-                                <Badge className="w-fit text-[10px] bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border-0">Aguardando Captura</Badge>
-                              )}
+                              <Badge className="w-fit text-[10px] bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border-0">Aguardando Captura</Badge>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -968,11 +964,7 @@ export default function FilaLeadsPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center justify-end gap-1">
-                              {item.isTaken ? (
-                                <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300">
-                                  {item.reservedByName ? `Já capturado por ${item.reservedByName}` : "Em atendimento"}
-                                </Badge>
-                              ) : item.userPreviouslyHandled ? (
+                              {item.userPreviouslyHandled ? (
                                 <Badge variant="outline" className="text-[10px]">Você já interagiu</Badge>
                               ) : (
                                 <Button
