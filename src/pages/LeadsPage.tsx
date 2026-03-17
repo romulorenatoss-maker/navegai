@@ -1960,6 +1960,9 @@ export default function LeadsPage() {
             <Button onClick={handleSearch} disabled={searching} size="sm" variant="outline" className="h-8">
               {searching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
             </Button>
+            <Button onClick={() => setShowTransferHistory(true)} size="sm" variant="outline" className="h-8 gap-1">
+              <ArrowRightLeft className="w-3.5 h-3.5" /> Transferências
+            </Button>
             <Button onClick={() => setShowCreate(true)} size="sm" className="h-8 press-effect">
               <Plus className="w-3.5 h-3.5 mr-1" /> Novo Lead
             </Button>
