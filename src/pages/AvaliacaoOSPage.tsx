@@ -106,6 +106,7 @@ export default function AvaliacaoOSPage() {
   const [formValidated, setFormValidated] = useState(false);
   const [formFoundOS, setFormFoundOS] = useState<any | null>(null);
   const [formPendingAval, setFormPendingAval] = useState<any | null>(null);
+  const [showNewOsDialog, setShowNewOsDialog] = useState(false);
 
   // Setup state (after validation, for creating new OS)
   const [tipoServicoId, setTipoServicoId] = useState("");
