@@ -1760,7 +1760,7 @@ export default function LeadsPage() {
                     <PopoverContent className="w-56 p-1" align="start">
                       <div className="space-y-0.5">
                         <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8" onClick={() => setShowInteraction(true)}>
-                          <PhoneCall className="w-3.5 h-3.5 mr-2" /> {tentativasRealizadas === 0 ? "Registrar Lead" : `Registrar Tentativa ${tentativasRealizadas}`}
+                          <PhoneCall className="w-3.5 h-3.5 mr-2" /> {tentativasCicloAtual === 0 ? "Registrar Lead" : `Registrar Tentativa ${tentativasCicloAtual}`}
                         </Button>
                         <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8" onClick={() => { setScheduleDate(undefined); setScheduleHour("09"); setScheduleMinute("00"); setShowSchedule(true); }}>
                           <CalendarClock className="w-3.5 h-3.5 mr-2" /> Agendar Retorno
