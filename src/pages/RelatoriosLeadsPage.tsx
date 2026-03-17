@@ -61,13 +61,25 @@ export default function RelatoriosLeadsPage() {
   const urlCidadeId = searchParams.get("cidade_id");
   const urlBairroId = searchParams.get("bairro_id");
   const urlRuaId = searchParams.get("rua_id");
+  const urlStatus = searchParams.get("status");
+  const urlStart = searchParams.get("start");
+  const urlEnd = searchParams.get("end");
   const hasAddressFilter = !!(urlCidadeId || urlBairroId || urlRuaId);
+  const hasUrlDateFilter = !!(urlStart || urlEnd);
 
   const now = new Date();
-  const [startDate, setStartDate] = useState<Date | undefined>(hasAddressFilter ? undefined : startOfMonth(now));
-  const [endDate, setEndDate] = useState<Date | undefined>(hasAddressFilter ? undefined : endOfMonth(now));
+  const [startDate, setStartDate] = useState<Date | undefined>(() => {
+    if (urlStart) return startOfDay(new Date(urlStart + "T00:00:00"));
+    if (hasAddressFilter) return undefined;
+    return startOfMonth(now);
+  });
+  const [endDate, setEndDate] = useState<Date | undefined>(() => {
+    if (urlEnd) return endOfDay(new Date(urlEnd + "T00:00:00"));
+    if (hasAddressFilter) return undefined;
+    return endOfMonth(now);
+  });
 
-  const [filterStatus, setFilterStatus] = useState("todos");
+  const [filterStatus, setFilterStatus] = useState(urlStatus || "todos");
   const [filterOrigem, setFilterOrigem] = useState("todos");
   const [filterResponsavel, setFilterResponsavel] = useState("todos");
   const [filterNome, setFilterNome] = useState("");
@@ -304,6 +316,27 @@ export default function RelatoriosLeadsPage() {
         <h1 className="text-section font-semibold text-foreground">Relatórios de Leads</h1>
         <p className="text-body text-muted-foreground">Gerencie e exporte dados de Leads</p>
       </div>
+
+      {hasUrlDateFilter && (
+        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 flex items-center justify-between">
+          <span className="text-sm text-foreground">
+            📊 Filtro aplicado do Dashboard — Status: <strong>{STATUS_LABELS[urlStatus || ""] || urlStatus}</strong>
+            {urlStart && urlEnd && <> · Período: <strong>{format(new Date(urlStart + "T00:00:00"), "dd/MM/yyyy")} a {format(new Date(urlEnd + "T00:00:00"), "dd/MM/yyyy")}</strong></>}
+          </span>
+          <Button
+            variant="ghost" size="sm"
+            onClick={() => {
+              setSearchParams({});
+              setFilterStatus("todos");
+              setStartDate(startOfMonth(now));
+              setEndDate(endOfMonth(now));
+              setTimeout(() => fetchLeads(), 100);
+            }}
+          >
+            <X className="w-3.5 h-3.5 mr-1" /> Limpar filtro
+          </Button>
+        </div>
+      )}
 
       {hasAddressFilter && (
         <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex items-center justify-between">
