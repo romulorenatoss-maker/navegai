@@ -1900,7 +1900,7 @@ export default function LeadsPage() {
                               <span className="text-xs">{c.valor}</span>
                               {c.tem_whatsapp && <Badge variant="outline" className="text-[9px] px-1 py-0">WA</Badge>}
                             </div>
-                            {can("meus_leads", "delete") && !isVisionMode && (
+                            {(isAdmin || hasRole("avaliador")) && !isVisionMode && (
                               <button onClick={() => removeContact(c)} className="text-destructive/60 hover:text-destructive transition-colors">
                                 <Trash2 className="w-3 h-3" />
                               </button>
