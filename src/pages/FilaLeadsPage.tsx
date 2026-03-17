@@ -82,6 +82,7 @@ const STATUS_MAP: Record<string, string> = {
 export default function FilaLeadsPage() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // Filters
   const [filterStatus, setFilterStatus] = useState("todos");
