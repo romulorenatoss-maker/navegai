@@ -1,10 +1,11 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Outlet } from "react-router-dom";
 import { AppSidebar } from "./AppSidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useIdleTimeout } from "@/hooks/useIdleTimeout";
 import { useSessionTracker } from "@/hooks/useSessionTracker";
+import { usePendingNotifications } from "@/hooks/usePendingNotifications";
 import { Menu, User } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "sonner";
@@ -16,6 +17,14 @@ export function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
 
   const { endSession } = useSessionTracker(user?.id || null, profile?.id || null);
+  const { pendingEvaluations, pendingLeadDecisions } = usePendingNotifications();
+
+  const badgeCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    if (pendingEvaluations > 0) counts["/avaliacoes/minhas"] = pendingEvaluations;
+    if (pendingLeadDecisions > 0) counts["/leads/fila"] = pendingLeadDecisions;
+    return counts;
+  }, [pendingEvaluations, pendingLeadDecisions]);
 
   const handleIdleLogout = useCallback(async () => {
     toast.info("Sessão encerrada por inatividade (15 min).");
@@ -62,6 +71,7 @@ export function AppLayout() {
               isAdmin={isAdmin}
               allowedScreens={allowedScreens}
               canViewPath={canViewPath}
+              badgeCounts={badgeCounts}
             />
           </SheetContent>
         </Sheet>
@@ -84,6 +94,7 @@ export function AppLayout() {
         <AppSidebar
           userName={userNameDisplay}
           onSignOut={handleSignOut}
+          badgeCounts={badgeCounts}
           isAdmin={isAdmin}
           allowedScreens={allowedScreens}
           canViewPath={canViewPath}
