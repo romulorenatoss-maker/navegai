@@ -1068,7 +1068,8 @@ export default function LeadsPage() {
       });
       if (error) throw error;
 
-      const tentativaNum = leadInteracoes.length + 1;
+      // Use cycle-based count (after last transfer) instead of total
+      const tentativaNum = tentativasCicloAtual + 1;
       await supabase.from("lead_historico").insert({
         lead_id: selectedLead.id, usuario_id: profile.id,
         tipo_evento: "tentativa_contato",

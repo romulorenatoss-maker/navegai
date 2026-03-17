@@ -329,10 +329,8 @@ export default function FilaLeadsPage() {
     await supabase.from("lead_historico").insert({ lead_id: decisionLeadId, usuario_id: profile.id, tipo_evento: "transferencia_decisao", descricao: `Lead transferido para ${targetName} após finalizar tentativas. Contagem reiniciada. Histórico mantido.` });
     const firstRotina = rotinaTentativas.find((r: any) => r.tentativa_numero === 1);
     const periodo = firstRotina?.periodo_contato || "manha";
-    const nextDate = new Date();
-    nextDate.setDate(nextDate.getDate() + 1);
-    nextDate.setHours(PERIODO_HORA[periodo] || 9, 0, 0, 0);
-    await supabase.from("lead_tarefas_contato").insert({ lead_id: decisionLeadId, tentativa: 1, data_contato: nextDate.toISOString(), periodo, status: "pendente", responsavel_id: decisionTarget });
+    const now = new Date();
+    await supabase.from("lead_tarefas_contato").insert({ lead_id: decisionLeadId, tentativa: 1, data_contato: now.toISOString(), periodo, status: "pendente", responsavel_id: decisionTarget });
     toast.success(`Lead transferido para ${targetName} com nova rotina!`);
     setShowDecisionTransfer(false); setDecisionLeadId(""); setDecisionTarget("");
     queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
