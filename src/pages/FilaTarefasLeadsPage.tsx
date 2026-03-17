@@ -192,6 +192,16 @@ export default function FilaTarefasLeadsPage() {
       if (!selectedTarefa || !profile) throw new Error("Erro interno.");
       if (!attemptNumero) throw new Error("Selecione o número.");
 
+      // Verify lead is still available and owned by current user
+      const { data: freshLead } = await supabase
+        .from("leads")
+        .select("id, responsavel_id, reserved_by")
+        .eq("id", selectedTarefa.lead_id)
+        .single();
+      if (freshLead && freshLead.responsavel_id !== profile.id && freshLead.reserved_by !== profile.id) {
+        throw new Error("Este lead já foi atribuído a outro usuário.");
+      }
+
       // Insert interação
       const { error: e1 } = await supabase.from("lead_interacoes").insert({
         lead_id: selectedTarefa.lead_id,
