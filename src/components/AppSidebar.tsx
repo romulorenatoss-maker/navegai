@@ -22,7 +22,7 @@ const allNavSections = [
       { to: "/avaliacoes/pesquisa", icon: FileSearch, label: "Criar OS / Buscar" },
       { to: "/avaliacoes/minhas", icon: Star, label: "Minhas Avaliações" },
       { to: "/leads", icon: UserPlus, label: "Meus Leads" },
-      { to: "/assistente", icon: Bot, label: "Naví" },
+      { to: "/assistente", icon: Bot, label: "Assistente Naví" },
     ],
   },
   {
