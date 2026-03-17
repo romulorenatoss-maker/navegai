@@ -28,6 +28,7 @@ interface ConfigFluxo {
   acao_quando_atrasar: string;
   acao_apos_finalizar_tentativas: string;
   permitir_reiniciar_rotina: boolean;
+  tipo_servico_conversao_id: string | null;
 }
 
 const PERIODO_LABELS: Record<string, string> = { manha: "Manhã", tarde: "Tarde", noite: "Noite" };
@@ -42,6 +43,15 @@ export default function RotinaTentativasPage() {
   const queryClient = useQueryClient();
   const [localTentativas, setLocalTentativas] = useState<Omit<RotinaTentativa, "id">[]>([]);
   const [localConfig, setLocalConfig] = useState<Omit<ConfigFluxo, "id"> | null>(null);
+
+  const { data: tiposServico = [] } = useQuery({
+    queryKey: ["tipos_servico_rotina"],
+    queryFn: async () => {
+      const { data } = await supabase.from("tipos_servico").select("id, nome").eq("ativo", true).order("nome");
+      return data || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   const { data: tentativas = [], isLoading: loadingTentativas } = useQuery({
     queryKey: ["rotina-tentativas"],
@@ -119,7 +129,8 @@ export default function RotinaTentativasPage() {
           acao_quando_atrasar: localConfig.acao_quando_atrasar,
           acao_apos_finalizar_tentativas: localConfig.acao_apos_finalizar_tentativas,
           permitir_reiniciar_rotina: localConfig.permitir_reiniciar_rotina,
-        })
+          tipo_servico_conversao_id: localConfig.tipo_servico_conversao_id,
+        } as any)
         .eq("id", config.id);
       if (e1) throw e1;
 
@@ -238,6 +249,22 @@ export default function RotinaTentativasPage() {
                     onCheckedChange={(v) => localConfig && setLocalConfig({ ...localConfig, permitir_reiniciar_rotina: v })}
                   />
                   <Label>Permitir reiniciar rotina</Label>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Tipo de Serviço na Conversão de Lead</Label>
+                  <Select
+                    value={localConfig?.tipo_servico_conversao_id || "none"}
+                    onValueChange={(v) => localConfig && setLocalConfig({ ...localConfig, tipo_servico_conversao_id: v === "none" ? null : v })}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Selecione o tipo de serviço" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— Automático (Venda/Instalação) —</SelectItem>
+                      {tiposServico.map((ts: any) => (
+                        <SelectItem key={ts.id} value={ts.id}>{ts.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Define qual checklist será usado na OS criada ao converter um lead em cliente.</p>
                 </div>
               </div>
             </CardContent>

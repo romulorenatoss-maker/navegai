@@ -491,6 +491,7 @@ export type Database = {
           id: string
           permitir_reiniciar_rotina: boolean
           quantidade_tentativas: number
+          tipo_servico_conversao_id: string | null
           updated_at: string
         }
         Insert: {
@@ -500,6 +501,7 @@ export type Database = {
           id?: string
           permitir_reiniciar_rotina?: boolean
           quantidade_tentativas?: number
+          tipo_servico_conversao_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -509,9 +511,18 @@ export type Database = {
           id?: string
           permitir_reiniciar_rotina?: boolean
           quantidade_tentativas?: number
+          tipo_servico_conversao_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "configuracao_fluxo_leads_tipo_servico_conversao_id_fkey"
+            columns: ["tipo_servico_conversao_id"]
+            isOneToOne: false
+            referencedRelation: "tipos_servico"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       inconsistencias_vinculadas: {
         Row: {
