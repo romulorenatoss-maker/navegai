@@ -290,7 +290,7 @@ export default function PermissoesPage() {
                           {res.map((r) => (
                             <tr key={r.id} className="border-b border-border/50 hover:bg-muted/20">
                               <td className="px-3 py-2 text-foreground">{r.label}</td>
-                              {(["can_view", "can_create", "can_edit", "can_delete"] as const).map((action) => (
+                              {(["can_view", "can_create", "can_edit", "can_delete", "can_assign", "can_export"] as const).map((action) => (
                                 <td key={action} className="text-center px-3 py-2">
                                   <Switch
                                     checked={getPermValue(r.id, action)}
