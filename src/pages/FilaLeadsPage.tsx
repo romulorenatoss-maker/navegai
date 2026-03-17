@@ -591,12 +591,15 @@ export default function FilaLeadsPage() {
                       <TableHead>Período</TableHead>
                       <TableHead>Data</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Prazo</TableHead>
+                      <TableHead>Atribuído a</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {sortedTarefas.map((tarefa: any, idx: number) => {
                       const isOv = tarefa.status === "atrasado" || isTarefaExpirada(tarefa);
+                      const responsavelNome = tarefa.responsavel_id ? (profiles.find(p => p.id === tarefa.responsavel_id)?.nome || "—") : "Sem responsável";
                       return (
                         <TableRow key={tarefa.id} className={isOv ? "bg-destructive/5" : ""}>
                           <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
@@ -615,6 +618,12 @@ export default function FilaLeadsPage() {
                               {isOv ? <span className="flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Atrasado</span> : "Pendente"}
                             </Badge>
                           </TableCell>
+                          <TableCell>
+                            <Badge className={`text-xs border-0 ${isOv ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200"}`}>
+                              {isOv ? "Fora do Prazo" : "No Prazo"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{responsavelNome}</TableCell>
                           <TableCell>
                             <div className="flex items-center justify-end gap-1">
                               <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Ver lead" onClick={() => navigate(`/leads?id=${tarefa.lead_id}`)}><Eye className="w-3.5 h-3.5" /></Button>
