@@ -33,6 +33,8 @@ interface LeadRow {
   plano_nome: string | null;
   repetidor: string | null;
   atrasos: number;
+  handlers: string[];
+  tentativas: number;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -83,6 +85,8 @@ export default function RelatoriosLeadsPage() {
   const [filterStatus, setFilterStatus] = useState(urlStatus || "todos");
   const [filterOrigem, setFilterOrigem] = useState("todos");
   const [filterResponsavel, setFilterResponsavel] = useState("todos");
+  const [filterHandler, setFilterHandler] = useState("todos");
+  const [filterMinTentativas, setFilterMinTentativas] = useState("");
   const [filterNome, setFilterNome] = useState("");
 
   const [responsaveis, setResponsaveis] = useState<{ id: string; nome: string }[]>([]);
@@ -141,11 +145,12 @@ export default function RelatoriosLeadsPage() {
     const planoIds = [...new Set(leadsData.map((l) => l.plano_id).filter(Boolean))] as string[];
     const respIds = [...new Set(leadsData.map((l) => l.responsavel_id).filter(Boolean))] as string[];
 
-    const [contatosRes, planosRes, profilesRes, atrasosRes] = await Promise.all([
+    const [contatosRes, planosRes, profilesRes, atrasosRes, interacoesRes] = await Promise.all([
       leadIds.length > 0 ? supabase.from("lead_contatos").select("lead_id, valor").eq("tipo_contato", "telefone").in("lead_id", leadIds) : Promise.resolve({ data: [] }),
       planoIds.length > 0 ? supabase.from("planos").select("id, nome_plano").in("id", planoIds) : Promise.resolve({ data: [] }),
       respIds.length > 0 ? supabase.from("profiles").select("id, nome").in("id", respIds) : Promise.resolve({ data: [] }),
       leadIds.length > 0 ? supabase.from("lead_tarefas_contato").select("lead_id").eq("fora_do_prazo", true).in("lead_id", leadIds) : Promise.resolve({ data: [] }),
+      leadIds.length > 0 ? supabase.from("lead_interacoes").select("lead_id, colaborador_id").in("lead_id", leadIds) : Promise.resolve({ data: [] }),
     ]);
 
     const phoneMap: Record<string, string> = {};
@@ -157,7 +162,16 @@ export default function RelatoriosLeadsPage() {
     const atrasosMap: Record<string, number> = {};
     (atrasosRes.data || []).forEach((a: any) => { atrasosMap[a.lead_id] = (atrasosMap[a.lead_id] || 0) + 1; });
 
-    setLeadsList(leadsData.map((l) => ({
+    // Build handler map and tentativas count per lead
+    const handlersMap: Record<string, Set<string>> = {};
+    const tentativasMap: Record<string, number> = {};
+    (interacoesRes.data || []).forEach((i: any) => {
+      if (!handlersMap[i.lead_id]) handlersMap[i.lead_id] = new Set();
+      handlersMap[i.lead_id].add(i.colaborador_id);
+      tentativasMap[i.lead_id] = (tentativasMap[i.lead_id] || 0) + 1;
+    });
+
+    let rows = leadsData.map((l) => ({
       id: l.id,
       nome: l.nome,
       status_lead: l.status_lead,
@@ -168,10 +182,25 @@ export default function RelatoriosLeadsPage() {
       plano_nome: l.plano_id ? planoMap[l.plano_id] || null : null,
       repetidor: (l as any).repetidor || null,
       atrasos: atrasosMap[l.id] || 0,
-    })));
+      handlers: [...(handlersMap[l.id] || [])],
+      tentativas: tentativasMap[l.id] || 0,
+    }));
+
+    // Apply handler filter
+    if (filterHandler !== "todos") {
+      rows = rows.filter(r => r.handlers.includes(filterHandler));
+    }
+
+    // Apply min tentativas filter
+    const minTent = parseInt(filterMinTentativas);
+    if (!isNaN(minTent) && minTent > 0) {
+      rows = rows.filter(r => r.tentativas >= minTent);
+    }
+
+    setLeadsList(rows);
     setSelected(new Set());
     setLoading(false);
-  }, [startDate, endDate, filterStatus, filterOrigem, filterResponsavel, filterNome, urlCidadeId, urlBairroId, urlRuaId]);
+  }, [startDate, endDate, filterStatus, filterOrigem, filterResponsavel, filterHandler, filterMinTentativas, filterNome, urlCidadeId, urlBairroId, urlRuaId]);
 
   useEffect(() => { fetchLeads(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -294,7 +323,7 @@ export default function RelatoriosLeadsPage() {
   };
 
   const exportToExcel = (data: LeadRow[]) => {
-    const headers = ["Nome", "Telefone", "Status", "Origem", "Responsável", "Perfil Identificado", "Repetidor", "Data Criação", "Atrasos"];
+    const headers = ["Nome", "Telefone", "Status", "Origem", "Responsável", "Perfil Identificado", "Repetidor", "Data Criação", "Tentativas", "Atrasos"];
     const wsData: (string | number)[][] = [headers];
     for (const l of data) {
       wsData.push([
@@ -306,6 +335,7 @@ export default function RelatoriosLeadsPage() {
         l.plano_nome || "",
         l.repetidor ? (l.repetidor === "fast" ? "Fast" : "Dual") : "",
         format(new Date(l.data_criacao), "dd/MM/yyyy"),
+        l.tentativas,
         l.atrasos > 0 ? `${l.atrasos} fora do prazo` : "No prazo",
       ]);
     }
@@ -442,6 +472,24 @@ export default function RelatoriosLeadsPage() {
           <div className="flex flex-col gap-1.5 min-w-[160px]">
             <label className="text-caption font-medium text-muted-foreground">Nome do Lead</label>
             <Input className="h-9" placeholder="Buscar..." value={filterNome} onChange={(e) => setFilterNome(e.target.value)} />
+          </div>
+
+          <div className="flex flex-col gap-1.5 min-w-[160px]">
+            <label className="text-caption font-medium text-muted-foreground">Interagiu com</label>
+            <Select value={filterHandler} onValueChange={setFilterHandler}>
+              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                {responsaveis.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-col gap-1.5 min-w-[120px]">
+            <label className="text-caption font-medium text-muted-foreground">Mín. tentativas</label>
+            <Input type="number" min={0} className="h-9" placeholder="Ex: 3" value={filterMinTentativas} onChange={(e) => setFilterMinTentativas(e.target.value)} />
           </div>
         </div>
       </div>

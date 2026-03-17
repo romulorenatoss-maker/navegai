@@ -327,10 +327,6 @@ export default function LeadsPage() {
 
   // Priority queue filter
   const [filaFiltro, setFilaFiltro] = useState<"hoje" | "todos">("hoje");
-  const [filtroResponsavel, setFiltroResponsavel] = useState<string>("all");
-  const [filtroHandler, setFiltroHandler] = useState<string>("all");
-  const [filtroMinTentativas, setFiltroMinTentativas] = useState<string>("");
-  const [showFilaFilters, setShowFilaFilters] = useState(false);
 
   // Local editable state (saved only when registering an attempt)
   const [localPlanoId, setLocalPlanoId] = useState<string | null>(null);
@@ -986,7 +982,7 @@ export default function LeadsPage() {
     });
   }, [allLeads, allLeadInteracoes, allLeadTransfers, cadencia]);
 
-  // Filtered priority queue based on filaFiltro + additional filters
+  // Filtered priority queue based on filaFiltro
   const filteredQueue = useMemo(() => {
     let result = priorityQueue;
 
@@ -1005,24 +1001,8 @@ export default function LeadsPage() {
       });
     }
 
-    // Responsible filter
-    if (filtroResponsavel !== "all") {
-      result = result.filter(item => item.lead.responsavel_id === filtroResponsavel);
-    }
-
-    // Handler filter (leads where a specific person interacted)
-    if (filtroHandler !== "all") {
-      result = result.filter(item => item.handlers.includes(filtroHandler));
-    }
-
-    // Min total attempts filter
-    const minTent = parseInt(filtroMinTentativas);
-    if (!isNaN(minTent) && minTent > 0) {
-      result = result.filter(item => item.totalTentativas >= minTent);
-    }
-
     return result;
-  }, [priorityQueue, filaFiltro, filtroResponsavel, filtroHandler, filtroMinTentativas]);
+  }, [priorityQueue, filaFiltro]);
 
 
   const { data: leadContatos = [], refetch: refetchContatos } = useQuery({
@@ -2050,14 +2030,6 @@ export default function LeadsPage() {
                 </CardTitle>
                 <div className="flex gap-1 items-center">
                   <Button
-                    variant="ghost"
-                    size="sm"
-                    className={cn("h-6 w-6 p-0", showFilaFilters && "text-primary")}
-                    onClick={() => setShowFilaFilters(v => !v)}
-                  >
-                    <Filter className="w-3 h-3" />
-                  </Button>
-                  <Button
                     variant={filaFiltro === "hoje" ? "default" : "ghost"}
                     size="sm"
                     className="h-6 text-[10px] px-2"
@@ -2085,57 +2057,6 @@ export default function LeadsPage() {
                   </Button>
                 </div>
               </div>
-              {showFilaFilters && (
-                <div className="mt-2 space-y-1.5">
-                  <div>
-                    <label className="text-[10px] text-muted-foreground">Responsável</label>
-                    <Select value={filtroResponsavel} onValueChange={setFiltroResponsavel}>
-                      <SelectTrigger className="h-7 text-[11px]"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        {[...new Set(priorityQueue.map(q => q.lead.responsavel_id).filter(Boolean))].map(rId => {
-                          const p = profiles.find(pr => pr.id === rId);
-                          return p ? <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem> : null;
-                        })}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-muted-foreground">Interagiu com</label>
-                    <Select value={filtroHandler} onValueChange={setFiltroHandler}>
-                      <SelectTrigger className="h-7 text-[11px]"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        {[...new Set(priorityQueue.flatMap(q => q.handlers))].map(hId => {
-                          const p = profiles.find(pr => pr.id === hId);
-                          return p ? <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem> : null;
-                        })}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-muted-foreground">Mín. tentativas totais</label>
-                    <Input
-                      type="number"
-                      min={0}
-                      className="h-7 text-[11px]"
-                      placeholder="Ex: 3"
-                      value={filtroMinTentativas}
-                      onChange={e => setFiltroMinTentativas(e.target.value)}
-                    />
-                  </div>
-                  {(filtroResponsavel !== "all" || filtroHandler !== "all" || filtroMinTentativas) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 text-[10px] w-full"
-                      onClick={() => { setFiltroResponsavel("all"); setFiltroHandler("all"); setFiltroMinTentativas(""); }}
-                    >
-                      Limpar filtros
-                    </Button>
-                  )}
-                </div>
-              )}
             </CardHeader>
             <ScrollArea className="flex-1">
               <div className="divide-y divide-border">
