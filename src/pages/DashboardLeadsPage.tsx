@@ -611,7 +611,7 @@ export default function DashboardLeadsPage() {
             subValue="No período selecionado"
             color="bg-emerald-500/10 text-emerald-600"
             delay={0.2}
-            onClick={() => openDrill("convertidos", "Leads Convertidos no Período")}
+            onClick={() => navigate(`/leads/relatorios?status=convertido&start=${format(dateStart, "yyyy-MM-dd")}&end=${format(dateEnd, "yyyy-MM-dd")}`)}
           />
           <KpiCard
             icon={ArrowRightLeft}
