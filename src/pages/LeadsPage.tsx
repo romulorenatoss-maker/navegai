@@ -1231,9 +1231,16 @@ export default function LeadsPage() {
     }
   }, [searchTerm, profile, queryClient, updateLeadInCache]);
 
-  // ─── Auto-transfer on opening ──────────────────────
+  // ─── Auto-transfer on opening (only for non-admin atendentes) ──────────────────────
   const openLeadWithTransfer = useCallback(async (lead: Lead) => {
     if (!profile) return;
+    // Admins and vision-mode users just view – no auto-transfer
+    if (isAdmin || isVisionMode) {
+      setSelectedLead(lead);
+      setSearchResults(null);
+      setSearchTerm("");
+      return;
+    }
     if (lead.responsavel_id && lead.responsavel_id !== profile.id) {
       await supabase.from("leads").update({ responsavel_id: profile.id }).eq("id", lead.id);
       await resetTasksForTransfer(lead.id, profile.id);
@@ -1244,6 +1251,7 @@ export default function LeadsPage() {
       });
       toast.info("Lead transferido automaticamente para você.");
       updateLeadInCache(lead.id, { responsavel_id: profile.id });
+      setSelectedLead({ ...lead, responsavel_id: profile.id });
     } else if (!lead.responsavel_id) {
       await supabase.from("leads").update({ responsavel_id: profile.id }).eq("id", lead.id);
       await resetTasksForTransfer(lead.id, profile.id);
@@ -1253,11 +1261,13 @@ export default function LeadsPage() {
         descricao: `Lead atribuído automaticamente para ${profile.nome}`,
       });
       updateLeadInCache(lead.id, { responsavel_id: profile.id });
+      setSelectedLead({ ...lead, responsavel_id: profile.id });
+    } else {
+      setSelectedLead(lead);
     }
-    setSelectedLead({ ...lead, responsavel_id: profile.id });
     setSearchResults(null);
     setSearchTerm("");
-  }, [profile, queryClient]);
+  }, [profile, isAdmin, isVisionMode, queryClient]);
 
   // ─── Create Lead ──────────────────────────────────
   const createLeadMutation = useMutation({
