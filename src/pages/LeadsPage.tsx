@@ -1649,7 +1649,7 @@ export default function LeadsPage() {
                 </Card>
 
                 {/* Ação Popover Button */}
-                <div className="flex items-center gap-2">
+                {!isVisionMode && <div className="flex items-center gap-2">
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button size="sm" className="h-8 text-xs gap-1.5 press-effect">
