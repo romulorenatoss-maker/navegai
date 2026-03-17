@@ -168,6 +168,8 @@ export default function LeadsPage() {
   const [createBairroId, setCreateBairroId] = useState<string>("");
   const [createRuaId, setCreateRuaId] = useState<string>("");
   const [createNumeroEnd, setCreateNumeroEnd] = useState("");
+  const [createBairroSearch, setCreateBairroSearch] = useState("");
+  const [createRuaSearch, setCreateRuaSearch] = useState("");
   // Quick-add address dialogs
   const [quickAddType, setQuickAddType] = useState<"cidade" | "bairro" | "rua" | null>(null);
   const [quickAddNome, setQuickAddNome] = useState("");
