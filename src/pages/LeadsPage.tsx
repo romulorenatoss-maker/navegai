@@ -1766,9 +1766,51 @@ export default function LeadsPage() {
                   })
                 )}
               </div>
-            </ScrollArea>
-          </Card>
-        </div>
+             </ScrollArea>
+
+            {/* ─── Capture Queue Section ─── */}
+            {capturaQueue.length > 0 && !isVisionMode && (
+              <div className="border-t">
+                <div className="px-3 py-2 flex items-center justify-between bg-muted/30">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                    <UserCheck className="w-3 h-3" /> Captura ({capturaQueue.length})
+                  </span>
+                </div>
+                <ScrollArea className="max-h-[200px]">
+                  <div className="divide-y divide-border">
+                    {capturaQueue.map(item => {
+                      const phones = item.contatos.filter(c => c.tipo_contato === "telefone");
+                      return (
+                        <div key={item.lead.id} className="px-3 py-2 flex items-center justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate">{item.lead.nome}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {phones.length > 0 ? phones[0].valor : "Sem telefone"}
+                              {item.ultimaTentativaEm && ` · Última: ${format(new Date(item.ultimaTentativaEm), "dd/MM HH:mm", { locale: ptBR })}`}
+                            </p>
+                          </div>
+                          {item.userPreviouslyHandled ? (
+                            <Badge variant="outline" className="text-[9px] shrink-0">Já interagiu</Badge>
+                          ) : (
+                            <Button
+                              size="sm"
+                              className="h-7 text-[10px] px-2 gap-1"
+                              onClick={() => captureMutation.mutate(item.lead.id)}
+                              disabled={captureMutation.isPending}
+                            >
+                              {captureMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserCheck className="w-3 h-3" />}
+                              Capturar
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
+           </Card>
+         </div>
 
         {/* ─── CENTER: Timeline / History ─────────── */}
         <div className="col-span-5 flex flex-col min-h-0">
