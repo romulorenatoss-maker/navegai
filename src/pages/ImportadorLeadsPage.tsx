@@ -13,11 +13,12 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChevronDown } from "lucide-react";
+import * as XLSX from "xlsx";
 import ColumnMapper, { autoDetectMapping, type ColumnMapping } from "@/components/import/ColumnMapper";
 
 const PREPOSITIONS = new Set(["de", "da", "do", "das", "dos", "e", "em", "na", "no", "nas", "nos", "com", "para", "por"]);
 
-/** "JOÃO DA SILVA" → "João da Silva", "rua das flores" → "Rua das Flores" */
+/** "JOÃO DA SILVA" → "João da Silva" */
 function toProperCase(text: string): string {
   if (!text) return text;
   return text
@@ -29,26 +30,19 @@ function toProperCase(text: string): string {
     })
     .join(" ");
 }
-import ImportPreviewTable, { type PreviewRow, type RowAction, type RowStatus } from "@/components/import/ImportPreviewTable";
-import { TooltipProvider } from "@/components/ui/tooltip";
 
-type Step = "upload" | "mapping" | "preview" | "results";
-
-interface ImportResult {
-  nome: string;
-  telefone: string;
-  status: "ok" | "skipped" | "error";
-  message?: string;
-}
-
-function parseCSVRaw(text: string): { headers: string[]; rows: Record<string, string>[] } {
-  const lines = text.trim().split("\n");
-  if (lines.length < 2) return { headers: [], rows: [] };
-  const headers = lines[0].split(/[;,]/).map(h => h.trim().replace(/"/g, ""));
-  const rows = lines.slice(1).map(line => {
-    const values = line.split(/[;,]/).map(v => v.trim().replace(/"/g, ""));
+/** Universal file parser: CSV, XLS, XLSX, Google Sheets exports */
+function parseFileToJSON(buffer: ArrayBuffer, fileName: string): { headers: string[]; rows: Record<string, string>[] } {
+  const workbook = XLSX.read(buffer, { type: "array" });
+  const sheetName = workbook.SheetNames[0];
+  if (!sheetName) return { headers: [], rows: [] };
+  const sheet = workbook.Sheets[sheetName];
+  const jsonData = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: "" });
+  if (jsonData.length === 0) return { headers: [], rows: [] };
+  const headers = Object.keys(jsonData[0]);
+  const rows = jsonData.map(row => {
     const obj: Record<string, string> = {};
-    headers.forEach((h, i) => { obj[h] = values[i] || ""; });
+    headers.forEach(h => { obj[h] = String(row[h] ?? "").trim(); });
     return obj;
   }).filter(r => Object.values(r).some(v => v.trim()));
   return { headers, rows };
