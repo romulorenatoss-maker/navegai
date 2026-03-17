@@ -130,8 +130,8 @@ export default function LeadsArquivadosPage() {
 
       await supabase.from("lead_historico").insert({
         lead_id: leadId, usuario_id: profile.id,
-        tipo_evento: "rotina_reiniciada",
-        descricao: `Lead reativado e rotina reiniciada por ${profile.nome}`,
+        tipo_evento: "lead_desarquivado",
+        descricao: `Lead desarquivado e rotina reiniciada por ${profile.nome} em ${new Date().toLocaleString("pt-BR")}`,
       });
     },
     onSuccess: () => {

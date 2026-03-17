@@ -114,7 +114,12 @@ const EVENTO_LABELS: Record<string, string> = {
   tentativas_finalizadas: "Tentativas Finalizadas",
   rotina_reiniciada: "Rotina Reiniciada",
   lead_arquivado: "Lead Arquivado",
+  lead_desarquivado: "Lead Desarquivado",
   agendamento_retorno: "Agendamento de Retorno",
+  objecao_registrada: "Objeção Registrada",
+  perfil_alterado: "Perfil Alterado",
+  repetidor_alterado: "Repetidor Alterado",
+  observacao_adicionada: "Observação Adicionada",
 };
 
 const EVENTO_ICONS: Record<string, typeof Phone> = {
@@ -129,7 +134,12 @@ const EVENTO_ICONS: Record<string, typeof Phone> = {
   tentativas_finalizadas: Clock,
   rotina_reiniciada: RefreshCw,
   lead_arquivado: FileText,
+  lead_desarquivado: RefreshCw,
   agendamento_retorno: CalendarClock,
+  objecao_registrada: AlertTriangle,
+  perfil_alterado: User,
+  repetidor_alterado: RefreshCw,
+  observacao_adicionada: MessageSquare,
 };
 
 const PERIODO_HORA: Record<string, number> = { manha: 9, tarde: 14, noite: 19 };
@@ -817,19 +827,35 @@ export default function LeadsPage() {
   };
 
   const updatePlano = async (planoId: string) => {
-    if (!selectedLead) return;
+    if (!selectedLead || !profile) return;
     const val = planoId === "none" ? null : planoId;
+    const oldPlano = planos.find(p => p.id === selectedLead.plano_id);
+    const newPlano = planos.find(p => p.id === val);
     await supabase.from("leads").update({ plano_id: val }).eq("id", selectedLead.id);
+    await supabase.from("lead_historico").insert({
+      lead_id: selectedLead.id, usuario_id: profile.id,
+      tipo_evento: "perfil_alterado",
+      descricao: `Perfil alterado de "${oldPlano?.nome_plano || "Nenhum"}" para "${newPlano?.nome_plano || "Nenhum"}" por ${profile.nome}`,
+    });
     setSelectedLead(prev => prev ? { ...prev, plano_id: val } : null);
     queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+    refetchHistorico();
   };
 
   const updateRepetidor = async (value: string) => {
-    if (!selectedLead) return;
+    if (!selectedLead || !profile) return;
     const val = value === "none" ? null : value;
+    const oldVal = selectedLead.repetidor || "Nenhum";
+    const newVal = val || "Nenhum";
     await supabase.from("leads").update({ repetidor: val } as any).eq("id", selectedLead.id);
+    await supabase.from("lead_historico").insert({
+      lead_id: selectedLead.id, usuario_id: profile.id,
+      tipo_evento: "repetidor_alterado",
+      descricao: `Repetidor alterado de "${oldVal}" para "${newVal}" por ${profile.nome}`,
+    });
     setSelectedLead(prev => prev ? { ...prev, repetidor: val } : null);
     queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+    refetchHistorico();
   };
 
   const openConversion = () => {
