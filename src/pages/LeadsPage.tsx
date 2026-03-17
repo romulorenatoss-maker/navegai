@@ -228,6 +228,9 @@ export default function LeadsPage() {
   // Quick-add address dialogs
   const [quickAddType, setQuickAddType] = useState<"cidade" | "bairro" | "rua" | null>(null);
   const [quickAddNome, setQuickAddNome] = useState("");
+  // Quick-add for detail panel address
+  const [detailQuickAddType, setDetailQuickAddType] = useState<"cidade" | "bairro" | "rua" | null>(null);
+  const [detailQuickAddNome, setDetailQuickAddNome] = useState("");
 
   // Detail view
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
