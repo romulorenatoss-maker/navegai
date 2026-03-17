@@ -723,6 +723,7 @@ export default function LeadsPage() {
     onSuccess: (newLead) => {
       toast.success("Lead criado com sucesso!");
       setShowCreate(false); setCreateName(""); setCreatePhone(""); setCreatePhoneWhatsapp(false);
+      setCreateCidadeId(""); setCreateBairroId(""); setCreateRuaId(""); setCreateNumeroEnd("");
       queryClient.invalidateQueries({ queryKey: ["leads-list"] });
       setSelectedLead(newLead);
     },
