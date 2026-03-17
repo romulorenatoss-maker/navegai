@@ -2610,7 +2610,7 @@ export default function AvaliacaoOSPage() {
               )}
             </div>
             <div className="space-y-1.5">
-              <Label>Número da OS *</Label>
+              <Label>Número da OS</Label>
               <Input
                 value={formOsNumero}
                 onChange={e => { setFormOsNumero(e.target.value.replace(/\D/g, "")); if (formValidated) { setFormValidated(false); setFormFoundOS(null); } }}
