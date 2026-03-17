@@ -572,6 +572,86 @@ export default function LeadsPage() {
     },
   });
 
+  // ─── Capture Queue: leads aguardando_captura (visible to atendentes) ──
+  const { data: capturaLeadsRaw = [] } = useQuery({
+    queryKey: ["leads-captura"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("leads").select("*")
+        .eq("status_lead", "aguardando_captura")
+        .order("updated_at", { ascending: true });
+      if (error) throw error;
+      return data as Lead[];
+    },
+  });
+
+  const capturaLeadIds = useMemo(() => capturaLeadsRaw.map(l => l.id), [capturaLeadsRaw]);
+
+  const { data: capturaInteracoes = [] } = useQuery({
+    queryKey: ["captura-interacoes", capturaLeadIds],
+    enabled: capturaLeadIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("lead_interacoes")
+        .select("id, lead_id, colaborador_id, data_interacao")
+        .in("lead_id", capturaLeadIds)
+        .order("data_interacao", { ascending: false });
+      if (error) throw error;
+      return data as { id: string; lead_id: string; colaborador_id: string; data_interacao: string }[];
+    },
+  });
+
+  const { data: capturaContatos = [] } = useQuery({
+    queryKey: ["captura-contatos", capturaLeadIds],
+    enabled: capturaLeadIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("lead_contatos")
+        .select("*")
+        .in("lead_id", capturaLeadIds);
+      if (error) throw error;
+      return data as LeadContato[];
+    },
+  });
+
+  const capturaQueue = useMemo(() => {
+    if (!profile) return [];
+    return capturaLeadsRaw
+      .map(lead => {
+        const interacoes = capturaInteracoes.filter(i => i.lead_id === lead.id);
+        const prevHandlerIds = interacoes.map(i => i.colaborador_id);
+        const userPreviouslyHandled = prevHandlerIds.includes(profile.id);
+        const contatos = capturaContatos.filter(c => c.lead_id === lead.id);
+        const lastInteracao = interacoes[0];
+        return { lead, contatos, userPreviouslyHandled, ultimaTentativaEm: lastInteracao?.data_interacao || null };
+      })
+      .filter(item => isAdmin || !item.userPreviouslyHandled);
+  }, [capturaLeadsRaw, capturaInteracoes, capturaContatos, profile, isAdmin]);
+
+  const captureMutation = useMutation({
+    mutationFn: async (leadId: string) => {
+      if (!profile) throw new Error("Perfil não encontrado.");
+      const { data, error } = await supabase
+        .from("leads")
+        .update({ responsavel_id: profile.id, status_lead: "em_contato" } as any)
+        .eq("id", leadId)
+        .is("responsavel_id", null)
+        .select("id");
+      if (error) throw error;
+      if (!data || data.length === 0) throw new Error("Lead já foi capturado por outro usuário.");
+      await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", leadId).in("status", ["pendente", "atrasado"]);
+      const { data: firstRotina } = await supabase.from("rotina_tentativas_leads").select("*").eq("tentativa_numero", 1).maybeSingle();
+      const periodo = (firstRotina as any)?.periodo_contato || "manha";
+      await supabase.from("lead_tarefas_contato").insert({ lead_id: leadId, tentativa: 1, data_contato: new Date().toISOString(), periodo, status: "pendente", responsavel_id: profile.id });
+      await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "lead_capturado", descricao: `Lead capturado por ${profile.nome}. Nova rotina de tentativas iniciada.` });
+    },
+    onSuccess: () => {
+      toast.success("Lead capturado com sucesso! Nova rotina iniciada.");
+      queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
+      queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
   // Build priority queue (cycle-aware after transfers)
   const priorityQueue = useMemo(() => {
     const activeLeads = allLeads.filter(l => ["novo", "em_contato", "interessado"].includes(l.status_lead));
