@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   UserPlus, PhoneCall, CheckCircle2, ArrowRightLeft,
   TrendingUp, Clock, Users, Target, AlertTriangle, ExternalLink, Search,
-  CalendarIcon,
+  CalendarIcon, Archive,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -634,7 +634,7 @@ export default function DashboardLeadsPage() {
         </div>
 
         {/* Second row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <KpiCard
             icon={Target}
             label="Taxa de Conversão"
@@ -668,8 +668,17 @@ export default function DashboardLeadsPage() {
             value={m.statusCounts["perdido"] || 0}
             subValue="No período selecionado"
             color="bg-muted text-muted-foreground"
-            delay={0.45}
+            delay={0.4}
             onClick={() => toRelatorios("perdido")}
+          />
+          <KpiCard
+            icon={Archive}
+            label="Arquivados"
+            value={m.statusCounts["arquivado"] || 0}
+            subValue="No período selecionado"
+            color="bg-muted text-muted-foreground"
+            delay={0.45}
+            onClick={() => toRelatorios("arquivado")}
           />
         </div>
 
