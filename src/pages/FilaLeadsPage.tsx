@@ -124,6 +124,21 @@ export default function FilaLeadsPage() {
     },
   });
 
+  // Profiles that belong to a sector named "atendimento"
+  const { data: atendimentoProfiles = [] } = useQuery({
+    queryKey: ["profiles-setor-atendimento"],
+    queryFn: async () => {
+      const { data: setores } = await supabase.from("setores").select("id, nome").eq("ativo", true);
+      const atendimentoSetor = (setores || []).find(s => s.nome.toLowerCase().includes("atendimento"));
+      if (!atendimentoSetor) return [] as { id: string; nome: string }[];
+      const { data: vinculos } = await supabase.from("colaborador_setores").select("profile_id").eq("setor_id", atendimentoSetor.id);
+      if (!vinculos || vinculos.length === 0) return [] as { id: string; nome: string }[];
+      const profileIds = vinculos.map(v => v.profile_id);
+      const { data: profs } = await supabase.from("profiles").select("id, nome").eq("ativo", true).in("id", profileIds).order("nome");
+      return (profs || []) as { id: string; nome: string }[];
+    },
+  });
+
   const leadIds = leads.map((l) => l.id);
 
   const { data: allContatos = [] } = useQuery({
@@ -664,10 +679,13 @@ export default function FilaLeadsPage() {
               <Select value={transferTarget} onValueChange={setTransferTarget}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
-                  {profiles
+                  {atendimentoProfiles
                     .filter(p => p.id !== transferItem?.lead.responsavel_id)
                     .map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)
                   }
+                  {atendimentoProfiles.filter(p => p.id !== transferItem?.lead.responsavel_id).length === 0 && (
+                    <SelectItem value="__none" disabled>Nenhum colaborador no setor Atendimento</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
