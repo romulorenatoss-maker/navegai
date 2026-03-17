@@ -1745,26 +1745,45 @@ export default function LeadsPage() {
                             </span>
                           </div>
                         </div>
-                        <div className="ml-5 mt-1 flex items-center gap-1">
-                          {hasSchedule ? (
-                            <>
-                              <CalendarClock className={`w-2.5 h-2.5 ${scheduleReady ? "text-primary" : "text-muted-foreground"}`} />
-                              <span className={`text-[10px] ${scheduleReady ? "text-primary font-semibold" : "text-muted-foreground"}`}>
-                                {scheduleReady ? "⬆ Retorno agora" : `Retorno: ${fmtDateShort(new Date(item.lead.agendamento_retorno!))}`}
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              <Clock className={`w-2.5 h-2.5 ${isOverdue ? "text-destructive" : "text-muted-foreground"}`} />
-                              <span className={`text-[10px] ${isOverdue ? "text-destructive font-medium" : "text-muted-foreground"}`}>
-                                {item.proximoContato
-                                  ? (isOverdue
-                                    ? `Expirado ${formatCountdown(item.proximoContato, now)}`
-                                    : `Expira em ${formatCountdown(item.proximoContato, now)}`)
-                                  : "Sem prazo"}
-                              </span>
-                            </>
-                          )}
+                        <div className="ml-5 mt-1 flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1">
+                            {hasSchedule ? (
+                              <>
+                                <CalendarClock className={`w-2.5 h-2.5 ${scheduleReady ? "text-primary" : "text-muted-foreground"}`} />
+                                <span className={`text-[10px] ${scheduleReady ? "text-primary font-semibold" : "text-muted-foreground"}`}>
+                                  {scheduleReady ? "⬆ Retorno agora" : `Retorno: ${fmtDateShort(new Date(item.lead.agendamento_retorno!))}`}
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <Clock className={`w-2.5 h-2.5 ${isOverdue ? "text-destructive" : "text-muted-foreground"}`} />
+                                <span className={`text-[10px] ${isOverdue ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                                  {item.proximoContato
+                                    ? (isOverdue
+                                      ? `Expirado ${formatCountdown(item.proximoContato, now)}`
+                                      : `Expira em ${formatCountdown(item.proximoContato, now)}`)
+                                    : "Sem prazo"}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                          {item.lead.responsavel_id && (() => {
+                            const resp = profiles.find(p => p.id === item.lead.responsavel_id);
+                            if (!resp) return null;
+                            const firstName = resp.nome.split(" ")[0];
+                            const shortName = resp.nome.length > 18 ? firstName : resp.nome;
+                            return (
+                              <div className="flex items-center gap-1 group/resp relative">
+                                <User className="w-2.5 h-2.5 text-muted-foreground" />
+                                <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">{shortName}</span>
+                                {shortName !== resp.nome && (
+                                  <div className="absolute bottom-full left-0 mb-1 hidden group-hover/resp:block z-50 bg-popover border border-border text-popover-foreground text-[11px] px-2 py-1 rounded shadow-md whitespace-nowrap">
+                                    {resp.nome}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                       </button>
                     );
