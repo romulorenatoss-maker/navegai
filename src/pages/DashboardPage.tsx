@@ -502,7 +502,10 @@ export default function DashboardPage() {
         } else {
           // Merge: weighted average
           const totalEvals = existing.total_avaliacoes + t.total_avaliacoes;
-          existing.media = (existing.media * existing.total_avaliacoes + t.media * t.total_avaliacoes) / totalEvals;
+          existing.media = calculateWeightedAverage([
+            { value: existing.media, weight: existing.total_avaliacoes },
+            { value: t.media, weight: t.total_avaliacoes },
+          ]);
           existing.total_avaliacoes = totalEvals;
         }
       });
