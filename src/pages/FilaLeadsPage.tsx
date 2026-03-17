@@ -707,11 +707,14 @@ export default function FilaLeadsPage() {
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
                   <SelectTrigger className="h-8 text-xs w-[160px]"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="todos">Todos Status</SelectItem>
-                    <SelectItem value="novo">Novo</SelectItem>
-                    <SelectItem value="em_contato">Em Contato</SelectItem>
-                    <SelectItem value="interessado">Interessado</SelectItem>
-                  </SelectContent>
+                     <SelectItem value="todos">Todos Status</SelectItem>
+                     <SelectItem value="novo">Novo</SelectItem>
+                     <SelectItem value="em_contato">Em Contato</SelectItem>
+                     <SelectItem value="interessado">Interessado</SelectItem>
+                     <SelectItem value="aguardando_decisao_avaliador">Aguardando Decisão</SelectItem>
+                     <SelectItem value="aguardando_captura">Aguardando Captura</SelectItem>
+                     <SelectItem value="reservado">Reservado</SelectItem>
+                   </SelectContent>
                 </Select>
                 <Select value={filterResponsavel} onValueChange={setFilterResponsavel}>
                   <SelectTrigger className="h-8 text-xs w-[160px]"><SelectValue /></SelectTrigger>
