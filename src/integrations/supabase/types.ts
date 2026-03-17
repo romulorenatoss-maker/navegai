@@ -14,6 +14,21 @@ export type Database = {
   }
   public: {
     Tables: {
+      actions: {
+        Row: {
+          id: string
+          name: string
+        }
+        Insert: {
+          id?: string
+          name: string
+        }
+        Update: {
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           acao: string
@@ -1313,6 +1328,42 @@ export type Database = {
           path?: string | null
         }
         Relationships: []
+      }
+      permissions: {
+        Row: {
+          action_id: string | null
+          id: string
+          resource_id: string | null
+          scope: string | null
+        }
+        Insert: {
+          action_id?: string | null
+          id?: string
+          resource_id?: string | null
+          scope?: string | null
+        }
+        Update: {
+          action_id?: string | null
+          id?: string
+          resource_id?: string | null
+          scope?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permissions_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "actions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "permissions_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       permissoes_tela: {
         Row: {
