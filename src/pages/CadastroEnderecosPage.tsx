@@ -127,7 +127,8 @@ export default function CadastroEnderecosPage() {
         }
       } else if (tab === "ruas") {
         if (!formBairroId) { toast.error("Selecione o bairro."); setSaving(false); return; }
-        const payload = { nome: formNome.trim(), bairro_id: formBairroId, cep: formCep.trim() || null };
+        const cepsArr = formCep.split(",").map(c => c.trim()).filter(Boolean);
+        const payload = { nome: formNome.trim(), bairro_id: formBairroId, cep: cepsArr.length > 0 ? cepsArr : null };
         if (editingId) {
           const { error } = await supabase.from("ruas").update(payload).eq("id", editingId);
           if (error) throw error;
