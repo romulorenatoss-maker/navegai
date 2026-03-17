@@ -1044,6 +1044,7 @@ export default function FilaLeadsPage() {
                       const isOv = !isAguardando && (tarefa.status === "atrasado" || (tarefa.periodo && isTarefaExpirada(tarefa)));
                       const responsavelNome = tarefa._responsavel_id ? (profiles.find(p => p.id === tarefa._responsavel_id)?.nome || "—") : "Sem responsável";
                       const isManual = tarefa._tipo_agenda === "manual";
+                      const isCadencia = tarefa._tipo_agenda === "cadencia";
                       return (
                         <TableRow key={tarefa.id} className={isOv ? "bg-destructive/5" : isAguardando ? "bg-blue-50/50 dark:bg-blue-950/20" : ""}>
                           <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
