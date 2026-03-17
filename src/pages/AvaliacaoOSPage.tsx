@@ -1273,10 +1273,18 @@ export default function AvaliacaoOSPage() {
         numero_os: fillNumeroValue.trim(),
         status: "aberta" as any,
       } as any).eq("id", fillNumeroOsId);
-      toast.success("Número da OS preenchido com sucesso!");
+
+      // Snapshot os_perguntas so the OS appears in pending evaluations
+      const targetOs = aguardandoNumeroOS.find((o: any) => o.id === fillNumeroOsId);
+      if (targetOs?.tipo_servico_id) {
+        await snapshotOsPerguntas(fillNumeroOsId, targetOs.tipo_servico_id);
+      }
+
+      toast.success("Número da OS preenchido com sucesso! OS pronta para avaliação.");
       setFillNumeroOsId(null);
       setFillNumeroValue("");
       refetchAguardando();
+      refetchPending();
     } catch (err: any) {
       toast.error("Erro: " + err.message);
     } finally {
