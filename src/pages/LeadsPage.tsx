@@ -1988,13 +1988,13 @@ export default function LeadsPage() {
                     </div>
                     {cepNotFound && (
                       <div className="border border-dashed border-destructive/40 rounded-md p-2 mt-1 space-y-2 bg-destructive/5">
-                        <p className="text-xs text-destructive font-medium">CEP não encontrado. Cadastre abaixo:</p>
+                        <p className="text-xs text-destructive font-medium">CEP não encontrado. Busque ou cadastre o endereço:</p>
                         <div className="space-y-1">
                           <Label className="text-xs">Cidade</Label>
                           <Select value={createCidadeId || "none"} onValueChange={v => {
                             setCreateCidadeId(v === "none" ? "" : v);
-                            setCreateBairroId(""); setCreateRuaId(""); setCreateBairroSearch(""); setCreateRuaSearch("");
-                            setNewBairroNomeFromCep("");
+                            setNewBairroNomeFromCep(""); setNewRuaNomeFromCep("");
+                            setCreateBairroId(""); setCreateRuaId("");
                           }}>
                             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                             <SelectContent>
@@ -2003,51 +2003,105 @@ export default function LeadsPage() {
                             </SelectContent>
                           </Select>
                         </div>
+                        {/* Bairro fuzzy search */}
                         <div className="space-y-1">
-                          <Label className="text-xs">Nome do Bairro *</Label>
-                          <Input className="h-8 text-xs" placeholder="Nome do novo bairro" value={newBairroNomeFromCep} onChange={e => setNewBairroNomeFromCep(e.target.value)} disabled={!createCidadeId} />
+                          <Label className="text-xs">Bairro *</Label>
+                          <div className="relative">
+                            <Input
+                              className="h-8 text-xs"
+                              placeholder="Digite para buscar ou criar bairro..."
+                              value={newBairroNomeFromCep}
+                              onChange={e => { setNewBairroNomeFromCep(e.target.value); setCreateBairroId(""); setCreateRuaId(""); setNewRuaNomeFromCep(""); }}
+                              disabled={!createCidadeId}
+                            />
+                            {newBairroNomeFromCep.length >= 2 && !createBairroId && createCidadeId && (() => {
+                              const term = newBairroNomeFromCep.toLowerCase();
+                              const matches = endBairros.filter(b => b.cidade_id === createCidadeId && b.nome.toLowerCase().includes(term));
+                              return (matches.length > 0 || newBairroNomeFromCep.trim().length >= 2) ? (
+                                <div className="absolute z-50 w-full bg-popover border border-border rounded-md shadow-md mt-0.5 max-h-32 overflow-y-auto">
+                                  {matches.map(b => (
+                                    <button key={b.id} type="button" className="w-full text-left px-2 py-1.5 text-xs hover:bg-muted/50 transition-colors"
+                                      onClick={() => { setCreateBairroId(b.id); setNewBairroNomeFromCep(b.nome); }}>
+                                      {b.nome}
+                                    </button>
+                                  ))}
+                                  {!matches.some(b => b.nome.toLowerCase() === term) && newBairroNomeFromCep.trim().length >= 2 && (
+                                    <button type="button" className="w-full text-left px-2 py-1.5 text-xs hover:bg-muted/50 transition-colors text-primary font-medium"
+                                      onClick={async () => {
+                                        try {
+                                          const { data: nb, error } = await supabase.from("bairros").insert({ nome: newBairroNomeFromCep.trim(), cidade_id: createCidadeId }).select().single();
+                                          if (error) throw error;
+                                          queryClient.invalidateQueries({ queryKey: ["enderecos-bairros"] });
+                                          setCreateBairroId(nb.id); setNewBairroNomeFromCep(nb.nome);
+                                          toast.success("Bairro criado!");
+                                        } catch (err: any) { toast.error(err.message); }
+                                      }}>
+                                      <Plus className="w-3 h-3 inline mr-1" /> Criar "{newBairroNomeFromCep.trim()}"
+                                    </button>
+                                  )}
+                                </div>
+                              ) : null;
+                            })()}
+                          </div>
                         </div>
+                        {/* Rua fuzzy search */}
                         <div className="space-y-1">
-                          <Label className="text-xs">Nome da Rua *</Label>
-                          <Input className="h-8 text-xs" placeholder="Nome da nova rua" value={newRuaNomeFromCep} onChange={e => setNewRuaNomeFromCep(e.target.value)} disabled={!createCidadeId} />
+                          <Label className="text-xs">Rua *</Label>
+                          <div className="relative">
+                            <Input
+                              className="h-8 text-xs"
+                              placeholder="Digite para buscar ou criar rua..."
+                              value={newRuaNomeFromCep}
+                              onChange={e => { setNewRuaNomeFromCep(e.target.value); setCreateRuaId(""); }}
+                              disabled={!createBairroId}
+                            />
+                            {newRuaNomeFromCep.length >= 2 && !createRuaId && createBairroId && (() => {
+                              const term = newRuaNomeFromCep.toLowerCase();
+                              const matches = endRuas.filter(r => r.bairro_id === createBairroId && r.nome.toLowerCase().includes(term));
+                              return (matches.length > 0 || newRuaNomeFromCep.trim().length >= 2) ? (
+                                <div className="absolute z-50 w-full bg-popover border border-border rounded-md shadow-md mt-0.5 max-h-32 overflow-y-auto">
+                                  {matches.map(r => (
+                                    <button key={r.id} type="button" className="w-full text-left px-2 py-1.5 text-xs hover:bg-muted/50 transition-colors"
+                                      onClick={async () => {
+                                        // Select existing rua and add CEP to it
+                                        setCreateRuaId(r.id); setNewRuaNomeFromCep(r.nome);
+                                        const existingCeps = r.cep || [];
+                                        const cepNorm = createCepSearch.trim();
+                                        if (cepNorm && !existingCeps.some(c => c.replace(/\D/g, "") === cepNorm)) {
+                                          await supabase.from("ruas").update({ cep: [...existingCeps, cepNorm] }).eq("id", r.id);
+                                          queryClient.invalidateQueries({ queryKey: ["enderecos-ruas"] });
+                                          toast.success(`CEP vinculado à rua ${r.nome}`);
+                                        }
+                                        // Also set the main address fields
+                                        setCreateBairroSearch(newBairroNomeFromCep);
+                                        setCreateRuaSearch(r.nome);
+                                        setCepNotFound(false);
+                                      }}>
+                                      {r.nome} {r.cep?.length ? `(${r.cep.join(", ")})` : ""}
+                                    </button>
+                                  ))}
+                                  {!matches.some(r => r.nome.toLowerCase() === term) && newRuaNomeFromCep.trim().length >= 2 && (
+                                    <button type="button" className="w-full text-left px-2 py-1.5 text-xs hover:bg-muted/50 transition-colors text-primary font-medium"
+                                      onClick={async () => {
+                                        try {
+                                          const { data: nr, error } = await supabase.from("ruas").insert({ nome: newRuaNomeFromCep.trim(), bairro_id: createBairroId, cep: createCepSearch.trim() ? [createCepSearch.trim()] : [] }).select().single();
+                                          if (error) throw error;
+                                          queryClient.invalidateQueries({ queryKey: ["enderecos-ruas"] });
+                                          setCreateRuaId(nr.id); setNewRuaNomeFromCep(nr.nome);
+                                          setCreateBairroSearch(newBairroNomeFromCep);
+                                          setCreateRuaSearch(nr.nome);
+                                          setCepNotFound(false);
+                                          toast.success("Rua criada com CEP vinculado!");
+                                        } catch (err: any) { toast.error(err.message); }
+                                      }}>
+                                      <Plus className="w-3 h-3 inline mr-1" /> Criar "{newRuaNomeFromCep.trim()}"
+                                    </button>
+                                  )}
+                                </div>
+                              ) : null;
+                            })()}
+                          </div>
                         </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          className="h-7 text-xs w-full"
-                          disabled={!createCidadeId || !newRuaNomeFromCep.trim() || !newBairroNomeFromCep.trim()}
-                          onClick={async () => {
-                            try {
-                              // Check if bairro already exists in that cidade
-                              let bairroId = "";
-                              const existingBairro = endBairros.find(b => b.cidade_id === createCidadeId && b.nome.toLowerCase() === newBairroNomeFromCep.trim().toLowerCase());
-                              if (existingBairro) {
-                                bairroId = existingBairro.id;
-                              } else {
-                                const { data: newBairro, error: bErr } = await supabase.from("bairros").insert({ nome: newBairroNomeFromCep.trim(), cidade_id: createCidadeId }).select().single();
-                                if (bErr) throw bErr;
-                                bairroId = newBairro.id;
-                                queryClient.invalidateQueries({ queryKey: ["enderecos-bairros"] });
-                              }
-                              // Create rua with CEP
-                              const { data: newRua, error: rErr } = await supabase.from("ruas").insert({ nome: newRuaNomeFromCep.trim(), bairro_id: bairroId, cep: [createCepSearch] }).select().single();
-                              if (rErr) throw rErr;
-                              queryClient.invalidateQueries({ queryKey: ["enderecos-ruas"] });
-                              setCreateBairroId(bairroId);
-                              setCreateBairroSearch(existingBairro?.nome || newBairroNomeFromCep.trim());
-                              setCreateRuaId(newRua.id);
-                              setCreateRuaSearch(newRuaNomeFromCep.trim());
-                              setCepNotFound(false);
-                              setNewRuaNomeFromCep("");
-                              setNewBairroNomeFromCep("");
-                              toast.success("Endereço cadastrado com sucesso!");
-                            } catch (err: any) {
-                              toast.error(err.message?.includes("duplicate") ? "Já existe um registro com esse nome." : err.message);
-                            }
-                          }}
-                        >
-                          <Plus className="w-3 h-3 mr-1" /> Cadastrar Endereço
-                        </Button>
                       </div>
                     )}
                   </div>
