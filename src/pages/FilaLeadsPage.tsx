@@ -23,10 +23,9 @@ import { ptBR } from "date-fns/locale";
 import {
   Phone, MessageSquare, Loader2, ListOrdered, CalendarClock, AlertTriangle,
   ArrowRightLeft, Clock, Search, Filter, Eye, Archive, RefreshCw,
-  MoreHorizontal, Bell, CheckCircle2, ExternalLink,
+  MoreHorizontal, Bell, CheckCircle2, ExternalLink, CalendarIcon,
 } from "lucide-react";
-
-// ─── Types ──────────────────────────────────────────────
+import { startOfDay, endOfDay, isWithinInterval } from "date-fns";
 interface Lead {
   id: string; nome: string; status_lead: string; responsavel_id: string | null;
   updated_at: string; created_at: string; agendamento_retorno: string | null;
