@@ -237,7 +237,33 @@ export default function ColaboradoresPage() {
 
   const isSubmitting = create.isPending || update.isPending;
 
-  // Access is now controlled by permissoes_tela — no admin block needed
+  const toggleSort = (col: string) => {
+    if (sortColumn === col) {
+      setSortDirection((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortColumn(col);
+      setSortDirection("asc");
+    }
+  };
+
+  const SortIcon = ({ col }: { col: string }) => {
+    if (sortColumn !== col) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-40" />;
+    return sortDirection === "asc" ? <ArrowUp className="w-3 h-3 ml-1" /> : <ArrowDown className="w-3 h-3 ml-1" />;
+  };
+
+  const sortedProfiles = [...profiles].sort((a, b) => {
+    const dir = sortDirection === "asc" ? 1 : -1;
+    let valA = "";
+    let valB = "";
+    switch (sortColumn) {
+      case "nome": valA = (a.nome || "").toLowerCase(); valB = (b.nome || "").toLowerCase(); break;
+      case "email": valA = (a.email || "").toLowerCase(); valB = (b.email || "").toLowerCase(); break;
+      case "cargo": valA = (a.cargo || "").toLowerCase(); valB = (b.cargo || "").toLowerCase(); break;
+      case "setor": valA = ((a as any)._setoresNomes?.[0] || "").toLowerCase(); valB = ((b as any)._setoresNomes?.[0] || "").toLowerCase(); break;
+      case "status": valA = a.ativo ? "ativo" : "inativo"; valB = b.ativo ? "ativo" : "inativo"; break;
+    }
+    return valA < valB ? -dir : valA > valB ? dir : 0;
+  });
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -258,20 +284,33 @@ export default function ColaboradoresPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Nome</th>
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Email</th>
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Cargo</th>
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Setor</th>
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Status</th>
+                {[
+                  { key: "nome", label: "Nome" },
+                  { key: "email", label: "Email" },
+                  { key: "cargo", label: "Cargo" },
+                  { key: "setor", label: "Setor" },
+                  { key: "status", label: "Status" },
+                ].map((col) => (
+                  <th
+                    key={col.key}
+                    className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 cursor-pointer select-none hover:text-foreground transition-colors"
+                    onClick={() => toggleSort(col.key)}
+                  >
+                    <div className="flex items-center">
+                      {col.label}
+                      <SortIcon col={col.key} />
+                    </div>
+                  </th>
+                ))}
                 <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {isLoading ? (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Carregando...</td></tr>
-              ) : profiles.length === 0 ? (
+              ) : sortedProfiles.length === 0 ? (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhum colaborador cadastrado.</td></tr>
-              ) : profiles.map((p) => {
+              ) : sortedProfiles.map((p) => {
                 const cfg = cargoConfig[p.cargo || ""] || { label: p.cargo || "—", badge: "badge-expired" };
                 return (
                   <tr key={p.id} className="hover:bg-muted/50 transition-colors">
