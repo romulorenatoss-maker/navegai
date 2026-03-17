@@ -314,6 +314,7 @@ export default function LeadsPage() {
   const [convCepNotFound, setConvCepNotFound] = useState(false);
   const [convNewBairroNome, setConvNewBairroNome] = useState("");
   const [convNewRuaNome, setConvNewRuaNome] = useState("");
+  const [convStep, setConvStep] = useState<"form" | "review">("form");
 
   // Finalize dialog (when all attempts done)
   const [showFinalize, setShowFinalize] = useState(false);
@@ -1686,6 +1687,7 @@ export default function LeadsPage() {
     setConvCepNotFound(false);
     setConvNewBairroNome("");
     setConvNewRuaNome("");
+    setConvStep("form");
     setShowConvert(true);
   };
 
@@ -3357,70 +3359,74 @@ export default function LeadsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Conversion Dialog */}
+      {/* Conversion Dialog — 2-step: form → review */}
       <Dialog open={showConvert} onOpenChange={setShowConvert}>
         <DialogContent className="sm:max-w-lg max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><UserPlus className="w-5 h-5" /> Converter Lead em Cliente</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5" />
+              {convStep === "form" ? "Converter Lead em Cliente" : "Confirmar Conversão"}
+            </DialogTitle>
+            {convStep === "review" && (
+              <DialogDescription>Verifique se todos os dados estão corretos antes de concluir.</DialogDescription>
+            )}
           </DialogHeader>
           <ScrollArea className="max-h-[60vh] pr-3">
-            <div className="space-y-3">
-              <p className="text-xs text-muted-foreground">Preencha o CPF para buscar dados de cliente existente.</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {convStep === "form" ? (
+              <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label className="text-xs">CPF *</Label>
+                  <Label className="text-xs font-medium">CPF *</Label>
                   <div className="relative">
-                    <Input placeholder="000.000.000-00" value={convForm.cpf} onChange={e => handleConvCpfChange(e.target.value)} />
+                    <Input placeholder="000.000.000-00" value={convForm.cpf} onChange={e => handleConvCpfChange(e.target.value)} className="h-9" />
                     {convCpfSearching && <Loader2 className="w-3.5 h-3.5 animate-spin absolute right-2 top-3 text-muted-foreground" />}
                   </div>
                   {convCpfLookedUp && <p className="text-xs text-green-600 flex items-center gap-1"><UserCheck className="w-3 h-3" /> Cliente encontrado — dados preenchidos</p>}
                 </div>
-                <div className="space-y-1.5"><Label className="text-xs">Nome *</Label><Input value={convForm.nome} onChange={e => setConvForm(f => ({ ...f, nome: e.target.value }))} /></div>
-                <div className="space-y-1.5"><Label className="text-xs">RG *</Label><Input value={convForm.rg} onChange={e => setConvForm(f => ({ ...f, rg: e.target.value }))} /></div>
-                <div className="space-y-1.5"><Label className="text-xs">Nome da Mãe *</Label><Input value={convForm.nome_mae} onChange={e => setConvForm(f => ({ ...f, nome_mae: e.target.value }))} /></div>
-              </div>
-              <div className="border rounded-md p-3 space-y-3 bg-muted/20">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Endereço</p>
-                <div className="space-y-2">
-                  {/* CEP search */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Nome Completo *</Label>
+                  <Input value={convForm.nome} onChange={e => setConvForm(f => ({ ...f, nome: e.target.value }))} className="h-9" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">RG *</Label>
+                  <Input value={convForm.rg} onChange={e => setConvForm(f => ({ ...f, rg: e.target.value }))} className="h-9" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Nome da Mãe *</Label>
+                  <Input value={convForm.nome_mae} onChange={e => setConvForm(f => ({ ...f, nome_mae: e.target.value }))} className="h-9" />
+                </div>
+                {leadContatos.length > 0 && (
+                  <div className="border rounded-md p-3 space-y-2 bg-muted/20">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Contatos do Lead</p>
+                    {leadContatos.filter(c => c.tipo_contato === "telefone").map(c => (
+                      <p key={c.id} className="text-xs flex items-center gap-1.5"><Phone className="w-3 h-3 text-muted-foreground" /> {c.valor} {c.tem_whatsapp ? <Badge variant="secondary" className="text-[10px] h-4 px-1">WhatsApp</Badge> : ""}</p>
+                    ))}
+                    {leadContatos.filter(c => c.tipo_contato === "email").map(c => (
+                      <p key={c.id} className="text-xs flex items-center gap-1.5"><FileText className="w-3 h-3 text-muted-foreground" /> {c.valor}</p>
+                    ))}
+                  </div>
+                )}
+                <div className="border rounded-md p-3 space-y-3 bg-muted/20">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Endereço</p>
                   <div className="space-y-1">
                     <Label className="text-xs">Buscar por CEP</Label>
                     <div className="flex gap-1">
-                      <Input
-                        className="h-8 text-xs flex-1"
-                        placeholder="Digite o CEP..."
-                        value={convCepSearch}
-                        onChange={e => {
-                          const v = e.target.value.replace(/\D/g, "").slice(0, 8);
-                          setConvCepSearch(v);
-                          setConvCepNotFound(false);
-                          setConvNewBairroNome("");
-                          setConvNewRuaNome("");
-                        }}
-                      />
-                      <Button
-                        type="button" variant="outline" size="sm" className="h-8 text-xs"
-                        disabled={convCepSearch.length < 5}
+                      <Input className="h-8 text-xs flex-1" placeholder="Digite o CEP..." value={convCepSearch}
+                        onChange={e => { const v = e.target.value.replace(/\D/g, "").slice(0, 8); setConvCepSearch(v); setConvCepNotFound(false); setConvNewBairroNome(""); setConvNewRuaNome(""); }} />
+                      <Button type="button" variant="outline" size="sm" className="h-8 text-xs" disabled={convCepSearch.length < 5}
                         onClick={() => {
                           const cep = convCepSearch.trim();
                           const match = endRuas.find(r => r.cep && r.cep.some(c => c.replace(/\D/g, "").includes(cep)));
                           if (match) {
                             const bairro = endBairros.find(b => b.id === match.bairro_id);
                             if (bairro) { setConvCidadeId(bairro.cidade_id); setConvBairroId(bairro.id); }
-                            setConvRuaId(match.id);
-                            setConvCepNotFound(false);
+                            setConvRuaId(match.id); setConvCepNotFound(false);
                             toast.success(`CEP encontrado: ${match.nome}`);
-                          } else {
-                            setConvCepNotFound(true);
-                          }
-                        }}
-                      >
+                          } else { setConvCepNotFound(true); }
+                        }}>
                         <Search className="w-3 h-3 mr-1" /> Buscar
                       </Button>
                     </div>
                   </div>
-
-                  {/* Show resolved address or not-found flow */}
                   {convRuaId && !convCepNotFound && (() => {
                     const rua = endRuas.find(r => r.id === convRuaId);
                     const bairro = endBairros.find(b => b.id === convBairroId);
@@ -3431,61 +3437,34 @@ export default function LeadsPage() {
                         <p className="text-xs"><span className="font-medium">Bairro:</span> {bairro?.nome || "—"}</p>
                         <p className="text-xs"><span className="font-medium">Rua:</span> {rua?.nome || "—"}</p>
                         <p className="text-xs"><span className="font-medium">CEP:</span> {rua?.cep?.[0] || "—"}</p>
-                        <Button type="button" variant="link" size="sm" className="h-6 text-xs p-0" onClick={() => {
-                          setConvCidadeId(null); setConvBairroId(null); setConvRuaId(null); setConvCepSearch(""); setConvCepNotFound(false);
-                        }}>Alterar endereço</Button>
+                        <Button type="button" variant="link" size="sm" className="h-6 text-xs p-0" onClick={() => { setConvCidadeId(null); setConvBairroId(null); setConvRuaId(null); setConvCepSearch(""); setConvCepNotFound(false); }}>Alterar endereço</Button>
                       </div>
                     );
                   })()}
-
                   {convCepNotFound && (
                     <div className="border border-dashed border-destructive/40 rounded-md p-2 space-y-2 bg-destructive/5">
-                      <p className="text-xs text-destructive font-medium">CEP não encontrado. Busque ou cadastre o endereço:</p>
+                      <p className="text-xs text-destructive font-medium">CEP não encontrado. Busque ou cadastre:</p>
                       <div className="space-y-1">
                         <Label className="text-xs">Cidade</Label>
-                        <Select value={convCidadeId || "none"} onValueChange={v => {
-                          setConvCidadeId(v === "none" ? null : v);
-                          setConvBairroId(null); setConvRuaId(null);
-                          setConvNewBairroNome(""); setConvNewRuaNome("");
-                        }}>
+                        <Select value={convCidadeId || "none"} onValueChange={v => { setConvCidadeId(v === "none" ? null : v); setConvBairroId(null); setConvRuaId(null); setConvNewBairroNome(""); setConvNewRuaNome(""); }}>
                           <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Nenhuma</SelectItem>
-                            {endCidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
-                          </SelectContent>
+                          <SelectContent><SelectItem value="none">Nenhuma</SelectItem>{endCidades.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
                         </Select>
                       </div>
-                      {/* Bairro fuzzy */}
                       <div className="space-y-1">
                         <Label className="text-xs">Bairro *</Label>
                         <div className="relative">
-                          <Input className="h-8 text-xs" placeholder="Digite para buscar ou criar bairro..."
-                            value={convNewBairroNome}
-                            onChange={e => { setConvNewBairroNome(e.target.value); setConvBairroId(null); setConvRuaId(null); setConvNewRuaNome(""); }}
-                            disabled={!convCidadeId}
-                          />
+                          <Input className="h-8 text-xs" placeholder="Digite para buscar ou criar bairro..." value={convNewBairroNome}
+                            onChange={e => { setConvNewBairroNome(e.target.value); setConvBairroId(null); setConvRuaId(null); setConvNewRuaNome(""); }} disabled={!convCidadeId} />
                           {convNewBairroNome.length >= 2 && !convBairroId && convCidadeId && (() => {
                             const term = convNewBairroNome.toLowerCase();
                             const matches = endBairros.filter(b => b.cidade_id === convCidadeId && b.nome.toLowerCase().includes(term));
                             return (matches.length > 0 || convNewBairroNome.trim().length >= 2) ? (
                               <div className="absolute z-50 w-full bg-popover border border-border rounded-md shadow-md mt-0.5 max-h-32 overflow-y-auto">
-                                {matches.map(b => (
-                                  <button key={b.id} type="button" className="w-full text-left px-2 py-1.5 text-xs hover:bg-muted/50 transition-colors"
-                                    onClick={() => { setConvBairroId(b.id); setConvNewBairroNome(b.nome); }}>
-                                    {b.nome}
-                                  </button>
-                                ))}
+                                {matches.map(b => (<button key={b.id} type="button" className="w-full text-left px-2 py-1.5 text-xs hover:bg-muted/50 transition-colors" onClick={() => { setConvBairroId(b.id); setConvNewBairroNome(b.nome); }}>{b.nome}</button>))}
                                 {!matches.some(b => b.nome.toLowerCase() === term) && convNewBairroNome.trim().length >= 2 && (
                                   <button type="button" className="w-full text-left px-2 py-1.5 text-xs hover:bg-muted/50 transition-colors text-primary font-medium"
-                                    onClick={async () => {
-                                      try {
-                                        const { data: nb, error } = await supabase.from("bairros").insert({ nome: convNewBairroNome.trim(), cidade_id: convCidadeId! }).select().single();
-                                        if (error) throw error;
-                                        queryClient.invalidateQueries({ queryKey: ["enderecos-bairros"] });
-                                        setConvBairroId(nb.id); setConvNewBairroNome(nb.nome);
-                                        toast.success("Bairro criado!");
-                                      } catch (err: any) { toast.error(err.message); }
-                                    }}>
+                                    onClick={async () => { try { const { data: nb, error } = await supabase.from("bairros").insert({ nome: convNewBairroNome.trim(), cidade_id: convCidadeId! }).select().single(); if (error) throw error; queryClient.invalidateQueries({ queryKey: ["enderecos-bairros"] }); setConvBairroId(nb.id); setConvNewBairroNome(nb.nome); toast.success("Bairro criado!"); } catch (err: any) { toast.error(err.message); } }}>
                                     <Plus className="w-3 h-3 inline mr-1" /> Criar "{convNewBairroNome.trim()}"
                                   </button>
                                 )}
@@ -3494,15 +3473,11 @@ export default function LeadsPage() {
                           })()}
                         </div>
                       </div>
-                      {/* Rua fuzzy */}
                       <div className="space-y-1">
                         <Label className="text-xs">Rua *</Label>
                         <div className="relative">
-                          <Input className="h-8 text-xs" placeholder="Digite para buscar ou criar rua..."
-                            value={convNewRuaNome}
-                            onChange={e => { setConvNewRuaNome(e.target.value); setConvRuaId(null); }}
-                            disabled={!convBairroId}
-                          />
+                          <Input className="h-8 text-xs" placeholder="Digite para buscar ou criar rua..." value={convNewRuaNome}
+                            onChange={e => { setConvNewRuaNome(e.target.value); setConvRuaId(null); }} disabled={!convBairroId} />
                           {convNewRuaNome.length >= 2 && !convRuaId && convBairroId && (() => {
                             const term = convNewRuaNome.toLowerCase();
                             const matches = endRuas.filter(r => r.bairro_id === convBairroId && r.nome.toLowerCase().includes(term));
@@ -3510,32 +3485,13 @@ export default function LeadsPage() {
                               <div className="absolute z-50 w-full bg-popover border border-border rounded-md shadow-md mt-0.5 max-h-32 overflow-y-auto">
                                 {matches.map(r => (
                                   <button key={r.id} type="button" className="w-full text-left px-2 py-1.5 text-xs hover:bg-muted/50 transition-colors"
-                                    onClick={async () => {
-                                      setConvRuaId(r.id); setConvNewRuaNome(r.nome);
-                                      const existingCeps = r.cep || [];
-                                      const cepNorm = convCepSearch.trim();
-                                      if (cepNorm && !existingCeps.some(c => c.replace(/\D/g, "") === cepNorm)) {
-                                        await supabase.from("ruas").update({ cep: [...existingCeps, cepNorm] }).eq("id", r.id);
-                                        queryClient.invalidateQueries({ queryKey: ["enderecos-ruas"] });
-                                        toast.success(`CEP vinculado à rua ${r.nome}`);
-                                      }
-                                      setConvCepNotFound(false);
-                                    }}>
+                                    onClick={async () => { setConvRuaId(r.id); setConvNewRuaNome(r.nome); const existingCeps = r.cep || []; const cepNorm = convCepSearch.trim(); if (cepNorm && !existingCeps.some(c => c.replace(/\D/g, "") === cepNorm)) { await supabase.from("ruas").update({ cep: [...existingCeps, cepNorm] }).eq("id", r.id); queryClient.invalidateQueries({ queryKey: ["enderecos-ruas"] }); toast.success(`CEP vinculado à rua ${r.nome}`); } setConvCepNotFound(false); }}>
                                     {r.nome} {r.cep?.length ? `(${r.cep.join(", ")})` : ""}
                                   </button>
                                 ))}
                                 {!matches.some(r => r.nome.toLowerCase() === term) && convNewRuaNome.trim().length >= 2 && (
                                   <button type="button" className="w-full text-left px-2 py-1.5 text-xs hover:bg-muted/50 transition-colors text-primary font-medium"
-                                    onClick={async () => {
-                                      try {
-                                        const { data: nr, error } = await supabase.from("ruas").insert({ nome: convNewRuaNome.trim(), bairro_id: convBairroId!, cep: convCepSearch.trim() ? [convCepSearch.trim()] : [] }).select().single();
-                                        if (error) throw error;
-                                        queryClient.invalidateQueries({ queryKey: ["enderecos-ruas"] });
-                                        setConvRuaId(nr.id); setConvNewRuaNome(nr.nome);
-                                        setConvCepNotFound(false);
-                                        toast.success("Rua criada com CEP vinculado!");
-                                      } catch (err: any) { toast.error(err.message); }
-                                    }}>
+                                    onClick={async () => { try { const { data: nr, error } = await supabase.from("ruas").insert({ nome: convNewRuaNome.trim(), bairro_id: convBairroId!, cep: convCepSearch.trim() ? [convCepSearch.trim()] : [] }).select().single(); if (error) throw error; queryClient.invalidateQueries({ queryKey: ["enderecos-ruas"] }); setConvRuaId(nr.id); setConvNewRuaNome(nr.nome); setConvCepNotFound(false); toast.success("Rua criada com CEP vinculado!"); } catch (err: any) { toast.error(err.message); } }}>
                                     <Plus className="w-3 h-3 inline mr-1" /> Criar "{convNewRuaNome.trim()}"
                                   </button>
                                 )}
@@ -3546,42 +3502,98 @@ export default function LeadsPage() {
                       </div>
                     </div>
                   )}
-
-                  {/* Número e Referência sempre visíveis */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1"><Label className="text-xs">Número *</Label><Input value={convForm.numero} onChange={e => setConvForm(f => ({ ...f, numero: e.target.value }))} className="h-8 text-xs" /></div>
-                    <div className="space-y-1"><Label className="text-xs">Referência</Label><Input value={convForm.referencia} onChange={e => setConvForm(f => ({ ...f, referencia: e.target.value }))} className="h-8 text-xs" /></div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Número *</Label>
+                    <Input value={convForm.numero} onChange={e => setConvForm(f => ({ ...f, numero: e.target.value }))} className="h-8 text-xs" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Referência</Label>
+                    <Input value={convForm.referencia} onChange={e => setConvForm(f => ({ ...f, referencia: e.target.value }))} className="h-8 text-xs" />
                   </div>
                 </div>
-              </div>
-              {/* Atendente selector */}
-              <div className="space-y-1.5">
-                <Label className="text-xs">Avaliado Setor Atendimento</Label>
-                <Select value={convAtendenteId} onValueChange={setConvAtendenteId}>
-                  <SelectTrigger className="h-9"><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
-                  <SelectContent>
-                    {profiles.map(p => (
-                      <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">Quem será avaliado como atendente nesta OS. Sugestão: quem está convertendo.</p>
-              </div>
-              {leadContatos.filter(c => c.tipo_contato === "telefone").length > 0 && (
-                <div className="p-3 rounded-md border bg-muted/30">
-                  <p className="text-xs font-medium mb-1">Contatos que serão copiados:</p>
-                  {leadContatos.filter(c => c.tipo_contato === "telefone").map(c => (
-                    <p key={c.id} className="text-xs text-muted-foreground">📞 {c.valor} {c.tem_whatsapp ? "(WhatsApp)" : ""}</p>
-                  ))}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Avaliado Setor Atendimento *</Label>
+                  <Select value={convAtendenteId} onValueChange={setConvAtendenteId}>
+                    <SelectTrigger className="h-9"><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
+                    <SelectContent>{profiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Quem será avaliado como atendente nesta OS.</p>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="border rounded-md p-3 space-y-2 bg-muted/20">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Dados Pessoais</p>
+                  <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
+                    <p className="text-xs font-medium">Nome:</p><p className="text-xs">{convForm.nome}</p>
+                    <p className="text-xs font-medium">CPF:</p><p className="text-xs">{convForm.cpf}</p>
+                    <p className="text-xs font-medium">RG:</p><p className="text-xs">{convForm.rg}</p>
+                    <p className="text-xs font-medium">Nome da Mãe:</p><p className="text-xs">{convForm.nome_mae}</p>
+                  </div>
+                </div>
+                {leadContatos.length > 0 && (
+                  <div className="border rounded-md p-3 space-y-2 bg-muted/20">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Contatos</p>
+                    {leadContatos.filter(c => c.tipo_contato === "telefone").map(c => (
+                      <p key={c.id} className="text-xs flex items-center gap-1.5"><Phone className="w-3 h-3 text-muted-foreground" /> {c.valor} {c.tem_whatsapp ? <Badge variant="secondary" className="text-[10px] h-4 px-1">WhatsApp</Badge> : ""}</p>
+                    ))}
+                    {leadContatos.filter(c => c.tipo_contato === "email").map(c => (
+                      <p key={c.id} className="text-xs flex items-center gap-1.5"><FileText className="w-3 h-3 text-muted-foreground" /> {c.valor}</p>
+                    ))}
+                  </div>
+                )}
+                <div className="border rounded-md p-3 space-y-2 bg-muted/20">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Endereço</p>
+                  {(() => {
+                    const rua = endRuas.find(r => r.id === convRuaId);
+                    const bairro = endBairros.find(b => b.id === convBairroId);
+                    const cidade = endCidades.find(c => c.id === convCidadeId);
+                    return (
+                      <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
+                        <p className="text-xs font-medium">Cidade:</p><p className="text-xs">{cidade?.nome || "—"}</p>
+                        <p className="text-xs font-medium">Bairro:</p><p className="text-xs">{bairro?.nome || "—"}</p>
+                        <p className="text-xs font-medium">Rua:</p><p className="text-xs">{rua?.nome || "—"}</p>
+                        <p className="text-xs font-medium">CEP:</p><p className="text-xs">{rua?.cep?.[0] || "—"}</p>
+                        <p className="text-xs font-medium">Número:</p><p className="text-xs">{convForm.numero || "—"}</p>
+                        {convForm.referencia && <><p className="text-xs font-medium">Referência:</p><p className="text-xs">{convForm.referencia}</p></>}
+                      </div>
+                    );
+                  })()}
+                </div>
+                <div className="border rounded-md p-3 space-y-2 bg-muted/20">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Atendente (Avaliado)</p>
+                  <p className="text-sm font-medium">{profiles.find(p => p.id === convAtendenteId)?.nome || "—"}</p>
+                </div>
+              </div>
+            )}
           </ScrollArea>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowConvert(false)}>Cancelar</Button>
-            <Button onClick={() => convertMutation.mutate()} disabled={convertMutation.isPending} className="press-effect">
-              {convertMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <UserPlus className="w-4 h-4 mr-1" />} Converter em Cliente
-            </Button>
+            {convStep === "form" ? (
+              <>
+                <Button variant="outline" onClick={() => setShowConvert(false)}>Cancelar</Button>
+                <Button onClick={() => {
+                  if (!convForm.nome.trim()) { toast.error("Nome é obrigatório."); return; }
+                  if (!convForm.cpf.trim()) { toast.error("CPF é obrigatório."); return; }
+                  if (!convForm.rg.trim()) { toast.error("RG é obrigatório."); return; }
+                  if (!convForm.nome_mae.trim()) { toast.error("Nome da mãe é obrigatório."); return; }
+                  if (!convCidadeId || !convBairroId || !convRuaId) { toast.error("Endereço completo é obrigatório."); return; }
+                  if (!convForm.numero.trim()) { toast.error("Número é obrigatório."); return; }
+                  if (!convAtendenteId) { toast.error("Selecione o atendente."); return; }
+                  setConvStep("review");
+                }} className="press-effect">
+                  <ArrowRight className="w-4 h-4 mr-1" /> Converter
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => setConvStep("form")}>
+                  <ChevronRight className="w-4 h-4 mr-1 rotate-180" /> Editar
+                </Button>
+                <Button onClick={() => convertMutation.mutate()} disabled={convertMutation.isPending} className="press-effect">
+                  {convertMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <UserCheck className="w-4 h-4 mr-1" />} Concluir Conversão
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
