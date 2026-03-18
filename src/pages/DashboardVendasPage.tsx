@@ -137,12 +137,12 @@ export default function DashboardVendasPage() {
       });
     });
 
-    // Leads received per user
+    // Leads received per user (by responsavel_id)
     const leadsPerUser: Record<string, Set<string>> = {};
     allAssignments.forEach(a => {
-      if (!a.usuario_id) return;
-      if (!leadsPerUser[a.usuario_id]) leadsPerUser[a.usuario_id] = new Set();
-      leadsPerUser[a.usuario_id].add(a.lead_id);
+      if (!a.responsavel_id) return;
+      if (!leadsPerUser[a.responsavel_id]) leadsPerUser[a.responsavel_id] = new Set();
+      leadsPerUser[a.responsavel_id].add(a.id);
     });
     Object.entries(leadsPerUser).forEach(([uid, leads]) => {
       const entry = profileMap.get(uid);
