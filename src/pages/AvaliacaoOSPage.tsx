@@ -1243,6 +1243,14 @@ export default function AvaliacaoOSPage() {
     setClienteAddressMap(prev => ({ ...prev, ...newMap }));
   }, [clienteAddressMap]);
 
+  // Auto-fetch addresses when OS views change
+  useEffect(() => {
+    const ids: string[] = [];
+    if (selectedOS?.cliente_id) ids.push(selectedOS.cliente_id);
+    if (evalOsData?.cliente_id) ids.push(evalOsData.cliente_id);
+    if (ids.length > 0) fetchClienteAddresses(ids);
+  }, [selectedOS?.cliente_id, evalOsData?.cliente_id]);
+
 
   const handleFinalizeEvaluation = async () => {
     if (!evalAvaliacaoId || !evalOsId) return;
