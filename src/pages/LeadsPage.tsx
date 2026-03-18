@@ -2732,7 +2732,34 @@ export default function LeadsPage() {
                     </div>
                     <div className="space-y-1">
                       <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Objeção</Label>
-                      <Select value={localObjecaoId} onValueChange={v => setLocalObjecaoId(v)} disabled={isVisionMode}>
+                      <Select value={localObjecaoId} onValueChange={async (v) => {
+                        setLocalObjecaoId(v);
+                        if (!selectedLead || !profile) return;
+                        try {
+                          if (v !== "none") {
+                            // Remove existing objeção for this lead if any
+                            if (leadObjecaoRegistro) {
+                              await supabase.from("registro_objecao_lead").delete().eq("id", leadObjecaoRegistro.id);
+                            }
+                            await supabase.from("registro_objecao_lead").insert({
+                              lead_id: selectedLead.id, objecao_id: v, colaborador_id: profile.id,
+                            });
+                            await supabase.from("lead_historico").insert({
+                              lead_id: selectedLead.id, usuario_id: profile.id,
+                              tipo_evento: "objecao_registrada",
+                              descricao: `Objeção: ${objecoes.find(o => o.id === v)?.descricao || v}`,
+                            });
+                            toast.success("Objeção salva");
+                          } else if (leadObjecaoRegistro) {
+                            await supabase.from("registro_objecao_lead").delete().eq("id", leadObjecaoRegistro.id);
+                            toast.success("Objeção removida");
+                          }
+                          refetchObjecao();
+                          refetchHistorico();
+                        } catch (err: any) {
+                          toast.error("Erro ao salvar objeção: " + err.message);
+                        }
+                      }} disabled={isVisionMode}>
                         <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">Nenhuma</SelectItem>
