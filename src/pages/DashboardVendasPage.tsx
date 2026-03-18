@@ -211,13 +211,13 @@ export default function DashboardVendasPage() {
     });
   }, [rankData]);
 
-  // Chart data: conversions per day per top users
+  // Chart data: conversions per day per top users (by creator)
   const chartData = useMemo(() => {
     const top5 = rankData.slice(0, 5);
     const grouped: Record<string, Record<string, number>> = {};
     allConversoes.forEach(c => {
-      if (!c.responsavel_id) return;
-      const top = top5.find(t => t.profileId === c.responsavel_id);
+      if (!c.criador_id) return;
+      const top = top5.find(t => t.profileId === c.criador_id);
       if (!top) return;
       const date = format(new Date(c.data_evento), "dd/MM");
       if (!grouped[date]) grouped[date] = {};
