@@ -231,10 +231,11 @@ export default function FilaTarefasLeadsPage() {
         const nextRotina = rotina.find((r: any) => r.tentativa_numero === nextTentativa);
         const diasApos = nextRotina?.dias_apos_anterior || 1;
         const periodo = nextRotina?.periodo_contato || "manha";
-        const nextDate = new Date();
+        const nextDate = skipWeekend(new Date());
         nextDate.setDate(nextDate.getDate() + diasApos);
-        const periodoHora = periodo === "manha" ? 9 : periodo === "tarde" ? 14 : 19;
-        nextDate.setHours(periodoHora, 0, 0, 0);
+        const skippedDate = skipWeekend(nextDate);
+        const periodoHora = PERIODO_HORA[periodo] || 9;
+        skippedDate.setHours(periodoHora, 0, 0, 0);
 
         await supabase.from("lead_tarefas_contato").insert({
           lead_id: selectedTarefa.lead_id,
