@@ -1000,6 +1000,7 @@ export default function AvaliacaoOSPage() {
     setEvalAnswers(ans);
     setEvalObservations(obs);
     setEvalEvidencias(evid);
+    setEvalAudios(aud);
     setOtherEvalAnswers(otherMap);
     setResponseAuthors(authorsMap);
 
