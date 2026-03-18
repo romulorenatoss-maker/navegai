@@ -1437,8 +1437,9 @@ export default function LeadsPage() {
       if (error) throw error;
 
       // Compute cycle-based attempt count (after last transfer or capture)
+      // Use reverse search to find the MOST RECENT cycle event (history is sorted ascending)
       let tentativaNum: number;
-      const lastCycleEvt = leadHistorico.find(h =>
+      const lastCycleEvt = [...leadHistorico].reverse().find(h =>
         h.tipo_evento === "transferencia_automatica" || h.tipo_evento === "transferencia_decisao" || h.tipo_evento === "lead_capturado"
       );
       const cycleInteractions = lastCycleEvt
@@ -1514,7 +1515,6 @@ export default function LeadsPage() {
         const finalStatus = acaoFinal === "arquivar_lead" ? "arquivado" : "aguardando_decisao_avaliador";
         await supabase.from("leads").update({ 
           status_lead: finalStatus,
-          responsavel_id: null,
         }).eq("id", selectedLead.id);
         await supabase.from("lead_historico").insert({
           lead_id: selectedLead.id, usuario_id: profile.id,
@@ -1804,8 +1804,8 @@ export default function LeadsPage() {
   const tentativasCicloAtual = useMemo(() => {
     if (!selectedLead || leadHistorico.length === 0) return tentativasRealizadas;
     // Find the last transfer event
-    const lastTransfer = leadHistorico.find(h =>
-      h.tipo_evento === "transferencia_automatica" || h.tipo_evento === "transferencia_decisao"
+    const lastTransfer = [...leadHistorico].reverse().find(h =>
+      h.tipo_evento === "transferencia_automatica" || h.tipo_evento === "transferencia_decisao" || h.tipo_evento === "lead_capturado"
     );
     if (!lastTransfer) return tentativasRealizadas;
     // Count interactions AFTER the last transfer
