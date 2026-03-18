@@ -557,8 +557,8 @@ export default function DashboardVendasPage() {
               </TableHeader>
               <TableBody>
                 {rankData.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">
+                   <TableRow>
+                    <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-8">
                       Nenhuma atividade no período selecionado.
                     </TableCell>
                   </TableRow>
