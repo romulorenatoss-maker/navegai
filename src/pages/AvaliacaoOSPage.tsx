@@ -2579,6 +2579,9 @@ export default function AvaliacaoOSPage() {
               </p>
               <p className="text-body text-muted-foreground mt-1">{selectedOS.cliente_nome || "Sem cliente"}</p>
               {selectedOS.cliente_cpf && <p className="text-caption text-muted-foreground">CPF: {selectedOS.cliente_cpf}</p>}
+              {selectedOS.cliente_id && clienteAddressMap[selectedOS.cliente_id] && (
+                <p className="text-caption text-muted-foreground">📍 {clienteAddressMap[selectedOS.cliente_id]}</p>
+              )}
               <p className="text-caption text-muted-foreground mt-0.5">Data da Ocorrência: {format(new Date(selectedOS.data_abertura || selectedOS.created_at), "dd/MM/yyyy HH:mm")}</p>
             </div>
             <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border", statusLabel[selectedOS.status]?.badge)}>
