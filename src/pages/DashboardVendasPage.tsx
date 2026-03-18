@@ -197,7 +197,7 @@ export default function DashboardVendasPage() {
     // Only show users with at least some activity, sorted by conversions
     const sorted = [...profileMap.values()]
       .filter(e => e.leadsCriados > 0 || e.conversoes > 0 || e.interacoes > 0)
-      .sort((a, b) => b.conversoes - a.conversoes);
+      .sort((a, b) => b.conversoes - a.conversoes || b.taxaConversao - a.taxaConversao || b.leadsCriados - a.leadsCriados);
 
     // Assign tied positions (same conversions = same rank)
     let currentRank = 1;
