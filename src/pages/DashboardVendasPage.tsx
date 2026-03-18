@@ -24,7 +24,7 @@ interface ProfileData {
 interface RankEntry {
   profileId: string;
   nome: string;
-  leadsRecebidos: number;
+  leadsCriados: number;
   conversoes: number;
   taxaConversao: number;
   interacoes: number;
@@ -54,42 +54,44 @@ export default function DashboardVendasPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // All conversions in period
-  const { data: allConversoes = [] } = useQuery({
-    queryKey: ["dashboard-vendas-conversoes", from, to],
+  // All leads created per user in period (via lead_historico criacao events)
+  const { data: allLeadsCriados = [] } = useQuery({
+    queryKey: ["dashboard-vendas-leads-criados", from, to],
     queryFn: async () => {
       const { data } = await supabase
         .from("lead_historico")
-        .select("lead_id, data_evento, usuario_id")
+        .select("lead_id, usuario_id")
+        .in("tipo_evento", ["lead_criado", "criacao"])
+        .gte("data_evento", from)
+        .lte("data_evento", to);
+      return data || [];
+    },
+  });
+
+  // All conversions in period — attributed to the CREATOR of the lead
+  const { data: allConversoes = [] } = useQuery({
+    queryKey: ["dashboard-vendas-conversoes-v3", from, to],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("lead_historico")
+        .select("lead_id, data_evento")
         .eq("tipo_evento", "conversao_cliente")
         .gte("data_evento", from)
         .lte("data_evento", to);
       if (!data?.length) return [];
-      const leadIds = [...new Set(data.map(d => d.lead_id))];
-      // Batch fetch leads with convertido_por
-      const allLeads: { id: string; responsavel_id: string | null; convertido_por: string | null }[] = [];
-      for (let i = 0; i < leadIds.length; i += 500) {
-        const batch = leadIds.slice(i, i + 500);
-        const { data: leads } = await supabase.from("leads").select("id, responsavel_id, convertido_por").in("id", batch);
-        if (leads) allLeads.push(...(leads as any));
-      }
-      const leadResp: Record<string, string | null> = {};
-      allLeads.forEach(l => { leadResp[l.id] = (l as any).convertido_por || l.responsavel_id; });
-      return data.map(d => ({ lead_id: d.lead_id, data_evento: d.data_evento, responsavel_id: leadResp[d.lead_id] || null }));
-    },
-  });
 
-  // All leads assigned to users in period (by responsavel_id)
-  const { data: allAssignments = [] } = useQuery({
-    queryKey: ["dashboard-vendas-assignments-v2", from, to],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("leads")
-        .select("id, responsavel_id")
-        .not("responsavel_id", "is", null)
-        .gte("data_criacao", from)
-        .lte("data_criacao", to);
-      return data || [];
+      // Find creator of each converted lead
+      const leadIds = [...new Set(data.map(d => d.lead_id))];
+      const { data: criacaoEvents } = await supabase
+        .from("lead_historico")
+        .select("lead_id, usuario_id")
+        .in("tipo_evento", ["lead_criado", "criacao"])
+        .in("lead_id", leadIds);
+
+      const creatorByLead: Record<string, string> = {};
+      criacaoEvents?.forEach(e => { if (!creatorByLead[e.lead_id]) creatorByLead[e.lead_id] = e.usuario_id; });
+
+      return data.map(d => ({ lead_id: d.lead_id, data_evento: d.data_evento, criador_id: creatorByLead[d.lead_id] || null }));
     },
   });
 
@@ -128,7 +130,7 @@ export default function DashboardVendasPage() {
       profileMap.set(p.id, {
         profileId: p.id,
         nome: p.nome,
-        leadsRecebidos: 0,
+        leadsCriados: 0,
         conversoes: 0,
         taxaConversao: 0,
         interacoes: 0,
@@ -137,29 +139,25 @@ export default function DashboardVendasPage() {
       });
     });
 
-    // Leads received per user (by responsavel_id)
+    // Leads created per user
     const leadsPerUser: Record<string, Set<string>> = {};
-    allAssignments.forEach(a => {
-      if (!a.responsavel_id) return;
-      if (!leadsPerUser[a.responsavel_id]) leadsPerUser[a.responsavel_id] = new Set();
-      leadsPerUser[a.responsavel_id].add(a.id);
-    });
-
-    // Conversions per responsible (convertido_por)
-    allConversoes.forEach(c => {
-      if (!c.responsavel_id) return;
-      const entry = profileMap.get(c.responsavel_id);
-      if (entry) entry.conversoes++;
-      // Ensure the converted lead also counts in "leads recebidos" for the seller
-      // This guarantees the conversion rate is accurate (e.g., 1 lead + 1 conversion = 100%)
-      if (!leadsPerUser[c.responsavel_id]) leadsPerUser[c.responsavel_id] = new Set();
-      leadsPerUser[c.responsavel_id].add(c.lead_id);
+    allLeadsCriados.forEach(a => {
+      if (!a.usuario_id) return;
+      if (!leadsPerUser[a.usuario_id]) leadsPerUser[a.usuario_id] = new Set();
+      leadsPerUser[a.usuario_id].add(a.lead_id);
     });
 
     // Apply leads count
     Object.entries(leadsPerUser).forEach(([uid, leads]) => {
       const entry = profileMap.get(uid);
-      if (entry) entry.leadsRecebidos = leads.size;
+      if (entry) entry.leadsCriados = leads.size;
+    });
+
+    // Conversions attributed to lead creator
+    allConversoes.forEach(c => {
+      if (!c.criador_id) return;
+      const entry = profileMap.get(c.criador_id);
+      if (entry) entry.conversoes++;
     });
 
     // Interactions per user
@@ -176,8 +174,8 @@ export default function DashboardVendasPage() {
 
     // Calculate rates — cap conversion rate at 100%
     profileMap.forEach(entry => {
-      if (entry.leadsRecebidos > 0) {
-        const raw = (entry.conversoes / entry.leadsRecebidos) * 100;
+      if (entry.leadsCriados > 0) {
+        const raw = (entry.conversoes / entry.leadsCriados) * 100;
         entry.taxaConversao = Math.min(raw, 100);
       } else {
         entry.taxaConversao = 0;
@@ -187,16 +185,16 @@ export default function DashboardVendasPage() {
 
     // Only show users with at least some activity
     return [...profileMap.values()]
-      .filter(e => e.leadsRecebidos > 0 || e.conversoes > 0 || e.interacoes > 0)
+      .filter(e => e.leadsCriados > 0 || e.conversoes > 0 || e.interacoes > 0)
       .sort((a, b) => b.conversoes - a.conversoes);
-  }, [profiles, allConversoes, allAssignments, allInteracoes, allTransferencias]);
+  }, [profiles, allConversoes, allLeadsCriados, allInteracoes, allTransferencias]);
 
   // Per-metric rankings
   const metricRankings = useMemo(() => {
     const metrics: { key: keyof RankEntry; label: string; icon: React.ReactNode; format: (v: number) => string; higherBetter: boolean }[] = [
       { key: "conversoes", label: "Conversões", icon: <Target className="w-4 h-4" />, format: v => String(v), higherBetter: true },
       { key: "taxaConversao", label: "Taxa de Conversão", icon: <TrendingUp className="w-4 h-4" />, format: v => `${v.toFixed(1)}%`, higherBetter: true },
-      { key: "leadsRecebidos", label: "Leads Recebidos", icon: <Users className="w-4 h-4" />, format: v => String(v), higherBetter: true },
+      { key: "leadsCriados", label: "Leads Criados", icon: <Users className="w-4 h-4" />, format: v => String(v), higherBetter: true },
       { key: "interacoes", label: "Total de Interações", icon: <Phone className="w-4 h-4" />, format: v => String(v), higherBetter: true },
       { key: "mediaTentativas", label: "Média Tentativas/Conversão", icon: <BarChart3 className="w-4 h-4" />, format: v => v.toFixed(1), higherBetter: false },
       { key: "transferencias", label: "Transferências Realizadas", icon: <ArrowRightLeft className="w-4 h-4" />, format: v => String(v), higherBetter: false },
@@ -213,13 +211,13 @@ export default function DashboardVendasPage() {
     });
   }, [rankData]);
 
-  // Chart data: conversions per day per top users
+  // Chart data: conversions per day per top users (by creator)
   const chartData = useMemo(() => {
     const top5 = rankData.slice(0, 5);
     const grouped: Record<string, Record<string, number>> = {};
     allConversoes.forEach(c => {
-      if (!c.responsavel_id) return;
-      const top = top5.find(t => t.profileId === c.responsavel_id);
+      if (!c.criador_id) return;
+      const top = top5.find(t => t.profileId === c.criador_id);
       if (!top) return;
       const date = format(new Date(c.data_evento), "dd/MM");
       if (!grouped[date]) grouped[date] = {};
@@ -351,7 +349,7 @@ export default function DashboardVendasPage() {
                 <TableRow>
                   <TableHead className="w-10">#</TableHead>
                   <TableHead>Atendente</TableHead>
-                  <TableHead className="text-center">Leads</TableHead>
+                  <TableHead className="text-center">Leads Criados</TableHead>
                   <TableHead className="text-center">Conversões</TableHead>
                   <TableHead className="text-center">Taxa</TableHead>
                   <TableHead className="text-center">Interações</TableHead>
@@ -378,7 +376,7 @@ export default function DashboardVendasPage() {
                         </span>
                       </TableCell>
                       <TableCell className="font-medium">{r.nome}</TableCell>
-                      <TableCell className="text-center">{r.leadsRecebidos}</TableCell>
+                      <TableCell className="text-center">{r.leadsCriados}</TableCell>
                       <TableCell className="text-center font-semibold">{r.conversoes}</TableCell>
                       <TableCell className="text-center">
                         <Badge variant={r.taxaConversao >= 30 ? "default" : r.taxaConversao >= 15 ? "secondary" : "outline"} className="text-xs">
