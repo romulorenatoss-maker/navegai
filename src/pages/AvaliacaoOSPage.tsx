@@ -1121,7 +1121,7 @@ export default function AvaliacaoOSPage() {
     if ((hasAtendimentoAccess || hasTecnicoAccess || isAdmin) && !atendenteId && !tecnicoId) { toast.error("Selecione pelo menos um colaborador avaliado."); return; }
 
     try {
-      const num = formOsNumero.trim();
+      // num already validated above
       const nomeTr = formClienteNome.trim() || null;
       const cpfDigits = formClienteCpf.replace(/\D/g, "");
       const cpfTr = cpfDigits.length === 11 ? formatCpf(cpfDigits) : formClienteCpf.trim() || null;
