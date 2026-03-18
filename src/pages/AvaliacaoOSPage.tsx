@@ -975,6 +975,7 @@ export default function AvaliacaoOSPage() {
       if (r.resposta) ans[r.pergunta_id] = r.resposta as Answer;
       if (r.observacao) obs[r.pergunta_id] = r.observacao;
       if (r.evidencia_url) evid[r.pergunta_id] = r.evidencia_url;
+      if (r.audio_url) aud[r.pergunta_id] = r.audio_url;
 
       // Track author info for ALL responses
       if (r.avaliador_id && r.resposta) {
