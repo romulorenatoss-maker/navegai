@@ -1836,6 +1836,8 @@ export default function LeadsPage() {
               .from("clientes").select("id, nome, cpf").eq("id", matchedClienteContato.cliente_id).maybeSingle();
             if (existingCliente) {
               await supabase.from("leads").update({ status_lead: "convertido", cliente_id: existingCliente.id, convertido_por: convAtendenteId || profile.id, convertido_registrado_por: profile.id } as any).eq("id", selectedLead.id);
+              // Cancel pending tasks for converted lead
+              await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", selectedLead.id).in("status", ["pendente", "atrasado", "aguardando_visualizacao"]);
               // Create OS for existing client too
               const dupetipoServicoId: string | null = (fluxoConfig as any)?.tipo_servico_conversao_id || null;
               const dupeConverterId = convAtendenteId || profile.id;
@@ -1890,6 +1892,8 @@ export default function LeadsPage() {
           }
 
           await supabase.from("leads").update({ status_lead: "convertido", cliente_id: existingCliente.id, convertido_por: convAtendenteId || profile.id, convertido_registrado_por: profile.id } as any).eq("id", selectedLead.id);
+          // Cancel pending tasks for converted lead
+          await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", selectedLead.id).in("status", ["pendente", "atrasado", "aguardando_visualizacao"]);
           // Create OS for existing client too
           const cpfDupeTipoServicoId: string | null = (fluxoConfig as any)?.tipo_servico_conversao_id || null;
           const cpfDupeConverterId = convAtendenteId || profile.id;
@@ -1936,6 +1940,8 @@ export default function LeadsPage() {
       }
 
       await supabase.from("leads").update({ status_lead: "convertido", cliente_id: newCliente.id, convertido_por: convAtendenteId || profile.id, convertido_registrado_por: profile.id } as any).eq("id", selectedLead.id);
+      // Cancel pending tasks for converted lead
+      await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", selectedLead.id).in("status", ["pendente", "atrasado", "aguardando_visualizacao"]);
 
       // Use configured tipo_servico from rotina config (required)
       const tipoServicoId: string | null = (fluxoConfig as any)?.tipo_servico_conversao_id || null;
