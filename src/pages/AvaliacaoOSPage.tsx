@@ -3094,6 +3094,9 @@ export default function AvaliacaoOSPage() {
                         {os.cliente_cpf ? ` • CPF: ${os.cliente_cpf}` : ""}
                         {` • Ocorrência: ${format(new Date(os.data_abertura || os.created_at), "dd/MM/yyyy")}`}
                       </p>
+                      {os.cliente_id && clienteAddressMap[os.cliente_id] && (
+                        <p className="text-caption text-muted-foreground">📍 {clienteAddressMap[os.cliente_id]}</p>
+                      )}
                       <p className="text-caption text-muted-foreground">
                         {atendenteNome ? `Atendente: ${atendenteNome}` : ""}
                         {atendenteNome && tecnicoNome ? " • " : ""}
