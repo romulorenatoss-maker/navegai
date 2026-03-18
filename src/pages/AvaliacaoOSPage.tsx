@@ -1480,6 +1480,7 @@ export default function AvaliacaoOSPage() {
     setFormOsNumero("");
     setFormValidated(false);
     setFormFoundOS(null);
+    setSearchResults([]);
     setFormPendingAval(null);
     setShowNewOsDialog(false);
     setTipoServicoId("");
