@@ -54,11 +54,12 @@ export default function MinhasVendasTab() {
     },
   });
 
-  // Conversions of leads CREATED/CAPTURED by this user (regardless of who converted)
+  // Conversions where convertido_por = current user (atendente que fez a venda)
   const { data: conversoes = [] } = useQuery({
-    queryKey: ["minhas-vendas-conversoes-v3", profileId, from, to],
+    queryKey: ["minhas-vendas-conversoes-v4", profileId, from, to],
     enabled: !!profileId,
     queryFn: async () => {
+      // Get all conversions in period
       const { data } = await supabase
         .from("lead_historico")
         .select("lead_id, data_evento")
@@ -67,18 +68,18 @@ export default function MinhasVendasTab() {
         .lte("data_evento", to);
       if (!data?.length) return [];
 
+      // Filter by convertido_por = current user
       const leadIds = [...new Set(data.map(d => d.lead_id))];
-      const { data: criacaoEvents } = await supabase
-        .from("lead_historico")
-        .select("lead_id, usuario_id")
-        .in("tipo_evento", ["lead_criado", "criacao", "lead_capturado"])
-        .in("lead_id", leadIds)
-        .eq("usuario_id", profileId!);
+      const { data: leads } = await supabase
+        .from("leads")
+        .select("id, convertido_por")
+        .in("id", leadIds)
+        .eq("convertido_por", profileId!);
 
-      const myCreatedLeadIds = new Set(criacaoEvents?.map(e => e.lead_id) || []);
+      const myConvertedLeadIds = new Set(leads?.map(l => l.id) || []);
 
       return data
-        .filter(d => myCreatedLeadIds.has(d.lead_id))
+        .filter(d => myConvertedLeadIds.has(d.lead_id))
         .map(d => ({ lead_id: d.lead_id, data_evento: d.data_evento }));
     },
   });
