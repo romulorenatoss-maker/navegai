@@ -406,7 +406,8 @@ export default function DashboardVendasPage() {
                       <TableCell className="text-center">{r.mediaTentativas.toFixed(1)}</TableCell>
                       <TableCell className="text-center">{r.transferencias}</TableCell>
                     </TableRow>
-                  ))
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
