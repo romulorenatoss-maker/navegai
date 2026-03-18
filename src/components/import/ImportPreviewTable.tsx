@@ -51,6 +51,17 @@ export default function ImportPreviewTable({ rows, onActionChange }: Props) {
   const invalidCount = rows.filter(r => r.status === "invalid").length;
   const importCount = rows.filter(r => r.action !== "skip").length;
 
+  // Sort: duplicates & invalids first, then new
+  const STATUS_ORDER: Record<RowStatus, number> = {
+    duplicate_active: 0,
+    duplicate_client: 1,
+    duplicate_archived: 2,
+    duplicate_lost: 3,
+    invalid: 4,
+    new: 5,
+  };
+  const sortedRows = [...rows].sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
@@ -74,10 +85,11 @@ export default function ImportPreviewTable({ rows, onActionChange }: Props) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((row) => {
+            {sortedRows.map((row) => {
               const cfg = STATUS_CONFIG[row.status];
+              const isSkipped = row.action === "skip";
               return (
-                <TableRow key={row.index} className={row.action === "skip" ? "opacity-40" : ""}>
+                <TableRow key={row.index} className={isSkipped ? "opacity-50" : ""}>
                   <TableCell className="text-xs text-muted-foreground">{row.index + 1}</TableCell>
                   <TableCell className="font-medium text-sm">{row.nome || "—"}</TableCell>
                   <TableCell className="text-sm">{row.telefone || "—"}</TableCell>
@@ -130,9 +142,6 @@ export default function ImportPreviewTable({ rows, onActionChange }: Props) {
                         <SelectContent>
                           <SelectItem value="import">Importar</SelectItem>
                           <SelectItem value="skip">Pular</SelectItem>
-                          {row.status !== "new" && (
-                            <SelectItem value="import_alert">Importar c/ alerta</SelectItem>
-                          )}
                         </SelectContent>
                       </Select>
                     )}
