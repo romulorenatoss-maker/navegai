@@ -744,12 +744,22 @@ export default function LeadsPage() {
     },
     onSuccess: (leadId) => {
       toast.success("Lead capturado com sucesso!");
-      queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
-      queryClient.invalidateQueries({ queryKey: ["leads-list"] });
       const lead = capturaLeadsRaw.find(l => l.id === leadId);
       if (lead) {
-        setSelectedLead({ ...lead, responsavel_id: profile!.id, reserved_by: null, reserved_at: null, status_lead: "em_atendimento" });
+        const capturedLead = { ...lead, responsavel_id: profile!.id, reserved_by: null, reserved_at: new Date().toISOString(), status_lead: "em_atendimento" } as Lead;
+        // Add to cache immediately so it shows in the list
+        updateLeadInCache(leadId, capturedLead);
+        queryClient.setQueryData(["leads-list", effectiveProfileId, leadsScope], (old: Lead[] | undefined) => {
+          if (!old) return [capturedLead];
+          if (old.some(l => l.id === leadId)) return old.map(l => l.id === leadId ? capturedLead : l);
+          return [...old, capturedLead];
+        });
+        // Select the lead and switch to "todos" so it's visible
+        setSelectedLead(capturedLead);
+        setFilaFiltro("todos");
       }
+      queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
+      queryClient.invalidateQueries({ queryKey: ["leads-list"] });
     },
     onError: (err: any) => {
       toast.error(err.message);
