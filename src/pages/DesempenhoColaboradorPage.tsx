@@ -113,6 +113,7 @@ export default function DesempenhoColaboradorPage() {
           os_id: os.id,
           numero_os: os.numero_os,
           created_at: os.created_at,
+          data_abertura: os.data_abertura,
           status: os.status,
           cliente_nome: os.cliente_nome,
           tipo_servico: tsMap[os.tipo_servico_id || ""] || "—",
