@@ -3628,14 +3628,7 @@ export default function LeadsPage() {
                     <Input value={convForm.referencia} onChange={e => setConvForm(f => ({ ...f, referencia: e.target.value }))} className="h-8 text-xs" />
                   </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-medium">Responsável pela Conversão (Vendedor) *</Label>
-                  <Select value={convConvertidoPorId} onValueChange={setConvConvertidoPorId}>
-                    <SelectTrigger className="h-9"><SelectValue placeholder="Quem fechou a venda?" /></SelectTrigger>
-                    <SelectContent>{profiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}</SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">Quem será creditado pela conversão nos rankings e relatórios.</p>
-                </div>
+                
                 <div className="space-y-1.5">
                    <Label className="text-xs font-medium">Atendente que fez a venda *</Label>
                    <Select value={convAtendenteId} onValueChange={setConvAtendenteId}>
