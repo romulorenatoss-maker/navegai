@@ -1888,7 +1888,7 @@ export default function LeadsPage() {
             await supabase.from("clientes").update({ cpf: cpfFormatted } as any).eq("id", existingCliente.id);
           }
 
-          await supabase.from("leads").update({ status_lead: "convertido", cliente_id: existingCliente.id, convertido_por: convAtendenteId || profile.id } as any).eq("id", selectedLead.id);
+          await supabase.from("leads").update({ status_lead: "convertido", cliente_id: existingCliente.id, convertido_por: convAtendenteId || profile.id, convertido_registrado_por: profile.id } as any).eq("id", selectedLead.id);
           // Create OS for existing client too
           const cpfDupeTipoServicoId: string | null = (fluxoConfig as any)?.tipo_servico_conversao_id || null;
           const cpfDupeConverterId = convAtendenteId || profile.id;
