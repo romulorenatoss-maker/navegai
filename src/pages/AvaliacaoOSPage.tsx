@@ -2364,13 +2364,13 @@ export default function AvaliacaoOSPage() {
 
         {/* Sticky bottom bar - always visible for admin delete or when not finalized */}
         {evalPerguntas.length > 0 && (
-          <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur border-t border-border px-3 py-2 z-30">
-            <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-xs flex-wrap">
-                <Progress value={globalProgressPercent} className="h-1.5 w-20 sm:w-28" />
-                <span className="font-medium text-foreground font-tabular">{globalAnsweredCount}/{evalPerguntas.length}</span>
+          <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur border-t border-border px-2 sm:px-3 py-2 z-30 safe-area-pb">
+            <div className="max-w-4xl mx-auto flex items-center justify-between gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 text-xs min-w-0">
+                <Progress value={globalProgressPercent} className="h-1.5 w-12 sm:w-28 shrink-0" />
+                <span className="font-medium text-foreground font-tabular shrink-0">{globalAnsweredCount}/{evalPerguntas.length}</span>
                 {evalMaxScore > 0 && (
-                  <span className={cn("font-bold font-tabular",
+                  <span className={cn("font-bold font-tabular hidden sm:inline",
                     (evalTotalScore / evalMaxScore) * 100 >= 85 ? "text-success" :
                     (evalTotalScore / evalMaxScore) * 100 >= 75 ? "text-warning" : "text-destructive"
                   )}>
@@ -2378,50 +2378,45 @@ export default function AvaliacaoOSPage() {
                   </span>
                 )}
                 {!isLocked && autoSaving && (
-                  <span className="text-muted-foreground flex items-center gap-1">
-                    <Loader2 className="w-3 h-3 animate-spin" /> Salvando
+                  <span className="text-muted-foreground flex items-center gap-1 shrink-0">
+                    <Loader2 className="w-3 h-3 animate-spin" /> <span className="hidden sm:inline">Salvando</span>
                   </span>
                 )}
                 {!isLocked && !autoSaving && globalAnsweredCount > 0 && (
-                  <span className="text-success flex items-center gap-1">
-                    <Check className="w-3 h-3" /> Salvo
+                  <span className="text-success flex items-center gap-1 shrink-0">
+                    <Check className="w-3 h-3" />
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                 {canEdit && !isEditing && (
-                  <Button size="sm" variant="outline" onClick={handleStartEditing} className="press-effect h-8 text-xs px-3">
-                    <Pencil className="w-3 h-3 mr-1" /> Alterar
+                  <Button size="sm" variant="outline" onClick={handleStartEditing} className="press-effect h-7 sm:h-8 text-xs px-2 sm:px-3">
+                    <Pencil className="w-3 h-3" /> <span className="hidden sm:inline ml-1">Alterar</span>
                   </Button>
                 )}
                 {isEditing && (
-                  <Button size="sm" onClick={handleSaveEditing} disabled={evalSubmitting} className="press-effect h-8 text-xs px-3">
-                    {evalSubmitting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Save className="w-3 h-3 mr-1" />}
-                    Salvar Alterações
+                  <Button size="sm" onClick={handleSaveEditing} disabled={evalSubmitting} className="press-effect h-7 sm:h-8 text-xs px-2 sm:px-3">
+                    {evalSubmitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                    <span className="hidden sm:inline ml-1">Salvar</span>
                   </Button>
                 )}
                 {!isLocked && !isEditing && !evalFinalized && (
-                  <Button size="sm" onClick={handleFinalizeEvaluation} disabled={evalSubmitting} className="press-effect h-8 text-xs px-3">
-                    {evalSubmitting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Check className="w-3 h-3 mr-1" />}
-                    Concluir
-                  </Button>
-                )}
-                {canEdit && !isEditing && (
-                  <Button size="sm" variant="outline" onClick={handleStartEditing} className="press-effect h-8 text-xs px-3">
-                    <Pencil className="w-3 h-3 mr-1" /> Alterar
+                  <Button size="sm" onClick={handleFinalizeEvaluation} disabled={evalSubmitting} className="press-effect h-7 sm:h-8 text-xs px-2 sm:px-3">
+                    {evalSubmitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                    <span className="ml-1">Concluir</span>
                   </Button>
                 )}
                 {evalFinalized && !isEditing && (
-                  <Button size="sm" variant="outline" onClick={generatePDF} className="press-effect h-8 text-xs px-3">
-                    <Download className="w-3 h-3 mr-1" /> PDF
+                  <Button size="sm" variant="outline" onClick={generatePDF} className="press-effect h-7 sm:h-8 text-xs px-2 sm:px-3">
+                    <Download className="w-3 h-3" /> <span className="hidden sm:inline ml-1">PDF</span>
                   </Button>
                 )}
                 {!isLocked && evalSubmitting && (
                   <span className="text-muted-foreground flex items-center gap-1 text-xs">
-                    <Loader2 className="w-3 h-3 animate-spin" /> Finalizando...
+                    <Loader2 className="w-3 h-3 animate-spin" />
                   </span>
                 )}
-                <Button variant="outline" size="sm" onClick={backToList} className="press-effect h-8 text-xs px-3">
+                <Button variant="outline" size="sm" onClick={backToList} className="press-effect h-7 sm:h-8 text-xs px-2 sm:px-3">
                   {isLocked ? "Fechar" : "Sair"}
                 </Button>
               </div>
