@@ -185,7 +185,7 @@ export default function MfaEnrollSection() {
             <ShieldCheck className="w-5 h-5 text-green-500" />
             <span className="text-sm font-medium">Autenticação em Duas Etapas</span>
           </div>
-          <Badge variant="outline" className="text-green-600 border-green-300 bg-green-50">Ativo</Badge>
+          <Badge variant="outline" className="text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800">Ativo</Badge>
         </div>
         <p className="text-sm text-muted-foreground">
           Sua conta está protegida com verificação em duas etapas via aplicativo autenticador.
