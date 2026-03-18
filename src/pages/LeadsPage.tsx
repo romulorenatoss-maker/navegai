@@ -3679,10 +3679,6 @@ export default function LeadsPage() {
                   })()}
                 </div>
                 <div className="border rounded-md p-3 space-y-2 bg-muted/20">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Responsável pela Conversão</p>
-                  <p className="text-sm font-medium">{profiles.find(p => p.id === convConvertidoPorId)?.nome || "—"}</p>
-                </div>
-                <div className="border rounded-md p-3 space-y-2 bg-muted/20">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Atendente que fez a venda</p>
                   <p className="text-sm font-medium">{profiles.find(p => p.id === convAtendenteId)?.nome || "—"}</p>
                 </div>
