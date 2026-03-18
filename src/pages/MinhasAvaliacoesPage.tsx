@@ -31,7 +31,9 @@ export default function MinhasAvaliacoesPage() {
   const [appliedStart, setAppliedStart] = useState<Date | undefined>(startOfMonth(now));
   const [appliedEnd, setAppliedEnd] = useState<Date | undefined>(endOfMonth(now));
   const [selectedOsId, setSelectedOsId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("desempenho");
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState(tabParam || "desempenho");
 
   const handleBuscar = () => {
     setAppliedStart(startDate);
