@@ -24,7 +24,7 @@ interface ProfileData {
 interface RankEntry {
   profileId: string;
   nome: string;
-  leadsRecebidos: number;
+  leadsCriados: number;
   conversoes: number;
   taxaConversao: number;
   interacoes: number;
