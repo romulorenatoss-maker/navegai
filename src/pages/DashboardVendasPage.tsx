@@ -54,21 +54,34 @@ export default function DashboardVendasPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // All leads currently assigned to each user, created in period
-  // Only counts leads that are CURRENTLY with the attendant (responsavel_id matches)
-  // Leads returned to queue are NOT counted for the previous attendant
+  // All leads currently assigned to each user OR converted by them, created in period
+  // This ensures attendants who converted leads (even if responsavel_id changed) still get credit
   const { data: allLeadsCriados = [] } = useQuery({
-    queryKey: ["dashboard-vendas-leads-ativos-v5", from, to],
+    queryKey: ["dashboard-vendas-leads-ativos-v6", from, to],
     queryFn: async () => {
       const { data } = await supabase
         .from("leads")
-        .select("id, responsavel_id")
-        .not("responsavel_id", "is", null)
+        .select("id, responsavel_id, convertido_por")
         .gte("data_criacao", from)
         .lte("data_criacao", to);
       if (!data?.length) return [];
-      // Map to the format expected by ranking logic
-      return data.map(d => ({ lead_id: d.id, usuario_id: d.responsavel_id }));
+
+      // Build per-user lead sets: lead belongs to responsavel_id OR convertido_por
+      const results: { lead_id: string; usuario_id: string }[] = [];
+      const seen = new Set<string>();
+      data.forEach(d => {
+        // Credit to current responsible
+        if (d.responsavel_id) {
+          const key = `${d.id}-${d.responsavel_id}`;
+          if (!seen.has(key)) { seen.add(key); results.push({ lead_id: d.id, usuario_id: d.responsavel_id }); }
+        }
+        // Also credit to whoever converted (they worked the lead)
+        if (d.convertido_por && d.convertido_por !== d.responsavel_id) {
+          const key = `${d.id}-${d.convertido_por}`;
+          if (!seen.has(key)) { seen.add(key); results.push({ lead_id: d.id, usuario_id: d.convertido_por }); }
+        }
+      });
+      return results;
     },
   });
 
