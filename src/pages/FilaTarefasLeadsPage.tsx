@@ -29,25 +29,6 @@ const STATUS_STYLE: Record<string, string> = {
   realizado: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
 };
 
-const PERIODO_LABELS: Record<string, string> = { manha: "Manhã", tarde: "Tarde", noite: "Noite" };
-
-// Horários limites de cada período
-// Manhã: 06:00 - 12:00 | Tarde: 12:01 - 18:00 | Noite: 18:01 - 00:00
-function getPeriodoEndHour(periodo: string): number {
-  if (periodo === "manha") return 12;
-  if (periodo === "tarde") return 18;
-  return 24; // noite → meia-noite
-}
-
-function isTarefaExpirada(tarefa: { data_contato: string; periodo: string; status: string }): boolean {
-  if (tarefa.status === "realizado" || tarefa.status === "aguardando_visualizacao") return false;
-  const dataContato = new Date(tarefa.data_contato);
-  const now = new Date();
-  const tarefaDate = new Date(dataContato);
-  tarefaDate.setHours(getPeriodoEndHour(tarefa.periodo), 0, 0, 0);
-  return now > tarefaDate;
-}
-
 export default function FilaTarefasLeadsPage() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
