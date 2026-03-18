@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { format, addDays, setHours, setMinutes } from "date-fns";
+import { skipWeekend, PERIODO_HORA } from "@/lib/lead-task-utils";
 import { ptBR } from "date-fns/locale";
 import {
   Search, Plus, Phone, User, Users, History, ArrowRight, Trash2,
