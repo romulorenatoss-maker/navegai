@@ -79,19 +79,16 @@ export default function DashboardVendasPage() {
     },
   });
 
-  // All lead assignments in period (leads received per user)
+  // All leads assigned to users in period (by responsavel_id)
   const { data: allAssignments = [] } = useQuery({
-    queryKey: ["dashboard-vendas-assignments", from, to],
+    queryKey: ["dashboard-vendas-assignments-v2", from, to],
     queryFn: async () => {
       const { data } = await supabase
-        .from("lead_historico")
-        .select("lead_id, usuario_id, tipo_evento")
-        .in("tipo_evento", [
-          "transferencia_automatica", "transferencia_manual", "transferencia_decisao",
-          "lead_capturado", "lead_criado", "criacao"
-        ])
-        .gte("data_evento", from)
-        .lte("data_evento", to);
+        .from("leads")
+        .select("id, responsavel_id")
+        .not("responsavel_id", "is", null)
+        .gte("data_criacao", from)
+        .lte("data_criacao", to);
       return data || [];
     },
   });
