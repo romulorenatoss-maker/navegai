@@ -1,0 +1,1 @@
+UPDATE lead_tarefas_contato SET status = 'cancelada' WHERE lead_id IN (SELECT id FROM leads WHERE status_lead IN ('convertido', 'perdido', 'arquivado')) AND status IN ('pendente', 'atrasado', 'aguardando_visualizacao');
