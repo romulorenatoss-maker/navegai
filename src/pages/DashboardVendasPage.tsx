@@ -309,6 +309,41 @@ export default function DashboardVendasPage() {
         </CardContent>
       </Card>
 
+      {/* Ranking de Vendas - Cards de Destaque */}
+      {rankData.filter(r => r.conversoes > 0).length > 0 && (
+        <div>
+          <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+            <Trophy className="w-4 h-4 text-primary" />
+            Ranking de Vendas — Período Selecionado
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            {rankData.filter(r => r.conversoes > 0).map((r) => {
+              const rank = (r as any).rank ?? 1;
+              return (
+                <Card key={r.profileId} className={cn(
+                  "relative overflow-hidden",
+                  rank === 1 && "border-yellow-400/50 bg-yellow-50/30 dark:bg-yellow-950/20",
+                  rank === 2 && "border-muted-foreground/30",
+                  rank === 3 && "border-amber-400/30",
+                )}>
+                  <CardContent className="p-4 text-center">
+                    <div className={cn(
+                      "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold mx-auto mb-2",
+                      getMedalColor(rank - 1)
+                    )}>
+                      {rank}º
+                    </div>
+                    <p className="text-sm font-semibold text-foreground truncate">{r.nome}</p>
+                    <p className="text-2xl font-bold text-primary mt-1">{r.conversoes}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">vendas</p>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Metric ranking cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {metricRankings.map(metric => (
