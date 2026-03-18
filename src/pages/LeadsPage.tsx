@@ -1291,7 +1291,7 @@ export default function LeadsPage() {
           const periodoHora = firstRotina.periodo_contato === "manha" ? 9 : firstRotina.periodo_contato === "tarde" ? 14 : 19;
           skipped.setHours(periodoHora, 0, 0, 0);
           await supabase.from("lead_tarefas_contato").insert({
-            lead_id: newLead.id, tentativa: 1, data_contato: nextDate.toISOString(),
+            lead_id: newLead.id, tentativa: 1, data_contato: skipped.toISOString(),
             periodo: firstRotina.periodo_contato, status: "pendente", responsavel_id: profile.id,
           });
         }
