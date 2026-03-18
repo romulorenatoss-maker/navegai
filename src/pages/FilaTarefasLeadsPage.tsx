@@ -240,7 +240,7 @@ export default function FilaTarefasLeadsPage() {
         await supabase.from("lead_tarefas_contato").insert({
           lead_id: selectedTarefa.lead_id,
           tentativa: nextTentativa,
-          data_contato: nextDate.toISOString(),
+          data_contato: skippedDate.toISOString(),
           periodo,
           status: "pendente",
           responsavel_id: profile.id,
