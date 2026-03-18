@@ -152,10 +152,10 @@ export default function DashboardVendasPage() {
       if (entry) entry.leadsCriados = leads.size;
     });
 
-    // Conversions attributed to lead creator
+    // Conversions attributed to convertido_por (who made the sale)
     allConversoes.forEach(c => {
-      if (!c.criador_id) return;
-      const entry = profileMap.get(c.criador_id);
+      if (!c.convertido_por) return;
+      const entry = profileMap.get(c.convertido_por);
       if (entry) entry.conversoes++;
     });
 
