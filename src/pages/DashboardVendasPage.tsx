@@ -54,42 +54,44 @@ export default function DashboardVendasPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // All conversions in period
-  const { data: allConversoes = [] } = useQuery({
-    queryKey: ["dashboard-vendas-conversoes", from, to],
+  // All leads created per user in period (via lead_historico criacao events)
+  const { data: allLeadsCriados = [] } = useQuery({
+    queryKey: ["dashboard-vendas-leads-criados", from, to],
     queryFn: async () => {
       const { data } = await supabase
         .from("lead_historico")
-        .select("lead_id, data_evento, usuario_id")
+        .select("lead_id, usuario_id")
+        .in("tipo_evento", ["lead_criado", "criacao"])
+        .gte("data_evento", from)
+        .lte("data_evento", to);
+      return data || [];
+    },
+  });
+
+  // All conversions in period — attributed to the CREATOR of the lead
+  const { data: allConversoes = [] } = useQuery({
+    queryKey: ["dashboard-vendas-conversoes-v3", from, to],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("lead_historico")
+        .select("lead_id, data_evento")
         .eq("tipo_evento", "conversao_cliente")
         .gte("data_evento", from)
         .lte("data_evento", to);
       if (!data?.length) return [];
-      const leadIds = [...new Set(data.map(d => d.lead_id))];
-      // Batch fetch leads with convertido_por
-      const allLeads: { id: string; responsavel_id: string | null; convertido_por: string | null }[] = [];
-      for (let i = 0; i < leadIds.length; i += 500) {
-        const batch = leadIds.slice(i, i + 500);
-        const { data: leads } = await supabase.from("leads").select("id, responsavel_id, convertido_por").in("id", batch);
-        if (leads) allLeads.push(...(leads as any));
-      }
-      const leadResp: Record<string, string | null> = {};
-      allLeads.forEach(l => { leadResp[l.id] = (l as any).convertido_por || l.responsavel_id; });
-      return data.map(d => ({ lead_id: d.lead_id, data_evento: d.data_evento, responsavel_id: leadResp[d.lead_id] || null }));
-    },
-  });
 
-  // All leads assigned to users in period (by responsavel_id)
-  const { data: allAssignments = [] } = useQuery({
-    queryKey: ["dashboard-vendas-assignments-v2", from, to],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("leads")
-        .select("id, responsavel_id")
-        .not("responsavel_id", "is", null)
-        .gte("data_criacao", from)
-        .lte("data_criacao", to);
-      return data || [];
+      // Find creator of each converted lead
+      const leadIds = [...new Set(data.map(d => d.lead_id))];
+      const { data: criacaoEvents } = await supabase
+        .from("lead_historico")
+        .select("lead_id, usuario_id")
+        .in("tipo_evento", ["lead_criado", "criacao"])
+        .in("lead_id", leadIds);
+
+      const creatorByLead: Record<string, string> = {};
+      criacaoEvents?.forEach(e => { if (!creatorByLead[e.lead_id]) creatorByLead[e.lead_id] = e.usuario_id; });
+
+      return data.map(d => ({ lead_id: d.lead_id, data_evento: d.data_evento, criador_id: creatorByLead[d.lead_id] || null }));
     },
   });
 
