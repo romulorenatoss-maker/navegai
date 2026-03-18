@@ -167,7 +167,7 @@ export default function MinhasVendasTab() {
   const totalConversoes = conversoes.length;
   const totalTransferencias = transferencias.length;
   const totalInteracoes = interacoes.length;
-  const taxaConversao = totalLeads > 0 ? ((totalConversoes / totalLeads) * 100) : 0;
+  const taxaConversao = totalLeads > 0 ? Math.min((totalConversoes / totalLeads) * 100, 100) : 0;
   const mediaTentativasPorConversao = totalConversoes > 0 ? (totalInteracoes / totalConversoes) : 0;
 
   // Ranking position
