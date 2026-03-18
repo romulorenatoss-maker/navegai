@@ -109,6 +109,7 @@ export default function AvaliacaoOSPage() {
   const [formValidating, setFormValidating] = useState(false);
   const [formValidated, setFormValidated] = useState(false);
   const [formFoundOS, setFormFoundOS] = useState<any | null>(null);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
   const [formPendingAval, setFormPendingAval] = useState<any | null>(null);
   const [showNewOsDialog, setShowNewOsDialog] = useState(false);
 
@@ -1479,6 +1480,7 @@ export default function AvaliacaoOSPage() {
     setFormOsNumero("");
     setFormValidated(false);
     setFormFoundOS(null);
+    setSearchResults([]);
     setFormPendingAval(null);
     setShowNewOsDialog(false);
     setTipoServicoId("");
@@ -2584,6 +2586,7 @@ export default function AvaliacaoOSPage() {
     setFormValidating(true);
     setFormValidated(false);
     setFormFoundOS(null);
+    setSearchResults([]);
     setFormPendingAval(null);
     setShowNewOsDialog(false);
 
@@ -2627,11 +2630,6 @@ export default function AvaliacaoOSPage() {
           .maybeSingle();
 
         if (existingOS) {
-          setFormFoundOS(existingOS);
-          if (existingOS.tipo_servico_id) setTipoServicoId(existingOS.tipo_servico_id);
-          if (existingOS.atendente_id) setAtendenteId(existingOS.atendente_id);
-          if (existingOS.tecnico_id) setTecnicoId(existingOS.tecnico_id);
-
           if (cliente && (!existingOS.cliente_nome || !existingOS.cliente_cpf || !existingOS.cliente_id)) {
             await supabase.from("ordens_servico").update({
               cliente_nome: cliente.nome,
@@ -2643,25 +2641,7 @@ export default function AvaliacaoOSPage() {
             existingOS.cliente_id = cliente.id;
           }
 
-          if (profile) {
-            const { data: pendingAval } = await supabase
-              .from("avaliacoes")
-              .select("id, tipo_avaliacao_id, concluida, nota_final")
-              .eq("ordem_servico_id", existingOS.id)
-              .eq("avaliador_id", profile.id)
-              .eq("concluida", false)
-              .limit(1)
-              .maybeSingle();
-
-            if (pendingAval) {
-              setFormPendingAval(pendingAval);
-              toast.info("Avaliação pendente encontrada. Abrindo...");
-              setFormValidated(true);
-              await openEvaluation(pendingAval.id, existingOS.id);
-              return;
-            }
-          }
-
+          setSearchResults([existingOS]);
           toast.success("OS encontrada!");
           setFormValidated(true);
           return;
@@ -2711,53 +2691,23 @@ export default function AvaliacaoOSPage() {
             return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
           });
 
-          const targetOS = prioritizedOs[0];
-
-          if (cliente && !targetOS.cliente_id) {
-            await supabase.from("ordens_servico").update({
-              cliente_id: cliente.id,
-              cliente_nome: cliente.nome,
-              cliente_cpf: cliente.cpf,
-            } as any).eq("id", targetOS.id);
-            targetOS.cliente_id = cliente.id;
-            targetOS.cliente_nome = cliente.nome;
-            targetOS.cliente_cpf = cliente.cpf;
-          }
-
-          setFormFoundOS(targetOS);
-          if (targetOS.tipo_servico_id) setTipoServicoId(targetOS.tipo_servico_id);
-          if (targetOS.atendente_id) setAtendenteId(targetOS.atendente_id);
-          if (targetOS.tecnico_id) setTecnicoId(targetOS.tecnico_id);
-          setFormValidated(true);
-
-          if (!targetOS.numero_os) {
-            setFillNumeroOsId(targetOS.id);
-            setFillNumeroValue("");
-            setShowNewOsDialog(true);
-            toast.info("OS existente encontrada aguardando número.");
-            return;
-          }
-
-          if (profile) {
-            const { data: pendingAval } = await supabase
-              .from("avaliacoes")
-              .select("id, tipo_avaliacao_id, concluida, nota_final")
-              .eq("ordem_servico_id", targetOS.id)
-              .eq("avaliador_id", profile.id)
-              .eq("concluida", false)
-              .limit(1)
-              .maybeSingle();
-
-            if (pendingAval) {
-              setFormPendingAval(pendingAval);
-              toast.info("Avaliação pendente encontrada. Abrindo...");
-              await openEvaluation(pendingAval.id, targetOS.id);
-              return;
+          // Update client info on OS that don't have it
+          for (const os of prioritizedOs) {
+            if (cliente && !os.cliente_id) {
+              await supabase.from("ordens_servico").update({
+                cliente_id: cliente.id,
+                cliente_nome: cliente.nome,
+                cliente_cpf: cliente.cpf,
+              } as any).eq("id", os.id);
+              os.cliente_id = cliente.id;
+              os.cliente_nome = cliente.nome;
+              os.cliente_cpf = cliente.cpf;
             }
           }
 
-          setFormOsNumero(targetOS.numero_os || "");
-          toast.success(`OS ${targetOS.numero_os} encontrada para o cliente!`);
+          setSearchResults(prioritizedOs);
+          setFormValidated(true);
+          toast.success(`${prioritizedOs.length} OS encontrada(s) para o cliente.`);
           return;
         }
 
@@ -2805,7 +2755,7 @@ export default function AvaliacaoOSPage() {
                   value={formClienteCpf}
                   onChange={e => {
                     setFormClienteCpf(formatCpf(e.target.value));
-                    if (cpfValidated || formValidated || !!formFoundOS || showNewOsDialog) {
+                    if (cpfValidated || formValidated || !!formFoundOS || searchResults.length > 0 || showNewOsDialog) {
                       setCpfValidated(false);
                       setFormFoundCliente(null);
                       setShowNewClienteForm(false);
@@ -2813,6 +2763,7 @@ export default function AvaliacaoOSPage() {
                       setFormOsNumero("");
                       setFormValidated(false);
                       setFormFoundOS(null);
+                      setSearchResults([]);
                       setFormPendingAval(null);
                       setShowNewOsDialog(false);
                       setTipoServicoId("");
@@ -2832,7 +2783,7 @@ export default function AvaliacaoOSPage() {
               <Label>Número da OS</Label>
               <Input
                 value={formOsNumero}
-                onChange={e => { setFormOsNumero(e.target.value.replace(/\D/g, "")); if (formValidated) { setFormValidated(false); setFormFoundOS(null); } }}
+                onChange={e => { setFormOsNumero(e.target.value.replace(/\D/g, "")); if (formValidated) { setFormValidated(false); setFormFoundOS(null); setSearchResults([]); } }}
                 placeholder="Ex: 12345"
                 disabled={!!formFoundOS}
                 onKeyDown={e => e.key === "Enter" && handleCombinedSearch()}
@@ -2873,7 +2824,7 @@ export default function AvaliacaoOSPage() {
           )}
 
           <div className="flex items-center gap-3">
-            {!formFoundOS && (
+            {!formFoundOS && searchResults.length === 0 && (
               <Button
                 onClick={handleCombinedSearch}
                 disabled={(!formOsNumero.trim() && !formClienteCpf.replace(/\D/g, "")) || cpfValidating || formValidating}
@@ -2890,16 +2841,85 @@ export default function AvaliacaoOSPage() {
         </div>
       </div>
 
-      {/* Results: OS found — always right below the search */}
+      {/* Results: OS list — always right below the search */}
+      {formValidated && searchResults.length > 0 && !formFoundOS && (
+        <div className="bg-card border border-border rounded-lg shadow-card mb-6">
+          <div className="p-4 border-b border-border flex items-center gap-2">
+            <Search className="w-4 h-4 text-primary" />
+            <h2 className="text-body font-semibold text-foreground">Resultados da Busca</h2>
+            <Badge variant="secondary" className="ml-auto text-xs">{searchResults.length} OS</Badge>
+          </div>
+          <div className="divide-y divide-border">
+            {searchResults.map((os: any) => {
+              const tipoNome = tiposServico.find(t => t.id === os.tipo_servico_id)?.nome;
+              const atendenteNome = allProfiles.find(p => p.id === os.atendente_id)?.nome;
+              const tecnicoNome = allProfiles.find(p => p.id === os.tecnico_id)?.nome;
+              return (
+                <div key={os.id} className="px-4 py-3 hover:bg-muted/30 transition-colors">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-body font-semibold text-foreground font-tabular">
+                          {os.numero_os ? `OS #${os.numero_os}` : "Sem número"}
+                        </p>
+                        <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border", statusLabel[os.status]?.badge)}>
+                          {statusLabel[os.status]?.text}
+                        </span>
+                        {tipoNome && <Badge variant="outline" className="text-xs">{tipoNome}</Badge>}
+                      </div>
+                      <p className="text-caption text-muted-foreground mt-0.5">
+                        {os.cliente_nome || "Sem cliente"}
+                        {os.cliente_cpf ? ` • CPF: ${os.cliente_cpf}` : ""}
+                        {` • Ocorrência: ${format(new Date(os.data_abertura || os.created_at), "dd/MM/yyyy")}`}
+                      </p>
+                      <p className="text-caption text-muted-foreground">
+                        {atendenteNome ? `Atendente: ${atendenteNome}` : ""}
+                        {atendenteNome && tecnicoNome ? " • " : ""}
+                        {tecnicoNome ? `Técnico: ${tecnicoNome}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button size="sm" variant="outline" onClick={() => { setSelectedOS(os); setView("os_detail"); }} className="press-effect h-8 text-xs px-3">
+                        <Eye className="w-3.5 h-3.5 mr-1" /> Detalhes
+                      </Button>
+                      {os.status !== "concluida" && os.numero_os && (
+                        <Button size="sm" onClick={() => startMyEvaluation(os)} className="press-effect h-8 text-xs px-3">
+                          Avaliar <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                        </Button>
+                      )}
+                      {!os.numero_os && (
+                        <Button size="sm" onClick={() => { setFillNumeroOsId(os.id); setFormFoundOS(os); setShowNewOsDialog(true); }} className="press-effect h-8 text-xs px-3 bg-warning text-warning-foreground hover:bg-warning/90">
+                          Preencher Número
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {/* Option to create new OS */}
+          {clienteId && (
+            <div className="p-3 border-t border-border bg-muted/20">
+              <Button size="sm" variant="outline" onClick={() => { setShowNewOsDialog(true); }} className="press-effect text-xs">
+                + Criar Nova OS para este cliente
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Single OS selected (from formFoundOS) */}
       {formValidated && formFoundOS && (
         <AnimatePresence>
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
             <div className="bg-success/5 border border-success/20 rounded-lg p-4 space-y-4 mb-6">
               <div className="flex items-center gap-2 mb-1">
                 <Check className="w-4 h-4 text-success" />
-                <span className="text-sm font-medium text-success">OS encontrada no sistema</span>
-                <Lock className="w-3.5 h-3.5 text-muted-foreground ml-1" />
-                <span className="text-caption text-muted-foreground">Campos bloqueados</span>
+                <span className="text-sm font-medium text-success">OS selecionada</span>
+                <Button variant="ghost" size="sm" className="ml-auto text-xs h-7" onClick={() => { setFormFoundOS(null); }}>
+                  ← Voltar aos resultados
+                </Button>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
@@ -2983,8 +3003,6 @@ export default function AvaliacaoOSPage() {
           </motion.div>
         </AnimatePresence>
       )}
-
-      {/* OS Aguardando Número */}
       {aguardandoNumeroOS.length > 0 && (
         <div className="bg-card border border-border rounded-lg shadow-card mb-6">
           <div className="p-4 border-b border-border flex items-center gap-2">
