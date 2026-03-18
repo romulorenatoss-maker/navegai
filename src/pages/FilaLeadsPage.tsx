@@ -756,6 +756,67 @@ export default function FilaLeadsPage() {
     },
   });
 
+  // ─── Expiration timer for captured leads without interaction ───
+  const tempoExpiracaoCaptura = (fluxoConfig as any)?.tempo_expiracao_captura_segundos || 120;
+  const acaoQuandoExpirar = (fluxoConfig as any)?.acao_quando_atrasar || "devolver_fila";
+
+  useEffect(() => {
+    if (!profile) return;
+    const timeoutSeconds = tempoExpiracaoCaptura;
+    const intervalMs = Math.min(timeoutSeconds * 1000, 15000);
+
+    const checkExpiredCaptures = async () => {
+      const { data: expiredLeads } = await supabase
+        .from("leads")
+        .select("id, nome, reserved_at, responsavel_id")
+        .eq("status_lead", "em_atendimento")
+        .not("reserved_at", "is", null);
+
+      if (!expiredLeads || expiredLeads.length === 0) return;
+
+      const now = new Date();
+      let hadExpiration = false;
+      for (const lead of expiredLeads) {
+        if (!lead.reserved_at) continue;
+        const elapsedSec = (now.getTime() - new Date(lead.reserved_at).getTime()) / 1000;
+        if (elapsedSec < timeoutSeconds) continue;
+
+        const { count } = await supabase
+          .from("lead_interacoes")
+          .select("id", { count: "exact", head: true })
+          .eq("lead_id", lead.id)
+          .gte("data_interacao", lead.reserved_at);
+
+        if (count && count > 0) {
+          await supabase.from("leads").update({ reserved_at: null } as any).eq("id", lead.id);
+          continue;
+        }
+
+        hadExpiration = true;
+
+        if (acaoQuandoExpirar === "aguardar_avaliador") {
+          await supabase.from("leads").update({ status_lead: "aguardando_decisao_avaliador", reserved_by: null, reserved_at: null } as any).eq("id", lead.id);
+          await supabase.from("lead_historico").insert({ lead_id: lead.id, usuario_id: profile.id, tipo_evento: "captura_expirada", descricao: `Captura expirou após ${timeoutSeconds}s sem interação. Lead enviado para avaliador decidir.` });
+        } else {
+          await supabase.from("leads").update({ status_lead: "fila_captura", responsavel_id: null, reserved_by: null, reserved_at: null } as any).eq("id", lead.id);
+          await supabase.from("lead_historico").insert({ lead_id: lead.id, usuario_id: profile.id, tipo_evento: "captura_expirada", descricao: `Captura expirou após ${timeoutSeconds}s sem interação. Lead devolvido à fila de captura.` });
+        }
+
+        await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", lead.id).in("status", ["pendente", "atrasado", "aguardando_visualizacao"]);
+        toast.warning(`Lead "${lead.nome}" — captura expirada sem interação.`);
+      }
+
+      if (hadExpiration) {
+        queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
+        queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
+        queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+      }
+    };
+
+    const timer = setInterval(checkExpiredCaptures, intervalMs);
+    checkExpiredCaptures();
+    return () => clearInterval(timer);
+  }, [profile?.id, tempoExpiracaoCaptura, acaoQuandoExpirar, queryClient]);
 
   const tarefaAttemptMutation = useMutation({
     mutationFn: async () => {
