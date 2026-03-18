@@ -2191,9 +2191,16 @@ export default function LeadsPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => setShowTransferHistory(true)} size="sm" variant="outline" className="h-8 gap-1">
-            <ArrowRightLeft className="w-3.5 h-3.5" /> Transferências
-          </Button>
+          <div className="relative">
+            <Button onClick={handleOpenTransferHistory} size="icon" variant="outline" className="h-8 w-8" title="Transferências">
+              <ArrowRightLeft className="w-4 h-4" />
+            </Button>
+            {pendingTransferCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold animate-pulse">
+                {pendingTransferCount}
+              </span>
+            )}
+          </div>
           {!isVisionMode && (
             <>
               <div className="relative w-64">
