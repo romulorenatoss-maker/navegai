@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -7,14 +7,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 import { format, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   CalendarIcon, Filter, Trophy, TrendingUp, Users, Phone,
-  ArrowRightLeft, Target, BarChart3, Medal, Search
+  ArrowRightLeft, Target, BarChart3, Medal, Search, Eye, Loader2,
+  CheckCircle2, XCircle, Clock, FileText, User, ChevronRight
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
+import { getScoreColorClass, getScoreBgClass } from "@/lib/score-colors";
+
 
 interface ProfileData {
   id: string;
@@ -43,6 +49,128 @@ export default function DashboardVendasPage() {
 
   const from = appliedStart ? startOfDay(appliedStart).toISOString() : startOfDay(startOfMonth(now)).toISOString();
   const to = appliedEnd ? endOfDay(appliedEnd).toISOString() : endOfDay(endOfMonth(now)).toISOString();
+
+  // Detail dialog state
+  const [selectedProfile, setSelectedProfile] = useState<{ id: string; nome: string } | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailLeads, setDetailLeads] = useState<any[]>([]);
+
+
+  const openDetailDialog = useCallback(async (profileId: string, nome: string) => {
+    setSelectedProfile({ id: profileId, nome });
+    setDetailOpen(true);
+    setDetailLoading(true);
+    try {
+      // Get converted leads for this profile in period
+      const { data: leads } = await supabase
+        .from("leads")
+        .select("id, nome, status_lead, data_criacao, cliente_id, convertido_por, convertido_registrado_por")
+        .eq("convertido_por", profileId)
+        .eq("status_lead", "convertido")
+        .gte("data_criacao", from)
+        .lte("data_criacao", to)
+        .order("data_criacao", { ascending: false });
+
+      if (!leads?.length) { setDetailLeads([]); setDetailLoading(false); return; }
+
+      const leadIds = leads.map(l => l.id);
+      const clienteIds = [...new Set(leads.map(l => l.cliente_id).filter(Boolean))] as string[];
+
+      // Fetch in parallel: history, OS (via cliente_id), contacts, profiles for names
+      const [histRes, osRes, contactsRes, convertedByRes] = await Promise.all([
+        supabase.from("lead_historico").select("lead_id, tipo_evento, descricao, data_evento, usuario_id")
+          .in("lead_id", leadIds).order("data_evento", { ascending: true }),
+        clienteIds.length > 0
+          ? supabase.from("ordens_servico").select("id, numero_os, status, cliente_id, tipo_servico_id, data_abertura, data_conclusao")
+              .in("cliente_id", clienteIds).order("data_abertura", { ascending: false })
+          : { data: [] },
+        supabase.from("lead_contatos").select("lead_id, tipo_contato, valor").in("lead_id", leadIds),
+        (() => {
+          const userIds = new Set<string>();
+          leads.forEach(l => { if (l.convertido_registrado_por) userIds.add(l.convertido_registrado_por); });
+          return userIds.size > 0
+            ? supabase.from("profiles").select("id, nome").in("id", [...userIds])
+            : { data: [] };
+        })(),
+      ]);
+
+      // Get OS IDs for evaluation data
+      const osData = osRes.data || [];
+      const osIds = osData.map(o => o.id);
+
+      // Fetch evaluations + tipo_servico names
+      const tipoIds = [...new Set(osData.map(o => o.tipo_servico_id).filter(Boolean))] as string[];
+      const [avalsRes, tiposRes, respostasRes] = await Promise.all([
+        osIds.length > 0 ? supabase.from("avaliacoes").select("id, ordem_servico_id, nota_final, concluida, concluida_em, avaliador_id")
+          .in("ordem_servico_id", osIds) : { data: [] },
+        tipoIds.length > 0 ? supabase.from("tipos_servico").select("id, nome").in("id", tipoIds) : { data: [] },
+        osIds.length > 0 ? supabase.from("respostas_avaliacao").select("ordem_servico_id, pergunta_id, resposta, observacao")
+          .in("ordem_servico_id", osIds).not("resposta", "is", null) : { data: [] },
+      ]);
+
+      // Get pergunta texts
+      const perguntaIds = [...new Set((respostasRes.data || []).map(r => r.pergunta_id))];
+      const perguntasRes = perguntaIds.length > 0
+        ? await supabase.from("perguntas_avaliacao").select("id, pergunta, peso, setor_avaliado_id").in("id", perguntaIds)
+        : { data: [] };
+
+      // Get setor names for perguntas
+      const setorIds = [...new Set((perguntasRes.data || []).map(p => p.setor_avaliado_id).filter(Boolean))] as string[];
+      const setoresRes = setorIds.length > 0
+        ? await supabase.from("setores").select("id, nome").in("id", setorIds)
+        : { data: [] };
+
+      // Build lookup maps
+      const profileNames: Record<string, string> = {};
+      (convertedByRes.data || []).forEach((p: any) => { profileNames[p.id] = p.nome; });
+      const tipoNames: Record<string, string> = {};
+      (tiposRes.data || []).forEach((t: any) => { tipoNames[t.id] = t.nome; });
+      const perguntaMap: Record<string, any> = {};
+      (perguntasRes.data || []).forEach((p: any) => { perguntaMap[p.id] = p; });
+      const setorNames: Record<string, string> = {};
+      (setoresRes.data || []).forEach((s: any) => { setorNames[s.id] = s.nome; });
+
+      // Compose enriched leads
+      const enriched = leads.map(lead => {
+        const history = (histRes.data || []).filter(h => h.lead_id === lead.id);
+        const contacts = (contactsRes.data || []).filter(c => c.lead_id === lead.id);
+        const leadOS = osData.filter(o => o.cliente_id === lead.cliente_id);
+        const osEnriched = leadOS.map(os => {
+          const avals = (avalsRes.data || []).filter(a => a.ordem_servico_id === os.id);
+          const respostas = (respostasRes.data || []).filter(r => r.ordem_servico_id === os.id);
+          const respostasEnriched = respostas.map(r => ({
+            ...r,
+            pergunta_texto: perguntaMap[r.pergunta_id]?.pergunta || "—",
+            peso: perguntaMap[r.pergunta_id]?.peso || 1,
+            setor_nome: perguntaMap[r.pergunta_id]?.setor_avaliado_id
+              ? setorNames[perguntaMap[r.pergunta_id].setor_avaliado_id] || "—"
+              : "Geral",
+          }));
+          return {
+            ...os,
+            tipo_servico_nome: os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || null : null,
+            avaliacoes: avals,
+            respostas: respostasEnriched,
+          };
+        });
+        return {
+          ...lead,
+          history,
+          contacts,
+          ordens: osEnriched,
+          registrado_por_nome: lead.convertido_registrado_por ? profileNames[lead.convertido_registrado_por] || null : null,
+        };
+      });
+
+      setDetailLeads(enriched);
+    } catch (err) {
+      console.error("Error loading detail:", err);
+    } finally {
+      setDetailLoading(false);
+    }
+  }, [from, to]);
+
 
   // All active profiles (atendentes)
   const { data: profiles = [] } = useQuery({
@@ -347,6 +475,9 @@ export default function DashboardVendasPage() {
                     <span className="flex-1 text-sm font-medium text-foreground truncate">{r.nome}</span>
                     <span className="text-lg font-bold text-primary tabular-nums">{r.conversoes}</span>
                     <span className="text-[10px] text-muted-foreground w-10">vendas</span>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => openDetailDialog(r.profileId, r.nome)}>
+                      <Eye className="w-4 h-4 text-muted-foreground" />
+                    </Button>
                   </div>
                 );
               })}
@@ -421,12 +552,13 @@ export default function DashboardVendasPage() {
                   <TableHead className="text-center">Interações</TableHead>
                   <TableHead className="text-center">Média Tent.</TableHead>
                   <TableHead className="text-center">Transferências</TableHead>
+                  <TableHead className="w-10"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rankData.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">
+                   <TableRow>
+                    <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-8">
                       Nenhuma atividade no período selecionado.
                     </TableCell>
                   </TableRow>
@@ -454,6 +586,13 @@ export default function DashboardVendasPage() {
                       <TableCell className="text-center">{r.interacoes}</TableCell>
                       <TableCell className="text-center">{r.mediaTentativas.toFixed(1)}</TableCell>
                       <TableCell className="text-center">{r.transferencias}</TableCell>
+                      <TableCell>
+                        {r.conversoes > 0 && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openDetailDialog(r.profileId, r.nome)}>
+                            <Eye className="w-4 h-4 text-muted-foreground" />
+                          </Button>
+                        )}
+                      </TableCell>
                     </TableRow>
                     );
                   })
@@ -496,6 +635,173 @@ export default function DashboardVendasPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Detail Dialog */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] p-0">
+          <DialogHeader className="px-6 pt-6 pb-3">
+            <DialogTitle className="flex items-center gap-2">
+              <User className="w-5 h-5" />
+              Leads Convertidos — {selectedProfile?.nome}
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="px-6 pb-6 max-h-[70vh]">
+            {detailLoading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : detailLeads.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Nenhum lead convertido no período.</p>
+            ) : (
+              <Accordion type="multiple" className="space-y-2">
+                {detailLeads.map((lead: any) => (
+                  <AccordionItem key={lead.id} value={lead.id} className="border rounded-lg px-4">
+                    <AccordionTrigger className="py-3 hover:no-underline">
+                      <div className="flex items-center gap-3 text-left w-full mr-2">
+                        <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{lead.nome}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Criado em {format(new Date(lead.data_criacao), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                            {lead.contacts?.length > 0 && ` · ${lead.contacts[0].valor}`}
+                          </p>
+                        </div>
+                        {lead.ordens?.length > 0 && (
+                          <Badge variant="outline" className="text-[10px] shrink-0">
+                            {lead.ordens.length} OS
+                          </Badge>
+                        )}
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-4 pb-2">
+                        {/* Timeline */}
+                        <div>
+                          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Histórico</h4>
+                          <div className="space-y-1.5">
+                            {(lead.history || []).map((h: any, idx: number) => {
+                              const eventLabels: Record<string, string> = {
+                                criacao: "Lead criado",
+                                captura: "Lead capturado",
+                                transferencia_manual: "Transferência manual",
+                                transferencia_automatica: "Transferência automática",
+                                conversao_cliente: "Convertido em cliente",
+                                agendamento: "Agendamento",
+                                tentativa_contato: "Tentativa de contato",
+                                perda: "Lead perdido",
+                                arquivado: "Arquivado",
+                              };
+                              const isConversion = h.tipo_evento === "conversao_cliente";
+                              return (
+                                <div key={idx} className={cn(
+                                  "flex items-start gap-2 text-xs py-1 px-2 rounded",
+                                  isConversion && "bg-success/10"
+                                )}>
+                                  <Clock className="w-3 h-3 mt-0.5 text-muted-foreground shrink-0" />
+                                  <span className="text-muted-foreground shrink-0">{format(new Date(h.data_evento), "dd/MM HH:mm")}</span>
+                                  <span className={cn("font-medium", isConversion ? "text-success" : "text-foreground")}>
+                                    {eventLabels[h.tipo_evento] || h.tipo_evento}
+                                  </span>
+                                  {h.descricao && <span className="text-muted-foreground truncate">— {h.descricao}</span>}
+                                </div>
+                              );
+                            })}
+                            {(!lead.history || lead.history.length === 0) && (
+                              <p className="text-xs text-muted-foreground italic">Sem registros de histórico.</p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* OS & Avaliação */}
+                        {(lead.ordens || []).map((os: any) => (
+                          <div key={os.id} className="border rounded-lg p-3 space-y-3">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <FileText className="w-4 h-4 text-primary shrink-0" />
+                              <span className="text-sm font-semibold text-foreground">
+                                OS {os.numero_os ? `#${os.numero_os}` : "(sem número)"}
+                              </span>
+                              {os.tipo_servico_nome && (
+                                <Badge variant="secondary" className="text-[10px]">{os.tipo_servico_nome}</Badge>
+                              )}
+                              <Badge variant={os.status === "concluida" ? "default" : "outline"} className="text-[10px]">
+                                {os.status === "concluida" ? "Concluída" : os.status === "em_andamento" ? "Em andamento" : os.status === "aguardando_numero" ? "Aguardando nº" : "Aberta"}
+                              </Badge>
+                              {os.data_abertura && (
+                                <span className="text-[10px] text-muted-foreground ml-auto">
+                                  {format(new Date(os.data_abertura), "dd/MM/yyyy")}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Avaliacoes summary */}
+                            {os.avaliacoes?.length > 0 && (
+                              <div className="flex items-center gap-3 flex-wrap">
+                                {os.avaliacoes.map((aval: any) => (
+                                  <div key={aval.id} className="flex items-center gap-1.5">
+                                    {aval.concluida ? (
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+                                    ) : (
+                                      <Clock className="w-3.5 h-3.5 text-warning" />
+                                    )}
+                                    <span className="text-xs text-foreground">
+                                      Nota: {aval.nota_final != null ? (
+                                        <span className={getScoreColorClass(aval.nota_final)}>{aval.nota_final.toFixed(1)}%</span>
+                                      ) : "—"}
+                                    </span>
+                                    {aval.concluida_em && (
+                                      <span className="text-[10px] text-muted-foreground">
+                                        ({format(new Date(aval.concluida_em), "dd/MM HH:mm")})
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Respostas da avaliação */}
+                            {os.respostas?.length > 0 && (
+                              <div>
+                                <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Respostas da Avaliação</h5>
+                                <div className="space-y-1">
+                                  {os.respostas.map((r: any, idx: number) => (
+                                    <div key={idx} className="flex items-start gap-2 text-xs py-1 px-2 rounded bg-muted/50">
+                                      {r.resposta === "sim" ? (
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-success mt-0.5 shrink-0" />
+                                      ) : r.resposta === "nao" ? (
+                                        <XCircle className="w-3.5 h-3.5 text-destructive mt-0.5 shrink-0" />
+                                      ) : (
+                                        <span className="w-3.5 h-3.5 flex items-center justify-center text-[9px] font-bold text-warning mt-0.5 shrink-0">N/A</span>
+                                      )}
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-foreground">{r.pergunta_texto}</p>
+                                        <p className="text-muted-foreground">
+                                          {r.setor_nome} · Peso: {r.peso}
+                                          {r.observacao && ` · ${r.observacao}`}
+                                        </p>
+                                      </div>
+                                      <Badge variant={r.resposta === "sim" || r.resposta === "na" ? "default" : "destructive"} className="text-[10px] shrink-0">
+                                        {r.resposta?.toUpperCase()}
+                                      </Badge>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+
+                        {(!lead.ordens || lead.ordens.length === 0) && (
+                          <p className="text-xs text-muted-foreground italic">Nenhuma OS vinculada a este lead.</p>
+                        )}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
