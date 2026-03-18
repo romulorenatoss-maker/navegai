@@ -85,7 +85,7 @@ export default function DashboardVendasPage() {
       const { data: criacaoEvents } = await supabase
         .from("lead_historico")
         .select("lead_id, usuario_id")
-        .in("tipo_evento", ["lead_criado", "criacao"])
+        .in("tipo_evento", ["lead_criado", "criacao", "lead_capturado"])
         .in("lead_id", leadIds);
 
       const creatorByLead: Record<string, string> = {};
