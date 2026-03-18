@@ -504,6 +504,21 @@ export default function LeadsPage() {
     },
   });
 
+  // Profiles linked to the "Atendimento" sector — used in conversion dialog
+  const { data: atendimentoProfiles = [] } = useQuery({
+    queryKey: ["profiles-setor-atendimento-conv"],
+    queryFn: async () => {
+      const { data: setores } = await supabase.from("setores").select("id, nome").ilike("nome", "%atendimento%").limit(1);
+      const setorId = setores?.[0]?.id;
+      if (!setorId) return [] as { id: string; nome: string }[];
+      const { data: vinculos } = await supabase.from("colaborador_setores").select("profile_id").eq("setor_id", setorId);
+      if (!vinculos || vinculos.length === 0) return [] as { id: string; nome: string }[];
+      const profileIds = vinculos.map(v => v.profile_id);
+      const { data: profs } = await supabase.from("profiles").select("id, nome").in("id", profileIds).eq("ativo", true).order("nome");
+      return (profs || []) as { id: string; nome: string }[];
+    },
+  });
+
   const { data: cadencia = [] } = useQuery({
     queryKey: ["rotina-tentativas-leads-cadencia"],
     queryFn: async () => {
