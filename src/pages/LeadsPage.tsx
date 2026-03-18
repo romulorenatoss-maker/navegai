@@ -1515,7 +1515,6 @@ export default function LeadsPage() {
         const finalStatus = acaoFinal === "arquivar_lead" ? "arquivado" : "aguardando_decisao_avaliador";
         await supabase.from("leads").update({ 
           status_lead: finalStatus,
-          responsavel_id: null,
         }).eq("id", selectedLead.id);
         await supabase.from("lead_historico").insert({
           lead_id: selectedLead.id, usuario_id: profile.id,
