@@ -1640,13 +1640,7 @@ export default function LeadsPage() {
         await supabase.from("leads").update(leadUpdates as any).eq("id", selectedLead.id);
       }
 
-      // Save objeção if changed
-      if (localObjecaoId !== "none" && localObjecaoId !== (leadObjecaoRegistro?.objecao_id || "none")) {
-        await supabase.from("registro_objecao_lead").insert({
-          lead_id: selectedLead.id, objecao_id: localObjecaoId, colaborador_id: profile.id,
-        });
-        changes.push(`Objeção: ${objecoes.find(o => o.id === localObjecaoId)?.descricao || localObjecaoId}`);
-      }
+      // Objeção is now auto-saved on select change, no need to save here
 
       if (changes.length > 0) {
         await supabase.from("lead_historico").insert({
