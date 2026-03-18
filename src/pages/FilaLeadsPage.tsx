@@ -91,6 +91,7 @@ export default function FilaLeadsPage() {
   const [showTransfer, setShowTransfer] = useState(false);
   const [transferItem, setTransferItem] = useState<QueueItem | null>(null);
   const [transferTarget, setTransferTarget] = useState("");
+  const [transferMotivo, setTransferMotivo] = useState("");
 
   const [showDecisionTransfer, setShowDecisionTransfer] = useState(false);
   const [decisionLeadId, setDecisionLeadId] = useState("");
@@ -577,14 +578,15 @@ export default function FilaLeadsPage() {
     await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", transferItem.lead.id).in("status", ["pendente", "atrasado"]);
     await supabase.from("leads").update({ responsavel_id: transferTarget, status_lead: "em_contato" } as any).eq("id", transferItem.lead.id);
     const targetName = profiles.find(p => p.id === transferTarget)?.nome || "—";
-    await supabase.from("lead_historico").insert({ lead_id: transferItem.lead.id, usuario_id: profile.id, tipo_evento: "transferencia_automatica", descricao: `Lead transferido para ${targetName}. Contagem de tentativas reiniciada. Histórico anterior mantido.` });
+    const motivo = transferMotivo.trim();
+    await supabase.from("lead_historico").insert({ lead_id: transferItem.lead.id, usuario_id: profile.id, tipo_evento: "transferencia_manual", descricao: `Lead transferido manualmente para ${targetName}. Motivo: ${motivo || "não informado"}. Responsável anterior: ${transferItem.responsavelNome}. Contagem de tentativas reiniciada.` });
     // Schedule first attempt for NOW so it appears as immediate priority
     const firstRotina = rotinaTentativas.find((r: any) => r.tentativa_numero === 1);
     const periodo = firstRotina?.periodo_contato || "manha";
     const now = new Date();
     await supabase.from("lead_tarefas_contato").insert({ lead_id: transferItem.lead.id, tentativa: 1, data_contato: now.toISOString(), periodo, status: "pendente", responsavel_id: transferTarget });
     toast.success(`Lead transferido para ${targetName} com rotina reiniciada!`);
-    setShowTransfer(false); setTransferItem(null); setTransferTarget("");
+    setShowTransfer(false); setTransferItem(null); setTransferTarget(""); setTransferMotivo("");
     queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
   };
 
@@ -1004,7 +1006,7 @@ export default function FilaLeadsPage() {
                                     <DropdownMenuItem onClick={() => openAttempt(item)} className="gap-2 text-xs">
                                       <Phone className="w-3.5 h-3.5" /> Registrar {item.tentativaAtual}ª Tentativa
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => { setTransferItem(item); setTransferTarget(""); setShowTransfer(true); }} className="gap-2 text-xs">
+                                    <DropdownMenuItem onClick={() => { setTransferItem(item); setTransferTarget(""); setTransferMotivo(""); setShowTransfer(true); }} className="gap-2 text-xs">
                                       <ArrowRightLeft className="w-3.5 h-3.5" /> Transferir Lead
                                     </DropdownMenuItem>
                                     {item.isOverdue && (
@@ -1446,10 +1448,20 @@ export default function FilaLeadsPage() {
                 {atendimentoProfiles.filter(p => p.id !== transferItem?.lead.responsavel_id).length === 0 && <SelectItem value="__none" disabled>Nenhum colaborador no setor Atendimento</SelectItem>}
               </SelectContent></Select>
             </div>
+            <div className="space-y-1.5">
+              <Label>Motivo da Transferência <span className="text-destructive">*</span></Label>
+              <Textarea
+                placeholder="Informe o motivo da transferência..."
+                value={transferMotivo}
+                onChange={e => setTransferMotivo(e.target.value)}
+                className="min-h-[60px] text-sm"
+                maxLength={500}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowTransfer(false)}>Cancelar</Button>
-            <Button onClick={handleTransfer} disabled={!transferTarget} className="press-effect"><ArrowRightLeft className="w-4 h-4 mr-1.5" /> Transferir</Button>
+            <Button onClick={handleTransfer} disabled={!transferTarget || !transferMotivo.trim()} className="press-effect"><ArrowRightLeft className="w-4 h-4 mr-1.5" /> Transferir</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
