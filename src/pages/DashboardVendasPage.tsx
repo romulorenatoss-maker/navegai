@@ -183,10 +183,27 @@ export default function DashboardVendasPage() {
       entry.mediaTentativas = entry.conversoes > 0 ? entry.interacoes / entry.conversoes : 0;
     });
 
-    // Only show users with at least some activity
-    return [...profileMap.values()]
+    // Only show users with at least some activity, sorted by conversions
+    const sorted = [...profileMap.values()]
       .filter(e => e.leadsCriados > 0 || e.conversoes > 0 || e.interacoes > 0)
       .sort((a, b) => b.conversoes - a.conversoes);
+
+    // Assign tied positions (same conversions = same rank)
+    let currentRank = 1;
+    sorted.forEach((entry, idx) => {
+      if (idx === 0) {
+        (entry as any).rank = currentRank;
+      } else {
+        if (entry.conversoes === sorted[idx - 1].conversoes) {
+          (entry as any).rank = (sorted[idx - 1] as any).rank;
+        } else {
+          currentRank = idx + 1;
+          (entry as any).rank = currentRank;
+        }
+      }
+    });
+
+    return sorted;
   }, [profiles, allConversoes, allLeadsCriados, allInteracoes, allTransferencias]);
 
   // Per-metric rankings
@@ -365,14 +382,16 @@ export default function DashboardVendasPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  rankData.map((r, idx) => (
+                  rankData.map((r) => {
+                    const rank = (r as any).rank ?? 1;
+                    return (
                     <TableRow key={r.profileId}>
                       <TableCell>
                         <span className={cn(
                           "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
-                          getMedalColor(idx)
+                          getMedalColor(rank - 1)
                         )}>
-                          {idx + 1}
+                          {rank}
                         </span>
                       </TableCell>
                       <TableCell className="font-medium">{r.nome}</TableCell>
@@ -387,7 +406,8 @@ export default function DashboardVendasPage() {
                       <TableCell className="text-center">{r.mediaTentativas.toFixed(1)}</TableCell>
                       <TableCell className="text-center">{r.transferencias}</TableCell>
                     </TableRow>
-                  ))
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
