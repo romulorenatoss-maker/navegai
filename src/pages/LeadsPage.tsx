@@ -2938,16 +2938,20 @@ export default function LeadsPage() {
 
               {/* Origem / Campanha */}
               <div className="space-y-1.5">
-                <Label>Origem (Campanha)</Label>
+                <Label>Campanha *</Label>
                 <Select value={createCampanhaId} onValueChange={setCreateCampanhaId}>
-                  <SelectTrigger><SelectValue placeholder="Selecione a origem..." /></SelectTrigger>
+                  <SelectTrigger className={!createCampanhaId || createCampanhaId === "__none" ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Selecione uma campanha..." />
+                  </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none">Manual (sem campanha)</SelectItem>
                     {campanhasAtivas.map(c => (
                       <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {(!createCampanhaId || createCampanhaId === "__none") && (
+                  <p className="text-xs text-destructive">Obrigatório selecionar uma campanha.</p>
+                )}
               </div>
 
               {/* ─── Address fields ──────────────── */}
