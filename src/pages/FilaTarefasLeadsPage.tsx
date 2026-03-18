@@ -264,11 +264,13 @@ export default function FilaTarefasLeadsPage() {
         });
       }
 
-      // Update lead status
+      // Update lead status and clear manual scheduling
       const leadStatus = leads.find((l: any) => l.id === selectedTarefa.lead_id)?.status_lead;
+      const leadUpdate: any = { agendamento_retorno: null };
       if (leadStatus === "novo") {
-        await supabase.from("leads").update({ status_lead: "em_contato" }).eq("id", selectedTarefa.lead_id);
+        leadUpdate.status_lead = "em_contato";
       }
+      await supabase.from("leads").update(leadUpdate).eq("id", selectedTarefa.lead_id);
     },
     onSuccess: () => {
       toast.success("Tentativa registrada!");
