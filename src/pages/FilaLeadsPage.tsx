@@ -771,7 +771,7 @@ export default function FilaLeadsPage() {
       if (nextT > maxT) {
         const acao = (fluxoConfig as any)?.acao_apos_finalizar_tentativas || "enviar_avaliador";
         const newStatus = acao === "arquivar_lead" ? "arquivado" : "aguardando_decisao_avaliador";
-        await supabase.from("leads").update({ status_lead: newStatus, responsavel_id: null } as any).eq("id", selectedTarefa.lead_id);
+        await supabase.from("leads").update({ status_lead: newStatus, responsavel_id: null, agendamento_retorno: null } as any).eq("id", selectedTarefa.lead_id);
         await supabase.from("lead_historico").insert({ lead_id: selectedTarefa.lead_id, usuario_id: profile.id, tipo_evento: "tentativas_finalizadas", descricao: `Todas as ${maxT} tentativas finalizadas. Ação: ${acao}` });
       } else {
         const nextR = rotinaTentativas.find((r: any) => r.tentativa_numero === nextT);
