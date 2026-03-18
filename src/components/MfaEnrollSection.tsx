@@ -135,7 +135,7 @@ export default function MfaEnrollSection() {
           Escaneie o QR code abaixo com seu aplicativo autenticador (Google Authenticator, Authy, etc.):
         </p>
 
-        <div className="flex justify-center p-4 bg-white rounded-lg border">
+        <div className="flex justify-center p-4 bg-background rounded-lg border">
           <QRCodeSVG value={qrUri} size={180} />
         </div>
 
