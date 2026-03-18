@@ -2082,13 +2082,13 @@ export default function AvaliacaoOSPage() {
                               </div>
                             </div>
                           </div>
-                          <div className="ml-11">
+                          <div className="ml-0 sm:ml-11">
                             <SegmentedControl value={answer} onChange={v => handleAnswerChange(p.id, v)} disabled={isLocked} />
                           </div>
                           <AnimatePresence>
                             {answer === "nao" && (
                               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                                <div className="ml-11 mt-3 bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-3">
+                                <div className="ml-0 sm:ml-11 mt-3 bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-3">
                                   <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
                                     <AlertTriangle className="w-3.5 h-3.5" /> Descreva a irregularidade encontrada
                                   </div>
@@ -2160,7 +2160,7 @@ export default function AvaliacaoOSPage() {
                           <AnimatePresence>
                             {answer === "sim" && (
                               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                                <div className="ml-11 mt-3 bg-success/5 border border-success/20 rounded-lg p-3 space-y-3">
+                                <div className="ml-0 sm:ml-11 mt-3 bg-success/5 border border-success/20 rounded-lg p-3 space-y-3">
                                   <div className="flex items-center gap-1.5 text-caption text-success font-medium">
                                     <MessageSquare className="w-3.5 h-3.5" /> Descrição (opcional)
                                   </div>
@@ -2295,7 +2295,7 @@ export default function AvaliacaoOSPage() {
                               </div>
                             </div>
                           </div>
-                          <div className="ml-11 mt-1">
+                          <div className="ml-0 sm:ml-11 mt-1">
                             {answer ? (
                               <div className="space-y-2">
                                 {other?.observacao && (
