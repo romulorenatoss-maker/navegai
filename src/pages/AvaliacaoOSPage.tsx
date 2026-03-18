@@ -1140,7 +1140,7 @@ export default function AvaliacaoOSPage() {
       } else {
         // No existing OS found in search — create a new one
         const { data: newOs, error: oe } = await supabase.from("ordens_servico").insert({
-          numero_os: num || null, cliente_nome: nomeTr, cliente_cpf: cpfTr, tipo_servico_id: tipoServicoId,
+          numero_os: num, cliente_nome: nomeTr, cliente_cpf: cpfTr, tipo_servico_id: tipoServicoId,
           cliente_id: clienteId, atendente_id: atendenteId || null, tecnico_id: tecnicoId || null,
           data_abertura: formDataAbertura.toISOString(),
         } as any).select("id").single();
