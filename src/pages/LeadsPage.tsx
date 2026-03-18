@@ -532,7 +532,7 @@ export default function LeadsPage() {
         .limit(1)
         .maybeSingle();
       if (error) throw error;
-      return data as { quantidade_tentativas: number; permitir_reiniciar_rotina: boolean; tipo_servico_conversao_id?: string | null; acao_apos_finalizar_tentativas?: string } | null;
+      return data as { quantidade_tentativas: number; permitir_reiniciar_rotina: boolean; tipo_servico_conversao_id?: string | null; acao_apos_finalizar_tentativas?: string; tempo_expiracao_captura_segundos?: number; acao_quando_atrasar?: string } | null;
     },
   });
 
@@ -775,9 +775,12 @@ export default function LeadsPage() {
   }, [profile, queryClient]);
 
   // ─── Auto-expire captured leads without interaction ─────
+  const tempoExpiracaoCaptura = fluxoConfig?.tempo_expiracao_captura_segundos || 120;
+  const acaoQuandoExpirar = fluxoConfig?.acao_quando_atrasar || "devolver_fila";
+
   useEffect(() => {
     if (!profile) return;
-    const timeoutSeconds = (fluxoConfig as any)?.tempo_expiracao_captura_segundos || 120;
+    const timeoutSeconds = tempoExpiracaoCaptura;
     const intervalMs = Math.min(timeoutSeconds * 1000, 15000); // check at most every 15s
 
     const checkExpiredCaptures = async () => {
@@ -814,30 +817,49 @@ export default function LeadsPage() {
           continue;
         }
 
-        // Expired! Return to fila_captura
+        // Expired! Apply configured action
         hadExpiration = true;
-        await supabase.from("leads").update({
-          status_lead: "fila_captura",
-          responsavel_id: null,
-          reserved_by: null,
-          reserved_at: null,
-        } as any).eq("id", lead.id);
+
+        if (acaoQuandoExpirar === "aguardar_avaliador") {
+          // Send to evaluator notifications
+          await supabase.from("leads").update({
+            status_lead: "aguardando_decisao_avaliador",
+            reserved_by: null,
+            reserved_at: null,
+          } as any).eq("id", lead.id);
+
+          await supabase.from("lead_historico").insert({
+            lead_id: lead.id,
+            usuario_id: profile.id,
+            tipo_evento: "captura_expirada",
+            descricao: `Captura expirou após ${timeoutSeconds}s sem interação. Lead enviado para avaliador decidir.`,
+          });
+
+          toast.warning(`Lead "${lead.nome}" enviado ao avaliador — tempo de captura expirado.`);
+        } else {
+          // Default: devolver_fila
+          await supabase.from("leads").update({
+            status_lead: "fila_captura",
+            responsavel_id: null,
+            reserved_by: null,
+            reserved_at: null,
+          } as any).eq("id", lead.id);
+
+          await supabase.from("lead_historico").insert({
+            lead_id: lead.id,
+            usuario_id: profile.id,
+            tipo_evento: "captura_expirada",
+            descricao: `Captura expirou após ${timeoutSeconds}s sem interação. Lead devolvido à fila de captura.`,
+          });
+
+          toast.warning(`Lead "${lead.nome}" devolvido à fila — tempo de captura expirado.`);
+        }
 
         // Cancel pending tasks
         await supabase.from("lead_tarefas_contato")
           .update({ status: "cancelada" } as any)
           .eq("lead_id", lead.id)
           .in("status", ["pendente", "atrasado", "aguardando_visualizacao"]);
-
-        // Log
-        await supabase.from("lead_historico").insert({
-          lead_id: lead.id,
-          usuario_id: profile.id,
-          tipo_evento: "captura_expirada",
-          descricao: `Captura expirou após ${timeoutSeconds}s sem interação. Lead devolvido à fila de captura.`,
-        });
-
-        toast.warning(`Lead "${lead.nome}" devolvido à fila — tempo de captura expirado.`);
       }
 
       if (hadExpiration) {
@@ -847,10 +869,10 @@ export default function LeadsPage() {
     };
 
     const timer = setInterval(checkExpiredCaptures, intervalMs);
-    checkExpiredCaptures();
+    checkExpiredCaptures(); // run immediately
 
     return () => clearInterval(timer);
-  }, [profile?.id, (fluxoConfig as any)?.tempo_expiracao_captura_segundos, queryClient]);
+  }, [profile?.id, tempoExpiracaoCaptura, acaoQuandoExpirar, queryClient]);
 
   // Transfer history query
   const { data: transferHistory = [], isLoading: loadingTransfers } = useQuery({
