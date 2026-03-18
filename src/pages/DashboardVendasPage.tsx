@@ -552,6 +552,7 @@ export default function DashboardVendasPage() {
                   <TableHead className="text-center">Interações</TableHead>
                   <TableHead className="text-center">Média Tent.</TableHead>
                   <TableHead className="text-center">Transferências</TableHead>
+                  <TableHead className="w-10"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
