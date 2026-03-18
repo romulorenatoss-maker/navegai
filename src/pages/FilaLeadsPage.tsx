@@ -653,15 +653,22 @@ export default function FilaLeadsPage() {
     await supabase.from("leads").update({ responsavel_id: tarefaTransferTarget, status_lead: "em_contato", agendamento_retorno: null } as any).eq("id", tarefaTransferLeadId);
     const targetName = profiles.find(p => p.id === tarefaTransferTarget)?.nome || "—";
     await supabase.from("lead_historico").insert({ lead_id: tarefaTransferLeadId, usuario_id: profile.id, tipo_evento: "transferencia_automatica", descricao: `Lead transferido para ${targetName}. Contagem de tentativas reiniciada. Tarefa imediata criada.` });
-    // Determine current valid period
+    // Determine scheduling — if weekend, schedule for Monday morning
     const now = new Date();
-    const currentHour = now.getHours();
+    let taskDate = now;
     let periodo: string;
-    if (currentHour < 12) periodo = "manha";
-    else if (currentHour < 18) periodo = "tarde";
-    else periodo = "noite";
-    // Create immediate task — scheduled for NOW so it appears as priority in the queue
-    await supabase.from("lead_tarefas_contato").insert({ lead_id: tarefaTransferLeadId, tentativa: 1, data_contato: now.toISOString(), periodo, status: "pendente", responsavel_id: tarefaTransferTarget });
+    if (isWeekend(now)) {
+      taskDate = skipWeekend(now);
+      taskDate.setHours(9, 0, 0, 0);
+      periodo = "manha";
+    } else {
+      const currentHour = now.getHours();
+      if (currentHour < 12) periodo = "manha";
+      else if (currentHour < 18) periodo = "tarde";
+      else periodo = "noite";
+    }
+    // Create immediate/scheduled task
+    await supabase.from("lead_tarefas_contato").insert({ lead_id: tarefaTransferLeadId, tentativa: 1, data_contato: taskDate.toISOString(), periodo, status: "pendente", responsavel_id: tarefaTransferTarget });
     toast.success(`Lead transferido para ${targetName}! Tarefa imediata criada na fila.`);
     setShowTarefaTransfer(false); setTarefaTransferLeadId(""); setTarefaTransferTarget("");
     queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
