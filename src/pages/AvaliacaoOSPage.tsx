@@ -2783,7 +2783,7 @@ export default function AvaliacaoOSPage() {
               <Label>Número da OS</Label>
               <Input
                 value={formOsNumero}
-                onChange={e => { setFormOsNumero(e.target.value.replace(/\D/g, "")); if (formValidated) { setFormValidated(false); setFormFoundOS(null); } }}
+                onChange={e => { setFormOsNumero(e.target.value.replace(/\D/g, "")); if (formValidated) { setFormValidated(false); setFormFoundOS(null); setSearchResults([]); } }}
                 placeholder="Ex: 12345"
                 disabled={!!formFoundOS}
                 onKeyDown={e => e.key === "Enter" && handleCombinedSearch()}
