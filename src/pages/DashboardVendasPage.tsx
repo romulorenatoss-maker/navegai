@@ -54,14 +54,14 @@ export default function DashboardVendasPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // All leads created per user in period (via lead_historico criacao events)
+  // All leads created or captured per user in period
   const { data: allLeadsCriados = [] } = useQuery({
-    queryKey: ["dashboard-vendas-leads-criados", from, to],
+    queryKey: ["dashboard-vendas-leads-criados-v2", from, to],
     queryFn: async () => {
       const { data } = await supabase
         .from("lead_historico")
         .select("lead_id, usuario_id")
-        .in("tipo_evento", ["lead_criado", "criacao"])
+        .in("tipo_evento", ["lead_criado", "criacao", "lead_capturado"])
         .gte("data_evento", from)
         .lte("data_evento", to);
       return data || [];
