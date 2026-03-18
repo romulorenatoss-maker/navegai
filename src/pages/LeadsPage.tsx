@@ -3690,6 +3690,14 @@ export default function LeadsPage() {
                 <div className="border rounded-md p-3 space-y-2 bg-muted/20">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Atendente que fez a venda</p>
                   <p className="text-sm font-medium">{profiles.find(p => p.id === convAtendenteId)?.nome || "—"}</p>
+                  {convAtendenteId && profile?.id && convAtendenteId !== profile.id && (
+                    <Alert className="mt-2 border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20">
+                      <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                      <AlertDescription className="text-xs text-yellow-700 dark:text-yellow-400">
+                        Você está atribuindo esta venda a outro atendente. A conversão será registrada em seu nome, mas o crédito da venda será de <strong>{profiles.find(p => p.id === convAtendenteId)?.nome}</strong>.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 </div>
               </div>
             )}
