@@ -144,16 +144,22 @@ export default function DashboardVendasPage() {
       if (!leadsPerUser[a.responsavel_id]) leadsPerUser[a.responsavel_id] = new Set();
       leadsPerUser[a.responsavel_id].add(a.id);
     });
-    Object.entries(leadsPerUser).forEach(([uid, leads]) => {
-      const entry = profileMap.get(uid);
-      if (entry) entry.leadsRecebidos = leads.size;
-    });
 
-    // Conversions per responsible
+    // Conversions per responsible (convertido_por)
     allConversoes.forEach(c => {
       if (!c.responsavel_id) return;
       const entry = profileMap.get(c.responsavel_id);
       if (entry) entry.conversoes++;
+      // Ensure the converted lead also counts in "leads recebidos" for the seller
+      // This guarantees the conversion rate is accurate (e.g., 1 lead + 1 conversion = 100%)
+      if (!leadsPerUser[c.responsavel_id]) leadsPerUser[c.responsavel_id] = new Set();
+      leadsPerUser[c.responsavel_id].add(c.lead_id);
+    });
+
+    // Apply leads count
+    Object.entries(leadsPerUser).forEach(([uid, leads]) => {
+      const entry = profileMap.get(uid);
+      if (entry) entry.leadsRecebidos = leads.size;
     });
 
     // Interactions per user
