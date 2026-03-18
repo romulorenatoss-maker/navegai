@@ -2231,6 +2231,21 @@ export default function AvaliacaoOSPage() {
                                 {other?.evidencia_url && (
                                   <img src={other.evidencia_url} alt="Evidência" className="rounded-lg border border-border max-h-32 object-cover cursor-pointer hover:opacity-80 transition-opacity" onClick={() => window.open(other.evidencia_url!, "_blank")} />
                                 )}
+                                {other?.audio_url && (
+                                  <div className="bg-muted/50 border border-border rounded-lg p-3">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <Volume2 className="w-4 h-4 text-primary shrink-0" />
+                                      <span className="text-sm text-foreground font-medium">Áudio</span>
+                                    </div>
+                                    <audio controls className="w-full h-10" preload="metadata">
+                                      <source src={other.audio_url} />
+                                    </audio>
+                                    <a href={other.audio_url} download target="_blank" rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline mt-2">
+                                      <Download className="w-3.5 h-3.5" /> Baixar áudio
+                                    </a>
+                                  </div>
+                                )}
                               </div>
                             ) : (
                               <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-warning/5 border border-warning/20">
