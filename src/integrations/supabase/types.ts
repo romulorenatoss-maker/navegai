@@ -976,6 +976,7 @@ export type Database = {
           campanha_id: string | null
           cidade_id: string | null
           cliente_id: string | null
+          convertido_por: string | null
           created_at: string
           data_criacao: string
           id: string
@@ -1000,6 +1001,7 @@ export type Database = {
           campanha_id?: string | null
           cidade_id?: string | null
           cliente_id?: string | null
+          convertido_por?: string | null
           created_at?: string
           data_criacao?: string
           id?: string
@@ -1024,6 +1026,7 @@ export type Database = {
           campanha_id?: string | null
           cidade_id?: string | null
           cliente_id?: string | null
+          convertido_por?: string | null
           created_at?: string
           data_criacao?: string
           id?: string
@@ -1069,6 +1072,13 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_convertido_por_fkey"
+            columns: ["convertido_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {

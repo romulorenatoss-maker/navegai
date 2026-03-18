@@ -306,6 +306,7 @@ export default function LeadsPage() {
   // Conversion dialog
   const [showConvert, setShowConvert] = useState(false);
   const [convAtendenteId, setConvAtendenteId] = useState<string>("");
+  const [convConvertidoPorId, setConvConvertidoPorId] = useState<string>("");
   const [convForm, setConvForm] = useState({
     nome: "", cpf: "", rg: "", nome_mae: "", numero: "", referencia: "",
   });
@@ -1758,6 +1759,7 @@ export default function LeadsPage() {
     setConvBairroId(selectedLead.bairro_id || null);
     setConvRuaId(selectedLead.rua_id || null);
     setConvAtendenteId(profile?.id || "");
+    setConvConvertidoPorId(selectedLead.responsavel_id || profile?.id || "");
     setConvCpfLookedUp(false);
     setConvCpfSearching(false);
     convCpfLookupRef.current = "";
@@ -1832,7 +1834,7 @@ export default function LeadsPage() {
             const { data: existingCliente } = await supabase
               .from("clientes").select("id, nome, cpf").eq("id", matchedClienteContato.cliente_id).maybeSingle();
             if (existingCliente) {
-              await supabase.from("leads").update({ status_lead: "convertido", cliente_id: existingCliente.id }).eq("id", selectedLead.id);
+              await supabase.from("leads").update({ status_lead: "convertido", cliente_id: existingCliente.id, convertido_por: convConvertidoPorId || profile.id } as any).eq("id", selectedLead.id);
               // Create OS for existing client too
               const dupetipoServicoId: string | null = (fluxoConfig as any)?.tipo_servico_conversao_id || null;
               const dupeConverterId = convAtendenteId || profile.id;
@@ -1883,7 +1885,7 @@ export default function LeadsPage() {
             await supabase.from("clientes").update({ cpf: cpfFormatted } as any).eq("id", existingCliente.id);
           }
 
-          await supabase.from("leads").update({ status_lead: "convertido", cliente_id: existingCliente.id }).eq("id", selectedLead.id);
+          await supabase.from("leads").update({ status_lead: "convertido", cliente_id: existingCliente.id, convertido_por: convConvertidoPorId || profile.id } as any).eq("id", selectedLead.id);
           // Create OS for existing client too
           const cpfDupeTipoServicoId: string | null = (fluxoConfig as any)?.tipo_servico_conversao_id || null;
           const cpfDupeConverterId = convAtendenteId || profile.id;
@@ -1926,7 +1928,7 @@ export default function LeadsPage() {
         if (newInserts.length > 0) await supabase.from("cliente_contatos").insert(newInserts);
       }
 
-      await supabase.from("leads").update({ status_lead: "convertido", cliente_id: newCliente.id }).eq("id", selectedLead.id);
+      await supabase.from("leads").update({ status_lead: "convertido", cliente_id: newCliente.id, convertido_por: convConvertidoPorId || profile.id } as any).eq("id", selectedLead.id);
 
       // Use configured tipo_servico from rotina config (required)
       const tipoServicoId: string | null = (fluxoConfig as any)?.tipo_servico_conversao_id || null;
@@ -3627,6 +3629,14 @@ export default function LeadsPage() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Responsável pela Conversão (Vendedor) *</Label>
+                  <Select value={convConvertidoPorId} onValueChange={setConvConvertidoPorId}>
+                    <SelectTrigger className="h-9"><SelectValue placeholder="Quem fechou a venda?" /></SelectTrigger>
+                    <SelectContent>{profiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Quem será creditado pela conversão nos rankings e relatórios.</p>
+                </div>
+                <div className="space-y-1.5">
                   <Label className="text-xs font-medium">Avaliado Setor Atendimento *</Label>
                   <Select value={convAtendenteId} onValueChange={setConvAtendenteId}>
                     <SelectTrigger className="h-9"><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
@@ -3676,6 +3686,10 @@ export default function LeadsPage() {
                   })()}
                 </div>
                 <div className="border rounded-md p-3 space-y-2 bg-muted/20">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Responsável pela Conversão</p>
+                  <p className="text-sm font-medium">{profiles.find(p => p.id === convConvertidoPorId)?.nome || "—"}</p>
+                </div>
+                <div className="border rounded-md p-3 space-y-2 bg-muted/20">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Atendente (Avaliado)</p>
                   <p className="text-sm font-medium">{profiles.find(p => p.id === convAtendenteId)?.nome || "—"}</p>
                 </div>
@@ -3693,6 +3707,7 @@ export default function LeadsPage() {
                   if (!convForm.nome_mae.trim()) { toast.error("Nome da mãe é obrigatório."); return; }
                   if (!convCidadeId || !convBairroId || !convRuaId) { toast.error("Endereço completo é obrigatório."); return; }
                   if (!convForm.numero.trim()) { toast.error("Número é obrigatório."); return; }
+                  if (!convConvertidoPorId) { toast.error("Selecione o responsável pela conversão."); return; }
                   if (!convAtendenteId) { toast.error("Selecione o atendente."); return; }
                   setConvStep("review");
                 }} className="press-effect">

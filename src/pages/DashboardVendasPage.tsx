@@ -66,15 +66,15 @@ export default function DashboardVendasPage() {
         .lte("data_evento", to);
       if (!data?.length) return [];
       const leadIds = [...new Set(data.map(d => d.lead_id))];
-      // Batch fetch leads
-      const allLeads: { id: string; responsavel_id: string | null }[] = [];
+      // Batch fetch leads with convertido_por
+      const allLeads: { id: string; responsavel_id: string | null; convertido_por: string | null }[] = [];
       for (let i = 0; i < leadIds.length; i += 500) {
         const batch = leadIds.slice(i, i + 500);
-        const { data: leads } = await supabase.from("leads").select("id, responsavel_id").in("id", batch);
-        if (leads) allLeads.push(...leads);
+        const { data: leads } = await supabase.from("leads").select("id, responsavel_id, convertido_por").in("id", batch);
+        if (leads) allLeads.push(...(leads as any));
       }
       const leadResp: Record<string, string | null> = {};
-      allLeads.forEach(l => { leadResp[l.id] = l.responsavel_id; });
+      allLeads.forEach(l => { leadResp[l.id] = (l as any).convertido_por || l.responsavel_id; });
       return data.map(d => ({ lead_id: d.lead_id, data_evento: d.data_evento, responsavel_id: leadResp[d.lead_id] || null }));
     },
   });
