@@ -306,7 +306,7 @@ export default function LeadsPage() {
   // Conversion dialog
   const [showConvert, setShowConvert] = useState(false);
   const [convAtendenteId, setConvAtendenteId] = useState<string>("");
-  const [convConvertidoPorId, setConvConvertidoPorId] = useState<string>("");
+  const [showConvConfirm, setShowConvConfirm] = useState(false);
   const [convForm, setConvForm] = useState({
     nome: "", cpf: "", rg: "", nome_mae: "", numero: "", referencia: "",
   });
@@ -1759,7 +1759,7 @@ export default function LeadsPage() {
     setConvBairroId(selectedLead.bairro_id || null);
     setConvRuaId(selectedLead.rua_id || null);
     setConvAtendenteId(profile?.id || "");
-    setConvConvertidoPorId(selectedLead.responsavel_id || profile?.id || "");
+    setShowConvConfirm(false);
     setConvCpfLookedUp(false);
     setConvCpfSearching(false);
     convCpfLookupRef.current = "";
@@ -1834,7 +1834,7 @@ export default function LeadsPage() {
             const { data: existingCliente } = await supabase
               .from("clientes").select("id, nome, cpf").eq("id", matchedClienteContato.cliente_id).maybeSingle();
             if (existingCliente) {
-              await supabase.from("leads").update({ status_lead: "convertido", cliente_id: existingCliente.id, convertido_por: convAtendenteId || profile.id } as any).eq("id", selectedLead.id);
+              await supabase.from("leads").update({ status_lead: "convertido", cliente_id: existingCliente.id, convertido_por: convAtendenteId || profile.id, convertido_registrado_por: profile.id } as any).eq("id", selectedLead.id);
               // Create OS for existing client too
               const dupetipoServicoId: string | null = (fluxoConfig as any)?.tipo_servico_conversao_id || null;
               const dupeConverterId = convAtendenteId || profile.id;
@@ -1845,10 +1845,13 @@ export default function LeadsPage() {
                   atendente_id: dupeConverterId,
                 } as any);
               }
+              const vendedorNome1 = profiles.find(p => p.id === (convAtendenteId || profile.id))?.nome || "—";
+              const registradorNome1 = profile.nome || "—";
+              const atribuicaoMsg1 = (convAtendenteId && convAtendenteId !== profile.id) ? ` Venda creditada a: ${vendedorNome1}. Registrado por: ${registradorNome1}.` : ` Venda creditada a: ${vendedorNome1}.`;
               await supabase.from("lead_historico").insert({
                 lead_id: selectedLead.id, usuario_id: profile.id,
                 tipo_evento: "conversao_cliente",
-                descricao: `Lead convertido — vinculado ao cliente existente "${existingCliente.nome}" (telefone já cadastrado). OS criada aguardando número.`,
+                descricao: `Lead convertido — vinculado ao cliente existente "${existingCliente.nome}" (telefone já cadastrado). OS criada aguardando número.${atribuicaoMsg1}`,
               });
               setDupeAlert({ type: "cpf", message: `Telefone já cadastrado para o cliente "${existingCliente.nome}". O lead foi vinculado ao cliente existente e uma OS foi criada aguardando número.`, clienteId: existingCliente.id, clienteNome: existingCliente.nome });
               setShowConvert(false);
@@ -1885,7 +1888,7 @@ export default function LeadsPage() {
             await supabase.from("clientes").update({ cpf: cpfFormatted } as any).eq("id", existingCliente.id);
           }
 
-          await supabase.from("leads").update({ status_lead: "convertido", cliente_id: existingCliente.id, convertido_por: convAtendenteId || profile.id } as any).eq("id", selectedLead.id);
+          await supabase.from("leads").update({ status_lead: "convertido", cliente_id: existingCliente.id, convertido_por: convAtendenteId || profile.id, convertido_registrado_por: profile.id } as any).eq("id", selectedLead.id);
           // Create OS for existing client too
           const cpfDupeTipoServicoId: string | null = (fluxoConfig as any)?.tipo_servico_conversao_id || null;
           const cpfDupeConverterId = convAtendenteId || profile.id;
@@ -1896,10 +1899,13 @@ export default function LeadsPage() {
               atendente_id: cpfDupeConverterId,
             } as any);
           }
+          const vendedorNome2 = profiles.find(p => p.id === (convAtendenteId || profile.id))?.nome || "—";
+          const registradorNome2 = profile.nome || "—";
+          const atribuicaoMsg2 = (convAtendenteId && convAtendenteId !== profile.id) ? ` Venda creditada a: ${vendedorNome2}. Registrado por: ${registradorNome2}.` : ` Venda creditada a: ${vendedorNome2}.`;
           await supabase.from("lead_historico").insert({
             lead_id: selectedLead.id, usuario_id: profile.id,
             tipo_evento: "conversao_cliente",
-            descricao: `Lead convertido — vinculado ao cliente existente "${existingCliente.nome}" (CPF: ${existingCliente.cpf}). OS criada aguardando número.`,
+            descricao: `Lead convertido — vinculado ao cliente existente "${existingCliente.nome}" (CPF: ${existingCliente.cpf}). OS criada aguardando número.${atribuicaoMsg2}`,
           });
           setDupeAlert({ type: "cpf", message: `CPF já cadastrado para o cliente "${existingCliente.nome}". O lead foi vinculado ao cliente existente e uma OS foi criada aguardando número.`, clienteId: existingCliente.id, clienteNome: existingCliente.nome });
           setShowConvert(false);
@@ -1928,7 +1934,7 @@ export default function LeadsPage() {
         if (newInserts.length > 0) await supabase.from("cliente_contatos").insert(newInserts);
       }
 
-      await supabase.from("leads").update({ status_lead: "convertido", cliente_id: newCliente.id, convertido_por: convAtendenteId || profile.id } as any).eq("id", selectedLead.id);
+      await supabase.from("leads").update({ status_lead: "convertido", cliente_id: newCliente.id, convertido_por: convAtendenteId || profile.id, convertido_registrado_por: profile.id } as any).eq("id", selectedLead.id);
 
       // Use configured tipo_servico from rotina config (required)
       const tipoServicoId: string | null = (fluxoConfig as any)?.tipo_servico_conversao_id || null;
@@ -1944,9 +1950,12 @@ export default function LeadsPage() {
       } as any).select("id, numero_os").single();
       if (osErr) console.warn("Erro ao criar OS automática:", osErr.message);
 
+      const vendedorNome3 = profiles.find(p => p.id === (convAtendenteId || profile.id))?.nome || "—";
+      const registradorNome3 = profile.nome || "—";
+      const atribuicaoMsg3 = (convAtendenteId && convAtendenteId !== profile.id) ? ` Venda creditada a: ${vendedorNome3}. Registrado por: ${registradorNome3}.` : ` Venda creditada a: ${vendedorNome3}.`;
       await supabase.from("lead_historico").insert({
         lead_id: selectedLead.id, usuario_id: profile.id, tipo_evento: "conversao_cliente",
-        descricao: `Lead convertido em cliente: ${f.nome.trim()} (CPF: ${f.cpf.trim()})${newOS ? ". OS criada aguardando número." : ""}`,
+        descricao: `Lead convertido em cliente: ${f.nome.trim()} (CPF: ${f.cpf.trim()})${newOS ? ". OS criada aguardando número." : ""}${atribuicaoMsg3}`,
       });
       return newCliente;
     },
@@ -3681,6 +3690,14 @@ export default function LeadsPage() {
                 <div className="border rounded-md p-3 space-y-2 bg-muted/20">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Atendente que fez a venda</p>
                   <p className="text-sm font-medium">{profiles.find(p => p.id === convAtendenteId)?.nome || "—"}</p>
+                  {convAtendenteId && profile?.id && convAtendenteId !== profile.id && (
+                    <Alert className="mt-2 border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20">
+                      <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                      <AlertDescription className="text-xs text-yellow-700 dark:text-yellow-400">
+                        Você está atribuindo esta venda a outro atendente. A conversão será registrada em seu nome, mas o crédito da venda será de <strong>{profiles.find(p => p.id === convAtendenteId)?.nome}</strong>.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 </div>
               </div>
             )}
@@ -3696,8 +3713,7 @@ export default function LeadsPage() {
                   if (!convForm.nome_mae.trim()) { toast.error("Nome da mãe é obrigatório."); return; }
                   if (!convCidadeId || !convBairroId || !convRuaId) { toast.error("Endereço completo é obrigatório."); return; }
                   if (!convForm.numero.trim()) { toast.error("Número é obrigatório."); return; }
-                  if (!convAtendenteId) { toast.error("Selecione o atendente que fez a venda."); return; }
-                  if (!convAtendenteId) { toast.error("Selecione o atendente."); return; }
+                   if (!convAtendenteId) { toast.error("Selecione o atendente que fez a venda."); return; }
                   setConvStep("review");
                 }} className="press-effect">
                   <ArrowRight className="w-4 h-4 mr-1" /> Converter
