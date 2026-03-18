@@ -4,7 +4,8 @@ import { markAuditOnlyAndCalculateScore } from "@/hooks/useInconsistencyDetectio
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, AlertTriangle, Loader2, ChevronRight, ChevronLeft,
-  Check, Clock, Trash2, Eye, Users, User, Phone, MessageSquare, Camera, X, Image as ImageIcon, Lock, Download, Pencil, Save
+  Check, Clock, Trash2, Eye, Users, User, Phone, MessageSquare, Camera, X, Image as ImageIcon, Lock, Download, Pencil, Save,
+  Mic, Volume2, FileAudio
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import MinhasAvaliacoesPendentes from "@/components/MinhasAvaliacoesPendentes";
@@ -127,9 +128,11 @@ export default function AvaliacaoOSPage() {
   const [evalAnswers, setEvalAnswers] = useState<Record<string, Answer>>({});
   const [evalObservations, setEvalObservations] = useState<Record<string, string>>({});
   const [evalEvidencias, setEvalEvidencias] = useState<Record<string, string>>({});
-  const [otherEvalAnswers, setOtherEvalAnswers] = useState<Record<string, { resposta: string; observacao: string | null; evidencia_url: string | null; avaliador_nome: string }>>({});
+  const [evalAudios, setEvalAudios] = useState<Record<string, string>>({});
+  const [otherEvalAnswers, setOtherEvalAnswers] = useState<Record<string, { resposta: string; observacao: string | null; evidencia_url: string | null; audio_url: string | null; avaliador_nome: string }>>({});
   const [responseAuthors, setResponseAuthors] = useState<Record<string, { avaliador_nome: string; resposta: string }>>({});
   const [uploadingEvidence, setUploadingEvidence] = useState<string | null>(null);
+  const [uploadingAudio, setUploadingAudio] = useState<string | null>(null);
   const [evalFinalized, setEvalFinalized] = useState(false);
   const [evalScore, setEvalScore] = useState<number | null>(null);
   const [evalSubmitting, setEvalSubmitting] = useState(false);
@@ -296,7 +299,7 @@ export default function AvaliacaoOSPage() {
       // Get all answers for this OS
       const { data: respostas } = await supabase
         .from("respostas_avaliacao")
-        .select("pergunta_id, resposta, observacao, evidencia_url")
+        .select("pergunta_id, resposta, observacao, evidencia_url, audio_url")
         .eq("ordem_servico_id", selectedOS.id)
         .not("resposta", "is", null);
 
@@ -438,7 +441,7 @@ export default function AvaliacaoOSPage() {
 
       const avalIds = avals.map(a => a.id);
       const { data: respostas } = await supabase.from("respostas_avaliacao")
-        .select("avaliacao_id, pergunta_id, resposta, observacao, evidencia_url")
+        .select("avaliacao_id, pergunta_id, resposta, observacao, evidencia_url, audio_url")
         .in("avaliacao_id", avalIds);
 
       const perguntaIds = [...new Set(respostas?.map(r => r.pergunta_id) || [])];
@@ -889,6 +892,46 @@ export default function AvaliacaoOSPage() {
     );
   }, [evalOsId]);
 
+  const handleAudioUpload = useCallback(async (perguntaId: string, file: File) => {
+    if (!evalOsId || !profile) return;
+    setUploadingAudio(perguntaId);
+    try {
+      const ext = file.name.split(".").pop() || "mp3";
+      const path = `${evalOsId}/${perguntaId}_audio.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from("evidencias").upload(path, file, { upsert: true });
+      if (uploadErr) throw uploadErr;
+      const { data: urlData } = supabase.storage.from("evidencias").getPublicUrl(path);
+      const url = urlData.publicUrl;
+      setEvalAudios(prev => ({ ...prev, [perguntaId]: url }));
+      const setorId = evaluatorSetorIds[0] || null;
+      await supabase.from("respostas_avaliacao").upsert(
+        { 
+          ordem_servico_id: evalOsId, 
+          pergunta_id: perguntaId, 
+          audio_url: url,
+          avaliador_id: profile.id,
+          avaliador_setor_id: setorId,
+          avaliacao_id: evalAvaliacaoId,
+        } as any,
+        { onConflict: "ordem_servico_id,pergunta_id" }
+      );
+      toast.success("Áudio anexado!");
+    } catch (e: any) {
+      toast.error("Erro ao enviar áudio: " + e.message);
+    } finally {
+      setUploadingAudio(null);
+    }
+  }, [evalOsId, evalAvaliacaoId, profile, evaluatorSetorIds]);
+
+  const handleRemoveAudio = useCallback(async (perguntaId: string) => {
+    if (!evalOsId) return;
+    setEvalAudios(prev => { const n = { ...prev }; delete n[perguntaId]; return n; });
+    await supabase.from("respostas_avaliacao").upsert(
+      { ordem_servico_id: evalOsId, pergunta_id: perguntaId, audio_url: null } as any,
+      { onConflict: "ordem_servico_id,pergunta_id" }
+    );
+  }, [evalOsId]);
+
   // --- Handlers ---
   const openEvaluation = async (avaliacaoId: string, osId: string) => {
     const { data: osData } = await supabase.from("ordens_servico").select("*").eq("id", osId).single();
@@ -908,12 +951,13 @@ export default function AvaliacaoOSPage() {
     // Load ALL responses for this OS (shared across all evaluators)
     const { data: allRespostas } = await (supabase as any)
       .from("respostas_avaliacao")
-      .select("pergunta_id, resposta, observacao, evidencia_url, avaliador_id")
+      .select("pergunta_id, resposta, observacao, evidencia_url, audio_url, avaliador_id")
       .eq("ordem_servico_id", osId);
 
     const ans: Record<string, Answer> = {};
     const obs: Record<string, string> = {};
     const evid: Record<string, string> = {};
+    const aud: Record<string, string> = {};
     const otherMap: typeof otherEvalAnswers = {};
 
     // Get evaluator names for "other" answers
@@ -931,6 +975,7 @@ export default function AvaliacaoOSPage() {
       if (r.resposta) ans[r.pergunta_id] = r.resposta as Answer;
       if (r.observacao) obs[r.pergunta_id] = r.observacao;
       if (r.evidencia_url) evid[r.pergunta_id] = r.evidencia_url;
+      if (r.audio_url) aud[r.pergunta_id] = r.audio_url;
 
       // Track author info for ALL responses
       if (r.avaliador_id && r.resposta) {
@@ -946,6 +991,7 @@ export default function AvaliacaoOSPage() {
           resposta: r.resposta,
           observacao: r.observacao,
           evidencia_url: r.evidencia_url,
+          audio_url: r.audio_url || null,
           avaliador_nome: profileNames[r.avaliador_id] || "Avaliador",
         };
       }
@@ -954,6 +1000,7 @@ export default function AvaliacaoOSPage() {
     setEvalAnswers(ans);
     setEvalObservations(obs);
     setEvalEvidencias(evid);
+    setEvalAudios(aud);
     setOtherEvalAnswers(otherMap);
     setResponseAuthors(authorsMap);
 
@@ -1354,6 +1401,7 @@ export default function AvaliacaoOSPage() {
     setEvalAnswers({});
     setEvalObservations({});
     setEvalEvidencias({});
+    setEvalAudios({});
     setResponseAuthors({});
     setEvalFinalized(false);
     setEvalScore(null);
@@ -1944,7 +1992,9 @@ export default function AvaliacaoOSPage() {
                     const answer = evalAnswers[p.id] || null;
                     const observation = evalObservations[p.id] || "";
                     const evidenciaUrl = evalEvidencias[p.id] || null;
+                    const audioUrl = evalAudios[p.id] || null;
                     const isUploading = uploadingEvidence === p.id;
+                    const isAudioUploading = uploadingAudio === p.id;
                     return (
                       <motion.div key={p.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
                         className={cn("bg-card border rounded-lg transition-colors",
@@ -2031,6 +2081,81 @@ export default function AvaliacaoOSPage() {
                               </motion.div>
                             )}
                           </AnimatePresence>
+                          <AnimatePresence>
+                            {answer === "sim" && (
+                              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+                                <div className="ml-11 mt-3 bg-success/5 border border-success/20 rounded-lg p-3 space-y-3">
+                                  <div className="flex items-center gap-1.5 text-caption text-success font-medium">
+                                    <MessageSquare className="w-3.5 h-3.5" /> Descrição (opcional)
+                                  </div>
+                                  <Textarea placeholder="Adicione uma descrição se necessário..." value={observation} onChange={e => handleObservationChange(p.id, e.target.value)} disabled={isLocked} className="bg-card min-h-[60px] text-sm" />
+                                  
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-1.5 text-caption text-success font-medium">
+                                      <Camera className="w-3.5 h-3.5" /> Anexo de foto (opcional)
+                                    </div>
+                                    {evidenciaUrl ? (
+                                      <div className="relative inline-block">
+                                        <img src={evidenciaUrl} alt="Evidência" className="rounded-lg border border-border max-h-40 object-cover cursor-pointer" onClick={() => window.open(evidenciaUrl, "_blank")} />
+                                        {!isLocked && (
+                                          <button onClick={() => handleRemoveEvidence(p.id)} className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-md hover:bg-destructive/90 transition-colors">
+                                            <X className="w-3.5 h-3.5" />
+                                          </button>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <div className="flex gap-2">
+                                        <label className={cn("flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors text-sm", isUploading ? "border-muted-foreground/30 bg-muted/30 cursor-wait" : "border-success/30 hover:border-success/50 hover:bg-success/5", isLocked && "opacity-50 cursor-not-allowed")}>
+                                          {isUploading ? <><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> Enviando...</> : <><ImageIcon className="w-4 h-4 text-success" /> Galeria</>}
+                                          <input type="file" accept="image/*" className="hidden" disabled={isLocked || isUploading} onChange={e => { const file = e.target.files?.[0]; if (file) handleEvidenceUpload(p.id, file); e.target.value = ""; }} />
+                                        </label>
+                                        <label className={cn("flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors text-sm", isUploading ? "border-muted-foreground/30 bg-muted/30 cursor-wait" : "border-success/30 hover:border-success/50 hover:bg-success/5", isLocked && "opacity-50 cursor-not-allowed")}>
+                                          {!isUploading && <><Camera className="w-4 h-4 text-success" /> Câmera</>}
+                                          <input type="file" accept="image/*" capture="environment" className="hidden" disabled={isLocked || isUploading} onChange={e => { const file = e.target.files?.[0]; if (file) handleEvidenceUpload(p.id, file); e.target.value = ""; }} />
+                                        </label>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-1.5 text-caption text-success font-medium">
+                                      <FileAudio className="w-3.5 h-3.5" /> Anexo de áudio (opcional)
+                                    </div>
+                                    {audioUrl ? (
+                                      <div className="space-y-2">
+                                        <div className="bg-card border border-border rounded-lg p-3">
+                                          <div className="flex items-center gap-2 mb-2">
+                                            <Volume2 className="w-4 h-4 text-success shrink-0" />
+                                            <span className="text-sm text-foreground font-medium">Áudio anexado</span>
+                                          </div>
+                                          <audio controls className="w-full h-10" preload="metadata">
+                                            <source src={audioUrl} />
+                                            Seu navegador não suporta reprodução de áudio.
+                                          </audio>
+                                          <div className="flex items-center gap-2 mt-2">
+                                            <a href={audioUrl} download target="_blank" rel="noopener noreferrer"
+                                              className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
+                                              <Download className="w-3.5 h-3.5" /> Baixar áudio
+                                            </a>
+                                            {!isLocked && (
+                                              <button onClick={() => handleRemoveAudio(p.id)} className="inline-flex items-center gap-1 text-xs text-destructive hover:underline ml-auto">
+                                                <X className="w-3 h-3" /> Remover
+                                              </button>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <label className={cn("flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors text-sm w-fit", isAudioUploading ? "border-muted-foreground/30 bg-muted/30 cursor-wait" : "border-success/30 hover:border-success/50 hover:bg-success/5", isLocked && "opacity-50 cursor-not-allowed")}>
+                                        {isAudioUploading ? <><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> Enviando...</> : <><Mic className="w-4 h-4 text-success" /> Selecionar áudio</>}
+                                        <input type="file" accept="audio/*" className="hidden" disabled={isLocked || isAudioUploading} onChange={e => { const file = e.target.files?.[0]; if (file) handleAudioUpload(p.id, file); e.target.value = ""; }} />
+                                      </label>
+                                    )}
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </div>
                       </motion.div>
                     );
@@ -2105,6 +2230,21 @@ export default function AvaliacaoOSPage() {
                                 )}
                                 {other?.evidencia_url && (
                                   <img src={other.evidencia_url} alt="Evidência" className="rounded-lg border border-border max-h-32 object-cover cursor-pointer hover:opacity-80 transition-opacity" onClick={() => window.open(other.evidencia_url!, "_blank")} />
+                                )}
+                                {other?.audio_url && (
+                                  <div className="bg-muted/50 border border-border rounded-lg p-3">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <Volume2 className="w-4 h-4 text-primary shrink-0" />
+                                      <span className="text-sm text-foreground font-medium">Áudio</span>
+                                    </div>
+                                    <audio controls className="w-full h-10" preload="metadata">
+                                      <source src={other.audio_url} />
+                                    </audio>
+                                    <a href={other.audio_url} download target="_blank" rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline mt-2">
+                                      <Download className="w-3.5 h-3.5" /> Baixar áudio
+                                    </a>
+                                  </div>
                                 )}
                               </div>
                             ) : (
@@ -2319,6 +2459,22 @@ export default function AvaliacaoOSPage() {
                       <img src={ans.evidencia_url} alt="Evidência"
                         className="rounded-lg border border-border max-h-32 object-cover cursor-pointer hover:opacity-80 transition-opacity"
                         onClick={() => window.open(ans.evidencia_url, "_blank")} />
+                    </div>
+                  )}
+                  {ans?.audio_url && (
+                    <div className="mt-2 bg-muted/50 border border-border rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Volume2 className="w-4 h-4 text-primary shrink-0" />
+                        <span className="text-sm text-foreground font-medium">Áudio anexado</span>
+                      </div>
+                      <audio controls className="w-full h-10" preload="metadata">
+                        <source src={ans.audio_url} />
+                        Seu navegador não suporta reprodução de áudio.
+                      </audio>
+                      <a href={ans.audio_url} download target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline mt-2">
+                        <Download className="w-3.5 h-3.5" /> Baixar áudio
+                      </a>
                     </div>
                   )}
                 </div>
