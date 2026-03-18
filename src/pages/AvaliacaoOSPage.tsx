@@ -1780,29 +1780,29 @@ export default function AvaliacaoOSPage() {
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 shrink-0 flex-wrap">
                 {autoSaving && (
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Loader2 className="w-3 h-3 animate-spin" /> Salvando...
                   </div>
                 )}
                 {canEdit && !isEditing && (
-                  <Button size="sm" variant="outline" onClick={handleStartEditing} className="press-effect h-8 text-xs px-3">
-                    <Pencil className="w-3 h-3 mr-1" /> Alterar
+                  <Button size="sm" variant="outline" onClick={handleStartEditing} className="press-effect h-8 text-xs px-2 sm:px-3">
+                    <Pencil className="w-3 h-3 sm:mr-1" /> <span className="hidden sm:inline">Alterar</span>
                   </Button>
                 )}
                 {isEditing && (
-                  <Button size="sm" onClick={handleSaveEditing} disabled={evalSubmitting} className="press-effect h-8 text-xs px-3">
-                    {evalSubmitting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Save className="w-3 h-3 mr-1" />}
-                    Salvar
+                  <Button size="sm" onClick={handleSaveEditing} disabled={evalSubmitting} className="press-effect h-8 text-xs px-2 sm:px-3">
+                    {evalSubmitting ? <Loader2 className="w-3 h-3 sm:mr-1 animate-spin" /> : <Save className="w-3 h-3 sm:mr-1" />}
+                    <span className="hidden sm:inline">Salvar</span>
                   </Button>
                 )}
               </div>
             </div>
 
             {/* Assigned employees + avaliadores info */}
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 mt-3 pt-3 border-t border-border flex-wrap">
-              <div className="flex items-center gap-2 text-sm">
+            <div className="flex flex-col gap-2 sm:flex-row sm:gap-6 mt-3 pt-3 border-t border-border flex-wrap">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm">
                 <span className="text-muted-foreground">Atendente:</span>
                 {isEditing ? (
                   <Select value={evalOsData.atendente_id || atendenteId || ""} onValueChange={async (val) => {
@@ -1811,7 +1811,7 @@ export default function AvaliacaoOSPage() {
                     setEvalOsData({ ...evalOsData, atendente_id: val });
                     toast.success("Atendente atualizado!");
                   }}>
-                    <SelectTrigger className="h-8 w-[200px]"><SelectValue placeholder="Selecionar atendente" /></SelectTrigger>
+                    <SelectTrigger className="h-8 w-full sm:w-[200px]"><SelectValue placeholder="Selecionar atendente" /></SelectTrigger>
                     <SelectContent>
                       {atendimentoProfiles.map(p =>
                         <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
@@ -1822,7 +1822,7 @@ export default function AvaliacaoOSPage() {
                   <span className="font-medium text-foreground">{evalAtendenteNome || "Não definido"}</span>
                 )}
               </div>
-              <div className="flex items-center gap-2 text-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm">
                 <span className="text-muted-foreground">Técnico:</span>
                 {isEditing ? (
                   <Select value={evalOsData.tecnico_id || tecnicoId || ""} onValueChange={async (val) => {
@@ -1831,7 +1831,7 @@ export default function AvaliacaoOSPage() {
                     setEvalOsData({ ...evalOsData, tecnico_id: val });
                     toast.success("Técnico atualizado!");
                   }}>
-                    <SelectTrigger className="h-8 w-[200px]"><SelectValue placeholder="Selecionar técnico" /></SelectTrigger>
+                    <SelectTrigger className="h-8 w-full sm:w-[200px]"><SelectValue placeholder="Selecionar técnico" /></SelectTrigger>
                     <SelectContent>
                       {tecnicoProfiles.map(p =>
                         <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
@@ -1901,15 +1901,15 @@ export default function AvaliacaoOSPage() {
         {/* Editing mode banner */}
         {isEditing && (
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-            className="bg-warning/5 border-2 border-warning/20 rounded-lg p-4 mb-4 flex items-center justify-between">
+            className="bg-warning/5 border-2 border-warning/20 rounded-lg p-3 sm:p-4 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <Pencil className="w-5 h-5 text-warning" />
+              <Pencil className="w-5 h-5 text-warning shrink-0" />
               <div>
                 <p className="text-sm font-semibold text-foreground">Modo de Edição</p>
                 <p className="text-caption text-muted-foreground">Altere os avaliados e respostas. Clique em Salvar quando terminar.</p>
               </div>
             </div>
-            <Button size="sm" onClick={handleSaveEditing} disabled={evalSubmitting} className="press-effect">
+            <Button size="sm" onClick={handleSaveEditing} disabled={evalSubmitting} className="press-effect w-full sm:w-auto">
               {evalSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
               Salvar
             </Button>
@@ -1919,21 +1919,23 @@ export default function AvaliacaoOSPage() {
         {/* Finalized state */}
         {evalFinalized && !isEditing && (
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-            className="bg-success/5 border-2 border-success/20 rounded-lg p-6 mb-4 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-success/10 mb-3">
-              <Check className="w-8 h-8 text-success" />
+            className="bg-success/5 border-2 border-success/20 rounded-lg p-4 sm:p-6 mb-4 text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-success/10 mb-3">
+              <Check className="w-6 h-6 sm:w-8 sm:h-8 text-success" />
             </div>
-            <h2 className="text-xl font-bold text-foreground">Avaliação Concluída!</h2>
-            <p className="text-3xl font-bold text-primary font-tabular mt-2">{evalScore?.toFixed(1)}%</p>
+            <h2 className="text-lg sm:text-xl font-bold text-foreground">Avaliação Concluída!</h2>
+            <p className="text-2xl sm:text-3xl font-bold text-primary font-tabular mt-2">{evalScore?.toFixed(1)}%</p>
             <p className="text-sm text-muted-foreground mt-1">{globalAnsweredCount} perguntas respondidas</p>
-            {canEdit && (
-              <Button onClick={handleStartEditing} variant="outline" className="mt-3 press-effect">
-                <Pencil className="w-4 h-4 mr-2" /> Alterar Avaliação
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mt-3">
+              {canEdit && (
+                <Button onClick={handleStartEditing} variant="outline" className="press-effect w-full sm:w-auto">
+                  <Pencil className="w-4 h-4 mr-2" /> Alterar Avaliação
+                </Button>
+              )}
+              <Button onClick={generatePDF} variant="outline" className="press-effect w-full sm:w-auto" disabled={!canExport}>
+                <Download className="w-4 h-4 mr-2" /> Baixar PDF
               </Button>
-            )}
-            <Button onClick={generatePDF} variant="outline" className="mt-3 ml-2 press-effect" disabled={!canExport}>
-              <Download className="w-4 h-4 mr-2" /> Baixar PDF da Avaliação
-            </Button>
+            </div>
             {!canExport && (
               <p className="text-xs text-muted-foreground mt-2">Exportação disponível apenas quando a OS estiver concluída por todos os setores.</p>
             )}
@@ -2080,13 +2082,13 @@ export default function AvaliacaoOSPage() {
                               </div>
                             </div>
                           </div>
-                          <div className="ml-11">
+                          <div className="ml-0 sm:ml-11">
                             <SegmentedControl value={answer} onChange={v => handleAnswerChange(p.id, v)} disabled={isLocked} />
                           </div>
                           <AnimatePresence>
                             {answer === "nao" && (
                               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                                <div className="ml-11 mt-3 bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-3">
+                                <div className="ml-0 sm:ml-11 mt-3 bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-3">
                                   <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
                                     <AlertTriangle className="w-3.5 h-3.5" /> Descreva a irregularidade encontrada
                                   </div>
@@ -2158,7 +2160,7 @@ export default function AvaliacaoOSPage() {
                           <AnimatePresence>
                             {answer === "sim" && (
                               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                                <div className="ml-11 mt-3 bg-success/5 border border-success/20 rounded-lg p-3 space-y-3">
+                                <div className="ml-0 sm:ml-11 mt-3 bg-success/5 border border-success/20 rounded-lg p-3 space-y-3">
                                   <div className="flex items-center gap-1.5 text-caption text-success font-medium">
                                     <MessageSquare className="w-3.5 h-3.5" /> Descrição (opcional)
                                   </div>
@@ -2293,7 +2295,7 @@ export default function AvaliacaoOSPage() {
                               </div>
                             </div>
                           </div>
-                          <div className="ml-11 mt-1">
+                          <div className="ml-0 sm:ml-11 mt-1">
                             {answer ? (
                               <div className="space-y-2">
                                 {other?.observacao && (
@@ -2362,13 +2364,13 @@ export default function AvaliacaoOSPage() {
 
         {/* Sticky bottom bar - always visible for admin delete or when not finalized */}
         {evalPerguntas.length > 0 && (
-          <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur border-t border-border px-3 py-2 z-30">
-            <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-xs flex-wrap">
-                <Progress value={globalProgressPercent} className="h-1.5 w-20 sm:w-28" />
-                <span className="font-medium text-foreground font-tabular">{globalAnsweredCount}/{evalPerguntas.length}</span>
+          <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur border-t border-border px-2 sm:px-3 py-2 z-30 safe-area-pb">
+            <div className="max-w-4xl mx-auto flex items-center justify-between gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 text-xs min-w-0">
+                <Progress value={globalProgressPercent} className="h-1.5 w-12 sm:w-28 shrink-0" />
+                <span className="font-medium text-foreground font-tabular shrink-0">{globalAnsweredCount}/{evalPerguntas.length}</span>
                 {evalMaxScore > 0 && (
-                  <span className={cn("font-bold font-tabular",
+                  <span className={cn("font-bold font-tabular hidden sm:inline",
                     (evalTotalScore / evalMaxScore) * 100 >= 85 ? "text-success" :
                     (evalTotalScore / evalMaxScore) * 100 >= 75 ? "text-warning" : "text-destructive"
                   )}>
@@ -2376,50 +2378,45 @@ export default function AvaliacaoOSPage() {
                   </span>
                 )}
                 {!isLocked && autoSaving && (
-                  <span className="text-muted-foreground flex items-center gap-1">
-                    <Loader2 className="w-3 h-3 animate-spin" /> Salvando
+                  <span className="text-muted-foreground flex items-center gap-1 shrink-0">
+                    <Loader2 className="w-3 h-3 animate-spin" /> <span className="hidden sm:inline">Salvando</span>
                   </span>
                 )}
                 {!isLocked && !autoSaving && globalAnsweredCount > 0 && (
-                  <span className="text-success flex items-center gap-1">
-                    <Check className="w-3 h-3" /> Salvo
+                  <span className="text-success flex items-center gap-1 shrink-0">
+                    <Check className="w-3 h-3" />
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                 {canEdit && !isEditing && (
-                  <Button size="sm" variant="outline" onClick={handleStartEditing} className="press-effect h-8 text-xs px-3">
-                    <Pencil className="w-3 h-3 mr-1" /> Alterar
+                  <Button size="sm" variant="outline" onClick={handleStartEditing} className="press-effect h-7 sm:h-8 text-xs px-2 sm:px-3">
+                    <Pencil className="w-3 h-3" /> <span className="hidden sm:inline ml-1">Alterar</span>
                   </Button>
                 )}
                 {isEditing && (
-                  <Button size="sm" onClick={handleSaveEditing} disabled={evalSubmitting} className="press-effect h-8 text-xs px-3">
-                    {evalSubmitting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Save className="w-3 h-3 mr-1" />}
-                    Salvar Alterações
+                  <Button size="sm" onClick={handleSaveEditing} disabled={evalSubmitting} className="press-effect h-7 sm:h-8 text-xs px-2 sm:px-3">
+                    {evalSubmitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                    <span className="hidden sm:inline ml-1">Salvar</span>
                   </Button>
                 )}
                 {!isLocked && !isEditing && !evalFinalized && (
-                  <Button size="sm" onClick={handleFinalizeEvaluation} disabled={evalSubmitting} className="press-effect h-8 text-xs px-3">
-                    {evalSubmitting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Check className="w-3 h-3 mr-1" />}
-                    Concluir
-                  </Button>
-                )}
-                {canEdit && !isEditing && (
-                  <Button size="sm" variant="outline" onClick={handleStartEditing} className="press-effect h-8 text-xs px-3">
-                    <Pencil className="w-3 h-3 mr-1" /> Alterar
+                  <Button size="sm" onClick={handleFinalizeEvaluation} disabled={evalSubmitting} className="press-effect h-7 sm:h-8 text-xs px-2 sm:px-3">
+                    {evalSubmitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                    <span className="ml-1">Concluir</span>
                   </Button>
                 )}
                 {evalFinalized && !isEditing && (
-                  <Button size="sm" variant="outline" onClick={generatePDF} className="press-effect h-8 text-xs px-3">
-                    <Download className="w-3 h-3 mr-1" /> PDF
+                  <Button size="sm" variant="outline" onClick={generatePDF} className="press-effect h-7 sm:h-8 text-xs px-2 sm:px-3">
+                    <Download className="w-3 h-3" /> <span className="hidden sm:inline ml-1">PDF</span>
                   </Button>
                 )}
                 {!isLocked && evalSubmitting && (
                   <span className="text-muted-foreground flex items-center gap-1 text-xs">
-                    <Loader2 className="w-3 h-3 animate-spin" /> Finalizando...
+                    <Loader2 className="w-3 h-3 animate-spin" />
                   </span>
                 )}
-                <Button variant="outline" size="sm" onClick={backToList} className="press-effect h-8 text-xs px-3">
+                <Button variant="outline" size="sm" onClick={backToList} className="press-effect h-7 sm:h-8 text-xs px-2 sm:px-3">
                   {isLocked ? "Fechar" : "Sair"}
                 </Button>
               </div>
@@ -3306,16 +3303,16 @@ export default function AvaliacaoOSPage() {
           {viewClienteData && (
             <div className="space-y-4 text-sm">
               {/* Client data */}
-              <div className="grid grid-cols-2 gap-3">
-                <div><span className="text-muted-foreground">Nome:</span><p className="font-medium">{viewClienteData.nome}</p></div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div><span className="text-muted-foreground">Nome:</span><p className="font-medium break-words">{viewClienteData.nome}</p></div>
                 <div><span className="text-muted-foreground">CPF:</span><p className="font-medium">{viewClienteData.cpf || "—"}</p></div>
                 <div><span className="text-muted-foreground">RG:</span><p className="font-medium">{viewClienteData.rg || "—"}</p></div>
-                <div><span className="text-muted-foreground">Nome da Mãe:</span><p className="font-medium">{viewClienteData.nome_mae || "—"}</p></div>
-                <div><span className="text-muted-foreground">Endereço:</span><p className="font-medium">{viewClienteData.endereco || "—"}</p></div>
+                <div><span className="text-muted-foreground">Nome da Mãe:</span><p className="font-medium break-words">{viewClienteData.nome_mae || "—"}</p></div>
+                <div><span className="text-muted-foreground">Endereço:</span><p className="font-medium break-words">{viewClienteData.endereco || "—"}</p></div>
                 <div><span className="text-muted-foreground">Número:</span><p className="font-medium">{viewClienteData.numero || "—"}</p></div>
                 <div><span className="text-muted-foreground">CEP:</span><p className="font-medium">{viewClienteData.cep || "—"}</p></div>
                 <div><span className="text-muted-foreground">Cidade:</span><p className="font-medium">{viewClienteData.cidade || "—"}</p></div>
-                <div className="col-span-2"><span className="text-muted-foreground">Referência:</span><p className="font-medium">{viewClienteData.referencia || "—"}</p></div>
+                <div className="sm:col-span-2"><span className="text-muted-foreground">Referência:</span><p className="font-medium break-words">{viewClienteData.referencia || "—"}</p></div>
               </div>
               {viewClienteData.contatos?.length > 0 && (
                 <div className="border-t border-border pt-3">
@@ -3339,7 +3336,7 @@ export default function AvaliacaoOSPage() {
                     <h3 className="font-semibold text-foreground flex items-center gap-2 mb-2">
                       <Users className="w-4 h-4 text-primary" /> Histórico como Lead
                     </h3>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div><span className="text-muted-foreground">Nome do Lead:</span><p className="font-medium">{viewClienteData.lead.nome}</p></div>
                       <div><span className="text-muted-foreground">Origem:</span><p className="font-medium">{viewClienteData.lead.origem_lead || "—"}</p></div>
                       <div><span className="text-muted-foreground">Plano:</span><p className="font-medium">{viewClienteData.planoNome}</p></div>
