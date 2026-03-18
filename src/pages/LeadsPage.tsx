@@ -1833,12 +1833,22 @@ export default function LeadsPage() {
           }
 
           await supabase.from("leads").update({ status_lead: "convertido", cliente_id: existingCliente.id }).eq("id", selectedLead.id);
+          // Create OS for existing client too
+          const cpfDupeTipoServicoId: string | null = (fluxoConfig as any)?.tipo_servico_conversao_id || null;
+          const cpfDupeConverterId = convAtendenteId || profile.id;
+          if (cpfDupeTipoServicoId) {
+            await supabase.from("ordens_servico").insert({
+              cliente_id: existingCliente.id, cliente_nome: existingCliente.nome, cliente_cpf: existingCliente.cpf || null,
+              tipo_servico_id: cpfDupeTipoServicoId, numero_os: null, status: "aguardando_numero" as any,
+              atendente_id: cpfDupeConverterId,
+            } as any);
+          }
           await supabase.from("lead_historico").insert({
             lead_id: selectedLead.id, usuario_id: profile.id,
             tipo_evento: "vinculo_cliente_existente",
-            descricao: `Lead vinculado ao cliente existente "${existingCliente.nome}" (CPF: ${existingCliente.cpf})`,
+            descricao: `Lead vinculado ao cliente existente "${existingCliente.nome}" (CPF: ${existingCliente.cpf}). OS criada aguardando número.`,
           });
-          setDupeAlert({ type: "cpf", message: `CPF já cadastrado para o cliente "${existingCliente.nome}". O lead foi vinculado ao cliente existente.`, clienteId: existingCliente.id, clienteNome: existingCliente.nome });
+          setDupeAlert({ type: "cpf", message: `CPF já cadastrado para o cliente "${existingCliente.nome}". O lead foi vinculado ao cliente existente e uma OS foi criada aguardando número.`, clienteId: existingCliente.id, clienteNome: existingCliente.nome });
           setShowConvert(false);
           setSelectedLead(prev => prev ? { ...prev, status_lead: "convertido" } : null);
           updateLeadInCache(selectedLead.id, { status_lead: "convertido" }); refetchHistorico();
