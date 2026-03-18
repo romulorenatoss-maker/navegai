@@ -1801,8 +1801,8 @@ export default function AvaliacaoOSPage() {
             </div>
 
             {/* Assigned employees + avaliadores info */}
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-6 mt-3 pt-3 border-t border-border flex-wrap">
-              <div className="flex items-center gap-2 text-sm">
+            <div className="flex flex-col gap-2 sm:flex-row sm:gap-6 mt-3 pt-3 border-t border-border flex-wrap">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm">
                 <span className="text-muted-foreground">Atendente:</span>
                 {isEditing ? (
                   <Select value={evalOsData.atendente_id || atendenteId || ""} onValueChange={async (val) => {
@@ -1811,7 +1811,7 @@ export default function AvaliacaoOSPage() {
                     setEvalOsData({ ...evalOsData, atendente_id: val });
                     toast.success("Atendente atualizado!");
                   }}>
-                    <SelectTrigger className="h-8 w-[200px]"><SelectValue placeholder="Selecionar atendente" /></SelectTrigger>
+                    <SelectTrigger className="h-8 w-full sm:w-[200px]"><SelectValue placeholder="Selecionar atendente" /></SelectTrigger>
                     <SelectContent>
                       {atendimentoProfiles.map(p =>
                         <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
@@ -1822,7 +1822,7 @@ export default function AvaliacaoOSPage() {
                   <span className="font-medium text-foreground">{evalAtendenteNome || "Não definido"}</span>
                 )}
               </div>
-              <div className="flex items-center gap-2 text-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm">
                 <span className="text-muted-foreground">Técnico:</span>
                 {isEditing ? (
                   <Select value={evalOsData.tecnico_id || tecnicoId || ""} onValueChange={async (val) => {
@@ -1831,7 +1831,7 @@ export default function AvaliacaoOSPage() {
                     setEvalOsData({ ...evalOsData, tecnico_id: val });
                     toast.success("Técnico atualizado!");
                   }}>
-                    <SelectTrigger className="h-8 w-[200px]"><SelectValue placeholder="Selecionar técnico" /></SelectTrigger>
+                    <SelectTrigger className="h-8 w-full sm:w-[200px]"><SelectValue placeholder="Selecionar técnico" /></SelectTrigger>
                     <SelectContent>
                       {tecnicoProfiles.map(p =>
                         <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
