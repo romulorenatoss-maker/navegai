@@ -42,7 +42,7 @@ export default function MfaEnrollSection() {
     try {
       // Clean up any unverified factors first
       const { data: existing } = await supabase.auth.mfa.listFactors();
-      const unverified = existing?.totp?.filter((f) => f.status === "unverified") || [];
+      const unverified = existing?.totp?.filter((f) => f.status !== "verified") || [];
       for (const f of unverified) {
         await supabase.auth.mfa.unenroll({ factorId: f.id });
       }
