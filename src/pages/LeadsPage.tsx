@@ -1934,7 +1934,7 @@ export default function LeadsPage() {
         if (newInserts.length > 0) await supabase.from("cliente_contatos").insert(newInserts);
       }
 
-      await supabase.from("leads").update({ status_lead: "convertido", cliente_id: newCliente.id, convertido_por: convAtendenteId || profile.id } as any).eq("id", selectedLead.id);
+      await supabase.from("leads").update({ status_lead: "convertido", cliente_id: newCliente.id, convertido_por: convAtendenteId || profile.id, convertido_registrado_por: profile.id } as any).eq("id", selectedLead.id);
 
       // Use configured tipo_servico from rotina config (required)
       const tipoServicoId: string | null = (fluxoConfig as any)?.tipo_servico_conversao_id || null;
