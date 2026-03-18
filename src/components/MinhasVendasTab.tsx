@@ -234,7 +234,7 @@ export default function MinhasVendasTab() {
 
       {/* Metrics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <MetricCard icon={<Users className="w-4 h-4" />} label="Leads Recebidos" value={totalLeads} />
+        <MetricCard icon={<Users className="w-4 h-4" />} label="Leads Criados" value={totalLeads} />
         <MetricCard icon={<Target className="w-4 h-4" />} label="Convertidos" value={totalConversoes} accent />
         <MetricCard icon={<ArrowRightLeft className="w-4 h-4" />} label="Transferências" value={totalTransferencias} />
         <MetricCard icon={<Phone className="w-4 h-4" />} label="Tentativas" value={totalInteracoes} />
