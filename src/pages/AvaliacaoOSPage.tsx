@@ -1112,6 +1112,8 @@ export default function AvaliacaoOSPage() {
   // Create OS from form + start evaluation
   const handleCreateAndStart = async () => {
     if (!profile) return;
+    const num = formOsNumero.trim();
+    if (!num) { toast.error("Informe o número da OS. Nenhuma OS pode entrar sem número."); return; }
     if (!clienteId) { toast.error("Cliente é obrigatório. Valide o CPF primeiro."); return; }
     if (!tipoServicoId) { toast.error("Selecione o tipo de serviço."); return; }
     if ((hasAtendimentoAccess || isAdmin) && !atendenteId) { toast.error("Selecione o atendente avaliado."); return; }
