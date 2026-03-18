@@ -382,14 +382,16 @@ export default function DashboardVendasPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  rankData.map((r, idx) => (
+                  rankData.map((r) => {
+                    const rank = (r as any).rank ?? 1;
+                    return (
                     <TableRow key={r.profileId}>
                       <TableCell>
                         <span className={cn(
                           "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
-                          getMedalColor(idx)
+                          getMedalColor(rank - 1)
                         )}>
-                          {idx + 1}
+                          {rank}
                         </span>
                       </TableCell>
                       <TableCell className="font-medium">{r.nome}</TableCell>
