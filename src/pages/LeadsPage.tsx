@@ -1759,6 +1759,7 @@ export default function LeadsPage() {
     setConvBairroId(selectedLead.bairro_id || null);
     setConvRuaId(selectedLead.rua_id || null);
     setConvAtendenteId(profile?.id || "");
+    setConvConvertidoPorId(selectedLead.responsavel_id || profile?.id || "");
     setConvCpfLookedUp(false);
     setConvCpfSearching(false);
     convCpfLookupRef.current = "";
