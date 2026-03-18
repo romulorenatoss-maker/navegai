@@ -1842,7 +1842,7 @@ export default function LeadsPage() {
                 await supabase.from("ordens_servico").insert({
                   cliente_id: existingCliente.id, cliente_nome: existingCliente.nome, cliente_cpf: existingCliente.cpf || null,
                   tipo_servico_id: dupetipoServicoId, numero_os: null, status: "aguardando_numero" as any,
-                  atendente_id: dupeConverterId,
+                  atendente_id: dupeConverterId, data_abertura: new Date().toISOString(),
                 } as any);
               }
               const vendedorNome1 = profiles.find(p => p.id === (convAtendenteId || profile.id))?.nome || "—";
