@@ -95,12 +95,14 @@ const statusBadge: Record<string, string> = {
   aberta: "border-warning/40 bg-warning/10 text-warning",
   em_andamento: "border-primary/40 bg-primary/10 text-primary",
   concluida: "border-success/40 bg-success/10 text-success",
+  aguardando_numero: "border-muted-foreground/40 bg-muted text-muted-foreground",
 };
 
 const statusText: Record<string, string> = {
   aberta: "Aberta",
   em_andamento: "Em andamento",
   concluida: "Concluída",
+  aguardando_numero: "Aguardando Número",
 };
 
 // --- Main ---
@@ -315,11 +317,11 @@ export default function DashboardPage() {
         const osPerguntaIds = perguntasByOS[os.id] || [];
         if (osPerguntaIds.length === 0) continue;
 
-        const myQuestions = isAdmin ? osPerguntaIds : osPerguntaIds.filter(pid => {
+        const myQuestions = osPerguntaIds.filter(pid => {
           const setorId = perguntaSetorMap[pid];
           return !setorId || mySetorIds.includes(setorId);
         });
-        const otherQuestions = isAdmin ? [] : osPerguntaIds.filter(pid => {
+        const otherQuestions = osPerguntaIds.filter(pid => {
           const setorId = perguntaSetorMap[pid];
           return setorId && !mySetorIds.includes(setorId);
         });
@@ -356,9 +358,7 @@ export default function DashboardPage() {
             colaborador_avaliado_nome: colabNome, pending_count: myUnanswered.length, progress,
             setor_pendente_nome: null,
           });
-        } else if (otherQuestions.length > 0) {
-          const otherUnanswered = otherQuestions.some(pid => !answeredSet.has(`${os.id}:${pid}`));
-          if (otherUnanswered) {
+        } else if (pendingSetorIds.size > 0 || otherQuestions.some(pid => !answeredSet.has(`${os.id}:${pid}`))) {
             const otherPendingSetores = [...pendingSetorIds]
               .filter(id => !mySetorIds.includes(id))
               .map(id => setoresMap[id] || "Sem setor");
@@ -368,7 +368,6 @@ export default function DashboardPage() {
               colaborador_avaliado_nome: colabNome, pending_count: 0, progress,
               setor_pendente_nome: otherPendingSetores.join(", ") || "Outro setor",
             });
-          }
         }
       }
 
