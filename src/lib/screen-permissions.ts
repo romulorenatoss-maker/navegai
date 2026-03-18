@@ -11,6 +11,7 @@ export const ALL_SCREENS: ScreenDef[] = [
   // Principal
   { path: "/", label: "Dashboard", group: "Principal" },
   { path: "/leads/dashboard", label: "Dashboard de Leads", group: "Principal" },
+  { path: "/leads/dashboard-vendas", label: "Dashboard Vendas", group: "Principal" },
   // Avaliações
   { path: "/avaliacoes/pesquisa", label: "Criar OS / Buscar", group: "Avaliações" },
   { path: "/avaliacoes/minhas", label: "Minhas Avaliações", group: "Avaliações" },
