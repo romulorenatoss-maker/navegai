@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import MfaVerifyDialog from "@/components/MfaVerifyDialog";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -17,6 +19,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nome, setNome] = useState("");
+  const [mfaRequired, setMfaRequired] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,6 +32,18 @@ export default function LoginPage() {
       } else {
         const { error } = await signIn(email, password);
         if (error) throw error;
+
+        // Check if MFA is required
+        const { data: { totp } } = await supabase.auth.mfa.listFactors();
+        const hasVerifiedFactor = totp?.some((f) => f.status === "verified");
+
+        if (hasVerifiedFactor) {
+          // Need MFA verification before proceeding
+          setMfaRequired(true);
+          setLoading(false);
+          return;
+        }
+
         navigate("/");
       }
     } catch (err: any) {
@@ -36,6 +51,17 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleMfaVerified = () => {
+    setMfaRequired(false);
+    navigate("/");
+  };
+
+  const handleMfaCancel = async () => {
+    setMfaRequired(false);
+    await supabase.auth.signOut();
+    toast.info("Login cancelado.");
   };
 
   return (
@@ -92,6 +118,12 @@ export default function LoginPage() {
         </div>
         <p className="text-caption text-muted-foreground text-center mt-4">Nexus Ops — Sistema de Gestão Operacional</p>
       </motion.div>
+
+      <MfaVerifyDialog
+        open={mfaRequired}
+        onVerified={handleMfaVerified}
+        onCancel={handleMfaCancel}
+      />
     </div>
   );
 }
