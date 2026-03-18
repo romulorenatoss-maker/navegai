@@ -2053,7 +2053,7 @@ export default function AvaliacaoOSPage() {
                                   <Textarea placeholder="Descreva o problema encontrado..." value={observation} onChange={e => handleObservationChange(p.id, e.target.value)} disabled={isLocked} className="bg-card min-h-[80px] text-sm" />
                                   <div className="space-y-2">
                                     <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
-                                      <Camera className="w-3.5 h-3.5" /> Evidência fotográfica *
+                                      <Camera className="w-3.5 h-3.5" /> Evidência fotográfica (opcional)
                                     </div>
                                     {evidenciaUrl ? (
                                       <div className="relative inline-block">
@@ -2075,6 +2075,40 @@ export default function AvaliacaoOSPage() {
                                           <input type="file" accept="image/*" capture="environment" className="hidden" disabled={isLocked || isUploading} onChange={e => { const file = e.target.files?.[0]; if (file) handleEvidenceUpload(p.id, file); e.target.value = ""; }} />
                                         </label>
                                       </div>
+                                    )}
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
+                                      <FileAudio className="w-3.5 h-3.5" /> Anexo de áudio (opcional)
+                                    </div>
+                                    {audioUrl ? (
+                                      <div className="bg-card border border-border rounded-lg p-3">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <Volume2 className="w-4 h-4 text-destructive shrink-0" />
+                                          <span className="text-sm text-foreground font-medium">Áudio anexado</span>
+                                        </div>
+                                        <audio controls className="w-full h-10" preload="metadata">
+                                          <source src={audioUrl} />
+                                          Seu navegador não suporta reprodução de áudio.
+                                        </audio>
+                                        <div className="flex items-center gap-2 mt-2">
+                                          <a href={audioUrl} download target="_blank" rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
+                                            <Download className="w-3.5 h-3.5" /> Baixar áudio
+                                          </a>
+                                          {!isLocked && (
+                                            <button onClick={() => handleRemoveAudio(p.id)} className="inline-flex items-center gap-1 text-xs text-destructive hover:underline ml-auto">
+                                              <X className="w-3 h-3" /> Remover
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <label className={cn("flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors text-sm w-fit", isAudioUploading ? "border-muted-foreground/30 bg-muted/30 cursor-wait" : "border-destructive/30 hover:border-destructive/50 hover:bg-destructive/5", isLocked && "opacity-50 cursor-not-allowed")}>
+                                        {isAudioUploading ? <><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> Enviando...</> : <><Mic className="w-4 h-4 text-destructive" /> Selecionar áudio</>}
+                                        <input type="file" accept="audio/*" className="hidden" disabled={isLocked || isAudioUploading} onChange={e => { const file = e.target.files?.[0]; if (file) handleAudioUpload(p.id, file); e.target.value = ""; }} />
+                                      </label>
                                     )}
                                   </div>
                                 </div>
