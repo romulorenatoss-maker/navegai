@@ -79,13 +79,13 @@ export default function MinhasVendasTab() {
         .gte("data_evento", from)
         .lte("data_evento", to);
       if (!data?.length) return [];
-      // Get leads to find who was responsible
+      // Get leads to find convertido_por (fallback to responsavel_id)
       const leadIds = [...new Set(data.map(d => d.lead_id))];
-      const { data: leads } = await supabase.from("leads").select("id, responsavel_id").in("id", leadIds);
-      const leadResponsavel: Record<string, string | null> = {};
-      leads?.forEach(l => { leadResponsavel[l.id] = l.responsavel_id; });
+      const { data: leads } = await supabase.from("leads").select("id, responsavel_id, convertido_por").in("id", leadIds);
+      const leadConvertidoPor: Record<string, string | null> = {};
+      leads?.forEach((l: any) => { leadConvertidoPor[l.id] = l.convertido_por || l.responsavel_id; });
       return data
-        .filter(d => leadResponsavel[d.lead_id] === profileId)
+        .filter(d => leadConvertidoPor[d.lead_id] === profileId)
         .map(d => ({ lead_id: d.lead_id, data_evento: d.data_evento }));
     },
   });
