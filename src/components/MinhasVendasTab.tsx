@@ -34,58 +34,52 @@ export default function MinhasVendasTab() {
   const from = appliedStart ? startOfDay(appliedStart).toISOString() : startOfDay(startOfMonth(now)).toISOString();
   const to = appliedEnd ? endOfDay(appliedEnd).toISOString() : endOfDay(endOfMonth(now)).toISOString();
 
-  // Leads received by current user in period
-  const { data: leadsRecebidos = [] } = useQuery({
-    queryKey: ["minhas-vendas-leads", profileId, from, to],
-    enabled: !!profileId,
-    queryFn: async () => {
-      // Leads where this user was responsible at some point (via historico)
-      const { data: historico } = await supabase
-        .from("lead_historico")
-        .select("lead_id, tipo_evento, data_evento, descricao")
-        .eq("usuario_id", profileId!)
-        .gte("data_evento", from)
-        .lte("data_evento", to)
-        .in("tipo_evento", [
-          "transferencia_automatica", "transferencia_manual", "transferencia_decisao",
-          "lead_capturado", "lead_criado", "criacao"
-        ]);
-
-      // Also get leads directly assigned
-      const { data: directLeads } = await supabase
-        .from("leads")
-        .select("id, nome, status_lead, created_at")
-        .eq("responsavel_id", profileId!)
-        .gte("created_at", from)
-        .lte("created_at", to);
-
-      const leadIds = new Set<string>();
-      historico?.forEach(h => leadIds.add(h.lead_id));
-      directLeads?.forEach(l => leadIds.add(l.id));
-
-      return Array.from(leadIds);
-    },
-  });
-
-  // Conversions — attributed to the lead's responsavel_id (salesperson), not who logged the event
-  const { data: conversoes = [] } = useQuery({
-    queryKey: ["minhas-vendas-conversoes", profileId, from, to],
+  // Leads CREATED by current user in period
+  const { data: leadsCriados = [] } = useQuery({
+    queryKey: ["minhas-vendas-leads-criados", profileId, from, to],
     enabled: !!profileId,
     queryFn: async () => {
       const { data } = await supabase
         .from("lead_historico")
-        .select("lead_id, data_evento, descricao")
+        .select("lead_id")
+        .eq("usuario_id", profileId!)
+        .in("tipo_evento", ["lead_criado", "criacao"])
+        .gte("data_evento", from)
+        .lte("data_evento", to);
+
+      const leadIds = new Set<string>();
+      data?.forEach(h => leadIds.add(h.lead_id));
+      return Array.from(leadIds);
+    },
+  });
+
+  // Conversions of leads CREATED by this user (regardless of who converted)
+  const { data: conversoes = [] } = useQuery({
+    queryKey: ["minhas-vendas-conversoes-v3", profileId, from, to],
+    enabled: !!profileId,
+    queryFn: async () => {
+      // Get all conversions in period
+      const { data } = await supabase
+        .from("lead_historico")
+        .select("lead_id, data_evento")
         .eq("tipo_evento", "conversao_cliente")
         .gte("data_evento", from)
         .lte("data_evento", to);
       if (!data?.length) return [];
-      // Get leads to find convertido_por (fallback to responsavel_id)
+
+      // Find which of those leads were created by this user
       const leadIds = [...new Set(data.map(d => d.lead_id))];
-      const { data: leads } = await supabase.from("leads").select("id, responsavel_id, convertido_por").in("id", leadIds);
-      const leadConvertidoPor: Record<string, string | null> = {};
-      leads?.forEach((l: any) => { leadConvertidoPor[l.id] = l.convertido_por || l.responsavel_id; });
+      const { data: criacaoEvents } = await supabase
+        .from("lead_historico")
+        .select("lead_id, usuario_id")
+        .in("tipo_evento", ["lead_criado", "criacao"])
+        .in("lead_id", leadIds)
+        .eq("usuario_id", profileId!);
+
+      const myCreatedLeadIds = new Set(criacaoEvents?.map(e => e.lead_id) || []);
+
       return data
-        .filter(d => leadConvertidoPor[d.lead_id] === profileId)
+        .filter(d => myCreatedLeadIds.has(d.lead_id))
         .map(d => ({ lead_id: d.lead_id, data_evento: d.data_evento }));
     },
   });
