@@ -349,7 +349,7 @@ export default function DashboardVendasPage() {
                 <TableRow>
                   <TableHead className="w-10">#</TableHead>
                   <TableHead>Atendente</TableHead>
-                  <TableHead className="text-center">Leads</TableHead>
+                  <TableHead className="text-center">Leads Criados</TableHead>
                   <TableHead className="text-center">Conversões</TableHead>
                   <TableHead className="text-center">Taxa</TableHead>
                   <TableHead className="text-center">Interações</TableHead>
