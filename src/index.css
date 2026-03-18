@@ -112,4 +112,9 @@
   .press-effect {
     @apply transition-transform active:scale-[0.98];
   }
+
+  /* Safe area padding for iOS bottom bar */
+  .safe-area-pb {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
 }
