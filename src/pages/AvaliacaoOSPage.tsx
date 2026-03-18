@@ -1401,6 +1401,7 @@ export default function AvaliacaoOSPage() {
     setEvalAnswers({});
     setEvalObservations({});
     setEvalEvidencias({});
+    setEvalAudios({});
     setResponseAuthors({});
     setEvalFinalized(false);
     setEvalScore(null);
