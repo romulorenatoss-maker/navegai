@@ -186,6 +186,7 @@ const EVENTO_LABELS: Record<string, string> = {
   lead_capturado: "Lead Capturado",
   lead_reservado: "Lead Reservado",
   reserva_liberada: "Reserva Liberada",
+  captura_expirada: "Captura Expirada",
   reserva_expirada: "Reserva Expirada",
   transferencia_manual: "Transferência Manual",
 };
