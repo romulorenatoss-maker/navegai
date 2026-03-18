@@ -441,7 +441,7 @@ export default function AvaliacaoOSPage() {
 
       const avalIds = avals.map(a => a.id);
       const { data: respostas } = await supabase.from("respostas_avaliacao")
-        .select("avaliacao_id, pergunta_id, resposta, observacao, evidencia_url")
+        .select("avaliacao_id, pergunta_id, resposta, observacao, evidencia_url, audio_url")
         .in("avaliacao_id", avalIds);
 
       const perguntaIds = [...new Set(respostas?.map(r => r.pergunta_id) || [])];
