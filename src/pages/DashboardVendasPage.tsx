@@ -194,7 +194,7 @@ export default function DashboardVendasPage() {
     const metrics: { key: keyof RankEntry; label: string; icon: React.ReactNode; format: (v: number) => string; higherBetter: boolean }[] = [
       { key: "conversoes", label: "Conversões", icon: <Target className="w-4 h-4" />, format: v => String(v), higherBetter: true },
       { key: "taxaConversao", label: "Taxa de Conversão", icon: <TrendingUp className="w-4 h-4" />, format: v => `${v.toFixed(1)}%`, higherBetter: true },
-      { key: "leadsRecebidos", label: "Leads Recebidos", icon: <Users className="w-4 h-4" />, format: v => String(v), higherBetter: true },
+      { key: "leadsCriados", label: "Leads Criados", icon: <Users className="w-4 h-4" />, format: v => String(v), higherBetter: true },
       { key: "interacoes", label: "Total de Interações", icon: <Phone className="w-4 h-4" />, format: v => String(v), higherBetter: true },
       { key: "mediaTentativas", label: "Média Tentativas/Conversão", icon: <BarChart3 className="w-4 h-4" />, format: v => v.toFixed(1), higherBetter: false },
       { key: "transferencias", label: "Transferências Realizadas", icon: <ArrowRightLeft className="w-4 h-4" />, format: v => String(v), higherBetter: false },
