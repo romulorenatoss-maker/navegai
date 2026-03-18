@@ -1214,6 +1214,35 @@ export default function AvaliacaoOSPage() {
     }
   };
 
+  // Fetch and cache client addresses for OS display
+  const fetchClienteAddresses = useCallback(async (clienteIds: string[]) => {
+    const idsToFetch = clienteIds.filter(id => id && !clienteAddressMap[id]);
+    if (idsToFetch.length === 0) return;
+    const { data: clientes } = await supabase.from("clientes").select("id, cidade_id, bairro_id, rua_id, numero").in("id", idsToFetch);
+    if (!clientes?.length) return;
+    const cidadeIds = [...new Set(clientes.map(c => c.cidade_id).filter(Boolean))] as string[];
+    const bairroIds = [...new Set(clientes.map(c => c.bairro_id).filter(Boolean))] as string[];
+    const ruaIds = [...new Set(clientes.map(c => c.rua_id).filter(Boolean))] as string[];
+    const [cidadesRes, bairrosRes, ruasRes] = await Promise.all([
+      cidadeIds.length ? supabase.from("cidades").select("id, nome").in("id", cidadeIds) : { data: [] },
+      bairroIds.length ? supabase.from("bairros").select("id, nome").in("id", bairroIds) : { data: [] },
+      ruaIds.length ? supabase.from("ruas").select("id, nome").in("id", ruaIds) : { data: [] },
+    ]);
+    const cidadeMap: Record<string, string> = {}; (cidadesRes.data || []).forEach(c => { cidadeMap[c.id] = c.nome; });
+    const bairroMap: Record<string, string> = {}; (bairrosRes.data || []).forEach(b => { bairroMap[b.id] = b.nome; });
+    const ruaMap: Record<string, string> = {}; (ruasRes.data || []).forEach(r => { ruaMap[r.id] = r.nome; });
+    const newMap: Record<string, string> = {};
+    clientes.forEach(c => {
+      const parts: string[] = [];
+      if (c.rua_id && ruaMap[c.rua_id]) parts.push(ruaMap[c.rua_id]);
+      if (c.numero) parts.push(`nº ${c.numero}`);
+      if (c.bairro_id && bairroMap[c.bairro_id]) parts.push(bairroMap[c.bairro_id]);
+      if (c.cidade_id && cidadeMap[c.cidade_id]) parts.push(cidadeMap[c.cidade_id]);
+      newMap[c.id] = parts.length > 0 ? parts.join(", ") : "";
+    });
+    setClienteAddressMap(prev => ({ ...prev, ...newMap }));
+  }, [clienteAddressMap]);
+
 
   const handleFinalizeEvaluation = async () => {
     if (!evalAvaliacaoId || !evalOsId) return;
