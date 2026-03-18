@@ -281,6 +281,21 @@ export default function RotinaTentativasPage() {
                   </Select>
                   <p className="text-xs text-muted-foreground">Define qual checklist será usado na OS criada ao converter um lead em cliente.</p>
                 </div>
+                <div className="space-y-1.5">
+                  <Label>Tempo para expirar captura sem interação</Label>
+                  <Select
+                    value={String(localConfig?.tempo_expiracao_captura_segundos || 120)}
+                    onValueChange={(v) => localConfig && setLocalConfig({ ...localConfig, tempo_expiracao_captura_segundos: parseInt(v) })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {EXPIRACAO_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Se o atendente capturar um lead e não registrar nenhuma interação dentro desse tempo, o lead volta automaticamente para a fila de captura.</p>
+                </div>
               </div>
             </CardContent>
           </Card>
