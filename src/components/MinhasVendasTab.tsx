@@ -67,19 +67,26 @@ export default function MinhasVendasTab() {
     },
   });
 
-  // Conversions (leads converted to clients)
+  // Conversions — attributed to the lead's responsavel_id (salesperson), not who logged the event
   const { data: conversoes = [] } = useQuery({
     queryKey: ["minhas-vendas-conversoes", profileId, from, to],
     enabled: !!profileId,
     queryFn: async () => {
       const { data } = await supabase
         .from("lead_historico")
-        .select("lead_id, data_evento")
-        .eq("usuario_id", profileId!)
+        .select("lead_id, data_evento, descricao")
         .eq("tipo_evento", "conversao_cliente")
         .gte("data_evento", from)
         .lte("data_evento", to);
-      return data || [];
+      if (!data?.length) return [];
+      // Get leads to find who was responsible
+      const leadIds = [...new Set(data.map(d => d.lead_id))];
+      const { data: leads } = await supabase.from("leads").select("id, responsavel_id").in("id", leadIds);
+      const leadResponsavel: Record<string, string | null> = {};
+      leads?.forEach(l => { leadResponsavel[l.id] = l.responsavel_id; });
+      return data
+        .filter(d => leadResponsavel[d.lead_id] === profileId)
+        .map(d => ({ lead_id: d.lead_id, data_evento: d.data_evento }));
     },
   });
 
@@ -114,26 +121,33 @@ export default function MinhasVendasTab() {
     },
   });
 
-  // Ranking: all users conversions in the period
+  // Ranking: conversions attributed to lead's responsavel_id
   const { data: ranking = [] } = useQuery({
     queryKey: ["minhas-vendas-ranking", from, to],
     enabled: !!profileId,
     queryFn: async () => {
       const { data: allConversoes } = await supabase
         .from("lead_historico")
-        .select("usuario_id")
+        .select("lead_id")
         .eq("tipo_evento", "conversao_cliente")
         .gte("data_evento", from)
         .lte("data_evento", to);
 
       if (!allConversoes?.length) return [];
 
+      const leadIds = [...new Set(allConversoes.map(c => c.lead_id))];
+      const { data: leads } = await supabase.from("leads").select("id, responsavel_id").in("id", leadIds);
+      const leadResponsavel: Record<string, string | null> = {};
+      leads?.forEach(l => { leadResponsavel[l.id] = l.responsavel_id; });
+
       const countByUser: Record<string, number> = {};
       allConversoes.forEach(c => {
-        countByUser[c.usuario_id] = (countByUser[c.usuario_id] || 0) + 1;
+        const resp = leadResponsavel[c.lead_id];
+        if (resp) countByUser[resp] = (countByUser[resp] || 0) + 1;
       });
 
       const userIds = Object.keys(countByUser);
+      if (!userIds.length) return [];
       const { data: profiles } = await supabase
         .from("profiles")
         .select("id, nome")

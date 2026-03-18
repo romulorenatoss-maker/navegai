@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { fetchNotasPorSetor, calcularMediaColaborador, calcularNotaPorOS } from "@/hooks/useNotasPorSetor";
 import { getScoreColorClass, getScoreBgClass } from "@/lib/score-colors";
 import { useQuery } from "@tanstack/react-query";
@@ -30,7 +31,9 @@ export default function MinhasAvaliacoesPage() {
   const [appliedStart, setAppliedStart] = useState<Date | undefined>(startOfMonth(now));
   const [appliedEnd, setAppliedEnd] = useState<Date | undefined>(endOfMonth(now));
   const [selectedOsId, setSelectedOsId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("desempenho");
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState(tabParam || "desempenho");
 
   const handleBuscar = () => {
     setAppliedStart(startDate);
