@@ -657,25 +657,21 @@ export default function FilaLeadsPage() {
 
   const handleTarefaTransfer = async () => {
     if (!tarefaTransferLeadId || !tarefaTransferTarget || !profile) return;
-    await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", tarefaTransferLeadId).in("status", ["pendente", "atrasado"]);
-    await supabase.from("leads").update({ responsavel_id: tarefaTransferTarget, status_lead: "em_contato" } as any).eq("id", tarefaTransferLeadId);
+    // Cancel all pending tasks and clear manual scheduling
+    await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", tarefaTransferLeadId).in("status", ["pendente", "atrasado", "aguardando_visualizacao"]);
+    await supabase.from("leads").update({ responsavel_id: tarefaTransferTarget, status_lead: "em_contato", agendamento_retorno: null } as any).eq("id", tarefaTransferLeadId);
     const targetName = profiles.find(p => p.id === tarefaTransferTarget)?.nome || "—";
-    await supabase.from("lead_historico").insert({ lead_id: tarefaTransferLeadId, usuario_id: profile.id, tipo_evento: "transferencia_automatica", descricao: `Lead transferido para ${targetName}. Contagem de tentativas reiniciada.` });
-    const firstRotina = rotinaTentativas.find((r: any) => r.tentativa_numero === 1);
-    const periodo = firstRotina?.periodo_contato || "manha";
-    // Schedule for next valid period window so it doesn't expire immediately
+    await supabase.from("lead_historico").insert({ lead_id: tarefaTransferLeadId, usuario_id: profile.id, tipo_evento: "transferencia_automatica", descricao: `Lead transferido para ${targetName}. Contagem de tentativas reiniciada. Tarefa imediata criada.` });
+    // Determine current valid period
     const now = new Date();
     const currentHour = now.getHours();
-    let taskDate = new Date(now);
-    const periodoStartHour = periodo === "manha" ? 8 : periodo === "tarde" ? 12 : 18;
-    const periodoEndHour = getPeriodoEndHour(periodo);
-    if (currentHour >= periodoEndHour) {
-      // Period already passed today → schedule for tomorrow
-      taskDate.setDate(taskDate.getDate() + 1);
-    }
-    taskDate.setHours(periodoStartHour, 0, 0, 0);
-    await supabase.from("lead_tarefas_contato").insert({ lead_id: tarefaTransferLeadId, tentativa: 1, data_contato: taskDate.toISOString(), periodo, status: "aguardando_visualizacao", responsavel_id: tarefaTransferTarget });
-    toast.success(`Lead transferido para ${targetName}!`);
+    let periodo: string;
+    if (currentHour < 12) periodo = "manha";
+    else if (currentHour < 18) periodo = "tarde";
+    else periodo = "noite";
+    // Create immediate task — scheduled for NOW so it appears as priority in the queue
+    await supabase.from("lead_tarefas_contato").insert({ lead_id: tarefaTransferLeadId, tentativa: 1, data_contato: now.toISOString(), periodo, status: "pendente", responsavel_id: tarefaTransferTarget });
+    toast.success(`Lead transferido para ${targetName}! Tarefa imediata criada na fila.`);
     setShowTarefaTransfer(false); setTarefaTransferLeadId(""); setTarefaTransferTarget("");
     queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
   };
