@@ -317,39 +317,42 @@ export default function DashboardVendasPage() {
         </CardContent>
       </Card>
 
-      {/* Ranking de Vendas - Cards de Destaque */}
+      {/* Ranking de Vendas - Lista Compacta */}
       {rankData.filter(r => r.conversoes > 0).length > 0 && (
-        <div>
-          <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
-            <Trophy className="w-4 h-4 text-primary" />
-            Ranking de Vendas — Período Selecionado
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-            {rankData.filter(r => r.conversoes > 0).map((r) => {
-              const rank = (r as any).rank ?? 1;
-              return (
-                <Card key={r.profileId} className={cn(
-                  "relative overflow-hidden",
-                  rank === 1 && "border-yellow-400/50 bg-yellow-50/30 dark:bg-yellow-950/20",
-                  rank === 2 && "border-muted-foreground/30",
-                  rank === 3 && "border-amber-400/30",
-                )}>
-                  <CardContent className="p-4 text-center">
-                    <div className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold mx-auto mb-2",
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-primary" />
+              Ranking de Vendas — Período Selecionado
+              <Badge variant="secondary" className="text-xs ml-auto">
+                {rankData.filter(r => r.conversoes > 0).length} vendedores
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-1">
+              {rankData.filter(r => r.conversoes > 0).map((r) => {
+                const rank = (r as any).rank ?? 1;
+                return (
+                  <div key={r.profileId} className={cn(
+                    "flex items-center gap-3 px-3 py-1.5 rounded-md",
+                    rank === 1 && "bg-yellow-50/60 dark:bg-yellow-950/20",
+                  )}>
+                    <span className={cn(
+                      "w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0",
                       getMedalColor(rank - 1)
                     )}>
                       {rank}º
-                    </div>
-                    <p className="text-sm font-semibold text-foreground truncate">{r.nome}</p>
-                    <p className="text-2xl font-bold text-primary mt-1">{r.conversoes}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">vendas</p>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
+                    </span>
+                    <span className="flex-1 text-sm font-medium text-foreground truncate">{r.nome}</span>
+                    <span className="text-lg font-bold text-primary tabular-nums">{r.conversoes}</span>
+                    <span className="text-[10px] text-muted-foreground w-10">vendas</span>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Metric ranking cards */}
