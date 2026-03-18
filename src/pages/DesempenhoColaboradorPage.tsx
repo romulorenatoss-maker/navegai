@@ -529,7 +529,7 @@ export default function DesempenhoColaboradorPage() {
                     return (
                       <tr key={ev.os_id} className="hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setSelectedOsId(ev.os_id)}>
                         <td className="px-4 py-3 text-body font-medium text-primary underline underline-offset-2 font-tabular">{ev.numero_os}</td>
-                        <td className="px-4 py-3 text-body text-muted-foreground">{format(new Date(ev.created_at), "dd/MM/yyyy")}</td>
+                        <td className="px-4 py-3 text-body text-muted-foreground">{format(new Date(ev.data_abertura || ev.created_at), "dd/MM/yyyy")}</td>
                         <td className="px-4 py-3 text-body text-muted-foreground">{ev.tipo_servico}</td>
                         <td className="px-4 py-3">
                           {osNota != null ? (
