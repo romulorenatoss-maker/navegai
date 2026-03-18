@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Phone, MessageSquare, Loader2, ListOrdered, Clock, AlertTriangle } from "lucide-react";
+import { isTarefaExpirada, getPeriodoEndHour, PERIODO_LABELS, PERIODO_HORA, skipWeekend } from "@/lib/lead-task-utils";
 
 const fmtDate = (d: string | Date) => {
   try { return format(new Date(d), "dd/MM/yyyy HH:mm", { locale: ptBR }); } catch { return String(d); }
@@ -27,25 +28,6 @@ const STATUS_STYLE: Record<string, string> = {
   pendente: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
   realizado: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
 };
-
-const PERIODO_LABELS: Record<string, string> = { manha: "Manhã", tarde: "Tarde", noite: "Noite" };
-
-// Horários limites de cada período
-// Manhã: 06:00 - 12:00 | Tarde: 12:01 - 18:00 | Noite: 18:01 - 00:00
-function getPeriodoEndHour(periodo: string): number {
-  if (periodo === "manha") return 12;
-  if (periodo === "tarde") return 18;
-  return 24; // noite → meia-noite
-}
-
-function isTarefaExpirada(tarefa: { data_contato: string; periodo: string; status: string }): boolean {
-  if (tarefa.status === "realizado" || tarefa.status === "aguardando_visualizacao") return false;
-  const dataContato = new Date(tarefa.data_contato);
-  const now = new Date();
-  const tarefaDate = new Date(dataContato);
-  tarefaDate.setHours(getPeriodoEndHour(tarefa.periodo), 0, 0, 0);
-  return now > tarefaDate;
-}
 
 export default function FilaTarefasLeadsPage() {
   const { profile } = useAuth();
@@ -249,15 +231,16 @@ export default function FilaTarefasLeadsPage() {
         const nextRotina = rotina.find((r: any) => r.tentativa_numero === nextTentativa);
         const diasApos = nextRotina?.dias_apos_anterior || 1;
         const periodo = nextRotina?.periodo_contato || "manha";
-        const nextDate = new Date();
+        const nextDate = skipWeekend(new Date());
         nextDate.setDate(nextDate.getDate() + diasApos);
-        const periodoHora = periodo === "manha" ? 9 : periodo === "tarde" ? 14 : 19;
-        nextDate.setHours(periodoHora, 0, 0, 0);
+        const skippedDate = skipWeekend(nextDate);
+        const periodoHora = PERIODO_HORA[periodo] || 9;
+        skippedDate.setHours(periodoHora, 0, 0, 0);
 
         await supabase.from("lead_tarefas_contato").insert({
           lead_id: selectedTarefa.lead_id,
           tentativa: nextTentativa,
-          data_contato: nextDate.toISOString(),
+          data_contato: skippedDate.toISOString(),
           periodo,
           status: "pendente",
           responsavel_id: profile.id,

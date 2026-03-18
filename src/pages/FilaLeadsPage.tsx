@@ -27,6 +27,7 @@ import {
   ArrowUpDown, ArrowUp, ArrowDown,
 } from "lucide-react";
 import { startOfDay, endOfDay, isWithinInterval } from "date-fns";
+import { isTarefaExpirada, getPeriodoEndHour, PERIODO_LABELS, PERIODO_HORA, skipWeekend, isWeekend } from "@/lib/lead-task-utils";
 interface Lead {
   id: string; nome: string; status_lead: string; responsavel_id: string | null;
   updated_at: string; created_at: string; agendamento_retorno: string | null;
@@ -45,17 +46,7 @@ interface QueueItem {
 // ─── Helpers ────────────────────────────────────────────
 const fmtDate = (d: string | Date) => { try { return format(new Date(d), "dd/MM/yyyy HH:mm", { locale: ptBR }); } catch { return String(d); } };
 const fmtDateShort = (d: string | Date) => { try { return format(new Date(d), "dd/MM HH:mm", { locale: ptBR }); } catch { return String(d); } };
-const PERIODO_HORA: Record<string, number> = { manha: 9, tarde: 14, noite: 19 };
-const PERIODO_LABELS: Record<string, string> = { manha: "Manhã", tarde: "Tarde", noite: "Noite" };
 const STATUS_MAP: Record<string, string> = { novo: "Novo", em_contato: "Em Contato", em_atendimento: "Em tratativa", interessado: "Interessado", aguardando_decisao_avaliador: "Aguardando Decisão", fila_captura: "Fila de Captura", reservado: "Reservado", expirado: "Expirado" };
-
-function getPeriodoEndHour(periodo: string): number { return periodo === "manha" ? 12 : periodo === "tarde" ? 18 : 24; }
-function isTarefaExpirada(tarefa: { data_contato: string; periodo: string; status: string }): boolean {
-  if (tarefa.status === "realizado" || tarefa.status === "aguardando_visualizacao") return false;
-  const tarefaDate = new Date(new Date(tarefa.data_contato));
-  tarefaDate.setHours(getPeriodoEndHour(tarefa.periodo), 0, 0, 0);
-  return new Date() > tarefaDate;
-}
 
 export default function FilaLeadsPage() {
   const { profile, isAdmin } = useAuth();
@@ -662,15 +653,22 @@ export default function FilaLeadsPage() {
     await supabase.from("leads").update({ responsavel_id: tarefaTransferTarget, status_lead: "em_contato", agendamento_retorno: null } as any).eq("id", tarefaTransferLeadId);
     const targetName = profiles.find(p => p.id === tarefaTransferTarget)?.nome || "—";
     await supabase.from("lead_historico").insert({ lead_id: tarefaTransferLeadId, usuario_id: profile.id, tipo_evento: "transferencia_automatica", descricao: `Lead transferido para ${targetName}. Contagem de tentativas reiniciada. Tarefa imediata criada.` });
-    // Determine current valid period
+    // Determine scheduling — if weekend, schedule for Monday morning
     const now = new Date();
-    const currentHour = now.getHours();
+    let taskDate = now;
     let periodo: string;
-    if (currentHour < 12) periodo = "manha";
-    else if (currentHour < 18) periodo = "tarde";
-    else periodo = "noite";
-    // Create immediate task — scheduled for NOW so it appears as priority in the queue
-    await supabase.from("lead_tarefas_contato").insert({ lead_id: tarefaTransferLeadId, tentativa: 1, data_contato: now.toISOString(), periodo, status: "pendente", responsavel_id: tarefaTransferTarget });
+    if (isWeekend(now)) {
+      taskDate = skipWeekend(now);
+      taskDate.setHours(9, 0, 0, 0);
+      periodo = "manha";
+    } else {
+      const currentHour = now.getHours();
+      if (currentHour < 12) periodo = "manha";
+      else if (currentHour < 18) periodo = "tarde";
+      else periodo = "noite";
+    }
+    // Create immediate/scheduled task
+    await supabase.from("lead_tarefas_contato").insert({ lead_id: tarefaTransferLeadId, tentativa: 1, data_contato: taskDate.toISOString(), periodo, status: "pendente", responsavel_id: tarefaTransferTarget });
     toast.success(`Lead transferido para ${targetName}! Tarefa imediata criada na fila.`);
     setShowTarefaTransfer(false); setTarefaTransferLeadId(""); setTarefaTransferTarget("");
     queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
@@ -777,8 +775,8 @@ export default function FilaLeadsPage() {
         const nextR = rotinaTentativas.find((r: any) => r.tentativa_numero === nextT);
         const dias = nextR?.dias_apos_anterior || 1;
         const per = nextR?.periodo_contato || "manha";
-        const nd = new Date(); nd.setDate(nd.getDate() + dias); nd.setHours(PERIODO_HORA[per] || 9, 0, 0, 0);
-        await supabase.from("lead_tarefas_contato").insert({ lead_id: selectedTarefa.lead_id, tentativa: nextT, data_contato: nd.toISOString(), periodo: per, status: "pendente", responsavel_id: profile.id });
+        const nd = new Date(); nd.setDate(nd.getDate() + dias); const ndSkipped = skipWeekend(nd); ndSkipped.setHours(PERIODO_HORA[per] || 9, 0, 0, 0);
+        await supabase.from("lead_tarefas_contato").insert({ lead_id: selectedTarefa.lead_id, tentativa: nextT, data_contato: ndSkipped.toISOString(), periodo: per, status: "pendente", responsavel_id: profile.id });
       }
       const leadStatus = tarefaLeads.find((l: any) => l.id === selectedTarefa.lead_id)?.status_lead;
       const tarefaLeadUpdate: any = { agendamento_retorno: null };

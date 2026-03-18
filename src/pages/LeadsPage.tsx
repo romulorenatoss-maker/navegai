@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { format, addDays, setHours, setMinutes } from "date-fns";
+import { skipWeekend, PERIODO_HORA } from "@/lib/lead-task-utils";
 import { ptBR } from "date-fns/locale";
 import {
   Search, Plus, Phone, User, Users, History, ArrowRight, Trash2,
@@ -216,7 +217,7 @@ const EVENTO_ICONS: Record<string, typeof Phone> = {
   lead_capturado: UserCheck,
 };
 
-const PERIODO_HORA: Record<string, number> = { manha: 9, tarde: 14, noite: 19 };
+// PERIODO_HORA imported from lead-task-utils
 
 function formatCountdown(target: Date, now: Date): string {
   const diffMs = target.getTime() - now.getTime();
@@ -1286,10 +1287,11 @@ export default function LeadsPage() {
           const nextDate = new Date();
           const diasAdicionais = Math.max(firstRotina.dias_apos_anterior || 0, 1);
           nextDate.setDate(nextDate.getDate() + diasAdicionais);
+          const skipped = skipWeekend(nextDate);
           const periodoHora = firstRotina.periodo_contato === "manha" ? 9 : firstRotina.periodo_contato === "tarde" ? 14 : 19;
-          nextDate.setHours(periodoHora, 0, 0, 0);
+          skipped.setHours(periodoHora, 0, 0, 0);
           await supabase.from("lead_tarefas_contato").insert({
-            lead_id: newLead.id, tentativa: 1, data_contato: nextDate.toISOString(),
+            lead_id: newLead.id, tentativa: 1, data_contato: skipped.toISOString(),
             periodo: firstRotina.periodo_contato, status: "pendente", responsavel_id: profile.id,
           });
         }
@@ -1535,10 +1537,11 @@ export default function LeadsPage() {
           const periodo = nextRotina?.periodo_contato || "manha";
           const nextDate = new Date();
           nextDate.setDate(nextDate.getDate() + Math.max(diasApos, 1));
+          const skippedNext = skipWeekend(nextDate);
           const periodoHora = periodo === "manha" ? 9 : periodo === "tarde" ? 14 : 19;
-          nextDate.setHours(periodoHora, 0, 0, 0);
+          skippedNext.setHours(periodoHora, 0, 0, 0);
           await supabase.from("lead_tarefas_contato").insert({
-            lead_id: selectedLead.id, tentativa: nextTentativa, data_contato: nextDate.toISOString(),
+            lead_id: selectedLead.id, tentativa: nextTentativa, data_contato: skippedNext.toISOString(),
             periodo, status: "pendente", responsavel_id: profile.id,
           });
         } catch { /* ignore */ }
@@ -1836,10 +1839,11 @@ export default function LeadsPage() {
         if (firstRotina) {
           const nextDate = new Date();
           nextDate.setDate(nextDate.getDate() + Math.max(firstRotina.dias_apos_anterior || 0, 1));
+          const skippedRestart = skipWeekend(nextDate);
           const periodoHora = firstRotina.periodo_contato === "manha" ? 9 : firstRotina.periodo_contato === "tarde" ? 14 : 19;
-          nextDate.setHours(periodoHora, 0, 0, 0);
+          skippedRestart.setHours(periodoHora, 0, 0, 0);
           await supabase.from("lead_tarefas_contato").insert({
-            lead_id: selectedLead.id, tentativa: 1, data_contato: nextDate.toISOString(),
+            lead_id: selectedLead.id, tentativa: 1, data_contato: skippedRestart.toISOString(),
             periodo: firstRotina.periodo_contato, status: "pendente", responsavel_id: profile.id,
           });
         }
