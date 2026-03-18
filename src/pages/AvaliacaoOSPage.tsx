@@ -397,9 +397,9 @@ export default function AvaliacaoOSPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("ordens_servico")
-        .select("id, numero_os, cliente_id, cliente_nome, cliente_cpf, tipo_servico_id, created_at, status")
+        .select("id, numero_os, cliente_id, cliente_nome, cliente_cpf, tipo_servico_id, created_at, data_abertura, status")
         .eq("status", "aguardando_numero" as any)
-        .order("created_at", { ascending: true });
+        .order("data_abertura", { ascending: true });
       return data || [];
     },
     staleTime: 30_000,
