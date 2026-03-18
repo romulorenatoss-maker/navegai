@@ -1655,6 +1655,7 @@ export type Database = {
       }
       respostas_avaliacao: {
         Row: {
+          audio_url: string | null
           avaliacao_id: string | null
           avaliador_id: string | null
           avaliador_setor_id: string | null
@@ -1668,6 +1669,7 @@ export type Database = {
           resposta: string | null
         }
         Insert: {
+          audio_url?: string | null
           avaliacao_id?: string | null
           avaliador_id?: string | null
           avaliador_setor_id?: string | null
@@ -1681,6 +1683,7 @@ export type Database = {
           resposta?: string | null
         }
         Update: {
+          audio_url?: string | null
           avaliacao_id?: string | null
           avaliador_id?: string | null
           avaliador_setor_id?: string | null

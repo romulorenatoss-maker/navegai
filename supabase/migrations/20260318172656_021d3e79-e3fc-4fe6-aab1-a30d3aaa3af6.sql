@@ -1,0 +1,1 @@
+ALTER TABLE public.respostas_avaliacao ADD COLUMN audio_url text DEFAULT NULL;
