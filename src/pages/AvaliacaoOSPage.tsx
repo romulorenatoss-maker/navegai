@@ -2840,7 +2840,7 @@ export default function AvaliacaoOSPage() {
               <div key={os.id} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-2">
                 <div className="flex-1 min-w-0">
                   <p className="text-body font-medium text-foreground">{os.cliente_nome || "Sem cliente"}</p>
-                  <p className="text-caption text-muted-foreground">CPF: {os.cliente_cpf || "—"} • Criada em: {format(new Date(os.created_at), "dd/MM/yyyy HH:mm")}</p>
+                  <p className="text-caption text-muted-foreground">CPF: {os.cliente_cpf || "—"} • Ocorrência: {format(new Date(os.data_abertura || os.created_at), "dd/MM/yyyy HH:mm")}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   {os.cliente_id && (
