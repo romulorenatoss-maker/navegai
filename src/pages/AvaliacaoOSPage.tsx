@@ -2926,6 +2926,8 @@ export default function AvaliacaoOSPage() {
           }
 
           setSearchResults(prioritizedOs);
+          const osClienteIds = prioritizedOs.map((o: any) => o.cliente_id).filter(Boolean);
+          if (osClienteIds.length) fetchClienteAddresses(osClienteIds);
           setFormValidated(true);
           toast.success(`${prioritizedOs.length} OS encontrada(s) para o cliente.`);
           return;
