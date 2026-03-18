@@ -892,6 +892,46 @@ export default function AvaliacaoOSPage() {
     );
   }, [evalOsId]);
 
+  const handleAudioUpload = useCallback(async (perguntaId: string, file: File) => {
+    if (!evalOsId || !profile) return;
+    setUploadingAudio(perguntaId);
+    try {
+      const ext = file.name.split(".").pop() || "mp3";
+      const path = `${evalOsId}/${perguntaId}_audio.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from("evidencias").upload(path, file, { upsert: true });
+      if (uploadErr) throw uploadErr;
+      const { data: urlData } = supabase.storage.from("evidencias").getPublicUrl(path);
+      const url = urlData.publicUrl;
+      setEvalAudios(prev => ({ ...prev, [perguntaId]: url }));
+      const setorId = evaluatorSetorIds[0] || null;
+      await supabase.from("respostas_avaliacao").upsert(
+        { 
+          ordem_servico_id: evalOsId, 
+          pergunta_id: perguntaId, 
+          audio_url: url,
+          avaliador_id: profile.id,
+          avaliador_setor_id: setorId,
+          avaliacao_id: evalAvaliacaoId,
+        } as any,
+        { onConflict: "ordem_servico_id,pergunta_id" }
+      );
+      toast.success("Áudio anexado!");
+    } catch (e: any) {
+      toast.error("Erro ao enviar áudio: " + e.message);
+    } finally {
+      setUploadingAudio(null);
+    }
+  }, [evalOsId, evalAvaliacaoId, profile, evaluatorSetorIds]);
+
+  const handleRemoveAudio = useCallback(async (perguntaId: string) => {
+    if (!evalOsId) return;
+    setEvalAudios(prev => { const n = { ...prev }; delete n[perguntaId]; return n; });
+    await supabase.from("respostas_avaliacao").upsert(
+      { ordem_servico_id: evalOsId, pergunta_id: perguntaId, audio_url: null } as any,
+      { onConflict: "ordem_servico_id,pergunta_id" }
+    );
+  }, [evalOsId]);
+
   // --- Handlers ---
   const openEvaluation = async (avaliacaoId: string, osId: string) => {
     const { data: osData } = await supabase.from("ordens_servico").select("*").eq("id", osId).single();
