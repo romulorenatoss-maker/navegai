@@ -54,30 +54,40 @@ export default function DashboardVendasPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // All leads created or captured per user in period (excluding imports)
+  // All leads created or captured per user in period
+  // Exclude lead_criado/criacao events for imported leads (importer shouldn't appear)
+  // But keep lead_capturado events (whoever captured the lead gets credit)
   const { data: allLeadsCriados = [] } = useQuery({
-    queryKey: ["dashboard-vendas-leads-criados-v3", from, to],
+    queryKey: ["dashboard-vendas-leads-criados-v4", from, to],
     queryFn: async () => {
       const { data } = await supabase
         .from("lead_historico")
-        .select("lead_id, usuario_id")
+        .select("lead_id, usuario_id, tipo_evento")
         .in("tipo_evento", ["lead_criado", "criacao", "lead_capturado"])
         .gte("data_evento", from)
         .lte("data_evento", to);
       if (!data?.length) return [];
 
-      // Exclude imported leads
-      const leadIds = [...new Set(data.map(d => d.lead_id))];
-      const { data: leads } = await supabase
-        .from("leads")
-        .select("id, origem_lead")
-        .in("id", leadIds);
+      // Find which leads are imported
+      const criadoLeadIds = [...new Set(
+        data.filter(d => d.tipo_evento === "lead_criado" || d.tipo_evento === "criacao").map(d => d.lead_id)
+      )];
+      
+      let importedLeadIds = new Set<string>();
+      if (criadoLeadIds.length > 0) {
+        const { data: leads } = await supabase
+          .from("leads")
+          .select("id")
+          .in("id", criadoLeadIds)
+          .eq("origem_lead", "importacao");
+        importedLeadIds = new Set(leads?.map(l => l.id) || []);
+      }
 
-      const importedLeadIds = new Set(
-        leads?.filter(l => l.origem_lead === "importacao").map(l => l.id) || []
-      );
-
-      return data.filter(d => !importedLeadIds.has(d.lead_id));
+      // Keep all lead_capturado events, but exclude lead_criado/criacao for imported leads
+      return data.filter(d => {
+        if (d.tipo_evento === "lead_capturado") return true;
+        return !importedLeadIds.has(d.lead_id);
+      });
     },
   });
 
