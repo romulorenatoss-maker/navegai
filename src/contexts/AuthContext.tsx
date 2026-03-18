@@ -82,7 +82,11 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   }, [clearAuthState]);
 
   useEffect(() => {
+    let isMounted = true;
+
     const syncAuthState = async (nextSession: Session | null) => {
+      if (!isMounted) return;
+
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
 
@@ -92,26 +96,33 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
         return;
       }
 
-      setLoading(true);
-
       try {
         await fetchProfileAndRoles(nextSession.user.id);
+      } catch (err) {
+        console.error("Erro ao carregar perfil/permissões:", err);
+        clearAuthState();
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
+    // 1) Set up the listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, nextSession) => {
-        await syncAuthState(nextSession);
+      (_event, nextSession) => {
+        // Use setTimeout to avoid blocking the auth callback
+        setTimeout(() => syncAuthState(nextSession), 0);
       }
     );
 
-    void supabase.auth.getSession().then(async ({ data: { session } }) => {
-      await syncAuthState(session);
+    // 2) Then get the initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      syncAuthState(session);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, [clearAuthState, fetchProfileAndRoles]);
 
   const signIn = async (email: string, password: string) => {
