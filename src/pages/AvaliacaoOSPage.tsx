@@ -1684,7 +1684,7 @@ export default function AvaliacaoOSPage() {
                       </PopoverContent>
                     </Popover>
                   ) : (
-                    <Lock className="w-3 h-3 text-muted-foreground" title="Não é permitido alterar a data após a conclusão da OS" />
+                    <span title="Não é permitido alterar a data após a conclusão da OS"><Lock className="w-3 h-3 text-muted-foreground" /></span>
                   )}
                 </div>
               </div>
