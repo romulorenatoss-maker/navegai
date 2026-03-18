@@ -148,6 +148,7 @@ export default function AvaliacaoOSPage() {
   const [fillNumeroLoading, setFillNumeroLoading] = useState(false);
   const [viewClienteData, setViewClienteData] = useState<any | null>(null);
   const [viewClienteOpen, setViewClienteOpen] = useState(false);
+  const [clienteAddressMap, setClienteAddressMap] = useState<Record<string, string>>({});
   const debounceTimers = useRef<Record<string, NodeJS.Timeout>>({});
 
   // --- Queries ---
