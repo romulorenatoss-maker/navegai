@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -7,14 +7,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 import { format, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   CalendarIcon, Filter, Trophy, TrendingUp, Users, Phone,
-  ArrowRightLeft, Target, BarChart3, Medal, Search
+  ArrowRightLeft, Target, BarChart3, Medal, Search, Eye, Loader2,
+  CheckCircle2, XCircle, Clock, FileText, User, ChevronRight
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
+import { getScoreColorClass, getScoreBgClass } from "@/lib/score-colors";
+
 
 interface ProfileData {
   id: string;
