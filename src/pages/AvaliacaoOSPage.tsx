@@ -1780,21 +1780,21 @@ export default function AvaliacaoOSPage() {
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 shrink-0 flex-wrap">
                 {autoSaving && (
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Loader2 className="w-3 h-3 animate-spin" /> Salvando...
                   </div>
                 )}
                 {canEdit && !isEditing && (
-                  <Button size="sm" variant="outline" onClick={handleStartEditing} className="press-effect h-8 text-xs px-3">
-                    <Pencil className="w-3 h-3 mr-1" /> Alterar
+                  <Button size="sm" variant="outline" onClick={handleStartEditing} className="press-effect h-8 text-xs px-2 sm:px-3">
+                    <Pencil className="w-3 h-3 sm:mr-1" /> <span className="hidden sm:inline">Alterar</span>
                   </Button>
                 )}
                 {isEditing && (
-                  <Button size="sm" onClick={handleSaveEditing} disabled={evalSubmitting} className="press-effect h-8 text-xs px-3">
-                    {evalSubmitting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Save className="w-3 h-3 mr-1" />}
-                    Salvar
+                  <Button size="sm" onClick={handleSaveEditing} disabled={evalSubmitting} className="press-effect h-8 text-xs px-2 sm:px-3">
+                    {evalSubmitting ? <Loader2 className="w-3 h-3 sm:mr-1 animate-spin" /> : <Save className="w-3 h-3 sm:mr-1" />}
+                    <span className="hidden sm:inline">Salvar</span>
                   </Button>
                 )}
               </div>
