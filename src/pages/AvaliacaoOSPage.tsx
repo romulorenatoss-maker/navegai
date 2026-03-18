@@ -148,6 +148,7 @@ export default function AvaliacaoOSPage() {
   const [fillNumeroLoading, setFillNumeroLoading] = useState(false);
   const [viewClienteData, setViewClienteData] = useState<any | null>(null);
   const [viewClienteOpen, setViewClienteOpen] = useState(false);
+  const [clienteAddressMap, setClienteAddressMap] = useState<Record<string, string>>({});
   const debounceTimers = useRef<Record<string, NodeJS.Timeout>>({});
 
   // --- Queries ---
@@ -1213,6 +1214,43 @@ export default function AvaliacaoOSPage() {
     }
   };
 
+  // Fetch and cache client addresses for OS display
+  const fetchClienteAddresses = useCallback(async (clienteIds: string[]) => {
+    const idsToFetch = clienteIds.filter(id => id && !clienteAddressMap[id]);
+    if (idsToFetch.length === 0) return;
+    const { data: clientes } = await supabase.from("clientes").select("id, cidade_id, bairro_id, rua_id, numero").in("id", idsToFetch);
+    if (!clientes?.length) return;
+    const cidadeIds = [...new Set(clientes.map(c => c.cidade_id).filter(Boolean))] as string[];
+    const bairroIds = [...new Set(clientes.map(c => c.bairro_id).filter(Boolean))] as string[];
+    const ruaIds = [...new Set(clientes.map(c => c.rua_id).filter(Boolean))] as string[];
+    const [cidadesRes, bairrosRes, ruasRes] = await Promise.all([
+      cidadeIds.length ? supabase.from("cidades").select("id, nome").in("id", cidadeIds) : { data: [] },
+      bairroIds.length ? supabase.from("bairros").select("id, nome").in("id", bairroIds) : { data: [] },
+      ruaIds.length ? supabase.from("ruas").select("id, nome").in("id", ruaIds) : { data: [] },
+    ]);
+    const cidadeMap: Record<string, string> = {}; (cidadesRes.data || []).forEach(c => { cidadeMap[c.id] = c.nome; });
+    const bairroMap: Record<string, string> = {}; (bairrosRes.data || []).forEach(b => { bairroMap[b.id] = b.nome; });
+    const ruaMap: Record<string, string> = {}; (ruasRes.data || []).forEach(r => { ruaMap[r.id] = r.nome; });
+    const newMap: Record<string, string> = {};
+    clientes.forEach(c => {
+      const parts: string[] = [];
+      if (c.rua_id && ruaMap[c.rua_id]) parts.push(ruaMap[c.rua_id]);
+      if (c.numero) parts.push(`nº ${c.numero}`);
+      if (c.bairro_id && bairroMap[c.bairro_id]) parts.push(bairroMap[c.bairro_id]);
+      if (c.cidade_id && cidadeMap[c.cidade_id]) parts.push(cidadeMap[c.cidade_id]);
+      newMap[c.id] = parts.length > 0 ? parts.join(", ") : "";
+    });
+    setClienteAddressMap(prev => ({ ...prev, ...newMap }));
+  }, [clienteAddressMap]);
+
+  // Auto-fetch addresses when OS views change
+  useEffect(() => {
+    const ids: string[] = [];
+    if (selectedOS?.cliente_id) ids.push(selectedOS.cliente_id);
+    if (evalOsData?.cliente_id) ids.push(evalOsData.cliente_id);
+    if (ids.length > 0) fetchClienteAddresses(ids);
+  }, [selectedOS?.cliente_id, evalOsData?.cliente_id]);
+
 
   const handleFinalizeEvaluation = async () => {
     if (!evalAvaliacaoId || !evalOsId) return;
@@ -1350,7 +1388,6 @@ export default function AvaliacaoOSPage() {
           .in("avaliacao_id", avalIds);
         if (respostasError) throw respostasError;
       }
-
 
       // 4) Delete avaliações
       const { error: avaliacoesError } = await supabase
@@ -1709,6 +1746,9 @@ export default function AvaliacaoOSPage() {
                   </span>
                 </div>
                 <p className="text-body text-muted-foreground mt-1">{evalOsData.cliente_nome || "Sem cliente"}</p>
+                {evalOsData.cliente_id && clienteAddressMap[evalOsData.cliente_id] && (
+                  <p className="text-caption text-muted-foreground mt-0.5">📍 {clienteAddressMap[evalOsData.cliente_id]}</p>
+                )}
                 {evalTipoServicoNome && <p className="text-caption text-muted-foreground mt-0.5">Serviço: {evalTipoServicoNome}</p>}
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <p className="text-caption text-muted-foreground">Data da Ocorrência: {format(new Date(evalOsData.data_abertura || evalOsData.created_at), "dd/MM/yyyy HH:mm")}</p>
@@ -2550,6 +2590,9 @@ export default function AvaliacaoOSPage() {
               </p>
               <p className="text-body text-muted-foreground mt-1">{selectedOS.cliente_nome || "Sem cliente"}</p>
               {selectedOS.cliente_cpf && <p className="text-caption text-muted-foreground">CPF: {selectedOS.cliente_cpf}</p>}
+              {selectedOS.cliente_id && clienteAddressMap[selectedOS.cliente_id] && (
+                <p className="text-caption text-muted-foreground">📍 {clienteAddressMap[selectedOS.cliente_id]}</p>
+              )}
               <p className="text-caption text-muted-foreground mt-0.5">Data da Ocorrência: {format(new Date(selectedOS.data_abertura || selectedOS.created_at), "dd/MM/yyyy HH:mm")}</p>
             </div>
             <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border", statusLabel[selectedOS.status]?.badge)}>
@@ -2832,6 +2875,7 @@ export default function AvaliacaoOSPage() {
           }
 
           setSearchResults([existingOS]);
+          if (existingOS.cliente_id) fetchClienteAddresses([existingOS.cliente_id]);
           toast.success("OS encontrada!");
           setFormValidated(true);
           return;
@@ -2896,6 +2940,8 @@ export default function AvaliacaoOSPage() {
           }
 
           setSearchResults(prioritizedOs);
+          const osClienteIds = prioritizedOs.map((o: any) => o.cliente_id).filter(Boolean);
+          if (osClienteIds.length) fetchClienteAddresses(osClienteIds);
           setFormValidated(true);
           toast.success(`${prioritizedOs.length} OS encontrada(s) para o cliente.`);
           return;
@@ -3062,6 +3108,9 @@ export default function AvaliacaoOSPage() {
                         {os.cliente_cpf ? ` • CPF: ${os.cliente_cpf}` : ""}
                         {` • Ocorrência: ${format(new Date(os.data_abertura || os.created_at), "dd/MM/yyyy")}`}
                       </p>
+                      {os.cliente_id && clienteAddressMap[os.cliente_id] && (
+                        <p className="text-caption text-muted-foreground">📍 {clienteAddressMap[os.cliente_id]}</p>
+                      )}
                       <p className="text-caption text-muted-foreground">
                         {atendenteNome ? `Atendente: ${atendenteNome}` : ""}
                         {atendenteNome && tecnicoNome ? " • " : ""}
