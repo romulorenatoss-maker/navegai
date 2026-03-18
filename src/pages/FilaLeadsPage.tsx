@@ -46,17 +46,7 @@ interface QueueItem {
 // ─── Helpers ────────────────────────────────────────────
 const fmtDate = (d: string | Date) => { try { return format(new Date(d), "dd/MM/yyyy HH:mm", { locale: ptBR }); } catch { return String(d); } };
 const fmtDateShort = (d: string | Date) => { try { return format(new Date(d), "dd/MM HH:mm", { locale: ptBR }); } catch { return String(d); } };
-const PERIODO_HORA: Record<string, number> = { manha: 9, tarde: 14, noite: 19 };
-const PERIODO_LABELS: Record<string, string> = { manha: "Manhã", tarde: "Tarde", noite: "Noite" };
 const STATUS_MAP: Record<string, string> = { novo: "Novo", em_contato: "Em Contato", em_atendimento: "Em tratativa", interessado: "Interessado", aguardando_decisao_avaliador: "Aguardando Decisão", fila_captura: "Fila de Captura", reservado: "Reservado", expirado: "Expirado" };
-
-function getPeriodoEndHour(periodo: string): number { return periodo === "manha" ? 12 : periodo === "tarde" ? 18 : 24; }
-function isTarefaExpirada(tarefa: { data_contato: string; periodo: string; status: string }): boolean {
-  if (tarefa.status === "realizado" || tarefa.status === "aguardando_visualizacao") return false;
-  const tarefaDate = new Date(new Date(tarefa.data_contato));
-  tarefaDate.setHours(getPeriodoEndHour(tarefa.periodo), 0, 0, 0);
-  return new Date() > tarefaDate;
-}
 
 export default function FilaLeadsPage() {
   const { profile, isAdmin } = useAuth();
