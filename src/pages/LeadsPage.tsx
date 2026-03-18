@@ -504,6 +504,21 @@ export default function LeadsPage() {
     },
   });
 
+  // Profiles linked to the "Atendimento" sector — used in conversion dialog
+  const { data: atendimentoProfiles = [] } = useQuery({
+    queryKey: ["profiles-setor-atendimento-conv"],
+    queryFn: async () => {
+      const { data: setores } = await supabase.from("setores").select("id, nome").ilike("nome", "%atendimento%").limit(1);
+      const setorId = setores?.[0]?.id;
+      if (!setorId) return [] as { id: string; nome: string }[];
+      const { data: vinculos } = await supabase.from("colaborador_setores").select("profile_id").eq("setor_id", setorId);
+      if (!vinculos || vinculos.length === 0) return [] as { id: string; nome: string }[];
+      const profileIds = vinculos.map(v => v.profile_id);
+      const { data: profs } = await supabase.from("profiles").select("id, nome").in("id", profileIds).eq("ativo", true).order("nome");
+      return (profs || []) as { id: string; nome: string }[];
+    },
+  });
+
   const { data: cadencia = [] } = useQuery({
     queryKey: ["rotina-tentativas-leads-cadencia"],
     queryFn: async () => {
@@ -3615,7 +3630,7 @@ export default function LeadsPage() {
                   <Label className="text-xs font-medium">Avaliado Setor Atendimento *</Label>
                   <Select value={convAtendenteId} onValueChange={setConvAtendenteId}>
                     <SelectTrigger className="h-9"><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
-                    <SelectContent>{profiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}</SelectContent>
+                    <SelectContent>{atendimentoProfiles.length > 0 ? atendimentoProfiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>) : profiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}</SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">Quem será avaliado como atendente nesta OS.</p>
                 </div>
