@@ -1845,10 +1845,13 @@ export default function LeadsPage() {
                   atendente_id: dupeConverterId,
                 } as any);
               }
+              const vendedorNome1 = profiles.find(p => p.id === (convAtendenteId || profile.id))?.nome || "—";
+              const registradorNome1 = profile.nome || "—";
+              const atribuicaoMsg1 = (convAtendenteId && convAtendenteId !== profile.id) ? ` Venda creditada a: ${vendedorNome1}. Registrado por: ${registradorNome1}.` : ` Venda creditada a: ${vendedorNome1}.`;
               await supabase.from("lead_historico").insert({
                 lead_id: selectedLead.id, usuario_id: profile.id,
                 tipo_evento: "conversao_cliente",
-                descricao: `Lead convertido — vinculado ao cliente existente "${existingCliente.nome}" (telefone já cadastrado). OS criada aguardando número.`,
+                descricao: `Lead convertido — vinculado ao cliente existente "${existingCliente.nome}" (telefone já cadastrado). OS criada aguardando número.${atribuicaoMsg1}`,
               });
               setDupeAlert({ type: "cpf", message: `Telefone já cadastrado para o cliente "${existingCliente.nome}". O lead foi vinculado ao cliente existente e uma OS foi criada aguardando número.`, clienteId: existingCliente.id, clienteNome: existingCliente.nome });
               setShowConvert(false);
