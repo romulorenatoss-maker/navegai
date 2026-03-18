@@ -1287,8 +1287,9 @@ export default function LeadsPage() {
           const nextDate = new Date();
           const diasAdicionais = Math.max(firstRotina.dias_apos_anterior || 0, 1);
           nextDate.setDate(nextDate.getDate() + diasAdicionais);
+          const skipped = skipWeekend(nextDate);
           const periodoHora = firstRotina.periodo_contato === "manha" ? 9 : firstRotina.periodo_contato === "tarde" ? 14 : 19;
-          nextDate.setHours(periodoHora, 0, 0, 0);
+          skipped.setHours(periodoHora, 0, 0, 0);
           await supabase.from("lead_tarefas_contato").insert({
             lead_id: newLead.id, tentativa: 1, data_contato: nextDate.toISOString(),
             periodo: firstRotina.periodo_contato, status: "pendente", responsavel_id: profile.id,
