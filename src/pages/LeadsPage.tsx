@@ -797,7 +797,7 @@ export default function LeadsPage() {
       // Find leads owned by current user that are em_atendimento with reserved_at set
       const { data: myLeads } = await supabase
         .from("leads")
-        .select("id, nome, reserved_at, responsavel_id")
+        .select("id, nome, reserved_at, responsavel_id, agendamento_retorno")
         .eq("responsavel_id", profile.id)
         .eq("status_lead", "em_atendimento")
         .not("reserved_at", "is", null);
@@ -812,6 +812,12 @@ export default function LeadsPage() {
         const elapsedSec = (now.getTime() - capturedAt.getTime()) / 1000;
 
         if (elapsedSec < timeoutSeconds) continue;
+
+        // If user already scheduled a manual return, treat as valid activity
+        if ((lead as any).agendamento_retorno) {
+          await supabase.from("leads").update({ reserved_at: null } as any).eq("id", lead.id);
+          continue;
+        }
 
         // Check if there's any interaction since capture
         const { count } = await supabase
