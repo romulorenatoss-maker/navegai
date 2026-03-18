@@ -2629,11 +2629,6 @@ export default function AvaliacaoOSPage() {
           .maybeSingle();
 
         if (existingOS) {
-          setFormFoundOS(existingOS);
-          if (existingOS.tipo_servico_id) setTipoServicoId(existingOS.tipo_servico_id);
-          if (existingOS.atendente_id) setAtendenteId(existingOS.atendente_id);
-          if (existingOS.tecnico_id) setTecnicoId(existingOS.tecnico_id);
-
           if (cliente && (!existingOS.cliente_nome || !existingOS.cliente_cpf || !existingOS.cliente_id)) {
             await supabase.from("ordens_servico").update({
               cliente_nome: cliente.nome,
@@ -2645,25 +2640,7 @@ export default function AvaliacaoOSPage() {
             existingOS.cliente_id = cliente.id;
           }
 
-          if (profile) {
-            const { data: pendingAval } = await supabase
-              .from("avaliacoes")
-              .select("id, tipo_avaliacao_id, concluida, nota_final")
-              .eq("ordem_servico_id", existingOS.id)
-              .eq("avaliador_id", profile.id)
-              .eq("concluida", false)
-              .limit(1)
-              .maybeSingle();
-
-            if (pendingAval) {
-              setFormPendingAval(pendingAval);
-              toast.info("Avaliação pendente encontrada. Abrindo...");
-              setFormValidated(true);
-              await openEvaluation(pendingAval.id, existingOS.id);
-              return;
-            }
-          }
-
+          setSearchResults([existingOS]);
           toast.success("OS encontrada!");
           setFormValidated(true);
           return;
