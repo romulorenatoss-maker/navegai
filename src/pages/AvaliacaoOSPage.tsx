@@ -957,6 +957,7 @@ export default function AvaliacaoOSPage() {
     const ans: Record<string, Answer> = {};
     const obs: Record<string, string> = {};
     const evid: Record<string, string> = {};
+    const aud: Record<string, string> = {};
     const otherMap: typeof otherEvalAnswers = {};
 
     // Get evaluator names for "other" answers
