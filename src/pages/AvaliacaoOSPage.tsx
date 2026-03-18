@@ -109,6 +109,7 @@ export default function AvaliacaoOSPage() {
   const [formValidating, setFormValidating] = useState(false);
   const [formValidated, setFormValidated] = useState(false);
   const [formFoundOS, setFormFoundOS] = useState<any | null>(null);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
   const [formPendingAval, setFormPendingAval] = useState<any | null>(null);
   const [showNewOsDialog, setShowNewOsDialog] = useState(false);
 
