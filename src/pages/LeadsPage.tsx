@@ -1160,14 +1160,24 @@ export default function LeadsPage() {
   // Helper: cancel old tasks and create immediate task for new owner on transfer
   const resetTasksForTransfer = useCallback(async (leadId: string, newOwnerId: string) => {
     // Cancel all pending tasks from old owner
-    await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", leadId).in("status", ["pendente", "atrasado"]);
-    // Create immediate task for new owner
-    const { data: firstRotina } = await supabase
-      .from("rotina_tentativas_leads").select("*").eq("tentativa_numero", 1).maybeSingle();
-    const periodo = firstRotina?.periodo_contato || "manha";
+    await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", leadId).in("status", ["pendente", "atrasado", "aguardando_visualizacao"]);
+    // Determine current/next valid period so the task doesn't arrive already expired
+    const now = new Date();
+    const hour = now.getHours();
+    let periodo: string;
+    if (hour < 12) periodo = "manha";
+    else if (hour < 18) periodo = "tarde";
+    else periodo = "noite";
+    // Schedule for start of the determined period today
+    const taskDate = new Date(now);
+    taskDate.setHours(PERIODO_HORA[periodo] || 9, 0, 0, 0);
+    // If the period start already passed (e.g. it's 10h, manha starts at 9h), use current time
+    if (taskDate < now) {
+      taskDate.setTime(now.getTime());
+    }
     await supabase.from("lead_tarefas_contato").insert({
-      lead_id: leadId, tentativa: 1, data_contato: new Date().toISOString(),
-      periodo, status: "pendente", responsavel_id: newOwnerId,
+      lead_id: leadId, tentativa: 1, data_contato: taskDate.toISOString(),
+      periodo, status: "aguardando_visualizacao", responsavel_id: newOwnerId,
     });
   }, []);
 
