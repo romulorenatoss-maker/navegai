@@ -3154,6 +3154,22 @@ export default function AvaliacaoOSPage() {
             {/* Modo: Nova OS — selecionar tipo de serviço */}
             {!fillNumeroOsId && (
               <div className="space-y-2">
+                {/* Data da Ocorrência */}
+                <div className="space-y-1.5">
+                  <Label className="text-body font-medium">Data da Ocorrência *</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formDataAbertura && "text-muted-foreground")}>
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {formDataAbertura ? format(formDataAbertura, "dd/MM/yyyy", { locale: ptBR }) : "Selecione a data"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar mode="single" selected={formDataAbertura} onSelect={(d) => d && setFormDataAbertura(d)} initialFocus className="p-3 pointer-events-auto" locale={ptBR} />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
                 <Label className="text-body font-medium">Tipo de Serviço *</Label>
                 <div className="space-y-1 max-h-40 overflow-y-auto">
                   {tiposServico.length === 0 ? (
