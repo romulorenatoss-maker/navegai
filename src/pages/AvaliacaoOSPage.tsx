@@ -2890,6 +2890,100 @@ export default function AvaliacaoOSPage() {
         </div>
       </div>
 
+      {/* Results: OS found — always right below the search */}
+      {formValidated && formFoundOS && (
+        <AnimatePresence>
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+            <div className="bg-success/5 border border-success/20 rounded-lg p-4 space-y-4 mb-6">
+              <div className="flex items-center gap-2 mb-1">
+                <Check className="w-4 h-4 text-success" />
+                <span className="text-sm font-medium text-success">OS encontrada no sistema</span>
+                <Lock className="w-3.5 h-3.5 text-muted-foreground ml-1" />
+                <span className="text-caption text-muted-foreground">Campos bloqueados</span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Nº OS:</span>
+                  <p className="font-medium text-foreground">{formFoundOS.numero_os}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Cliente:</span>
+                  <p className="font-medium text-foreground">{formFoundCliente?.nome || formFoundOS.cliente_nome || "—"}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">CPF:</span>
+                  <p className="font-medium text-foreground">{formFoundCliente?.cpf || formFoundOS.cliente_cpf || formClienteCpf || "—"}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Status:</span>
+                  <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border", statusLabel[formFoundOS.status]?.badge)}>
+                    {statusLabel[formFoundOS.status]?.text}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Tipo de Serviço:</span>
+                  <p className="font-medium text-foreground">{tiposServico.find(t => t.id === formFoundOS.tipo_servico_id)?.nome || "—"}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Atendente:</span>
+                  {formFoundOS.atendente_id ? (
+                    <p className="font-medium text-foreground">{allProfiles.find(p => p.id === formFoundOS.atendente_id)?.nome || "—"}</p>
+                  ) : (hasAtendimentoAccess || isAdmin) ? (
+                    <Select value={atendenteId} onValueChange={async (val) => {
+                      setAtendenteId(val);
+                      await supabase.from("ordens_servico").update({ atendente_id: val } as any).eq("id", formFoundOS.id);
+                      setFormFoundOS({ ...formFoundOS, atendente_id: val });
+                    }}>
+                      <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                      <SelectContent>
+                        {atendimentoProfiles.filter(p => p.id !== profile?.id).map(p =>
+                          <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="font-medium text-muted-foreground italic">Pendente</p>
+                  )}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Técnico:</span>
+                  {formFoundOS.tecnico_id ? (
+                    <p className="font-medium text-foreground">{allProfiles.find(p => p.id === formFoundOS.tecnico_id)?.nome || "—"}</p>
+                  ) : (hasTecnicoAccess || isAdmin) ? (
+                    <Select value={tecnicoId} onValueChange={async (val) => {
+                      setTecnicoId(val);
+                      await supabase.from("ordens_servico").update({ tecnico_id: val } as any).eq("id", formFoundOS.id);
+                      setFormFoundOS({ ...formFoundOS, tecnico_id: val });
+                    }}>
+                      <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                      <SelectContent>
+                        {tecnicoProfiles.filter(p => p.id !== profile?.id).map(p =>
+                          <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="font-medium text-muted-foreground italic">Pendente</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-success/20 flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => { setSelectedOS(formFoundOS); setView("os_detail"); }} className="press-effect">
+                  <Eye className="w-4 h-4 mr-1" /> Ver Detalhes
+                </Button>
+                {formFoundOS.status !== "concluida" && (
+                  <Button size="sm" onClick={() => startMyEvaluation(formFoundOS)} className="press-effect">
+                    Iniciar / Continuar Avaliação <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      )}
+
       {/* OS Aguardando Número */}
       {aguardandoNumeroOS.length > 0 && (
         <div className="bg-card border border-border rounded-lg shadow-card mb-6">
