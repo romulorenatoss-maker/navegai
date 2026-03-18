@@ -1738,6 +1738,9 @@ export default function AvaliacaoOSPage() {
                   </span>
                 </div>
                 <p className="text-body text-muted-foreground mt-1">{evalOsData.cliente_nome || "Sem cliente"}</p>
+                {evalOsData.cliente_id && clienteAddressMap[evalOsData.cliente_id] && (
+                  <p className="text-caption text-muted-foreground mt-0.5">📍 {clienteAddressMap[evalOsData.cliente_id]}</p>
+                )}
                 {evalTipoServicoNome && <p className="text-caption text-muted-foreground mt-0.5">Serviço: {evalTipoServicoNome}</p>}
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <p className="text-caption text-muted-foreground">Data da Ocorrência: {format(new Date(evalOsData.data_abertura || evalOsData.created_at), "dd/MM/yyyy HH:mm")}</p>
