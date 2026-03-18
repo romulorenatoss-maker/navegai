@@ -183,10 +183,27 @@ export default function DashboardVendasPage() {
       entry.mediaTentativas = entry.conversoes > 0 ? entry.interacoes / entry.conversoes : 0;
     });
 
-    // Only show users with at least some activity
-    return [...profileMap.values()]
+    // Only show users with at least some activity, sorted by conversions
+    const sorted = [...profileMap.values()]
       .filter(e => e.leadsCriados > 0 || e.conversoes > 0 || e.interacoes > 0)
       .sort((a, b) => b.conversoes - a.conversoes);
+
+    // Assign tied positions (same conversions = same rank)
+    let currentRank = 1;
+    sorted.forEach((entry, idx) => {
+      if (idx === 0) {
+        (entry as any).rank = currentRank;
+      } else {
+        if (entry.conversoes === sorted[idx - 1].conversoes) {
+          (entry as any).rank = (sorted[idx - 1] as any).rank;
+        } else {
+          currentRank = idx + 1;
+          (entry as any).rank = currentRank;
+        }
+      }
+    });
+
+    return sorted;
   }, [profiles, allConversoes, allLeadsCriados, allInteracoes, allTransferencias]);
 
   // Per-metric rankings
