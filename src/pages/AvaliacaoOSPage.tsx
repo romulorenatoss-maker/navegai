@@ -21,7 +21,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, startOfDay } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { CalendarIcon } from "lucide-react";
 
 // TipoAvaliacao type removed - no longer used
 
@@ -113,6 +117,7 @@ export default function AvaliacaoOSPage() {
   
   const [atendenteId, setAtendenteId] = useState("");
   const [tecnicoId, setTecnicoId] = useState("");
+  const [formDataAbertura, setFormDataAbertura] = useState<Date>(new Date());
 
   // Evaluation state (full-page)
   const [evalAvaliacaoId, setEvalAvaliacaoId] = useState<string | null>(null);
@@ -392,9 +397,9 @@ export default function AvaliacaoOSPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("ordens_servico")
-        .select("id, numero_os, cliente_id, cliente_nome, cliente_cpf, tipo_servico_id, created_at, status")
+        .select("id, numero_os, cliente_id, cliente_nome, cliente_cpf, tipo_servico_id, created_at, data_abertura, status")
         .eq("status", "aguardando_numero" as any)
-        .order("created_at", { ascending: true });
+        .order("data_abertura", { ascending: true });
       return data || [];
     },
     staleTime: 30_000,
@@ -1135,6 +1140,7 @@ export default function AvaliacaoOSPage() {
         const { data: newOs, error: oe } = await supabase.from("ordens_servico").insert({
           numero_os: num || null, cliente_nome: nomeTr, cliente_cpf: cpfTr, tipo_servico_id: tipoServicoId,
           cliente_id: clienteId, atendente_id: atendenteId || null, tecnico_id: tecnicoId || null,
+          data_abertura: formDataAbertura.toISOString(),
         } as any).select("id").single();
         if (oe) throw oe;
         osId = newOs.id;
@@ -1652,7 +1658,7 @@ export default function AvaliacaoOSPage() {
                 </div>
                 <p className="text-body text-muted-foreground mt-1">{evalOsData.cliente_nome || "Sem cliente"}</p>
                 {evalTipoServicoNome && <p className="text-caption text-muted-foreground mt-0.5">Serviço: {evalTipoServicoNome}</p>}
-                <p className="text-caption text-muted-foreground mt-0.5">Criada em: {format(new Date(evalOsData.created_at), "dd/MM/yyyy HH:mm")}</p>
+                <p className="text-caption text-muted-foreground mt-0.5">Data da Ocorrência: {format(new Date(evalOsData.data_abertura || evalOsData.created_at), "dd/MM/yyyy HH:mm")}</p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {autoSaving && (
@@ -2319,16 +2325,46 @@ export default function AvaliacaoOSPage() {
               <h2 className="text-subhead font-semibold text-foreground font-tabular">OS #{selectedOS.numero_os}</h2>
               <p className="text-body text-muted-foreground mt-1">{selectedOS.cliente_nome || "Sem cliente"}</p>
               {selectedOS.cliente_cpf && <p className="text-caption text-muted-foreground">CPF: {selectedOS.cliente_cpf}</p>}
-              <p className="text-caption text-muted-foreground mt-0.5">Criada em: {format(new Date(selectedOS.created_at), "dd/MM/yyyy HH:mm")}</p>
+              <p className="text-caption text-muted-foreground mt-0.5">Data da Ocorrência: {format(new Date(selectedOS.data_abertura || selectedOS.created_at), "dd/MM/yyyy HH:mm")}</p>
             </div>
             <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border", statusLabel[selectedOS.status]?.badge)}>
               {statusLabel[selectedOS.status]?.text}
             </span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3 pt-3 border-t border-border text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3 pt-3 border-t border-border text-sm">
             <div>
               <span className="text-muted-foreground">Tipo de Serviço:</span>
               <p className="font-medium text-foreground">{detailTipoServicoNome || "—"}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Data da Ocorrência:</span>
+              {selectedOS.status !== "concluida" ? (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full mt-1 h-8 justify-start text-left font-normal text-xs">
+                      <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
+                      {format(new Date(selectedOS.data_abertura || selectedOS.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={new Date(selectedOS.data_abertura || selectedOS.created_at)}
+                      onSelect={async (d) => {
+                        if (!d) return;
+                        await supabase.from("ordens_servico").update({ data_abertura: d.toISOString() } as any).eq("id", selectedOS.id);
+                        setSelectedOS({ ...selectedOS, data_abertura: d.toISOString() });
+                        toast.success("Data da ocorrência atualizada!");
+                      }}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                      locale={ptBR}
+                    />
+                  </PopoverContent>
+                </Popover>
+              ) : (
+                <p className="font-medium text-foreground">{format(new Date(selectedOS.data_abertura || selectedOS.created_at), "dd/MM/yyyy")}</p>
+              )}
             </div>
             <div>
               <span className="text-muted-foreground">Atendente:</span>
@@ -2834,7 +2870,7 @@ export default function AvaliacaoOSPage() {
               <div key={os.id} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-2">
                 <div className="flex-1 min-w-0">
                   <p className="text-body font-medium text-foreground">{os.cliente_nome || "Sem cliente"}</p>
-                  <p className="text-caption text-muted-foreground">CPF: {os.cliente_cpf || "—"} • Criada em: {format(new Date(os.created_at), "dd/MM/yyyy HH:mm")}</p>
+                  <p className="text-caption text-muted-foreground">CPF: {os.cliente_cpf || "—"} • Ocorrência: {format(new Date(os.data_abertura || os.created_at), "dd/MM/yyyy HH:mm")}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   {os.cliente_id && (
@@ -3096,7 +3132,7 @@ export default function AvaliacaoOSPage() {
       )}
 
       {/* Dialog unificado: Nova OS ou Preencher Número */}
-      <Dialog open={showNewOsDialog} onOpenChange={(open) => { setShowNewOsDialog(open); if (!open) { setTipoServicoId(""); setAtendenteId(""); setTecnicoId(""); } }}>
+      <Dialog open={showNewOsDialog} onOpenChange={(open) => { setShowNewOsDialog(open); if (!open) { setTipoServicoId(""); setAtendenteId(""); setTecnicoId(""); setFormDataAbertura(new Date()); } }}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{fillNumeroOsId ? "Preencher Número da OS" : "Nova OS"}</DialogTitle>
@@ -3148,6 +3184,22 @@ export default function AvaliacaoOSPage() {
             {/* Modo: Nova OS — selecionar tipo de serviço */}
             {!fillNumeroOsId && (
               <div className="space-y-2">
+                {/* Data da Ocorrência */}
+                <div className="space-y-1.5">
+                  <Label className="text-body font-medium">Data da Ocorrência *</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formDataAbertura && "text-muted-foreground")}>
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {formDataAbertura ? format(formDataAbertura, "dd/MM/yyyy", { locale: ptBR }) : "Selecione a data"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar mode="single" selected={formDataAbertura} onSelect={(d) => d && setFormDataAbertura(d)} initialFocus className="p-3 pointer-events-auto" locale={ptBR} />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
                 <Label className="text-body font-medium">Tipo de Serviço *</Label>
                 <div className="space-y-1 max-h-40 overflow-y-auto">
                   {tiposServico.length === 0 ? (

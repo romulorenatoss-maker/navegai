@@ -113,6 +113,7 @@ export default function DesempenhoColaboradorPage() {
           os_id: os.id,
           numero_os: os.numero_os,
           created_at: os.created_at,
+          data_abertura: os.data_abertura,
           status: os.status,
           cliente_nome: os.cliente_nome,
           tipo_servico: tsMap[os.tipo_servico_id || ""] || "—",
@@ -136,9 +137,9 @@ export default function DesempenhoColaboradorPage() {
       if (!targetProfileId) return [];
       const { data: osData } = await supabase
         .from("ordens_servico")
-        .select("id, numero_os, tipo_servico_id, created_at, cliente_nome, status, data_conclusao")
+        .select("id, numero_os, tipo_servico_id, created_at, data_abertura, cliente_nome, status, data_conclusao")
         .or(`tecnico_id.eq.${targetProfileId},atendente_id.eq.${targetProfileId},colaborador_avaliado_id.eq.${targetProfileId}`)
-        .order("created_at", { ascending: false })
+        .order("data_abertura", { ascending: false })
         .limit(100);
 
       if (!osData?.length) return [];
@@ -151,7 +152,7 @@ export default function DesempenhoColaboradorPage() {
       }
 
       // Use SQL function with date range of oldest OS to avoid fetching ALL historical data
-      const oldestDate = osData[osData.length - 1]?.created_at;
+      const oldestDate = osData[osData.length - 1]?.data_abertura || osData[osData.length - 1]?.created_at;
       const notas = await fetchNotasPorSetor(oldestDate);
 
       return osData.map(os => ({
@@ -529,7 +530,7 @@ export default function DesempenhoColaboradorPage() {
                     return (
                       <tr key={ev.os_id} className="hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setSelectedOsId(ev.os_id)}>
                         <td className="px-4 py-3 text-body font-medium text-primary underline underline-offset-2 font-tabular">{ev.numero_os}</td>
-                        <td className="px-4 py-3 text-body text-muted-foreground">{format(new Date(ev.created_at), "dd/MM/yyyy")}</td>
+                        <td className="px-4 py-3 text-body text-muted-foreground">{format(new Date(ev.data_abertura || ev.created_at), "dd/MM/yyyy")}</td>
                         <td className="px-4 py-3 text-body text-muted-foreground">{ev.tipo_servico}</td>
                         <td className="px-4 py-3">
                           {osNota != null ? (
@@ -610,7 +611,7 @@ export default function DesempenhoColaboradorPage() {
                           {os.numero_os}
                         </td>
                         <td className="px-4 py-3 text-body text-muted-foreground">{os.cliente_nome || "—"}</td>
-                        <td className="px-4 py-3 text-body text-muted-foreground">{format(new Date(os.created_at), "dd/MM/yyyy")}</td>
+                        <td className="px-4 py-3 text-body text-muted-foreground">{format(new Date(os.data_abertura || os.created_at), "dd/MM/yyyy")}</td>
                         <td className="px-4 py-3 text-body text-muted-foreground">{os.tipo_servico_nome}</td>
                         <td className="px-4 py-3">
                           <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border", sl.color)}>

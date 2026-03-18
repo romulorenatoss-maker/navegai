@@ -1842,7 +1842,7 @@ export default function LeadsPage() {
                 await supabase.from("ordens_servico").insert({
                   cliente_id: existingCliente.id, cliente_nome: existingCliente.nome, cliente_cpf: existingCliente.cpf || null,
                   tipo_servico_id: dupetipoServicoId, numero_os: null, status: "aguardando_numero" as any,
-                  atendente_id: dupeConverterId,
+                  atendente_id: dupeConverterId, data_abertura: new Date().toISOString(),
                 } as any);
               }
               const vendedorNome1 = profiles.find(p => p.id === (convAtendenteId || profile.id))?.nome || "—";
@@ -1896,7 +1896,7 @@ export default function LeadsPage() {
             await supabase.from("ordens_servico").insert({
               cliente_id: existingCliente.id, cliente_nome: existingCliente.nome, cliente_cpf: existingCliente.cpf || null,
               tipo_servico_id: cpfDupeTipoServicoId, numero_os: null, status: "aguardando_numero" as any,
-              atendente_id: cpfDupeConverterId,
+              atendente_id: cpfDupeConverterId, data_abertura: new Date().toISOString(),
             } as any);
           }
           const vendedorNome2 = profiles.find(p => p.id === (convAtendenteId || profile.id))?.nome || "—";
@@ -1946,7 +1946,7 @@ export default function LeadsPage() {
       const { data: newOS, error: osErr } = await supabase.from("ordens_servico").insert({
         cliente_id: newCliente.id, cliente_nome: f.nome.trim(), cliente_cpf: f.cpf.trim(),
         tipo_servico_id: tipoServicoId, numero_os: null, status: "aguardando_numero" as any,
-        atendente_id: converterId,
+        atendente_id: converterId, data_abertura: new Date().toISOString(),
       } as any).select("id, numero_os").single();
       if (osErr) console.warn("Erro ao criar OS automática:", osErr.message);
 
