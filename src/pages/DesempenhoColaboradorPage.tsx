@@ -610,7 +610,7 @@ export default function DesempenhoColaboradorPage() {
                           {os.numero_os}
                         </td>
                         <td className="px-4 py-3 text-body text-muted-foreground">{os.cliente_nome || "—"}</td>
-                        <td className="px-4 py-3 text-body text-muted-foreground">{format(new Date(os.created_at), "dd/MM/yyyy")}</td>
+                        <td className="px-4 py-3 text-body text-muted-foreground">{format(new Date(os.data_abertura || os.created_at), "dd/MM/yyyy")}</td>
                         <td className="px-4 py-3 text-body text-muted-foreground">{os.tipo_servico_nome}</td>
                         <td className="px-4 py-3">
                           <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border", sl.color)}>
