@@ -142,7 +142,7 @@ export default function DashboardVendasPage() {
       });
     });
 
-    // Leads created per user
+    // Leads currently assigned per user
     const leadsPerUser: Record<string, Set<string>> = {};
     allLeadsCriados.forEach(a => {
       if (!a.usuario_id) return;
