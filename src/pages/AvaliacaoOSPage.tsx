@@ -2755,7 +2755,7 @@ export default function AvaliacaoOSPage() {
                   value={formClienteCpf}
                   onChange={e => {
                     setFormClienteCpf(formatCpf(e.target.value));
-                    if (cpfValidated || formValidated || !!formFoundOS || showNewOsDialog) {
+                    if (cpfValidated || formValidated || !!formFoundOS || searchResults.length > 0 || showNewOsDialog) {
                       setCpfValidated(false);
                       setFormFoundCliente(null);
                       setShowNewClienteForm(false);
@@ -2763,6 +2763,7 @@ export default function AvaliacaoOSPage() {
                       setFormOsNumero("");
                       setFormValidated(false);
                       setFormFoundOS(null);
+                      setSearchResults([]);
                       setFormPendingAval(null);
                       setShowNewOsDialog(false);
                       setTipoServicoId("");
