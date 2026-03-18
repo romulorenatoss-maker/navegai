@@ -768,7 +768,7 @@ export default function FilaLeadsPage() {
         const nextR = rotinaTentativas.find((r: any) => r.tentativa_numero === nextT);
         const dias = nextR?.dias_apos_anterior || 1;
         const per = nextR?.periodo_contato || "manha";
-        const nd = new Date(); nd.setDate(nd.getDate() + dias); nd.setHours(PERIODO_HORA[per] || 9, 0, 0, 0);
+        const nd = new Date(); nd.setDate(nd.getDate() + dias); const ndSkipped = skipWeekend(nd); ndSkipped.setHours(PERIODO_HORA[per] || 9, 0, 0, 0);
         await supabase.from("lead_tarefas_contato").insert({ lead_id: selectedTarefa.lead_id, tentativa: nextT, data_contato: nd.toISOString(), periodo: per, status: "pendente", responsavel_id: profile.id });
       }
       const leadStatus = tarefaLeads.find((l: any) => l.id === selectedTarefa.lead_id)?.status_lead;
