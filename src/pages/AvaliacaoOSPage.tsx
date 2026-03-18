@@ -128,9 +128,11 @@ export default function AvaliacaoOSPage() {
   const [evalAnswers, setEvalAnswers] = useState<Record<string, Answer>>({});
   const [evalObservations, setEvalObservations] = useState<Record<string, string>>({});
   const [evalEvidencias, setEvalEvidencias] = useState<Record<string, string>>({});
-  const [otherEvalAnswers, setOtherEvalAnswers] = useState<Record<string, { resposta: string; observacao: string | null; evidencia_url: string | null; avaliador_nome: string }>>({});
+  const [evalAudios, setEvalAudios] = useState<Record<string, string>>({});
+  const [otherEvalAnswers, setOtherEvalAnswers] = useState<Record<string, { resposta: string; observacao: string | null; evidencia_url: string | null; audio_url: string | null; avaliador_nome: string }>>({});
   const [responseAuthors, setResponseAuthors] = useState<Record<string, { avaliador_nome: string; resposta: string }>>({});
   const [uploadingEvidence, setUploadingEvidence] = useState<string | null>(null);
+  const [uploadingAudio, setUploadingAudio] = useState<string | null>(null);
   const [evalFinalized, setEvalFinalized] = useState(false);
   const [evalScore, setEvalScore] = useState<number | null>(null);
   const [evalSubmitting, setEvalSubmitting] = useState(false);
