@@ -45,11 +45,17 @@ export default function DashboardVendasPage() {
   const [appliedStart, setAppliedStart] = useState<Date | undefined>(startOfMonth(now));
   const [appliedEnd, setAppliedEnd] = useState<Date | undefined>(endOfMonth(now));
 
+  const handleBuscar = () => { setAppliedStart(startDate); setAppliedEnd(endDate); };
+
+  const from = appliedStart ? startOfDay(appliedStart).toISOString() : startOfDay(startOfMonth(now)).toISOString();
+  const to = appliedEnd ? endOfDay(appliedEnd).toISOString() : endOfDay(endOfMonth(now)).toISOString();
+
   // Detail dialog state
   const [selectedProfile, setSelectedProfile] = useState<{ id: string; nome: string } | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailLeads, setDetailLeads] = useState<any[]>([]);
+
 
   const openDetailDialog = useCallback(async (profileId: string, nome: string) => {
     setSelectedProfile({ id: profileId, nome });
