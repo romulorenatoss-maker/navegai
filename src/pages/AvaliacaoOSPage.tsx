@@ -3132,7 +3132,7 @@ export default function AvaliacaoOSPage() {
       )}
 
       {/* Dialog unificado: Nova OS ou Preencher Número */}
-      <Dialog open={showNewOsDialog} onOpenChange={(open) => { setShowNewOsDialog(open); if (!open) { setTipoServicoId(""); setAtendenteId(""); setTecnicoId(""); } }}>
+      <Dialog open={showNewOsDialog} onOpenChange={(open) => { setShowNewOsDialog(open); if (!open) { setTipoServicoId(""); setAtendenteId(""); setTecnicoId(""); setFormDataAbertura(new Date()); } }}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{fillNumeroOsId ? "Preencher Número da OS" : "Nova OS"}</DialogTitle>
