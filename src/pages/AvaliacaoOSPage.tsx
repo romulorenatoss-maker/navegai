@@ -2331,10 +2331,40 @@ export default function AvaliacaoOSPage() {
               {statusLabel[selectedOS.status]?.text}
             </span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3 pt-3 border-t border-border text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3 pt-3 border-t border-border text-sm">
             <div>
               <span className="text-muted-foreground">Tipo de Serviço:</span>
               <p className="font-medium text-foreground">{detailTipoServicoNome || "—"}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Data da Ocorrência:</span>
+              {selectedOS.status !== "concluida" ? (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full mt-1 h-8 justify-start text-left font-normal text-xs">
+                      <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
+                      {format(new Date(selectedOS.data_abertura || selectedOS.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={new Date(selectedOS.data_abertura || selectedOS.created_at)}
+                      onSelect={async (d) => {
+                        if (!d) return;
+                        await supabase.from("ordens_servico").update({ data_abertura: d.toISOString() } as any).eq("id", selectedOS.id);
+                        setSelectedOS({ ...selectedOS, data_abertura: d.toISOString() });
+                        toast.success("Data da ocorrência atualizada!");
+                      }}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                      locale={ptBR}
+                    />
+                  </PopoverContent>
+                </Popover>
+              ) : (
+                <p className="font-medium text-foreground">{format(new Date(selectedOS.data_abertura || selectedOS.created_at), "dd/MM/yyyy")}</p>
+              )}
             </div>
             <div>
               <span className="text-muted-foreground">Atendente:</span>

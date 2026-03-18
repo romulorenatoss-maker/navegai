@@ -136,9 +136,9 @@ export default function DesempenhoColaboradorPage() {
       if (!targetProfileId) return [];
       const { data: osData } = await supabase
         .from("ordens_servico")
-        .select("id, numero_os, tipo_servico_id, created_at, cliente_nome, status, data_conclusao")
+        .select("id, numero_os, tipo_servico_id, created_at, data_abertura, cliente_nome, status, data_conclusao")
         .or(`tecnico_id.eq.${targetProfileId},atendente_id.eq.${targetProfileId},colaborador_avaliado_id.eq.${targetProfileId}`)
-        .order("created_at", { ascending: false })
+        .order("data_abertura", { ascending: false })
         .limit(100);
 
       if (!osData?.length) return [];
