@@ -2537,7 +2537,32 @@ export default function LeadsPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <CardTitle className="text-sm font-semibold">{selectedLead.nome}</CardTitle>
-                        <p className="text-[10px] text-primary/80 font-medium">Origem: {getCampanhaNome(selectedLead) || "Não especificada"}</p>
+                        {selectedLead.status_lead === "convertido" ? (
+                          <p className="text-[10px] text-primary/80 font-medium">Origem: {getCampanhaNome(selectedLead) || "Não especificada"}</p>
+                        ) : (
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[10px] text-primary/80 font-medium whitespace-nowrap">Origem:</span>
+                            <Select
+                              value={(selectedLead as any).campanha_id || ""}
+                              onValueChange={async (val) => {
+                                const newCampId = val || null;
+                                await supabase.from("leads").update({ campanha_id: newCampId } as any).eq("id", selectedLead.id);
+                                setSelectedLead(prev => prev ? { ...prev, campanha_id: newCampId } as any : null);
+                                updateLeadInCache(selectedLead.id, { campanha_id: newCampId } as any);
+                                toast.success("Campanha atualizada!");
+                              }}
+                            >
+                              <SelectTrigger className="h-5 text-[10px] px-1.5 py-0 w-auto min-w-[120px] max-w-[200px] border-dashed">
+                                <SelectValue placeholder="Selecione..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {allCampanhas.map(c => (
+                                  <SelectItem key={c.id} value={c.id} className="text-xs">{c.nome}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
                         <p className="text-[11px] text-muted-foreground">
                           Responsável: {getProfileName(selectedLead.responsavel_id)} · Criado em {fmtDate(selectedLead.data_criacao)}
                         </p>
