@@ -54,40 +54,21 @@ export default function DashboardVendasPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // All leads created or captured per user in period
-  // Exclude lead_criado/criacao events for imported leads (importer shouldn't appear)
-  // But keep lead_capturado events (whoever captured the lead gets credit)
+  // All leads currently assigned to each user, created in period
+  // Only counts leads that are CURRENTLY with the attendant (responsavel_id matches)
+  // Leads returned to queue are NOT counted for the previous attendant
   const { data: allLeadsCriados = [] } = useQuery({
-    queryKey: ["dashboard-vendas-leads-criados-v4", from, to],
+    queryKey: ["dashboard-vendas-leads-ativos-v5", from, to],
     queryFn: async () => {
       const { data } = await supabase
-        .from("lead_historico")
-        .select("lead_id, usuario_id, tipo_evento")
-        .in("tipo_evento", ["lead_criado", "criacao", "lead_capturado"])
-        .gte("data_evento", from)
-        .lte("data_evento", to);
+        .from("leads")
+        .select("id, responsavel_id")
+        .not("responsavel_id", "is", null)
+        .gte("data_criacao", from)
+        .lte("data_criacao", to);
       if (!data?.length) return [];
-
-      // Find which leads are imported
-      const criadoLeadIds = [...new Set(
-        data.filter(d => d.tipo_evento === "lead_criado" || d.tipo_evento === "criacao").map(d => d.lead_id)
-      )];
-      
-      let importedLeadIds = new Set<string>();
-      if (criadoLeadIds.length > 0) {
-        const { data: leads } = await supabase
-          .from("leads")
-          .select("id")
-          .in("id", criadoLeadIds)
-          .eq("origem_lead", "importacao");
-        importedLeadIds = new Set(leads?.map(l => l.id) || []);
-      }
-
-      // Keep all lead_capturado events, but exclude lead_criado/criacao for imported leads
-      return data.filter(d => {
-        if (d.tipo_evento === "lead_capturado") return true;
-        return !importedLeadIds.has(d.lead_id);
-      });
+      // Map to the format expected by ranking logic
+      return data.map(d => ({ lead_id: d.id, usuario_id: d.responsavel_id }));
     },
   });
 
@@ -161,7 +142,7 @@ export default function DashboardVendasPage() {
       });
     });
 
-    // Leads created per user
+    // Leads currently assigned per user
     const leadsPerUser: Record<string, Set<string>> = {};
     allLeadsCriados.forEach(a => {
       if (!a.usuario_id) return;
