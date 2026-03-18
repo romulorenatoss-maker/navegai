@@ -1343,6 +1343,7 @@ export default function LeadsPage() {
   const createLeadMutation = useMutation({
     mutationFn: async () => {
       if (!createName.trim() || !createPhone.trim()) throw new Error("Nome e telefone são obrigatórios.");
+      if (!createCampanhaId || createCampanhaId === "__none") throw new Error("Selecione uma campanha para o lead.");
       if (!profile) throw new Error("Perfil não encontrado.");
       const phoneNorm = normalizePhone(createPhone);
       if (phoneNorm.length < 8) throw new Error("Telefone inválido.");
