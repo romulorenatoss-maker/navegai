@@ -217,7 +217,7 @@ const EVENTO_ICONS: Record<string, typeof Phone> = {
   lead_capturado: UserCheck,
 };
 
-const PERIODO_HORA: Record<string, number> = { manha: 9, tarde: 14, noite: 19 };
+// PERIODO_HORA imported from lead-task-utils
 
 function formatCountdown(target: Date, now: Date): string {
   const diffMs = target.getTime() - now.getTime();
