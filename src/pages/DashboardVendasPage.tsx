@@ -376,7 +376,7 @@ export default function DashboardVendasPage() {
                         </span>
                       </TableCell>
                       <TableCell className="font-medium">{r.nome}</TableCell>
-                      <TableCell className="text-center">{r.leadsRecebidos}</TableCell>
+                      <TableCell className="text-center">{r.leadsCriados}</TableCell>
                       <TableCell className="text-center font-semibold">{r.conversoes}</TableCell>
                       <TableCell className="text-center">
                         <Badge variant={r.taxaConversao >= 30 ? "default" : r.taxaConversao >= 15 ? "secondary" : "outline"} className="text-xs">
