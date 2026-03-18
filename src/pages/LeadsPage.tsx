@@ -3615,7 +3615,7 @@ export default function LeadsPage() {
                   <Label className="text-xs font-medium">Avaliado Setor Atendimento *</Label>
                   <Select value={convAtendenteId} onValueChange={setConvAtendenteId}>
                     <SelectTrigger className="h-9"><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
-                    <SelectContent>{profiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}</SelectContent>
+                    <SelectContent>{visionProfiles.length > 0 ? visionProfiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>) : profiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}</SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">Quem será avaliado como atendente nesta OS.</p>
                 </div>
