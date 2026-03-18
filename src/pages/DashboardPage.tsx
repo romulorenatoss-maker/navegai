@@ -315,11 +315,11 @@ export default function DashboardPage() {
         const osPerguntaIds = perguntasByOS[os.id] || [];
         if (osPerguntaIds.length === 0) continue;
 
-        const myQuestions = isAdmin ? osPerguntaIds : osPerguntaIds.filter(pid => {
+        const myQuestions = osPerguntaIds.filter(pid => {
           const setorId = perguntaSetorMap[pid];
           return !setorId || mySetorIds.includes(setorId);
         });
-        const otherQuestions = isAdmin ? [] : osPerguntaIds.filter(pid => {
+        const otherQuestions = osPerguntaIds.filter(pid => {
           const setorId = perguntaSetorMap[pid];
           return setorId && !mySetorIds.includes(setorId);
         });
