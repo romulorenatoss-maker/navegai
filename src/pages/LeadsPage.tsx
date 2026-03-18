@@ -907,7 +907,7 @@ export default function LeadsPage() {
   }, [profile?.id, tempoExpiracaoCaptura, acaoQuandoExpirar, queryClient]);
 
   // Transfer history query
-  const { data: transferHistory = [], isLoading: loadingTransfers } = useQuery({
+  const { data: transferHistory = [], isLoading: loadingTransfers, refetch: refetchTransfers } = useQuery({
     queryKey: ["lead-transfer-history"],
     enabled: showTransferHistory,
     queryFn: async () => {
@@ -924,6 +924,58 @@ export default function LeadsPage() {
       return (data || []) as any[];
     },
   });
+
+  // Pending transfer alerts (transfers TO current user's leads, not yet acknowledged)
+  const { data: pendingTransferCount = 0, refetch: refetchPendingTransfers } = useQuery({
+    queryKey: ["pending-transfer-alerts", profile?.id],
+    enabled: !!profile?.id,
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      if (!profile?.id) return 0;
+      // Get leads currently assigned to this user
+      const { data: myLeads } = await supabase
+        .from("leads")
+        .select("id")
+        .eq("responsavel_id", profile.id)
+        .in("status_lead", ["em_atendimento", "novo", "fila_captura", "notificacao"]);
+      if (!myLeads || myLeads.length === 0) return 0;
+      const myLeadIds = myLeads.map(l => l.id);
+      const { count, error } = await supabase
+        .from("lead_historico")
+        .select("id", { count: "exact", head: true })
+        .in("lead_id", myLeadIds)
+        .in("tipo_evento", ["transferencia_automatica", "transferencia_manual", "transferencia_decisao"])
+        .is("ciencia_em", null);
+      if (error) return 0;
+      return count || 0;
+    },
+  });
+
+  const handleOpenTransferHistory = useCallback(async () => {
+    setShowTransferHistory(true);
+    // Mark all pending transfers as acknowledged
+    if (!profile?.id) return;
+    const { data: myLeads } = await supabase
+      .from("leads")
+      .select("id")
+      .eq("responsavel_id", profile.id)
+      .in("status_lead", ["em_atendimento", "novo", "fila_captura", "notificacao"]);
+    if (!myLeads || myLeads.length === 0) return;
+    const myLeadIds = myLeads.map(l => l.id);
+    const { data: pendingIds } = await supabase
+      .from("lead_historico")
+      .select("id")
+      .in("lead_id", myLeadIds)
+      .in("tipo_evento", ["transferencia_automatica", "transferencia_manual", "transferencia_decisao"])
+      .is("ciencia_em", null);
+    if (pendingIds && pendingIds.length > 0) {
+      await supabase
+        .from("lead_historico")
+        .update({ ciencia_em: new Date().toISOString(), ciencia_por: profile.id } as any)
+        .in("id", pendingIds.map(p => p.id));
+      refetchPendingTransfers();
+    }
+  }, [profile?.id, refetchPendingTransfers]);
 
 
   // ─── Realtime subscription for capture queue ─────────────────
@@ -2139,9 +2191,16 @@ export default function LeadsPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => setShowTransferHistory(true)} size="sm" variant="outline" className="h-8 gap-1">
-            <ArrowRightLeft className="w-3.5 h-3.5" /> Transferências
-          </Button>
+          <div className="relative">
+            <Button onClick={handleOpenTransferHistory} size="icon" variant="outline" className="h-8 w-8" title="Transferências">
+              <ArrowRightLeft className="w-4 h-4" />
+            </Button>
+            {pendingTransferCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold animate-pulse">
+                {pendingTransferCount}
+              </span>
+            )}
+          </div>
           {!isVisionMode && (
             <>
               <div className="relative w-64">

@@ -803,6 +803,8 @@ export type Database = {
       }
       lead_historico: {
         Row: {
+          ciencia_em: string | null
+          ciencia_por: string | null
           created_at: string
           data_evento: string
           descricao: string | null
@@ -812,6 +814,8 @@ export type Database = {
           usuario_id: string
         }
         Insert: {
+          ciencia_em?: string | null
+          ciencia_por?: string | null
           created_at?: string
           data_evento?: string
           descricao?: string | null
@@ -821,6 +825,8 @@ export type Database = {
           usuario_id: string
         }
         Update: {
+          ciencia_em?: string | null
+          ciencia_por?: string | null
           created_at?: string
           data_evento?: string
           descricao?: string | null
