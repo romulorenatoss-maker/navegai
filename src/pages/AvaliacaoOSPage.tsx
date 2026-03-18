@@ -1112,6 +1112,8 @@ export default function AvaliacaoOSPage() {
   // Create OS from form + start evaluation
   const handleCreateAndStart = async () => {
     if (!profile) return;
+    const num = formOsNumero.trim();
+    if (!num) { toast.error("Informe o número da OS. Nenhuma OS pode entrar sem número."); return; }
     if (!clienteId) { toast.error("Cliente é obrigatório. Valide o CPF primeiro."); return; }
     if (!tipoServicoId) { toast.error("Selecione o tipo de serviço."); return; }
     if ((hasAtendimentoAccess || isAdmin) && !atendenteId) { toast.error("Selecione o atendente avaliado."); return; }
@@ -1119,7 +1121,7 @@ export default function AvaliacaoOSPage() {
     if ((hasAtendimentoAccess || hasTecnicoAccess || isAdmin) && !atendenteId && !tecnicoId) { toast.error("Selecione pelo menos um colaborador avaliado."); return; }
 
     try {
-      const num = formOsNumero.trim();
+      // num already validated above
       const nomeTr = formClienteNome.trim() || null;
       const cpfDigits = formClienteCpf.replace(/\D/g, "");
       const cpfTr = cpfDigits.length === 11 ? formatCpf(cpfDigits) : formClienteCpf.trim() || null;
@@ -1138,7 +1140,7 @@ export default function AvaliacaoOSPage() {
       } else {
         // No existing OS found in search — create a new one
         const { data: newOs, error: oe } = await supabase.from("ordens_servico").insert({
-          numero_os: num || null, cliente_nome: nomeTr, cliente_cpf: cpfTr, tipo_servico_id: tipoServicoId,
+          numero_os: num, cliente_nome: nomeTr, cliente_cpf: cpfTr, tipo_servico_id: tipoServicoId,
           cliente_id: clienteId, atendente_id: atendenteId || null, tecnico_id: tecnicoId || null,
           data_abertura: formDataAbertura.toISOString(),
         } as any).select("id").single();
@@ -3215,6 +3217,17 @@ export default function AvaliacaoOSPage() {
             {/* Modo: Nova OS — selecionar tipo de serviço */}
             {!fillNumeroOsId && (
               <div className="space-y-2">
+                {/* Número da OS */}
+                <div className="space-y-1.5">
+                  <Label className="text-body font-medium">Número da OS *</Label>
+                  <Input
+                    value={formOsNumero}
+                    onChange={e => setFormOsNumero(e.target.value.replace(/\D/g, ""))}
+                    placeholder="Ex: 12345"
+                    autoFocus
+                  />
+                </div>
+
                 {/* Data da Ocorrência */}
                 <div className="space-y-1.5">
                   <Label className="text-body font-medium">Data da Ocorrência *</Label>
