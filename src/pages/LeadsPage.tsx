@@ -1370,7 +1370,8 @@ export default function LeadsPage() {
           if (matchedLeadContato) {
             const { data: existingLead } = await supabase
               .from("leads").select("*").eq("id", matchedLeadContato.lead_id).single();
-            if (existingLead) {
+            // Only show duplicate modal for ACTIVE leads (not converted/perdido/arquivado)
+            if (existingLead && !["convertido", "perdido", "arquivado"].includes(existingLead.status_lead)) {
               const { data: contatos } = await supabase.from("lead_contatos").select("*").eq("lead_id", existingLead.id);
               const respName = existingLead.responsavel_id
                 ? (profiles || []).find((p: any) => p.id === existingLead.responsavel_id)?.nome || null
