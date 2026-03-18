@@ -1901,15 +1901,15 @@ export default function AvaliacaoOSPage() {
         {/* Editing mode banner */}
         {isEditing && (
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-            className="bg-warning/5 border-2 border-warning/20 rounded-lg p-4 mb-4 flex items-center justify-between">
+            className="bg-warning/5 border-2 border-warning/20 rounded-lg p-3 sm:p-4 mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <Pencil className="w-5 h-5 text-warning" />
+              <Pencil className="w-5 h-5 text-warning shrink-0" />
               <div>
                 <p className="text-sm font-semibold text-foreground">Modo de Edição</p>
                 <p className="text-caption text-muted-foreground">Altere os avaliados e respostas. Clique em Salvar quando terminar.</p>
               </div>
             </div>
-            <Button size="sm" onClick={handleSaveEditing} disabled={evalSubmitting} className="press-effect">
+            <Button size="sm" onClick={handleSaveEditing} disabled={evalSubmitting} className="press-effect w-full sm:w-auto">
               {evalSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
               Salvar
             </Button>
