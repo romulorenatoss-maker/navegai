@@ -29,7 +29,22 @@ interface ConfigFluxo {
   acao_apos_finalizar_tentativas: string;
   permitir_reiniciar_rotina: boolean;
   tipo_servico_conversao_id: string | null;
+  tempo_expiracao_captura_segundos: number;
 }
+
+const EXPIRACAO_OPTIONS = [
+  { value: 30, label: "30 segundos" },
+  { value: 60, label: "1 minuto" },
+  { value: 120, label: "2 minutos" },
+  { value: 180, label: "3 minutos" },
+  { value: 240, label: "4 minutos" },
+  { value: 300, label: "5 minutos" },
+  { value: 360, label: "6 minutos" },
+  { value: 420, label: "7 minutos" },
+  { value: 480, label: "8 minutos" },
+  { value: 540, label: "9 minutos" },
+  { value: 600, label: "10 minutos" },
+];
 
 const PERIODO_LABELS: Record<string, string> = { manha: "Manhã", tarde: "Tarde", noite: "Noite" };
 const PRIORIDADE_LABELS: Record<string, string> = { alta: "Alta", media: "Média", baixa: "Baixa" };
@@ -130,6 +145,7 @@ export default function RotinaTentativasPage() {
           acao_apos_finalizar_tentativas: localConfig.acao_apos_finalizar_tentativas,
           permitir_reiniciar_rotina: localConfig.permitir_reiniciar_rotina,
           tipo_servico_conversao_id: localConfig.tipo_servico_conversao_id,
+          tempo_expiracao_captura_segundos: localConfig.tempo_expiracao_captura_segundos,
         } as any)
         .eq("id", config.id);
       if (e1) throw e1;
@@ -264,6 +280,21 @@ export default function RotinaTentativasPage() {
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">Define qual checklist será usado na OS criada ao converter um lead em cliente.</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Tempo para expirar captura sem interação</Label>
+                  <Select
+                    value={String(localConfig?.tempo_expiracao_captura_segundos || 120)}
+                    onValueChange={(v) => localConfig && setLocalConfig({ ...localConfig, tempo_expiracao_captura_segundos: parseInt(v) })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {EXPIRACAO_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Se o atendente capturar um lead e não registrar nenhuma interação dentro desse tempo, o lead volta automaticamente para a fila de captura.</p>
                 </div>
               </div>
             </CardContent>

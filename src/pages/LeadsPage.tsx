@@ -186,6 +186,7 @@ const EVENTO_LABELS: Record<string, string> = {
   lead_capturado: "Lead Capturado",
   lead_reservado: "Lead Reservado",
   reserva_liberada: "Reserva Liberada",
+  captura_expirada: "Captura Expirada",
   reserva_expirada: "Reserva Expirada",
   transferencia_manual: "Transferência Manual",
 };
@@ -772,6 +773,84 @@ export default function LeadsPage() {
     queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
     queryClient.invalidateQueries({ queryKey: ["leads-list"] });
   }, [profile, queryClient]);
+
+  // ─── Auto-expire captured leads without interaction ─────
+  useEffect(() => {
+    if (!profile) return;
+    const timeoutSeconds = (fluxoConfig as any)?.tempo_expiracao_captura_segundos || 120;
+    const intervalMs = Math.min(timeoutSeconds * 1000, 15000); // check at most every 15s
+
+    const checkExpiredCaptures = async () => {
+      // Find leads owned by current user that are em_atendimento with reserved_at set
+      const { data: myLeads } = await supabase
+        .from("leads")
+        .select("id, nome, reserved_at, responsavel_id")
+        .eq("responsavel_id", profile.id)
+        .eq("status_lead", "em_atendimento")
+        .not("reserved_at", "is", null);
+
+      if (!myLeads || myLeads.length === 0) return;
+
+      const now = new Date();
+      let hadExpiration = false;
+      for (const lead of myLeads) {
+        if (!lead.reserved_at) continue;
+        const capturedAt = new Date(lead.reserved_at);
+        const elapsedSec = (now.getTime() - capturedAt.getTime()) / 1000;
+
+        if (elapsedSec < timeoutSeconds) continue;
+
+        // Check if there's any interaction since capture
+        const { count } = await supabase
+          .from("lead_interacoes")
+          .select("id", { count: "exact", head: true })
+          .eq("lead_id", lead.id)
+          .eq("colaborador_id", profile.id)
+          .gte("data_interacao", lead.reserved_at);
+
+        if (count && count > 0) {
+          // Has interactions → clear reserved_at so we don't check again
+          await supabase.from("leads").update({ reserved_at: null } as any).eq("id", lead.id);
+          continue;
+        }
+
+        // Expired! Return to fila_captura
+        hadExpiration = true;
+        await supabase.from("leads").update({
+          status_lead: "fila_captura",
+          responsavel_id: null,
+          reserved_by: null,
+          reserved_at: null,
+        } as any).eq("id", lead.id);
+
+        // Cancel pending tasks
+        await supabase.from("lead_tarefas_contato")
+          .update({ status: "cancelada" } as any)
+          .eq("lead_id", lead.id)
+          .in("status", ["pendente", "atrasado", "aguardando_visualizacao"]);
+
+        // Log
+        await supabase.from("lead_historico").insert({
+          lead_id: lead.id,
+          usuario_id: profile.id,
+          tipo_evento: "captura_expirada",
+          descricao: `Captura expirou após ${timeoutSeconds}s sem interação. Lead devolvido à fila de captura.`,
+        });
+
+        toast.warning(`Lead "${lead.nome}" devolvido à fila — tempo de captura expirado.`);
+      }
+
+      if (hadExpiration) {
+        queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+        queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
+      }
+    };
+
+    const timer = setInterval(checkExpiredCaptures, intervalMs);
+    checkExpiredCaptures();
+
+    return () => clearInterval(timer);
+  }, [profile?.id, (fluxoConfig as any)?.tempo_expiracao_captura_segundos, queryClient]);
 
   // Transfer history query
   const { data: transferHistory = [], isLoading: loadingTransfers } = useQuery({
@@ -1490,8 +1569,11 @@ export default function LeadsPage() {
       });
 
       if (selectedLead.status_lead === "novo") {
-        await supabase.from("leads").update({ status_lead: "em_contato" }).eq("id", selectedLead.id);
-        setSelectedLead(prev => prev ? { ...prev, status_lead: "em_contato" } : null);
+        await supabase.from("leads").update({ status_lead: "em_contato", reserved_at: null } as any).eq("id", selectedLead.id);
+        setSelectedLead(prev => prev ? { ...prev, status_lead: "em_contato", reserved_at: null } : null);
+      } else {
+        // Clear reserved_at to stop expiration timer
+        await supabase.from("leads").update({ reserved_at: null } as any).eq("id", selectedLead.id);
       }
 
       // Mark current pending tarefa as "realizado"
