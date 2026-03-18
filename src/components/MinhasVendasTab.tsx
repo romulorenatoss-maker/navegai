@@ -136,13 +136,13 @@ export default function MinhasVendasTab() {
       if (!allConversoes?.length) return [];
 
       const leadIds = [...new Set(allConversoes.map(c => c.lead_id))];
-      const { data: leads } = await supabase.from("leads").select("id, responsavel_id").in("id", leadIds);
-      const leadResponsavel: Record<string, string | null> = {};
-      leads?.forEach(l => { leadResponsavel[l.id] = l.responsavel_id; });
+      const { data: leads } = await supabase.from("leads").select("id, responsavel_id, convertido_por").in("id", leadIds);
+      const leadConvertidoPor: Record<string, string | null> = {};
+      leads?.forEach((l: any) => { leadConvertidoPor[l.id] = l.convertido_por || l.responsavel_id; });
 
       const countByUser: Record<string, number> = {};
       allConversoes.forEach(c => {
-        const resp = leadResponsavel[c.lead_id];
+        const resp = leadConvertidoPor[c.lead_id];
         if (resp) countByUser[resp] = (countByUser[resp] || 0) + 1;
       });
 
