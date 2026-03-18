@@ -3637,12 +3637,12 @@ export default function LeadsPage() {
                   <p className="text-xs text-muted-foreground">Quem será creditado pela conversão nos rankings e relatórios.</p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-medium">Avaliado Setor Atendimento *</Label>
-                  <Select value={convAtendenteId} onValueChange={setConvAtendenteId}>
-                    <SelectTrigger className="h-9"><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
-                    <SelectContent>{atendimentoProfiles.length > 0 ? atendimentoProfiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>) : profiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}</SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">Quem será avaliado como atendente nesta OS.</p>
+                   <Label className="text-xs font-medium">Atendente que fez a venda *</Label>
+                   <Select value={convAtendenteId} onValueChange={setConvAtendenteId}>
+                     <SelectTrigger className="h-9"><SelectValue placeholder="Selecione o atendente" /></SelectTrigger>
+                     <SelectContent>{atendimentoProfiles.length > 0 ? atendimentoProfiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>) : profiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}</SelectContent>
+                   </Select>
+                   <p className="text-xs text-muted-foreground">A venda será creditada a esta pessoa e ela será avaliada no atendimento da venda.</p>
                 </div>
               </div>
             ) : (
@@ -3690,7 +3690,7 @@ export default function LeadsPage() {
                   <p className="text-sm font-medium">{profiles.find(p => p.id === convConvertidoPorId)?.nome || "—"}</p>
                 </div>
                 <div className="border rounded-md p-3 space-y-2 bg-muted/20">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Atendente (Avaliado)</p>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Atendente que fez a venda</p>
                   <p className="text-sm font-medium">{profiles.find(p => p.id === convAtendenteId)?.nome || "—"}</p>
                 </div>
               </div>
