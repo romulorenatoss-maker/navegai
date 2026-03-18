@@ -1448,10 +1448,20 @@ export default function FilaLeadsPage() {
                 {atendimentoProfiles.filter(p => p.id !== transferItem?.lead.responsavel_id).length === 0 && <SelectItem value="__none" disabled>Nenhum colaborador no setor Atendimento</SelectItem>}
               </SelectContent></Select>
             </div>
+            <div className="space-y-1.5">
+              <Label>Motivo da Transferência <span className="text-destructive">*</span></Label>
+              <Textarea
+                placeholder="Informe o motivo da transferência..."
+                value={transferMotivo}
+                onChange={e => setTransferMotivo(e.target.value)}
+                className="min-h-[60px] text-sm"
+                maxLength={500}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowTransfer(false)}>Cancelar</Button>
-            <Button onClick={handleTransfer} disabled={!transferTarget} className="press-effect"><ArrowRightLeft className="w-4 h-4 mr-1.5" /> Transferir</Button>
+            <Button onClick={handleTransfer} disabled={!transferTarget || !transferMotivo.trim()} className="press-effect"><ArrowRightLeft className="w-4 h-4 mr-1.5" /> Transferir</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
