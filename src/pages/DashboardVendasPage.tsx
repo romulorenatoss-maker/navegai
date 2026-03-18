@@ -45,7 +45,126 @@ export default function DashboardVendasPage() {
   const [appliedStart, setAppliedStart] = useState<Date | undefined>(startOfMonth(now));
   const [appliedEnd, setAppliedEnd] = useState<Date | undefined>(endOfMonth(now));
 
-  const handleBuscar = () => { setAppliedStart(startDate); setAppliedEnd(endDate); };
+  // Detail dialog state
+  const [selectedProfile, setSelectedProfile] = useState<{ id: string; nome: string } | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailLeads, setDetailLeads] = useState<any[]>([]);
+
+  const openDetailDialog = useCallback(async (profileId: string, nome: string) => {
+    setSelectedProfile({ id: profileId, nome });
+    setDetailOpen(true);
+    setDetailLoading(true);
+    try {
+      // Get converted leads for this profile in period
+      const { data: leads } = await supabase
+        .from("leads")
+        .select("id, nome, status_lead, data_criacao, cliente_id, convertido_por, convertido_registrado_por")
+        .eq("convertido_por", profileId)
+        .eq("status_lead", "convertido")
+        .gte("data_criacao", from)
+        .lte("data_criacao", to)
+        .order("data_criacao", { ascending: false });
+
+      if (!leads?.length) { setDetailLeads([]); setDetailLoading(false); return; }
+
+      const leadIds = leads.map(l => l.id);
+      const clienteIds = [...new Set(leads.map(l => l.cliente_id).filter(Boolean))] as string[];
+
+      // Fetch in parallel: history, OS (via cliente_id), contacts, profiles for names
+      const [histRes, osRes, contactsRes, convertedByRes] = await Promise.all([
+        supabase.from("lead_historico").select("lead_id, tipo_evento, descricao, data_evento, usuario_id")
+          .in("lead_id", leadIds).order("data_evento", { ascending: true }),
+        clienteIds.length > 0
+          ? supabase.from("ordens_servico").select("id, numero_os, status, cliente_id, tipo_servico_id, data_abertura, data_conclusao")
+              .in("cliente_id", clienteIds).order("data_abertura", { ascending: false })
+          : { data: [] },
+        supabase.from("lead_contatos").select("lead_id, tipo_contato, valor").in("lead_id", leadIds),
+        (() => {
+          const userIds = new Set<string>();
+          leads.forEach(l => { if (l.convertido_registrado_por) userIds.add(l.convertido_registrado_por); });
+          return userIds.size > 0
+            ? supabase.from("profiles").select("id, nome").in("id", [...userIds])
+            : { data: [] };
+        })(),
+      ]);
+
+      // Get OS IDs for evaluation data
+      const osData = osRes.data || [];
+      const osIds = osData.map(o => o.id);
+
+      // Fetch evaluations + tipo_servico names
+      const tipoIds = [...new Set(osData.map(o => o.tipo_servico_id).filter(Boolean))] as string[];
+      const [avalsRes, tiposRes, respostasRes] = await Promise.all([
+        osIds.length > 0 ? supabase.from("avaliacoes").select("id, ordem_servico_id, nota_final, concluida, concluida_em, avaliador_id")
+          .in("ordem_servico_id", osIds) : { data: [] },
+        tipoIds.length > 0 ? supabase.from("tipos_servico").select("id, nome").in("id", tipoIds) : { data: [] },
+        osIds.length > 0 ? supabase.from("respostas_avaliacao").select("ordem_servico_id, pergunta_id, resposta, observacao")
+          .in("ordem_servico_id", osIds).not("resposta", "is", null) : { data: [] },
+      ]);
+
+      // Get pergunta texts
+      const perguntaIds = [...new Set((respostasRes.data || []).map(r => r.pergunta_id))];
+      const perguntasRes = perguntaIds.length > 0
+        ? await supabase.from("perguntas_avaliacao").select("id, pergunta, peso, setor_avaliado_id").in("id", perguntaIds)
+        : { data: [] };
+
+      // Get setor names for perguntas
+      const setorIds = [...new Set((perguntasRes.data || []).map(p => p.setor_avaliado_id).filter(Boolean))] as string[];
+      const setoresRes = setorIds.length > 0
+        ? await supabase.from("setores").select("id, nome").in("id", setorIds)
+        : { data: [] };
+
+      // Build lookup maps
+      const profileNames: Record<string, string> = {};
+      (convertedByRes.data || []).forEach((p: any) => { profileNames[p.id] = p.nome; });
+      const tipoNames: Record<string, string> = {};
+      (tiposRes.data || []).forEach((t: any) => { tipoNames[t.id] = t.nome; });
+      const perguntaMap: Record<string, any> = {};
+      (perguntasRes.data || []).forEach((p: any) => { perguntaMap[p.id] = p; });
+      const setorNames: Record<string, string> = {};
+      (setoresRes.data || []).forEach((s: any) => { setorNames[s.id] = s.nome; });
+
+      // Compose enriched leads
+      const enriched = leads.map(lead => {
+        const history = (histRes.data || []).filter(h => h.lead_id === lead.id);
+        const contacts = (contactsRes.data || []).filter(c => c.lead_id === lead.id);
+        const leadOS = osData.filter(o => o.cliente_id === lead.cliente_id);
+        const osEnriched = leadOS.map(os => {
+          const avals = (avalsRes.data || []).filter(a => a.ordem_servico_id === os.id);
+          const respostas = (respostasRes.data || []).filter(r => r.ordem_servico_id === os.id);
+          const respostasEnriched = respostas.map(r => ({
+            ...r,
+            pergunta_texto: perguntaMap[r.pergunta_id]?.pergunta || "—",
+            peso: perguntaMap[r.pergunta_id]?.peso || 1,
+            setor_nome: perguntaMap[r.pergunta_id]?.setor_avaliado_id
+              ? setorNames[perguntaMap[r.pergunta_id].setor_avaliado_id] || "—"
+              : "Geral",
+          }));
+          return {
+            ...os,
+            tipo_servico_nome: os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || null : null,
+            avaliacoes: avals,
+            respostas: respostasEnriched,
+          };
+        });
+        return {
+          ...lead,
+          history,
+          contacts,
+          ordens: osEnriched,
+          registrado_por_nome: lead.convertido_registrado_por ? profileNames[lead.convertido_registrado_por] || null : null,
+        };
+      });
+
+      setDetailLeads(enriched);
+    } catch (err) {
+      console.error("Error loading detail:", err);
+    } finally {
+      setDetailLoading(false);
+    }
+  }, [from, to]);
+
 
   const from = appliedStart ? startOfDay(appliedStart).toISOString() : startOfDay(startOfMonth(now)).toISOString();
   const to = appliedEnd ? endOfDay(appliedEnd).toISOString() : endOfDay(endOfMonth(now)).toISOString();
