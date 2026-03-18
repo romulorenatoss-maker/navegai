@@ -2690,53 +2690,23 @@ export default function AvaliacaoOSPage() {
             return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
           });
 
-          const targetOS = prioritizedOs[0];
-
-          if (cliente && !targetOS.cliente_id) {
-            await supabase.from("ordens_servico").update({
-              cliente_id: cliente.id,
-              cliente_nome: cliente.nome,
-              cliente_cpf: cliente.cpf,
-            } as any).eq("id", targetOS.id);
-            targetOS.cliente_id = cliente.id;
-            targetOS.cliente_nome = cliente.nome;
-            targetOS.cliente_cpf = cliente.cpf;
-          }
-
-          setFormFoundOS(targetOS);
-          if (targetOS.tipo_servico_id) setTipoServicoId(targetOS.tipo_servico_id);
-          if (targetOS.atendente_id) setAtendenteId(targetOS.atendente_id);
-          if (targetOS.tecnico_id) setTecnicoId(targetOS.tecnico_id);
-          setFormValidated(true);
-
-          if (!targetOS.numero_os) {
-            setFillNumeroOsId(targetOS.id);
-            setFillNumeroValue("");
-            setShowNewOsDialog(true);
-            toast.info("OS existente encontrada aguardando número.");
-            return;
-          }
-
-          if (profile) {
-            const { data: pendingAval } = await supabase
-              .from("avaliacoes")
-              .select("id, tipo_avaliacao_id, concluida, nota_final")
-              .eq("ordem_servico_id", targetOS.id)
-              .eq("avaliador_id", profile.id)
-              .eq("concluida", false)
-              .limit(1)
-              .maybeSingle();
-
-            if (pendingAval) {
-              setFormPendingAval(pendingAval);
-              toast.info("Avaliação pendente encontrada. Abrindo...");
-              await openEvaluation(pendingAval.id, targetOS.id);
-              return;
+          // Update client info on OS that don't have it
+          for (const os of prioritizedOs) {
+            if (cliente && !os.cliente_id) {
+              await supabase.from("ordens_servico").update({
+                cliente_id: cliente.id,
+                cliente_nome: cliente.nome,
+                cliente_cpf: cliente.cpf,
+              } as any).eq("id", os.id);
+              os.cliente_id = cliente.id;
+              os.cliente_nome = cliente.nome;
+              os.cliente_cpf = cliente.cpf;
             }
           }
 
-          setFormOsNumero(targetOS.numero_os || "");
-          toast.success(`OS ${targetOS.numero_os} encontrada para o cliente!`);
+          setSearchResults(prioritizedOs);
+          setFormValidated(true);
+          toast.success(`${prioritizedOs.length} OS encontrada(s) para o cliente.`);
           return;
         }
 
