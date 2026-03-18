@@ -172,9 +172,6 @@ export default function DashboardVendasPage() {
   }, [from, to]);
 
 
-  const from = appliedStart ? startOfDay(appliedStart).toISOString() : startOfDay(startOfMonth(now)).toISOString();
-  const to = appliedEnd ? endOfDay(appliedEnd).toISOString() : endOfDay(endOfMonth(now)).toISOString();
-
   // All active profiles (atendentes)
   const { data: profiles = [] } = useQuery({
     queryKey: ["dashboard-vendas-profiles"],
