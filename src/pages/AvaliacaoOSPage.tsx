@@ -3336,7 +3336,7 @@ export default function AvaliacaoOSPage() {
                     <h3 className="font-semibold text-foreground flex items-center gap-2 mb-2">
                       <Users className="w-4 h-4 text-primary" /> Histórico como Lead
                     </h3>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div><span className="text-muted-foreground">Nome do Lead:</span><p className="font-medium">{viewClienteData.lead.nome}</p></div>
                       <div><span className="text-muted-foreground">Origem:</span><p className="font-medium">{viewClienteData.lead.origem_lead || "—"}</p></div>
                       <div><span className="text-muted-foreground">Plano:</span><p className="font-medium">{viewClienteData.planoNome}</p></div>
