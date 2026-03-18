@@ -95,12 +95,14 @@ const statusBadge: Record<string, string> = {
   aberta: "border-warning/40 bg-warning/10 text-warning",
   em_andamento: "border-primary/40 bg-primary/10 text-primary",
   concluida: "border-success/40 bg-success/10 text-success",
+  aguardando_numero: "border-muted-foreground/40 bg-muted text-muted-foreground",
 };
 
 const statusText: Record<string, string> = {
   aberta: "Aberta",
   em_andamento: "Em andamento",
   concluida: "Concluída",
+  aguardando_numero: "Aguardando Número",
 };
 
 // --- Main ---
