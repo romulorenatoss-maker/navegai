@@ -1834,7 +1834,7 @@ export default function LeadsPage() {
             const { data: existingCliente } = await supabase
               .from("clientes").select("id, nome, cpf").eq("id", matchedClienteContato.cliente_id).maybeSingle();
             if (existingCliente) {
-              await supabase.from("leads").update({ status_lead: "convertido", cliente_id: existingCliente.id, convertido_por: convConvertidoPorId || profile.id } as any).eq("id", selectedLead.id);
+              await supabase.from("leads").update({ status_lead: "convertido", cliente_id: existingCliente.id, convertido_por: convAtendenteId || profile.id } as any).eq("id", selectedLead.id);
               // Create OS for existing client too
               const dupetipoServicoId: string | null = (fluxoConfig as any)?.tipo_servico_conversao_id || null;
               const dupeConverterId = convAtendenteId || profile.id;
