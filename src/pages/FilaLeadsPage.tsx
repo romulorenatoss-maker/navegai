@@ -1006,7 +1006,7 @@ export default function FilaLeadsPage() {
                                     <DropdownMenuItem onClick={() => openAttempt(item)} className="gap-2 text-xs">
                                       <Phone className="w-3.5 h-3.5" /> Registrar {item.tentativaAtual}ª Tentativa
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => { setTransferItem(item); setTransferTarget(""); setShowTransfer(true); }} className="gap-2 text-xs">
+                                    <DropdownMenuItem onClick={() => { setTransferItem(item); setTransferTarget(""); setTransferMotivo(""); setShowTransfer(true); }} className="gap-2 text-xs">
                                       <ArrowRightLeft className="w-3.5 h-3.5" /> Transferir Lead
                                     </DropdownMenuItem>
                                     {item.isOverdue && (
