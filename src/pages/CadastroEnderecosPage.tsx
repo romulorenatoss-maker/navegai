@@ -180,18 +180,26 @@ export default function CadastroEnderecosPage() {
     try {
       // Check if there are associated leads
       let hasLeads = false;
+      let hasClientes = false;
       if (tab === "cidades") {
-        const { count } = await supabase.from("leads").select("id", { count: "exact", head: true }).eq("cidade_id", deleteId);
-        hasLeads = (count || 0) > 0;
+        const { count: lc } = await supabase.from("leads").select("id", { count: "exact", head: true }).eq("cidade_id", deleteId);
+        hasLeads = (lc || 0) > 0;
+        const { count: cc } = await supabase.from("clientes").select("id", { count: "exact", head: true }).eq("cidade_id", deleteId);
+        hasClientes = (cc || 0) > 0;
       } else if (tab === "bairros") {
-        const { count } = await supabase.from("leads").select("id", { count: "exact", head: true }).eq("bairro_id", deleteId);
-        hasLeads = (count || 0) > 0;
+        const { count: lc } = await supabase.from("leads").select("id", { count: "exact", head: true }).eq("bairro_id", deleteId);
+        hasLeads = (lc || 0) > 0;
+        const { count: cc } = await supabase.from("clientes").select("id", { count: "exact", head: true }).eq("bairro_id", deleteId);
+        hasClientes = (cc || 0) > 0;
       } else {
-        const { count } = await supabase.from("leads").select("id", { count: "exact", head: true }).eq("rua_id", deleteId);
-        hasLeads = (count || 0) > 0;
+        const { count: lc } = await supabase.from("leads").select("id", { count: "exact", head: true }).eq("rua_id", deleteId);
+        hasLeads = (lc || 0) > 0;
+        const { count: cc } = await supabase.from("clientes").select("id", { count: "exact", head: true }).eq("rua_id", deleteId);
+        hasClientes = (cc || 0) > 0;
       }
-      if (hasLeads) {
-        toast.error("Não é possível remover: existem leads associados a este registro. Migre os leads primeiro.");
+      if (hasLeads || hasClientes) {
+        const refs = [hasLeads && "leads", hasClientes && "clientes"].filter(Boolean).join(" e ");
+        toast.error(`Não é possível remover: existem ${refs} associados a este registro. Migre-os primeiro.`);
         setDeleteId(null);
         return;
       }
