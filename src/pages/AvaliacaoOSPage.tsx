@@ -1992,7 +1992,9 @@ export default function AvaliacaoOSPage() {
                     const answer = evalAnswers[p.id] || null;
                     const observation = evalObservations[p.id] || "";
                     const evidenciaUrl = evalEvidencias[p.id] || null;
+                    const audioUrl = evalAudios[p.id] || null;
                     const isUploading = uploadingEvidence === p.id;
+                    const isAudioUploading = uploadingAudio === p.id;
                     return (
                       <motion.div key={p.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
                         className={cn("bg-card border rounded-lg transition-colors",
