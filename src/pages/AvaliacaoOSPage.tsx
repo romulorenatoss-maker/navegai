@@ -3303,16 +3303,16 @@ export default function AvaliacaoOSPage() {
           {viewClienteData && (
             <div className="space-y-4 text-sm">
               {/* Client data */}
-              <div className="grid grid-cols-2 gap-3">
-                <div><span className="text-muted-foreground">Nome:</span><p className="font-medium">{viewClienteData.nome}</p></div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div><span className="text-muted-foreground">Nome:</span><p className="font-medium break-words">{viewClienteData.nome}</p></div>
                 <div><span className="text-muted-foreground">CPF:</span><p className="font-medium">{viewClienteData.cpf || "—"}</p></div>
                 <div><span className="text-muted-foreground">RG:</span><p className="font-medium">{viewClienteData.rg || "—"}</p></div>
-                <div><span className="text-muted-foreground">Nome da Mãe:</span><p className="font-medium">{viewClienteData.nome_mae || "—"}</p></div>
-                <div><span className="text-muted-foreground">Endereço:</span><p className="font-medium">{viewClienteData.endereco || "—"}</p></div>
+                <div><span className="text-muted-foreground">Nome da Mãe:</span><p className="font-medium break-words">{viewClienteData.nome_mae || "—"}</p></div>
+                <div><span className="text-muted-foreground">Endereço:</span><p className="font-medium break-words">{viewClienteData.endereco || "—"}</p></div>
                 <div><span className="text-muted-foreground">Número:</span><p className="font-medium">{viewClienteData.numero || "—"}</p></div>
                 <div><span className="text-muted-foreground">CEP:</span><p className="font-medium">{viewClienteData.cep || "—"}</p></div>
                 <div><span className="text-muted-foreground">Cidade:</span><p className="font-medium">{viewClienteData.cidade || "—"}</p></div>
-                <div className="col-span-2"><span className="text-muted-foreground">Referência:</span><p className="font-medium">{viewClienteData.referencia || "—"}</p></div>
+                <div className="sm:col-span-2"><span className="text-muted-foreground">Referência:</span><p className="font-medium break-words">{viewClienteData.referencia || "—"}</p></div>
               </div>
               {viewClienteData.contatos?.length > 0 && (
                 <div className="border-t border-border pt-3">
