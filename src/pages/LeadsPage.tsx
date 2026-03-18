@@ -3713,8 +3713,7 @@ export default function LeadsPage() {
                   if (!convForm.nome_mae.trim()) { toast.error("Nome da mãe é obrigatório."); return; }
                   if (!convCidadeId || !convBairroId || !convRuaId) { toast.error("Endereço completo é obrigatório."); return; }
                   if (!convForm.numero.trim()) { toast.error("Número é obrigatório."); return; }
-                  if (!convAtendenteId) { toast.error("Selecione o atendente que fez a venda."); return; }
-                  if (!convAtendenteId) { toast.error("Selecione o atendente."); return; }
+                   if (!convAtendenteId) { toast.error("Selecione o atendente que fez a venda."); return; }
                   setConvStep("review");
                 }} className="press-effect">
                   <ArrowRight className="w-4 h-4 mr-1" /> Converter
