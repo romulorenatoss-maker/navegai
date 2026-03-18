@@ -7,12 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { format, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   CalendarIcon, Filter, Trophy, TrendingUp, Users, Phone,
-  ArrowRightLeft, Target, BarChart3
+  ArrowRightLeft, Target, BarChart3, Eye
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
@@ -53,12 +54,11 @@ export default function MinhasVendasTab() {
     },
   });
 
-  // Conversions of leads CREATED by this user (regardless of who converted)
+  // Conversions of leads CREATED/CAPTURED by this user (regardless of who converted)
   const { data: conversoes = [] } = useQuery({
     queryKey: ["minhas-vendas-conversoes-v3", profileId, from, to],
     enabled: !!profileId,
     queryFn: async () => {
-      // Get all conversions in period
       const { data } = await supabase
         .from("lead_historico")
         .select("lead_id, data_evento")
@@ -67,7 +67,6 @@ export default function MinhasVendasTab() {
         .lte("data_evento", to);
       if (!data?.length) return [];
 
-      // Find which of those leads were created by this user
       const leadIds = [...new Set(data.map(d => d.lead_id))];
       const { data: criacaoEvents } = await supabase
         .from("lead_historico")
@@ -81,6 +80,21 @@ export default function MinhasVendasTab() {
       return data
         .filter(d => myCreatedLeadIds.has(d.lead_id))
         .map(d => ({ lead_id: d.lead_id, data_evento: d.data_evento }));
+    },
+  });
+
+  // Fetch lead names for converted leads
+  const { data: convertedLeadDetails = [] } = useQuery({
+    queryKey: ["minhas-vendas-converted-details", conversoes.map(c => c.lead_id).join(",")],
+    enabled: conversoes.length > 0,
+    queryFn: async () => {
+      const leadIds = [...new Set(conversoes.map(c => c.lead_id))];
+      if (!leadIds.length) return [];
+      const { data } = await supabase
+        .from("leads")
+        .select("id, nome")
+        .in("id", leadIds);
+      return data || [];
     },
   });
 
@@ -115,11 +129,12 @@ export default function MinhasVendasTab() {
     },
   });
 
-  // Ranking: conversions attributed to lead's responsavel_id
+  // Ranking: based on CREATOR/CAPTURER of leads (same logic as dashboard)
   const { data: ranking = [] } = useQuery({
-    queryKey: ["minhas-vendas-ranking", from, to],
+    queryKey: ["minhas-vendas-ranking-v2", from, to],
     enabled: !!profileId,
     queryFn: async () => {
+      // Get all conversions in period
       const { data: allConversoes } = await supabase
         .from("lead_historico")
         .select("lead_id")
@@ -129,15 +144,24 @@ export default function MinhasVendasTab() {
 
       if (!allConversoes?.length) return [];
 
+      // Find creator of each converted lead
       const leadIds = [...new Set(allConversoes.map(c => c.lead_id))];
-      const { data: leads } = await supabase.from("leads").select("id, responsavel_id, convertido_por").in("id", leadIds);
-      const leadConvertidoPor: Record<string, string | null> = {};
-      leads?.forEach((l: any) => { leadConvertidoPor[l.id] = l.convertido_por || l.responsavel_id; });
+      const { data: criacaoEvents } = await supabase
+        .from("lead_historico")
+        .select("lead_id, usuario_id")
+        .in("tipo_evento", ["lead_criado", "criacao", "lead_capturado"])
+        .in("lead_id", leadIds);
 
+      const creatorByLead: Record<string, string> = {};
+      criacaoEvents?.forEach(e => {
+        if (!creatorByLead[e.lead_id]) creatorByLead[e.lead_id] = e.usuario_id;
+      });
+
+      // Count conversions per creator
       const countByUser: Record<string, number> = {};
       allConversoes.forEach(c => {
-        const resp = leadConvertidoPor[c.lead_id];
-        if (resp) countByUser[resp] = (countByUser[resp] || 0) + 1;
+        const creator = creatorByLead[c.lead_id];
+        if (creator) countByUser[creator] = (countByUser[creator] || 0) + 1;
       });
 
       const userIds = Object.keys(countByUser);
@@ -150,9 +174,26 @@ export default function MinhasVendasTab() {
       const nameMap: Record<string, string> = {};
       profiles?.forEach(p => { nameMap[p.id] = p.nome; });
 
-      return Object.entries(countByUser)
+      const sorted = Object.entries(countByUser)
         .map(([uid, count]) => ({ uid, nome: nameMap[uid] || "—", conversoes: count }))
         .sort((a, b) => b.conversoes - a.conversoes);
+
+      // Assign tied positions
+      let currentRank = 1;
+      sorted.forEach((entry, idx) => {
+        if (idx === 0) {
+          (entry as any).rank = currentRank;
+        } else {
+          if (entry.conversoes === sorted[idx - 1].conversoes) {
+            (entry as any).rank = (sorted[idx - 1] as any).rank;
+          } else {
+            currentRank = idx + 1;
+            (entry as any).rank = currentRank;
+          }
+        }
+      });
+
+      return sorted;
     },
   });
 
@@ -164,15 +205,27 @@ export default function MinhasVendasTab() {
   const taxaConversao = totalLeads > 0 ? Math.min((totalConversoes / totalLeads) * 100, 100) : 0;
   const mediaTentativasPorConversao = totalConversoes > 0 ? (totalInteracoes / totalConversoes) : 0;
 
-  // Ranking position
+  // Ranking position with ties
   const myRankingPos = useMemo(() => {
     if (!profileId || !ranking.length) return null;
-    const idx = ranking.findIndex(r => r.uid === profileId);
-    if (idx === -1) return { position: ranking.length + 1, total: ranking.length + 1 };
-    return { position: idx + 1, total: ranking.length };
+    const me = ranking.find((r: any) => r.uid === profileId);
+    if (!me) return { position: ranking.length + 1, total: ranking.length + 1 };
+    return { position: (me as any).rank ?? 1, total: ranking.length };
   }, [ranking, profileId]);
 
-  // Chart: conversions per week/day
+  // Build converted leads list for the table
+  const convertedLeadsList = useMemo(() => {
+    const leadNameMap: Record<string, string> = {};
+    convertedLeadDetails.forEach(l => { leadNameMap[l.id] = l.nome; });
+
+    return conversoes.map(c => ({
+      lead_id: c.lead_id,
+      nome: leadNameMap[c.lead_id] || "—",
+      data_conversao: c.data_evento,
+    })).sort((a, b) => new Date(b.data_conversao).getTime() - new Date(a.data_conversao).getTime());
+  }, [conversoes, convertedLeadDetails]);
+
+  // Chart: conversions per day
   const chartData = useMemo(() => {
     if (!conversoes.length) return [];
     const grouped: Record<string, number> = {};
@@ -289,6 +342,47 @@ export default function MinhasVendasTab() {
               </ResponsiveContainer>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Converted Leads List */}
+      <div className="bg-card border border-border rounded-lg shadow-card">
+        <div className="p-4 border-b border-border flex items-center gap-2">
+          <Eye className="w-4 h-4 text-primary" />
+          <h2 className="text-body font-semibold text-foreground">Leads Convertidos</h2>
+          <Badge variant="secondary" className="text-xs ml-auto">{convertedLeadsList.length}</Badge>
+        </div>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-10"></TableHead>
+                <TableHead>Lead</TableHead>
+                <TableHead className="text-center">Data Conversão</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {convertedLeadsList.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-center text-sm text-muted-foreground py-8">
+                    Nenhuma conversão no período selecionado.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                convertedLeadsList.map((item) => (
+                  <TableRow key={`${item.lead_id}-${item.data_conversao}`}>
+                    <TableCell>
+                      <Eye className="w-4 h-4 text-primary" />
+                    </TableCell>
+                    <TableCell className="font-medium">{item.nome}</TableCell>
+                    <TableCell className="text-center text-sm">
+                      {format(new Date(item.data_conversao), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </div>
       </div>
     </div>
