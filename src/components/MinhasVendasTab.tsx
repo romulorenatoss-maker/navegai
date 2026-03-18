@@ -67,19 +67,26 @@ export default function MinhasVendasTab() {
     },
   });
 
-  // Conversions (leads converted to clients)
+  // Conversions — attributed to the lead's responsavel_id (salesperson), not who logged the event
   const { data: conversoes = [] } = useQuery({
     queryKey: ["minhas-vendas-conversoes", profileId, from, to],
     enabled: !!profileId,
     queryFn: async () => {
       const { data } = await supabase
         .from("lead_historico")
-        .select("lead_id, data_evento")
-        .eq("usuario_id", profileId!)
+        .select("lead_id, data_evento, descricao")
         .eq("tipo_evento", "conversao_cliente")
         .gte("data_evento", from)
         .lte("data_evento", to);
-      return data || [];
+      if (!data?.length) return [];
+      // Get leads to find who was responsible
+      const leadIds = [...new Set(data.map(d => d.lead_id))];
+      const { data: leads } = await supabase.from("leads").select("id, responsavel_id").in("id", leadIds);
+      const leadResponsavel: Record<string, string | null> = {};
+      leads?.forEach(l => { leadResponsavel[l.id] = l.responsavel_id; });
+      return data
+        .filter(d => leadResponsavel[d.lead_id] === profileId)
+        .map(d => ({ lead_id: d.lead_id, data_evento: d.data_evento }));
     },
   });
 
