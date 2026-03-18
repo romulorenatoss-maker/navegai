@@ -299,7 +299,7 @@ export default function AvaliacaoOSPage() {
       // Get all answers for this OS
       const { data: respostas } = await supabase
         .from("respostas_avaliacao")
-        .select("pergunta_id, resposta, observacao, evidencia_url")
+        .select("pergunta_id, resposta, observacao, evidencia_url, audio_url")
         .eq("ordem_servico_id", selectedOS.id)
         .not("resposta", "is", null);
 
