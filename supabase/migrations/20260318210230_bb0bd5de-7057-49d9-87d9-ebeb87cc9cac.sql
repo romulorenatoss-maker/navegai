@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS public.idx_lead_contatos_phone_unique;
