@@ -34,61 +34,85 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   const hasRole = (role: AppRole) => roles.includes(role);
   const isAdmin = hasRole("admin");
 
+  const clearAuthState = useCallback(() => {
+    setProfile(null);
+    setRoles([]);
+    setAllowedScreens([]);
+  }, []);
+
   const canViewPath = useCallback((path: string): boolean => {
     if (isAdmin) return true;
     return allowedScreens.includes(path);
   }, [isAdmin, allowedScreens]);
 
-  const fetchProfileAndRoles = async (userId: string) => {
+  const fetchProfileAndRoles = useCallback(async (userId: string) => {
     const [profileRes, rolesRes] = await Promise.all([
-      supabase.from("profiles").select("id, user_id, nome, email, cargo, setor_id, ativo, pode_editar_avaliacoes, pode_excluir_avaliacoes, created_at, updated_at").eq("user_id", userId).single(),
+      supabase
+        .from("profiles")
+        .select("id, user_id, nome, email, cargo, setor_id, ativo, pode_editar_avaliacoes, pode_excluir_avaliacoes, created_at, updated_at")
+        .eq("user_id", userId)
+        .single(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
     ]);
-    if (profileRes.data) {
-      const prof = profileRes.data as Profile;
-      setProfile(prof);
-      // Fetch screen permissions
-      const { data: telas } = await supabase
-        .from("permissoes_tela")
-        .select("tela_path")
-        .eq("profile_id", prof.id);
-      setAllowedScreens(telas?.map((t) => t.tela_path) ?? []);
+
+    if (profileRes.error) {
+      clearAuthState();
+      throw profileRes.error;
     }
-    if (rolesRes.data) setRoles(rolesRes.data.map((r) => r.role));
-  };
+
+    if (rolesRes.error) {
+      clearAuthState();
+      throw rolesRes.error;
+    }
+
+    const prof = profileRes.data as Profile;
+    const { data: telas, error: telasError } = await supabase
+      .from("permissoes_tela")
+      .select("tela_path")
+      .eq("profile_id", prof.id);
+
+    if (telasError) {
+      clearAuthState();
+      throw telasError;
+    }
+
+    setProfile(prof);
+    setRoles((rolesRes.data ?? []).map((r) => r.role));
+    setAllowedScreens((telas ?? []).map((t) => t.tela_path));
+  }, [clearAuthState]);
 
   useEffect(() => {
-    let initialFetchDone = false;
+    const syncAuthState = async (nextSession: Session | null) => {
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+
+      if (!nextSession?.user) {
+        clearAuthState();
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        await fetchProfileAndRoles(nextSession.user.id);
+      } finally {
+        setLoading(false);
+      }
+    };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          if (!initialFetchDone || _event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED') {
-            setTimeout(() => fetchProfileAndRoles(session.user.id), 0);
-          }
-        } else {
-          setProfile(null);
-          setRoles([]);
-          setAllowedScreens([]);
-        }
-        setLoading(false);
+      async (_event, nextSession) => {
+        await syncAuthState(nextSession);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        initialFetchDone = true;
-        fetchProfileAndRoles(session.user.id);
-      }
-      setLoading(false);
+    void supabase.auth.getSession().then(async ({ data: { session } }) => {
+      await syncAuthState(session);
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [clearAuthState, fetchProfileAndRoles]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
