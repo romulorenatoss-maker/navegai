@@ -1658,7 +1658,7 @@ export default function AvaliacaoOSPage() {
                 </div>
                 <p className="text-body text-muted-foreground mt-1">{evalOsData.cliente_nome || "Sem cliente"}</p>
                 {evalTipoServicoNome && <p className="text-caption text-muted-foreground mt-0.5">Serviço: {evalTipoServicoNome}</p>}
-                <p className="text-caption text-muted-foreground mt-0.5">Criada em: {format(new Date(evalOsData.created_at), "dd/MM/yyyy HH:mm")}</p>
+                <p className="text-caption text-muted-foreground mt-0.5">Data da Ocorrência: {format(new Date(evalOsData.data_abertura || evalOsData.created_at), "dd/MM/yyyy HH:mm")}</p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {autoSaving && (
