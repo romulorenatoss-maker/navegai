@@ -1899,10 +1899,13 @@ export default function LeadsPage() {
               atendente_id: cpfDupeConverterId,
             } as any);
           }
+          const vendedorNome2 = profiles.find(p => p.id === (convAtendenteId || profile.id))?.nome || "—";
+          const registradorNome2 = profile.nome || "—";
+          const atribuicaoMsg2 = (convAtendenteId && convAtendenteId !== profile.id) ? ` Venda creditada a: ${vendedorNome2}. Registrado por: ${registradorNome2}.` : ` Venda creditada a: ${vendedorNome2}.`;
           await supabase.from("lead_historico").insert({
             lead_id: selectedLead.id, usuario_id: profile.id,
             tipo_evento: "conversao_cliente",
-            descricao: `Lead convertido — vinculado ao cliente existente "${existingCliente.nome}" (CPF: ${existingCliente.cpf}). OS criada aguardando número.`,
+            descricao: `Lead convertido — vinculado ao cliente existente "${existingCliente.nome}" (CPF: ${existingCliente.cpf}). OS criada aguardando número.${atribuicaoMsg2}`,
           });
           setDupeAlert({ type: "cpf", message: `CPF já cadastrado para o cliente "${existingCliente.nome}". O lead foi vinculado ao cliente existente e uma OS foi criada aguardando número.`, clienteId: existingCliente.id, clienteNome: existingCliente.nome });
           setShowConvert(false);
