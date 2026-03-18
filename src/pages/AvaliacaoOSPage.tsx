@@ -2840,16 +2840,85 @@ export default function AvaliacaoOSPage() {
         </div>
       </div>
 
-      {/* Results: OS found — always right below the search */}
+      {/* Results: OS list — always right below the search */}
+      {formValidated && searchResults.length > 0 && !formFoundOS && (
+        <div className="bg-card border border-border rounded-lg shadow-card mb-6">
+          <div className="p-4 border-b border-border flex items-center gap-2">
+            <Search className="w-4 h-4 text-primary" />
+            <h2 className="text-body font-semibold text-foreground">Resultados da Busca</h2>
+            <Badge variant="secondary" className="ml-auto text-xs">{searchResults.length} OS</Badge>
+          </div>
+          <div className="divide-y divide-border">
+            {searchResults.map((os: any) => {
+              const tipoNome = tiposServico.find(t => t.id === os.tipo_servico_id)?.nome;
+              const atendenteNome = allProfiles.find(p => p.id === os.atendente_id)?.nome;
+              const tecnicoNome = allProfiles.find(p => p.id === os.tecnico_id)?.nome;
+              return (
+                <div key={os.id} className="px-4 py-3 hover:bg-muted/30 transition-colors">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-body font-semibold text-foreground font-tabular">
+                          {os.numero_os ? `OS #${os.numero_os}` : "Sem número"}
+                        </p>
+                        <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border", statusLabel[os.status]?.badge)}>
+                          {statusLabel[os.status]?.text}
+                        </span>
+                        {tipoNome && <Badge variant="outline" className="text-xs">{tipoNome}</Badge>}
+                      </div>
+                      <p className="text-caption text-muted-foreground mt-0.5">
+                        {os.cliente_nome || "Sem cliente"}
+                        {os.cliente_cpf ? ` • CPF: ${os.cliente_cpf}` : ""}
+                        {` • Ocorrência: ${format(new Date(os.data_abertura || os.created_at), "dd/MM/yyyy")}`}
+                      </p>
+                      <p className="text-caption text-muted-foreground">
+                        {atendenteNome ? `Atendente: ${atendenteNome}` : ""}
+                        {atendenteNome && tecnicoNome ? " • " : ""}
+                        {tecnicoNome ? `Técnico: ${tecnicoNome}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button size="sm" variant="outline" onClick={() => { setSelectedOS(os); setView("os_detail"); }} className="press-effect h-8 text-xs px-3">
+                        <Eye className="w-3.5 h-3.5 mr-1" /> Detalhes
+                      </Button>
+                      {os.status !== "concluida" && os.numero_os && (
+                        <Button size="sm" onClick={() => startMyEvaluation(os)} className="press-effect h-8 text-xs px-3">
+                          Avaliar <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                        </Button>
+                      )}
+                      {!os.numero_os && (
+                        <Button size="sm" onClick={() => { setFillNumeroOsId(os.id); setFormFoundOS(os); setShowNewOsDialog(true); }} className="press-effect h-8 text-xs px-3 bg-warning text-warning-foreground hover:bg-warning/90">
+                          Preencher Número
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {/* Option to create new OS */}
+          {clienteId && (
+            <div className="p-3 border-t border-border bg-muted/20">
+              <Button size="sm" variant="outline" onClick={() => { setShowNewOsDialog(true); }} className="press-effect text-xs">
+                + Criar Nova OS para este cliente
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Single OS selected (from formFoundOS) */}
       {formValidated && formFoundOS && (
         <AnimatePresence>
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
             <div className="bg-success/5 border border-success/20 rounded-lg p-4 space-y-4 mb-6">
               <div className="flex items-center gap-2 mb-1">
                 <Check className="w-4 h-4 text-success" />
-                <span className="text-sm font-medium text-success">OS encontrada no sistema</span>
-                <Lock className="w-3.5 h-3.5 text-muted-foreground ml-1" />
-                <span className="text-caption text-muted-foreground">Campos bloqueados</span>
+                <span className="text-sm font-medium text-success">OS selecionada</span>
+                <Button variant="ghost" size="sm" className="ml-auto text-xs h-7" onClick={() => { setFormFoundOS(null); }}>
+                  ← Voltar aos resultados
+                </Button>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
@@ -2933,8 +3002,6 @@ export default function AvaliacaoOSPage() {
           </motion.div>
         </AnimatePresence>
       )}
-
-      {/* OS Aguardando Número */}
       {aguardandoNumeroOS.length > 0 && (
         <div className="bg-card border border-border rounded-lg shadow-card mb-6">
           <div className="p-4 border-b border-border flex items-center gap-2">
