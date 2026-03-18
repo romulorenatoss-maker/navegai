@@ -1568,8 +1568,11 @@ export default function LeadsPage() {
       });
 
       if (selectedLead.status_lead === "novo") {
-        await supabase.from("leads").update({ status_lead: "em_contato" }).eq("id", selectedLead.id);
-        setSelectedLead(prev => prev ? { ...prev, status_lead: "em_contato" } : null);
+        await supabase.from("leads").update({ status_lead: "em_contato", reserved_at: null } as any).eq("id", selectedLead.id);
+        setSelectedLead(prev => prev ? { ...prev, status_lead: "em_contato", reserved_at: null } : null);
+      } else {
+        // Clear reserved_at to stop expiration timer
+        await supabase.from("leads").update({ reserved_at: null } as any).eq("id", selectedLead.id);
       }
 
       // Mark current pending tarefa as "realizado"
