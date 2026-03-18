@@ -1315,28 +1315,58 @@ export default function LeadsPage() {
       const phoneNorm = normalizePhone(createPhone);
       if (phoneNorm.length < 8) throw new Error("Telefone inválido.");
 
-      // Skip duplicate check if force-creating
+      // Collect all phone numbers being submitted (main + extras)
+      const allPhonesSubmitted: string[] = [phoneNorm];
+      const extraPhoneContatos = createExtraContatos.filter(c => c.tipo === "telefone" && c.valor.trim());
+      for (const c of extraPhoneContatos) {
+        const norm = normalizePhone(c.valor);
+        if (norm.length < 8) throw new Error(`Telefone extra "${c.valor}" é inválido.`);
+        allPhonesSubmitted.push(norm);
+      }
+
+      // Check for duplicates among submitted phones
+      const uniquePhones = new Set<string>();
+      const duplicatesAmongSubmitted: string[] = [];
+      for (const p of allPhonesSubmitted) {
+        if (uniquePhones.has(p)) {
+          duplicatesAmongSubmitted.push(p);
+        }
+        uniquePhones.add(p);
+      }
+      if (duplicatesAmongSubmitted.length > 0) {
+        const formatted = duplicatesAmongSubmitted.map(d => applyPhoneMask(d)).join(", ");
+        throw new Error(`Telefone(s) duplicado(s) na lista: ${formatted}. Remova o número repetido antes de continuar.`);
+      }
+
+      // Check all phones against existing lead_contatos in the database
       if (!forceCreateLead) {
         const { data: existingLeadContatos } = await supabase
           .from("lead_contatos").select("lead_id, valor").eq("tipo_contato", "telefone");
-        const matchedLeadContato = (existingLeadContatos || []).find(c => normalizePhone(c.valor) === phoneNorm);
-        if (matchedLeadContato) {
-          const { data: existingLead } = await supabase
-            .from("leads").select("*").eq("id", matchedLeadContato.lead_id).single();
-          if (existingLead) {
-            // Fetch details for modal
-            const { data: contatos } = await supabase.from("lead_contatos").select("*").eq("lead_id", existingLead.id);
-            const respName = existingLead.responsavel_id
-              ? (profiles || []).find((p: any) => p.id === existingLead.responsavel_id)?.nome || null
-              : null;
-            const { data: lastInteraction } = await supabase
-              .from("lead_interacoes").select("*").eq("lead_id", existingLead.id)
-              .order("data_interacao", { ascending: false }).limit(1).maybeSingle();
-            setDuplicateLeadData({ lead: existingLead, contatos: contatos || [], responsavel: respName, ultimaInteracao: lastInteraction });
-            setShowDuplicateModal(true);
-            throw new Error("__DUPLICATE_LEAD__");
+
+        for (const submittedPhone of allPhonesSubmitted) {
+          const matchedLeadContato = (existingLeadContatos || []).find(c => normalizePhone(c.valor) === submittedPhone);
+          if (matchedLeadContato) {
+            const { data: existingLead } = await supabase
+              .from("leads").select("*").eq("id", matchedLeadContato.lead_id).single();
+            if (existingLead) {
+              const { data: contatos } = await supabase.from("lead_contatos").select("*").eq("lead_id", existingLead.id);
+              const respName = existingLead.responsavel_id
+                ? (profiles || []).find((p: any) => p.id === existingLead.responsavel_id)?.nome || null
+                : null;
+              const { data: lastInteraction } = await supabase
+                .from("lead_interacoes").select("*").eq("lead_id", existingLead.id)
+                .order("data_interacao", { ascending: false }).limit(1).maybeSingle();
+              setDuplicateLeadData({ lead: existingLead, contatos: contatos || [], responsavel: respName, ultimaInteracao: lastInteraction });
+              setShowDuplicateModal(true);
+              throw new Error("__DUPLICATE_LEAD__");
+            }
           }
         }
+
+        // Also check against cliente_contatos
+        const { data: existingClientePhones } = await supabase
+          .from("cliente_contatos").select("cliente_id, valor, tipo").in("tipo", ["movel", "fixo", "telefone"]);
+        // We only use the main phone for client linking (existing behavior)
       }
       setForceCreateLead(false);
 
@@ -1367,12 +1397,12 @@ export default function LeadsPage() {
       });
       if (e2) throw e2;
 
-      // Insert extra contacts
+      // Insert extra contacts (non-phone extras don't need dedup)
       if (createExtraContatos.length > 0) {
         const extras = createExtraContatos.filter(c => c.valor.trim()).map(c => ({
           lead_id: newLead.id,
           tipo_contato: c.tipo,
-          valor: c.tipo === "telefone" ? c.valor.trim() : c.valor.trim(),
+          valor: c.valor.trim(),
           tem_whatsapp: c.tipo === "telefone" ? c.temWhatsapp : false,
         }));
         if (extras.length > 0) {
