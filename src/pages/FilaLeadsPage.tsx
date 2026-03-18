@@ -27,6 +27,7 @@ import {
   ArrowUpDown, ArrowUp, ArrowDown,
 } from "lucide-react";
 import { startOfDay, endOfDay, isWithinInterval } from "date-fns";
+import { isTarefaExpirada, getPeriodoEndHour, PERIODO_LABELS, PERIODO_HORA, skipWeekend, isWeekend } from "@/lib/lead-task-utils";
 interface Lead {
   id: string; nome: string; status_lead: string; responsavel_id: string | null;
   updated_at: string; created_at: string; agendamento_retorno: string | null;
