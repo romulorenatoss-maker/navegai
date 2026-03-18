@@ -989,6 +989,7 @@ export default function AvaliacaoOSPage() {
           resposta: r.resposta,
           observacao: r.observacao,
           evidencia_url: r.evidencia_url,
+          audio_url: r.audio_url || null,
           avaliador_nome: profileNames[r.avaliador_id] || "Avaliador",
         };
       }
