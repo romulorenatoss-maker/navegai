@@ -1794,8 +1794,8 @@ export default function LeadsPage() {
               }
               await supabase.from("lead_historico").insert({
                 lead_id: selectedLead.id, usuario_id: profile.id,
-                tipo_evento: "vinculo_cliente_existente",
-                descricao: `Lead vinculado ao cliente existente "${existingCliente.nome}" (telefone já cadastrado). OS criada aguardando número.`,
+                tipo_evento: "conversao_cliente",
+                descricao: `Lead convertido — vinculado ao cliente existente "${existingCliente.nome}" (telefone já cadastrado). OS criada aguardando número.`,
               });
               setDupeAlert({ type: "cpf", message: `Telefone já cadastrado para o cliente "${existingCliente.nome}". O lead foi vinculado ao cliente existente e uma OS foi criada aguardando número.`, clienteId: existingCliente.id, clienteNome: existingCliente.nome });
               setShowConvert(false);
