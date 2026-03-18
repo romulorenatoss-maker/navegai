@@ -2323,6 +2323,9 @@ export default function AvaliacaoOSPage() {
           <div className="flex items-start justify-between">
             <div>
               <h2 className="text-subhead font-semibold text-foreground font-tabular">OS #{selectedOS.numero_os}</h2>
+              <p className="text-caption text-muted-foreground mt-1">
+                Cadastrada em: {format(new Date(selectedOS.created_at), "dd/MM/yyyy HH:mm")}
+              </p>
               <p className="text-body text-muted-foreground mt-1">{selectedOS.cliente_nome || "Sem cliente"}</p>
               {selectedOS.cliente_cpf && <p className="text-caption text-muted-foreground">CPF: {selectedOS.cliente_cpf}</p>}
               <p className="text-caption text-muted-foreground mt-0.5">Data da Ocorrência: {format(new Date(selectedOS.data_abertura || selectedOS.created_at), "dd/MM/yyyy HH:mm")}</p>
