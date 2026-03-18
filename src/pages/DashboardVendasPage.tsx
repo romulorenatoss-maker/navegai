@@ -586,6 +586,13 @@ export default function DashboardVendasPage() {
                       <TableCell className="text-center">{r.interacoes}</TableCell>
                       <TableCell className="text-center">{r.mediaTentativas.toFixed(1)}</TableCell>
                       <TableCell className="text-center">{r.transferencias}</TableCell>
+                      <TableCell>
+                        {r.conversoes > 0 && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openDetailDialog(r.profileId, r.nome)}>
+                            <Eye className="w-4 h-4 text-muted-foreground" />
+                          </Button>
+                        )}
+                      </TableCell>
                     </TableRow>
                     );
                   })
@@ -628,6 +635,173 @@ export default function DashboardVendasPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Detail Dialog */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] p-0">
+          <DialogHeader className="px-6 pt-6 pb-3">
+            <DialogTitle className="flex items-center gap-2">
+              <User className="w-5 h-5" />
+              Leads Convertidos — {selectedProfile?.nome}
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="px-6 pb-6 max-h-[70vh]">
+            {detailLoading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : detailLeads.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Nenhum lead convertido no período.</p>
+            ) : (
+              <Accordion type="multiple" className="space-y-2">
+                {detailLeads.map((lead: any) => (
+                  <AccordionItem key={lead.id} value={lead.id} className="border rounded-lg px-4">
+                    <AccordionTrigger className="py-3 hover:no-underline">
+                      <div className="flex items-center gap-3 text-left w-full mr-2">
+                        <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{lead.nome}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Criado em {format(new Date(lead.data_criacao), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                            {lead.contacts?.length > 0 && ` · ${lead.contacts[0].valor}`}
+                          </p>
+                        </div>
+                        {lead.ordens?.length > 0 && (
+                          <Badge variant="outline" className="text-[10px] shrink-0">
+                            {lead.ordens.length} OS
+                          </Badge>
+                        )}
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-4 pb-2">
+                        {/* Timeline */}
+                        <div>
+                          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Histórico</h4>
+                          <div className="space-y-1.5">
+                            {(lead.history || []).map((h: any, idx: number) => {
+                              const eventLabels: Record<string, string> = {
+                                criacao: "Lead criado",
+                                captura: "Lead capturado",
+                                transferencia_manual: "Transferência manual",
+                                transferencia_automatica: "Transferência automática",
+                                conversao_cliente: "Convertido em cliente",
+                                agendamento: "Agendamento",
+                                tentativa_contato: "Tentativa de contato",
+                                perda: "Lead perdido",
+                                arquivado: "Arquivado",
+                              };
+                              const isConversion = h.tipo_evento === "conversao_cliente";
+                              return (
+                                <div key={idx} className={cn(
+                                  "flex items-start gap-2 text-xs py-1 px-2 rounded",
+                                  isConversion && "bg-success/10"
+                                )}>
+                                  <Clock className="w-3 h-3 mt-0.5 text-muted-foreground shrink-0" />
+                                  <span className="text-muted-foreground shrink-0">{format(new Date(h.data_evento), "dd/MM HH:mm")}</span>
+                                  <span className={cn("font-medium", isConversion ? "text-success" : "text-foreground")}>
+                                    {eventLabels[h.tipo_evento] || h.tipo_evento}
+                                  </span>
+                                  {h.descricao && <span className="text-muted-foreground truncate">— {h.descricao}</span>}
+                                </div>
+                              );
+                            })}
+                            {(!lead.history || lead.history.length === 0) && (
+                              <p className="text-xs text-muted-foreground italic">Sem registros de histórico.</p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* OS & Avaliação */}
+                        {(lead.ordens || []).map((os: any) => (
+                          <div key={os.id} className="border rounded-lg p-3 space-y-3">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <FileText className="w-4 h-4 text-primary shrink-0" />
+                              <span className="text-sm font-semibold text-foreground">
+                                OS {os.numero_os ? `#${os.numero_os}` : "(sem número)"}
+                              </span>
+                              {os.tipo_servico_nome && (
+                                <Badge variant="secondary" className="text-[10px]">{os.tipo_servico_nome}</Badge>
+                              )}
+                              <Badge variant={os.status === "concluida" ? "default" : "outline"} className="text-[10px]">
+                                {os.status === "concluida" ? "Concluída" : os.status === "em_andamento" ? "Em andamento" : os.status === "aguardando_numero" ? "Aguardando nº" : "Aberta"}
+                              </Badge>
+                              {os.data_abertura && (
+                                <span className="text-[10px] text-muted-foreground ml-auto">
+                                  {format(new Date(os.data_abertura), "dd/MM/yyyy")}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Avaliacoes summary */}
+                            {os.avaliacoes?.length > 0 && (
+                              <div className="flex items-center gap-3 flex-wrap">
+                                {os.avaliacoes.map((aval: any) => (
+                                  <div key={aval.id} className="flex items-center gap-1.5">
+                                    {aval.concluida ? (
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+                                    ) : (
+                                      <Clock className="w-3.5 h-3.5 text-warning" />
+                                    )}
+                                    <span className="text-xs text-foreground">
+                                      Nota: {aval.nota_final != null ? (
+                                        <span className={getScoreColorClass(aval.nota_final)}>{aval.nota_final.toFixed(1)}%</span>
+                                      ) : "—"}
+                                    </span>
+                                    {aval.concluida_em && (
+                                      <span className="text-[10px] text-muted-foreground">
+                                        ({format(new Date(aval.concluida_em), "dd/MM HH:mm")})
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Respostas da avaliação */}
+                            {os.respostas?.length > 0 && (
+                              <div>
+                                <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Respostas da Avaliação</h5>
+                                <div className="space-y-1">
+                                  {os.respostas.map((r: any, idx: number) => (
+                                    <div key={idx} className="flex items-start gap-2 text-xs py-1 px-2 rounded bg-muted/50">
+                                      {r.resposta === "sim" ? (
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-success mt-0.5 shrink-0" />
+                                      ) : r.resposta === "nao" ? (
+                                        <XCircle className="w-3.5 h-3.5 text-destructive mt-0.5 shrink-0" />
+                                      ) : (
+                                        <span className="w-3.5 h-3.5 flex items-center justify-center text-[9px] font-bold text-warning mt-0.5 shrink-0">N/A</span>
+                                      )}
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-foreground">{r.pergunta_texto}</p>
+                                        <p className="text-muted-foreground">
+                                          {r.setor_nome} · Peso: {r.peso}
+                                          {r.observacao && ` · ${r.observacao}`}
+                                        </p>
+                                      </div>
+                                      <Badge variant={r.resposta === "sim" || r.resposta === "na" ? "default" : "destructive"} className="text-[10px] shrink-0">
+                                        {r.resposta?.toUpperCase()}
+                                      </Badge>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+
+                        {(!lead.ordens || lead.ordens.length === 0) && (
+                          <p className="text-xs text-muted-foreground italic">Nenhuma OS vinculada a este lead.</p>
+                        )}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
