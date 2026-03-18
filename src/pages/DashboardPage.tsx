@@ -356,9 +356,7 @@ export default function DashboardPage() {
             colaborador_avaliado_nome: colabNome, pending_count: myUnanswered.length, progress,
             setor_pendente_nome: null,
           });
-        } else if (otherQuestions.length > 0) {
-          const otherUnanswered = otherQuestions.some(pid => !answeredSet.has(`${os.id}:${pid}`));
-          if (otherUnanswered) {
+        } else if (pendingSetorIds.size > 0 || otherQuestions.some(pid => !answeredSet.has(`${os.id}:${pid}`))) {
             const otherPendingSetores = [...pendingSetorIds]
               .filter(id => !mySetorIds.includes(id))
               .map(id => setoresMap[id] || "Sem setor");
@@ -368,7 +366,6 @@ export default function DashboardPage() {
               colaborador_avaliado_nome: colabNome, pending_count: 0, progress,
               setor_pendente_nome: otherPendingSetores.join(", ") || "Outro setor",
             });
-          }
         }
       }
 
