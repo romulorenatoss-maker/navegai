@@ -507,6 +507,11 @@ export default function MinhasAvaliacoesPage() {
             </div>
           </div>
         </TabsContent>
+
+        {/* Minhas Vendas Tab */}
+        <TabsContent value="minhas_vendas" className="mt-4">
+          <MinhasVendasTab />
+        </TabsContent>
       </Tabs>
 
       {/* Checklist Review Dialog */}
