@@ -12,8 +12,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CalendarIcon, Filter, Trophy, AlertTriangle,
-  Eye, MessageSquare, Loader2, FileText, Download
+  Eye, MessageSquare, Loader2, FileText, Download, TrendingUp
 } from "lucide-react";
+import MinhasVendasTab from "@/components/MinhasVendasTab";
 import { exportOSPdf } from "@/lib/export-os-pdf";
 import { cn } from "@/lib/utils";
 import { format, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
