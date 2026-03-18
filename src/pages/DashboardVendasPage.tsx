@@ -174,9 +174,14 @@ export default function DashboardVendasPage() {
       if (entry) entry.transferencias++;
     });
 
-    // Calculate rates
+    // Calculate rates — cap conversion rate at 100%
     profileMap.forEach(entry => {
-      entry.taxaConversao = entry.leadsRecebidos > 0 ? (entry.conversoes / entry.leadsRecebidos) * 100 : 0;
+      if (entry.leadsRecebidos > 0) {
+        const raw = (entry.conversoes / entry.leadsRecebidos) * 100;
+        entry.taxaConversao = Math.min(raw, 100);
+      } else {
+        entry.taxaConversao = 0;
+      }
       entry.mediaTentativas = entry.conversoes > 0 ? entry.interacoes / entry.conversoes : 0;
     });
 
