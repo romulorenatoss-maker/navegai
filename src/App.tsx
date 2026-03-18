@@ -25,6 +25,7 @@ import LeadsPage from "./pages/LeadsPage";
 import FilaLeadsPage from "./pages/FilaLeadsPage";
 import DashboardLeadsPage from "./pages/DashboardLeadsPage";
 import RotinaTentativasPage from "./pages/RotinaTentativasPage";
+import DashboardVendasPage from "./pages/DashboardVendasPage";
 
 
 import LeadsArquivadosPage from "./pages/LeadsArquivadosPage";
@@ -78,6 +79,7 @@ const App = () => (
               
               <Route path="/leads/arquivados" element={<LeadsArquivadosPage />} />
               <Route path="/leads/dashboard" element={<DashboardLeadsPage />} />
+              <Route path="/leads/dashboard-vendas" element={<DashboardVendasPage />} />
               <Route path="/leads/rotina" element={<RotinaTentativasPage />} />
               <Route path="/leads/importador" element={<ImportadorLeadsPage />} />
               <Route path="/leads/campanhas" element={<CampanhasPage />} />
