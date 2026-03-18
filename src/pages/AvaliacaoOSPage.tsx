@@ -1658,7 +1658,35 @@ export default function AvaliacaoOSPage() {
                 </div>
                 <p className="text-body text-muted-foreground mt-1">{evalOsData.cliente_nome || "Sem cliente"}</p>
                 {evalTipoServicoNome && <p className="text-caption text-muted-foreground mt-0.5">Serviço: {evalTipoServicoNome}</p>}
-                <p className="text-caption text-muted-foreground mt-0.5">Data da Ocorrência: {format(new Date(evalOsData.data_abertura || evalOsData.created_at), "dd/MM/yyyy HH:mm")}</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <p className="text-caption text-muted-foreground">Data da Ocorrência: {format(new Date(evalOsData.data_abertura || evalOsData.created_at), "dd/MM/yyyy HH:mm")}</p>
+                  {evalOsData.status !== "concluida" ? (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded hover:bg-muted">
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={new Date(evalOsData.data_abertura || evalOsData.created_at)}
+                          onSelect={async (d) => {
+                            if (!d) return;
+                            await supabase.from("ordens_servico").update({ data_abertura: d.toISOString() } as any).eq("id", evalOsData.id);
+                            setEvalOsData({ ...evalOsData, data_abertura: d.toISOString() });
+                            toast.success("Data da ocorrência atualizada!");
+                          }}
+                          initialFocus
+                          className="p-3 pointer-events-auto"
+                          locale={ptBR}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  ) : (
+                    <span title="Não é permitido alterar a data após a conclusão da OS"><Lock className="w-3 h-3 text-muted-foreground" /></span>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {autoSaving && (
