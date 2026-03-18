@@ -3217,6 +3217,17 @@ export default function AvaliacaoOSPage() {
             {/* Modo: Nova OS — selecionar tipo de serviço */}
             {!fillNumeroOsId && (
               <div className="space-y-2">
+                {/* Número da OS */}
+                <div className="space-y-1.5">
+                  <Label className="text-body font-medium">Número da OS *</Label>
+                  <Input
+                    value={formOsNumero}
+                    onChange={e => setFormOsNumero(e.target.value.replace(/\D/g, ""))}
+                    placeholder="Ex: 12345"
+                    autoFocus
+                  />
+                </div>
+
                 {/* Data da Ocorrência */}
                 <div className="space-y-1.5">
                   <Label className="text-body font-medium">Data da Ocorrência *</Label>
