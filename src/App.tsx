@@ -25,6 +25,7 @@ import LeadsPage from "./pages/LeadsPage";
 import FilaLeadsPage from "./pages/FilaLeadsPage";
 import DashboardLeadsPage from "./pages/DashboardLeadsPage";
 import RotinaTentativasPage from "./pages/RotinaTentativasPage";
+import DashboardVendasPage from "./pages/DashboardVendasPage";
 
 
 import LeadsArquivadosPage from "./pages/LeadsArquivadosPage";
