@@ -1839,10 +1839,11 @@ export default function LeadsPage() {
         if (firstRotina) {
           const nextDate = new Date();
           nextDate.setDate(nextDate.getDate() + Math.max(firstRotina.dias_apos_anterior || 0, 1));
+          const skippedRestart = skipWeekend(nextDate);
           const periodoHora = firstRotina.periodo_contato === "manha" ? 9 : firstRotina.periodo_contato === "tarde" ? 14 : 19;
-          nextDate.setHours(periodoHora, 0, 0, 0);
+          skippedRestart.setHours(periodoHora, 0, 0, 0);
           await supabase.from("lead_tarefas_contato").insert({
-            lead_id: selectedLead.id, tentativa: 1, data_contato: nextDate.toISOString(),
+            lead_id: selectedLead.id, tentativa: 1, data_contato: skippedRestart.toISOString(),
             periodo: firstRotina.periodo_contato, status: "pendente", responsavel_id: profile.id,
           });
         }
