@@ -781,7 +781,9 @@ export default function FilaLeadsPage() {
         await supabase.from("lead_tarefas_contato").insert({ lead_id: selectedTarefa.lead_id, tentativa: nextT, data_contato: nd.toISOString(), periodo: per, status: "pendente", responsavel_id: profile.id });
       }
       const leadStatus = tarefaLeads.find((l: any) => l.id === selectedTarefa.lead_id)?.status_lead;
-      if (leadStatus === "novo" || leadStatus === "reservado") await supabase.from("leads").update({ status_lead: "em_atendimento" }).eq("id", selectedTarefa.lead_id);
+      const tarefaLeadUpdate: any = { agendamento_retorno: null };
+      if (leadStatus === "novo" || leadStatus === "reservado") tarefaLeadUpdate.status_lead = "em_atendimento";
+      await supabase.from("leads").update(tarefaLeadUpdate).eq("id", selectedTarefa.lead_id);
     },
     onSuccess: () => { toast.success("Tentativa registrada!"); setSelectedTarefa(null); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-interacoes"] }); queryClient.invalidateQueries({ queryKey: ["leads-com-agendamento"] }); },
     onError: (err: any) => toast.error(err.message),
