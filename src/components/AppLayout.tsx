@@ -86,6 +86,7 @@ export function AppLayout() {
         <Tabs defaultValue="senha" className="w-full">
           <TabsList className="w-full">
             <TabsTrigger value="senha" className="flex-1">Editar Senha</TabsTrigger>
+            <TabsTrigger value="2fa" className="flex-1">2FA</TabsTrigger>
             <TabsTrigger value="sessoes" className="flex-1">Sessões</TabsTrigger>
           </TabsList>
           <TabsContent value="senha" className="space-y-4 pt-4">
@@ -103,6 +104,9 @@ export function AppLayout() {
                 {changingPassword ? "Salvando..." : "Salvar Senha"}
               </Button>
             </div>
+          </TabsContent>
+          <TabsContent value="2fa" className="pt-4">
+            <MfaEnrollSection />
           </TabsContent>
           <TabsContent value="sessoes" className="pt-4">
             {user?.id && profile?.id ? (
