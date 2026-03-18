@@ -213,38 +213,18 @@ export default function RotinaTentativasPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Ação quando atrasar</Label>
-                  <div className="space-y-2 pt-1">
-                    {[
-                      { value: "registrar_atraso", label: "Registrar Atraso" },
-                      { value: "notificar_avaliador", label: "Notificar Avaliador (mostrar no Dashboard)" },
-                    ].map((opt) => {
-                      const currentValues = (localConfig?.acao_quando_atrasar || "").split(",").filter(Boolean);
-                      const isChecked = currentValues.includes(opt.value);
-                      return (
-                        <div key={opt.value} className="flex items-center gap-2">
-                          <Checkbox
-                            id={`acao-atraso-${opt.value}`}
-                            checked={isChecked}
-                            onCheckedChange={(checked) => {
-                              if (!localConfig) return;
-                              let next: string[];
-                              if (checked) {
-                                next = [...currentValues, opt.value];
-                              } else {
-                                next = currentValues.filter((v) => v !== opt.value);
-                              }
-                              if (next.length === 0) next = ["registrar_atraso"];
-                              setLocalConfig({ ...localConfig, acao_quando_atrasar: next.join(",") });
-                            }}
-                          />
-                          <Label htmlFor={`acao-atraso-${opt.value}`} className="text-sm font-normal cursor-pointer">
-                            {opt.label}
-                          </Label>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <Label>Ação quando expirar captura sem interação</Label>
+                  <Select
+                    value={localConfig?.acao_quando_atrasar || "devolver_fila"}
+                    onValueChange={(v) => localConfig && setLocalConfig({ ...localConfig, acao_quando_atrasar: v })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="devolver_fila">Devolver para a Fila de Captura</SelectItem>
+                      <SelectItem value="aguardar_avaliador">Enviar para Notificações (Aguardar Avaliador)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Define o que acontece com o lead quando a captura expira sem interação: volta para a fila ou fica aguardando decisão do avaliador.</p>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Ação após finalizar tentativas</Label>
