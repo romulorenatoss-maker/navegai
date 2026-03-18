@@ -29,7 +29,22 @@ interface ConfigFluxo {
   acao_apos_finalizar_tentativas: string;
   permitir_reiniciar_rotina: boolean;
   tipo_servico_conversao_id: string | null;
+  tempo_expiracao_captura_segundos: number;
 }
+
+const EXPIRACAO_OPTIONS = [
+  { value: 30, label: "30 segundos" },
+  { value: 60, label: "1 minuto" },
+  { value: 120, label: "2 minutos" },
+  { value: 180, label: "3 minutos" },
+  { value: 240, label: "4 minutos" },
+  { value: 300, label: "5 minutos" },
+  { value: 360, label: "6 minutos" },
+  { value: 420, label: "7 minutos" },
+  { value: 480, label: "8 minutos" },
+  { value: 540, label: "9 minutos" },
+  { value: 600, label: "10 minutos" },
+];
 
 const PERIODO_LABELS: Record<string, string> = { manha: "Manhã", tarde: "Tarde", noite: "Noite" };
 const PRIORIDADE_LABELS: Record<string, string> = { alta: "Alta", media: "Média", baixa: "Baixa" };
