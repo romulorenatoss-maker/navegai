@@ -35,20 +35,26 @@ export default function MinhasVendasTab() {
   const from = appliedStart ? startOfDay(appliedStart).toISOString() : startOfDay(startOfMonth(now)).toISOString();
   const to = appliedEnd ? endOfDay(appliedEnd).toISOString() : endOfDay(endOfMonth(now)).toISOString();
 
-  // Leads CURRENTLY assigned to current user OR converted by them in period
+  // Leads: converted leads where convertido_por=me, OR active leads where responsavel_id=me
   const { data: leadsCriados = [] } = useQuery({
-    queryKey: ["minhas-vendas-leads-criados-v3", profileId, from, to],
+    queryKey: ["minhas-vendas-leads-criados-v4", profileId, from, to],
     enabled: !!profileId,
     queryFn: async () => {
       const { data } = await supabase
         .from("leads")
-        .select("id, responsavel_id, convertido_por")
+        .select("id, responsavel_id, convertido_por, status_lead")
         .gte("data_criacao", from)
         .lte("data_criacao", to)
         .or(`responsavel_id.eq.${profileId},convertido_por.eq.${profileId}`);
 
       const leadIds = new Set<string>();
-      data?.forEach(h => leadIds.add(h.id));
+      data?.forEach(d => {
+        if (d.status_lead === 'convertido' && d.convertido_por === profileId) {
+          leadIds.add(d.id);
+        } else if (d.status_lead !== 'convertido' && d.responsavel_id === profileId) {
+          leadIds.add(d.id);
+        }
+      });
       return Array.from(leadIds);
     },
   });
