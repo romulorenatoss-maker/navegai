@@ -306,6 +306,7 @@ export default function LeadsPage() {
   // Conversion dialog
   const [showConvert, setShowConvert] = useState(false);
   const [convAtendenteId, setConvAtendenteId] = useState<string>("");
+  const [convConvertidoPorId, setConvConvertidoPorId] = useState<string>("");
   const [convForm, setConvForm] = useState({
     nome: "", cpf: "", rg: "", nome_mae: "", numero: "", referencia: "",
   });
