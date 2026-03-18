@@ -151,7 +151,7 @@ export default function DesempenhoColaboradorPage() {
       }
 
       // Use SQL function with date range of oldest OS to avoid fetching ALL historical data
-      const oldestDate = osData[osData.length - 1]?.created_at;
+      const oldestDate = osData[osData.length - 1]?.data_abertura || osData[osData.length - 1]?.created_at;
       const notas = await fetchNotasPorSetor(oldestDate);
 
       return osData.map(os => ({
