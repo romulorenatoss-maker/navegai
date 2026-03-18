@@ -54,14 +54,14 @@ export default function DashboardVendasPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // All leads created per user in period (via lead_historico criacao events)
+  // All leads created or captured per user in period
   const { data: allLeadsCriados = [] } = useQuery({
-    queryKey: ["dashboard-vendas-leads-criados", from, to],
+    queryKey: ["dashboard-vendas-leads-criados-v2", from, to],
     queryFn: async () => {
       const { data } = await supabase
         .from("lead_historico")
         .select("lead_id, usuario_id")
-        .in("tipo_evento", ["lead_criado", "criacao"])
+        .in("tipo_evento", ["lead_criado", "criacao", "lead_capturado"])
         .gte("data_evento", from)
         .lte("data_evento", to);
       return data || [];
@@ -85,7 +85,7 @@ export default function DashboardVendasPage() {
       const { data: criacaoEvents } = await supabase
         .from("lead_historico")
         .select("lead_id, usuario_id")
-        .in("tipo_evento", ["lead_criado", "criacao"])
+        .in("tipo_evento", ["lead_criado", "criacao", "lead_capturado"])
         .in("lead_id", leadIds);
 
       const creatorByLead: Record<string, string> = {};
@@ -194,7 +194,7 @@ export default function DashboardVendasPage() {
     const metrics: { key: keyof RankEntry; label: string; icon: React.ReactNode; format: (v: number) => string; higherBetter: boolean }[] = [
       { key: "conversoes", label: "Conversões", icon: <Target className="w-4 h-4" />, format: v => String(v), higherBetter: true },
       { key: "taxaConversao", label: "Taxa de Conversão", icon: <TrendingUp className="w-4 h-4" />, format: v => `${v.toFixed(1)}%`, higherBetter: true },
-      { key: "leadsCriados", label: "Leads Criados", icon: <Users className="w-4 h-4" />, format: v => String(v), higherBetter: true },
+      { key: "leadsCriados", label: "Leads Atribuídos", icon: <Users className="w-4 h-4" />, format: v => String(v), higherBetter: true },
       { key: "interacoes", label: "Total de Interações", icon: <Phone className="w-4 h-4" />, format: v => String(v), higherBetter: true },
       { key: "mediaTentativas", label: "Média Tentativas/Conversão", icon: <BarChart3 className="w-4 h-4" />, format: v => v.toFixed(1), higherBetter: false },
       { key: "transferencias", label: "Transferências Realizadas", icon: <ArrowRightLeft className="w-4 h-4" />, format: v => String(v), higherBetter: false },
@@ -349,7 +349,7 @@ export default function DashboardVendasPage() {
                 <TableRow>
                   <TableHead className="w-10">#</TableHead>
                   <TableHead>Atendente</TableHead>
-                  <TableHead className="text-center">Leads Criados</TableHead>
+                  <TableHead className="text-center">Leads</TableHead>
                   <TableHead className="text-center">Conversões</TableHead>
                   <TableHead className="text-center">Taxa</TableHead>
                   <TableHead className="text-center">Interações</TableHead>
