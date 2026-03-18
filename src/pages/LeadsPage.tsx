@@ -1437,8 +1437,9 @@ export default function LeadsPage() {
       if (error) throw error;
 
       // Compute cycle-based attempt count (after last transfer or capture)
+      // Use reverse search to find the MOST RECENT cycle event (history is sorted ascending)
       let tentativaNum: number;
-      const lastCycleEvt = leadHistorico.find(h =>
+      const lastCycleEvt = [...leadHistorico].reverse().find(h =>
         h.tipo_evento === "transferencia_automatica" || h.tipo_evento === "transferencia_decisao" || h.tipo_evento === "lead_capturado"
       );
       const cycleInteractions = lastCycleEvt
