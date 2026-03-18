@@ -2823,7 +2823,7 @@ export default function AvaliacaoOSPage() {
           )}
 
           <div className="flex items-center gap-3">
-            {!formFoundOS && (
+            {!formFoundOS && searchResults.length === 0 && (
               <Button
                 onClick={handleCombinedSearch}
                 disabled={(!formOsNumero.trim() && !formClienteCpf.replace(/\D/g, "")) || cpfValidating || formValidating}
