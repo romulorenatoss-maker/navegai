@@ -250,46 +250,21 @@ export default function MinhasVendasTab() {
 
       {/* Ranking + Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Ranking */}
-        <div className="bg-card border border-border rounded-lg shadow-card">
-          <div className="p-4 border-b border-border flex items-center gap-2">
-            <Trophy className="w-4 h-4 text-primary" />
-            <h2 className="text-body font-semibold text-foreground">Ranking de Conversões</h2>
-            {myRankingPos && (
-              <Badge variant="secondary" className="ml-auto text-xs">
-                {myRankingPos.position}º/{myRankingPos.total}
-              </Badge>
-            )}
-          </div>
-          <div className="p-4">
-            {ranking.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Nenhuma conversão no período</p>
-            ) : (
-              <div className="space-y-2">
-                {ranking.slice(0, 10).map((r, idx) => {
-                  const isMe = r.uid === profileId;
-                  return (
-                    <div key={r.uid} className={cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-lg text-sm",
-                      isMe ? "bg-primary/10 border border-primary/20" : "bg-muted/50"
-                    )}>
-                      <span className={cn(
-                        "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
-                        idx === 0 ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" :
-                        idx === 1 ? "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200" :
-                        idx === 2 ? "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" :
-                        "bg-muted text-muted-foreground"
-                      )}>
-                        {idx + 1}
-                      </span>
-                      <span className={cn("flex-1 font-medium", isMe && "text-primary")}>{r.nome} {isMe && "(Você)"}</span>
-                      <Badge variant={isMe ? "default" : "secondary"} className="text-xs">{r.conversoes}</Badge>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+        {/* Ranking Position Card */}
+        <div className="bg-card border border-border rounded-lg shadow-card flex flex-col items-center justify-center p-6 text-center">
+          <Trophy className="w-8 h-8 text-primary mb-3" />
+          <h2 className="text-sm font-semibold text-muted-foreground mb-1">Ranking de Vendas</h2>
+          {myRankingPos ? (
+            <>
+              <p className="text-4xl font-bold text-primary">{myRankingPos.position}º</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                de {myRankingPos.total} colaborador{myRankingPos.total > 1 ? "es" : ""}
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">no período selecionado</p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground mt-2">Sem conversões no período</p>
+          )}
         </div>
 
         {/* Conversions Chart */}
