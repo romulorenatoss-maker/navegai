@@ -475,6 +475,9 @@ export default function DashboardVendasPage() {
                     <span className="flex-1 text-sm font-medium text-foreground truncate">{r.nome}</span>
                     <span className="text-lg font-bold text-primary tabular-nums">{r.conversoes}</span>
                     <span className="text-[10px] text-muted-foreground w-10">vendas</span>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => openDetailDialog(r.profileId, r.nome)}>
+                      <Eye className="w-4 h-4 text-muted-foreground" />
+                    </Button>
                   </div>
                 );
               })}
