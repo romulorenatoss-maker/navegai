@@ -54,11 +54,12 @@ export default function MinhasVendasTab() {
     },
   });
 
-  // Conversions of leads CREATED/CAPTURED by this user (regardless of who converted)
+  // Conversions where convertido_por = current user (atendente que fez a venda)
   const { data: conversoes = [] } = useQuery({
-    queryKey: ["minhas-vendas-conversoes-v3", profileId, from, to],
+    queryKey: ["minhas-vendas-conversoes-v4", profileId, from, to],
     enabled: !!profileId,
     queryFn: async () => {
+      // Get all conversions in period
       const { data } = await supabase
         .from("lead_historico")
         .select("lead_id, data_evento")
@@ -67,18 +68,18 @@ export default function MinhasVendasTab() {
         .lte("data_evento", to);
       if (!data?.length) return [];
 
+      // Filter by convertido_por = current user
       const leadIds = [...new Set(data.map(d => d.lead_id))];
-      const { data: criacaoEvents } = await supabase
-        .from("lead_historico")
-        .select("lead_id, usuario_id")
-        .in("tipo_evento", ["lead_criado", "criacao", "lead_capturado"])
-        .in("lead_id", leadIds)
-        .eq("usuario_id", profileId!);
+      const { data: leads } = await supabase
+        .from("leads")
+        .select("id, convertido_por")
+        .in("id", leadIds)
+        .eq("convertido_por", profileId!);
 
-      const myCreatedLeadIds = new Set(criacaoEvents?.map(e => e.lead_id) || []);
+      const myConvertedLeadIds = new Set(leads?.map(l => l.id) || []);
 
       return data
-        .filter(d => myCreatedLeadIds.has(d.lead_id))
+        .filter(d => myConvertedLeadIds.has(d.lead_id))
         .map(d => ({ lead_id: d.lead_id, data_evento: d.data_evento }));
     },
   });
@@ -129,12 +130,11 @@ export default function MinhasVendasTab() {
     },
   });
 
-  // Ranking: based on CREATOR/CAPTURER of leads (same logic as dashboard)
+  // Ranking: based on convertido_por (same logic as dashboard)
   const { data: ranking = [] } = useQuery({
-    queryKey: ["minhas-vendas-ranking-v2", from, to],
+    queryKey: ["minhas-vendas-ranking-v3", from, to],
     enabled: !!profileId,
     queryFn: async () => {
-      // Get all conversions in period
       const { data: allConversoes } = await supabase
         .from("lead_historico")
         .select("lead_id")
@@ -144,24 +144,17 @@ export default function MinhasVendasTab() {
 
       if (!allConversoes?.length) return [];
 
-      // Find creator of each converted lead
+      // Get convertido_por from leads table
       const leadIds = [...new Set(allConversoes.map(c => c.lead_id))];
-      const { data: criacaoEvents } = await supabase
-        .from("lead_historico")
-        .select("lead_id, usuario_id")
-        .in("tipo_evento", ["lead_criado", "criacao", "lead_capturado"])
-        .in("lead_id", leadIds);
+      const { data: leads } = await supabase
+        .from("leads")
+        .select("id, convertido_por")
+        .in("id", leadIds);
 
-      const creatorByLead: Record<string, string> = {};
-      criacaoEvents?.forEach(e => {
-        if (!creatorByLead[e.lead_id]) creatorByLead[e.lead_id] = e.usuario_id;
-      });
-
-      // Count conversions per creator
+      // Count conversions per convertido_por
       const countByUser: Record<string, number> = {};
-      allConversoes.forEach(c => {
-        const creator = creatorByLead[c.lead_id];
-        if (creator) countByUser[creator] = (countByUser[creator] || 0) + 1;
+      leads?.forEach((l: any) => {
+        if (l.convertido_por) countByUser[l.convertido_por] = (countByUser[l.convertido_por] || 0) + 1;
       });
 
       const userIds = Object.keys(countByUser);
