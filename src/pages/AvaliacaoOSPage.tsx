@@ -2861,6 +2861,7 @@ export default function AvaliacaoOSPage() {
           }
 
           setSearchResults([existingOS]);
+          if (existingOS.cliente_id) fetchClienteAddresses([existingOS.cliente_id]);
           toast.success("OS encontrada!");
           setFormValidated(true);
           return;
