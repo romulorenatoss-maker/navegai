@@ -1950,9 +1950,12 @@ export default function LeadsPage() {
       } as any).select("id, numero_os").single();
       if (osErr) console.warn("Erro ao criar OS automática:", osErr.message);
 
+      const vendedorNome3 = profiles.find(p => p.id === (convAtendenteId || profile.id))?.nome || "—";
+      const registradorNome3 = profile.nome || "—";
+      const atribuicaoMsg3 = (convAtendenteId && convAtendenteId !== profile.id) ? ` Venda creditada a: ${vendedorNome3}. Registrado por: ${registradorNome3}.` : ` Venda creditada a: ${vendedorNome3}.`;
       await supabase.from("lead_historico").insert({
         lead_id: selectedLead.id, usuario_id: profile.id, tipo_evento: "conversao_cliente",
-        descricao: `Lead convertido em cliente: ${f.nome.trim()} (CPF: ${f.cpf.trim()})${newOS ? ". OS criada aguardando número." : ""}`,
+        descricao: `Lead convertido em cliente: ${f.nome.trim()} (CPF: ${f.cpf.trim()})${newOS ? ". OS criada aguardando número." : ""}${atribuicaoMsg3}`,
       });
       return newCliente;
     },
