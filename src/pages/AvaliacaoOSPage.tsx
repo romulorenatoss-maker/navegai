@@ -2585,6 +2585,7 @@ export default function AvaliacaoOSPage() {
     setFormValidating(true);
     setFormValidated(false);
     setFormFoundOS(null);
+    setSearchResults([]);
     setFormPendingAval(null);
     setShowNewOsDialog(false);
 
