@@ -2,3 +2,9 @@ project_id = "ctwvbnalunqsydacbekg"
 
 [functions.business-assistant]
 verify_jwt = false
+
+[functions.create-user]
+verify_jwt = false
+
+[functions.admin-update-password]
+verify_jwt = false
