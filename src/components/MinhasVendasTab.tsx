@@ -157,7 +157,7 @@ export default function MinhasVendasTab() {
   });
 
   // Metrics
-  const totalLeads = leadsRecebidos.length;
+  const totalLeads = leadsCriados.length;
   const totalConversoes = conversoes.length;
   const totalTransferencias = transferencias.length;
   const totalInteracoes = interacoes.length;
