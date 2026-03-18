@@ -2446,6 +2446,22 @@ export default function AvaliacaoOSPage() {
                         onClick={() => window.open(ans.evidencia_url, "_blank")} />
                     </div>
                   )}
+                  {ans?.audio_url && (
+                    <div className="mt-2 bg-muted/50 border border-border rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Volume2 className="w-4 h-4 text-primary shrink-0" />
+                        <span className="text-sm text-foreground font-medium">Áudio anexado</span>
+                      </div>
+                      <audio controls className="w-full h-10" preload="metadata">
+                        <source src={ans.audio_url} />
+                        Seu navegador não suporta reprodução de áudio.
+                      </audio>
+                      <a href={ans.audio_url} download target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline mt-2">
+                        <Download className="w-3.5 h-3.5" /> Baixar áudio
+                      </a>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
