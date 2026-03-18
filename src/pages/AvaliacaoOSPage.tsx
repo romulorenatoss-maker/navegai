@@ -951,7 +951,7 @@ export default function AvaliacaoOSPage() {
     // Load ALL responses for this OS (shared across all evaluators)
     const { data: allRespostas } = await (supabase as any)
       .from("respostas_avaliacao")
-      .select("pergunta_id, resposta, observacao, evidencia_url, avaliador_id")
+      .select("pergunta_id, resposta, observacao, evidencia_url, audio_url, avaliador_id")
       .eq("ordem_servico_id", osId);
 
     const ans: Record<string, Answer> = {};
