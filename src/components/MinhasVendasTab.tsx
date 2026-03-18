@@ -34,16 +34,16 @@ export default function MinhasVendasTab() {
   const from = appliedStart ? startOfDay(appliedStart).toISOString() : startOfDay(startOfMonth(now)).toISOString();
   const to = appliedEnd ? endOfDay(appliedEnd).toISOString() : endOfDay(endOfMonth(now)).toISOString();
 
-  // Leads CREATED by current user in period
+  // Leads CREATED or CAPTURED by current user in period
   const { data: leadsCriados = [] } = useQuery({
-    queryKey: ["minhas-vendas-leads-criados", profileId, from, to],
+    queryKey: ["minhas-vendas-leads-criados-v2", profileId, from, to],
     enabled: !!profileId,
     queryFn: async () => {
       const { data } = await supabase
         .from("lead_historico")
         .select("lead_id")
         .eq("usuario_id", profileId!)
-        .in("tipo_evento", ["lead_criado", "criacao"])
+        .in("tipo_evento", ["lead_criado", "criacao", "lead_capturado"])
         .gte("data_evento", from)
         .lte("data_evento", to);
 
