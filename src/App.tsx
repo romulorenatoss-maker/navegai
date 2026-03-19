@@ -30,6 +30,7 @@ import DashboardVendasPage from "./pages/DashboardVendasPage";
 
 import LeadsArquivadosPage from "./pages/LeadsArquivadosPage";
 import ImportadorLeadsPage from "./pages/ImportadorLeadsPage";
+import GerenciamentoLeadsPage from "./pages/GerenciamentoLeadsPage";
 import ObjecoesLeadsPage from "./pages/ObjecoesLeadsPage";
 import RelatoriosLeadsPage from "./pages/RelatoriosLeadsPage";
 import CampanhasPage from "./pages/CampanhasPage";
