@@ -276,7 +276,7 @@ export default function ImportadorLeadsPage() {
     if (error || !newLead) throw error || new Error("Falha ao criar lead");
 
     // Insert contacts, history, and first task in parallel
-    const ops: Promise<any>[] = [
+    const ops: any[] = [
       supabase.from("lead_contatos").insert({ lead_id: newLead.id, tipo_contato: "telefone", valor: row.telefone, tem_whatsapp: false }).then(),
     ];
     if (row.email) {
