@@ -1418,12 +1418,13 @@ export default function FilaLeadsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredNotificacoes.map((item, idx) => {
+                    {paginate(filteredNotificacoes, notifPage).map((item, idx) => {
+                      const globalIdx = (notifPage - 1) * PAGE_SIZE + idx;
                       const phones = item.contatos.filter(c => c.tipo_contato === "telefone");
                       const isVisto = item.lead.notificacao_vista;
                       return (
                         <TableRow key={item.lead.id} className={!isVisto ? "bg-orange-50 dark:bg-orange-950/20" : ""}>
-                          <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground font-mono">{globalIdx + 1}</TableCell>
                           <TableCell>
                             <div className="flex flex-col gap-0.5">
                               <div className="flex items-center gap-2">
