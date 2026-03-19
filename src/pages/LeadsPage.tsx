@@ -995,10 +995,18 @@ export default function LeadsPage() {
   }, [profile?.id, refetchPendingTransfers]);
 
 
-  // ─── Realtime subscription for capture queue ─────────────────
+  // ─── Realtime subscription for leads + related tables ─────────────────
   useEffect(() => {
+    const realtimeDebounce = { current: null as ReturnType<typeof setTimeout> | null };
+    const debouncedInvalidate = (...keys: string[][]) => {
+      if (realtimeDebounce.current) clearTimeout(realtimeDebounce.current);
+      realtimeDebounce.current = setTimeout(() => {
+        keys.forEach(k => queryClient.invalidateQueries({ queryKey: k }));
+      }, 2000);
+    };
+
     const channel = supabase
-      .channel("leads-reservation-realtime")
+      .channel("leads-page-realtime")
       .on("postgres_changes", {
         event: "*",
         schema: "public",
@@ -1006,18 +1014,31 @@ export default function LeadsPage() {
       }, (payload: any) => {
         const oldStatus = payload.old?.status_lead;
         const newStatus = payload.new?.status_lead;
-        // Invalidate capture queue when any lead enters or leaves capture/reserved states
         const captureStates = ["fila_captura", "reservado", "em_atendimento"];
         if (captureStates.includes(oldStatus) || captureStates.includes(newStatus)) {
           queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
         }
-        // Also refresh the main leads list when status changes
         if (oldStatus !== newStatus) {
-          queryClient.invalidateQueries({ queryKey: ["leads-list"] });
+          debouncedInvalidate(["leads-list"]);
         }
       })
+      .on("postgres_changes", { event: "*", schema: "public", table: "lead_contatos" }, () => {
+        debouncedInvalidate(["all-lead-contatos"], ["captura-contatos"]);
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "lead_interacoes" }, () => {
+        debouncedInvalidate(["all-lead-interacoes"], ["captura-interacoes"]);
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "lead_tarefas_contato" }, () => {
+        debouncedInvalidate(["leads-list"]);
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "lead_historico" }, () => {
+        debouncedInvalidate(["all-lead-transfers"]);
+      })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      if (realtimeDebounce.current) clearTimeout(realtimeDebounce.current);
+      supabase.removeChannel(channel);
+    };
   }, [queryClient]);
 
   // Build priority queue (cycle-aware after transfers)
