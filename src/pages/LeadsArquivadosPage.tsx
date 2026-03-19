@@ -39,8 +39,24 @@ export default function LeadsArquivadosPage() {
   const [statusFilter, setStatusFilter] = useState("todos");
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [historyLeadId, setHistoryLeadId] = useState<string | null>(null);
+  const [historyLeadNome, setHistoryLeadNome] = useState("");
 
-  const { data: leads = [], isLoading } = useQuery({
+  const { data: historico = [], isLoading: isLoadingHistorico } = useQuery({
+    queryKey: ["lead-historico", historyLeadId],
+    enabled: !!historyLeadId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("lead_historico")
+        .select("*, profiles:usuario_id(nome)")
+        .eq("lead_id", historyLeadId!)
+        .order("data_evento", { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const
     queryKey: ["leads-arquivados"],
     queryFn: async () => {
       const { data, error } = await supabase
