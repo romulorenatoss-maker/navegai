@@ -2558,41 +2558,54 @@ export default function LeadsPage() {
              </ScrollArea>
 
             {/* ─── Capture Queue Section ─── */}
-            {capturaQueue.length > 0 && !isVisionMode && (
-              <div className="border-t">
-                <div className="px-3 py-2 flex items-center justify-between bg-muted/30">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                    <UserCheck className="w-3 h-3" /> Captura ({capturaQueue.length})
-                  </span>
-                </div>
-                <ScrollArea className="max-h-[200px]">
+            {capturaQueue.length > 0 && !isVisionMode && (() => {
+              const totalCapturaPages = Math.ceil(capturaQueue.length / CAPTURA_PAGE_SIZE);
+              const pagedCaptura = capturaQueue.slice(capturaPage * CAPTURA_PAGE_SIZE, (capturaPage + 1) * CAPTURA_PAGE_SIZE);
+              return (
+                <div className="border-t">
+                  <div className="px-3 py-2 flex items-center justify-between bg-muted/30">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                      <UserCheck className="w-3 h-3" /> Captura ({capturaQueue.length})
+                    </span>
+                    {totalCapturaPages > 1 && (
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="sm" className="h-5 w-5 p-0" disabled={capturaPage === 0} onClick={() => setCapturaPage(p => p - 1)}>
+                          <ChevronRight className="w-3 h-3 rotate-180" />
+                        </Button>
+                        <span className="text-[9px] text-muted-foreground">{capturaPage + 1}/{totalCapturaPages}</span>
+                        <Button variant="ghost" size="sm" className="h-5 w-5 p-0" disabled={capturaPage >= totalCapturaPages - 1} onClick={() => setCapturaPage(p => p + 1)}>
+                          <ChevronRight className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                   <div className="divide-y divide-border">
-                    {capturaQueue.map(item => {
+                    {pagedCaptura.map(item => {
                       const phones = item.contatos.filter(c => c.tipo_contato === "telefone");
                       return (
-                        <div key={item.lead.id} className="px-3 py-2 flex items-center justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium truncate">{item.lead.nome}</p>
-                            <p className="text-[10px] text-muted-foreground">
-                              {phones.length > 0 ? phones[0].valor : "Sem telefone"}
-                            </p>
-                          </div>
+                        <div key={item.lead.id} className="px-3 py-2 flex items-center gap-2">
                           <Button
                             size="sm"
-                            className="h-7 text-[10px] px-2 gap-1"
+                            className="h-7 text-[10px] px-2 gap-1 shrink-0"
                             onClick={() => reserveLeadMutation.mutate(item.lead.id)}
                             disabled={reserveLeadMutation.isPending}
                           >
                             {reserveLeadMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserCheck className="w-3 h-3" />}
                             Capturar
                           </Button>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate">{item.lead.nome}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {phones.length > 0 ? phones[0].valor : "Sem telefone"}
+                            </p>
+                          </div>
                         </div>
                       );
                     })}
                   </div>
-                </ScrollArea>
-              </div>
-            )}
+                </div>
+              );
+            })()}
            </Card>
          </div>
 
