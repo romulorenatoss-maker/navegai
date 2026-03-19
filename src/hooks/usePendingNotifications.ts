@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -11,6 +11,7 @@ interface PendingCounts {
 export function usePendingNotifications() {
   const { profile, isAdmin } = useAuth();
   const [counts, setCounts] = useState<PendingCounts>({ pendingEvaluations: 0, pendingLeadDecisions: 0, pendingMyLeads: 0 });
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchCounts = useCallback(async () => {
     if (!profile) return;
@@ -76,7 +77,7 @@ export function usePendingNotifications() {
         }
       }
 
-      // 2. Leads awaiting evaluator decision (for avaliador/admin of setor atendimento)
+      // 2. Leads awaiting evaluator decision
       let pendingLeadDecisions = 0;
       const { count } = await supabase
         .from("leads")
@@ -84,7 +85,7 @@ export function usePendingNotifications() {
         .in("status_lead", ["aguardando_decisao_avaliador", "cancelado_pendente_analise"]);
       pendingLeadDecisions = count || 0;
 
-      // 3. My leads with pending tasks for today (assigned to me, with overdue or today's tasks)
+      // 3. My leads with pending tasks for today
       let pendingMyLeads = 0;
       const now = new Date();
       const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
@@ -103,27 +104,36 @@ export function usePendingNotifications() {
     }
   }, [profile, isAdmin]);
 
+  // Debounced version for realtime events
+  const debouncedFetch = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchCounts();
+    }, 5000); // Wait 5s after last realtime event before fetching
+  }, [fetchCounts]);
+
   useEffect(() => {
     fetchCounts();
 
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchCounts, 30000);
+    // Refresh every 2 minutes instead of 30 seconds
+    const interval = setInterval(fetchCounts, 120_000);
 
-    // Listen for realtime changes on key tables
+    // Listen for realtime changes on key tables (debounced)
     const channel = supabase
       .channel('pending-notifications')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'respostas_avaliacao' }, fetchCounts)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'avaliacoes' }, fetchCounts)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, fetchCounts)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ordens_servico' }, fetchCounts)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'lead_tarefas_contato' }, fetchCounts)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'respostas_avaliacao' }, debouncedFetch)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'avaliacoes' }, debouncedFetch)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, debouncedFetch)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ordens_servico' }, debouncedFetch)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lead_tarefas_contato' }, debouncedFetch)
       .subscribe();
 
     return () => {
       clearInterval(interval);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
       supabase.removeChannel(channel);
     };
-  }, [fetchCounts]);
+  }, [fetchCounts, debouncedFetch]);
 
   return counts;
 }

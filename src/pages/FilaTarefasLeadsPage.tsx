@@ -99,7 +99,8 @@ export default function FilaTarefasLeadsPage() {
 
       return data;
     },
-    refetchInterval: 60_000,
+    refetchInterval: 120_000,
+    staleTime: 30_000,
   });
 
   const leadIds = useMemo(() => [...new Set(tarefas.map((t: any) => t.lead_id))], [tarefas]);

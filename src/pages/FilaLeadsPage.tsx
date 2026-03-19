@@ -130,13 +130,17 @@ export default function FilaLeadsPage() {
     return () => clearInterval(iv);
   }, []);
 
-  // ─── Realtime: auto-refresh when leads/interactions/tasks change ─────
+  // ─── Realtime: auto-refresh when leads/interactions/tasks change (debounced) ─────
+  const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     const invalidateAll = () => {
-      queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
-      queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
-      queryClient.invalidateQueries({ queryKey: ["fila-interacoes"] });
-      queryClient.invalidateQueries({ queryKey: ["leads-com-agendamento"] });
+      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
+      realtimeDebounceRef.current = setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
+        queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
+        queryClient.invalidateQueries({ queryKey: ["fila-interacoes"] });
+        queryClient.invalidateQueries({ queryKey: ["leads-com-agendamento"] });
+      }, 3000);
     };
     const channel = supabase
       .channel("fila-leads-realtime")
@@ -144,7 +148,10 @@ export default function FilaLeadsPage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "lead_interacoes" }, invalidateAll)
       .on("postgres_changes", { event: "*", schema: "public", table: "lead_tarefas_contato" }, invalidateAll)
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
+      supabase.removeChannel(channel);
+    };
   }, [queryClient]);
 
   // ─── Queries ──────────────────────────────────────
@@ -152,6 +159,7 @@ export default function FilaLeadsPage() {
 
   const { data: leads = [], isLoading: loadingLeads } = useQuery({
     queryKey: ["fila-leads"],
+    staleTime: 30_000,
     queryFn: async () => {
       const { data, error } = await supabase.from("leads").select("*")
         .in("status_lead", ["novo", "em_contato", "em_atendimento", "interessado", "aguardando_decisao_avaliador", "cancelado_pendente_analise", CAPTURE_QUEUE_STATUS, "reservado"])
@@ -163,6 +171,7 @@ export default function FilaLeadsPage() {
 
   const { data: profiles = [] } = useQuery({
     queryKey: ["profiles-atendimento"],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase.from("profiles").select("id, nome").eq("ativo", true).order("nome");
       if (error) throw error;
@@ -172,6 +181,7 @@ export default function FilaLeadsPage() {
 
   const { data: atendimentoProfiles = [] } = useQuery({
     queryKey: ["profiles-setor-atendimento"],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const { data: setores } = await supabase.from("setores").select("id, nome").eq("ativo", true);
       const atendimentoSetor = (setores || []).find(s => s.nome.toLowerCase().includes("atendimento"));
@@ -263,7 +273,8 @@ export default function FilaLeadsPage() {
       }
       return data;
     },
-    refetchInterval: 60_000,
+    refetchInterval: 120_000,
+    staleTime: 30_000,
   });
 
   // Also fetch leads with manual agendamento_retorno (not in tarefas_contato)
