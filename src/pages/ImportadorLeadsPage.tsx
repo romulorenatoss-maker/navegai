@@ -56,6 +56,7 @@ type Step = "upload" | "mapping" | "preview" | "results";
 interface ImportResult {
   nome: string;
   telefone: string;
+  leadId?: string;
   status: "ok" | "skipped" | "error";
   message?: string;
 }
