@@ -1757,7 +1757,7 @@ export default function LeadsPage() {
         status_lead: finalStatus,
       };
 
-      const writeOperations: Promise<any>[] = [
+      const writeOperations = [
         supabase.from("lead_historico").insert({
           lead_id: leadId,
           usuario_id: profile.id,
