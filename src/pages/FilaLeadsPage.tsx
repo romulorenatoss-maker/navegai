@@ -130,13 +130,17 @@ export default function FilaLeadsPage() {
     return () => clearInterval(iv);
   }, []);
 
-  // ─── Realtime: auto-refresh when leads/interactions/tasks change ─────
+  // ─── Realtime: auto-refresh when leads/interactions/tasks change (debounced) ─────
+  const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     const invalidateAll = () => {
-      queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
-      queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
-      queryClient.invalidateQueries({ queryKey: ["fila-interacoes"] });
-      queryClient.invalidateQueries({ queryKey: ["leads-com-agendamento"] });
+      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
+      realtimeDebounceRef.current = setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
+        queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
+        queryClient.invalidateQueries({ queryKey: ["fila-interacoes"] });
+        queryClient.invalidateQueries({ queryKey: ["leads-com-agendamento"] });
+      }, 3000);
     };
     const channel = supabase
       .channel("fila-leads-realtime")
@@ -144,7 +148,10 @@ export default function FilaLeadsPage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "lead_interacoes" }, invalidateAll)
       .on("postgres_changes", { event: "*", schema: "public", table: "lead_tarefas_contato" }, invalidateAll)
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
+      supabase.removeChannel(channel);
+    };
   }, [queryClient]);
 
   // ─── Queries ──────────────────────────────────────
