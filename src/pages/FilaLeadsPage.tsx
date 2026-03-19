@@ -171,6 +171,7 @@ export default function FilaLeadsPage() {
 
   const { data: profiles = [] } = useQuery({
     queryKey: ["profiles-atendimento"],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase.from("profiles").select("id, nome").eq("ativo", true).order("nome");
       if (error) throw error;
