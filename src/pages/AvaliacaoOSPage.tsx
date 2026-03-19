@@ -2234,6 +2234,18 @@ export default function AvaliacaoOSPage() {
                               </motion.div>
                             )}
                           </AnimatePresence>
+                          <AnimatePresence>
+                            {answer === "na" && (
+                              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+                                <div className="ml-0 sm:ml-11 mt-3 bg-warning/5 border border-warning/20 rounded-lg p-3 space-y-3">
+                                  <div className="flex items-center gap-1.5 text-caption text-warning font-medium">
+                                    <AlertTriangle className="w-3.5 h-3.5" /> Descreva o motivo do N/A (obrigatório)
+                                  </div>
+                                  <Textarea placeholder="Informe o motivo pelo qual este item não se aplica..." value={observation} onChange={e => handleObservationChange(p.id, e.target.value)} disabled={isLocked} className="bg-card min-h-[80px] text-sm" />
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </div>
                       </motion.div>
                     );
