@@ -299,7 +299,7 @@ export default function RelatoriosLeadsPage() {
     if (selected.size === 0) return;
     setExportLoading(true);
     try {
-      exportToExcel(leadsList.filter((l) => selected.has(l.id)));
+      await exportToExcel(leadsList.filter((l) => selected.has(l.id)));
       toast.success(`Exportação de ${selected.size} lead(s) concluída.`);
     } catch (err: any) {
       toast.error("Erro ao exportar: " + err.message);
@@ -313,7 +313,7 @@ export default function RelatoriosLeadsPage() {
     if (leadsList.length === 0) { toast.error("Nenhum lead disponível."); return; }
     setExportAllLoading(true);
     try {
-      exportToExcel(leadsList);
+      await exportToExcel(leadsList);
       toast.success(`Relatório exportado com ${leadsList.length} lead(s).`);
     } catch (err: any) {
       toast.error("Erro ao exportar: " + err.message);
@@ -322,7 +322,8 @@ export default function RelatoriosLeadsPage() {
     }
   };
 
-  const exportToExcel = (data: LeadRow[]) => {
+  const exportToExcel = async (data: LeadRow[]) => {
+    const XLSX = await import("xlsx");
     const headers = ["Nome", "Telefone", "Status", "Origem", "Responsável", "Perfil Identificado", "Repetidor", "Data Criação", "Tentativas", "Atrasos"];
     const wsData: (string | number)[][] = [headers];
     for (const l of data) {
