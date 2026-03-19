@@ -305,7 +305,7 @@ export default function ImportadorLeadsPage() {
     }
 
     await Promise.all(ops);
-    return { nome: row.nome, telefone: row.telefone, status: "ok" };
+    return { nome: row.nome, telefone: row.telefone, leadId: newLead.id, status: "ok" };
   };
 
   const handleImport = useCallback(async () => {
