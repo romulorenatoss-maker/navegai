@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import * as XLSX from "xlsx";
-import { motion } from "framer-motion";
+import {
+  CalendarIcon, Filter, Trash2, Download, Loader2,
 import {
   CalendarIcon, Filter, Trash2, Download, Loader2,
   FileText, Search, Users, Eye, X,
