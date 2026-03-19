@@ -30,6 +30,10 @@ export default function MinhasAvaliacoesPage() {
   const [endDate, setEndDate] = useState<Date | undefined>(endOfMonth(now));
   const [appliedStart, setAppliedStart] = useState<Date | undefined>(startOfMonth(now));
   const [appliedEnd, setAppliedEnd] = useState<Date | undefined>(endOfMonth(now));
+  const [osStartDate, setOsStartDate] = useState<Date | undefined>(startOfMonth(now));
+  const [osEndDate, setOsEndDate] = useState<Date | undefined>(endOfMonth(now));
+  const [osAppliedStart, setOsAppliedStart] = useState<Date | undefined>(startOfMonth(now));
+  const [osAppliedEnd, setOsAppliedEnd] = useState<Date | undefined>(endOfMonth(now));
   const [selectedOsId, setSelectedOsId] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
