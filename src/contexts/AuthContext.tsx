@@ -78,14 +78,14 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     }
 
     const prof = profileRes.data as Profile;
-    const telasRes = await withTimeout(
+    const telasPromise = new Promise<{ data: { tela_path: string }[] | null; error: any }>((resolve) => {
       supabase
         .from("permissoes_tela")
         .select("tela_path")
         .eq("profile_id", prof.id)
-        .then((r) => r),
-      10000
-    );
+        .then((res) => resolve(res));
+    });
+    const telasRes = await withTimeout(telasPromise, 10000);
 
     if (telasRes.error) {
       clearAuthState();
