@@ -78,7 +78,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     }
 
     const prof = profileRes.data as Profile;
-    const { data: telas, error: telasError } = await withTimeout(
+    const telasRes = await withTimeout(
       supabase
         .from("permissoes_tela")
         .select("tela_path")
@@ -86,9 +86,9 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       10000
     );
 
-    if (telasError) {
+    if (telasRes.error) {
       clearAuthState();
-      throw telasError;
+      throw telasRes.error;
     }
 
     setProfile(prof);
