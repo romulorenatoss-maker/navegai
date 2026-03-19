@@ -70,6 +70,7 @@ export default function ImportadorLeadsPage() {
   const [previewRows, setPreviewRows] = useState<PreviewRow[]>([]);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
   const [results, setResults] = useState<ImportResult[]>([]);
   const [showResultDetails, setShowResultDetails] = useState(false);
   const [campanhaId, setCampanhaId] = useState("");
@@ -231,18 +232,92 @@ export default function ImportadorLeadsPage() {
     setPreviewRows(prev => prev.map(r => r.index === index ? { ...r, action } : r));
   }, []);
 
-  // Step 3: Import
+  // Step 3: Import with batch processing
+  const BATCH_SIZE = 5;
+  const BATCH_DELAY_MS = 300;
+
+  const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+  const importSingleLead = async (
+    row: PreviewRow,
+    profileId: string,
+    firstRotina: any,
+    cidadeMap: Map<string, string>,
+    bairroMap: Map<string, { id: string; cidade_id: string }>,
+    ruaMap: Map<string, { id: string; bairro_id: string }>,
+    planoMap: Map<string, string>,
+  ): Promise<ImportResult> => {
+    const nomeFmt = toProperCase(row.nome);
+
+    let cidadeId: string | null = null;
+    let bairroId: string | null = null;
+    let ruaId: string | null = null;
+    let planoId: string | null = null;
+
+    if (row.cidade) cidadeId = cidadeMap.get(row.cidade.toLowerCase().trim()) || null;
+    if (row.bairro) {
+      const b = bairroMap.get(row.bairro.toLowerCase().trim());
+      if (b) { bairroId = b.id; if (!cidadeId) cidadeId = b.cidade_id; }
+    }
+    if (row.rua) {
+      const r = ruaMap.get(row.rua.toLowerCase().trim());
+      if (r) { ruaId = r.id; if (!bairroId) bairroId = r.bairro_id; }
+    }
+    if (row.plano) planoId = planoMap.get(row.plano.toLowerCase().trim()) || null;
+
+    const { data: newLead, error } = await supabase.from("leads").insert({
+      nome: nomeFmt, status_lead: "fila_captura", responsavel_id: null,
+      origem_lead: "importacao",
+      campanha_id: (campanhaId && campanhaId !== "__none") ? campanhaId : null,
+      cidade_id: cidadeId, bairro_id: bairroId, rua_id: ruaId,
+      numero_endereco: row.numero || null, plano_id: planoId, repetidor: row.repetidor || null,
+    } as any).select().single();
+
+    if (error || !newLead) throw error || new Error("Falha ao criar lead");
+
+    // Insert contacts, history, and first task in parallel
+    const ops: any[] = [
+      supabase.from("lead_contatos").insert({ lead_id: newLead.id, tipo_contato: "telefone", valor: row.telefone, tem_whatsapp: false }).then(),
+    ];
+    if (row.email) {
+      ops.push(supabase.from("lead_contatos").insert({ lead_id: newLead.id, tipo_contato: "email", valor: row.email, tem_whatsapp: false }).then());
+    }
+
+    const descParts = [selectedCampanhaNome ? `Lead importado da campanha "${selectedCampanhaNome}"` : "Lead importado via CSV"];
+    if (row.action === "import_alert") descParts.push("⚠️ Importado com alerta de duplicidade");
+    if (row.duplicateInfo) {
+      descParts.push(row.duplicateInfo.isClient
+        ? "— telefone pertence a cliente cadastrado"
+        : `— duplicado de lead "${row.duplicateInfo.leadNome}" (${row.duplicateInfo.statusLead})`);
+    }
+
+    ops.push(
+      supabase.from("lead_historico").insert({ lead_id: newLead.id, usuario_id: profileId, tipo_evento: "lead_criado", descricao: descParts.join(" ") }).then()
+    );
+
+    if (firstRotina) {
+      const nextDate = new Date();
+      nextDate.setDate(nextDate.getDate() + Math.max(firstRotina.dias_apos_anterior || 0, 1));
+      ops.push(
+        supabase.from("lead_tarefas_contato").insert({ lead_id: newLead.id, tentativa: 1, data_contato: nextDate.toISOString(), periodo: firstRotina.periodo_contato, status: "pendente", responsavel_id: null }).then()
+      );
+    }
+
+    await Promise.all(ops);
+    return { nome: row.nome, telefone: row.telefone, status: "ok" };
+  };
+
   const handleImport = useCallback(async () => {
     if (!profile) return;
     setImporting(true);
     const toImport = previewRows.filter(r => r.action !== "skip" && r.status !== "invalid");
+    setImportProgress({ current: 0, total: toImport.length });
     const importResults: ImportResult[] = [];
 
     const { data: firstRotina } = await supabase
       .from("rotina_tentativas_leads")
       .select("*").eq("tentativa_numero", 1).eq("ativo", true).maybeSingle();
 
-    // Pre-fetch lookup tables for FK resolution
     const [{ data: allCidades }, { data: allBairros }, { data: allRuas }, { data: allPlanos }] = await Promise.all([
       supabase.from("cidades").select("id, nome"),
       supabase.from("bairros").select("id, nome, cidade_id"),
@@ -252,97 +327,39 @@ export default function ImportadorLeadsPage() {
 
     const cidadeMap = new Map<string, string>();
     for (const c of allCidades || []) cidadeMap.set(c.nome.toLowerCase().trim(), c.id);
-
     const bairroMap = new Map<string, { id: string; cidade_id: string }>();
     for (const b of allBairros || []) bairroMap.set(b.nome.toLowerCase().trim(), { id: b.id, cidade_id: b.cidade_id });
-
     const ruaMap = new Map<string, { id: string; bairro_id: string }>();
     for (const r of allRuas || []) ruaMap.set(r.nome.toLowerCase().trim(), { id: r.id, bairro_id: r.bairro_id });
-
     const planoMap = new Map<string, string>();
     for (const p of allPlanos || []) planoMap.set(p.nome_plano.toLowerCase().trim(), p.id);
 
-    for (const row of toImport) {
-      try {
-        const nomeFmt = toProperCase(row.nome);
+    // Process in batches
+    for (let i = 0; i < toImport.length; i += BATCH_SIZE) {
+      const batch = toImport.slice(i, i + BATCH_SIZE);
 
-        // Resolve FK IDs from names
-        let cidadeId: string | null = null;
-        let bairroId: string | null = null;
-        let ruaId: string | null = null;
-        let planoId: string | null = null;
+      const batchResults = await Promise.allSettled(
+        batch.map(row =>
+          importSingleLead(row, profile.id, firstRotina, cidadeMap, bairroMap, ruaMap, planoMap)
+        )
+      );
 
-        if (row.cidade) {
-          cidadeId = cidadeMap.get(row.cidade.toLowerCase().trim()) || null;
+      for (let j = 0; j < batchResults.length; j++) {
+        const result = batchResults[j];
+        if (result.status === "fulfilled") {
+          importResults.push(result.value);
+        } else {
+          importResults.push({ nome: batch[j].nome, telefone: batch[j].telefone, status: "error", message: result.reason?.message || "Erro desconhecido" });
         }
-        if (row.bairro) {
-          const b = bairroMap.get(row.bairro.toLowerCase().trim());
-          if (b) { bairroId = b.id; if (!cidadeId) cidadeId = b.cidade_id; }
-        }
-        if (row.rua) {
-          const r = ruaMap.get(row.rua.toLowerCase().trim());
-          if (r) { ruaId = r.id; if (!bairroId) bairroId = r.bairro_id; }
-        }
-        if (row.plano) {
-          planoId = planoMap.get(row.plano.toLowerCase().trim()) || null;
-        }
+      }
 
-        const { data: newLead, error } = await supabase.from("leads").insert({
-          nome: nomeFmt,
-          status_lead: "fila_captura",
-          responsavel_id: null,
-          origem_lead: "importacao",
-          campanha_id: (campanhaId && campanhaId !== "__none") ? campanhaId : null,
-          cidade_id: cidadeId,
-          bairro_id: bairroId,
-          rua_id: ruaId,
-          numero_endereco: row.numero || null,
-          plano_id: planoId,
-          repetidor: row.repetidor || null,
-        } as any).select().single();
+      // Update progress (yield to main thread)
+      const processed = Math.min(i + BATCH_SIZE, toImport.length);
+      setImportProgress({ current: processed, total: toImport.length });
 
-        if (error || !newLead) throw error || new Error("Falha ao criar lead");
-
-        await supabase.from("lead_contatos").insert({
-          lead_id: newLead.id, tipo_contato: "telefone", valor: row.telefone, tem_whatsapp: false,
-        });
-
-        if (row.email) {
-          await supabase.from("lead_contatos").insert({
-            lead_id: newLead.id, tipo_contato: "email", valor: row.email, tem_whatsapp: false,
-          });
-        }
-
-        const descParts = [selectedCampanhaNome
-          ? `Lead importado da campanha "${selectedCampanhaNome}"`
-          : "Lead importado via CSV"];
-        if (row.action === "import_alert") descParts.push("⚠️ Importado com alerta de duplicidade");
-        if (row.duplicateInfo) {
-          if (row.duplicateInfo.isClient) {
-            descParts.push("— telefone pertence a cliente cadastrado");
-          } else {
-            descParts.push(`— duplicado de lead "${row.duplicateInfo.leadNome}" (${row.duplicateInfo.statusLead})`);
-          }
-        }
-
-        await supabase.from("lead_historico").insert({
-          lead_id: newLead.id, usuario_id: profile.id,
-          tipo_evento: "lead_criado", descricao: descParts.join(" "),
-        });
-
-        if (firstRotina) {
-          const nextDate = new Date();
-          nextDate.setDate(nextDate.getDate() + Math.max(firstRotina.dias_apos_anterior || 0, 1));
-          await supabase.from("lead_tarefas_contato").insert({
-            lead_id: newLead.id, tentativa: 1,
-            data_contato: nextDate.toISOString(), periodo: firstRotina.periodo_contato,
-            status: "pendente", responsavel_id: null,
-          });
-        }
-
-        importResults.push({ nome: row.nome, telefone: row.telefone, status: "ok" });
-      } catch (err: any) {
-        importResults.push({ nome: row.nome, telefone: row.telefone, status: "error", message: err.message });
+      // Delay between batches to avoid overwhelming the DB
+      if (i + BATCH_SIZE < toImport.length) {
+        await delay(BATCH_DELAY_MS);
       }
     }
 
@@ -513,11 +530,27 @@ export default function ImportadorLeadsPage() {
                     className="press-effect"
                   >
                     {importing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
-                    {importing ? "Importando..." : `Importar ${previewRows.filter(r => r.action !== "skip" && r.status !== "invalid").length} Leads`}
+                    {importing
+                      ? `Importando ${importProgress.current}/${importProgress.total}...`
+                      : `Importar ${previewRows.filter(r => r.action !== "skip" && r.status !== "invalid").length} Leads`}
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-3">
+                {importing && importProgress.total > 0 && (
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Processando lote...</span>
+                      <span>{importProgress.current} de {importProgress.total} ({Math.round((importProgress.current / importProgress.total) * 100)}%)</span>
+                    </div>
+                    <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary rounded-full transition-all duration-300"
+                        style={{ width: `${(importProgress.current / importProgress.total) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
                 <ImportPreviewTable rows={previewRows} onActionChange={handleActionChange} />
               </CardContent>
             </Card>
