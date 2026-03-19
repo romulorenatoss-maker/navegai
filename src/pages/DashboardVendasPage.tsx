@@ -62,14 +62,23 @@ export default function DashboardVendasPage() {
     setDetailOpen(true);
     setDetailLoading(true);
     try {
-      // Get converted leads for this profile in period
+      // Get lead IDs that were converted by this profile in the period (based on conversion event date, not lead creation date)
+      const { data: convEvents } = await supabase
+        .from("lead_historico")
+        .select("lead_id")
+        .eq("tipo_evento", "conversao_cliente")
+        .gte("data_evento", from)
+        .lte("data_evento", to);
+
+      const convLeadIds = [...new Set((convEvents || []).map(e => e.lead_id))];
+      if (!convLeadIds.length) { setDetailLeads([]); setDetailLoading(false); return; }
+
+      // Now get the actual leads that were converted by this specific profile
       const { data: leads } = await supabase
         .from("leads")
         .select("id, nome, status_lead, data_criacao, cliente_id, convertido_por, convertido_registrado_por")
         .eq("convertido_por", profileId)
-        .eq("status_lead", "convertido")
-        .gte("data_criacao", from)
-        .lte("data_criacao", to)
+        .in("id", convLeadIds)
         .order("data_criacao", { ascending: false });
 
       if (!leads?.length) { setDetailLeads([]); setDetailLoading(false); return; }
