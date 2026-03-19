@@ -12,10 +12,12 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Archive, Search, RefreshCw, Loader2, X, CalendarIcon } from "lucide-react";
+import { Archive, Search, RefreshCw, Loader2, X, CalendarIcon, History } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const fmtDate = (d: string) => {
   try { return format(new Date(d), "dd/MM/yyyy HH:mm", { locale: ptBR }); } catch { return d; }
@@ -37,6 +39,22 @@ export default function LeadsArquivadosPage() {
   const [statusFilter, setStatusFilter] = useState("todos");
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [historyLeadId, setHistoryLeadId] = useState<string | null>(null);
+  const [historyLeadNome, setHistoryLeadNome] = useState("");
+
+  const { data: historico = [], isLoading: isLoadingHistorico } = useQuery({
+    queryKey: ["lead-historico", historyLeadId],
+    enabled: !!historyLeadId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("lead_historico")
+        .select("*, profiles:usuario_id(nome)")
+        .eq("lead_id", historyLeadId!)
+        .order("data_evento", { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const { data: leads = [], isLoading } = useQuery({
     queryKey: ["leads-arquivados"],
@@ -276,7 +294,15 @@ export default function LeadsArquivadosPage() {
                         </TableCell>
                         <TableCell className="text-xs">{getResponsavelNome(lead.responsavel_id)}</TableCell>
                         <TableCell className="text-xs">{fmtDate(lead.updated_at)}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right space-x-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => { setHistoryLeadId(lead.id); setHistoryLeadNome(lead.nome); }}
+                            title="Histórico"
+                          >
+                            <History className="w-3.5 h-3.5" />
+                          </Button>
                           <Button
                             size="sm"
                             variant="outline"
@@ -298,6 +324,39 @@ export default function LeadsArquivadosPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialog Histórico */}
+      <Dialog open={!!historyLeadId} onOpenChange={(open) => { if (!open) setHistoryLeadId(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-base">Histórico — {historyLeadNome}</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh]">
+            {isLoadingHistorico ? (
+              <div className="p-4 text-center text-sm text-muted-foreground">Carregando...</div>
+            ) : historico.length === 0 ? (
+              <div className="p-4 text-center text-sm text-muted-foreground">Nenhum registro encontrado.</div>
+            ) : (
+              <div className="space-y-3 p-1">
+                {historico.map((h: any, i: number) => (
+                  <div key={h.id} className="flex gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className="w-2 h-2 rounded-full bg-primary mt-1.5" />
+                      {i < historico.length - 1 && <div className="w-px flex-1 bg-border" />}
+                    </div>
+                    <div className="pb-3 flex-1">
+                      <p className="text-xs text-muted-foreground">
+                        {fmtDate(h.data_evento)} — {(h as any).profiles?.nome || "Sistema"}
+                      </p>
+                      <p className="text-sm">{h.descricao || h.tipo_evento}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
