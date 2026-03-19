@@ -1022,7 +1022,9 @@ export default function FilaLeadsPage() {
                             return filaSortDir === "asc" ? cmp : -cmp;
                           });
                         }
-                        return sorted.map((item, idx) => {
+                        const paged = paginate(sorted, filaPage);
+                        return paged.map((item, idx) => {
+                        const globalIdx = (filaPage - 1) * PAGE_SIZE + idx;
                         const phones = item.contatos.filter(c => c.tipo_contato === "telefone");
                         const campanha = getCampanhaNome(item.lead);
                         const cidade = getCidadeNome(item.lead);
