@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -12,12 +12,15 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Archive, Search, RefreshCw, Loader2, X, CalendarIcon, History } from "lucide-react";
+import { Archive, Search, RefreshCw, Loader2, X, CalendarIcon, History, Trash2, CheckSquare, Square } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
+import AdminPasswordDialog from "@/components/AdminPasswordDialog";
 
 const fmtDate = (d: string) => {
   try { return format(new Date(d), "dd/MM/yyyy HH:mm", { locale: ptBR }); } catch { return d; }
@@ -30,6 +33,10 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   cancelado_pendente_analise: { label: "Cancelado (Análise)", color: "bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200" },
 };
 
+const DELETE_BATCH_SIZE = 5;
+const DELETE_BATCH_DELAY = 300;
+const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+
 export default function LeadsArquivadosPage() {
   const { profile, isAdmin } = useAuth();
   const queryClient = useQueryClient();
@@ -41,6 +48,12 @@ export default function LeadsArquivadosPage() {
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [historyLeadId, setHistoryLeadId] = useState<string | null>(null);
   const [historyLeadNome, setHistoryLeadNome] = useState("");
+
+  // Bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [deleteProgress, setDeleteProgress] = useState<{ current: number; total: number; errors: number } | null>(null);
+  const cancelDeleteRef = useRef(false);
 
   const { data: historico = [], isLoading: isLoadingHistorico } = useQuery({
     queryKey: ["lead-historico", historyLeadId],
@@ -126,11 +139,85 @@ export default function LeadsArquivadosPage() {
     });
   }, [leads, statusFilter, dateFrom, dateTo, appliedSearch, contatos]);
 
-  // Reactivate lead (send back to queue)
+  // ─── Selection helpers ──────────────────────────
+  const filteredIds = useMemo(() => filteredLeads.map((l: any) => l.id), [filteredLeads]);
+  const allSelected = filteredIds.length > 0 && filteredIds.every(id => selectedIds.has(id));
+  const someSelected = selectedIds.size > 0;
+
+  const toggleSelectAll = useCallback(() => {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredIds));
+    }
+  }, [allSelected, filteredIds]);
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  // ─── Batch delete logic ─────────────────────────
+  const deleteSingleLead = async (leadId: string): Promise<void> => {
+    // Delete dependents first (cascading should handle most, but be explicit for safety)
+    await Promise.all([
+      supabase.from("lead_contatos").delete().eq("lead_id", leadId),
+      supabase.from("lead_historico").delete().eq("lead_id", leadId),
+      supabase.from("lead_interacoes").delete().eq("lead_id", leadId),
+      supabase.from("lead_tarefas_contato").delete().eq("lead_id", leadId),
+      supabase.from("registro_objecao_lead").delete().eq("lead_id", leadId),
+      supabase.from("registro_atraso_tentativa").delete().eq("lead_id", leadId),
+    ]);
+    const { error } = await supabase.from("leads").delete().eq("id", leadId);
+    if (error) throw error;
+  };
+
+  const executeBulkDelete = async () => {
+    const idsToDelete = Array.from(selectedIds);
+    const total = idsToDelete.length;
+    let errorCount = 0;
+    cancelDeleteRef.current = false;
+
+    setDeleteProgress({ current: 0, total, errors: 0 });
+
+    for (let i = 0; i < total; i += DELETE_BATCH_SIZE) {
+      if (cancelDeleteRef.current) break;
+
+      const batch = idsToDelete.slice(i, i + DELETE_BATCH_SIZE);
+      const results = await Promise.allSettled(batch.map(id => deleteSingleLead(id)));
+
+      const batchErrors = results.filter(r => r.status === "rejected").length;
+      errorCount += batchErrors;
+
+      const processed = Math.min(i + DELETE_BATCH_SIZE, total);
+      setDeleteProgress({ current: processed, total, errors: errorCount });
+
+      // Yield to main thread
+      if (i + DELETE_BATCH_SIZE < total) await delay(DELETE_BATCH_DELAY);
+    }
+
+    setSelectedIds(new Set());
+    queryClient.invalidateQueries({ queryKey: ["leads-arquivados"] });
+    queryClient.invalidateQueries({ queryKey: ["leads-arquivados-contatos"] });
+
+    if (cancelDeleteRef.current) {
+      toast.info(`Remoção cancelada. ${deleteProgress?.current || 0} de ${total} leads processados.`);
+    } else if (errorCount > 0) {
+      toast.warning(`Remoção concluída com ${errorCount} erro(s) de ${total} leads.`);
+    } else {
+      toast.success(`${total} lead(s) removido(s) com sucesso!`);
+    }
+
+    setTimeout(() => setDeleteProgress(null), 2000);
+  };
+
+  // Reactivate lead
   const reactivateMutation = useMutation({
     mutationFn: async (leadId: string) => {
       if (!profile) throw new Error("Erro interno.");
-      // Send to capture queue: clear responsible, set fila_captura
       await supabase.from("leads").update({
         status_lead: "fila_captura",
         responsavel_id: null,
@@ -138,7 +225,6 @@ export default function LeadsArquivadosPage() {
         reserved_at: null,
       } as any).eq("id", leadId);
 
-      // Cancel any old pending tasks
       await supabase.from("lead_tarefas_contato")
         .update({ status: "cancelada" } as any)
         .eq("lead_id", leadId)
@@ -163,6 +249,9 @@ export default function LeadsArquivadosPage() {
     setSearchTerm(""); setAppliedSearch(""); setStatusFilter("todos"); setDateFrom(undefined); setDateTo(undefined);
   };
 
+  const isDeleting = deleteProgress !== null;
+  const progressPercent = deleteProgress ? Math.round((deleteProgress.current / deleteProgress.total) * 100) : 0;
+
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto">
       <div>
@@ -173,6 +262,36 @@ export default function LeadsArquivadosPage() {
           Leads que finalizaram todas as tentativas ou foram arquivados.
         </p>
       </div>
+
+      {/* Delete progress banner */}
+      {isDeleting && (
+        <Card className="border-destructive/50 bg-destructive/5">
+          <CardContent className="py-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-destructive" />
+                <span className="text-sm font-medium">
+                  Removendo leads... {deleteProgress.current} de {deleteProgress.total}
+                  {deleteProgress.errors > 0 && (
+                    <span className="text-destructive ml-1">({deleteProgress.errors} erro(s))</span>
+                  )}
+                </span>
+              </div>
+              {deleteProgress.current < deleteProgress.total && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => { cancelDeleteRef.current = true; }}
+                >
+                  Cancelar
+                </Button>
+              )}
+            </div>
+            <Progress value={progressPercent} className="h-2" />
+            <p className="text-xs text-muted-foreground">{progressPercent}% concluído</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filters */}
       <Card>
@@ -248,6 +367,30 @@ export default function LeadsArquivadosPage() {
         </CardContent>
       </Card>
 
+      {/* Bulk actions bar */}
+      {isAdmin && someSelected && !isDeleting && (
+        <Card className="border-destructive/30">
+          <CardContent className="py-3 flex items-center justify-between">
+            <span className="text-sm font-medium">
+              {selectedIds.size} lead(s) selecionado(s)
+            </span>
+            <div className="flex gap-2">
+              <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
+                Limpar seleção
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => setShowPasswordDialog(true)}
+              >
+                <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                Excluir permanentemente
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* List */}
       <Card>
         <CardHeader className="pb-3">
@@ -266,6 +409,16 @@ export default function LeadsArquivadosPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    {isAdmin && (
+                      <TableHead className="w-10">
+                        <Checkbox
+                          checked={allSelected}
+                          onCheckedChange={toggleSelectAll}
+                          disabled={isDeleting}
+                          aria-label="Selecionar todos"
+                        />
+                      </TableHead>
+                    )}
                     <TableHead>Lead</TableHead>
                     <TableHead>Telefone(s)</TableHead>
                     <TableHead>Status</TableHead>
@@ -278,8 +431,19 @@ export default function LeadsArquivadosPage() {
                   {filteredLeads.map((lead: any) => {
                     const status = STATUS_LABELS[lead.status_lead] || { label: lead.status_lead, color: "bg-muted text-muted-foreground" };
                     const phones = getContatos(lead.id);
+                    const isSelected = selectedIds.has(lead.id);
                     return (
-                      <TableRow key={lead.id}>
+                      <TableRow key={lead.id} data-state={isSelected ? "selected" : undefined}>
+                        {isAdmin && (
+                          <TableCell>
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => toggleSelect(lead.id)}
+                              disabled={isDeleting}
+                              aria-label={`Selecionar ${lead.nome}`}
+                            />
+                          </TableCell>
+                        )}
                         <TableCell className="font-medium text-sm">{lead.nome}</TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
@@ -300,6 +464,7 @@ export default function LeadsArquivadosPage() {
                             variant="ghost"
                             onClick={() => { setHistoryLeadId(lead.id); setHistoryLeadNome(lead.nome); }}
                             title="Histórico"
+                            disabled={isDeleting}
                           >
                             <History className="w-3.5 h-3.5" />
                           </Button>
@@ -307,7 +472,7 @@ export default function LeadsArquivadosPage() {
                             size="sm"
                             variant="outline"
                             onClick={() => reactivateMutation.mutate(lead.id)}
-                            disabled={reactivateMutation.isPending}
+                            disabled={reactivateMutation.isPending || isDeleting}
                           >
                             {reactivateMutation.isPending
                               ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
@@ -357,6 +522,15 @@ export default function LeadsArquivadosPage() {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      {/* Admin password confirmation for bulk delete */}
+      <AdminPasswordDialog
+        open={showPasswordDialog}
+        onOpenChange={setShowPasswordDialog}
+        title="Excluir Leads Permanentemente"
+        description={`Você está prestes a excluir ${selectedIds.size} lead(s) e todos os seus dados (contatos, histórico, interações, tarefas). Esta ação é irreversível.`}
+        onConfirm={executeBulkDelete}
+      />
     </div>
   );
 }
