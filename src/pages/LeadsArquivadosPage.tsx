@@ -44,7 +44,7 @@ export default function LeadsArquivadosPage() {
       const { data, error } = await supabase
         .from("leads")
         .select("*")
-        .in("status_lead", ["arquivado", "aguardando_decisao_avaliador", "perdido"])
+        .in("status_lead", ["arquivado", "aguardando_decisao_avaliador", "perdido", "cancelado_pendente_analise"])
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return data;
