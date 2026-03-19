@@ -381,10 +381,29 @@ export default function ImportadorLeadsPage() {
     toast.success(`Importação concluída: ${ok} criados, ${skipped} pulados, ${errs} erros`);
   }, [previewRows, profile, campanhaId, selectedCampanhaNome]);
 
+  const handleSendToQueue = useCallback(async () => {
+    if (selectedForQueue.size === 0) return;
+    setSendingToQueue(true);
+    const ids = Array.from(selectedForQueue);
+    setQueueProgress({ current: 0, total: ids.length });
+
+    const QUEUE_BATCH = 10;
+    for (let i = 0; i < ids.length; i += QUEUE_BATCH) {
+      const batch = ids.slice(i, i + QUEUE_BATCH);
+      await supabase.from("leads").update({ status_lead: "fila_captura" } as any).in("id", batch);
+      setQueueProgress({ current: Math.min(i + QUEUE_BATCH, ids.length), total: ids.length });
+      if (i + QUEUE_BATCH < ids.length) await delay(200);
+    }
+
+    setSendingToQueue(false);
+    setSelectedForQueue(new Set());
+    toast.success(`${ids.length} leads enviados para a fila de captura!`);
+  }, [selectedForQueue]);
+
   const reset = () => {
     setStep("upload"); setFileName(""); setRawHeaders([]); setRawRows([]);
     setMapping({ ...EMPTY_MAPPING });
-    setPreviewRows([]); setResults([]);
+    setPreviewRows([]); setResults([]); setSelectedForQueue(new Set());
   };
 
   return (
