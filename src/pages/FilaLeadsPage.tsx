@@ -159,6 +159,7 @@ export default function FilaLeadsPage() {
 
   const { data: leads = [], isLoading: loadingLeads } = useQuery({
     queryKey: ["fila-leads"],
+    staleTime: 30_000,
     queryFn: async () => {
       const { data, error } = await supabase.from("leads").select("*")
         .in("status_lead", ["novo", "em_contato", "em_atendimento", "interessado", "aguardando_decisao_avaliador", "cancelado_pendente_analise", CAPTURE_QUEUE_STATUS, "reservado"])
