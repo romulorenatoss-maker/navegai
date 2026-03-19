@@ -737,21 +737,23 @@ export default function FilaLeadsPage() {
     onMutate: async (leadId: string) => {
       await queryClient.cancelQueries({ queryKey: ["fila-leads"] });
       const previousLeads = queryClient.getQueryData<Lead[]>(["fila-leads"]);
+      // Save lead name before optimistic removal
+      const capturedLead = previousLeads?.find(l => l.id === leadId);
+      const capturedLeadName = capturedLead?.nome || "Lead";
 
       // Optimistically remove from capture queue
       queryClient.setQueryData<Lead[]>(["fila-leads"], (current = []) =>
         current.filter(lead => lead.id !== leadId)
       );
 
-      return { previousLeads };
+      return { previousLeads, capturedLeadName };
     },
-    onSuccess: (_data, leadId) => {
+    onSuccess: (_data, leadId, context) => {
       toast.success("Lead capturado com sucesso!");
       queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
       // Show post-capture dialog with history
-      const lead = leads.find((l: any) => l.id === leadId);
       setPostCaptureLeadId(leadId);
-      setPostCaptureLeadName(lead?.nome || "Lead");
+      setPostCaptureLeadName(context?.capturedLeadName || "Lead");
     },
     onError: (err: any, _leadId, context) => {
       if (context?.previousLeads) {
