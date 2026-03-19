@@ -90,15 +90,19 @@ export default function MinhasAvaliacoesPage() {
 
   // All OS (for OS tab)
   const { data: allOsList = [] } = useQuery({
-    queryKey: ["minhas_all_os", targetProfileId],
+    queryKey: ["minhas_all_os", targetProfileId, osAppliedStart?.toISOString(), osAppliedEnd?.toISOString()],
     queryFn: async () => {
       if (!targetProfileId) return [];
+      const from = osAppliedStart ? startOfDay(osAppliedStart).toISOString() : startOfDay(startOfMonth(now)).toISOString();
+      const to = osAppliedEnd ? endOfDay(osAppliedEnd).toISOString() : endOfDay(endOfMonth(now)).toISOString();
+
       const { data: osData } = await supabase
         .from("ordens_servico")
         .select("id, numero_os, tipo_servico_id, created_at, cliente_nome, status, data_conclusao, atendente_id, tecnico_id")
         .or(`tecnico_id.eq.${targetProfileId},atendente_id.eq.${targetProfileId},colaborador_avaliado_id.eq.${targetProfileId}`)
-        .order("created_at", { ascending: false })
-        .limit(100);
+        .gte("data_abertura", from)
+        .lte("data_abertura", to)
+        .order("created_at", { ascending: false });
 
       if (!osData?.length) return [];
 
