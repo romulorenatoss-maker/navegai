@@ -2135,7 +2135,46 @@ export default function LeadsPage() {
     refetchHistorico();
   };
 
-  // ─── Render ───────────────────────────────────────
+  // Handle cancel lead
+  const handleCancelLead = async () => {
+    if (!selectedLead || !profile) return;
+    if (!cancelObjecaoId || !cancelDescricao.trim()) {
+      toast.error("Preencha todos os campos obrigatórios.");
+      return;
+    }
+    setCancelSubmitting(true);
+    try {
+      // Save objection
+      await supabase.from("registro_objecao_lead").insert({
+        lead_id: selectedLead.id,
+        objecao_id: cancelObjecaoId,
+        colaborador_id: profile.id,
+      });
+      // Update lead status
+      await supabase.from("leads").update({ status_lead: "cancelado_pendente_analise" }).eq("id", selectedLead.id);
+      // Log history
+      const objecaoNome = objecoes.find(o => o.id === cancelObjecaoId)?.descricao || "";
+      await supabase.from("lead_historico").insert({
+        lead_id: selectedLead.id,
+        usuario_id: profile.id,
+        tipo_evento: "lead_cancelado",
+        descricao: `Lead cancelado por ${profile.nome}. Objeção: ${objecaoNome}. Motivo: ${cancelDescricao.trim()}`,
+      });
+      setSelectedLead(prev => prev ? { ...prev, status_lead: "cancelado_pendente_analise" } : null);
+      updateLeadInCache(selectedLead.id, { status_lead: "cancelado_pendente_analise" });
+      refetchHistorico();
+      setShowCancelLead(false);
+      setCancelObjecaoId("");
+      setCancelDescricao("");
+      toast.success("Lead cancelado e enviado para análise.");
+    } catch (err: any) {
+      toast.error("Erro ao cancelar lead: " + err.message);
+    } finally {
+      setCancelSubmitting(false);
+    }
+  };
+
+
   return (
     <div className="p-3 md:p-4 space-y-3 h-[calc(100vh-4rem)]">
       {/* Header */}
