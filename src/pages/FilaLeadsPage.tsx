@@ -1298,7 +1298,7 @@ export default function FilaLeadsPage() {
                       const isCadencia = tarefa._tipo_agenda === "cadencia";
                       return (
                         <TableRow key={tarefa.id} className={isOv ? "bg-destructive/5" : isAguardando ? "bg-blue-50/50 dark:bg-blue-950/20" : ""}>
-                          <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
+                           <TableCell className="text-xs text-muted-foreground font-mono">{globalIdx + 1}</TableCell>
                           <TableCell className="font-medium text-sm">{tarefa._lead_nome || getTarefaLeadName(tarefa.lead_id)}</TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
