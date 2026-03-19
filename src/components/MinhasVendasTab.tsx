@@ -302,9 +302,6 @@ export default function MinhasVendasTab() {
           {myRankingPos ? (
             <>
               <p className="text-4xl font-bold text-primary">{myRankingPos.position}º</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                de {myRankingPos.total} colaborador{myRankingPos.total > 1 ? "es" : ""}
-              </p>
               <p className="text-xs text-muted-foreground mt-2">no período selecionado</p>
             </>
           ) : (
