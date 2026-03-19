@@ -1289,7 +1289,8 @@ export default function FilaLeadsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sortedTarefas.map((tarefa: any, idx: number) => {
+                    {paginate(sortedTarefas, tarefaPage).map((tarefa: any, idx: number) => {
+                      const globalIdx = (tarefaPage - 1) * PAGE_SIZE + idx;
                       const isAguardando = tarefa.status === "aguardando_visualizacao";
                       const isOv = !isAguardando && (tarefa.status === "atrasado" || (tarefa.periodo && isTarefaExpirada(tarefa)));
                       const responsavelNome = tarefa._responsavel_id ? (profiles.find(p => p.id === tarefa._responsavel_id)?.nome || "—") : "Sem responsável";
