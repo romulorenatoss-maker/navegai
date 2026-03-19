@@ -201,7 +201,7 @@ export default function LeadPostCaptureDialog({ open, onOpenChange, leadId, lead
         )}
 
         {/* Timeline */}
-        <ScrollArea className="flex-1 min-h-0 max-h-[350px]">
+        <ScrollArea className="flex-1 min-h-0 max-h-[50vh]">
           <div className="space-y-0 pr-2">
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground text-sm">Carregando histórico...</div>
