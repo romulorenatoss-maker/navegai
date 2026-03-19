@@ -25,6 +25,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   arquivado: { label: "Arquivado", color: "bg-muted text-muted-foreground" },
   aguardando_decisao_avaliador: { label: "Aguardando Avaliador", color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
   perdido: { label: "Perdido", color: "bg-destructive/10 text-destructive" },
+  cancelado_pendente_analise: { label: "Cancelado (Análise)", color: "bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200" },
 };
 
 export default function LeadsArquivadosPage() {
