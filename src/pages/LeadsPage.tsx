@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { applyPhoneMask, normalizePhone, isValidPhone, getPhoneTypeLabel } from "@/lib/phone-utils";
+import LeadPostCaptureDialog from "@/components/LeadPostCaptureDialog";
 
 // ─── Types ──────────────────────────────────────────────
 interface Lead {
@@ -341,6 +342,10 @@ export default function LeadsPage() {
   const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
   const [scheduleHour, setScheduleHour] = useState("09");
   const [scheduleMinute, setScheduleMinute] = useState("00");
+
+  // Post-capture dialog
+  const [postCaptureLeadId, setPostCaptureLeadId] = useState<string | null>(null);
+  const [postCaptureLeadName, setPostCaptureLeadName] = useState("");
 
   // Priority queue filter
   const [filaFiltro, setFilaFiltro] = useState<"hoje" | "todos">("hoje");
@@ -771,15 +776,15 @@ export default function LeadsPage() {
       const lead = capturaLeadsRaw.find(l => l.id === leadId);
       if (lead) {
         const capturedLead = { ...lead, responsavel_id: profile!.id, reserved_by: null, reserved_at: new Date().toISOString(), status_lead: "em_atendimento" } as Lead;
-        // Add to cache immediately so it shows in the list
         updateLeadInCache(leadId, capturedLead);
         queryClient.setQueryData(["leads-list", effectiveProfileId, leadsScope], (old: Lead[] | undefined) => {
           if (!old) return [capturedLead];
           if (old.some(l => l.id === leadId)) return old.map(l => l.id === leadId ? capturedLead : l);
           return [...old, capturedLead];
         });
-        // Select the lead and switch to "todos" so it's visible
-        setSelectedLead(capturedLead);
+        // Show post-capture dialog with history
+        setPostCaptureLeadId(leadId);
+        setPostCaptureLeadName(lead.nome);
         setFilaFiltro("todos");
       }
       queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
@@ -4107,6 +4112,27 @@ export default function LeadsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Post-capture history dialog */}
+      <LeadPostCaptureDialog
+        open={!!postCaptureLeadId}
+        onOpenChange={(open) => {
+          if (!open) {
+            // When closing, select the lead for detail view
+            const lead = allLeads.find(l => l.id === postCaptureLeadId);
+            if (lead) setSelectedLead(lead);
+            setPostCaptureLeadId(null);
+            setPostCaptureLeadName("");
+          }
+        }}
+        leadId={postCaptureLeadId}
+        leadName={postCaptureLeadName}
+        onGoToLead={() => {
+          const lead = allLeads.find(l => l.id === postCaptureLeadId);
+          if (lead) setSelectedLead(lead);
+          setPostCaptureLeadId(null);
+          setPostCaptureLeadName("");
+        }}
+      />
     </div>
   );
 }

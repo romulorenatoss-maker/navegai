@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import LeadPostCaptureDialog from "@/components/LeadPostCaptureDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -52,6 +53,10 @@ export default function FilaLeadsPage() {
   const { profile, isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+
+  // Post-capture dialog
+  const [postCaptureLeadId, setPostCaptureLeadId] = useState<string | null>(null);
+  const [postCaptureLeadName, setPostCaptureLeadName] = useState("");
 
   const [activeTab, setActiveTab] = useState("fila");
 
@@ -743,8 +748,10 @@ export default function FilaLeadsPage() {
     onSuccess: (_data, leadId) => {
       toast.success("Lead capturado com sucesso!");
       queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
-      // Navigate to the lead in "Meus Leads"
-      navigate(`/leads?id=${leadId}`);
+      // Show post-capture dialog with history
+      const lead = leads.find((l: any) => l.id === leadId);
+      setPostCaptureLeadId(leadId);
+      setPostCaptureLeadName(lead?.nome || "Lead");
     },
     onError: (err: any, _leadId, context) => {
       if (context?.previousLeads) {
@@ -1592,6 +1599,24 @@ export default function FilaLeadsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Post-capture history dialog */}
+      <LeadPostCaptureDialog
+        open={!!postCaptureLeadId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPostCaptureLeadId(null);
+            setPostCaptureLeadName("");
+          }
+        }}
+        leadId={postCaptureLeadId}
+        leadName={postCaptureLeadName}
+        onGoToLead={() => {
+          const id = postCaptureLeadId;
+          setPostCaptureLeadId(null);
+          setPostCaptureLeadName("");
+          navigate(`/leads?id=${id}`);
+        }}
+      />
     </div>
   );
 }
