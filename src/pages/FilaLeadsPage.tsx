@@ -1016,7 +1016,7 @@ export default function FilaLeadsPage() {
                           sorted.sort((a, b) => {
                             let cmp = 0;
                             if (filaSortKey === "nome") cmp = a.lead.nome.localeCompare(b.lead.nome);
-                            else if (filaSortKey === "vencimento") cmp = (new Date(a.nextAttempt).getTime()) - (new Date(b.nextAttempt).getTime());
+                            else if (filaSortKey === "responsavel") cmp = a.responsavelNome.localeCompare(b.responsavelNome);
                             else if (filaSortKey === "expiracao") cmp = getUrgMs(a) - getUrgMs(b);
                             else if (filaSortKey === "status") cmp = a.lead.status_lead.localeCompare(b.lead.status_lead);
                             return filaSortDir === "asc" ? cmp : -cmp;
