@@ -998,7 +998,7 @@ export default function FilaLeadsPage() {
                         <TableHead className="w-8">#</TableHead>
                         <TableHead className="cursor-pointer select-none" onClick={() => toggleFilaSort("nome")}><span className="flex items-center">Lead<SortIcon col="nome" /></span></TableHead>
                         <TableHead>Telefone(s)</TableHead>
-                        <TableHead className="cursor-pointer select-none" onClick={() => toggleFilaSort("vencimento")}><span className="flex items-center">Vencimento<SortIcon col="vencimento" /></span></TableHead>
+                        <TableHead className="cursor-pointer select-none" onClick={() => toggleFilaSort("responsavel")}><span className="flex items-center">Responsável<SortIcon col="responsavel" /></span></TableHead>
                         <TableHead className="cursor-pointer select-none" onClick={() => toggleFilaSort("expiracao")}><span className="flex items-center">Expiração<SortIcon col="expiracao" /></span></TableHead>
                         <TableHead className="cursor-pointer select-none" onClick={() => toggleFilaSort("status")}><span className="flex items-center">Status<SortIcon col="status" /></span></TableHead>
                         <TableHead className="text-right">Ações</TableHead>
@@ -1016,7 +1016,7 @@ export default function FilaLeadsPage() {
                           sorted.sort((a, b) => {
                             let cmp = 0;
                             if (filaSortKey === "nome") cmp = a.lead.nome.localeCompare(b.lead.nome);
-                            else if (filaSortKey === "vencimento") cmp = (new Date(a.nextAttempt).getTime()) - (new Date(b.nextAttempt).getTime());
+                            else if (filaSortKey === "responsavel") cmp = a.responsavelNome.localeCompare(b.responsavelNome);
                             else if (filaSortKey === "expiracao") cmp = getUrgMs(a) - getUrgMs(b);
                             else if (filaSortKey === "status") cmp = a.lead.status_lead.localeCompare(b.lead.status_lead);
                             return filaSortDir === "asc" ? cmp : -cmp;
@@ -1056,11 +1056,10 @@ export default function FilaLeadsPage() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              {item.nextAttemptExpired ? (
-                                <span className="text-xs flex items-center gap-1 text-destructive font-semibold bg-destructive/10 border border-destructive/30 rounded px-1.5 py-0.5 w-fit"><AlertTriangle className="w-3 h-3" />{fmtDate(item.nextAttempt)}</span>
-                              ) : (
-                                <span className="text-xs flex items-center gap-1 text-muted-foreground"><Clock className="w-3 h-3" />{fmtDate(item.nextAttempt)}</span>
-                              )}
+                              <span className="text-xs flex items-center gap-1 text-foreground">
+                                <UserCheck className="w-3 h-3 text-muted-foreground" />
+                                {item.responsavelNome || <span className="text-muted-foreground">—</span>}
+                              </span>
                             </TableCell>
                             <TableCell>
                               {(() => {
