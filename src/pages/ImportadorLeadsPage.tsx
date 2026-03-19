@@ -70,6 +70,7 @@ export default function ImportadorLeadsPage() {
   const [previewRows, setPreviewRows] = useState<PreviewRow[]>([]);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
   const [results, setResults] = useState<ImportResult[]>([]);
   const [showResultDetails, setShowResultDetails] = useState(false);
   const [campanhaId, setCampanhaId] = useState("");
