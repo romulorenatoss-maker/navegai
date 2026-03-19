@@ -81,7 +81,7 @@ export function usePendingNotifications() {
       const { count } = await supabase
         .from("leads")
         .select("id", { count: "exact", head: true })
-        .eq("status_lead", "aguardando_decisao_avaliador");
+        .in("status_lead", ["aguardando_decisao_avaliador", "cancelado_pendente_analise"]);
       pendingLeadDecisions = count || 0;
 
       // 3. My leads with pending tasks for today (assigned to me, with overdue or today's tasks)

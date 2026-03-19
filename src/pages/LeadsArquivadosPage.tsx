@@ -25,6 +25,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   arquivado: { label: "Arquivado", color: "bg-muted text-muted-foreground" },
   aguardando_decisao_avaliador: { label: "Aguardando Avaliador", color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200" },
   perdido: { label: "Perdido", color: "bg-destructive/10 text-destructive" },
+  cancelado_pendente_analise: { label: "Cancelado (Análise)", color: "bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200" },
 };
 
 export default function LeadsArquivadosPage() {
@@ -43,7 +44,7 @@ export default function LeadsArquivadosPage() {
       const { data, error } = await supabase
         .from("leads")
         .select("*")
-        .in("status_lead", ["arquivado", "aguardando_decisao_avaliador", "perdido"])
+        .in("status_lead", ["arquivado", "aguardando_decisao_avaliador", "perdido", "cancelado_pendente_analise"])
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -187,6 +188,7 @@ export default function LeadsArquivadosPage() {
                   <SelectItem value="arquivado">Arquivado</SelectItem>
                   <SelectItem value="aguardando_decisao_avaliador">Aguardando Avaliador</SelectItem>
                   <SelectItem value="perdido">Perdido</SelectItem>
+                  <SelectItem value="cancelado_pendente_analise">Cancelado (Análise)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
