@@ -46,6 +46,7 @@ export function AppLayout() {
   }, [endSession, signOut]);
 
   useIdleTimeout(handleIdleLogout);
+  useRealtimeConnectionMonitor();
 
   const handleSignOut = useCallback(async () => {
     await endSession("manual");
