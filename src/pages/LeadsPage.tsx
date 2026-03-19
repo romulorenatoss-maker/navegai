@@ -4062,6 +4062,51 @@ export default function LeadsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Cancel Lead Modal */}
+      <Dialog open={showCancelLead} onOpenChange={setShowCancelLead}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cancelar Lead</DialogTitle>
+            <DialogDescription>Informe o motivo do cancelamento. O lead será enviado para análise da avaliadora.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Objeção <span className="text-destructive">*</span></Label>
+              <Select value={cancelObjecaoId} onValueChange={setCancelObjecaoId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a objeção" />
+                </SelectTrigger>
+                <SelectContent>
+                  {objecoes.map(o => (
+                    <SelectItem key={o.id} value={o.id}>{o.descricao}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Descrição <span className="text-destructive">*</span></Label>
+              <Textarea
+                placeholder="Detalhe o motivo do cancelamento..."
+                value={cancelDescricao}
+                onChange={e => setCancelDescricao(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCancelLead(false)}>Cancelar</Button>
+            <Button
+              variant="destructive"
+              onClick={handleCancelLead}
+              disabled={cancelSubmitting || !cancelObjecaoId || !cancelDescricao.trim()}
+            >
+              {cancelSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+              Confirmar Cancelamento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
