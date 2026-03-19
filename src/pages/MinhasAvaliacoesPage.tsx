@@ -44,6 +44,11 @@ export default function MinhasAvaliacoesPage() {
     setAppliedEnd(endDate);
   };
 
+  const handleBuscarOS = () => {
+    setOsAppliedStart(osStartDate);
+    setOsAppliedEnd(osEndDate);
+  };
+
   // Evaluations in date range (concluída only)
   const { data: evaluations = [] } = useQuery({
     queryKey: ["minhas_perf_evals", targetProfileId, appliedStart?.toISOString(), appliedEnd?.toISOString()],
