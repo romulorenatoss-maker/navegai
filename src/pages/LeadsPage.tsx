@@ -343,6 +343,10 @@ export default function LeadsPage() {
   const [scheduleHour, setScheduleHour] = useState("09");
   const [scheduleMinute, setScheduleMinute] = useState("00");
 
+  // Post-capture dialog
+  const [postCaptureLeadId, setPostCaptureLeadId] = useState<string | null>(null);
+  const [postCaptureLeadName, setPostCaptureLeadName] = useState("");
+
   // Priority queue filter
   const [filaFiltro, setFilaFiltro] = useState<"hoje" | "todos">("hoje");
 
