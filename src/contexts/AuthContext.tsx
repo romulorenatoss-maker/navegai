@@ -46,14 +46,26 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   }, [isAdmin, allowedScreens]);
 
   const fetchProfileAndRoles = useCallback(async (userId: string) => {
-    const [profileRes, rolesRes] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("id, user_id, nome, email, cargo, setor_id, ativo, pode_editar_avaliacoes, pode_excluir_avaliacoes, created_at, updated_at")
-        .eq("user_id", userId)
-        .single(),
-      supabase.from("user_roles").select("role").eq("user_id", userId),
-    ]);
+    // Timeout wrapper to prevent infinite loading when DB is unresponsive
+    const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> =>
+      Promise.race([
+        promise,
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Timeout ao conectar com o banco")), ms)
+        ),
+      ]);
+
+    const [profileRes, rolesRes] = await withTimeout(
+      Promise.all([
+        supabase
+          .from("profiles")
+          .select("id, user_id, nome, email, cargo, setor_id, ativo, pode_editar_avaliacoes, pode_excluir_avaliacoes, created_at, updated_at")
+          .eq("user_id", userId)
+          .single(),
+        supabase.from("user_roles").select("role").eq("user_id", userId),
+      ]),
+      15000
+    );
 
     if (profileRes.error) {
       clearAuthState();
@@ -66,10 +78,13 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     }
 
     const prof = profileRes.data as Profile;
-    const { data: telas, error: telasError } = await supabase
-      .from("permissoes_tela")
-      .select("tela_path")
-      .eq("profile_id", prof.id);
+    const { data: telas, error: telasError } = await withTimeout(
+      supabase
+        .from("permissoes_tela")
+        .select("tela_path")
+        .eq("profile_id", prof.id),
+      10000
+    );
 
     if (telasError) {
       clearAuthState();
