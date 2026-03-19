@@ -943,7 +943,8 @@ export default function LeadsPage() {
   const { data: pendingTransferCount = 0, refetch: refetchPendingTransfers } = useQuery({
     queryKey: ["pending-transfer-alerts", profile?.id],
     enabled: !!profile?.id,
-    refetchInterval: 30_000,
+    refetchInterval: 120_000,
+    staleTime: 30_000,
     queryFn: async () => {
       if (!profile?.id) return 0;
       // Get leads currently assigned to this user
