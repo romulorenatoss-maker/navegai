@@ -1171,13 +1171,14 @@ export default function FilaLeadsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {capturaLeads.map((item, idx) => {
+                    {paginate(capturaLeads, capturaPage).map((item, idx) => {
+                      const globalIdx = (capturaPage - 1) * PAGE_SIZE + idx;
                       const phones = item.contatos.filter(c => c.tipo_contato === "telefone");
                       const campanha = getCampanhaNome(item.lead);
                       const cidade = getCidadeNome(item.lead);
                       return (
                         <TableRow key={item.lead.id} className="bg-purple-50/30 dark:bg-purple-950/10">
-                          <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground font-mono">{globalIdx + 1}</TableCell>
                           <TableCell>
                             <div className="flex flex-col gap-0.5">
                               <span className="font-medium text-sm">{item.lead.nome}</span>
@@ -1219,6 +1220,7 @@ export default function FilaLeadsPage() {
                 </Table>
               )}
             </CardContent>
+            <PaginationBar page={capturaPage} setPage={setCapturaPage} total={capturaLeads.length} />
           </Card>
         </TabsContent>
 
