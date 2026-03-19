@@ -75,6 +75,9 @@ export default function ImportadorLeadsPage() {
   const [results, setResults] = useState<ImportResult[]>([]);
   const [showResultDetails, setShowResultDetails] = useState(false);
   const [campanhaId, setCampanhaId] = useState("");
+  const [selectedForQueue, setSelectedForQueue] = useState<Set<string>>(new Set());
+  const [sendingToQueue, setSendingToQueue] = useState(false);
+  const [queueProgress, setQueueProgress] = useState({ current: 0, total: 0 });
 
   const { data: campanhas = [] } = useQuery({
     queryKey: ["campanhas-ativas"],
