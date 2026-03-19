@@ -188,6 +188,7 @@ export default function LeadsArquivadosPage() {
                   <SelectItem value="arquivado">Arquivado</SelectItem>
                   <SelectItem value="aguardando_decisao_avaliador">Aguardando Avaliador</SelectItem>
                   <SelectItem value="perdido">Perdido</SelectItem>
+                  <SelectItem value="cancelado_pendente_analise">Cancelado (Análise)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
