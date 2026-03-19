@@ -60,6 +60,13 @@ export default function FilaLeadsPage() {
 
   const [activeTab, setActiveTab] = useState("fila");
 
+  // ─── Pagination state (10 per page) ─────
+  const PAGE_SIZE = 10;
+  const [filaPage, setFilaPage] = useState(1);
+  const [capturaPage, setCapturaPage] = useState(1);
+  const [tarefaPage, setTarefaPage] = useState(1);
+  const [notifPage, setNotifPage] = useState(1);
+
   // Filters
   const [filterStatus, setFilterStatus] = useState("todos");
   const [filterResponsavel, setFilterResponsavel] = useState("todos");
