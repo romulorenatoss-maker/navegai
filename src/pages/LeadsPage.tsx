@@ -2229,8 +2229,17 @@ export default function LeadsPage() {
                 </div>
               </PopoverContent>
             </Popover>
-          )}
-        </div>
+                        )}
+                        {selectedLead.status_lead !== "convertido" && selectedLead.status_lead !== "arquivado" && selectedLead.status_lead !== "cancelado_pendente_analise" && (
+                          <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8 text-destructive hover:text-destructive" onClick={() => {
+                            setCancelObjecaoId("");
+                            setCancelDescricao("");
+                            setShowCancelLead(true);
+                          }}>
+                            <Trash2 className="w-3.5 h-3.5 mr-2" /> Cancelar Lead
+                          </Button>
+                        )}
+                      </div>
         <div className="flex items-center gap-2">
           <div className="relative">
             <Button onClick={handleOpenTransferHistory} size="icon" variant="outline" className="h-8 w-8" title="Transferências">
