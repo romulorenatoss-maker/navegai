@@ -56,7 +56,7 @@ export default function LeadsArquivadosPage() {
     },
   });
 
-  const
+  const { data: leads = [], isLoading } = useQuery({
     queryKey: ["leads-arquivados"],
     queryFn: async () => {
       const { data, error } = await supabase
