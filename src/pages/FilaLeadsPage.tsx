@@ -540,10 +540,33 @@ export default function FilaLeadsPage() {
     });
   }, [queue, filterStatus, filterResponsavel, filterAgendamento, appliedSearch]);
 
+  // Reset pages when filters change
+  useEffect(() => { setFilaPage(1); }, [filterStatus, filterResponsavel, filterAgendamento, appliedSearch]);
+  useEffect(() => { setTarefaPage(1); }, [appliedDateStart, appliedDateEnd]);
+  useEffect(() => { setNotifPage(1); }, [notifFilterVisto, notifAppliedSearch]);
+
   const totalAtrasados = queue.filter(i => i.isOverdue).length;
   const totalAgendados = queue.filter(i => i.isScheduled).length;
   const totalTarefas = sortedTarefas.length;
   const totalTarefasAtrasadas = sortedTarefas.filter((t: any) => t.status === "atrasado" || isTarefaExpirada(t)).length;
+
+  // ─── Pagination helper ─────
+  const paginate = <T,>(arr: T[], page: number) => arr.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = (total: number) => Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const PaginationBar = ({ page, setPage, total }: { page: number; setPage: (p: number) => void; total: number }) => {
+    const tp = totalPages(total);
+    if (tp <= 1) return null;
+    return (
+      <div className="flex items-center justify-between px-4 py-2 border-t">
+        <span className="text-xs text-muted-foreground">{total} itens • Página {page} de {tp}</span>
+        <div className="flex items-center gap-1">
+          <Button size="sm" variant="outline" className="h-7 text-xs px-2" disabled={page <= 1} onClick={() => setPage(page - 1)}>Anterior</Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs px-2" disabled={page >= tp} onClick={() => setPage(page + 1)}>Próxima</Button>
+        </div>
+      </div>
+    );
+  };
 
   const responsaveisNoLeads = useMemo(() => {
     const ids = [...new Set(leads.filter(l => l.status_lead !== "aguardando_decisao_avaliador").map(l => l.responsavel_id).filter(Boolean))];
