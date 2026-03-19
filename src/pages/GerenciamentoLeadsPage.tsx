@@ -238,7 +238,18 @@ export default function GerenciamentoLeadsPage() {
       }
 
       toast.success(`${ids.length} leads enviados para fila com sucesso!`);
+      const sentIds = new Set(ids);
       setSelectedIds(new Set());
+      // Optimistically remove sent leads from the current list
+      queryClient.setQueriesData<{ leads: LeadRow[]; total: number }>(
+        { queryKey: ["gerenciamento-leads"] },
+        (old) => {
+          if (!old) return old;
+          const filtered = old.leads.filter(l => !sentIds.has(l.id));
+          return { leads: filtered, total: Math.max(0, old.total - ids.length) };
+        }
+      );
+      // Refetch in background to sync with server
       queryClient.invalidateQueries({ queryKey: ["gerenciamento-leads"] });
       queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
       queryClient.invalidateQueries({ queryKey: ["leads-list"] });
