@@ -137,7 +137,7 @@ export default function FilaLeadsPage() {
     return () => clearInterval(iv);
   }, []);
 
-  // ─── Realtime: auto-refresh when leads/interactions/tasks change (debounced) ─────
+  // ─── Realtime: auto-refresh when leads/interactions/tasks change (debounced 5s) ─────
   const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     const invalidateAll = () => {
@@ -147,7 +147,7 @@ export default function FilaLeadsPage() {
         queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
         queryClient.invalidateQueries({ queryKey: ["fila-interacoes"] });
         queryClient.invalidateQueries({ queryKey: ["leads-com-agendamento"] });
-      }, 3000);
+      }, 5000);
     };
     const channel = supabase
       .channel("fila-leads-realtime")
