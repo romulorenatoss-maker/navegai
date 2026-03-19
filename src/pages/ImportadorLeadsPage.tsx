@@ -270,7 +270,7 @@ export default function ImportadorLeadsPage() {
     if (row.plano) planoId = planoMap.get(row.plano.toLowerCase().trim()) || null;
 
     const { data: newLead, error } = await supabase.from("leads").insert({
-      nome: nomeFmt, status_lead: "novo", responsavel_id: null,
+      nome: nomeFmt, status_lead: "importado", responsavel_id: null,
       origem_lead: "importacao",
       campanha_id: (campanhaId && campanhaId !== "__none") ? campanhaId : null,
       cidade_id: cidadeId, bairro_id: bairroId, rua_id: ruaId,

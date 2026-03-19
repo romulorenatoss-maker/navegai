@@ -30,6 +30,7 @@ import DashboardVendasPage from "./pages/DashboardVendasPage";
 
 import LeadsArquivadosPage from "./pages/LeadsArquivadosPage";
 import ImportadorLeadsPage from "./pages/ImportadorLeadsPage";
+import GerenciamentoLeadsPage from "./pages/GerenciamentoLeadsPage";
 import ObjecoesLeadsPage from "./pages/ObjecoesLeadsPage";
 import RelatoriosLeadsPage from "./pages/RelatoriosLeadsPage";
 import CampanhasPage from "./pages/CampanhasPage";
@@ -82,6 +83,7 @@ const App = () => (
               <Route path="/leads/dashboard-vendas" element={<DashboardVendasPage />} />
               <Route path="/leads/rotina" element={<RotinaTentativasPage />} />
               <Route path="/leads/importador" element={<ImportadorLeadsPage />} />
+              <Route path="/leads/gerenciamento" element={<GerenciamentoLeadsPage />} />
               <Route path="/leads/campanhas" element={<CampanhasPage />} />
               <Route path="/leads/objecoes" element={<ObjecoesLeadsPage />} />
               <Route path="/leads/relatorios" element={<RelatoriosLeadsPage />} />
