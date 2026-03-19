@@ -1369,6 +1369,7 @@ export default function FilaLeadsPage() {
                 </Table>
               )}
             </CardContent>
+            <PaginationBar page={tarefaPage} setPage={setTarefaPage} total={sortedTarefas.length} />
           </Card>
         </TabsContent>
 
