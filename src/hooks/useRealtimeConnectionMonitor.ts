@@ -3,8 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Monitors the Supabase Realtime WebSocket connection.
- * If the connection drops, it automatically reconnects all channels
- * to avoid losing events and messages.
+ * If the connection drops, it automatically reconnects all channels.
+ * Coordinates with tab leader election — only the active leader
+ * should have channels, but reconnect logic applies to any tab
+ * that has active channels.
  */
 export function useRealtimeConnectionMonitor() {
   const reconnectTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -15,6 +17,8 @@ export function useRealtimeConnectionMonitor() {
       if (isReconnectingRef.current) return;
 
       const channels = supabase.getChannels();
+      if (channels.length === 0) return; // No channels = nothing to monitor
+
       const hasDisconnected = channels.some(
         (ch) => ch.state === "closed" || ch.state === "errored"
       );
@@ -48,7 +52,7 @@ export function useRealtimeConnectionMonitor() {
       }
     };
 
-    // Also reconnect when browser comes back online
+    // Reconnect when browser comes back online
     const handleOnline = () => {
       console.info("[Realtime Monitor] Browser back online, reconnecting realtime...");
       supabase.realtime.disconnect();
@@ -57,7 +61,7 @@ export function useRealtimeConnectionMonitor() {
       }, 1000);
     };
 
-    // Also reconnect when tab becomes visible again
+    // Reconnect when tab becomes visible again
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         checkAndReconnect();
