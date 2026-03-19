@@ -54,6 +54,10 @@ export default function FilaLeadsPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
+  // Post-capture dialog
+  const [postCaptureLeadId, setPostCaptureLeadId] = useState<string | null>(null);
+  const [postCaptureLeadName, setPostCaptureLeadName] = useState("");
+
   const [activeTab, setActiveTab] = useState("fila");
 
   // Filters
