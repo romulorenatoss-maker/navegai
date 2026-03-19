@@ -11,7 +11,6 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    // ── Authentication: require a valid logged-in user ──
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Não autorizado" }), {
@@ -36,7 +35,6 @@ serve(async (req) => {
 
     const userId = claimsData.claims.sub;
 
-    // Only admins and avaliadores can use the assistant
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -63,18 +61,22 @@ serve(async (req) => {
     const todayStart = `${today}T00:00:00.000Z`;
     const todayEnd = `${today}T23:59:59.999Z`;
 
+    // ── BATCH 1: All counts and full data queries in parallel ──
     const [
+      // Leads counts
       { count: leadsTotal },
       { count: leadsHoje },
       { count: leadsNaFila },
       { count: leadsConvertidos },
       { count: leadsConvertidosHoje },
       { count: leadsPerdidos },
-      { data: campanhas },
-      { data: interacoes },
+      // OS counts
       { count: osTotal },
       { count: osConcluidas },
       { count: osHoje },
+      // Full data
+      { data: campanhas },
+      { data: interacoes },
       { data: tentativasData },
       { data: statusLeads },
       { data: osDetalhes },
@@ -84,6 +86,27 @@ serve(async (req) => {
       { data: respostasData },
       { data: leadsCompletos },
       { data: leadContatos },
+      // NEW: Clientes
+      { data: clientesData, count: clientesTotal },
+      { data: clienteContatos },
+      // NEW: Profiles (colaboradores)
+      { data: profilesData },
+      // NEW: Setores
+      { data: setoresData },
+      // NEW: Tipos de Serviço
+      { data: tiposServicoData },
+      // NEW: Planos
+      { data: planosData },
+      // NEW: Objeções de leads
+      { data: objecoesData },
+      // NEW: Registro de objeções
+      { data: registroObjecoesData },
+      // NEW: Rotina de tentativas config
+      { data: rotinaTentativasData },
+      // NEW: Configuração do fluxo de leads
+      { data: configFluxoData },
+      // NEW: Leads com convertido_por (vendas)
+      { data: leadsConvertidosPorData },
     ] = await Promise.all([
       supabase.from("leads").select("*", { count: "exact", head: true }),
       supabase.from("leads").select("*", { count: "exact", head: true }).gte("created_at", todayStart).lte("created_at", todayEnd),
@@ -91,54 +114,108 @@ serve(async (req) => {
       supabase.from("leads").select("*", { count: "exact", head: true }).eq("status_lead", "convertido"),
       supabase.from("leads").select("*", { count: "exact", head: true }).eq("status_lead", "convertido").gte("updated_at", todayStart).lte("updated_at", todayEnd),
       supabase.from("leads").select("*", { count: "exact", head: true }).eq("status_lead", "perdido"),
-      supabase.from("campanhas").select("id, nome").eq("ativo", true),
-      supabase.from("lead_interacoes").select("lead_id, tipo_contato, resultado, data_interacao, colaborador_id, numero_utilizado, profiles:colaborador_id(nome)"),
       supabase.from("ordens_servico").select("*", { count: "exact", head: true }),
       supabase.from("ordens_servico").select("*", { count: "exact", head: true }).eq("status", "concluida"),
       supabase.from("ordens_servico").select("*", { count: "exact", head: true }).gte("created_at", todayStart).lte("created_at", todayEnd),
-      supabase.from("lead_tarefas_contato").select("lead_id, tentativa, status"),
+      // Campanhas
+      supabase.from("campanhas").select("id, nome, ativo"),
+      // Interações
+      supabase.from("lead_interacoes").select("lead_id, tipo_contato, resultado, data_interacao, colaborador_id, numero_utilizado, profiles:colaborador_id(nome)").order("data_interacao", { ascending: false }).limit(1000),
+      // Tentativas
+      supabase.from("lead_tarefas_contato").select("lead_id, tentativa, status, periodo, data_contato, fora_do_prazo, responsavel:responsavel_id(nome)").order("created_at", { ascending: false }).limit(1000),
+      // Status leads
       supabase.from("leads").select("status_lead"),
+      // OS detalhes
       supabase.from("ordens_servico").select(`
         id, numero_os, status, data_abertura, data_conclusao, cliente_nome, cliente_cpf,
         tipo_servico:tipo_servico_id(nome),
         tecnico:tecnico_id(nome),
         atendente:atendente_id(nome),
         colaborador_avaliado:colaborador_avaliado_id(nome)
-      `).order("created_at", { ascending: false }).limit(200),
+      `).order("created_at", { ascending: false }).limit(500),
+      // Histórico leads
       supabase.from("lead_historico").select(`
         lead_id, tipo_evento, descricao, data_evento,
         profiles:usuario_id(nome),
         leads:lead_id(nome)
       `).order("data_evento", { ascending: false }).limit(500),
+      // Atrasos
       supabase.from("registro_atraso_tentativa").select(`
         lead_id, tentativa, periodo, data_programada, data_registro,
         profiles:colaborador_id(nome),
         leads:lead_id(nome)
-      `).order("created_at", { ascending: false }).limit(200),
+      `).order("created_at", { ascending: false }).limit(500),
+      // Avaliações
       supabase.from("avaliacoes").select(`
         id, ordem_servico_id, concluida, concluida_em, nota_final,
         profiles:avaliador_id(nome),
         tipo_avaliacao:tipo_avaliacao_id(nome)
-      `).order("created_at", { ascending: false }).limit(300),
+      `).order("created_at", { ascending: false }).limit(500),
+      // Respostas
       supabase.from("respostas_avaliacao").select(`
         ordem_servico_id, pergunta_id, resposta, observacao, created_at,
         profiles:avaliador_id(nome),
         perguntas_avaliacao:pergunta_id(pergunta, peso, setor_avaliado:setor_avaliado_id(nome))
-      `).not("resposta", "is", null).order("created_at", { ascending: false }).limit(500),
-      // Full leads with campaign and address info
+      `).not("resposta", "is", null).order("created_at", { ascending: false }).limit(1000),
+      // Leads completos
       supabase.from("leads").select(`
         id, nome, status_lead, data_criacao, updated_at, repetidor, origem_lead, numero_endereco, agendamento_retorno,
         campanha:campanha_id(nome),
         responsavel:responsavel_id(nome),
+        convertido_por_profile:convertido_por(nome),
+        convertido_registrado_por_profile:convertido_registrado_por(nome),
         cidade:cidade_id(nome),
         bairro:bairro_id(nome),
-        rua:rua_id(nome)
-      `).order("created_at", { ascending: false }).limit(500),
-      // Lead contacts
+        rua:rua_id(nome),
+        plano:plano_id(nome_plano),
+        cliente:cliente_id(id, nome, cpf)
+      `).order("created_at", { ascending: false }).limit(1000),
+      // Lead contatos
       supabase.from("lead_contatos").select("lead_id, tipo_contato, valor, tem_whatsapp").limit(1000),
+      // CLIENTES
+      supabase.from("clientes").select(`
+        id, nome, cpf, rg, nome_mae, endereco, numero, cep, cidade,
+        cidade_ref:cidade_id(nome),
+        bairro:bairro_id(nome),
+        rua:rua_id(nome)
+      `, { count: "exact" }).order("created_at", { ascending: false }).limit(1000),
+      // Cliente contatos
+      supabase.from("cliente_contatos").select("cliente_id, tipo, valor, tem_whatsapp").limit(1000),
+      // Profiles (colaboradores)
+      supabase.from("profiles").select(`
+        id, nome, email, cargo, ativo, user_id,
+        setor:setor_id(nome)
+      `).order("nome"),
+      // Setores
+      supabase.from("setores").select("id, nome, descricao, ativo"),
+      // Tipos de serviço
+      supabase.from("tipos_servico").select("id, nome, descricao, ativo, setor:setor_id(nome)"),
+      // Planos
+      supabase.from("planos").select("id, nome_plano, descricao, velocidade"),
+      // Objeções
+      supabase.from("lead_objecoes").select("id, descricao, ativo"),
+      // Registro de objeções
+      supabase.from("registro_objecao_lead").select(`
+        lead_id, objecao_id, data_registro,
+        profiles:colaborador_id(nome),
+        leads:lead_id(nome),
+        objecao:objecao_id(descricao)
+      `).order("created_at", { ascending: false }).limit(500),
+      // Rotina tentativas
+      supabase.from("rotina_tentativas_leads").select("*").order("tentativa_numero"),
+      // Config fluxo
+      supabase.from("configuracao_fluxo_leads").select("*").limit(1),
+      // Leads convertidos com info de quem converteu
+      supabase.from("leads").select(`
+        id, nome, updated_at, 
+        convertido_por_profile:convertido_por(nome),
+        convertido_registrado_por_profile:convertido_registrado_por(nome),
+        campanha:campanha_id(nome),
+        plano:plano_id(nome_plano)
+      `).eq("status_lead", "convertido").order("updated_at", { ascending: false }).limit(1000),
     ]);
 
-    // Campaign conversion counts
+    // ── Campaign conversion counts ──
     const { data: leadsWithCampanha } = await supabase
       .from("leads")
       .select("campanha_id, status_lead, campanhas(nome)")
@@ -155,7 +232,7 @@ serve(async (req) => {
       }
     }
 
-    // Attempts per lead
+    // ── Attempts per lead ──
     const tentativasPorLead: Record<string, number> = {};
     if (tentativasData) {
       for (const t of tentativasData) {
@@ -166,7 +243,7 @@ serve(async (req) => {
     const somaTentativas = Object.values(tentativasPorLead).reduce((a, b) => a + b, 0);
     const mediaTentativas = totalLeadsComTentativa > 0 ? (somaTentativas / totalLeadsComTentativa).toFixed(1) : "0";
 
-    // Status distribution
+    // ── Status distribution ──
     const statusCount: Record<string, number> = {};
     if (statusLeads) {
       for (const l of statusLeads) {
@@ -174,11 +251,10 @@ serve(async (req) => {
       }
     }
 
-    // Interaction stats
+    // ── Interaction stats ──
     const totalInteracoes = interacoes?.length || 0;
     const interacoesHoje = interacoes?.filter(i => i.data_interacao >= todayStart && i.data_interacao <= todayEnd).length || 0;
 
-    // Interactions per lead count
     const interacoesPorLead: Record<string, number> = {};
     if (interacoes) {
       for (const i of interacoes) {
@@ -186,7 +262,7 @@ serve(async (req) => {
       }
     }
 
-    // Contacts mapped by lead
+    // ── Contacts mapped by lead ──
     const contatosPorLead: Record<string, string[]> = {};
     if (leadContatos) {
       for (const c of leadContatos) {
@@ -195,12 +271,26 @@ serve(async (req) => {
       }
     }
 
-    // Build full leads list with enriched data
+    // ── Client contacts mapped ──
+    const contatosPorCliente: Record<string, string[]> = {};
+    if (clienteContatos) {
+      for (const c of clienteContatos) {
+        if (!contatosPorCliente[c.cliente_id]) contatosPorCliente[c.cliente_id] = [];
+        contatosPorCliente[c.cliente_id].push(`${c.tipo}: ${c.valor}${c.tem_whatsapp ? " (WhatsApp)" : ""}`);
+      }
+    }
+
+    // ── Build enriched leads ──
     const leadsEnriquecidos = (leadsCompletos || []).map((l: any) => ({
       nome: l.nome,
       status: l.status_lead,
       campanha: l.campanha?.nome || "-",
       responsavel: l.responsavel?.nome || "-",
+      convertido_por: l.convertido_por_profile?.nome || "-",
+      registrado_por: l.convertido_registrado_por_profile?.nome || "-",
+      plano: l.plano?.nome_plano || "-",
+      cliente_vinculado: l.cliente?.nome || "-",
+      cliente_cpf: l.cliente?.cpf || "-",
       tentativas: tentativasPorLead[l.id] || 0,
       interacoes: interacoesPorLead[l.id] || 0,
       contatos: contatosPorLead[l.id]?.join("; ") || "-",
@@ -212,22 +302,86 @@ serve(async (req) => {
       atualizacao: l.updated_at?.split("T")[0],
       agendamento: l.agendamento_retorno?.split("T")[0] || "-",
       repetidor: l.repetidor || "-",
+      origem: l.origem_lead || "-",
     }));
 
-    // OS details
-    const osDetalhesFmt = (osDetalhes || []).slice(0, 100).map((os: any) => ({
+    // ── Build enriched clientes ──
+    const clientesEnriquecidos = (clientesData || []).map((c: any) => ({
+      nome: c.nome,
+      cpf: c.cpf || "-",
+      rg: c.rg || "-",
+      nome_mae: c.nome_mae || "-",
+      endereco: c.endereco || "-",
+      numero: c.numero || "-",
+      cep: c.cep || "-",
+      cidade: c.cidade_ref?.nome || c.cidade || "-",
+      bairro: c.bairro?.nome || "-",
+      rua: c.rua?.nome || "-",
+      contatos: contatosPorCliente[c.id]?.join("; ") || "-",
+    }));
+
+    // ── Vendas (leads convertidos) ──
+    const vendasFmt = (leadsConvertidosPorData || []).map((l: any) => ({
+      lead: l.nome,
+      convertido_por: l.convertido_por_profile?.nome || "-",
+      registrado_por: l.convertido_registrado_por_profile?.nome || "-",
+      campanha: l.campanha?.nome || "-",
+      plano: l.plano?.nome_plano || "-",
+      data_conversao: l.updated_at?.split("T")[0] || "-",
+    }));
+
+    // ── Colaboradores (profiles) ──
+    const colaboradoresFmt = (profilesData || []).map((p: any) => ({
+      nome: p.nome,
+      email: p.email,
+      cargo: p.cargo || "-",
+      setor: p.setor?.nome || "-",
+      ativo: p.ativo ? "Sim" : "Não",
+    }));
+
+    // ── Colaborador performance: interações, conversões, atrasos ──
+    const perfPorColaborador: Record<string, { interacoes: number; conversoes: number; atrasos: number }> = {};
+    if (interacoes) {
+      for (const i of interacoes) {
+        const nome = (i as any).profiles?.nome || i.colaborador_id;
+        if (!perfPorColaborador[nome]) perfPorColaborador[nome] = { interacoes: 0, conversoes: 0, atrasos: 0 };
+        perfPorColaborador[nome].interacoes++;
+      }
+    }
+    if (leadsConvertidosPorData) {
+      for (const l of leadsConvertidosPorData) {
+        const nome = (l as any).convertido_por_profile?.nome;
+        if (nome) {
+          if (!perfPorColaborador[nome]) perfPorColaborador[nome] = { interacoes: 0, conversoes: 0, atrasos: 0 };
+          perfPorColaborador[nome].conversoes++;
+        }
+      }
+    }
+    if (atrasosData) {
+      for (const a of atrasosData) {
+        const nome = (a as any).profiles?.nome || "-";
+        if (nome !== "-") {
+          if (!perfPorColaborador[nome]) perfPorColaborador[nome] = { interacoes: 0, conversoes: 0, atrasos: 0 };
+          perfPorColaborador[nome].atrasos++;
+        }
+      }
+    }
+
+    // ── OS details ──
+    const osDetalhesFmt = (osDetalhes || []).map((os: any) => ({
       numero: os.numero_os || "S/N",
       status: os.status,
       abertura: os.data_abertura?.split("T")[0],
       conclusao: os.data_conclusao?.split("T")[0] || "-",
       cliente: os.cliente_nome || "-",
+      cpf: os.cliente_cpf || "-",
       tecnico: os.tecnico?.nome || "-",
       atendente: os.atendente?.nome || "-",
       avaliado: os.colaborador_avaliado?.nome || "-",
       servico: os.tipo_servico?.nome || "-",
     }));
 
-    const historicoFmt = (historicoLeads || []).slice(0, 200).map((h: any) => ({
+    const historicoFmt = (historicoLeads || []).slice(0, 300).map((h: any) => ({
       lead: h.leads?.nome || h.lead_id,
       evento: h.tipo_evento,
       descricao: h.descricao || "",
@@ -235,7 +389,7 @@ serve(async (req) => {
       usuario: h.profiles?.nome || "-",
     }));
 
-    const atrasosFmt = (atrasosData || []).slice(0, 100).map((a: any) => ({
+    const atrasosFmt = (atrasosData || []).map((a: any) => ({
       lead: a.leads?.nome || a.lead_id,
       colaborador: a.profiles?.nome || "-",
       tentativa: a.tentativa,
@@ -244,7 +398,7 @@ serve(async (req) => {
       registro: a.data_registro,
     }));
 
-    const interacoesFmt = (interacoes || []).slice(0, 200).map((i: any) => ({
+    const interacoesFmt = (interacoes || []).slice(0, 500).map((i: any) => ({
       lead_id: i.lead_id,
       tipo: i.tipo_contato,
       resultado: i.resultado || "-",
@@ -253,7 +407,7 @@ serve(async (req) => {
       numero: i.numero_utilizado || "-",
     }));
 
-    const avaliacoesFmt = (avaliacoesData || []).slice(0, 100).map((a: any) => ({
+    const avaliacoesFmt = (avaliacoesData || []).map((a: any) => ({
       os_id: a.ordem_servico_id,
       avaliador: a.profiles?.nome || "-",
       tipo: a.tipo_avaliacao?.nome || "-",
@@ -262,7 +416,7 @@ serve(async (req) => {
       nota: a.nota_final,
     }));
 
-    const respostasFmt = (respostasData || []).slice(0, 200).map((r: any) => ({
+    const respostasFmt = (respostasData || []).slice(0, 500).map((r: any) => ({
       os_id: r.ordem_servico_id,
       pergunta: r.perguntas_avaliacao?.pergunta || "-",
       setor: r.perguntas_avaliacao?.setor_avaliado?.nome || "-",
@@ -273,112 +427,209 @@ serve(async (req) => {
       data: r.created_at,
     }));
 
+    const objecoesFmt = (registroObjecoesData || []).map((r: any) => ({
+      lead: r.leads?.nome || r.lead_id,
+      objecao: r.objecao?.descricao || "-",
+      colaborador: r.profiles?.nome || "-",
+      data: r.data_registro,
+    }));
+
+    // ── Tarefas de contato com detalhes ──
+    const tarefasFmt = (tentativasData || []).slice(0, 500).map((t: any) => ({
+      lead_id: t.lead_id,
+      tentativa: t.tentativa,
+      status: t.status,
+      periodo: t.periodo,
+      data_contato: t.data_contato,
+      fora_do_prazo: t.fora_do_prazo,
+      responsavel: t.responsavel?.nome || "-",
+    }));
+
+    // ── Build context ──
     const contextData = `
 DADOS DO SISTEMA EM TEMPO REAL (${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}):
 
-LEADS:
-- Total de leads: ${leadsTotal || 0}
+═══════════════════════════════════════
+RESUMO GERAL
+═══════════════════════════════════════
+- Total de Leads: ${leadsTotal || 0}
 - Leads criados hoje: ${leadsHoje || 0}
 - Leads na fila (ativos): ${leadsNaFila || 0}
-- Leads convertidos (total): ${leadsConvertidos || 0}
-- Leads convertidos hoje: ${leadsConvertidosHoje || 0}
+- Leads convertidos (vendas) total: ${leadsConvertidos || 0}
+- Leads convertidos hoje (vendas hoje): ${leadsConvertidosHoje || 0}
 - Leads perdidos: ${leadsPerdidos || 0}
 - Média de tentativas por lead: ${mediaTentativas}
-- Distribuição por status: ${JSON.stringify(statusCount)}
-
-DADOS COMPLETOS DOS LEADS (últimos 500, com contatos, tentativas, interações):
-${JSON.stringify(leadsEnriquecidos)}
-
-ORDENS DE SERVIÇO (OS):
+- Total de clientes cadastrados: ${clientesTotal || 0}
 - Total de OS: ${osTotal || 0}
 - OS concluídas: ${osConcluidas || 0}
 - OS criadas hoje: ${osHoje || 0}
+- Total de interações: ${totalInteracoes}
+- Interações hoje: ${interacoesHoje}
+- Distribuição de leads por status: ${JSON.stringify(statusCount)}
 
-DETALHES DAS OS (últimas 100):
-${JSON.stringify(osDetalhesFmt)}
+═══════════════════════════════════════
+COLABORADORES (${colaboradoresFmt.length} registros)
+═══════════════════════════════════════
+${JSON.stringify(colaboradoresFmt)}
 
-CAMPANHAS ATIVAS: ${campanhas?.map(c => c.nome).join(", ") || "Nenhuma"}
+PERFORMANCE POR COLABORADOR (interações, conversões, atrasos):
+${JSON.stringify(perfPorColaborador)}
+
+═══════════════════════════════════════
+SETORES
+═══════════════════════════════════════
+${JSON.stringify(setoresData || [])}
+
+═══════════════════════════════════════
+TIPOS DE SERVIÇO
+═══════════════════════════════════════
+${JSON.stringify((tiposServicoData || []).map((t: any) => ({ nome: t.nome, descricao: t.descricao, ativo: t.ativo, setor: t.setor?.nome || "-" })))}
+
+═══════════════════════════════════════
+PLANOS DISPONÍVEIS
+═══════════════════════════════════════
+${JSON.stringify(planosData || [])}
+
+═══════════════════════════════════════
+CAMPANHAS (ativas e inativas)
+═══════════════════════════════════════
+${JSON.stringify(campanhas || [])}
 CONVERSÃO POR CAMPANHA: ${JSON.stringify(campConversion)}
 
-INTERAÇÕES COM LEADS (últimas 200, com nome do colaborador):
-${JSON.stringify(interacoesFmt)}
-- Total de interações registradas: ${totalInteracoes}
-- Interações hoje: ${interacoesHoje}
+═══════════════════════════════════════
+CONFIGURAÇÃO DO FLUXO DE LEADS
+═══════════════════════════════════════
+${JSON.stringify(configFluxoData || [])}
 
-HISTÓRICO DE ALTERAÇÕES EM LEADS (últimos 200 eventos):
-${JSON.stringify(historicoFmt)}
+ROTINA DE TENTATIVAS:
+${JSON.stringify(rotinaTentativasData || [])}
 
-REGISTROS DE ATRASO EM TENTATIVAS (últimos 100):
-${JSON.stringify(atrasosFmt)}
+═══════════════════════════════════════
+OBJEÇÕES CADASTRADAS
+═══════════════════════════════════════
+${JSON.stringify(objecoesData || [])}
 
-AVALIAÇÕES (últimas 100):
+═══════════════════════════════════════
+VENDAS (LEADS CONVERTIDOS) - ${vendasFmt.length} registros
+═══════════════════════════════════════
+${JSON.stringify(vendasFmt)}
+
+═══════════════════════════════════════
+LEADS COMPLETOS (${leadsEnriquecidos.length} registros com contatos, tentativas, interações, plano, cliente vinculado)
+═══════════════════════════════════════
+${JSON.stringify(leadsEnriquecidos)}
+
+═══════════════════════════════════════
+CLIENTES CADASTRADOS (${clientesEnriquecidos.length} registros com contatos e endereço)
+═══════════════════════════════════════
+${JSON.stringify(clientesEnriquecidos)}
+
+═══════════════════════════════════════
+ORDENS DE SERVIÇO (${osDetalhesFmt.length} registros)
+═══════════════════════════════════════
+${JSON.stringify(osDetalhesFmt)}
+
+═══════════════════════════════════════
+AVALIAÇÕES (${avaliacoesFmt.length} registros)
+═══════════════════════════════════════
 ${JSON.stringify(avaliacoesFmt)}
 
-RESPOSTAS DE AVALIAÇÃO (últimas 200):
+═══════════════════════════════════════
+RESPOSTAS DE AVALIAÇÃO (${respostasFmt.length} registros)
+═══════════════════════════════════════
 ${JSON.stringify(respostasFmt)}
+
+═══════════════════════════════════════
+INTERAÇÕES COM LEADS (${interacoesFmt.length} registros)
+═══════════════════════════════════════
+${JSON.stringify(interacoesFmt)}
+
+═══════════════════════════════════════
+TAREFAS DE CONTATO (${tarefasFmt.length} registros)
+═══════════════════════════════════════
+${JSON.stringify(tarefasFmt)}
+
+═══════════════════════════════════════
+HISTÓRICO DE LEADS (${historicoFmt.length} eventos)
+═══════════════════════════════════════
+${JSON.stringify(historicoFmt)}
+
+═══════════════════════════════════════
+REGISTROS DE ATRASO (${atrasosFmt.length} registros)
+═══════════════════════════════════════
+${JSON.stringify(atrasosFmt)}
+
+═══════════════════════════════════════
+REGISTROS DE OBJEÇÃO (${objecoesFmt.length} registros)
+═══════════════════════════════════════
+${JSON.stringify(objecoesFmt)}
 `;
 
-    const systemPrompt = `Você é um assistente inteligente de Business Intelligence (BI) para um sistema de gestão de leads, vendas e avaliações de qualidade (OS).
-
-Seu papel é responder perguntas de gestores sobre o desempenho do negócio e dos colaboradores com base nos dados reais do sistema.
+    const systemPrompt = `Você é a Naví, uma assistente inteligente de Business Intelligence (BI) para um sistema completo de gestão de leads, vendas, clientes e avaliações de qualidade.
 
 CONTEXTO DO SISTEMA:
-- Ordens de Serviço (OS) são avaliações de qualidade feitas por avaliadores sobre atendentes e técnicos
-- Cada OS tem perguntas que são respondidas (sim/não/N.A.) por avaliadores de diferentes setores
-- Leads passam por um funil: criação → fila → captura → tentativas de contato → conversão ou perda
-- O histórico de leads registra TODAS as ações: quem visualizou, capturou, transferiu, atrasou, interagiu
-- Registros de atraso mostram colaboradores que não cumpriram prazos de tentativa
-- Você tem acesso aos dados completos dos leads incluindo contatos telefônicos
+- LEADS = potenciais clientes que passam por um funil: criação → fila → captura → tentativas de contato → conversão (venda) ou perda
+- VENDAS = leads com status "convertido". O campo "convertido_por" indica quem fez a venda. Venda = conversão de lead.
+- CLIENTES = pessoas cadastradas no sistema, podem estar vinculados a leads e/ou OS via CPF ou cliente_id
+- ORDENS DE SERVIÇO (OS) = avaliações de qualidade sobre atendentes e técnicos
+- COLABORADORES = todos os usuários do sistema (perfis), com cargo e setor
+- CAMPANHAS = origens dos leads (Instagram, Google, Indicação, etc.)
+- PLANOS = planos de internet oferecidos aos clientes
+- OBJEÇÕES = motivos pelos quais leads não convertem
+
+REGRAS IMPORTANTES:
+1. NUNCA assuma que dados não existem sem verificar nos dados fornecidos
+2. SEMPRE use os dados reais fornecidos para responder
+3. Quando o usuário perguntar sobre "vendas", considere leads convertidos
+4. Quando perguntar sobre "clientes", busque na tabela de clientes E nos leads vinculados
+5. Cruze dados entre tabelas: um cliente pode ter leads, OS, e contatos em diferentes tabelas
+6. Identifique colaboradores pelos nomes nos dados (profiles)
+7. Para performance de colaboradores, cruze: interações, conversões (vendas), atrasos, avaliações
+8. Se a pergunta é genérica ("como está o sistema?"), forneça visão geral de TODAS as áreas
 
 REGRAS DE FORMATAÇÃO:
-- Sempre responda em português do Brasil
-- Use os dados fornecidos para dar respostas precisas e numéricas
-- Quando perguntar sobre uma pessoa, cruze os dados: OS, avaliações, histórico, interações, atrasos
-- Identifique colaboradores pelos nomes que aparecem nos dados
-- Quando relevante, inclua datas e horários específicos dos eventos
+- Responda sempre em português do Brasil
+- Use dados precisos e numéricos
 - Formate números grandes com separadores (ex: 1.234)
-- Use emojis para destacar pontos importantes
-- Use markdown para formatação (negrito, listas, tabelas quando aplicável)
-- Ao falar de desempenho de alguém, mostre: notas médias, OS avaliadas, atrasos, interações realizadas
+- Use emojis para destacar pontos
+- Use markdown (negrito, listas, tabelas)
+- Quando relevante, inclua datas e horários
 
-CAPACIDADES AVANÇADAS DE RELATÓRIO:
-Você pode retornar dados estruturados especiais que o sistema renderiza automaticamente como tabelas, gráficos e relatórios exportáveis. Use os seguintes blocos especiais quando for relevante:
+CAPACIDADES DE RELATÓRIO (use blocos especiais que o sistema renderiza automaticamente):
 
-1. **TABELA DE DADOS** (renderizada como tabela interativa com exportação para Excel):
-Quando quiser mostrar dados tabulares, insira um bloco assim:
+1. **TABELA** (renderizada como tabela interativa com exportação Excel):
 \`\`\`report-table
-{"title":"Título do Relatório","columns":["Coluna1","Coluna2","Coluna3"],"rows":[["valor1","valor2","valor3"],["valor4","valor5","valor6"]]}
+{"title":"Título","columns":["Col1","Col2"],"rows":[["v1","v2"]]}
 \`\`\`
 
 2. **GRÁFICO DE BARRAS**:
 \`\`\`chart-bar
-{"title":"Título","labels":["Label1","Label2"],"datasets":[{"name":"Série1","values":[10,20]}]}
+{"title":"Título","labels":["L1","L2"],"datasets":[{"name":"Série","values":[10,20]}]}
 \`\`\`
 
 3. **GRÁFICO DE LINHAS**:
 \`\`\`chart-line
-{"title":"Título","labels":["Jan","Fev","Mar"],"datasets":[{"name":"Série1","values":[10,20,30]}]}
+{"title":"Título","labels":["Jan","Fev"],"datasets":[{"name":"Série","values":[10,20]}]}
 \`\`\`
 
 4. **GRÁFICO DE PIZZA**:
 \`\`\`chart-pie
-{"title":"Título","labels":["Fatia1","Fatia2"],"values":[60,40]}
+{"title":"Título","labels":["A","B"],"values":[60,40]}
 \`\`\`
 
-QUANDO USAR DADOS ESTRUTURADOS:
-- SEMPRE que listar leads, colaboradores ou dados tabulares → use report-table
-- SEMPRE que comparar valores entre categorias → use chart-bar
-- SEMPRE que mostrar tendências ao longo do tempo → use chart-line
-- SEMPRE que mostrar distribuição/proporção → use chart-pie
-- Combine texto explicativo COM os blocos de dados. Coloque análises, insights e recomendações no texto ao redor dos blocos.
-- Quando o usuário pedir relatório ou análise, SEMPRE inclua pelo menos uma tabela E um gráfico.
-- Os dados das tabelas devem ser completos (incluir todos os registros relevantes, não apenas exemplos).
+QUANDO USAR:
+- Listagem de dados → report-table (SEMPRE com TODOS os registros relevantes)
+- Comparação entre categorias → chart-bar
+- Tendências no tempo → chart-line
+- Distribuição/proporção → chart-pie
+- Em relatórios, SEMPRE inclua pelo menos uma tabela E um gráfico
+- Combine texto explicativo com blocos de dados
 
-ANÁLISE E INSIGHTS:
-- Sempre identifique padrões nos dados (crescimento, queda, gargalos)
-- Destaque problemas (leads sem interação, colaboradores com muitos atrasos, campanhas com baixa conversão)
-- Sugira melhorias e próximos passos acionáveis
-- Compare métricas quando relevante (ex: conversão entre campanhas)
+ANÁLISE:
+- Identifique padrões (crescimento, queda, gargalos)
+- Destaque problemas (leads parados, colaboradores com atrasos, campanhas com baixa conversão)
+- Sugira melhorias acionáveis
+- Compare métricas quando relevante
 
 ${contextData}`;
 
@@ -400,7 +651,7 @@ Você DEVE retornar a resposta em formato JSON válido com a seguinte estrutura:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: simpleSystemPrompt },
           { role: "user", content: question },
@@ -430,18 +681,14 @@ Você DEVE retornar a resposta em formato JSON válido com a seguinte estrutura:
     if (isSimpleMode) {
       const data = await response.json();
       const rawContent = data.choices?.[0]?.message?.content || "";
-      // Try to parse as JSON, otherwise return as text
       let texto = rawContent;
       let dados: any[] = [];
       try {
-        // Strip markdown code fences if present
         const cleaned = rawContent.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
         const parsed = JSON.parse(cleaned);
         texto = parsed.texto || rawContent;
         dados = Array.isArray(parsed.dados) ? parsed.dados : [];
-      } catch {
-        // AI didn't return valid JSON, just use the text
-      }
+      } catch { /* AI didn't return valid JSON */ }
       return new Response(JSON.stringify({ texto, dados }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
