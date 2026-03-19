@@ -1000,51 +1000,7 @@ export default function LeadsPage() {
   const CAPTURA_PAGE_SIZE = 2;
 
 
-  // ─── Realtime subscription for leads + related tables ─────────────────
-  useEffect(() => {
-    const realtimeDebounce = { current: null as ReturnType<typeof setTimeout> | null };
-    const debouncedInvalidate = (...keys: string[][]) => {
-      if (realtimeDebounce.current) clearTimeout(realtimeDebounce.current);
-      realtimeDebounce.current = setTimeout(() => {
-        keys.forEach(k => queryClient.invalidateQueries({ queryKey: k }));
-      }, 2000);
-    };
-
-    const channel = supabase
-      .channel("leads-page-realtime")
-      .on("postgres_changes", {
-        event: "*",
-        schema: "public",
-        table: "leads",
-      }, (payload: any) => {
-        const oldStatus = payload.old?.status_lead;
-        const newStatus = payload.new?.status_lead;
-        const captureStates = ["fila_captura", "reservado", "em_atendimento"];
-        if (captureStates.includes(oldStatus) || captureStates.includes(newStatus)) {
-          queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
-        }
-        if (oldStatus !== newStatus) {
-          debouncedInvalidate(["leads-list"]);
-        }
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "lead_contatos" }, () => {
-        debouncedInvalidate(["all-lead-contatos"], ["captura-contatos"]);
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "lead_interacoes" }, () => {
-        debouncedInvalidate(["all-lead-interacoes"], ["captura-interacoes"]);
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "lead_tarefas_contato" }, () => {
-        debouncedInvalidate(["leads-list"]);
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "lead_historico" }, () => {
-        debouncedInvalidate(["all-lead-transfers"]);
-      })
-      .subscribe();
-    return () => {
-      if (realtimeDebounce.current) clearTimeout(realtimeDebounce.current);
-      supabase.removeChannel(channel);
-    };
-  }, [queryClient]);
+  // ─── Realtime handled centrally by useLeadsRealtime in AppLayout ─────
 
   // Build priority queue (cycle-aware after transfers)
   const priorityQueue = useMemo(() => {

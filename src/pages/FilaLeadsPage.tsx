@@ -137,29 +137,7 @@ export default function FilaLeadsPage() {
     return () => clearInterval(iv);
   }, []);
 
-  // ─── Realtime: auto-refresh when leads/interactions/tasks change (debounced 5s) ─────
-  const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    const invalidateAll = () => {
-      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
-      realtimeDebounceRef.current = setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
-        queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
-        queryClient.invalidateQueries({ queryKey: ["fila-interacoes"] });
-        queryClient.invalidateQueries({ queryKey: ["leads-com-agendamento"] });
-      }, 5000);
-    };
-    const channel = supabase
-      .channel("fila-leads-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, invalidateAll)
-      .on("postgres_changes", { event: "*", schema: "public", table: "lead_interacoes" }, invalidateAll)
-      .on("postgres_changes", { event: "*", schema: "public", table: "lead_tarefas_contato" }, invalidateAll)
-      .subscribe();
-    return () => {
-      if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
-      supabase.removeChannel(channel);
-    };
-  }, [queryClient]);
+  // ─── Realtime handled centrally by useLeadsRealtime in AppLayout ─────
 
   // ─── Queries ──────────────────────────────────────
   const CAPTURE_QUEUE_STATUS = "fila_captura";
