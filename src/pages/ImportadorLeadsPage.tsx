@@ -275,12 +275,12 @@ export default function ImportadorLeadsPage() {
 
     if (error || !newLead) throw error || new Error("Falha ao criar lead");
 
-    // Insert contacts in parallel
-    const contactInserts: Promise<any>[] = [
-      supabase.from("lead_contatos").insert({ lead_id: newLead.id, tipo_contato: "telefone", valor: row.telefone, tem_whatsapp: false }),
+    // Insert contacts, history, and first task in parallel
+    const ops: Promise<any>[] = [
+      supabase.from("lead_contatos").insert({ lead_id: newLead.id, tipo_contato: "telefone", valor: row.telefone, tem_whatsapp: false }).then(),
     ];
     if (row.email) {
-      contactInserts.push(supabase.from("lead_contatos").insert({ lead_id: newLead.id, tipo_contato: "email", valor: row.email, tem_whatsapp: false }));
+      ops.push(supabase.from("lead_contatos").insert({ lead_id: newLead.id, tipo_contato: "email", valor: row.email, tem_whatsapp: false }).then());
     }
 
     const descParts = [selectedCampanhaNome ? `Lead importado da campanha "${selectedCampanhaNome}"` : "Lead importado via CSV"];
@@ -291,19 +291,19 @@ export default function ImportadorLeadsPage() {
         : `— duplicado de lead "${row.duplicateInfo.leadNome}" (${row.duplicateInfo.statusLead})`);
     }
 
-    contactInserts.push(
-      supabase.from("lead_historico").insert({ lead_id: newLead.id, usuario_id: profileId, tipo_evento: "lead_criado", descricao: descParts.join(" ") })
+    ops.push(
+      supabase.from("lead_historico").insert({ lead_id: newLead.id, usuario_id: profileId, tipo_evento: "lead_criado", descricao: descParts.join(" ") }).then()
     );
 
     if (firstRotina) {
       const nextDate = new Date();
       nextDate.setDate(nextDate.getDate() + Math.max(firstRotina.dias_apos_anterior || 0, 1));
-      contactInserts.push(
-        supabase.from("lead_tarefas_contato").insert({ lead_id: newLead.id, tentativa: 1, data_contato: nextDate.toISOString(), periodo: firstRotina.periodo_contato, status: "pendente", responsavel_id: null })
+      ops.push(
+        supabase.from("lead_tarefas_contato").insert({ lead_id: newLead.id, tentativa: 1, data_contato: nextDate.toISOString(), periodo: firstRotina.periodo_contato, status: "pendente", responsavel_id: null }).then()
       );
     }
 
-    await Promise.all(contactInserts);
+    await Promise.all(ops);
     return { nome: row.nome, telefone: row.telefone, status: "ok" };
   };
 
