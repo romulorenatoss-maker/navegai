@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { applyPhoneMask, normalizePhone, isValidPhone, getPhoneTypeLabel } from "@/lib/phone-utils";
+import LeadPostCaptureDialog from "@/components/LeadPostCaptureDialog";
 
 // ─── Types ──────────────────────────────────────────────
 interface Lead {
