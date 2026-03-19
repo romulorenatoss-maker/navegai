@@ -60,6 +60,13 @@ export default function FilaLeadsPage() {
 
   const [activeTab, setActiveTab] = useState("fila");
 
+  // ─── Pagination state (10 per page) ─────
+  const PAGE_SIZE = 10;
+  const [filaPage, setFilaPage] = useState(1);
+  const [capturaPage, setCapturaPage] = useState(1);
+  const [tarefaPage, setTarefaPage] = useState(1);
+  const [notifPage, setNotifPage] = useState(1);
+
   // Filters
   const [filterStatus, setFilterStatus] = useState("todos");
   const [filterResponsavel, setFilterResponsavel] = useState("todos");
@@ -130,7 +137,7 @@ export default function FilaLeadsPage() {
     return () => clearInterval(iv);
   }, []);
 
-  // ─── Realtime: auto-refresh when leads/interactions/tasks change (debounced) ─────
+  // ─── Realtime: auto-refresh when leads/interactions/tasks change (debounced 5s) ─────
   const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     const invalidateAll = () => {
@@ -140,7 +147,7 @@ export default function FilaLeadsPage() {
         queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
         queryClient.invalidateQueries({ queryKey: ["fila-interacoes"] });
         queryClient.invalidateQueries({ queryKey: ["leads-com-agendamento"] });
-      }, 3000);
+      }, 5000);
     };
     const channel = supabase
       .channel("fila-leads-realtime")
@@ -159,7 +166,8 @@ export default function FilaLeadsPage() {
 
   const { data: leads = [], isLoading: loadingLeads } = useQuery({
     queryKey: ["fila-leads"],
-    staleTime: 30_000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase.from("leads").select("*")
         .in("status_lead", ["novo", "em_contato", "em_atendimento", "interessado", "aguardando_decisao_avaliador", "cancelado_pendente_analise", CAPTURE_QUEUE_STATUS, "reservado"])
@@ -532,10 +540,33 @@ export default function FilaLeadsPage() {
     });
   }, [queue, filterStatus, filterResponsavel, filterAgendamento, appliedSearch]);
 
+  // Reset pages when filters change
+  useEffect(() => { setFilaPage(1); }, [filterStatus, filterResponsavel, filterAgendamento, appliedSearch]);
+  useEffect(() => { setTarefaPage(1); }, [appliedDateStart, appliedDateEnd]);
+  useEffect(() => { setNotifPage(1); }, [notifFilterVisto, notifAppliedSearch]);
+
   const totalAtrasados = queue.filter(i => i.isOverdue).length;
   const totalAgendados = queue.filter(i => i.isScheduled).length;
   const totalTarefas = sortedTarefas.length;
   const totalTarefasAtrasadas = sortedTarefas.filter((t: any) => t.status === "atrasado" || isTarefaExpirada(t)).length;
+
+  // ─── Pagination helper ─────
+  const paginate = <T,>(arr: T[], page: number) => arr.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = (total: number) => Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const PaginationBar = ({ page, setPage, total }: { page: number; setPage: (p: number) => void; total: number }) => {
+    const tp = totalPages(total);
+    if (tp <= 1) return null;
+    return (
+      <div className="flex items-center justify-between px-4 py-2 border-t">
+        <span className="text-xs text-muted-foreground">{total} itens • Página {page} de {tp}</span>
+        <div className="flex items-center gap-1">
+          <Button size="sm" variant="outline" className="h-7 text-xs px-2" disabled={page <= 1} onClick={() => setPage(page - 1)}>Anterior</Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs px-2" disabled={page >= tp} onClick={() => setPage(page + 1)}>Próxima</Button>
+        </div>
+      </div>
+    );
+  };
 
   const responsaveisNoLeads = useMemo(() => {
     const ids = [...new Set(leads.filter(l => l.status_lead !== "aguardando_decisao_avaliador").map(l => l.responsavel_id).filter(Boolean))];
@@ -991,7 +1022,9 @@ export default function FilaLeadsPage() {
                             return filaSortDir === "asc" ? cmp : -cmp;
                           });
                         }
-                        return sorted.map((item, idx) => {
+                        const paged = paginate(sorted, filaPage);
+                        return paged.map((item, idx) => {
+                        const globalIdx = (filaPage - 1) * PAGE_SIZE + idx;
                         const phones = item.contatos.filter(c => c.tipo_contato === "telefone");
                         const campanha = getCampanhaNome(item.lead);
                         const cidade = getCidadeNome(item.lead);
@@ -1008,7 +1041,7 @@ export default function FilaLeadsPage() {
                         }
                         return (
                           <TableRow key={item.lead.id} className={rowBg}>
-                            <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
+                             <TableCell className="text-xs text-muted-foreground font-mono">{globalIdx + 1}</TableCell>
                             <TableCell>
                               <div className="flex flex-col gap-0.5">
                                 <span className="font-medium text-sm">{item.lead.nome}</span>
@@ -1107,6 +1140,7 @@ export default function FilaLeadsPage() {
                 </div>
               )}
             </CardContent>
+            <PaginationBar page={filaPage} setPage={setFilaPage} total={filteredQueue.length} />
           </Card>
         </TabsContent>
 
@@ -1137,13 +1171,14 @@ export default function FilaLeadsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {capturaLeads.map((item, idx) => {
+                    {paginate(capturaLeads, capturaPage).map((item, idx) => {
+                      const globalIdx = (capturaPage - 1) * PAGE_SIZE + idx;
                       const phones = item.contatos.filter(c => c.tipo_contato === "telefone");
                       const campanha = getCampanhaNome(item.lead);
                       const cidade = getCidadeNome(item.lead);
                       return (
                         <TableRow key={item.lead.id} className="bg-purple-50/30 dark:bg-purple-950/10">
-                          <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground font-mono">{globalIdx + 1}</TableCell>
                           <TableCell>
                             <div className="flex flex-col gap-0.5">
                               <span className="font-medium text-sm">{item.lead.nome}</span>
@@ -1185,6 +1220,7 @@ export default function FilaLeadsPage() {
                 </Table>
               )}
             </CardContent>
+            <PaginationBar page={capturaPage} setPage={setCapturaPage} total={capturaLeads.length} />
           </Card>
         </TabsContent>
 
@@ -1253,7 +1289,8 @@ export default function FilaLeadsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sortedTarefas.map((tarefa: any, idx: number) => {
+                    {paginate(sortedTarefas, tarefaPage).map((tarefa: any, idx: number) => {
+                      const globalIdx = (tarefaPage - 1) * PAGE_SIZE + idx;
                       const isAguardando = tarefa.status === "aguardando_visualizacao";
                       const isOv = !isAguardando && (tarefa.status === "atrasado" || (tarefa.periodo && isTarefaExpirada(tarefa)));
                       const responsavelNome = tarefa._responsavel_id ? (profiles.find(p => p.id === tarefa._responsavel_id)?.nome || "—") : "Sem responsável";
@@ -1261,7 +1298,7 @@ export default function FilaLeadsPage() {
                       const isCadencia = tarefa._tipo_agenda === "cadencia";
                       return (
                         <TableRow key={tarefa.id} className={isOv ? "bg-destructive/5" : isAguardando ? "bg-blue-50/50 dark:bg-blue-950/20" : ""}>
-                          <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
+                           <TableCell className="text-xs text-muted-foreground font-mono">{globalIdx + 1}</TableCell>
                           <TableCell className="font-medium text-sm">{tarefa._lead_nome || getTarefaLeadName(tarefa.lead_id)}</TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
@@ -1332,6 +1369,7 @@ export default function FilaLeadsPage() {
                 </Table>
               )}
             </CardContent>
+            <PaginationBar page={tarefaPage} setPage={setTarefaPage} total={sortedTarefas.length} />
           </Card>
         </TabsContent>
 
@@ -1380,12 +1418,13 @@ export default function FilaLeadsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredNotificacoes.map((item, idx) => {
+                    {paginate(filteredNotificacoes, notifPage).map((item, idx) => {
+                      const globalIdx = (notifPage - 1) * PAGE_SIZE + idx;
                       const phones = item.contatos.filter(c => c.tipo_contato === "telefone");
                       const isVisto = item.lead.notificacao_vista;
                       return (
                         <TableRow key={item.lead.id} className={!isVisto ? "bg-orange-50 dark:bg-orange-950/20" : ""}>
-                          <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground font-mono">{globalIdx + 1}</TableCell>
                           <TableCell>
                             <div className="flex flex-col gap-0.5">
                               <div className="flex items-center gap-2">
@@ -1463,6 +1502,7 @@ export default function FilaLeadsPage() {
                 </Table>
               )}
             </CardContent>
+            <PaginationBar page={notifPage} setPage={setNotifPage} total={filteredNotificacoes.length} />
           </Card>
         </TabsContent>
       </Tabs>
