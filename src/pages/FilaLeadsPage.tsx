@@ -181,6 +181,7 @@ export default function FilaLeadsPage() {
 
   const { data: atendimentoProfiles = [] } = useQuery({
     queryKey: ["profiles-setor-atendimento"],
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const { data: setores } = await supabase.from("setores").select("id, nome").eq("ativo", true);
       const atendimentoSetor = (setores || []).find(s => s.nome.toLowerCase().includes("atendimento"));
