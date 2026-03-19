@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useIdleTimeout } from "@/hooks/useIdleTimeout";
 import { useSessionTracker } from "@/hooks/useSessionTracker";
+import { useRealtimeConnectionMonitor } from "@/hooks/useRealtimeConnectionMonitor";
 import { usePendingNotifications } from "@/hooks/usePendingNotifications";
 import { Menu, User, Settings } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
