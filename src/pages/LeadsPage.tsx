@@ -4112,6 +4112,27 @@ export default function LeadsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Post-capture history dialog */}
+      <LeadPostCaptureDialog
+        open={!!postCaptureLeadId}
+        onOpenChange={(open) => {
+          if (!open) {
+            // When closing, select the lead for detail view
+            const lead = allLeads.find(l => l.id === postCaptureLeadId);
+            if (lead) setSelectedLead(lead);
+            setPostCaptureLeadId(null);
+            setPostCaptureLeadName("");
+          }
+        }}
+        leadId={postCaptureLeadId}
+        leadName={postCaptureLeadName}
+        onGoToLead={() => {
+          const lead = allLeads.find(l => l.id === postCaptureLeadId);
+          if (lead) setSelectedLead(lead);
+          setPostCaptureLeadId(null);
+          setPostCaptureLeadName("");
+        }}
+      />
     </div>
   );
 }
