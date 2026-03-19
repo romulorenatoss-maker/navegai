@@ -160,19 +160,22 @@ export default function LeadsArquivadosPage() {
     });
   }, []);
 
-  // ─── Batch delete logic ─────────────────────────
-  const deleteSingleLead = async (leadId: string): Promise<void> => {
-    // Delete dependents first (cascading should handle most, but be explicit for safety)
-    await Promise.all([
-      supabase.from("lead_contatos").delete().eq("lead_id", leadId),
-      supabase.from("lead_historico").delete().eq("lead_id", leadId),
-      supabase.from("lead_interacoes").delete().eq("lead_id", leadId),
-      supabase.from("lead_tarefas_contato").delete().eq("lead_id", leadId),
-      supabase.from("registro_objecao_lead").delete().eq("lead_id", leadId),
-      supabase.from("registro_atraso_tentativa").delete().eq("lead_id", leadId),
+  // ─── Batch delete logic (bulk .in() per table) ──
+  const deleteBatchLeads = async (batchIds: string[]): Promise<number> => {
+    let errors = 0;
+    // Delete all dependents in parallel using .in() — single request per table
+    const depResults = await Promise.allSettled([
+      supabase.from("lead_contatos").delete().in("lead_id", batchIds),
+      supabase.from("lead_historico").delete().in("lead_id", batchIds),
+      supabase.from("lead_interacoes").delete().in("lead_id", batchIds),
+      supabase.from("lead_tarefas_contato").delete().in("lead_id", batchIds),
+      supabase.from("registro_objecao_lead").delete().in("lead_id", batchIds),
+      supabase.from("registro_atraso_tentativa").delete().in("lead_id", batchIds),
     ]);
-    const { error } = await supabase.from("leads").delete().eq("id", leadId);
-    if (error) throw error;
+    // Now delete leads themselves
+    const { error } = await supabase.from("leads").delete().in("id", batchIds);
+    if (error) errors += batchIds.length;
+    return errors;
   };
 
   const executeBulkDelete = async () => {
@@ -187,19 +190,32 @@ export default function LeadsArquivadosPage() {
       if (cancelDeleteRef.current) break;
 
       const batch = idsToDelete.slice(i, i + DELETE_BATCH_SIZE);
-      const results = await Promise.allSettled(batch.map(id => deleteSingleLead(id)));
-
-      const batchErrors = results.filter(r => r.status === "rejected").length;
+      const batchErrors = await deleteBatchLeads(batch);
       errorCount += batchErrors;
 
       const processed = Math.min(i + DELETE_BATCH_SIZE, total);
       setDeleteProgress({ current: processed, total, errors: errorCount });
 
-      // Yield to main thread
+      // Incrementally remove from cache (no full reload)
+      if (batchErrors === 0) {
+        const deletedSet = new Set(batch);
+        queryClient.setQueriesData<any[]>(
+          { queryKey: ["leads-arquivados"] },
+          (old) => old ? old.filter((l: any) => !deletedSet.has(l.id)) : old
+        );
+        queryClient.setQueriesData<any[]>(
+          { queryKey: ["leads-arquivados-contatos"] },
+          (old) => old ? old.filter((c: any) => !deletedSet.has(c.lead_id)) : old
+        );
+      }
+
+      // Yield to main thread between batches
       if (i + DELETE_BATCH_SIZE < total) await delay(DELETE_BATCH_DELAY);
     }
 
     setSelectedIds(new Set());
+
+    // Only do a full sync at the end, not per batch
     queryClient.invalidateQueries({ queryKey: ["leads-arquivados"] });
     queryClient.invalidateQueries({ queryKey: ["leads-arquivados-contatos"] });
 
