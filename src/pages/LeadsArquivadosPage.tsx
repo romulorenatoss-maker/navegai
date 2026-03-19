@@ -33,8 +33,8 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   cancelado_pendente_analise: { label: "Cancelado (Análise)", color: "bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200" },
 };
 
-const DELETE_BATCH_SIZE = 5;
-const DELETE_BATCH_DELAY = 300;
+const DELETE_BATCH_SIZE = 20;
+const DELETE_BATCH_DELAY = 500;
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 export default function LeadsArquivadosPage() {
