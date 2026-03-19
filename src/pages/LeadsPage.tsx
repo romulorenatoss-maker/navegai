@@ -141,6 +141,7 @@ function AddCepInline({ ruaId, existingCeps, onSaved }: { ruaId: string; existin
 
 // ─── Status helpers ────────────────────────────────────
 const STATUS_OPTIONS = [
+  { value: "importado", label: "Importado", color: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300" },
   { value: "novo", label: "Novo", color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
   { value: "em_contato", label: "Em Contato", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" },
   { value: "interessado", label: "Interessado", color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200" },
