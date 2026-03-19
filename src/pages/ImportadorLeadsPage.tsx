@@ -56,6 +56,7 @@ type Step = "upload" | "mapping" | "preview" | "results";
 interface ImportResult {
   nome: string;
   telefone: string;
+  leadId?: string;
   status: "ok" | "skipped" | "error";
   message?: string;
 }
@@ -74,6 +75,9 @@ export default function ImportadorLeadsPage() {
   const [results, setResults] = useState<ImportResult[]>([]);
   const [showResultDetails, setShowResultDetails] = useState(false);
   const [campanhaId, setCampanhaId] = useState("");
+  const [selectedForQueue, setSelectedForQueue] = useState<Set<string>>(new Set());
+  const [sendingToQueue, setSendingToQueue] = useState(false);
+  const [queueProgress, setQueueProgress] = useState({ current: 0, total: 0 });
 
   const { data: campanhas = [] } = useQuery({
     queryKey: ["campanhas-ativas"],
@@ -266,7 +270,7 @@ export default function ImportadorLeadsPage() {
     if (row.plano) planoId = planoMap.get(row.plano.toLowerCase().trim()) || null;
 
     const { data: newLead, error } = await supabase.from("leads").insert({
-      nome: nomeFmt, status_lead: "fila_captura", responsavel_id: null,
+      nome: nomeFmt, status_lead: "novo", responsavel_id: null,
       origem_lead: "importacao",
       campanha_id: (campanhaId && campanhaId !== "__none") ? campanhaId : null,
       cidade_id: cidadeId, bairro_id: bairroId, rua_id: ruaId,
@@ -304,7 +308,7 @@ export default function ImportadorLeadsPage() {
     }
 
     await Promise.all(ops);
-    return { nome: row.nome, telefone: row.telefone, status: "ok" };
+    return { nome: row.nome, telefone: row.telefone, leadId: newLead.id, status: "ok" };
   };
 
   const handleImport = useCallback(async () => {
@@ -377,10 +381,29 @@ export default function ImportadorLeadsPage() {
     toast.success(`Importação concluída: ${ok} criados, ${skipped} pulados, ${errs} erros`);
   }, [previewRows, profile, campanhaId, selectedCampanhaNome]);
 
+  const handleSendToQueue = useCallback(async () => {
+    if (selectedForQueue.size === 0) return;
+    setSendingToQueue(true);
+    const ids = Array.from(selectedForQueue);
+    setQueueProgress({ current: 0, total: ids.length });
+
+    const QUEUE_BATCH = 10;
+    for (let i = 0; i < ids.length; i += QUEUE_BATCH) {
+      const batch = ids.slice(i, i + QUEUE_BATCH);
+      await supabase.from("leads").update({ status_lead: "fila_captura" } as any).in("id", batch);
+      setQueueProgress({ current: Math.min(i + QUEUE_BATCH, ids.length), total: ids.length });
+      if (i + QUEUE_BATCH < ids.length) await delay(200);
+    }
+
+    setSendingToQueue(false);
+    setSelectedForQueue(new Set());
+    toast.success(`${ids.length} leads enviados para a fila de captura!`);
+  }, [selectedForQueue]);
+
   const reset = () => {
     setStep("upload"); setFileName(""); setRawHeaders([]); setRawRows([]);
     setMapping({ ...EMPTY_MAPPING });
-    setPreviewRows([]); setResults([]);
+    setPreviewRows([]); setResults([]); setSelectedForQueue(new Set());
   };
 
   return (
@@ -583,6 +606,59 @@ export default function ImportadorLeadsPage() {
                   <p className="text-xs text-muted-foreground">Campanha: <span className="font-semibold text-foreground">{selectedCampanhaNome}</span></p>
                 )}
 
+                {/* Send to queue section */}
+                {(() => {
+                  const okResults = results.filter(r => r.status === "ok" && r.leadId);
+                  if (okResults.length === 0) return null;
+                  const allSelected = okResults.every(r => selectedForQueue.has(r.leadId!));
+                  return (
+                    <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium">Enviar para Fila de Captura</p>
+                          <p className="text-xs text-muted-foreground">
+                            Selecione os leads que deseja enviar para a fila. {selectedForQueue.size > 0 && <span className="font-semibold text-primary">{selectedForQueue.size} selecionados</span>}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              if (allSelected) {
+                                setSelectedForQueue(new Set());
+                              } else {
+                                setSelectedForQueue(new Set(okResults.map(r => r.leadId!)));
+                              }
+                            }}
+                          >
+                            {allSelected ? "Desmarcar Todos" : "Selecionar Todos"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={handleSendToQueue}
+                            disabled={selectedForQueue.size === 0 || sendingToQueue}
+                            className="press-effect"
+                          >
+                            {sendingToQueue ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
+                            {sendingToQueue
+                              ? `Enviando ${queueProgress.current}/${queueProgress.total}...`
+                              : `Enviar ${selectedForQueue.size} para Fila`}
+                          </Button>
+                        </div>
+                      </div>
+                      {sendingToQueue && queueProgress.total > 0 && (
+                        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary rounded-full transition-all duration-300"
+                            style={{ width: `${(queueProgress.current / queueProgress.total) * 100}%` }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {/* Expandable details */}
                 <Button
                   variant="outline"
@@ -599,6 +675,7 @@ export default function ImportadorLeadsPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-8"></TableHead>
                           <TableHead>Nome</TableHead>
                           <TableHead>Telefone</TableHead>
                           <TableHead className="text-center">Status</TableHead>
@@ -608,6 +685,23 @@ export default function ImportadorLeadsPage() {
                       <TableBody>
                         {results.map((r, i) => (
                           <TableRow key={i}>
+                            <TableCell className="text-center">
+                              {r.status === "ok" && r.leadId && (
+                                <input
+                                  type="checkbox"
+                                  className="rounded border-border"
+                                  checked={selectedForQueue.has(r.leadId)}
+                                  onChange={(e) => {
+                                    setSelectedForQueue(prev => {
+                                      const next = new Set(prev);
+                                      if (e.target.checked) next.add(r.leadId!);
+                                      else next.delete(r.leadId!);
+                                      return next;
+                                    });
+                                  }}
+                                />
+                              )}
+                            </TableCell>
                             <TableCell className="text-sm">{r.nome}</TableCell>
                             <TableCell className="text-sm">{r.telefone}</TableCell>
                             <TableCell className="text-center">
