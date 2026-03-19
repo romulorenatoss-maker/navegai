@@ -1372,7 +1372,9 @@ export default function FilaLeadsPage() {
                                 {!isVisto && <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />}
                                 <span className="font-medium text-sm">{item.lead.nome}</span>
                               </div>
-                              <span className="text-[10px] text-orange-600 dark:text-orange-400 font-medium">⚠ Lead requer avaliação após tentativa final</span>
+                              <span className={`text-[10px] font-medium ${item.lead.status_lead === "cancelado_pendente_analise" ? "text-rose-600 dark:text-rose-400" : "text-orange-600 dark:text-orange-400"}`}>
+                                {item.lead.status_lead === "cancelado_pendente_analise" ? "🚫 Lead cancelado pelo atendente — aguardando análise" : "⚠ Lead requer avaliação após tentativa final"}
+                              </span>
                             </div>
                           </TableCell>
                           <TableCell>
