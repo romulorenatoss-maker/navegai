@@ -464,6 +464,47 @@ export default function MinhasAvaliacoesPage() {
 
         {/* OS Avaliadas Tab */}
         <TabsContent value="os_avaliadas" className="space-y-4 mt-4">
+          {/* OS Filters */}
+          <div className="bg-card border border-border rounded-lg p-4 shadow-card">
+            <div className="flex items-center gap-2 mb-3">
+              <Filter className="w-4 h-4 text-muted-foreground" />
+              <span className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Filtros</span>
+            </div>
+            <div className="flex flex-wrap gap-4 items-end">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-caption font-medium text-muted-foreground">Data Início</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("h-9 w-[160px] justify-start text-left font-normal", !osStartDate && "text-muted-foreground")}>
+                      <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                      {osStartDate ? format(osStartDate, "dd/MM/yyyy") : "Selecionar"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={osStartDate} onSelect={setOsStartDate} initialFocus className="p-3 pointer-events-auto" locale={ptBR} />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-caption font-medium text-muted-foreground">Data Fim</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("h-9 w-[160px] justify-start text-left font-normal", !osEndDate && "text-muted-foreground")}>
+                      <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                      {osEndDate ? format(osEndDate, "dd/MM/yyyy") : "Selecionar"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={osEndDate} onSelect={setOsEndDate} initialFocus className="p-3 pointer-events-auto" locale={ptBR} />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <Button onClick={handleBuscarOS} className="h-9">
+                <Filter className="w-4 h-4 mr-1.5" /> Buscar
+              </Button>
+            </div>
+          </div>
+
           <div className="bg-card border border-border rounded-lg shadow-card">
             <div className="p-4 border-b border-border flex items-center gap-2">
               <FileText className="w-4 h-4 text-primary" />
