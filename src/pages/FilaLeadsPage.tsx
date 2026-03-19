@@ -1056,11 +1056,10 @@ export default function FilaLeadsPage() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              {item.nextAttemptExpired ? (
-                                <span className="text-xs flex items-center gap-1 text-destructive font-semibold bg-destructive/10 border border-destructive/30 rounded px-1.5 py-0.5 w-fit"><AlertTriangle className="w-3 h-3" />{fmtDate(item.nextAttempt)}</span>
-                              ) : (
-                                <span className="text-xs flex items-center gap-1 text-muted-foreground"><Clock className="w-3 h-3" />{fmtDate(item.nextAttempt)}</span>
-                              )}
+                              <span className="text-xs flex items-center gap-1 text-foreground">
+                                <UserCheck className="w-3 h-3 text-muted-foreground" />
+                                {item.responsavelNome || <span className="text-muted-foreground">—</span>}
+                              </span>
                             </TableCell>
                             <TableCell>
                               {(() => {
