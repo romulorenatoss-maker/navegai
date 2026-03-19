@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { forwardRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -16,13 +16,13 @@ interface AdminPasswordDialogProps {
   onConfirm: () => Promise<void> | void;
 }
 
-export default function AdminPasswordDialog({
+const AdminPasswordDialog = forwardRef<HTMLDivElement, AdminPasswordDialogProps>(function AdminPasswordDialog({
   open,
   onOpenChange,
   title = "Confirmar Exclusão",
   description = "Esta ação é irreversível. Informe a senha de um administrador para confirmar.",
   onConfirm,
-}: AdminPasswordDialogProps) {
+}, ref) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -70,7 +70,7 @@ export default function AdminPasswordDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent ref={ref} className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-destructive">
             <Lock className="w-5 h-5" /> {title}
@@ -102,4 +102,6 @@ export default function AdminPasswordDialog({
       </DialogContent>
     </Dialog>
   );
-}
+});
+
+export default AdminPasswordDialog;

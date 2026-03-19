@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import * as XLSX from "xlsx";
-import { motion } from "framer-motion";
 import {
   CalendarIcon, Filter, Trash2, Download, Loader2,
   FileText, Search, Users, Eye, X,
@@ -299,7 +297,7 @@ export default function RelatoriosLeadsPage() {
     if (selected.size === 0) return;
     setExportLoading(true);
     try {
-      exportToExcel(leadsList.filter((l) => selected.has(l.id)));
+      await exportToExcel(leadsList.filter((l) => selected.has(l.id)));
       toast.success(`Exportação de ${selected.size} lead(s) concluída.`);
     } catch (err: any) {
       toast.error("Erro ao exportar: " + err.message);
@@ -313,7 +311,7 @@ export default function RelatoriosLeadsPage() {
     if (leadsList.length === 0) { toast.error("Nenhum lead disponível."); return; }
     setExportAllLoading(true);
     try {
-      exportToExcel(leadsList);
+      await exportToExcel(leadsList);
       toast.success(`Relatório exportado com ${leadsList.length} lead(s).`);
     } catch (err: any) {
       toast.error("Erro ao exportar: " + err.message);
@@ -322,7 +320,8 @@ export default function RelatoriosLeadsPage() {
     }
   };
 
-  const exportToExcel = (data: LeadRow[]) => {
+  const exportToExcel = async (data: LeadRow[]) => {
+    const XLSX = await import("xlsx");
     const headers = ["Nome", "Telefone", "Status", "Origem", "Responsável", "Perfil Identificado", "Repetidor", "Data Criação", "Tentativas", "Atrasos"];
     const wsData: (string | number)[][] = [headers];
     for (const l of data) {
@@ -496,11 +495,7 @@ export default function RelatoriosLeadsPage() {
 
       {/* Action bar */}
       {selected.size > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-card border border-border rounded-lg p-3 shadow-card flex items-center justify-between"
-        >
+        <div className="bg-card border border-border rounded-lg p-3 shadow-card flex items-center justify-between">
           <span className="text-body font-medium text-foreground">{selected.size} lead(s) selecionado(s)</span>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => setExportDialogOpen(true)} disabled={exportLoading}>
@@ -513,7 +508,7 @@ export default function RelatoriosLeadsPage() {
               </Button>
             )}
           </div>
-        </motion.div>
+        </div>
       )}
 
       {/* Table */}
