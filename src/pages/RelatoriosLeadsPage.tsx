@@ -2,8 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   CalendarIcon, Filter, Trash2, Download, Loader2,
-import {
-  CalendarIcon, Filter, Trash2, Download, Loader2,
   FileText, Search, Users, Eye, X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
