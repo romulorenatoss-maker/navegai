@@ -774,6 +774,7 @@ export default function LeadsPage() {
     onSuccess: (leadId) => {
       toast.success("Lead capturado com sucesso!");
       const lead = capturaLeadsRaw.find(l => l.id === leadId);
+      const leadName = lead?.nome || "Lead";
       if (lead) {
         const capturedLead = { ...lead, responsavel_id: profile!.id, reserved_by: null, reserved_at: new Date().toISOString(), status_lead: "em_atendimento" } as Lead;
         updateLeadInCache(leadId, capturedLead);
@@ -782,11 +783,11 @@ export default function LeadsPage() {
           if (old.some(l => l.id === leadId)) return old.map(l => l.id === leadId ? capturedLead : l);
           return [...old, capturedLead];
         });
-        // Show post-capture dialog with history
-        setPostCaptureLeadId(leadId);
-        setPostCaptureLeadName(lead.nome);
-        setFilaFiltro("todos");
       }
+      // Always show post-capture dialog with history (outside if block)
+      setPostCaptureLeadId(leadId);
+      setPostCaptureLeadName(leadName);
+      setFilaFiltro("todos");
       queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
       queryClient.invalidateQueries({ queryKey: ["leads-list"] });
     },
