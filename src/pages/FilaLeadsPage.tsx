@@ -748,8 +748,10 @@ export default function FilaLeadsPage() {
     onSuccess: (_data, leadId) => {
       toast.success("Lead capturado com sucesso!");
       queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
-      // Navigate to the lead in "Meus Leads"
-      navigate(`/leads?id=${leadId}`);
+      // Show post-capture dialog with history
+      const lead = leads.find((l: any) => l.id === leadId);
+      setPostCaptureLeadId(leadId);
+      setPostCaptureLeadName(lead?.nome || "Lead");
     },
     onError: (err: any, _leadId, context) => {
       if (context?.previousLeads) {
