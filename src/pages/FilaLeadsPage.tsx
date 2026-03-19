@@ -473,7 +473,7 @@ export default function FilaLeadsPage() {
   // ─── Notificações (aguardando_decisao) ────────────
   const notificacoes = useMemo(() => {
     return leads
-      .filter(l => l.status_lead === "aguardando_decisao_avaliador")
+      .filter(l => l.status_lead === "aguardando_decisao_avaliador" || l.status_lead === "cancelado_pendente_analise")
       .map(lead => {
         const contatos = allContatos.filter(c => c.lead_id === lead.id);
         const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
