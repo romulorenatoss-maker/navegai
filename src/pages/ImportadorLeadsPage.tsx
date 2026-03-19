@@ -530,11 +530,27 @@ export default function ImportadorLeadsPage() {
                     className="press-effect"
                   >
                     {importing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
-                    {importing ? "Importando..." : `Importar ${previewRows.filter(r => r.action !== "skip" && r.status !== "invalid").length} Leads`}
+                    {importing
+                      ? `Importando ${importProgress.current}/${importProgress.total}...`
+                      : `Importar ${previewRows.filter(r => r.action !== "skip" && r.status !== "invalid").length} Leads`}
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-3">
+                {importing && importProgress.total > 0 && (
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Processando lote...</span>
+                      <span>{importProgress.current} de {importProgress.total} ({Math.round((importProgress.current / importProgress.total) * 100)}%)</span>
+                    </div>
+                    <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary rounded-full transition-all duration-300"
+                        style={{ width: `${(importProgress.current / importProgress.total) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
                 <ImportPreviewTable rows={previewRows} onActionChange={handleActionChange} />
               </CardContent>
             </Card>
