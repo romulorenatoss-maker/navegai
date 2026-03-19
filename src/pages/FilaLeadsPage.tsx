@@ -46,7 +46,7 @@ interface QueueItem {
 // ─── Helpers ────────────────────────────────────────────
 const fmtDate = (d: string | Date) => { try { return format(new Date(d), "dd/MM/yyyy HH:mm", { locale: ptBR }); } catch { return String(d); } };
 const fmtDateShort = (d: string | Date) => { try { return format(new Date(d), "dd/MM HH:mm", { locale: ptBR }); } catch { return String(d); } };
-const STATUS_MAP: Record<string, string> = { novo: "Novo", em_contato: "Em Contato", em_atendimento: "Em tratativa", interessado: "Interessado", aguardando_decisao_avaliador: "Aguardando Decisão", fila_captura: "Fila de Captura", reservado: "Reservado", expirado: "Expirado" };
+const STATUS_MAP: Record<string, string> = { novo: "Novo", em_contato: "Em Contato", em_atendimento: "Em tratativa", interessado: "Interessado", aguardando_decisao_avaliador: "Aguardando Decisão", fila_captura: "Fila de Captura", reservado: "Reservado", expirado: "Expirado", cancelado_pendente_analise: "Cancelado (Análise)" };
 
 export default function FilaLeadsPage() {
   const { profile, isAdmin } = useAuth();
@@ -149,7 +149,7 @@ export default function FilaLeadsPage() {
     queryKey: ["fila-leads"],
     queryFn: async () => {
       const { data, error } = await supabase.from("leads").select("*")
-        .in("status_lead", ["novo", "em_contato", "em_atendimento", "interessado", "aguardando_decisao_avaliador", CAPTURE_QUEUE_STATUS, "reservado"])
+        .in("status_lead", ["novo", "em_contato", "em_atendimento", "interessado", "aguardando_decisao_avaliador", "cancelado_pendente_analise", CAPTURE_QUEUE_STATUS, "reservado"])
         .order("updated_at", { ascending: true });
       if (error) throw error;
       return data as Lead[];
@@ -473,7 +473,7 @@ export default function FilaLeadsPage() {
   // ─── Notificações (aguardando_decisao) ────────────
   const notificacoes = useMemo(() => {
     return leads
-      .filter(l => l.status_lead === "aguardando_decisao_avaliador")
+      .filter(l => l.status_lead === "aguardando_decisao_avaliador" || l.status_lead === "cancelado_pendente_analise")
       .map(lead => {
         const contatos = allContatos.filter(c => c.lead_id === lead.id);
         const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
@@ -1372,7 +1372,9 @@ export default function FilaLeadsPage() {
                                 {!isVisto && <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0" />}
                                 <span className="font-medium text-sm">{item.lead.nome}</span>
                               </div>
-                              <span className="text-[10px] text-orange-600 dark:text-orange-400 font-medium">⚠ Lead requer avaliação após tentativa final</span>
+                              <span className={`text-[10px] font-medium ${item.lead.status_lead === "cancelado_pendente_analise" ? "text-rose-600 dark:text-rose-400" : "text-orange-600 dark:text-orange-400"}`}>
+                                {item.lead.status_lead === "cancelado_pendente_analise" ? "🚫 Lead cancelado pelo atendente — aguardando análise" : "⚠ Lead requer avaliação após tentativa final"}
+                              </span>
                             </div>
                           </TableCell>
                           <TableCell>
