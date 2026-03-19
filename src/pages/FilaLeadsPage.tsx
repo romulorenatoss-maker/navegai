@@ -1502,6 +1502,7 @@ export default function FilaLeadsPage() {
                 </Table>
               )}
             </CardContent>
+            <PaginationBar page={notifPage} setPage={setNotifPage} total={filteredNotificacoes.length} />
           </Card>
         </TabsContent>
       </Tabs>
