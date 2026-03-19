@@ -331,6 +331,11 @@ export default function LeadsPage() {
   // Finalize dialog (when all attempts done)
   const [showFinalize, setShowFinalize] = useState(false);
 
+  // Cancel lead dialog
+  const [showCancelLead, setShowCancelLead] = useState(false);
+  const [cancelObjecaoId, setCancelObjecaoId] = useState("");
+  const [cancelDescricao, setCancelDescricao] = useState("");
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
   // Schedule dialog
   const [showSchedule, setShowSchedule] = useState(false);
   const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
