@@ -1041,7 +1041,7 @@ export default function FilaLeadsPage() {
                         }
                         return (
                           <TableRow key={item.lead.id} className={rowBg}>
-                            <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
+                             <TableCell className="text-xs text-muted-foreground font-mono">{globalIdx + 1}</TableCell>
                             <TableCell>
                               <div className="flex flex-col gap-0.5">
                                 <span className="font-medium text-sm">{item.lead.nome}</span>
