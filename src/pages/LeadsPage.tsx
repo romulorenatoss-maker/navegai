@@ -1643,158 +1643,161 @@ export default function LeadsPage() {
     mutationFn: async () => {
       if (!selectedLead || !profile) throw new Error("Erro interno.");
 
-      // Block interaction if lead is not owned by or reserved by current user
-      const isOwner = selectedLead.responsavel_id === profile.id;
-      const isReservedByMe = selectedLead.reserved_by === profile.id;
+      const currentLead = selectedLead;
+      const leadId = currentLead.id;
+      const trimmedNumber = interNumero.trim() || null;
+      const trimmedResult = interResultado.trim() || null;
+      const interactionTimestamp = new Date().toISOString();
+
+      const isOwner = currentLead.responsavel_id === profile.id;
+      const isReservedByMe = currentLead.reserved_by === profile.id;
       if (!isOwner && !isReservedByMe && !isAdmin) {
         throw new Error("Você não tem permissão para interagir com este lead. Ele pertence a outro usuário.");
       }
 
-      // No longer need reservado→em_atendimento transition since capture now directly assigns
-
-      // Save pending field changes first
       const changes: string[] = [];
-      const leadUpdates: Record<string, any> = {};
+      const leadFieldUpdates: Record<string, any> = {};
 
-      if (localPlanoId !== selectedLead.plano_id) {
-        leadUpdates.plano_id = localPlanoId;
-        const oldP = planos.find(p => p.id === selectedLead.plano_id)?.nome_plano || "Nenhum";
+      if (localPlanoId !== currentLead.plano_id) {
+        leadFieldUpdates.plano_id = localPlanoId;
+        const oldP = planos.find(p => p.id === currentLead.plano_id)?.nome_plano || "Nenhum";
         const newP = planos.find(p => p.id === localPlanoId)?.nome_plano || "Nenhum";
         changes.push(`Perfil: "${oldP}" → "${newP}"`);
       }
-      if (localRepetidor !== selectedLead.repetidor) {
-        leadUpdates.repetidor = localRepetidor;
-        changes.push(`Repetidor: "${selectedLead.repetidor || "Nenhum"}" → "${localRepetidor || "Nenhum"}"`);
+      if (localRepetidor !== currentLead.repetidor) {
+        leadFieldUpdates.repetidor = localRepetidor;
+        changes.push(`Repetidor: "${currentLead.repetidor || "Nenhum"}" → "${localRepetidor || "Nenhum"}"`);
       }
-      if (localCidadeId !== selectedLead.cidade_id || localBairroId !== selectedLead.bairro_id || localRuaId !== selectedLead.rua_id || localNumeroEnd !== (selectedLead.numero_endereco || "")) {
-        leadUpdates.cidade_id = localCidadeId;
-        leadUpdates.bairro_id = localBairroId;
-        leadUpdates.rua_id = localRuaId;
-        leadUpdates.numero_endereco = localNumeroEnd || null;
+      if (localCidadeId !== currentLead.cidade_id || localBairroId !== currentLead.bairro_id || localRuaId !== currentLead.rua_id || localNumeroEnd !== (currentLead.numero_endereco || "")) {
+        leadFieldUpdates.cidade_id = localCidadeId;
+        leadFieldUpdates.bairro_id = localBairroId;
+        leadFieldUpdates.rua_id = localRuaId;
+        leadFieldUpdates.numero_endereco = localNumeroEnd || null;
         changes.push("Endereço atualizado");
       }
 
-      if (Object.keys(leadUpdates).length > 0) {
-        await supabase.from("leads").update(leadUpdates as any).eq("id", selectedLead.id);
-      }
+      const pendingTaskPromise = supabase
+        .from("lead_tarefas_contato")
+        .select("id, data_contato, periodo, status")
+        .eq("lead_id", leadId)
+        .in("status", ["pendente", "atrasado"])
+        .order("tentativa", { ascending: true })
+        .limit(1);
 
-      // Objeção is now auto-saved on select change, no need to save here
+      const dataChangesHistoryPromise = changes.length > 0
+        ? supabase.from("lead_historico").insert({
+            lead_id: leadId,
+            usuario_id: profile.id,
+            tipo_evento: "dados_alterados",
+            descricao: changes.join(" | "),
+          })
+        : Promise.resolve({ error: null });
 
-      if (changes.length > 0) {
-        await supabase.from("lead_historico").insert({
-          lead_id: selectedLead.id, usuario_id: profile.id,
-          tipo_evento: "dados_alterados",
-          descricao: changes.join(" | "),
-        });
-      }
-
-      // Register interaction
-      const { error } = await supabase.from("lead_interacoes").insert({
-        lead_id: selectedLead.id, colaborador_id: profile.id,
-        tipo_contato: interTipo, numero_utilizado: interNumero.trim() || null, resultado: interResultado.trim() || null,
+      const interactionPromise = supabase.from("lead_interacoes").insert({
+        lead_id: leadId,
+        colaborador_id: profile.id,
+        tipo_contato: interTipo,
+        numero_utilizado: trimmedNumber,
+        resultado: trimmedResult,
       });
-      if (error) throw error;
 
-      // Compute cycle-based attempt count (after last transfer or capture)
-      // Use reverse search to find the MOST RECENT cycle event (history is sorted ascending)
-      let tentativaNum: number;
+      const [pendingTaskRes, dataChangesHistoryRes, interactionRes] = await Promise.all([
+        pendingTaskPromise,
+        dataChangesHistoryPromise,
+        interactionPromise,
+      ]);
+
+      if (pendingTaskRes.error) throw pendingTaskRes.error;
+      if (dataChangesHistoryRes.error) throw dataChangesHistoryRes.error;
+      if (interactionRes.error) throw interactionRes.error;
+
+      const pendingTask = pendingTaskRes.data?.[0];
+
       const lastCycleEvt = [...leadHistorico].reverse().find(h =>
         h.tipo_evento === "transferencia_automatica" || h.tipo_evento === "transferencia_decisao" || h.tipo_evento === "lead_capturado"
       );
       const cycleInteractions = lastCycleEvt
         ? leadInteracoes.filter(i => new Date(i.data_interacao) > new Date(lastCycleEvt.data_evento)).length
         : leadInteracoes.length;
-      tentativaNum = cycleInteractions + 1;
+      const tentativaNum = cycleInteractions + 1;
 
-      // Fetch pending tarefa FIRST (needed for timing calc)
-      const { data: pendingTarefas } = await supabase
-        .from("lead_tarefas_contato")
-        .select("*")
-        .eq("lead_id", selectedLead.id)
-        .in("status", ["pendente", "atrasado"])
-        .order("tentativa", { ascending: true })
-        .limit(1);
-
-      // Calculate timing relative to deadline
       let timingInfo = "";
       const now = new Date();
-      if (selectedLead.agendamento_retorno) {
-        const deadlineDate = new Date(selectedLead.agendamento_retorno);
+      if (currentLead.agendamento_retorno) {
+        const deadlineDate = new Date(currentLead.agendamento_retorno);
         const diffMin = Math.round((deadlineDate.getTime() - now.getTime()) / 60000);
         const absH = Math.floor(Math.abs(diffMin) / 60);
         const absM = Math.abs(diffMin) % 60;
-        if (diffMin < 0) {
-          timingInfo = ` | ⏱️ Registrada ${absH}h${String(absM).padStart(2,'0')}m APÓS expiração (agendamento manual)`;
-        } else {
-          timingInfo = ` | ⏱️ Registrada ${absH}h${String(absM).padStart(2,'0')}m ANTES da expiração (agendamento manual)`;
-        }
-      } else if (pendingTarefas && pendingTarefas.length > 0) {
-        const taskDeadline = new Date(pendingTarefas[0].data_contato);
-        const endHr = pendingTarefas[0].periodo === "manha" ? 12 : pendingTarefas[0].periodo === "tarde" ? 18 : 24;
+        timingInfo = diffMin < 0
+          ? ` | ⏱️ Registrada ${absH}h${String(absM).padStart(2, "0")}m APÓS expiração (agendamento manual)`
+          : ` | ⏱️ Registrada ${absH}h${String(absM).padStart(2, "0")}m ANTES da expiração (agendamento manual)`;
+      } else if (pendingTask) {
+        const taskDeadline = new Date(pendingTask.data_contato);
+        const endHr = pendingTask.periodo === "manha" ? 12 : pendingTask.periodo === "tarde" ? 18 : 24;
         taskDeadline.setHours(endHr, 0, 0, 0);
         const diffMin = Math.round((taskDeadline.getTime() - now.getTime()) / 60000);
         const absH = Math.floor(Math.abs(diffMin) / 60);
         const absM = Math.abs(diffMin) % 60;
-        if (diffMin < 0) {
-          timingInfo = ` | ⏱️ Registrada ${absH}h${String(absM).padStart(2,'0')}m APÓS expiração (cadência automática)`;
-        } else {
-          timingInfo = ` | ⏱️ Registrada ${absH}h${String(absM).padStart(2,'0')}m ANTES da expiração (cadência automática)`;
-        }
+        timingInfo = diffMin < 0
+          ? ` | ⏱️ Registrada ${absH}h${String(absM).padStart(2, "0")}m APÓS expiração (cadência automática)`
+          : ` | ⏱️ Registrada ${absH}h${String(absM).padStart(2, "0")}m ANTES da expiração (cadência automática)`;
       }
 
-      await supabase.from("lead_historico").insert({
-        lead_id: selectedLead.id, usuario_id: profile.id,
-        tipo_evento: "tentativa_contato",
-        descricao: `Tentativa #${tentativaNum} via ${interTipo}${interResultado ? ": " + interResultado.trim() : ""}${timingInfo}`,
-      });
-
-      if (selectedLead.status_lead === "novo") {
-        await supabase.from("leads").update({ status_lead: "em_contato", reserved_at: null } as any).eq("id", selectedLead.id);
-        setSelectedLead(prev => prev ? { ...prev, status_lead: "em_contato", reserved_at: null } : null);
-      } else {
-        // Clear reserved_at to stop expiration timer
-        await supabase.from("leads").update({ reserved_at: null } as any).eq("id", selectedLead.id);
-      }
-
-      // Mark current pending tarefa as "realizado"
-      if (pendingTarefas && pendingTarefas.length > 0) {
-        const taskDate = new Date(pendingTarefas[0].data_contato);
-        const endHour = pendingTarefas[0].periodo === "manha" ? 12 : pendingTarefas[0].periodo === "tarde" ? 18 : 24;
-        taskDate.setHours(endHour, 0, 0, 0);
-        const wasLate = pendingTarefas[0].status === "atrasado" || new Date() > taskDate;
-        await supabase.from("lead_tarefas_contato")
-          .update({ status: "realizado", fora_do_prazo: wasLate } as any)
-          .eq("id", pendingTarefas[0].id);
-      }
-
-      // Check max tentativas and create next or finalize
       const mxTentativas = fluxoConfig?.quantidade_tentativas || 7;
       const nextTentativa = tentativaNum + 1;
+      const acaoFinal = fluxoConfig?.acao_apos_finalizar_tentativas || "enviar_avaliador";
+      const shouldFinalize = nextTentativa > mxTentativas;
+      const finalStatus = shouldFinalize
+        ? (acaoFinal === "arquivar_lead" ? "arquivado" : "aguardando_decisao_avaliador")
+        : (currentLead.status_lead === "novo" ? "em_contato" : currentLead.status_lead);
 
-      if (nextTentativa > mxTentativas) {
-        // Last attempt done and not converted → auto-send to avaliador
-        const acaoFinal = fluxoConfig?.acao_apos_finalizar_tentativas || "enviar_avaliador";
-        const finalStatus = acaoFinal === "arquivar_lead" ? "arquivado" : "aguardando_decisao_avaliador";
-        await supabase.from("leads").update({ 
-          status_lead: finalStatus,
-        }).eq("id", selectedLead.id);
-        await supabase.from("lead_historico").insert({
-          lead_id: selectedLead.id, usuario_id: profile.id,
-          tipo_evento: "tentativas_finalizadas",
-          descricao: `Todas as ${mxTentativas} tentativas finalizadas sem conversão. Lead enviado automaticamente para fila do avaliador.`,
-        });
-        // Remove lead from local cache so it disappears from the list
-        queryClient.setQueryData(["leads-list", effectiveProfileId], (old: any[] | undefined) => {
-          if (!old) return old;
-          return old.filter((l: any) => l.id !== selectedLead.id);
-        });
-        // Close detail panel — lead leaves atendente's screen
-        setSelectedLead(null);
-        toast.warning("Última tentativa registrada sem conversão. Lead enviado para a fila do avaliador.");
+      const finalLeadPatch: Record<string, any> = {
+        ...leadFieldUpdates,
+        reserved_at: null,
+        status_lead: finalStatus,
+      };
+
+      const writeOperations: Promise<any>[] = [
+        supabase.from("lead_historico").insert({
+          lead_id: leadId,
+          usuario_id: profile.id,
+          tipo_evento: "tentativa_contato",
+          descricao: `Tentativa #${tentativaNum} via ${interTipo}${trimmedResult ? ": " + trimmedResult : ""}${timingInfo}`,
+        }),
+        supabase.from("leads").update(finalLeadPatch as any).eq("id", leadId),
+      ];
+
+      if (pendingTask) {
+        const taskDate = new Date(pendingTask.data_contato);
+        const endHour = pendingTask.periodo === "manha" ? 12 : pendingTask.periodo === "tarde" ? 18 : 24;
+        taskDate.setHours(endHour, 0, 0, 0);
+        const wasLate = pendingTask.status === "atrasado" || new Date() > taskDate;
+        writeOperations.push(
+          supabase.from("lead_tarefas_contato")
+            .update({ status: "realizado", fora_do_prazo: wasLate } as any)
+            .eq("id", pendingTask.id)
+        );
+      }
+
+      if (shouldFinalize) {
+        writeOperations.push(
+          supabase.from("lead_historico").insert({
+            lead_id: leadId,
+            usuario_id: profile.id,
+            tipo_evento: "tentativas_finalizadas",
+            descricao: `Todas as ${mxTentativas} tentativas finalizadas sem conversão. Lead enviado automaticamente para fila do avaliador.`,
+          })
+        );
       } else {
-        try {
-          const { data: nextRotina } = await supabase
-            .from("rotina_tentativas_leads").select("*").eq("tentativa_numero", nextTentativa).maybeSingle();
+        writeOperations.push((async () => {
+          const { data: nextRotina, error: nextRotinaError } = await supabase
+            .from("rotina_tentativas_leads")
+            .select("dias_apos_anterior, periodo_contato")
+            .eq("tentativa_numero", nextTentativa)
+            .maybeSingle();
+
+          if (nextRotinaError) throw nextRotinaError;
+
           const diasApos = nextRotina?.dias_apos_anterior || 1;
           const periodo = nextRotina?.periodo_contato || "manha";
           const nextDate = new Date();
@@ -1802,31 +1805,95 @@ export default function LeadsPage() {
           const skippedNext = skipWeekend(nextDate);
           const periodoHora = periodo === "manha" ? 9 : periodo === "tarde" ? 14 : 19;
           skippedNext.setHours(periodoHora, 0, 0, 0);
-          await supabase.from("lead_tarefas_contato").insert({
-            lead_id: selectedLead.id, tentativa: nextTentativa, data_contato: skippedNext.toISOString(),
-            periodo, status: "pendente", responsavel_id: profile.id,
-          });
-        } catch { /* ignore */ }
-        await supabase.from("leads").update({ status_lead: selectedLead.status_lead === "novo" ? "em_contato" : selectedLead.status_lead }).eq("id", selectedLead.id);
 
-        // Update local selectedLead with saved changes
-        setSelectedLead(prev => prev ? {
-          ...prev,
-          plano_id: localPlanoId,
-          repetidor: localRepetidor,
-          cidade_id: localCidadeId,
-          bairro_id: localBairroId,
-          rua_id: localRuaId,
-          numero_endereco: localNumeroEnd || null,
-        } : null);
-        updateLeadInCache(selectedLead!.id, { plano_id: localPlanoId, repetidor: localRepetidor, cidade_id: localCidadeId, bairro_id: localBairroId, rua_id: localRuaId, numero_endereco: localNumeroEnd || null });
+          const { error: nextTaskError } = await supabase.from("lead_tarefas_contato").insert({
+            lead_id: leadId,
+            tentativa: nextTentativa,
+            data_contato: skippedNext.toISOString(),
+            periodo,
+            status: "pendente",
+            responsavel_id: profile.id,
+          });
+
+          if (nextTaskError) throw nextTaskError;
+        })());
       }
+
+      const results = await Promise.all(writeOperations);
+      const writeError = results.find((result) => result?.error)?.error;
+      if (writeError) throw writeError;
+
+      return {
+        leadId,
+        finalLeadPatch,
+        shouldFinalize,
+        cacheInteraction: {
+          id: `local-${crypto.randomUUID()}`,
+          lead_id: leadId,
+          colaborador_id: profile.id,
+          tipo_contato: interTipo,
+          numero_utilizado: trimmedNumber,
+          data_interacao: interactionTimestamp,
+          resultado: trimmedResult,
+        } as LeadInteracao,
+        cacheHistoryEntries: [
+          ...(changes.length > 0 ? [{
+            id: `local-${crypto.randomUUID()}`,
+            lead_id: leadId,
+            usuario_id: profile.id,
+            tipo_evento: "dados_alterados",
+            descricao: changes.join(" | "),
+            data_evento: interactionTimestamp,
+          } satisfies LeadHistorico] : []),
+          {
+            id: `local-${crypto.randomUUID()}`,
+            lead_id: leadId,
+            usuario_id: profile.id,
+            tipo_evento: "tentativa_contato",
+            descricao: `Tentativa #${tentativaNum} via ${interTipo}${trimmedResult ? ": " + trimmedResult : ""}${timingInfo}`,
+            data_evento: interactionTimestamp,
+          } satisfies LeadHistorico,
+          ...(shouldFinalize ? [{
+            id: `local-${crypto.randomUUID()}`,
+            lead_id: leadId,
+            usuario_id: profile.id,
+            tipo_evento: "tentativas_finalizadas",
+            descricao: `Todas as ${mxTentativas} tentativas finalizadas sem conversão. Lead enviado automaticamente para fila do avaliador.`,
+            data_evento: interactionTimestamp,
+          } satisfies LeadHistorico] : []),
+        ],
+      };
     },
-    onSuccess: () => {
-      toast.success("Tentativa registrada!");
-      setShowInteraction(false); setInterNumero(""); setInterResultado("");
-      refetchInteracoes(); refetchHistorico(); refetchObjecao();
+    onSuccess: ({ leadId, finalLeadPatch, shouldFinalize, cacheInteraction, cacheHistoryEntries }) => {
+      setShowInteraction(false);
+      setInterNumero("");
+      setInterResultado("");
+
+      queryClient.setQueryData(["lead-interacoes", leadId], (old: LeadInteracao[] | undefined) => (
+        [...(old || []), cacheInteraction]
+      ));
+
+      queryClient.setQueryData(["lead-historico", leadId], (old: LeadHistorico[] | undefined) => (
+        [...(old || []), ...cacheHistoryEntries].sort((a, b) => new Date(a.data_evento).getTime() - new Date(b.data_evento).getTime())
+      ));
+
+      queryClient.invalidateQueries({ queryKey: ["lead-objecao-registro", leadId] });
       queryClient.invalidateQueries({ queryKey: ["all-lead-interacoes"] });
+      queryClient.invalidateQueries({ queryKey: ["all-lead-transfers"] });
+
+      if (shouldFinalize) {
+        queryClient.setQueryData(["leads-list", effectiveProfileId, leadsScope], (old: Lead[] | undefined) => {
+          if (!old) return old;
+          return old.filter((lead) => lead.id !== leadId);
+        });
+        setSelectedLead(null);
+        toast.warning("Última tentativa registrada sem conversão. Lead enviado para a fila do avaliador.");
+        return;
+      }
+
+      setSelectedLead(prev => prev ? { ...prev, ...finalLeadPatch } : null);
+      updateLeadInCache(leadId, finalLeadPatch);
+      toast.success("Tentativa registrada!");
     },
     onError: (err: any) => toast.error(err.message),
   });

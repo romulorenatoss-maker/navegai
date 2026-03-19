@@ -497,11 +497,7 @@ export default function RelatoriosLeadsPage() {
 
       {/* Action bar */}
       {selected.size > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-card border border-border rounded-lg p-3 shadow-card flex items-center justify-between"
-        >
+        <div className="bg-card border border-border rounded-lg p-3 shadow-card flex items-center justify-between">
           <span className="text-body font-medium text-foreground">{selected.size} lead(s) selecionado(s)</span>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => setExportDialogOpen(true)} disabled={exportLoading}>
@@ -514,7 +510,7 @@ export default function RelatoriosLeadsPage() {
               </Button>
             )}
           </div>
-        </motion.div>
+        </div>
       )}
 
       {/* Table */}
