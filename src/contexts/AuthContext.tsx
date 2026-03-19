@@ -82,7 +82,8 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       supabase
         .from("permissoes_tela")
         .select("tela_path")
-        .eq("profile_id", prof.id),
+        .eq("profile_id", prof.id)
+        .then((r) => r),
       10000
     );
 
@@ -93,7 +94,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
 
     setProfile(prof);
     setRoles((rolesRes.data ?? []).map((r) => r.role));
-    setAllowedScreens((telas ?? []).map((t) => t.tela_path));
+    setAllowedScreens((telasRes.data ?? []).map((t) => t.tela_path));
   }, [clearAuthState]);
 
   useEffect(() => {
