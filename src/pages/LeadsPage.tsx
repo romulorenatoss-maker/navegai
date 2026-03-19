@@ -994,6 +994,10 @@ export default function LeadsPage() {
     }
   }, [profile?.id, refetchPendingTransfers]);
 
+  // Capture queue pagination
+  const [capturaPage, setCapturaPage] = useState(0);
+  const CAPTURA_PAGE_SIZE = 2;
+
 
   // ─── Realtime subscription for leads + related tables ─────────────────
   useEffect(() => {
