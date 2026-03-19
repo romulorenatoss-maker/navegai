@@ -218,6 +218,7 @@ const EVENTO_ICONS: Record<string, typeof Phone> = {
   reserva_expirada: Clock,
   transferencia_manual: ArrowRight,
   lead_capturado: UserCheck,
+  lead_cancelado: Trash2,
 };
 
 // PERIODO_HORA imported from lead-task-utils
