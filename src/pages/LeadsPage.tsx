@@ -776,15 +776,15 @@ export default function LeadsPage() {
       const lead = capturaLeadsRaw.find(l => l.id === leadId);
       if (lead) {
         const capturedLead = { ...lead, responsavel_id: profile!.id, reserved_by: null, reserved_at: new Date().toISOString(), status_lead: "em_atendimento" } as Lead;
-        // Add to cache immediately so it shows in the list
         updateLeadInCache(leadId, capturedLead);
         queryClient.setQueryData(["leads-list", effectiveProfileId, leadsScope], (old: Lead[] | undefined) => {
           if (!old) return [capturedLead];
           if (old.some(l => l.id === leadId)) return old.map(l => l.id === leadId ? capturedLead : l);
           return [...old, capturedLead];
         });
-        // Select the lead and switch to "todos" so it's visible
-        setSelectedLead(capturedLead);
+        // Show post-capture dialog with history
+        setPostCaptureLeadId(leadId);
+        setPostCaptureLeadName(lead.nome);
         setFilaFiltro("todos");
       }
       queryClient.invalidateQueries({ queryKey: ["leads-captura"] });
