@@ -150,6 +150,7 @@ const STATUS_OPTIONS = [
   { value: "fila_captura", label: "Fila de Captura", color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
   { value: "reservado", label: "Reservado", color: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200" },
   { value: "em_atendimento", label: "Em tratativa", color: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" },
+  { value: "cancelado_pendente_analise", label: "Cancelado (Análise)", color: "bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200" },
 ];
 
 // No timeout — reservations persist until manual release or action
@@ -189,6 +190,7 @@ const EVENTO_LABELS: Record<string, string> = {
   captura_expirada: "Captura Expirada",
   reserva_expirada: "Reserva Expirada",
   transferencia_manual: "Transferência Manual",
+  lead_cancelado: "Lead Cancelado",
 };
 
 const EVENTO_ICONS: Record<string, typeof Phone> = {
@@ -216,6 +218,7 @@ const EVENTO_ICONS: Record<string, typeof Phone> = {
   reserva_expirada: Clock,
   transferencia_manual: ArrowRight,
   lead_capturado: UserCheck,
+  lead_cancelado: Trash2,
 };
 
 // PERIODO_HORA imported from lead-task-utils
@@ -328,6 +331,11 @@ export default function LeadsPage() {
   // Finalize dialog (when all attempts done)
   const [showFinalize, setShowFinalize] = useState(false);
 
+  // Cancel lead dialog
+  const [showCancelLead, setShowCancelLead] = useState(false);
+  const [cancelObjecaoId, setCancelObjecaoId] = useState("");
+  const [cancelDescricao, setCancelDescricao] = useState("");
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
   // Schedule dialog
   const [showSchedule, setShowSchedule] = useState(false);
   const [scheduleDate, setScheduleDate] = useState<Date | undefined>(undefined);
@@ -2127,7 +2135,46 @@ export default function LeadsPage() {
     refetchHistorico();
   };
 
-  // ─── Render ───────────────────────────────────────
+  // Handle cancel lead
+  const handleCancelLead = async () => {
+    if (!selectedLead || !profile) return;
+    if (!cancelObjecaoId || !cancelDescricao.trim()) {
+      toast.error("Preencha todos os campos obrigatórios.");
+      return;
+    }
+    setCancelSubmitting(true);
+    try {
+      // Save objection
+      await supabase.from("registro_objecao_lead").insert({
+        lead_id: selectedLead.id,
+        objecao_id: cancelObjecaoId,
+        colaborador_id: profile.id,
+      });
+      // Update lead status
+      await supabase.from("leads").update({ status_lead: "cancelado_pendente_analise" }).eq("id", selectedLead.id);
+      // Log history
+      const objecaoNome = objecoes.find(o => o.id === cancelObjecaoId)?.descricao || "";
+      await supabase.from("lead_historico").insert({
+        lead_id: selectedLead.id,
+        usuario_id: profile.id,
+        tipo_evento: "lead_cancelado",
+        descricao: `Lead cancelado por ${profile.nome}. Objeção: ${objecaoNome}. Motivo: ${cancelDescricao.trim()}`,
+      });
+      setSelectedLead(prev => prev ? { ...prev, status_lead: "cancelado_pendente_analise" } : null);
+      updateLeadInCache(selectedLead.id, { status_lead: "cancelado_pendente_analise" });
+      refetchHistorico();
+      setShowCancelLead(false);
+      setCancelObjecaoId("");
+      setCancelDescricao("");
+      toast.success("Lead cancelado e enviado para análise.");
+    } catch (err: any) {
+      toast.error("Erro ao cancelar lead: " + err.message);
+    } finally {
+      setCancelSubmitting(false);
+    }
+  };
+
+
   return (
     <div className="p-3 md:p-4 space-y-3 h-[calc(100vh-4rem)]">
       {/* Header */}
@@ -2182,8 +2229,17 @@ export default function LeadsPage() {
                 </div>
               </PopoverContent>
             </Popover>
-          )}
-        </div>
+                        )}
+                        {selectedLead.status_lead !== "convertido" && selectedLead.status_lead !== "arquivado" && selectedLead.status_lead !== "cancelado_pendente_analise" && (
+                          <Button size="sm" variant="ghost" className="w-full justify-start text-xs h-8 text-destructive hover:text-destructive" onClick={() => {
+                            setCancelObjecaoId("");
+                            setCancelDescricao("");
+                            setShowCancelLead(true);
+                          }}>
+                            <Trash2 className="w-3.5 h-3.5 mr-2" /> Cancelar Lead
+                          </Button>
+                        )}
+                      </div>
         <div className="flex items-center gap-2">
           <div className="relative">
             <Button onClick={handleOpenTransferHistory} size="icon" variant="outline" className="h-8 w-8" title="Transferências">
@@ -4002,6 +4058,51 @@ export default function LeadsPage() {
               className="press-effect"
             >
               <Plus className="w-4 h-4 mr-1" /> Cadastrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Lead Modal */}
+      <Dialog open={showCancelLead} onOpenChange={setShowCancelLead}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cancelar Lead</DialogTitle>
+            <DialogDescription>Informe o motivo do cancelamento. O lead será enviado para análise da avaliadora.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Objeção <span className="text-destructive">*</span></Label>
+              <Select value={cancelObjecaoId} onValueChange={setCancelObjecaoId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a objeção" />
+                </SelectTrigger>
+                <SelectContent>
+                  {objecoes.map(o => (
+                    <SelectItem key={o.id} value={o.id}>{o.descricao}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Descrição <span className="text-destructive">*</span></Label>
+              <Textarea
+                placeholder="Detalhe o motivo do cancelamento..."
+                value={cancelDescricao}
+                onChange={e => setCancelDescricao(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCancelLead(false)}>Cancelar</Button>
+            <Button
+              variant="destructive"
+              onClick={handleCancelLead}
+              disabled={cancelSubmitting || !cancelObjecaoId || !cancelDescricao.trim()}
+            >
+              {cancelSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+              Confirmar Cancelamento
             </Button>
           </DialogFooter>
         </DialogContent>
