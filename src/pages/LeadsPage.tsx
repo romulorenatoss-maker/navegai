@@ -709,6 +709,8 @@ export default function LeadsPage() {
       if (error) throw error;
       return data as Lead[];
     },
+    refetchInterval: 12000,
+    staleTime: 5000,
   });
 
   const capturaLeadIds = useMemo(() => capturaLeadsRaw.map(l => l.id), [capturaLeadsRaw]);
