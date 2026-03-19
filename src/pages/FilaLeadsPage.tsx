@@ -1599,6 +1599,24 @@ export default function FilaLeadsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Post-capture history dialog */}
+      <LeadPostCaptureDialog
+        open={!!postCaptureLeadId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPostCaptureLeadId(null);
+            setPostCaptureLeadName("");
+          }
+        }}
+        leadId={postCaptureLeadId}
+        leadName={postCaptureLeadName}
+        onGoToLead={() => {
+          const id = postCaptureLeadId;
+          setPostCaptureLeadId(null);
+          setPostCaptureLeadName("");
+          navigate(`/leads?id=${id}`);
+        }}
+      />
     </div>
   );
 }
