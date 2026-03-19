@@ -233,6 +233,11 @@ export function useAvaliacaoOS() {
       toast.error("Responda todas as perguntas antes de concluir.");
       return;
     }
+    const missingNaObs = questions.filter((q) => q.answer === "na" && !q.observation?.trim());
+    if (missingNaObs.length > 0) {
+      toast.error("Descreva o motivo para itens marcados como N/A.");
+      return;
+    }
 
     const totalWeight = questions.reduce(
       (acc, q) => (q.answer != null ? acc + q.peso : acc),
