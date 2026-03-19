@@ -190,6 +190,7 @@ const EVENTO_LABELS: Record<string, string> = {
   captura_expirada: "Captura Expirada",
   reserva_expirada: "Reserva Expirada",
   transferencia_manual: "Transferência Manual",
+  lead_cancelado: "Lead Cancelado",
 };
 
 const EVENTO_ICONS: Record<string, typeof Phone> = {
