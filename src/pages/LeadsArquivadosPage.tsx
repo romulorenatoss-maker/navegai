@@ -294,7 +294,15 @@ export default function LeadsArquivadosPage() {
                         </TableCell>
                         <TableCell className="text-xs">{getResponsavelNome(lead.responsavel_id)}</TableCell>
                         <TableCell className="text-xs">{fmtDate(lead.updated_at)}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right space-x-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => { setHistoryLeadId(lead.id); setHistoryLeadNome(lead.nome); }}
+                            title="Histórico"
+                          >
+                            <History className="w-3.5 h-3.5" />
+                          </Button>
                           <Button
                             size="sm"
                             variant="outline"
@@ -316,6 +324,39 @@ export default function LeadsArquivadosPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialog Histórico */}
+      <Dialog open={!!historyLeadId} onOpenChange={(open) => { if (!open) setHistoryLeadId(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-base">Histórico — {historyLeadNome}</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh]">
+            {isLoadingHistorico ? (
+              <div className="p-4 text-center text-sm text-muted-foreground">Carregando...</div>
+            ) : historico.length === 0 ? (
+              <div className="p-4 text-center text-sm text-muted-foreground">Nenhum registro encontrado.</div>
+            ) : (
+              <div className="space-y-3 p-1">
+                {historico.map((h: any, i: number) => (
+                  <div key={h.id} className="flex gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className="w-2 h-2 rounded-full bg-primary mt-1.5" />
+                      {i < historico.length - 1 && <div className="w-px flex-1 bg-border" />}
+                    </div>
+                    <div className="pb-3 flex-1">
+                      <p className="text-xs text-muted-foreground">
+                        {fmtDate(h.data_evento)} — {(h as any).profiles?.nome || "Sistema"}
+                      </p>
+                      <p className="text-sm">{h.descricao || h.tipo_evento}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
