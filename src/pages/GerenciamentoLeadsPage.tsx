@@ -141,16 +141,20 @@ export default function GerenciamentoLeadsPage() {
   });
 
   // Campanhas for display
-  const { data: campanhasMap = {} } = useQuery({
-    queryKey: ["campanhas-map"],
+  const { data: campanhasList = [] } = useQuery({
+    queryKey: ["campanhas-list"],
     queryFn: async () => {
-      const { data } = await supabase.from("campanhas").select("id, nome");
-      const map: Record<string, string> = {};
-      (data || []).forEach((c: any) => { map[c.id] = c.nome; });
-      return map;
+      const { data } = await supabase.from("campanhas").select("id, nome").order("nome");
+      return (data || []) as { id: string; nome: string }[];
     },
     staleTime: 5 * 60 * 1000,
   });
+
+  const campanhasMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    campanhasList.forEach(c => { map[c.id] = c.nome; });
+    return map;
+  }, [campanhasList]);
 
   // ─── Selection handlers ─────────────────
   const pageLeadIds = useMemo(() => leads.map(l => l.id), [leads]);
