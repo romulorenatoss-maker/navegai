@@ -398,6 +398,7 @@ export default function LeadsPage() {
   const { data: allLeads = [], isLoading: loadingLeads } = useQuery({
     queryKey: ["leads-list", effectiveProfileId, leadsScope],
     refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
     staleTime: 15_000,
     queryFn: async () => {
       if (!effectiveProfileId) return [] as Lead[];
