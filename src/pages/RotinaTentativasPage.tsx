@@ -30,7 +30,18 @@ interface ConfigFluxo {
   permitir_reiniciar_rotina: boolean;
   tipo_servico_conversao_id: string | null;
   tempo_expiracao_captura_segundos: number;
+  tempo_exibicao_leads_horas: number;
 }
+
+const EXIBICAO_HORAS_OPTIONS = [
+  { value: 1, label: "1 hora" },
+  { value: 2, label: "2 horas" },
+  { value: 3, label: "3 horas" },
+  { value: 4, label: "4 horas" },
+  { value: 6, label: "6 horas" },
+  { value: 8, label: "8 horas" },
+  { value: 12, label: "12 horas" },
+];
 
 const EXPIRACAO_OPTIONS = [
   { value: 30, label: "30 segundos" },
