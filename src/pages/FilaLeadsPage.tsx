@@ -242,6 +242,8 @@ export default function FilaLeadsPage() {
 
   const { data: fluxoConfig } = useQuery({
     queryKey: ["config-fluxo-leads"],
+    refetchOnWindowFocus: true,
+    staleTime: 30_000,
     queryFn: async () => { const { data, error } = await supabase.from("configuracao_fluxo_leads").select("*").limit(1).maybeSingle(); if (error) throw error; return data; },
   });
 
