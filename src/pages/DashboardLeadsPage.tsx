@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   UserPlus, PhoneCall, CheckCircle2, ArrowRightLeft,
   TrendingUp, Clock, Users, Target, AlertTriangle, ExternalLink, Search,
-  CalendarIcon, Archive,
+  CalendarIcon, Archive, FileUp, PenLine,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
