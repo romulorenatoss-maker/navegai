@@ -240,7 +240,7 @@ export default function FilaLeadsPage() {
   });
 
   const { data: fluxoConfig } = useQuery({
-    queryKey: ["configuracao-fluxo-leads"],
+    queryKey: ["config-fluxo-leads"],
     queryFn: async () => { const { data, error } = await supabase.from("configuracao_fluxo_leads").select("*").limit(1).maybeSingle(); if (error) throw error; return data; },
   });
 
@@ -406,7 +406,7 @@ export default function FilaLeadsPage() {
     });
 
     return items;
-  }, [tarefas, leadsComAgendamento, tarefaLeads, leads, allInteracoes, cadencia]);
+  }, [tarefas, leadsComAgendamento, tarefaLeads, leads, allInteracoes, cadencia, fluxoConfig]);
 
   // Filter by date range
   const filteredTarefas = useMemo(() => {
