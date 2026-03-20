@@ -2486,25 +2486,38 @@ export default function LeadsPage() {
                         </div>
                         <div className="ml-5 mt-1 flex flex-col gap-0.5">
                           <div className="flex items-center gap-1">
-                            {hasSchedule ? (
-                              <>
-                                <CalendarClock className={`w-2.5 h-2.5 ${scheduleReady ? "text-primary" : "text-muted-foreground"}`} />
-                                <span className={`text-[10px] ${scheduleReady ? "text-primary font-semibold" : "text-muted-foreground"}`}>
-                                  {scheduleReady ? "⬆ Retorno agora" : `Retorno: ${fmtDateShort(new Date(item.lead.agendamento_retorno!))}`}
-                                </span>
-                              </>
-                            ) : (
-                              <>
-                                <Clock className={`w-2.5 h-2.5 ${hoursLeft !== null && hoursLeft <= 0 ? "text-destructive" : "text-muted-foreground"}`} />
-                                <span className={`text-[10px] ${hoursLeft !== null && hoursLeft <= 0 ? "text-destructive font-medium" : "text-muted-foreground"}`}>
-                                  {item.proximoContato
-                                    ? (hoursLeft !== null && hoursLeft <= 0
-                                      ? `Expirado ${formatCountdown(item.proximoContato, now)}`
-                                      : `Expira em ${formatCountdown(item.proximoContato, now)}`)
-                                    : "Sem prazo"}
-                                </span>
-                              </>
-                            )}
+                            {(() => {
+                              const deadlineRef = hasSchedule
+                                ? new Date(item.lead.agendamento_retorno!)
+                                : item.proximoContato;
+                              const isExpired = hoursLeft !== null && hoursLeft <= 0;
+                              const IconComp = hasSchedule ? CalendarClock : Clock;
+                              const iconColor = isExpired ? "text-destructive" : hoursLeft !== null && hoursLeft <= 2 ? "text-yellow-600" : "text-muted-foreground";
+                              const textColor = isExpired ? "text-destructive font-medium" : hoursLeft !== null && hoursLeft <= 2 ? "text-yellow-700 dark:text-yellow-400 font-medium" : "text-muted-foreground";
+
+                              if (!deadlineRef) {
+                                return (
+                                  <>
+                                    <Clock className="w-2.5 h-2.5 text-muted-foreground" />
+                                    <span className="text-[10px] text-muted-foreground">Sem prazo</span>
+                                  </>
+                                );
+                              }
+
+                              const countdown = formatCountdown(deadlineRef, now);
+                              const label = hasSchedule ? "Retorno" : "Contato";
+
+                              return (
+                                <>
+                                  <IconComp className={`w-2.5 h-2.5 ${iconColor}`} />
+                                  <span className={`text-[10px] ${textColor}`}>
+                                    {isExpired
+                                      ? `${label} expirado ${countdown}`
+                                      : `${label} expira em ${countdown}`}
+                                  </span>
+                                </>
+                              );
+                            })()}
                           </div>
                           {item.lead.responsavel_id && (() => {
                             const resp = profiles.find(p => p.id === item.lead.responsavel_id);
