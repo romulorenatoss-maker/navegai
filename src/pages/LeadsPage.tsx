@@ -2456,9 +2456,9 @@ export default function LeadsPage() {
                             <p className="text-[10px] text-primary/70 ml-5 truncate">Origem: {getCampanhaNome(item.lead) || "Não especificada"}</p>
                             <div className="flex items-center gap-1.5 mt-0.5 ml-5">
                               {contatos.length > 0 ? (
-                                <span className="text-[11px] text-muted-foreground flex items-center gap-0.5">
-                                  <Phone className="w-2.5 h-2.5" /> {applyPhoneMask(contatos[0].valor)}
-                                  {contatos[0].tem_whatsapp && <MessageSquare className="w-2.5 h-2.5 text-green-600" />}
+                                <span className="text-[11px] text-muted-foreground flex items-center gap-0.5 whitespace-nowrap">
+                                  <Phone className="w-2.5 h-2.5 shrink-0" /> {applyPhoneMask(contatos[0].valor)}
+                                  {contatos[0].tem_whatsapp && <MessageSquare className="w-2.5 h-2.5 text-green-600 shrink-0" />}
                                 </span>
                               ) : (
                                 <span className="text-[11px] text-muted-foreground">Sem telefone</span>
