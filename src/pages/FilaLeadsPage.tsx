@@ -296,18 +296,18 @@ export default function FilaLeadsPage() {
 
   // Build unified task list: automatic tasks + manual agendamentos + leads from priority queue (matching "Hoje" logic)
   const unifiedTarefas = useMemo(() => {
-    const seen = new Set<string>(); // track lead_ids already added
+    const seenLeadIds = new Set<string>(); // track lead_ids to prevent duplicates
     const items: any[] = [];
 
     // 1. Automatic tasks from lead_tarefas_contato (only captured/assigned leads)
     const STATUS_EXCLUIDOS_TAREFAS = ["importado", "fila_captura"];
     tarefas.forEach((t: any) => {
-      if (seen.has(t.id)) return;
+      if (seenLeadIds.has(t.lead_id)) return; // skip if lead already added
       const lead = tarefaLeads.find((l: any) => l.id === t.lead_id);
       // Skip leads that haven't been captured yet
       if (lead && STATUS_EXCLUIDOS_TAREFAS.includes(lead.status_lead)) return;
       if (lead && !lead.responsavel_id) return; // no one assigned
-      seen.add(t.id);
+      seenLeadIds.add(t.lead_id);
       items.push({
         ...t,
         _tipo_agenda: "automatico" as const,
