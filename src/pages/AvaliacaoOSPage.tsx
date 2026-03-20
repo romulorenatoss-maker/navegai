@@ -2668,13 +2668,20 @@ export default function AvaliacaoOSPage() {
             </div>
             <div>
               <span className="text-muted-foreground">Atendente:</span>
-              {selectedOS.atendente_id ? (
-                <p className="font-medium text-foreground">{detailAtendenteNome || "—"}</p>
-              ) : (hasAtendimentoAccess || isAdmin) ? (
-                <Select value={atendenteId} onValueChange={async (val) => {
+              {(isAdmin || (!selectedOS.atendente_id && (hasAtendimentoAccess || isAdmin))) ? (
+                <Select value={selectedOS.atendente_id || atendenteId || ""} onValueChange={async (val) => {
+                  const oldVal = selectedOS.atendente_id;
                   setAtendenteId(val);
                   await supabase.from("ordens_servico").update({ atendente_id: val } as any).eq("id", selectedOS.id);
                   setSelectedOS({ ...selectedOS, atendente_id: val });
+                  if (isAdmin && oldVal && oldVal !== val && profile) {
+                    await (supabase as any).from("os_reaberturas").insert({
+                      ordem_servico_id: selectedOS.id,
+                      reaberta_por: profile.id,
+                      motivo: "edicao_admin",
+                      campos_alterados: ["atendente_id"],
+                    });
+                  }
                   toast.success("Atendente salvo!");
                 }}>
                   <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="Selecionar" /></SelectTrigger>
@@ -2684,19 +2691,28 @@ export default function AvaliacaoOSPage() {
                     )}
                   </SelectContent>
                 </Select>
+              ) : selectedOS.atendente_id ? (
+                <p className="font-medium text-foreground">{detailAtendenteNome || "—"}</p>
               ) : (
                 <p className="font-medium text-warning italic">Pendente</p>
               )}
             </div>
             <div>
               <span className="text-muted-foreground">Técnico:</span>
-              {selectedOS.tecnico_id ? (
-                <p className="font-medium text-foreground">{detailTecnicoNome || "—"}</p>
-              ) : (hasTecnicoAccess || isAdmin) ? (
-                <Select value={tecnicoId} onValueChange={async (val) => {
+              {(isAdmin || (!selectedOS.tecnico_id && (hasTecnicoAccess || isAdmin))) ? (
+                <Select value={selectedOS.tecnico_id || tecnicoId || ""} onValueChange={async (val) => {
+                  const oldVal = selectedOS.tecnico_id;
                   setTecnicoId(val);
                   await supabase.from("ordens_servico").update({ tecnico_id: val } as any).eq("id", selectedOS.id);
                   setSelectedOS({ ...selectedOS, tecnico_id: val });
+                  if (isAdmin && oldVal && oldVal !== val && profile) {
+                    await (supabase as any).from("os_reaberturas").insert({
+                      ordem_servico_id: selectedOS.id,
+                      reaberta_por: profile.id,
+                      motivo: "edicao_admin",
+                      campos_alterados: ["tecnico_id"],
+                    });
+                  }
                   toast.success("Técnico salvo!");
                 }}>
                   <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="Selecionar" /></SelectTrigger>
@@ -2706,6 +2722,8 @@ export default function AvaliacaoOSPage() {
                     )}
                   </SelectContent>
                 </Select>
+              ) : selectedOS.tecnico_id ? (
+                <p className="font-medium text-foreground">{detailTecnicoNome || "—"}</p>
               ) : (
                 <p className="font-medium text-warning italic">Pendente</p>
               )}
