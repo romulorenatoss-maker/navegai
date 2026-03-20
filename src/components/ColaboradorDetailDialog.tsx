@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  User, FileText, Trash2, Lock, Loader2, ShieldCheck,
+  User, FileText, Trash2, Lock, Loader2, ShieldCheck, ShieldOff,
   Eye, MessageSquare, CheckCircle2, Clock, AlertCircle, Shield
 } from "lucide-react";
 import PermissoesTelasTab from "@/components/PermissoesTelasTab";
@@ -57,6 +57,8 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const [mfaLoading, setMfaLoading] = useState(false);
+  const [mfaUnenrolling, setMfaUnenrolling] = useState(false);
 
   // Reset state when dialog closes
   const handleOpenChange = (v: boolean) => {
@@ -152,6 +154,38 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
     },
     enabled: open && !!collaborator,
   });
+
+  // MFA status for this collaborator
+  const { data: mfaStatus, refetch: refetchMfa } = useQuery({
+    queryKey: ["colab_mfa_status", collaborator?.user_id],
+    queryFn: async () => {
+      if (!collaborator) return null;
+      const res = await supabase.functions.invoke("admin-manage-mfa", {
+        body: { action: "check", target_user_id: collaborator.user_id },
+      });
+      if (res.error) return null;
+      return res.data as { has_mfa: boolean; factors: { id: string }[] };
+    },
+    enabled: open && !!collaborator && isAdmin,
+  });
+
+  const handleUnenrollMfa = async () => {
+    if (!collaborator) return;
+    setMfaUnenrolling(true);
+    try {
+      const res = await supabase.functions.invoke("admin-manage-mfa", {
+        body: { action: "unenroll", target_user_id: collaborator.user_id },
+      });
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.error);
+      toast.success("2FA desativado com sucesso para este colaborador.");
+      refetchMfa();
+    } catch (err: any) {
+      toast.error("Erro: " + (err?.message || "falha desconhecida"));
+    } finally {
+      setMfaUnenrolling(false);
+    }
+  };
 
   // OS detail
   const { data: osDetail } = useQuery({
@@ -432,6 +466,51 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
                   >
                     {passwordLoading ? "Salvando..." : "Alterar Senha"}
                   </Button>
+                </div>
+              )}
+
+              {/* Gerenciar 2FA */}
+              {isAdmin && (
+                <div className="border border-border rounded-lg p-4 space-y-3 mt-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {mfaStatus?.has_mfa ? (
+                        <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                      ) : (
+                        <ShieldOff className="w-4 h-4 text-muted-foreground" />
+                      )}
+                      <p className="text-body font-medium text-foreground">Autenticação 2FA</p>
+                    </div>
+                    <Badge variant="outline" className={cn(
+                      "text-xs",
+                      mfaStatus?.has_mfa
+                        ? "text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800"
+                        : "text-muted-foreground"
+                    )}>
+                      {mfaStatus?.has_mfa ? "Ativo" : "Inativo"}
+                    </Badge>
+                  </div>
+                  {mfaStatus?.has_mfa ? (
+                    <>
+                      <p className="text-sm text-muted-foreground">
+                        Este colaborador possui 2FA ativo. Desative caso ele tenha perdido o celular e precise reconfigurar.
+                      </p>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleUnenrollMfa}
+                        disabled={mfaUnenrolling}
+                        className="press-effect"
+                      >
+                        {mfaUnenrolling ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <ShieldOff className="w-4 h-4 mr-1" />}
+                        Desativar 2FA
+                      </Button>
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Este colaborador não possui 2FA configurado. Ele pode ativar na engrenagem do cabeçalho.
+                    </p>
+                  )}
                 </div>
               )}
             </TabsContent>
