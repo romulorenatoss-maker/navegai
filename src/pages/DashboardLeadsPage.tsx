@@ -603,14 +603,32 @@ export default function DashboardLeadsPage() {
         )}
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
            <KpiCard
             icon={UserPlus}
             label="Leads Recebidos"
             value={m.leadsNoPeriodo}
-            subValue="No período selecionado"
+            subValue="Total no período"
             color="bg-primary/10 text-primary"
             delay={0}
+            onClick={() => toRelatorios()}
+          />
+          <KpiCard
+            icon={FileUp}
+            label="Importados"
+            value={m.leadsImportados}
+            subValue="Via importação"
+            color="bg-sky-500/10 text-sky-600"
+            delay={0.05}
+            onClick={() => toRelatorios()}
+          />
+          <KpiCard
+            icon={PenLine}
+            label="Manuais"
+            value={m.leadsManuais}
+            subValue="Adicionados por colaborador"
+            color="bg-indigo-500/10 text-indigo-600"
+            delay={0.1}
             onClick={() => toRelatorios()}
           />
           <KpiCard
@@ -619,7 +637,7 @@ export default function DashboardLeadsPage() {
             value={m.emAtendimento}
             subValue={`${m.statusCounts["novo"] || 0} aguardando`}
             color="bg-amber-500/10 text-amber-600"
-            delay={0.1}
+            delay={0.15}
             onClick={() => toRelatorios("em_atendimento")}
             onSubClick={() => toRelatorios("novo")}
           />
@@ -632,19 +650,19 @@ export default function DashboardLeadsPage() {
             delay={0.2}
             onClick={() => toRelatorios("convertido")}
           />
+        </div>
+
+        {/* Second row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <KpiCard
             icon={ArrowRightLeft}
             label="Tentativas Realizadas"
             value={m.tentativas}
             subValue="No período selecionado"
             color="bg-violet-500/10 text-violet-600"
-            delay={0.3}
+            delay={0.25}
             onClick={() => openDrill("tentativas", "Tentativas no Período")}
           />
-        </div>
-
-        {/* Second row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <KpiCard
             icon={Target}
             label="Taxa de Conversão"
