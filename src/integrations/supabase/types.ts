@@ -986,6 +986,7 @@ export type Database = {
           convertido_registrado_por: string | null
           created_at: string
           data_criacao: string
+          descricao: string | null
           id: string
           nome: string
           notificacao_vista: boolean
@@ -1012,6 +1013,7 @@ export type Database = {
           convertido_registrado_por?: string | null
           created_at?: string
           data_criacao?: string
+          descricao?: string | null
           id?: string
           nome: string
           notificacao_vista?: boolean
@@ -1038,6 +1040,7 @@ export type Database = {
           convertido_registrado_por?: string | null
           created_at?: string
           data_criacao?: string
+          descricao?: string | null
           id?: string
           nome?: string
           notificacao_vista?: boolean
