@@ -2378,6 +2378,8 @@ export default function LeadsPage() {
                   >
                     Hoje ({priorityQueue.filter((item) => {
                       const _now = new Date();
+                      const _cutoff = new Date(_now.getTime() - tempoExibicaoHoras * 60 * 60 * 1000);
+                      if (new Date(item.lead.updated_at) > _cutoff) return false;
                       const endOfToday = new Date(_now.getFullYear(), _now.getMonth(), _now.getDate(), 23, 59, 59, 999);
                       const in8hours = new Date(_now.getTime() + 8 * 60 * 60 * 1000);
                       if (item.lead.agendamento_retorno) {
@@ -2394,7 +2396,7 @@ export default function LeadsPage() {
                     className="h-6 text-[10px] px-2"
                     onClick={() => setFilaFiltro("todos")}
                   >
-                    Todos ({priorityQueue.length})
+                    Todos ({priorityQueue.filter(item => new Date(item.lead.updated_at) <= new Date(Date.now() - tempoExibicaoHoras * 60 * 60 * 1000)).length})
                   </Button>
                 </div>
               </div>
