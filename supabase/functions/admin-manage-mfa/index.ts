@@ -28,7 +28,8 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Apenas administradores podem gerenciar 2FA." }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { action, target_user_id } = await req.json();
+    const body = await req.json();
+    const { action, target_user_id } = body;
 
     if (action === "check") {
       // List MFA factors for the target user
@@ -43,7 +44,6 @@ Deno.serve(async (req) => {
     }
 
     if (action === "unenroll") {
-      const { factor_id } = await req.json().catch(() => ({}));
       // List and unenroll all TOTP factors
       const { data, error: listErr } = await supabaseAdmin.auth.admin.mfa.listFactors({ userId: target_user_id });
       if (listErr) {
