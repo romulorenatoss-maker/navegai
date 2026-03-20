@@ -1907,6 +1907,27 @@ export default function AvaliacaoOSPage() {
                 ))}
               </div>
             )}
+
+            {/* Histórico de edições */}
+            {osReaberturas.length > 0 && (
+              <div className="flex flex-col gap-1.5 mt-3 pt-3 border-t border-border">
+                <span className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Histórico de Edições</span>
+                {osReaberturas.map((r: any) => (
+                  <div key={r.id} className="flex items-center gap-2 text-sm flex-wrap">
+                    <Pencil className="w-3 h-3 text-muted-foreground shrink-0" />
+                    <span className="text-foreground">Editada por <span className="font-medium">{r._nome}</span></span>
+                    <span className="text-caption text-muted-foreground">em {format(new Date(r.created_at), "dd/MM/yyyy HH:mm")}</span>
+                    {r.campos_alterados?.length > 0 && (
+                      <span className="text-caption text-muted-foreground">
+                        ({r.campos_alterados.map((c: string) => 
+                          c === "atendente_id" ? "Atendente" : c === "tecnico_id" ? "Técnico" : c === "data_abertura" ? "Data" : c
+                        ).join(", ")})
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
