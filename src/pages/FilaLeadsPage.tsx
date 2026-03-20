@@ -1374,9 +1374,7 @@ export default function FilaLeadsPage() {
                               const countdown = formatCountdown(deadline, now);
                               const color = isExp ? "text-destructive font-medium" : hoursLeft <= 2 ? "text-yellow-700 dark:text-yellow-400 font-medium" : "text-muted-foreground";
                               return (
-                                <div className="flex flex-col gap-0.5">
-                                  <div>{fmtDateShort(tarefa.data_contato)}</div>
-                                  {tarefa.periodo && <div className="text-muted-foreground">{PERIODO_LABELS[tarefa.periodo] || tarefa.periodo}</div>}
+                                <div>
                                   <span className={`flex items-center gap-1 ${color}`}>
                                     <Clock className="w-3 h-3" />
                                     {isExp ? `Expirado ${countdown}` : `Expira em ${countdown}`}
