@@ -564,10 +564,10 @@ export default function RelatoriosLeadsPage() {
                 <tr className="border-b border-border">
                   <th className="px-4 py-2 w-10">
                     <Checkbox
-                      checked={allSelected}
+                      checked={allPageSelected}
                       onCheckedChange={toggleAll}
                       className="translate-y-[1px]"
-                      {...(someSelected ? { "data-state": "indeterminate" } : {})}
+                      {...(somePageSelected ? { "data-state": "indeterminate" } : {})}
                     />
                   </th>
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Nome</th>
