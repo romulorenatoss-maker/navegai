@@ -368,9 +368,9 @@ export default function GerenciamentoLeadsPage() {
             </div>
 
             {/* Clear */}
-            {(filterStatus !== "all" || filterSearch || filterDateFrom || filterDateTo) && (
+            {(filterStatus !== "all" || filterSearch || filterCampanha !== "all" || filterDateFrom || filterDateTo) && (
               <Button variant="ghost" size="sm" className="h-9" onClick={() => {
-                setFilterStatus("all"); setFilterSearch(""); setFilterDateFrom(undefined); setFilterDateTo(undefined);
+                setFilterStatus("all"); setFilterSearch(""); setFilterCampanha("all"); setFilterDateFrom(undefined); setFilterDateTo(undefined);
                 setPage(0); setSelectedIds(new Set());
               }}>
                 Limpar filtros
