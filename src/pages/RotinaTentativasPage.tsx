@@ -30,7 +30,18 @@ interface ConfigFluxo {
   permitir_reiniciar_rotina: boolean;
   tipo_servico_conversao_id: string | null;
   tempo_expiracao_captura_segundos: number;
+  tempo_exibicao_leads_horas: number;
 }
+
+const EXIBICAO_HORAS_OPTIONS = [
+  { value: 1, label: "1 hora" },
+  { value: 2, label: "2 horas" },
+  { value: 3, label: "3 horas" },
+  { value: 4, label: "4 horas" },
+  { value: 6, label: "6 horas" },
+  { value: 8, label: "8 horas" },
+  { value: 12, label: "12 horas" },
+];
 
 const EXPIRACAO_OPTIONS = [
   { value: 30, label: "30 segundos" },
@@ -146,6 +157,7 @@ export default function RotinaTentativasPage() {
           permitir_reiniciar_rotina: localConfig.permitir_reiniciar_rotina,
           tipo_servico_conversao_id: localConfig.tipo_servico_conversao_id,
           tempo_expiracao_captura_segundos: localConfig.tempo_expiracao_captura_segundos,
+          tempo_exibicao_leads_horas: localConfig.tempo_exibicao_leads_horas,
         } as any)
         .eq("id", config.id);
       if (e1) throw e1;
@@ -275,6 +287,21 @@ export default function RotinaTentativasPage() {
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">Se o atendente capturar um lead e não registrar nenhuma interação dentro desse tempo, o lead volta automaticamente para a fila de captura.</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Tempo para exibir leads nas telas</Label>
+                  <Select
+                    value={String(localConfig?.tempo_exibicao_leads_horas || 1)}
+                    onValueChange={(v) => localConfig && setLocalConfig({ ...localConfig, tempo_exibicao_leads_horas: parseInt(v) })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {EXIBICAO_HORAS_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">O lead só aparece nas telas "Meus Leads" e "Tarefas do Dia" após completar esse tempo desde a última atualização. Se o lead for atualizado, o tempo reinicia.</p>
                 </div>
               </div>
             </CardContent>

@@ -567,7 +567,7 @@ export default function LeadsPage() {
         .limit(1)
         .maybeSingle();
       if (error) throw error;
-      return data as { quantidade_tentativas: number; permitir_reiniciar_rotina: boolean; tipo_servico_conversao_id?: string | null; acao_apos_finalizar_tentativas?: string; tempo_expiracao_captura_segundos?: number; acao_quando_atrasar?: string } | null;
+      return data as { quantidade_tentativas: number; permitir_reiniciar_rotina: boolean; tipo_servico_conversao_id?: string | null; acao_apos_finalizar_tentativas?: string; tempo_expiracao_captura_segundos?: number; acao_quando_atrasar?: string; tempo_exibicao_leads_horas?: number } | null;
     },
   });
 
@@ -1098,13 +1098,18 @@ export default function LeadsPage() {
     });
   }, [allLeads, allLeadInteracoes, allLeadTransfers, cadencia]);
 
-  // Filtered priority queue based on filaFiltro
+  // Filtered priority queue based on filaFiltro + tempo_exibicao_leads_horas
+  const tempoExibicaoHoras = fluxoConfig?.tempo_exibicao_leads_horas ?? 1;
   const filteredQueue = useMemo(() => {
+    const now = new Date();
+    const cutoff = new Date(now.getTime() - tempoExibicaoHoras * 60 * 60 * 1000);
     let result = priorityQueue;
+
+    // Time filter: only show leads whose updated_at is older than configured hours
+    result = result.filter((item) => new Date(item.lead.updated_at) <= cutoff);
 
     // Time filter
     if (filaFiltro === "hoje") {
-      const now = new Date();
       const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
       const in8hours = new Date(now.getTime() + 8 * 60 * 60 * 1000);
       result = result.filter((item) => {
@@ -1118,7 +1123,7 @@ export default function LeadsPage() {
     }
 
     return result;
-  }, [priorityQueue, filaFiltro]);
+  }, [priorityQueue, filaFiltro, tempoExibicaoHoras]);
 
 
   const { data: leadContatos = [], refetch: refetchContatos } = useQuery({
@@ -2373,6 +2378,8 @@ export default function LeadsPage() {
                   >
                     Hoje ({priorityQueue.filter((item) => {
                       const _now = new Date();
+                      const _cutoff = new Date(_now.getTime() - tempoExibicaoHoras * 60 * 60 * 1000);
+                      if (new Date(item.lead.updated_at) > _cutoff) return false;
                       const endOfToday = new Date(_now.getFullYear(), _now.getMonth(), _now.getDate(), 23, 59, 59, 999);
                       const in8hours = new Date(_now.getTime() + 8 * 60 * 60 * 1000);
                       if (item.lead.agendamento_retorno) {
@@ -2389,7 +2396,7 @@ export default function LeadsPage() {
                     className="h-6 text-[10px] px-2"
                     onClick={() => setFilaFiltro("todos")}
                   >
-                    Todos ({priorityQueue.length})
+                    Todos ({priorityQueue.filter(item => new Date(item.lead.updated_at) <= new Date(Date.now() - tempoExibicaoHoras * 60 * 60 * 1000)).length})
                   </Button>
                 </div>
               </div>

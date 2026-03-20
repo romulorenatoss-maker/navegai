@@ -286,7 +286,7 @@ export default function FilaLeadsPage() {
   const { data: tarefaLeads = [] } = useQuery({
     queryKey: ["fila-tarefas-leads-names", allTarefaLeadIds],
     enabled: allTarefaLeadIds.length > 0,
-    queryFn: async () => { const { data } = await supabase.from("leads").select("id, nome, status_lead, responsavel_id, agendamento_retorno").in("id", allTarefaLeadIds); return data || []; },
+    queryFn: async () => { const { data } = await supabase.from("leads").select("id, nome, status_lead, responsavel_id, agendamento_retorno, updated_at").in("id", allTarefaLeadIds); return data || []; },
   });
   const { data: tarefaContatos = [] } = useQuery({
     queryKey: ["fila-tarefas-leads-contatos", allTarefaLeadIds],
@@ -301,12 +301,16 @@ export default function FilaLeadsPage() {
 
     // 1. Automatic tasks from lead_tarefas_contato (only captured/assigned leads)
     const STATUS_EXCLUIDOS_TAREFAS = ["importado", "fila_captura"];
+    const now2 = new Date();
+    const cutoff2 = new Date(now2.getTime() - ((fluxoConfig as any)?.tempo_exibicao_leads_horas ?? 1) * 60 * 60 * 1000);
     tarefas.forEach((t: any) => {
       if (seenLeadIds.has(t.lead_id)) return; // skip if lead already added
       const lead = tarefaLeads.find((l: any) => l.id === t.lead_id);
       // Skip leads that haven't been captured yet
       if (lead && STATUS_EXCLUIDOS_TAREFAS.includes(lead.status_lead)) return;
       if (lead && !lead.responsavel_id) return; // no one assigned
+      // Time filter: only show if lead updated_at is older than configured hours
+      if (lead?.updated_at && new Date(lead.updated_at) > cutoff2) return;
       seenLeadIds.add(t.lead_id);
       items.push({
         ...t,
@@ -347,6 +351,8 @@ export default function FilaLeadsPage() {
       if (["importado", "fila_captura"].includes(lead.status_lead)) return; // not captured yet
       if (!["em_contato", "interessado", "reservado", "em_atendimento"].includes(lead.status_lead)) return;
       if (!lead.responsavel_id && !lead.reserved_by) return; // unassigned, skip
+      // Time filter
+      if (new Date(lead.updated_at) > cutoff2) return;
 
       const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
       const tentativaAtual = interacoes.length + 1;
@@ -425,14 +431,19 @@ export default function FilaLeadsPage() {
   const maxTentativas = (fluxoConfig as any)?.quantidade_tentativas || cadencia.length || 7;
   const getProfileName = (id: string | null) => { if (!id) return "Sem responsável"; return profiles.find(p => p.id === id)?.nome || "—"; };
 
+  const tempoExibicaoHoras = (fluxoConfig as any)?.tempo_exibicao_leads_horas ?? 1;
+
   const queue = useMemo<QueueItem[]>(() => {
     const now = new Date();
+    const cutoff = new Date(now.getTime() - tempoExibicaoHoras * 60 * 60 * 1000);
     // Only show leads that are captured/assigned — exclude importado, fila_captura, and unassigned leads
     const FILA_EXCLUDED_STATUS = ["importado", "fila_captura"];
     return leads
       .filter(lead => {
         if (FILA_EXCLUDED_STATUS.includes(lead.status_lead)) return false;
         if (!lead.responsavel_id && !lead.reserved_by) return false;
+        // Time filter: only show leads whose updated_at is older than configured hours
+        if (new Date(lead.updated_at) > cutoff) return false;
         return true;
       })
       .map(lead => {
@@ -457,7 +468,7 @@ export default function FilaLeadsPage() {
       if (!a.nextAttemptExpired && b.nextAttemptExpired) return 1;
       return a.nextAttempt.getTime() - b.nextAttempt.getTime();
     });
-  }, [leads, allContatos, allInteracoes, cadencia, profiles]);
+  }, [leads, allContatos, allInteracoes, cadencia, profiles, tempoExibicaoHoras]);
 
   // ─── Fila de Captura (ONLY truly available leads) ──
   const capturaLeads = useMemo(() => {
