@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Phone, MessageSquare, Loader2, ListOrdered, Clock, AlertTriangle } from "lucide-react";
 import { isTarefaExpirada, getPeriodoEndHour, PERIODO_LABELS, PERIODO_HORA, skipWeekend } from "@/lib/lead-task-utils";
+import { applyPhoneMask } from "@/lib/phone-utils";
 
 const fmtDate = (d: string | Date) => {
   try { return format(new Date(d), "dd/MM/yyyy HH:mm", { locale: ptBR }); } catch { return String(d); }
@@ -327,7 +328,7 @@ export default function FilaTarefasLeadsPage() {
                             {getLeadContatos(tarefa.lead_id).map((c: any) => (
                               <Badge key={c.id} variant="outline" className="text-xs gap-1">
                                 <Phone className="w-3 h-3" />
-                                {c.valor}
+                                {applyPhoneMask(c.valor)}
                                 {c.tem_whatsapp && <MessageSquare className="w-3 h-3 text-green-600" />}
                               </Badge>
                             ))}
@@ -405,8 +406,8 @@ export default function FilaTarefasLeadsPage() {
                 <SelectTrigger><SelectValue placeholder="Selecione o número..." /></SelectTrigger>
                 <SelectContent>
                   {phoneOptions.map((c: any) => (
-                    <SelectItem key={c.id} value={c.valor}>
-                      {c.valor} {c.tem_whatsapp ? "(WhatsApp)" : ""}
+                    <SelectItem key={c.id} value={applyPhoneMask(c.valor)}>
+                      {applyPhoneMask(c.valor)} {c.tem_whatsapp ? "(WhatsApp)" : ""}
                     </SelectItem>
                   ))}
                   {phoneOptions.length === 0 && (

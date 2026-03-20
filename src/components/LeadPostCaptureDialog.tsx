@@ -11,6 +11,7 @@ import {
   Phone, MessageSquare, PhoneCall, Clock, User, UserCheck, Plus, RefreshCw,
   ArrowRight, FileText, CalendarClock, Trash2, AlertTriangle, History, Zap, ExternalLink,
 } from "lucide-react";
+import { applyPhoneMask } from "@/lib/phone-utils";
 
 const fmtDate = (d: string | Date) => {
   try { return format(new Date(d), "dd/MM/yyyy HH:mm", { locale: ptBR }); } catch { return String(d); }
@@ -185,7 +186,7 @@ export default function LeadPostCaptureDialog({ open, onOpenChange, leadId, lead
             {contatos.map((c: any) => (
               <Badge key={c.id} variant="outline" className="text-xs gap-1">
                 <Phone className="w-3 h-3" />
-                {c.valor}
+                {applyPhoneMask(c.valor)}
                 {c.tem_whatsapp && <MessageSquare className="w-3 h-3 text-green-600" />}
               </Badge>
             ))}
@@ -256,7 +257,7 @@ export default function LeadPostCaptureDialog({ open, onOpenChange, leadId, lead
                         {item.type === "interacao" && (
                           <p className="text-[11px] text-foreground/80 mt-1">
                             • {item.tipo_contato === "whatsapp" ? "WhatsApp" : "Telefone"}
-                            {item.numero_utilizado ? ` → ${item.numero_utilizado}` : ""}
+                            {item.numero_utilizado ? ` → ${applyPhoneMask(item.numero_utilizado)}` : ""}
                             {item.resultado ? `: ${item.resultado}` : ""}
                           </p>
                         )}
