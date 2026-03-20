@@ -521,7 +521,7 @@ export default function DashboardLeadsPage() {
   });
 
   const m = metrics || {
-    leadsNoPeriodo: 0, emAtendimento: 0, convertidos: 0,
+    leadsNoPeriodo: 0, leadsImportados: 0, leadsManuais: 0, emAtendimento: 0, convertidos: 0,
     tentativas: 0, taxaConversao: "0.0", statusCounts: {}, objecaoCounts: {},
   };
 
