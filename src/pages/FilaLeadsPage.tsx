@@ -338,13 +338,12 @@ export default function FilaLeadsPage() {
 
     // 3. Active leads from queue that match "Hoje" logic but have no explicit tarefa
     //    This mirrors the attendant's view: overdue cadence, new leads without interactions, etc.
-    const tarefaLeadIdSet = new Set(items.map((t: any) => t.lead_id));
     const now = new Date();
     const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
     const in8hours = new Date(now.getTime() + 8 * 60 * 60 * 1000);
 
     leads.forEach(lead => {
-      if (tarefaLeadIdSet.has(lead.id)) return; // already has a tarefa entry
+      if (seenLeadIds.has(lead.id)) return; // already has a tarefa entry
       if (["importado", "fila_captura"].includes(lead.status_lead)) return; // not captured yet
       if (!["em_contato", "interessado", "reservado", "em_atendimento"].includes(lead.status_lead)) return;
       if (!lead.responsavel_id && !lead.reserved_by) return; // unassigned, skip
