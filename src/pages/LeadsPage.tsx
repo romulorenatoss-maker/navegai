@@ -1578,7 +1578,7 @@ export default function LeadsPage() {
         }
       }
       const { error } = await supabase.from("lead_contatos").insert({
-        lead_id: selectedLead.id, tipo_contato: newPhoneTipo, valor: newPhoneValue.trim(), tem_whatsapp: newPhoneWhatsapp,
+        lead_id: selectedLead.id, tipo_contato: newPhoneTipo, valor: normalizePhone(newPhoneValue), tem_whatsapp: newPhoneWhatsapp,
       });
       if (error) throw error;
       await supabase.from("lead_historico").insert({
