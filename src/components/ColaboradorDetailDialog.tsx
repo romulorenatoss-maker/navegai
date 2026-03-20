@@ -174,17 +174,29 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
       toast.error("Usuário do colaborador não encontrado.");
       return;
     }
+
     setMfaUnenrolling(true);
     try {
       const res = await supabase.functions.invoke("admin-manage-mfa", {
         body: { action: "unenroll", target_user_id: collaborator.user_id },
       });
-      if (res.error) throw new Error(res.error.message);
-      if (res.data?.error) throw new Error(res.data.error);
-      toast.success("2FA desativado com sucesso para este colaborador.");
-      refetchMfa();
+
+      const backendError = res.error?.context && "json" in res.error.context
+        ? await res.error.context.json().catch(() => null)
+        : null;
+
+      if (res.error) {
+        throw new Error(backendError?.error || res.error.message);
+      }
+
+      if (res.data?.error) {
+        throw new Error(res.data.error);
+      }
+
+      toast.success("2FA removido. No próximo acesso o colaborador deverá escanear um novo QR Code.");
+      await refetchMfa();
     } catch (err: any) {
-      toast.error("Erro: " + (err?.message || "falha desconhecida"));
+      toast.error(err?.message || "Falha ao desativar o 2FA.");
     } finally {
       setMfaUnenrolling(false);
     }
