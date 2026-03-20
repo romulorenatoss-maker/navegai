@@ -119,7 +119,7 @@ export default function AvaliacaoOSPage() {
   
   const [atendenteId, setAtendenteId] = useState("");
   const [tecnicoId, setTecnicoId] = useState("");
-  const [formDataAbertura, setFormDataAbertura] = useState<Date>(new Date());
+  const [formDataAbertura, setFormDataAbertura] = useState<Date | null>(null);
 
   // Evaluation state (full-page)
   const [evalAvaliacaoId, setEvalAvaliacaoId] = useState<string | null>(null);
@@ -1192,6 +1192,7 @@ export default function AvaliacaoOSPage() {
     if ((hasAtendimentoAccess || isAdmin) && !atendenteId) { toast.error("Selecione o atendente avaliado."); return; }
     if ((hasTecnicoAccess || isAdmin) && !tecnicoId) { toast.error("Selecione o técnico avaliado."); return; }
     if ((hasAtendimentoAccess || hasTecnicoAccess || isAdmin) && !atendenteId && !tecnicoId) { toast.error("Selecione pelo menos um colaborador avaliado."); return; }
+    if (!formFoundOS && !formDataAbertura) { toast.error("Informe a data da ocorrência antes de salvar."); return; }
 
     try {
       // num already validated above
@@ -1215,7 +1216,7 @@ export default function AvaliacaoOSPage() {
         const { data: newOs, error: oe } = await supabase.from("ordens_servico").insert({
           numero_os: num, cliente_nome: nomeTr, cliente_cpf: cpfTr, tipo_servico_id: tipoServicoId,
           cliente_id: clienteId, atendente_id: atendenteId || null, tecnico_id: tecnicoId || null,
-          data_abertura: formDataAbertura.toISOString(),
+          data_abertura: formDataAbertura!.toISOString(),
         } as any).select("id").single();
         if (oe) throw oe;
         osId = newOs.id;
@@ -3540,7 +3541,7 @@ export default function AvaliacaoOSPage() {
 
 
       {/* Dialog unificado: Nova OS ou Preencher Número */}
-      <Dialog open={showNewOsDialog} onOpenChange={(open) => { setShowNewOsDialog(open); if (!open) { setTipoServicoId(""); setAtendenteId(""); setTecnicoId(""); setFormDataAbertura(new Date()); } }}>
+      <Dialog open={showNewOsDialog} onOpenChange={(open) => { setShowNewOsDialog(open); if (!open) { setTipoServicoId(""); setAtendenteId(""); setTecnicoId(""); setFormDataAbertura(null); } }}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{fillNumeroOsId ? "Preencher Número da OS" : "Nova OS"}</DialogTitle>
@@ -3608,13 +3609,13 @@ export default function AvaliacaoOSPage() {
                   <Label className="text-body font-medium">Data da Ocorrência *</Label>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formDataAbertura && "text-muted-foreground")}>
+                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formDataAbertura && "text-muted-foreground border-destructive")}>
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {formDataAbertura ? format(formDataAbertura, "dd/MM/yyyy", { locale: ptBR }) : "Selecione a data"}
+                        {formDataAbertura ? format(formDataAbertura, "dd/MM/yyyy", { locale: ptBR }) : "Selecione a data *"}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={formDataAbertura} onSelect={(d) => d && setFormDataAbertura(d)} initialFocus className="p-3 pointer-events-auto" locale={ptBR} />
+                      <Calendar mode="single" selected={formDataAbertura ?? undefined} onSelect={(d) => d && setFormDataAbertura(d)} initialFocus className="p-3 pointer-events-auto" locale={ptBR} />
                     </PopoverContent>
                   </Popover>
                 </div>
