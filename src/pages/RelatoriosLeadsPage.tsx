@@ -199,6 +199,7 @@ export default function RelatoriosLeadsPage() {
 
     setLeadsList(rows);
     setSelected(new Set());
+    setCurrentPage(1);
     setLoading(false);
   }, [startDate, endDate, filterStatus, filterOrigem, filterResponsavel, filterHandler, filterMinTentativas, filterNome, urlCidadeId, urlBairroId, urlRuaId]);
 
