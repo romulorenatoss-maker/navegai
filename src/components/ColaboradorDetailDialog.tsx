@@ -57,7 +57,6 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordLoading, setPasswordLoading] = useState(false);
-  const [mfaLoading, setMfaLoading] = useState(false);
   const [mfaUnenrolling, setMfaUnenrolling] = useState(false);
 
   // Reset state when dialog closes
@@ -175,17 +174,29 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
       toast.error("Usuário do colaborador não encontrado.");
       return;
     }
+
     setMfaUnenrolling(true);
     try {
       const res = await supabase.functions.invoke("admin-manage-mfa", {
         body: { action: "unenroll", target_user_id: collaborator.user_id },
       });
-      if (res.error) throw new Error(res.error.message);
-      if (res.data?.error) throw new Error(res.data.error);
-      toast.success("2FA desativado com sucesso para este colaborador.");
-      refetchMfa();
+
+      const backendError = res.error?.context && "json" in res.error.context
+        ? await res.error.context.json().catch(() => null)
+        : null;
+
+      if (res.error) {
+        throw new Error(backendError?.error || res.error.message);
+      }
+
+      if (res.data?.error) {
+        throw new Error(res.data.error);
+      }
+
+      toast.success("2FA removido. No próximo acesso o colaborador deverá escanear um novo QR Code.");
+      await refetchMfa();
     } catch (err: any) {
-      toast.error("Erro: " + (err?.message || "falha desconhecida"));
+      toast.error(err?.message || "Falha ao desativar o 2FA.");
     } finally {
       setMfaUnenrolling(false);
     }
@@ -497,7 +508,7 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
                   {mfaStatus?.has_mfa ? (
                     <>
                       <p className="text-sm text-muted-foreground">
-                        Este colaborador possui 2FA ativo. Desative caso ele tenha perdido o celular e precise reconfigurar.
+                        Este colaborador possui 2FA ativo. Ao desativar, o vínculo atual é removido e ele terá que escanear um novo QR Code para ativar novamente.
                       </p>
                       <Button
                         variant="destructive"
@@ -512,7 +523,7 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
                     </>
                   ) : (
                     <p className="text-sm text-muted-foreground">
-                      Este colaborador não possui 2FA configurado. Ele pode ativar na engrenagem do cabeçalho.
+                      Este colaborador não possui 2FA configurado. Ao ativar novamente, o sistema pedirá um novo escaneamento do QR Code.
                     </p>
                   )}
                 </div>
