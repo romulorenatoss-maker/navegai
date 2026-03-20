@@ -435,7 +435,8 @@ export default function FilaLeadsPage() {
       const scheduleReady = isScheduled && new Date(lead.agendamento_retorno!) <= now;
       let nextAttempt = lead.agendamento_retorno ? new Date(lead.agendamento_retorno) : addDays(new Date(lead.created_at), 1);
       const nextAttemptExpired = nextAttempt < now;
-      return { lead, contatos, tentativaAtual, proximoContato, ultimaInteracao, responsavelNome: getProfileName(lead.responsavel_id), isOverdue, isScheduled, scheduleReady, nextAttempt, nextAttemptExpired };
+      const ultimoResponsavel = interacoes.length > 0 ? getProfileName((interacoes[0] as any).colaborador_id) : getProfileName(lead.responsavel_id || lead.reserved_by);
+      return { lead, contatos, tentativaAtual, proximoContato, ultimaInteracao, responsavelNome: ultimoResponsavel, isOverdue, isScheduled, scheduleReady, nextAttempt, nextAttemptExpired };
     }).sort((a, b) => {
       if (a.nextAttemptExpired && !b.nextAttemptExpired) return -1;
       if (!a.nextAttemptExpired && b.nextAttemptExpired) return 1;
