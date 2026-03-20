@@ -1493,7 +1493,7 @@ export default function LeadsPage() {
       if (e1) throw e1;
 
       const { error: e2 } = await supabase.from("lead_contatos").insert({
-        lead_id: newLead.id, tipo_contato: "telefone", valor: createPhone.trim(), tem_whatsapp: createPhoneWhatsapp,
+        lead_id: newLead.id, tipo_contato: "telefone", valor: normalizePhone(createPhone), tem_whatsapp: createPhoneWhatsapp,
       });
       if (e2) throw e2;
 
