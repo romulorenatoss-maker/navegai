@@ -416,7 +416,7 @@ export default function FilaLeadsPage() {
     });
 
     return items;
-  }, [tarefas, leadsComAgendamento, tarefaLeads, leads, allInteracoes, cadencia, fluxoConfig]);
+  }, [tarefas, leadsComAgendamento, tarefaLeads, leads, allInteracoes, cadencia, fluxoConfig, tick]);
 
   // Filter by date range
   const filteredTarefas = useMemo(() => {
