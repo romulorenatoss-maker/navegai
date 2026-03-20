@@ -288,6 +288,21 @@ export default function RotinaTentativasPage() {
                   </Select>
                   <p className="text-xs text-muted-foreground">Se o atendente capturar um lead e não registrar nenhuma interação dentro desse tempo, o lead volta automaticamente para a fila de captura.</p>
                 </div>
+                <div className="space-y-1.5">
+                  <Label>Tempo para exibir leads nas telas</Label>
+                  <Select
+                    value={String(localConfig?.tempo_exibicao_leads_horas || 1)}
+                    onValueChange={(v) => localConfig && setLocalConfig({ ...localConfig, tempo_exibicao_leads_horas: parseInt(v) })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {EXIBICAO_HORAS_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">O lead só aparece nas telas "Meus Leads" e "Tarefas do Dia" após completar esse tempo desde a última atualização. Se o lead for atualizado, o tempo reinicia.</p>
+                </div>
               </div>
             </CardContent>
           </Card>
