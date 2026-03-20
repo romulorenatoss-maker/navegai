@@ -298,11 +298,15 @@ export default function FilaLeadsPage() {
     const seen = new Set<string>(); // track lead_ids already added
     const items: any[] = [];
 
-    // 1. Automatic tasks from lead_tarefas_contato
+    // 1. Automatic tasks from lead_tarefas_contato (only captured/assigned leads)
+    const STATUS_EXCLUIDOS_TAREFAS = ["importado", "fila_captura"];
     tarefas.forEach((t: any) => {
       if (seen.has(t.id)) return;
-      seen.add(t.id);
       const lead = tarefaLeads.find((l: any) => l.id === t.lead_id);
+      // Skip leads that haven't been captured yet
+      if (lead && STATUS_EXCLUIDOS_TAREFAS.includes(lead.status_lead)) return;
+      if (lead && !lead.responsavel_id) return; // no one assigned
+      seen.add(t.id);
       items.push({
         ...t,
         _tipo_agenda: "automatico" as const,
