@@ -1192,6 +1192,7 @@ export default function AvaliacaoOSPage() {
     if ((hasAtendimentoAccess || isAdmin) && !atendenteId) { toast.error("Selecione o atendente avaliado."); return; }
     if ((hasTecnicoAccess || isAdmin) && !tecnicoId) { toast.error("Selecione o técnico avaliado."); return; }
     if ((hasAtendimentoAccess || hasTecnicoAccess || isAdmin) && !atendenteId && !tecnicoId) { toast.error("Selecione pelo menos um colaborador avaliado."); return; }
+    if (!formFoundOS && !formDataAbertura) { toast.error("Informe a data da ocorrência antes de salvar."); return; }
 
     try {
       // num already validated above
