@@ -1994,7 +1994,7 @@ export default function AvaliacaoOSPage() {
               <Check className="w-6 h-6 sm:w-8 sm:h-8 text-success" />
             </div>
             <h2 className="text-lg sm:text-xl font-bold text-foreground">Avaliação Concluída!</h2>
-            <p className="text-2xl sm:text-3xl font-bold text-primary font-tabular mt-2">{evalScore?.toFixed(1)}%</p>
+            <p className="text-2xl sm:text-3xl font-bold text-primary font-tabular mt-2">{displayScore?.toFixed(1)}%</p>
             <p className="text-sm text-muted-foreground mt-1">{globalAnsweredCount} perguntas respondidas</p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mt-3">
               {canEdit && (
