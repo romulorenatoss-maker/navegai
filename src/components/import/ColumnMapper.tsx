@@ -62,6 +62,7 @@ const FIELD_LABELS: Record<keyof ColumnMapping, { label: string; required: boole
   numero: { label: "Número", required: false },
   plano: { label: "Plano", required: false },
   repetidor: { label: "Repetidor", required: false },
+  descricao: { label: "Descrição", required: false },
 };
 
 export default function ColumnMapper({ headers, mapping, onChange }: Props) {
