@@ -1256,6 +1256,48 @@ export type Database = {
           },
         ]
       }
+      os_reaberturas: {
+        Row: {
+          campos_alterados: string[] | null
+          created_at: string
+          id: string
+          motivo: string | null
+          ordem_servico_id: string
+          reaberta_por: string
+        }
+        Insert: {
+          campos_alterados?: string[] | null
+          created_at?: string
+          id?: string
+          motivo?: string | null
+          ordem_servico_id: string
+          reaberta_por: string
+        }
+        Update: {
+          campos_alterados?: string[] | null
+          created_at?: string
+          id?: string
+          motivo?: string | null
+          ordem_servico_id?: string
+          reaberta_por?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_reaberturas_ordem_servico_id_fkey"
+            columns: ["ordem_servico_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "os_reaberturas_reaberta_por_fkey"
+            columns: ["reaberta_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       perguntas_avaliacao: {
         Row: {
           ativo: boolean

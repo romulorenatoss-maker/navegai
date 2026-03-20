@@ -1449,8 +1449,29 @@ export default function AvaliacaoOSPage() {
   };
 
   const handleStartEditing = async () => {
-    if (!evalAvaliacaoId) return;
-    // Reopen the evaluation in the database
+    if (!evalAvaliacaoId || !evalOsId || !profile) return;
+    const wasOsConcluded = evalOsData?.status === "concluida";
+    
+    // If OS is concluded, only admins can reopen
+    if (wasOsConcluded && !isAdmin) {
+      toast.error("Apenas administradores podem editar OS concluída.");
+      return;
+    }
+
+    // If OS was concluded, reopen it and log the reopening
+    if (wasOsConcluded) {
+      await supabase.from("ordens_servico").update({ status: "em_andamento", data_conclusao: null } as any).eq("id", evalOsId);
+      setEvalOsData({ ...evalOsData, status: "em_andamento", data_conclusao: null });
+      
+      // Log the reopening
+      await (supabase as any).from("os_reaberturas").insert({
+        ordem_servico_id: evalOsId,
+        reaberta_por: profile.id,
+        motivo: "edicao_admin",
+      });
+    }
+
+    // Reopen all avaliacoes for this OS so answers can be changed
     await supabase.from("avaliacoes").update({ concluida: false, nota_final: null } as any).eq("id", evalAvaliacaoId);
     setEvalFinalized(false);
     setEvalScore(null);
@@ -1461,7 +1482,7 @@ export default function AvaliacaoOSPage() {
 
   const handleSaveEditing = async () => {
     setIsEditing(false);
-    // Re-finalize the evaluation
+    // Re-finalize the evaluation — the DB trigger will auto-conclude OS if all questions answered
     await handleFinalizeEvaluation();
   };
 
@@ -1584,8 +1605,8 @@ export default function AvaliacaoOSPage() {
   // Global progress: ALL questions answered across ALL evaluators
   const globalAnsweredCount = evalPerguntas.filter(p => evalAnswers[p.id] != null).length;
   const globalProgressPercent = evalPerguntas.length > 0 ? Math.round((globalAnsweredCount / evalPerguntas.length) * 100) : 0;
-  const isLocked = isOsFullyConcluded || (evalFinalized && !isEditing);
-  const canEdit = !isOsFullyConcluded && (evalFinalized || isEditing);
+  const isLocked = (isOsFullyConcluded && !isAdmin) || (evalFinalized && !isEditing);
+  const canEdit = (isAdmin) || (!isOsFullyConcluded && (evalFinalized || isEditing));
   // My sector progress
   const myAnsweredCount = answerablePerguntas.filter(p => evalAnswers[p.id] != null).length;
   const myProgressPercent = answerablePerguntas.length > 0 ? Math.round((myAnsweredCount / answerablePerguntas.length) * 100) : 0;
@@ -1754,7 +1775,7 @@ export default function AvaliacaoOSPage() {
                 {evalTipoServicoNome && <p className="text-caption text-muted-foreground mt-0.5">Serviço: {evalTipoServicoNome}</p>}
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <p className="text-caption text-muted-foreground">Data da Ocorrência: {format(new Date(evalOsData.data_abertura || evalOsData.created_at), "dd/MM/yyyy HH:mm")}</p>
-                  {evalOsData.status !== "concluida" ? (
+                  {(evalOsData.status !== "concluida" || isAdmin) ? (
                     <Popover>
                       <PopoverTrigger asChild>
                         <button className="text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded hover:bg-muted">
