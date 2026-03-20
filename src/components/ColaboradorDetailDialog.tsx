@@ -155,6 +155,38 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
     enabled: open && !!collaborator,
   });
 
+  // MFA status for this collaborator
+  const { data: mfaStatus, refetch: refetchMfa } = useQuery({
+    queryKey: ["colab_mfa_status", collaborator?.user_id],
+    queryFn: async () => {
+      if (!collaborator) return null;
+      const res = await supabase.functions.invoke("admin-manage-mfa", {
+        body: { action: "check", target_user_id: collaborator.user_id },
+      });
+      if (res.error) return null;
+      return res.data as { has_mfa: boolean; factors: { id: string }[] };
+    },
+    enabled: open && !!collaborator && isAdmin,
+  });
+
+  const handleUnenrollMfa = async () => {
+    if (!collaborator) return;
+    setMfaUnenrolling(true);
+    try {
+      const res = await supabase.functions.invoke("admin-manage-mfa", {
+        body: { action: "unenroll", target_user_id: collaborator.user_id },
+      });
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.error);
+      toast.success("2FA desativado com sucesso para este colaborador.");
+      refetchMfa();
+    } catch (err: any) {
+      toast.error("Erro: " + (err?.message || "falha desconhecida"));
+    } finally {
+      setMfaUnenrolling(false);
+    }
+  };
+
   // OS detail
   const { data: osDetail } = useQuery({
     queryKey: ["colab_os_detail", detailOsId],
