@@ -2894,6 +2894,26 @@ export default function LeadsPage() {
                         </SelectContent>
                       </Select>
                     </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Descrição</Label>
+                      <Textarea
+                        className="text-xs min-h-[60px] resize-y"
+                        placeholder="Detalhes importantes sobre este lead..."
+                        value={localDescricao}
+                        disabled={isVisionMode}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setLocalDescricao(val);
+                          if (descricaoTimerRef.current) clearTimeout(descricaoTimerRef.current);
+                          descricaoTimerRef.current = setTimeout(async () => {
+                            if (!selectedLead) return;
+                            try {
+                              await supabase.from("leads").update({ descricao: val || null } as any).eq("id", selectedLead.id);
+                            } catch {}
+                          }, 1000);
+                        }}
+                      />
+                    </div>
 
                     {/* Address */}
                     <div className="space-y-2 pt-2 border-t">
