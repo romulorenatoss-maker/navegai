@@ -351,6 +351,8 @@ export default function FilaLeadsPage() {
       if (["importado", "fila_captura"].includes(lead.status_lead)) return; // not captured yet
       if (!["em_contato", "interessado", "reservado", "em_atendimento"].includes(lead.status_lead)) return;
       if (!lead.responsavel_id && !lead.reserved_by) return; // unassigned, skip
+      // Time filter
+      if (new Date(lead.updated_at) > cutoff2) return;
 
       const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
       const tentativaAtual = interacoes.length + 1;
