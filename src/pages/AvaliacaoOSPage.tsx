@@ -91,29 +91,6 @@ export default function AvaliacaoOSPage() {
   const navigate = useNavigate();
   const { profile, isAdmin, hasRole } = useAuth();
 
-  // OS Reaberturas (audit trail) - works for both os_detail and evaluation views
-  const currentOsIdForAudit = selectedOS?.id || evalOsId;
-  const { data: osReaberturas = [] } = useQuery({
-    queryKey: ["os_reaberturas", currentOsIdForAudit],
-    queryFn: async () => {
-      if (!currentOsIdForAudit) return [];
-      const { data } = await (supabase as any)
-        .from("os_reaberturas")
-        .select("id, reaberta_por, motivo, campos_alterados, created_at")
-        .eq("ordem_servico_id", currentOsIdForAudit)
-        .order("created_at", { ascending: false })
-        .limit(10);
-      if (!data?.length) return [];
-      const ids = [...new Set(data.map((r: any) => r.reaberta_por).filter(Boolean))];
-      let nameMap: Record<string, string> = {};
-      if (ids.length > 0) {
-        const { data: ps } = await supabase.from("profiles").select("id, nome").in("id", ids);
-        ps?.forEach(p => { nameMap[p.id] = p.nome; });
-      }
-      return data.map((r: any) => ({ ...r, _nome: nameMap[r.reaberta_por] || "—" }));
-    },
-    enabled: !!currentOsIdForAudit,
-  });
 
   // View modes
   const [view, setView] = useState<"list" | "os_detail" | "evaluation">("list");
