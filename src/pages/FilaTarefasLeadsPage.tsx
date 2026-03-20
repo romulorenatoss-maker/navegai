@@ -14,7 +14,20 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Phone, MessageSquare, Loader2, ListOrdered, Clock, AlertTriangle } from "lucide-react";
-import { isTarefaExpirada, getPeriodoEndHour, PERIODO_LABELS, PERIODO_HORA, skipWeekend } from "@/lib/lead-task-utils";
+import { isTarefaExpirada, getEffectiveDeadline, getPeriodoEndHour, PERIODO_LABELS, PERIODO_HORA, skipWeekend } from "@/lib/lead-task-utils";
+import { applyPhoneMask } from "@/lib/phone-utils";
+
+function formatCountdown(target: Date, now: Date): string {
+  const diffMs = target.getTime() - now.getTime();
+  const absDiff = Math.abs(diffMs);
+  const days = Math.floor(absDiff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((absDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const mins = Math.floor((absDiff % (1000 * 60 * 60)) / (1000 * 60));
+  const prefix = diffMs < 0 ? "−" : "";
+  if (days > 0) return `${prefix}${days}d ${hours}h`;
+  if (hours > 0) return `${prefix}${hours}h ${mins}m`;
+  return `${prefix}${mins}m`;
+}
 import { applyPhoneMask } from "@/lib/phone-utils";
 
 const fmtDate = (d: string | Date) => {
