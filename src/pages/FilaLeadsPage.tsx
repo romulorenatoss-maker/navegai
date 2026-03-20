@@ -282,6 +282,9 @@ export default function FilaLeadsPage() {
   // Also fetch leads with manual agendamento_retorno (not in tarefas_contato)
   const { data: leadsComAgendamento = [] } = useQuery({
     queryKey: ["leads-com-agendamento"],
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+    staleTime: 15_000,
     queryFn: async () => {
       const { data, error } = await supabase.from("leads").select("id, nome, status_lead, responsavel_id, agendamento_retorno")
         .not("agendamento_retorno", "is", null)
