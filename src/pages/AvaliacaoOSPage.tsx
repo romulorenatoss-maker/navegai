@@ -1216,7 +1216,7 @@ export default function AvaliacaoOSPage() {
         const { data: newOs, error: oe } = await supabase.from("ordens_servico").insert({
           numero_os: num, cliente_nome: nomeTr, cliente_cpf: cpfTr, tipo_servico_id: tipoServicoId,
           cliente_id: clienteId, atendente_id: atendenteId || null, tecnico_id: tecnicoId || null,
-          data_abertura: formDataAbertura.toISOString(),
+          data_abertura: formDataAbertura!.toISOString(),
         } as any).select("id").single();
         if (oe) throw oe;
         osId = newOs.id;
