@@ -47,7 +47,7 @@ interface QueueItem {
 // ─── Helpers ────────────────────────────────────────────
 const fmtDate = (d: string | Date) => { try { return format(new Date(d), "dd/MM/yyyy HH:mm", { locale: ptBR }); } catch { return String(d); } };
 const fmtDateShort = (d: string | Date) => { try { return format(new Date(d), "dd/MM HH:mm", { locale: ptBR }); } catch { return String(d); } };
-const STATUS_MAP: Record<string, string> = { novo: "Novo", em_contato: "Em Contato", em_atendimento: "Em tratativa", interessado: "Interessado", aguardando_decisao_avaliador: "Aguardando Decisão", fila_captura: "Fila de Captura", reservado: "Reservado", expirado: "Expirado", cancelado_pendente_analise: "Cancelado (Análise)" };
+const STATUS_MAP: Record<string, string> = { novo: "Novo", em_contato: "Em Contato", em_atendimento: "Em tratativa", interessado: "Interessado", aguardando_decisao_avaliador: "Aguardando Decisão", fila_captura: "Fila de Captura", reservado: "Reservado", expirado: "Expirado", cancelado_pendente_analise: "Cancelado (Análise)", vendo_lead: "Vendo Lead" };
 
 export default function FilaLeadsPage() {
   const { profile, isAdmin } = useAuth();
@@ -1060,12 +1060,16 @@ export default function FilaLeadsPage() {
                               {(() => {
                                 const hasInteracoes = item.tentativaAtual > 1;
                                 const isExpired = item.nextAttemptExpired || item.isOverdue;
+                                const isCaptured = !!(item.lead.responsavel_id || item.lead.reserved_by);
                                 let displayStatus = item.lead.status_lead;
                                 let badgeClass = "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200";
                                 
                                 if (isExpired) {
                                   displayStatus = "expirado";
                                   badgeClass = "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+                                } else if (isCaptured && !hasInteracoes && displayStatus !== "em_atendimento" && displayStatus !== "em_contato") {
+                                  displayStatus = "vendo_lead";
+                                  badgeClass = "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
                                 } else if (hasInteracoes || displayStatus === "em_atendimento" || displayStatus === "em_contato") {
                                   displayStatus = "em_atendimento";
                                   badgeClass = "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200";
