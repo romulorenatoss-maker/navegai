@@ -230,7 +230,9 @@ export default function FilaTarefasLeadsPage() {
       const { error: e2 } = await supabase
         .from("lead_tarefas_contato")
         .update({ status: "realizado", fora_do_prazo: wasLate } as any)
-        .eq("id", selectedTarefa.id);
+        .eq("lead_id", selectedTarefa.lead_id)
+        .eq("tentativa", selectedTarefa.tentativa)
+        .in("status", ["pendente", "atrasado", "aguardando_visualizacao"]);
       if (e2) throw e2;
 
       // Log history

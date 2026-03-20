@@ -1660,7 +1660,7 @@ export default function LeadsPage() {
 
       const pendingTaskPromise = supabase
         .from("lead_tarefas_contato")
-        .select("id, data_contato, periodo, status")
+        .select("id, data_contato, periodo, status, tentativa")
         .eq("lead_id", leadId)
         .in("status", ["pendente", "atrasado"])
         .order("tentativa", { ascending: true })
@@ -1757,7 +1757,9 @@ export default function LeadsPage() {
         writeOperations.push(
           supabase.from("lead_tarefas_contato")
             .update({ status: "realizado", fora_do_prazo: wasLate } as any)
-            .eq("id", pendingTask.id)
+            .eq("lead_id", leadId)
+            .eq("tentativa", pendingTask.tentativa)
+            .in("status", ["pendente", "atrasado", "aguardando_visualizacao"])
         );
       }
 
