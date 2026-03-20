@@ -286,7 +286,7 @@ export default function FilaLeadsPage() {
   const { data: tarefaLeads = [] } = useQuery({
     queryKey: ["fila-tarefas-leads-names", allTarefaLeadIds],
     enabled: allTarefaLeadIds.length > 0,
-    queryFn: async () => { const { data } = await supabase.from("leads").select("id, nome, status_lead, responsavel_id, agendamento_retorno").in("id", allTarefaLeadIds); return data || []; },
+    queryFn: async () => { const { data } = await supabase.from("leads").select("id, nome, status_lead, responsavel_id, agendamento_retorno, updated_at").in("id", allTarefaLeadIds); return data || []; },
   });
   const { data: tarefaContatos = [] } = useQuery({
     queryKey: ["fila-tarefas-leads-contatos", allTarefaLeadIds],
