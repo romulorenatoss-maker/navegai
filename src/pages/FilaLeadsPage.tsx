@@ -272,8 +272,9 @@ export default function FilaLeadsPage() {
       }
       return data;
     },
-    refetchInterval: 120_000,
-    staleTime: 30_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+    staleTime: 15_000,
   });
 
   // Also fetch leads with manual agendamento_retorno (not in tarefas_contato)
