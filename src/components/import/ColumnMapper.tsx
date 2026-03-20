@@ -36,7 +36,7 @@ const KNOWN_ALIASES: Record<keyof ColumnMapping, string[]> = {
 };
 
 export const EMPTY_MAPPING: ColumnMapping = {
-  nome: "", telefone: "", email: "", cidade: "", bairro: "", rua: "", numero: "", plano: "", repetidor: "",
+  nome: "", telefone: "", email: "", cidade: "", bairro: "", rua: "", numero: "", plano: "", repetidor: "", descricao: "",
 };
 
 export function autoDetectMapping(headers: string[]): ColumnMapping {
