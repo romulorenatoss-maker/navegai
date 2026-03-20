@@ -608,6 +608,7 @@ export type Database = {
           id: string
           permitir_reiniciar_rotina: boolean
           quantidade_tentativas: number
+          tempo_exibicao_leads_horas: number
           tempo_expiracao_captura_segundos: number
           tipo_servico_conversao_id: string | null
           updated_at: string
@@ -619,6 +620,7 @@ export type Database = {
           id?: string
           permitir_reiniciar_rotina?: boolean
           quantidade_tentativas?: number
+          tempo_exibicao_leads_horas?: number
           tempo_expiracao_captura_segundos?: number
           tipo_servico_conversao_id?: string | null
           updated_at?: string
@@ -630,6 +632,7 @@ export type Database = {
           id?: string
           permitir_reiniciar_rotina?: boolean
           quantidade_tentativas?: number
+          tempo_exibicao_leads_horas?: number
           tempo_expiracao_captura_segundos?: number
           tipo_servico_conversao_id?: string | null
           updated_at?: string
