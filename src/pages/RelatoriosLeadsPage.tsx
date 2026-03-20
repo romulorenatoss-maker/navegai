@@ -231,9 +231,18 @@ export default function RelatoriosLeadsPage() {
     }
   };
 
-  const allSelected = leadsList.length > 0 && selected.size === leadsList.length;
-  const someSelected = selected.size > 0 && !allSelected;
-  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(leadsList.map((l) => l.id)));
+  const totalPages = Math.max(1, Math.ceil(leadsList.length / PAGE_SIZE));
+  const paginatedLeads = leadsList.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const pageIds = paginatedLeads.map((l) => l.id);
+  const allPageSelected = paginatedLeads.length > 0 && pageIds.every((id) => selected.has(id));
+  const somePageSelected = pageIds.some((id) => selected.has(id)) && !allPageSelected;
+  const toggleAll = () => {
+    if (allPageSelected) {
+      setSelected((prev) => { const n = new Set(prev); pageIds.forEach((id) => n.delete(id)); return n; });
+    } else {
+      setSelected((prev) => { const n = new Set(prev); pageIds.forEach((id) => n.add(id)); return n; });
+    }
+  };
   const toggleOne = (id: string) => setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   // ─── Delete leads and ALL related records ───────────
