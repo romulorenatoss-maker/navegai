@@ -157,6 +157,7 @@ export default function RotinaTentativasPage() {
           permitir_reiniciar_rotina: localConfig.permitir_reiniciar_rotina,
           tipo_servico_conversao_id: localConfig.tipo_servico_conversao_id,
           tempo_expiracao_captura_segundos: localConfig.tempo_expiracao_captura_segundos,
+          tempo_exibicao_leads_horas: localConfig.tempo_exibicao_leads_horas,
         } as any)
         .eq("id", config.id);
       if (e1) throw e1;
