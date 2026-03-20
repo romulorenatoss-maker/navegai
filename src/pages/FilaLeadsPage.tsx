@@ -462,7 +462,7 @@ export default function FilaLeadsPage() {
       if (!a.nextAttemptExpired && b.nextAttemptExpired) return 1;
       return a.nextAttempt.getTime() - b.nextAttempt.getTime();
     });
-  }, [leads, allContatos, allInteracoes, cadencia, profiles]);
+  }, [leads, allContatos, allInteracoes, cadencia, profiles, tempoExibicaoHoras]);
 
   // ─── Fila de Captura (ONLY truly available leads) ──
   const capturaLeads = useMemo(() => {
