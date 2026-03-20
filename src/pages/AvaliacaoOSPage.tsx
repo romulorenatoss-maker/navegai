@@ -430,7 +430,31 @@ export default function AvaliacaoOSPage() {
     enabled: !!selectedOS?.id,
   });
 
-  // Detailed answers for OS detail view (all evaluations)
+  // OS Reaberturas (audit trail)
+  const currentOsIdForAudit = selectedOS?.id || evalOsId;
+  const { data: osReaberturas = [] } = useQuery({
+    queryKey: ["os_reaberturas", currentOsIdForAudit],
+    queryFn: async () => {
+      if (!currentOsIdForAudit) return [];
+      const { data } = await (supabase as any)
+        .from("os_reaberturas")
+        .select("id, reaberta_por, motivo, campos_alterados, created_at")
+        .eq("ordem_servico_id", currentOsIdForAudit)
+        .order("created_at", { ascending: false })
+        .limit(10);
+      if (!data?.length) return [];
+      const ids = [...new Set((data as any[]).map((r: any) => r.reaberta_por).filter(Boolean))] as string[];
+      let nameMap: Record<string, string> = {};
+      if (ids.length > 0) {
+        const { data: ps } = await supabase.from("profiles").select("id, nome").in("id", ids);
+        ps?.forEach(p => { nameMap[p.id] = p.nome; });
+      }
+      return data.map((r: any) => ({ ...r, _nome: nameMap[r.reaberta_por] || "—" }));
+    },
+    enabled: !!currentOsIdForAudit,
+  });
+
+
   const { data: osDetailAnswers = [] } = useQuery({
     queryKey: ["os_detail_answers", selectedOS?.id, view],
     queryFn: async () => {
