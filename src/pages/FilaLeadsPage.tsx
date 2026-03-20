@@ -425,7 +425,15 @@ export default function FilaLeadsPage() {
 
   const queue = useMemo<QueueItem[]>(() => {
     const now = new Date();
-    return leads.map(lead => {
+    // Only show leads that are captured/assigned — exclude importado, fila_captura, and unassigned leads
+    const FILA_EXCLUDED_STATUS = ["importado", "fila_captura"];
+    return leads
+      .filter(lead => {
+        if (FILA_EXCLUDED_STATUS.includes(lead.status_lead)) return false;
+        if (!lead.responsavel_id && !lead.reserved_by) return false;
+        return true;
+      })
+      .map(lead => {
       const contatos = allContatos.filter(c => c.lead_id === lead.id);
       const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
       const tentativaAtual = interacoes.length + 1;
