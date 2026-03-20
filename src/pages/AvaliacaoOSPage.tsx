@@ -1775,7 +1775,7 @@ export default function AvaliacaoOSPage() {
                 {evalTipoServicoNome && <p className="text-caption text-muted-foreground mt-0.5">Serviço: {evalTipoServicoNome}</p>}
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <p className="text-caption text-muted-foreground">Data da Ocorrência: {format(new Date(evalOsData.data_abertura || evalOsData.created_at), "dd/MM/yyyy HH:mm")}</p>
-                  {evalOsData.status !== "concluida" ? (
+                  {(evalOsData.status !== "concluida" || isAdmin) ? (
                     <Popover>
                       <PopoverTrigger asChild>
                         <button className="text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded hover:bg-muted">
