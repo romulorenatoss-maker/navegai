@@ -337,7 +337,12 @@ export default function FilaTarefasLeadsPage() {
                 </TableHeader>
                 <TableBody>
                   {sortedTarefas.map((tarefa: any, idx: number) => {
-                    const isOverdue = tarefa.status === "atrasado" || new Date(tarefa.data_contato) < new Date();
+                    const deadline = getEffectiveDeadline(new Date(tarefa.data_contato), tarefa.periodo);
+                    const isOverdue = tarefa.status === "atrasado" || isTarefaExpirada(tarefa);
+                    const diffMs = deadline.getTime() - nowClock.getTime();
+                    const hoursLeft = diffMs / (1000 * 60 * 60);
+                    const countdown = formatCountdown(deadline, nowClock);
+                    const countdownColor = isOverdue ? "text-destructive font-medium" : hoursLeft <= 2 ? "text-yellow-700 dark:text-yellow-400 font-medium" : "text-muted-foreground";
                     return (
                       <TableRow key={tarefa.id} className={isOverdue ? "bg-red-50/50 dark:bg-red-950/20" : ""}>
                         <TableCell className="text-xs text-muted-foreground font-mono">{idx + 1}</TableCell>
@@ -369,9 +374,10 @@ export default function FilaTarefasLeadsPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge className={`text-xs border-0 ${isOverdue ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200"}`}>
-                            {isOverdue ? "Fora do Prazo" : "No Prazo"}
-                          </Badge>
+                          <span className={`text-xs flex items-center gap-1 ${countdownColor}`}>
+                            <Clock className="w-3 h-3" />
+                            {isOverdue ? `Expirado ${countdown}` : `Expira em ${countdown}`}
+                          </span>
                         </TableCell>
                         <TableCell className="text-right">
                           <Button size="sm" variant="outline" onClick={() => openAttempt(tarefa)} className="press-effect">
