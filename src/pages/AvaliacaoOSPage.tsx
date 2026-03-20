@@ -2801,14 +2801,14 @@ export default function AvaliacaoOSPage() {
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-2 mt-4">
           {(() => {
-            // Hide button entirely if OS is concluded
-            if (selectedOS.status === "concluida") return null;
+            // Admins can always access evaluation
+            if (selectedOS.status === "concluida" && !isAdmin) return null;
             const myAval = osAvaliacoes.find((a: any) => a.avaliador_id === profile?.id);
-            if (myAval?.concluida) return null;
+            if (myAval?.concluida && !isAdmin) return null;
             return (
               <>
                 <Button onClick={() => startMyEvaluation(selectedOS)} className="press-effect w-full sm:w-auto">
-                  <Eye className="w-4 h-4 mr-2" /> Iniciar / Continuar Avaliação
+                  <Eye className="w-4 h-4 mr-2" /> {isAdmin && selectedOS.status === "concluida" ? "Editar Avaliação" : "Iniciar / Continuar Avaliação"}
                 </Button>
                 {(hasTecnicoAccess && !selectedOS.tecnico_id) && (
                   <p className="text-caption text-warning flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> Selecione o técnico avaliado acima antes de concluir.</p>
