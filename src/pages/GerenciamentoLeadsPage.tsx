@@ -210,7 +210,7 @@ export default function GerenciamentoLeadsPage() {
     } catch {
       toast.error("Erro ao selecionar", { id: toastId });
     }
-  }, [filterStatus, filterSearch, filterDateFrom, filterDateTo]);
+  }, [filterStatus, filterSearch, filterCampanha, filterDateFrom, filterDateTo]);
 
   // ─── Send to queue ─────────────────
   const handleSendToQueue = useCallback(async () => {
