@@ -232,6 +232,9 @@ export default function FilaLeadsPage() {
   const { data: allInteracoes = [] } = useQuery({
     queryKey: ["fila-interacoes", leadIds],
     enabled: leadIds.length > 0,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+    staleTime: 15_000,
     queryFn: async () => { const { data, error } = await supabase.from("lead_interacoes").select("id, lead_id, data_interacao, colaborador_id").in("lead_id", leadIds).order("data_interacao", { ascending: false }); if (error) throw error; return data; },
   });
 
