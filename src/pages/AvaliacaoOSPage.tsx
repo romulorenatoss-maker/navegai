@@ -2638,7 +2638,7 @@ export default function AvaliacaoOSPage() {
             </div>
             <div>
               <span className="text-muted-foreground">Data da Ocorrência:</span>
-              {selectedOS.status !== "concluida" ? (
+              {(selectedOS.status !== "concluida" || isAdmin) ? (
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm" className="w-full mt-1 h-8 justify-start text-left font-normal text-xs">
