@@ -460,10 +460,13 @@ export default function FilaLeadsPage() {
         const prevHandlerIds = interacoes.map((i: any) => i.colaborador_id);
         const userPreviouslyHandled = prevHandlerIds.includes(profile.id);
 
+        const ultimoResponsavelNome = lastInteracao ? getProfileName((lastInteracao as any).colaborador_id) : "—";
+
         return {
           lead, contatos,
           totalInteracoes: interacoes.length,
           ultimaTentativaEm: lastInteracao?.data_interacao || null,
+          ultimoResponsavelNome,
           userPreviouslyHandled,
           isReservedByOther: false,
           isReservedByMe: false,
