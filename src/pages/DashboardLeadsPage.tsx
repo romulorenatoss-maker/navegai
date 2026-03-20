@@ -474,6 +474,8 @@ export default function DashboardLeadsPage() {
 
       return {
         leadsNoPeriodo: total,
+        leadsImportados: leadsImportados || 0,
+        leadsManuais: leadsManuais || 0,
         emAtendimento: emAtendimento || 0,
         convertidos: convertidos || 0,
         tentativas: tentativas || 0,
