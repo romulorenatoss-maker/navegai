@@ -188,6 +188,7 @@ export default function GerenciamentoLeadsPage() {
       let query = supabase.from("leads").select("id");
       if (filterStatus !== "all") query = query.eq("status_lead", filterStatus);
       if (filterSearch.trim()) query = query.ilike("nome", `%${filterSearch.trim()}%`);
+      if (filterCampanha !== "all") query = query.eq("campanha_id", filterCampanha);
       if (filterDateFrom) query = query.gte("created_at", filterDateFrom.toISOString());
       if (filterDateTo) {
         const endOfDay = new Date(filterDateTo);
