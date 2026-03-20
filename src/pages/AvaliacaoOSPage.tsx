@@ -90,7 +90,7 @@ export default function AvaliacaoOSPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { profile, isAdmin, hasRole } = useAuth();
-  
+
 
   // View modes
   const [view, setView] = useState<"list" | "os_detail" | "evaluation">("list");
@@ -430,7 +430,31 @@ export default function AvaliacaoOSPage() {
     enabled: !!selectedOS?.id,
   });
 
-  // Detailed answers for OS detail view (all evaluations)
+  // OS Reaberturas (audit trail)
+  const currentOsIdForAudit = selectedOS?.id || evalOsId;
+  const { data: osReaberturas = [] } = useQuery({
+    queryKey: ["os_reaberturas", currentOsIdForAudit],
+    queryFn: async () => {
+      if (!currentOsIdForAudit) return [];
+      const { data } = await (supabase as any)
+        .from("os_reaberturas")
+        .select("id, reaberta_por, motivo, campos_alterados, created_at")
+        .eq("ordem_servico_id", currentOsIdForAudit)
+        .order("created_at", { ascending: false })
+        .limit(10);
+      if (!data?.length) return [];
+      const ids = [...new Set((data as any[]).map((r: any) => r.reaberta_por).filter(Boolean))] as string[];
+      let nameMap: Record<string, string> = {};
+      if (ids.length > 0) {
+        const { data: ps } = await supabase.from("profiles").select("id, nome").in("id", ids);
+        ps?.forEach(p => { nameMap[p.id] = p.nome; });
+      }
+      return data.map((r: any) => ({ ...r, _nome: nameMap[r.reaberta_por] || "—" }));
+    },
+    enabled: !!currentOsIdForAudit,
+  });
+
+
   const { data: osDetailAnswers = [] } = useQuery({
     queryKey: ["os_detail_answers", selectedOS?.id, view],
     queryFn: async () => {
@@ -1883,6 +1907,27 @@ export default function AvaliacaoOSPage() {
                 ))}
               </div>
             )}
+
+            {/* Histórico de edições */}
+            {osReaberturas.length > 0 && (
+              <div className="flex flex-col gap-1.5 mt-3 pt-3 border-t border-border">
+                <span className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Histórico de Edições</span>
+                {osReaberturas.map((r: any) => (
+                  <div key={r.id} className="flex items-center gap-2 text-sm flex-wrap">
+                    <Pencil className="w-3 h-3 text-muted-foreground shrink-0" />
+                    <span className="text-foreground">Editada por <span className="font-medium">{r._nome}</span></span>
+                    <span className="text-caption text-muted-foreground">em {format(new Date(r.created_at), "dd/MM/yyyy HH:mm")}</span>
+                    {r.campos_alterados?.length > 0 && (
+                      <span className="text-caption text-muted-foreground">
+                        ({r.campos_alterados.map((c: string) => 
+                          c === "atendente_id" ? "Atendente" : c === "tecnico_id" ? "Técnico" : c === "data_abertura" ? "Data" : c
+                        ).join(", ")})
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -2638,7 +2683,7 @@ export default function AvaliacaoOSPage() {
             </div>
             <div>
               <span className="text-muted-foreground">Data da Ocorrência:</span>
-              {selectedOS.status !== "concluida" ? (
+              {(selectedOS.status !== "concluida" || isAdmin) ? (
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm" className="w-full mt-1 h-8 justify-start text-left font-normal text-xs">
@@ -2668,13 +2713,20 @@ export default function AvaliacaoOSPage() {
             </div>
             <div>
               <span className="text-muted-foreground">Atendente:</span>
-              {selectedOS.atendente_id ? (
-                <p className="font-medium text-foreground">{detailAtendenteNome || "—"}</p>
-              ) : (hasAtendimentoAccess || isAdmin) ? (
-                <Select value={atendenteId} onValueChange={async (val) => {
+              {(isAdmin || (!selectedOS.atendente_id && (hasAtendimentoAccess || isAdmin))) ? (
+                <Select value={selectedOS.atendente_id || atendenteId || ""} onValueChange={async (val) => {
+                  const oldVal = selectedOS.atendente_id;
                   setAtendenteId(val);
                   await supabase.from("ordens_servico").update({ atendente_id: val } as any).eq("id", selectedOS.id);
                   setSelectedOS({ ...selectedOS, atendente_id: val });
+                  if (isAdmin && oldVal && oldVal !== val && profile) {
+                    await (supabase as any).from("os_reaberturas").insert({
+                      ordem_servico_id: selectedOS.id,
+                      reaberta_por: profile.id,
+                      motivo: "edicao_admin",
+                      campos_alterados: ["atendente_id"],
+                    });
+                  }
                   toast.success("Atendente salvo!");
                 }}>
                   <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="Selecionar" /></SelectTrigger>
@@ -2684,19 +2736,28 @@ export default function AvaliacaoOSPage() {
                     )}
                   </SelectContent>
                 </Select>
+              ) : selectedOS.atendente_id ? (
+                <p className="font-medium text-foreground">{detailAtendenteNome || "—"}</p>
               ) : (
                 <p className="font-medium text-warning italic">Pendente</p>
               )}
             </div>
             <div>
               <span className="text-muted-foreground">Técnico:</span>
-              {selectedOS.tecnico_id ? (
-                <p className="font-medium text-foreground">{detailTecnicoNome || "—"}</p>
-              ) : (hasTecnicoAccess || isAdmin) ? (
-                <Select value={tecnicoId} onValueChange={async (val) => {
+              {(isAdmin || (!selectedOS.tecnico_id && (hasTecnicoAccess || isAdmin))) ? (
+                <Select value={selectedOS.tecnico_id || tecnicoId || ""} onValueChange={async (val) => {
+                  const oldVal = selectedOS.tecnico_id;
                   setTecnicoId(val);
                   await supabase.from("ordens_servico").update({ tecnico_id: val } as any).eq("id", selectedOS.id);
                   setSelectedOS({ ...selectedOS, tecnico_id: val });
+                  if (isAdmin && oldVal && oldVal !== val && profile) {
+                    await (supabase as any).from("os_reaberturas").insert({
+                      ordem_servico_id: selectedOS.id,
+                      reaberta_por: profile.id,
+                      motivo: "edicao_admin",
+                      campos_alterados: ["tecnico_id"],
+                    });
+                  }
                   toast.success("Técnico salvo!");
                 }}>
                   <SelectTrigger className="h-8 mt-1"><SelectValue placeholder="Selecionar" /></SelectTrigger>
@@ -2706,6 +2767,8 @@ export default function AvaliacaoOSPage() {
                     )}
                   </SelectContent>
                 </Select>
+              ) : selectedOS.tecnico_id ? (
+                <p className="font-medium text-foreground">{detailTecnicoNome || "—"}</p>
               ) : (
                 <p className="font-medium text-warning italic">Pendente</p>
               )}
@@ -2728,9 +2791,28 @@ export default function AvaliacaoOSPage() {
               ))}
             </div>
           )}
-        </div>
 
-        {/* Atendimento Section */}
+          {/* Histórico de edições */}
+          {osReaberturas.length > 0 && (
+            <div className="flex flex-col gap-1.5 mt-3 pt-3 border-t border-border">
+              <span className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Histórico de Edições</span>
+              {osReaberturas.map((r: any) => (
+                <div key={r.id} className="flex items-center gap-2 text-sm flex-wrap">
+                  <Pencil className="w-3 h-3 text-muted-foreground shrink-0" />
+                  <span className="text-foreground">Editada por <span className="font-medium">{r._nome}</span></span>
+                  <span className="text-caption text-muted-foreground">em {format(new Date(r.created_at), "dd/MM/yyyy HH:mm")}</span>
+                  {r.campos_alterados?.length > 0 && (
+                    <span className="text-caption text-muted-foreground">
+                      ({r.campos_alterados.map((c: string) => 
+                        c === "atendente_id" ? "Atendente" : c === "tecnico_id" ? "Técnico" : c === "data_abertura" ? "Data" : c
+                      ).join(", ")})
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         <div className="bg-card border border-border rounded-lg shadow-card mb-4">
           <div className="p-4 border-b border-border flex items-center gap-2 flex-wrap">
             <Users className="w-4 h-4 text-primary" />
@@ -2783,14 +2865,14 @@ export default function AvaliacaoOSPage() {
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-2 mt-4">
           {(() => {
-            // Hide button entirely if OS is concluded
-            if (selectedOS.status === "concluida") return null;
+            // Admins can always access evaluation
+            if (selectedOS.status === "concluida" && !isAdmin) return null;
             const myAval = osAvaliacoes.find((a: any) => a.avaliador_id === profile?.id);
-            if (myAval?.concluida) return null;
+            if (myAval?.concluida && !isAdmin) return null;
             return (
               <>
                 <Button onClick={() => startMyEvaluation(selectedOS)} className="press-effect w-full sm:w-auto">
-                  <Eye className="w-4 h-4 mr-2" /> Iniciar / Continuar Avaliação
+                  <Eye className="w-4 h-4 mr-2" /> {isAdmin && selectedOS.status === "concluida" ? "Editar Avaliação" : "Iniciar / Continuar Avaliação"}
                 </Button>
                 {(hasTecnicoAccess && !selectedOS.tecnico_id) && (
                   <p className="text-caption text-warning flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> Selecione o técnico avaliado acima antes de concluir.</p>
