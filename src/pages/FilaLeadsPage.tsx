@@ -977,7 +977,7 @@ export default function FilaLeadsPage() {
                         <TableHead className="w-8">#</TableHead>
                         <TableHead className="cursor-pointer select-none" onClick={() => toggleFilaSort("nome")}><span className="flex items-center">Lead<SortIcon col="nome" /></span></TableHead>
                         <TableHead>Telefone(s)</TableHead>
-                        <TableHead className="cursor-pointer select-none" onClick={() => toggleFilaSort("responsavel")}><span className="flex items-center">Responsável<SortIcon col="responsavel" /></span></TableHead>
+                        <TableHead className="cursor-pointer select-none" onClick={() => toggleFilaSort("responsavel")}><span className="flex items-center">Último Responsável<SortIcon col="responsavel" /></span></TableHead>
                         <TableHead className="cursor-pointer select-none" onClick={() => toggleFilaSort("expiracao")}><span className="flex items-center">Expiração<SortIcon col="expiracao" /></span></TableHead>
                         <TableHead className="cursor-pointer select-none" onClick={() => toggleFilaSort("status")}><span className="flex items-center">Status<SortIcon col="status" /></span></TableHead>
                         <TableHead className="text-right">Ações</TableHead>
