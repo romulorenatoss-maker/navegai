@@ -1502,7 +1502,7 @@ export default function LeadsPage() {
         const extras = createExtraContatos.filter(c => c.valor.trim()).map(c => ({
           lead_id: newLead.id,
           tipo_contato: c.tipo,
-          valor: c.valor.trim(),
+          valor: c.tipo === "telefone" ? normalizePhone(c.valor) : c.valor.trim(),
           tem_whatsapp: c.tipo === "telefone" ? c.temWhatsapp : false,
         }));
         if (extras.length > 0) {
