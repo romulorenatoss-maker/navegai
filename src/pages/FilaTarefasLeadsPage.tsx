@@ -28,7 +28,6 @@ function formatCountdown(target: Date, now: Date): string {
   if (hours > 0) return `${prefix}${hours}h ${mins}m`;
   return `${prefix}${mins}m`;
 }
-import { applyPhoneMask } from "@/lib/phone-utils";
 
 const fmtDate = (d: string | Date) => {
   try { return format(new Date(d), "dd/MM/yyyy HH:mm", { locale: ptBR }); } catch { return String(d); }
