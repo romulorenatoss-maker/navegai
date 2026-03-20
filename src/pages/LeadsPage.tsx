@@ -360,6 +360,8 @@ export default function LeadsPage() {
   const [localBairroId, setLocalBairroId] = useState<string | null>(null);
   const [localRuaId, setLocalRuaId] = useState<string | null>(null);
   const [localNumeroEnd, setLocalNumeroEnd] = useState("");
+  const [localDescricao, setLocalDescricao] = useState("");
+  const descricaoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Duplicate alert state
   const [dupeAlert, setDupeAlert] = useState<{
