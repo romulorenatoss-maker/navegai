@@ -426,6 +426,8 @@ export default function DashboardLeadsPage() {
 
       const [
         { count: leadsNoPeriodo },
+        { count: leadsImportados },
+        { count: leadsManuais },
         { count: emAtendimento },
         { count: convertidos },
         { count: tentativas },
@@ -433,6 +435,12 @@ export default function DashboardLeadsPage() {
         { data: topObjecoes },
       ] = await Promise.all([
         supabase.from("leads").select("*", { count: "exact", head: true })
+          .gte("data_criacao", start).lte("data_criacao", end),
+        supabase.from("leads").select("*", { count: "exact", head: true })
+          .eq("origem_lead", "importacao")
+          .gte("data_criacao", start).lte("data_criacao", end),
+        supabase.from("leads").select("*", { count: "exact", head: true })
+          .eq("origem_lead", "manual")
           .gte("data_criacao", start).lte("data_criacao", end),
         supabase.from("leads").select("*", { count: "exact", head: true })
           .eq("status_lead", "em_atendimento")
