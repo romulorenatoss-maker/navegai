@@ -1101,28 +1101,33 @@ export default function LeadsPage() {
   // Filtered priority queue based on filaFiltro + tempo_exibicao_leads_horas
   const tempoExibicaoHoras = fluxoConfig?.tempo_exibicao_leads_horas ?? 1;
   const filteredQueue = useMemo(() => {
-    const now = new Date();
-    const cutoff = new Date(now.getTime() - tempoExibicaoHoras * 60 * 60 * 1000);
+    const nowMs = Date.now();
+    const windowMs = tempoExibicaoHoras * 60 * 60 * 1000;
     let result = priorityQueue;
 
     if (filaFiltro === "hoje") {
-      // "Hoje": apply time-based visibility filter + today scope
-      result = result.filter((item) => new Date(item.lead.updated_at) <= cutoff);
-      const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-      const in8hours = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+      // "Hoje": show leads whose scheduled contact or agendamento is within
+      // the configured time window (e.g. 1h) from now, OR already overdue.
+      // A lead appears when: targetTime - now <= tempoExibicaoHoras
       result = result.filter((item) => {
+        // Agendamento de retorno: show if within window or already passed
         if (item.lead.agendamento_retorno) {
-          return new Date(item.lead.agendamento_retorno) <= endOfToday;
+          const agendMs = new Date(item.lead.agendamento_retorno).getTime();
+          return agendMs - nowMs <= windowMs; // includes past (negative diff)
         }
-        if (item.proximoContato && (item.proximoContato <= endOfToday || item.proximoContato <= in8hours)) return true;
-        if (!item.proximoContato && !item.ultimaInteracao) return true;
+        // Próximo contato da cadência: show if within window or already passed
+        if (item.proximoContato) {
+          return item.proximoContato.getTime() - nowMs <= windowMs;
+        }
+        // No scheduled contact and no interactions: show immediately (new lead)
+        if (!item.ultimaInteracao) return true;
         return false;
       });
     }
     // "Todos": show ALL leads associated to the person, no time filter
 
     return result;
-  }, [priorityQueue, filaFiltro, tempoExibicaoHoras]);
+  }, [priorityQueue, filaFiltro, tempoExibicaoHoras, now]);
 
 
   const { data: leadContatos = [], refetch: refetchContatos } = useQuery({
