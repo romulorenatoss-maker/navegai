@@ -276,6 +276,7 @@ export default function ImportadorLeadsPage() {
       campanha_id: (campanhaId && campanhaId !== "__none") ? campanhaId : null,
       cidade_id: cidadeId, bairro_id: bairroId, rua_id: ruaId,
       numero_endereco: row.numero || null, plano_id: planoId, repetidor: row.repetidor || null,
+      descricao: row.descricao || null,
     } as any).select().single();
 
     if (error || !newLead) throw error || new Error("Falha ao criar lead");
