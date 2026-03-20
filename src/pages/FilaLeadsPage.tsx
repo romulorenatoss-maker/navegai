@@ -301,6 +301,8 @@ export default function FilaLeadsPage() {
 
     // 1. Automatic tasks from lead_tarefas_contato (only captured/assigned leads)
     const STATUS_EXCLUIDOS_TAREFAS = ["importado", "fila_captura"];
+    const now2 = new Date();
+    const cutoff2 = new Date(now2.getTime() - ((fluxoConfig as any)?.tempo_exibicao_leads_horas ?? 1) * 60 * 60 * 1000);
     tarefas.forEach((t: any) => {
       if (seenLeadIds.has(t.lead_id)) return; // skip if lead already added
       const lead = tarefaLeads.find((l: any) => l.id === t.lead_id);
