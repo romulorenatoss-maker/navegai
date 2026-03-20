@@ -1637,6 +1637,8 @@ export default function AvaliacaoOSPage() {
   
   const evalTotalScore = evalPerguntas.reduce((a, p) => (evalAnswers[p.id] === "sim" || evalAnswers[p.id] === "na") ? a + p.peso : a, 0);
   const evalMaxScore = evalPerguntas.reduce((a, p) => evalAnswers[p.id] != null ? a + p.peso : a, 0);
+  // Compute display score from answers when nota_final is null (e.g. after admin edit)
+  const displayScore = evalScore ?? (evalMaxScore > 0 ? (evalTotalScore / evalMaxScore) * 100 : null);
 
   // Auto-finalize when all answerable questions are answered
   const autoFinalizeTriggered = useRef(false);
