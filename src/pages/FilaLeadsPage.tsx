@@ -342,7 +342,8 @@ export default function FilaLeadsPage() {
 
     leads.forEach(lead => {
       if (tarefaLeadIdSet.has(lead.id)) return; // already has a tarefa entry
-      if (!["novo", "em_contato", "interessado", "reservado", "em_atendimento"].includes(lead.status_lead)) return;
+      if (["importado", "fila_captura"].includes(lead.status_lead)) return; // not captured yet
+      if (!["em_contato", "interessado", "reservado", "em_atendimento"].includes(lead.status_lead)) return;
       if (!lead.responsavel_id && !lead.reserved_by) return; // unassigned, skip
 
       const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
