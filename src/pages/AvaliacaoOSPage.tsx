@@ -1449,8 +1449,29 @@ export default function AvaliacaoOSPage() {
   };
 
   const handleStartEditing = async () => {
-    if (!evalAvaliacaoId) return;
-    // Reopen the evaluation in the database
+    if (!evalAvaliacaoId || !evalOsId || !profile) return;
+    const wasOsConcluded = evalOsData?.status === "concluida";
+    
+    // If OS is concluded, only admins can reopen
+    if (wasOsConcluded && !isAdmin) {
+      toast.error("Apenas administradores podem editar OS concluída.");
+      return;
+    }
+
+    // If OS was concluded, reopen it and log the reopening
+    if (wasOsConcluded) {
+      await supabase.from("ordens_servico").update({ status: "em_andamento", data_conclusao: null } as any).eq("id", evalOsId);
+      setEvalOsData({ ...evalOsData, status: "em_andamento", data_conclusao: null });
+      
+      // Log the reopening
+      await (supabase as any).from("os_reaberturas").insert({
+        ordem_servico_id: evalOsId,
+        reaberta_por: profile.id,
+        motivo: "edicao_admin",
+      });
+    }
+
+    // Reopen all avaliacoes for this OS so answers can be changed
     await supabase.from("avaliacoes").update({ concluida: false, nota_final: null } as any).eq("id", evalAvaliacaoId);
     setEvalFinalized(false);
     setEvalScore(null);
