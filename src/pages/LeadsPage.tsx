@@ -1493,7 +1493,7 @@ export default function LeadsPage() {
       if (e1) throw e1;
 
       const { error: e2 } = await supabase.from("lead_contatos").insert({
-        lead_id: newLead.id, tipo_contato: "telefone", valor: createPhone.trim(), tem_whatsapp: createPhoneWhatsapp,
+        lead_id: newLead.id, tipo_contato: "telefone", valor: normalizePhone(createPhone), tem_whatsapp: createPhoneWhatsapp,
       });
       if (e2) throw e2;
 
@@ -1502,7 +1502,7 @@ export default function LeadsPage() {
         const extras = createExtraContatos.filter(c => c.valor.trim()).map(c => ({
           lead_id: newLead.id,
           tipo_contato: c.tipo,
-          valor: c.valor.trim(),
+          valor: c.tipo === "telefone" ? normalizePhone(c.valor) : c.valor.trim(),
           tem_whatsapp: c.tipo === "telefone" ? c.temWhatsapp : false,
         }));
         if (extras.length > 0) {
@@ -1578,7 +1578,7 @@ export default function LeadsPage() {
         }
       }
       const { error } = await supabase.from("lead_contatos").insert({
-        lead_id: selectedLead.id, tipo_contato: newPhoneTipo, valor: newPhoneValue.trim(), tem_whatsapp: newPhoneWhatsapp,
+        lead_id: selectedLead.id, tipo_contato: newPhoneTipo, valor: normalizePhone(newPhoneValue), tem_whatsapp: newPhoneWhatsapp,
       });
       if (error) throw error;
       await supabase.from("lead_historico").insert({
