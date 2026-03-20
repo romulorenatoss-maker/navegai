@@ -159,18 +159,22 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
   const { data: mfaStatus, refetch: refetchMfa } = useQuery({
     queryKey: ["colab_mfa_status", collaborator?.user_id],
     queryFn: async () => {
-      if (!collaborator) return null;
+      if (!collaborator?.user_id) return null;
       const res = await supabase.functions.invoke("admin-manage-mfa", {
         body: { action: "check", target_user_id: collaborator.user_id },
       });
-      if (res.error) return null;
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.error);
       return res.data as { has_mfa: boolean; factors: { id: string }[] };
     },
-    enabled: open && !!collaborator && isAdmin,
+    enabled: open && !!collaborator?.user_id && isAdmin,
   });
 
   const handleUnenrollMfa = async () => {
-    if (!collaborator) return;
+    if (!collaborator?.user_id) {
+      toast.error("Usuário do colaborador não encontrado.");
+      return;
+    }
     setMfaUnenrolling(true);
     try {
       const res = await supabase.functions.invoke("admin-manage-mfa", {

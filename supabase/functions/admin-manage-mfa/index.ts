@@ -49,10 +49,16 @@ Deno.serve(async (req) => {
       if (listErr) {
         return new Response(JSON.stringify({ error: listErr.message }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
+
       const factors = data?.factors?.filter((f: any) => f.factor_type === "totp") || [];
+
       for (const f of factors) {
-        await supabaseAdmin.auth.admin.mfa.deleteFactor({ userId: target_user_id, factorId: f.id });
+        const { error: deleteErr } = await supabaseAdmin.auth.admin.mfa.deleteFactor({ id: f.id });
+        if (deleteErr) {
+          return new Response(JSON.stringify({ error: deleteErr.message }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
       }
+
       return new Response(JSON.stringify({ success: true, removed: factors.length }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
