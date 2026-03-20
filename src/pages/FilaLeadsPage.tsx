@@ -460,10 +460,13 @@ export default function FilaLeadsPage() {
         const prevHandlerIds = interacoes.map((i: any) => i.colaborador_id);
         const userPreviouslyHandled = prevHandlerIds.includes(profile.id);
 
+        const ultimoResponsavelNome = lastInteracao ? getProfileName((lastInteracao as any).colaborador_id) : "—";
+
         return {
           lead, contatos,
           totalInteracoes: interacoes.length,
           ultimaTentativaEm: lastInteracao?.data_interacao || null,
+          ultimoResponsavelNome,
           userPreviouslyHandled,
           isReservedByOther: false,
           isReservedByMe: false,
@@ -1147,6 +1150,7 @@ export default function FilaLeadsPage() {
                       <TableHead className="w-8">#</TableHead>
                       <TableHead>Lead</TableHead>
                       <TableHead>Telefone(s)</TableHead>
+                      <TableHead>Último Responsável</TableHead>
                       <TableHead>Tentativas Anteriores</TableHead>
                       <TableHead>Última Tentativa</TableHead>
                       <TableHead className="text-right">Ação</TableHead>
@@ -1174,6 +1178,12 @@ export default function FilaLeadsPage() {
                               {phones.map(c => <Badge key={c.id} variant="outline" className="text-[11px] gap-0.5 font-normal"><Phone className="w-2.5 h-2.5" />{c.valor}{c.tem_whatsapp && <MessageSquare className="w-2.5 h-2.5 text-green-600" />}</Badge>)}
                               {phones.length === 0 && <span className="text-[11px] text-muted-foreground">Sem tel.</span>}
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-xs flex items-center gap-1 text-foreground">
+                              <UserCheck className="w-3 h-3 text-muted-foreground" />
+                              {item.ultimoResponsavelNome || "—"}
+                            </span>
                           </TableCell>
                           <TableCell><Badge variant="secondary" className="text-xs">{item.totalInteracoes} realizadas</Badge></TableCell>
                           <TableCell className="text-xs text-muted-foreground">
