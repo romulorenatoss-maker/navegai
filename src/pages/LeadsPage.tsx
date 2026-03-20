@@ -1100,34 +1100,35 @@ export default function LeadsPage() {
 
   // Filtered priority queue based on filaFiltro + tempo_exibicao_leads_horas
   const tempoExibicaoHoras = fluxoConfig?.tempo_exibicao_leads_horas ?? 1;
-  const filteredQueue = useMemo(() => {
+
+  // Shared "Hoje" filter: lead is visible when its deadline is within the
+  // configured window OR already overdue (past).
+  const isHojeVisible = useCallback((item: typeof priorityQueue[number]) => {
     const nowMs = Date.now();
     const windowMs = tempoExibicaoHoras * 60 * 60 * 1000;
-    let result = priorityQueue;
+    // Agendamento de retorno: show if within window or already passed
+    if (item.lead.agendamento_retorno) {
+      const agendMs = new Date(item.lead.agendamento_retorno).getTime();
+      return agendMs - nowMs <= windowMs; // includes past (negative diff)
+    }
+    // Próximo contato da cadência: show if within window or already passed
+    if (item.proximoContato) {
+      return item.proximoContato.getTime() - nowMs <= windowMs;
+    }
+    // No scheduled contact and no interactions: show immediately (new lead)
+    if (!item.ultimaInteracao) return true;
+    return false;
+  }, [tempoExibicaoHoras]);
 
+  const filteredQueue = useMemo(() => {
     if (filaFiltro === "hoje") {
-      // "Hoje": show leads whose scheduled contact or agendamento is within
-      // the configured time window (e.g. 1h) from now, OR already overdue.
-      // A lead appears when: targetTime - now <= tempoExibicaoHoras
-      result = result.filter((item) => {
-        // Agendamento de retorno: show if within window or already passed
-        if (item.lead.agendamento_retorno) {
-          const agendMs = new Date(item.lead.agendamento_retorno).getTime();
-          return agendMs - nowMs <= windowMs; // includes past (negative diff)
-        }
-        // Próximo contato da cadência: show if within window or already passed
-        if (item.proximoContato) {
-          return item.proximoContato.getTime() - nowMs <= windowMs;
-        }
-        // No scheduled contact and no interactions: show immediately (new lead)
-        if (!item.ultimaInteracao) return true;
-        return false;
-      });
+      return priorityQueue.filter(isHojeVisible);
     }
     // "Todos": show ALL leads associated to the person, no time filter
+    return priorityQueue;
+  }, [priorityQueue, filaFiltro, isHojeVisible, now]);
 
-    return result;
-  }, [priorityQueue, filaFiltro, tempoExibicaoHoras, now]);
+  const hojeCount = useMemo(() => priorityQueue.filter(isHojeVisible).length, [priorityQueue, isHojeVisible, now]);
 
 
   const { data: leadContatos = [], refetch: refetchContatos } = useQuery({
@@ -2380,19 +2381,7 @@ export default function LeadsPage() {
                     className="h-6 text-[10px] px-2"
                     onClick={() => setFilaFiltro("hoje")}
                   >
-                    Hoje ({priorityQueue.filter((item) => {
-                      const _now = new Date();
-                      const _cutoff = new Date(_now.getTime() - tempoExibicaoHoras * 60 * 60 * 1000);
-                      if (new Date(item.lead.updated_at) > _cutoff) return false;
-                      const endOfToday = new Date(_now.getFullYear(), _now.getMonth(), _now.getDate(), 23, 59, 59, 999);
-                      const in8hours = new Date(_now.getTime() + 8 * 60 * 60 * 1000);
-                      if (item.lead.agendamento_retorno) {
-                        return new Date(item.lead.agendamento_retorno) <= endOfToday;
-                      }
-                      if (item.proximoContato && (item.proximoContato <= endOfToday || item.proximoContato <= in8hours)) return true;
-                      if (!item.proximoContato && !item.ultimaInteracao) return true;
-                      return false;
-                    }).length})
+                    Hoje ({hojeCount})
                   </Button>
                   <Button
                     variant={filaFiltro === "todos" ? "default" : "ghost"}
