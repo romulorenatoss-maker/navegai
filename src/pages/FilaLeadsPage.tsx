@@ -313,15 +313,16 @@ export default function FilaLeadsPage() {
     // 1. Automatic tasks from lead_tarefas_contato (only captured/assigned leads)
     const STATUS_EXCLUIDOS_TAREFAS = ["importado", "fila_captura"];
     const now2 = new Date();
-    const cutoff2 = new Date(now2.getTime() - ((fluxoConfig as any)?.tempo_exibicao_leads_horas ?? 1) * 60 * 60 * 1000);
+    const windowMs = ((fluxoConfig as any)?.tempo_exibicao_leads_horas ?? 1) * 60 * 60 * 1000;
     tarefas.forEach((t: any) => {
-      if (seenLeadIds.has(t.lead_id)) return; // skip if lead already added
+      if (seenLeadIds.has(t.lead_id)) return;
       const lead = tarefaLeads.find((l: any) => l.id === t.lead_id);
-      // Skip leads that haven't been captured yet
       if (lead && STATUS_EXCLUIDOS_TAREFAS.includes(lead.status_lead)) return;
-      if (lead && !lead.responsavel_id) return; // no one assigned
-      // Time filter: only show if lead updated_at is older than configured hours
-      if (lead?.updated_at && new Date(lead.updated_at) > cutoff2) return;
+      if (lead && !lead.responsavel_id) return;
+      // Visibility: show if deadline is within configured window or already overdue
+      const deadline = t.periodo ? getEffectiveDeadline(new Date(t.data_contato), t.periodo) : new Date(t.data_contato);
+      const timeUntil = deadline.getTime() - now2.getTime();
+      if (timeUntil > windowMs) return; // too far in the future
       seenLeadIds.add(t.lead_id);
       items.push({
         ...t,
