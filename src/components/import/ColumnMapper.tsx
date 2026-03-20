@@ -13,6 +13,7 @@ export interface ColumnMapping {
   numero: string;
   plano: string;
   repetidor: string;
+  descricao: string;
 }
 
 interface Props {
