@@ -907,6 +907,27 @@ export default function FilaLeadsPage() {
           <p className="text-sm text-muted-foreground">Gerencie leads, tarefas, registre tentativas, transfira responsáveis e tome decisões.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 h-8 text-xs"
+            disabled={isRefreshing}
+            onClick={() => {
+              setIsRefreshing(true);
+              Promise.all([
+                queryClient.invalidateQueries({ queryKey: ["fila-leads"] }),
+                queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }),
+                queryClient.invalidateQueries({ queryKey: ["fila-interacoes"] }),
+                queryClient.invalidateQueries({ queryKey: ["leads-com-agendamento"] }),
+              ]).finally(() => {
+                toast.success("Dados atualizados!");
+                setTimeout(() => setIsRefreshing(false), 600);
+              });
+            }}
+          >
+            <RefreshCw className={cn("w-3.5 h-3.5", isRefreshing && "animate-spin")} />
+            Atualizar
+          </Button>
           <Badge variant="secondary" className="text-xs gap-1"><ListOrdered className="w-3 h-3" /> {queue.length} na fila</Badge>
           {totalTarefas > 0 && <Badge variant="outline" className="text-xs gap-1"><Clock className="w-3 h-3" /> {totalTarefas} tarefa{totalTarefas > 1 ? "s" : ""}</Badge>}
           {totalTarefasAtrasadas > 0 && <Badge variant="destructive" className="text-xs gap-1"><AlertTriangle className="w-3 h-3" /> {totalTarefasAtrasadas} atrasada{totalTarefasAtrasadas > 1 ? "s" : ""}</Badge>}
