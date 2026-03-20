@@ -117,6 +117,8 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       } catch (err) {
         console.error("Erro ao carregar perfil/permissões:", err);
         clearAuthState();
+        setSession(null);
+        setUser(null);
       } finally {
         if (isMounted) setLoading(false);
       }
