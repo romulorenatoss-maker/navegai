@@ -282,8 +282,9 @@ export default function ImportadorLeadsPage() {
     if (error || !newLead) throw error || new Error("Falha ao criar lead");
 
     // Insert contacts, history, and first task in parallel
+    const phoneNormalized = normalizePhone(row.telefone);
     const ops: any[] = [
-      supabase.from("lead_contatos").insert({ lead_id: newLead.id, tipo_contato: "telefone", valor: row.telefone, tem_whatsapp: false }).then(),
+      supabase.from("lead_contatos").insert({ lead_id: newLead.id, tipo_contato: "telefone", valor: phoneNormalized, tem_whatsapp: false }).then(),
     ];
     if (row.email) {
       ops.push(supabase.from("lead_contatos").insert({ lead_id: newLead.id, tipo_contato: "email", valor: row.email, tem_whatsapp: false }).then());
