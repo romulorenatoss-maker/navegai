@@ -103,6 +103,8 @@ export default function RelatoriosLeadsPage() {
   const [leadsList, setLeadsList] = useState<LeadRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 50;
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
@@ -197,6 +199,7 @@ export default function RelatoriosLeadsPage() {
 
     setLeadsList(rows);
     setSelected(new Set());
+    setCurrentPage(1);
     setLoading(false);
   }, [startDate, endDate, filterStatus, filterOrigem, filterResponsavel, filterHandler, filterMinTentativas, filterNome, urlCidadeId, urlBairroId, urlRuaId]);
 
@@ -228,9 +231,18 @@ export default function RelatoriosLeadsPage() {
     }
   };
 
-  const allSelected = leadsList.length > 0 && selected.size === leadsList.length;
-  const someSelected = selected.size > 0 && !allSelected;
-  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(leadsList.map((l) => l.id)));
+  const totalPages = Math.max(1, Math.ceil(leadsList.length / PAGE_SIZE));
+  const paginatedLeads = leadsList.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const pageIds = paginatedLeads.map((l) => l.id);
+  const allPageSelected = paginatedLeads.length > 0 && pageIds.every((id) => selected.has(id));
+  const somePageSelected = pageIds.some((id) => selected.has(id)) && !allPageSelected;
+  const toggleAll = () => {
+    if (allPageSelected) {
+      setSelected((prev) => { const n = new Set(prev); pageIds.forEach((id) => n.delete(id)); return n; });
+    } else {
+      setSelected((prev) => { const n = new Set(prev); pageIds.forEach((id) => n.add(id)); return n; });
+    }
+  };
   const toggleOne = (id: string) => setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   // ─── Delete leads and ALL related records ───────────
@@ -552,10 +564,10 @@ export default function RelatoriosLeadsPage() {
                 <tr className="border-b border-border">
                   <th className="px-4 py-2 w-10">
                     <Checkbox
-                      checked={allSelected}
+                      checked={allPageSelected}
                       onCheckedChange={toggleAll}
                       className="translate-y-[1px]"
-                      {...(someSelected ? { "data-state": "indeterminate" } : {})}
+                      {...(somePageSelected ? { "data-state": "indeterminate" } : {})}
                     />
                   </th>
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Nome</th>
@@ -569,7 +581,7 @@ export default function RelatoriosLeadsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {leadsList.map((item) => (
+                {paginatedLeads.map((item) => (
                   <tr
                     key={item.id}
                     className={cn("hover:bg-muted/50 transition-colors", selected.has(item.id) && "bg-primary/5")}
@@ -617,6 +629,50 @@ export default function RelatoriosLeadsPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="px-4 py-3 border-t border-border flex items-center justify-between">
+              <span className="text-caption text-muted-foreground">
+                Mostrando {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, leadsList.length)} de {leadsList.length}
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline" size="sm" disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                >
+                  Anterior
+                </Button>
+                {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                  let page: number;
+                  if (totalPages <= 7) {
+                    page = i + 1;
+                  } else if (currentPage <= 4) {
+                    page = i + 1;
+                  } else if (currentPage >= totalPages - 3) {
+                    page = totalPages - 6 + i;
+                  } else {
+                    page = currentPage - 3 + i;
+                  }
+                  return (
+                    <Button
+                      key={page} variant={page === currentPage ? "default" : "outline"} size="sm"
+                      className="w-8 h-8 p-0"
+                      onClick={() => setCurrentPage(page)}
+                    >
+                      {page}
+                    </Button>
+                  );
+                })}
+                <Button
+                  variant="outline" size="sm" disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                >
+                  Próximo
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
