@@ -664,6 +664,7 @@ export default function LeadsPage() {
   const { data: allLeadContatos = [] } = useQuery({
     queryKey: ["all-lead-contatos", activeLeadIds],
     enabled: activeLeadIds.length > 0,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("lead_contatos")
