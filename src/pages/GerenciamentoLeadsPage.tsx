@@ -69,7 +69,8 @@ export default function GerenciamentoLeadsPage() {
   const queryClient = useQueryClient();
 
   // Filters
-  const [filterStatus, setFilterStatus] = useState("novo");
+  const [filterStatus, setFilterStatus] = useState("importado");
+  const [filterCampanha, setFilterCampanha] = useState("all");
   const [filterSearch, setFilterSearch] = useState("");
   const [filterDateFrom, setFilterDateFrom] = useState<Date | undefined>(undefined);
   const [filterDateTo, setFilterDateTo] = useState<Date | undefined>(undefined);
@@ -87,7 +88,7 @@ export default function GerenciamentoLeadsPage() {
 
   // ─── Server-side paginated query ─────────────────
   const { data: queryResult, isLoading } = useQuery({
-    queryKey: ["gerenciamento-leads", filterStatus, filterSearch, filterDateFrom?.toISOString(), filterDateTo?.toISOString(), page, pageSize],
+    queryKey: ["gerenciamento-leads", filterStatus, filterSearch, filterCampanha, filterDateFrom?.toISOString(), filterDateTo?.toISOString(), page, pageSize],
     queryFn: async () => {
       let query = supabase
         .from("leads")
@@ -95,6 +96,10 @@ export default function GerenciamentoLeadsPage() {
 
       if (filterStatus !== "all") {
         query = query.eq("status_lead", filterStatus);
+      }
+
+      if (filterCampanha !== "all") {
+        query = query.eq("campanha_id", filterCampanha);
       }
 
       if (filterSearch.trim()) {
@@ -136,16 +141,20 @@ export default function GerenciamentoLeadsPage() {
   });
 
   // Campanhas for display
-  const { data: campanhasMap = {} } = useQuery({
-    queryKey: ["campanhas-map"],
+  const { data: campanhasList = [] } = useQuery({
+    queryKey: ["campanhas-list"],
     queryFn: async () => {
-      const { data } = await supabase.from("campanhas").select("id, nome");
-      const map: Record<string, string> = {};
-      (data || []).forEach((c: any) => { map[c.id] = c.nome; });
-      return map;
+      const { data } = await supabase.from("campanhas").select("id, nome").order("nome");
+      return (data || []) as { id: string; nome: string }[];
     },
     staleTime: 5 * 60 * 1000,
   });
+
+  const campanhasMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    campanhasList.forEach(c => { map[c.id] = c.nome; });
+    return map;
+  }, [campanhasList]);
 
   // ─── Selection handlers ─────────────────
   const pageLeadIds = useMemo(() => leads.map(l => l.id), [leads]);
@@ -179,6 +188,7 @@ export default function GerenciamentoLeadsPage() {
       let query = supabase.from("leads").select("id");
       if (filterStatus !== "all") query = query.eq("status_lead", filterStatus);
       if (filterSearch.trim()) query = query.ilike("nome", `%${filterSearch.trim()}%`);
+      if (filterCampanha !== "all") query = query.eq("campanha_id", filterCampanha);
       if (filterDateFrom) query = query.gte("created_at", filterDateFrom.toISOString());
       if (filterDateTo) {
         const endOfDay = new Date(filterDateTo);
@@ -200,7 +210,7 @@ export default function GerenciamentoLeadsPage() {
     } catch {
       toast.error("Erro ao selecionar", { id: toastId });
     }
-  }, [filterStatus, filterSearch, filterDateFrom, filterDateTo]);
+  }, [filterStatus, filterSearch, filterCampanha, filterDateFrom, filterDateTo]);
 
   // ─── Send to queue ─────────────────
   const handleSendToQueue = useCallback(async () => {
@@ -311,6 +321,22 @@ export default function GerenciamentoLeadsPage() {
               </Select>
             </div>
 
+            {/* Campanha */}
+            <div className="w-48">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Campanha</label>
+              <Select value={filterCampanha} onValueChange={v => handleFilterChange(setFilterCampanha, v)}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {campanhasList.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Date from */}
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">De</label>
@@ -342,9 +368,9 @@ export default function GerenciamentoLeadsPage() {
             </div>
 
             {/* Clear */}
-            {(filterStatus !== "all" || filterSearch || filterDateFrom || filterDateTo) && (
+            {(filterStatus !== "all" || filterSearch || filterCampanha !== "all" || filterDateFrom || filterDateTo) && (
               <Button variant="ghost" size="sm" className="h-9" onClick={() => {
-                setFilterStatus("all"); setFilterSearch(""); setFilterDateFrom(undefined); setFilterDateTo(undefined);
+                setFilterStatus("all"); setFilterSearch(""); setFilterCampanha("all"); setFilterDateFrom(undefined); setFilterDateTo(undefined);
                 setPage(0); setSelectedIds(new Set());
               }}>
                 Limpar filtros
