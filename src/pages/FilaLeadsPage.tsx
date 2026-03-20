@@ -896,7 +896,7 @@ export default function FilaLeadsPage() {
       if (!selectedTarefa || !profile) throw new Error("Erro interno.");
       if (!tarefaNumero) throw new Error("Selecione o número.");
       await supabase.from("lead_interacoes").insert({ lead_id: selectedTarefa.lead_id, colaborador_id: profile.id, tipo_contato: tarefaTipo, numero_utilizado: tarefaNumero, resultado: tarefaResultado.trim() || null });
-      await supabase.from("lead_tarefas_contato").update({ status: "realizado" }).eq("id", selectedTarefa.id);
+      await supabase.from("lead_tarefas_contato").update({ status: "realizado" }).eq("lead_id", selectedTarefa.lead_id).eq("tentativa", selectedTarefa.tentativa).in("status", ["pendente", "atrasado", "aguardando_visualizacao"]);
       await supabase.from("lead_historico").insert({ lead_id: selectedTarefa.lead_id, usuario_id: profile.id, tipo_evento: "tentativa_registrada", descricao: `Tentativa ${selectedTarefa.tentativa} via ${tarefaTipo}: ${tarefaResultado.trim() || "sem resultado"}` });
       const maxT = (fluxoConfig as any)?.quantidade_tentativas || 7;
       const nextT = selectedTarefa.tentativa + 1;

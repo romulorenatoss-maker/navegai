@@ -1757,7 +1757,9 @@ export default function LeadsPage() {
         writeOperations.push(
           supabase.from("lead_tarefas_contato")
             .update({ status: "realizado", fora_do_prazo: wasLate } as any)
-            .eq("id", pendingTask.id)
+            .eq("lead_id", leadId)
+            .eq("tentativa", pendingTask.tentativa)
+            .in("status", ["pendente", "atrasado", "aguardando_visualizacao"])
         );
       }
 
