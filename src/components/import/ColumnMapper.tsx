@@ -32,6 +32,7 @@ const KNOWN_ALIASES: Record<keyof ColumnMapping, string[]> = {
   numero: ["numero", "número", "num", "nº", "number"],
   plano: ["plano", "plan", "produto", "servico", "serviço"],
   repetidor: ["repetidor", "repeater", "pop"],
+  descricao: ["descricao", "descrição", "description", "observacao", "observação", "obs", "detalhe", "detalhes", "nota", "notas"],
 };
 
 export const EMPTY_MAPPING: ColumnMapping = {
