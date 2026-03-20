@@ -581,7 +581,7 @@ export default function RelatoriosLeadsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {leadsList.map((item) => (
+                {paginatedLeads.map((item) => (
                   <tr
                     key={item.id}
                     className={cn("hover:bg-muted/50 transition-colors", selected.has(item.id) && "bg-primary/5")}
@@ -629,6 +629,50 @@ export default function RelatoriosLeadsPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="px-4 py-3 border-t border-border flex items-center justify-between">
+              <span className="text-caption text-muted-foreground">
+                Mostrando {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, leadsList.length)} de {leadsList.length}
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline" size="sm" disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                >
+                  Anterior
+                </Button>
+                {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                  let page: number;
+                  if (totalPages <= 7) {
+                    page = i + 1;
+                  } else if (currentPage <= 4) {
+                    page = i + 1;
+                  } else if (currentPage >= totalPages - 3) {
+                    page = totalPages - 6 + i;
+                  } else {
+                    page = currentPage - 3 + i;
+                  }
+                  return (
+                    <Button
+                      key={page} variant={page === currentPage ? "default" : "outline"} size="sm"
+                      className="w-8 h-8 p-0"
+                      onClick={() => setCurrentPage(page)}
+                    >
+                      {page}
+                    </Button>
+                  );
+                })}
+                <Button
+                  variant="outline" size="sm" disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                >
+                  Próximo
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
