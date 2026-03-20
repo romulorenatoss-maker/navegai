@@ -3609,13 +3609,13 @@ export default function AvaliacaoOSPage() {
                   <Label className="text-body font-medium">Data da Ocorrência *</Label>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formDataAbertura && "text-muted-foreground")}>
+                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formDataAbertura && "text-muted-foreground border-destructive")}>
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {formDataAbertura ? format(formDataAbertura, "dd/MM/yyyy", { locale: ptBR }) : "Selecione a data"}
+                        {formDataAbertura ? format(formDataAbertura, "dd/MM/yyyy", { locale: ptBR }) : "Selecione a data *"}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={formDataAbertura} onSelect={(d) => d && setFormDataAbertura(d)} initialFocus className="p-3 pointer-events-auto" locale={ptBR} />
+                      <Calendar mode="single" selected={formDataAbertura ?? undefined} onSelect={(d) => d && setFormDataAbertura(d)} initialFocus className="p-3 pointer-events-auto" locale={ptBR} />
                     </PopoverContent>
                   </Popover>
                 </div>
