@@ -98,6 +98,10 @@ export default function GerenciamentoLeadsPage() {
         query = query.eq("status_lead", filterStatus);
       }
 
+      if (filterCampanha !== "all") {
+        query = query.eq("campanha_id", filterCampanha);
+      }
+
       if (filterSearch.trim()) {
         query = query.ilike("nome", `%${filterSearch.trim()}%`);
       }
