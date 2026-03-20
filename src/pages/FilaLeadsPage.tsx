@@ -309,6 +309,8 @@ export default function FilaLeadsPage() {
       // Skip leads that haven't been captured yet
       if (lead && STATUS_EXCLUIDOS_TAREFAS.includes(lead.status_lead)) return;
       if (lead && !lead.responsavel_id) return; // no one assigned
+      // Time filter: only show if lead updated_at is older than configured hours
+      if (lead?.updated_at && new Date(lead.updated_at) > cutoff2) return;
       seenLeadIds.add(t.lead_id);
       items.push({
         ...t,
