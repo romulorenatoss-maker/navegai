@@ -156,8 +156,9 @@ export default function FilaLeadsPage() {
 
   const { data: leads = [], isLoading: loadingLeads } = useQuery({
     queryKey: ["fila-leads"],
-    staleTime: 60_000,
+    staleTime: 30_000,
     refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data, error } = await supabase.from("leads").select("*")
         .in("status_lead", ["novo", "em_contato", "em_atendimento", "interessado", "aguardando_decisao_avaliador", "cancelado_pendente_analise", CAPTURE_QUEUE_STATUS, "reservado"])
@@ -241,6 +242,8 @@ export default function FilaLeadsPage() {
 
   const { data: fluxoConfig } = useQuery({
     queryKey: ["config-fluxo-leads"],
+    refetchOnWindowFocus: true,
+    staleTime: 30_000,
     queryFn: async () => { const { data, error } = await supabase.from("configuracao_fluxo_leads").select("*").limit(1).maybeSingle(); if (error) throw error; return data; },
   });
 
@@ -271,13 +274,17 @@ export default function FilaLeadsPage() {
       }
       return data;
     },
-    refetchInterval: 120_000,
-    staleTime: 30_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+    staleTime: 15_000,
   });
 
   // Also fetch leads with manual agendamento_retorno (not in tarefas_contato)
   const { data: leadsComAgendamento = [] } = useQuery({
     queryKey: ["leads-com-agendamento"],
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+    staleTime: 15_000,
     queryFn: async () => {
       const { data, error } = await supabase.from("leads").select("id, nome, status_lead, responsavel_id, agendamento_retorno")
         .not("agendamento_retorno", "is", null)

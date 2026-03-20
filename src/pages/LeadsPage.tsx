@@ -398,6 +398,7 @@ export default function LeadsPage() {
   const { data: allLeads = [], isLoading: loadingLeads } = useQuery({
     queryKey: ["leads-list", effectiveProfileId, leadsScope],
     refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
     staleTime: 15_000,
     queryFn: async () => {
       if (!effectiveProfileId) return [] as Lead[];
@@ -559,7 +560,9 @@ export default function LeadsPage() {
   });
 
   const { data: fluxoConfig } = useQuery({
-    queryKey: ["configuracao-fluxo-leads"],
+    queryKey: ["config-fluxo-leads"],
+    refetchOnWindowFocus: true,
+    staleTime: 30_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("configuracao_fluxo_leads")
@@ -661,6 +664,7 @@ export default function LeadsPage() {
   const { data: allLeadContatos = [] } = useQuery({
     queryKey: ["all-lead-contatos", activeLeadIds],
     enabled: activeLeadIds.length > 0,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("lead_contatos")
@@ -674,6 +678,7 @@ export default function LeadsPage() {
   const { data: allLeadInteracoes = [] } = useQuery({
     queryKey: ["all-lead-interacoes", activeLeadIds],
     enabled: activeLeadIds.length > 0,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("lead_interacoes")
