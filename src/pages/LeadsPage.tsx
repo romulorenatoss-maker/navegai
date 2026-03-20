@@ -654,7 +654,7 @@ export default function LeadsPage() {
 
   // All lead contacts for queue building – memoized to prevent cascading refetches
   const activeLeadIdsKey = useMemo(() => {
-    return allLeads.filter(l => ["novo", "em_contato", "interessado"].includes(l.status_lead)).map(l => l.id).sort().join(",");
+    return allLeads.map(l => l.id).sort().join(",");
   }, [allLeads]);
   const activeLeadIds = useMemo(() => activeLeadIdsKey ? activeLeadIdsKey.split(",") : [], [activeLeadIdsKey]);
 
@@ -2342,7 +2342,7 @@ export default function LeadsPage() {
                         >
                           <div>
                             <p className="text-sm font-medium">{lead.nome}</p>
-                            <p className="text-xs text-muted-foreground">{lead.contatos.map(c => c.valor).join(", ")}</p>
+                            <p className="text-xs text-muted-foreground">{lead.contatos.map(c => c.tipo_contato === "telefone" ? applyPhoneMask(c.valor) : c.valor).join(", ")}</p>
                           </div>
                           {statusBadge(lead.status_lead)}
                         </button>
@@ -2457,7 +2457,7 @@ export default function LeadsPage() {
                             <div className="flex items-center gap-1.5 mt-0.5 ml-5">
                               {contatos.length > 0 ? (
                                 <span className="text-[11px] text-muted-foreground flex items-center gap-0.5">
-                                  <Phone className="w-2.5 h-2.5" /> {contatos[0].valor}
+                                  <Phone className="w-2.5 h-2.5" /> {applyPhoneMask(contatos[0].valor)}
                                   {contatos[0].tem_whatsapp && <MessageSquare className="w-2.5 h-2.5 text-green-600" />}
                                 </span>
                               ) : (
@@ -2570,7 +2570,7 @@ export default function LeadsPage() {
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium truncate">{item.lead.nome}</p>
                             <p className="text-[10px] text-muted-foreground">
-                              {phones.length > 0 ? phones[0].valor : "Sem telefone"}
+                              {phones.length > 0 ? applyPhoneMask(phones[0].valor) : "Sem telefone"}
                             </p>
                           </div>
                         </div>
@@ -2683,7 +2683,7 @@ export default function LeadsPage() {
                                       {item.type === "interacao" && (
                                         <p className="text-[11px] text-foreground/80">
                                           • {item.tipo_contato === "whatsapp" ? "WhatsApp" : "Telefone"}
-                                          {item.numero_utilizado ? ` → ${item.numero_utilizado}` : ""}
+                                          {item.numero_utilizado ? ` → ${applyPhoneMask(item.numero_utilizado)}` : ""}
                                           {item.resultado ? `: ${item.resultado}` : ""}
                                         </p>
                                       )}
@@ -3040,7 +3040,7 @@ export default function LeadsPage() {
                           <div key={c.id} className="flex items-center justify-between p-2 rounded-md bg-muted/30 border">
                             <div className="flex items-center gap-1.5">
                               {c.tipo_contato === "telefone" ? <Phone className="w-3 h-3 text-muted-foreground" /> : <MessageSquare className="w-3 h-3 text-muted-foreground" />}
-                              <span className="text-xs">{c.valor}</span>
+                              <span className="text-xs">{c.tipo_contato === "telefone" ? applyPhoneMask(c.valor) : c.valor}</span>
                               {c.tem_whatsapp && <Badge variant="outline" className="text-[9px] px-1 py-0">WA</Badge>}
                             </div>
                             {(isAdmin || hasRole("avaliador")) && !isVisionMode && (
@@ -3580,7 +3580,7 @@ export default function LeadsPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Telefone:</span>
-                  <span className="font-medium">{duplicateLeadData.contatos.find((c: any) => c.tipo_contato === "telefone")?.valor || "—"}</span>
+                  <span className="font-medium">{(() => { const phone = duplicateLeadData.contatos.find((c: any) => c.tipo_contato === "telefone")?.valor; return phone ? applyPhoneMask(phone) : "—"; })()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Status:</span>
@@ -3746,7 +3746,7 @@ export default function LeadsPage() {
                 <SelectTrigger><SelectValue placeholder="Selecione o número..." /></SelectTrigger>
                 <SelectContent>
                   {phoneOptions.map(c => (
-                    <SelectItem key={c.id} value={c.valor}>{c.valor} {c.tem_whatsapp ? "(WhatsApp)" : ""}</SelectItem>
+                    <SelectItem key={c.id} value={c.valor}>{applyPhoneMask(c.valor)} {c.tem_whatsapp ? "(WhatsApp)" : ""}</SelectItem>
                   ))}
                   {phoneOptions.length === 0 && <SelectItem value="__none" disabled>Nenhum telefone</SelectItem>}
                 </SelectContent>

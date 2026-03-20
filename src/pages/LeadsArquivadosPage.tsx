@@ -21,6 +21,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import AdminPasswordDialog from "@/components/AdminPasswordDialog";
+import { applyPhoneMask } from "@/lib/phone-utils";
 
 const fmtDate = (d: string) => {
   try { return format(new Date(d), "dd/MM/yyyy HH:mm", { locale: ptBR }); } catch { return d; }
@@ -464,7 +465,7 @@ export default function LeadsArquivadosPage() {
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
                             {phones.map((c: any) => (
-                              <Badge key={c.id} variant="outline" className="text-xs">{c.valor}</Badge>
+                              <Badge key={c.id} variant="outline" className="text-xs">{applyPhoneMask(c.valor)}</Badge>
                             ))}
                             {phones.length === 0 && <span className="text-xs text-muted-foreground">—</span>}
                           </div>
