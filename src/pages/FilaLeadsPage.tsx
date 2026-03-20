@@ -336,7 +336,11 @@ export default function FilaLeadsPage() {
     // 2. Manual agendamentos (only if lead not already added)
     leadsComAgendamento.forEach(lead => {
       if (!lead.agendamento_retorno) return;
-      if (seenLeadIds.has(lead.id)) return; // skip if already in list
+      if (seenLeadIds.has(lead.id)) return;
+      // Visibility: show if within configured window or already overdue
+      const agendDate = new Date(lead.agendamento_retorno);
+      const timeUntil = agendDate.getTime() - now2.getTime();
+      if (timeUntil > windowMs) return;
       seenLeadIds.add(lead.id);
       items.push({
         id: `agenda-${lead.id}`,
