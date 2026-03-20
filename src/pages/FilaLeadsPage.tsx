@@ -59,6 +59,7 @@ export default function FilaLeadsPage() {
   const [postCaptureLeadName, setPostCaptureLeadName] = useState("");
 
   const [activeTab, setActiveTab] = useState("fila");
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // ─── Pagination state (10 per page) ─────
   const PAGE_SIZE = 10;
