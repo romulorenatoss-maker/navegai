@@ -1179,6 +1179,12 @@ export default function FilaLeadsPage() {
                               {phones.length === 0 && <span className="text-[11px] text-muted-foreground">Sem tel.</span>}
                             </div>
                           </TableCell>
+                          <TableCell>
+                            <span className="text-xs flex items-center gap-1 text-foreground">
+                              <UserCheck className="w-3 h-3 text-muted-foreground" />
+                              {item.ultimoResponsavelNome || "—"}
+                            </span>
+                          </TableCell>
                           <TableCell><Badge variant="secondary" className="text-xs">{item.totalInteracoes} realizadas</Badge></TableCell>
                           <TableCell className="text-xs text-muted-foreground">
                             {item.ultimaTentativaEm ? format(new Date(item.ultimaTentativaEm), "dd/MM/yy HH:mm", { locale: ptBR }) : "—"}
