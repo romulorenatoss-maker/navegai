@@ -159,7 +159,7 @@ export default function ImportadorLeadsPage() {
 
     const rows: PreviewRow[] = rawRows.map((raw, i) => {
       const nome = toProperCase(raw[mapping.nome] || "");
-      const telefone = raw[mapping.telefone] || "";
+      const telefoneRaw = raw[mapping.telefone] || "";
       const email = mapping.email ? raw[mapping.email] || "" : "";
       const cidade = mapping.cidade ? toProperCase(raw[mapping.cidade] || "") : "";
       const bairro = mapping.bairro ? toProperCase(raw[mapping.bairro] || "") : "";
@@ -168,7 +168,8 @@ export default function ImportadorLeadsPage() {
       const plano = mapping.plano ? raw[mapping.plano] || "" : "";
       const repetidor = mapping.repetidor ? raw[mapping.repetidor] || "" : "";
       const descricao = mapping.descricao ? raw[mapping.descricao] || "" : "";
-      const phoneNorm = normalizePhone(telefone);
+      const phoneNorm = normalizePhone(telefoneRaw);
+      const telefone = phoneNorm ? applyPhoneMask(phoneNorm) : telefoneRaw;
 
       const extraFields = { cidade, bairro, rua, numero, plano, repetidor, descricao };
 
@@ -281,14 +282,9 @@ export default function ImportadorLeadsPage() {
 
     if (error || !newLead) throw error || new Error("Falha ao criar lead");
 
-    // Insert contacts, history, and first task in parallel
-    const phoneNormalized = normalizePhone(row.telefone);
-    const ops: any[] = [
-      supabase.from("lead_contatos").insert({ lead_id: newLead.id, tipo_contato: "telefone", valor: phoneNormalized, tem_whatsapp: false }).then(),
-    ];
-    if (row.email) {
-      ops.push(supabase.from("lead_contatos").insert({ lead_id: newLead.id, tipo_contato: "email", valor: row.email, tem_whatsapp: false }).then());
-    }
+    // Insert contacts, history, and first task, garantindo que o telefone seja salvo
+    const phoneNormalized = row.phoneNormalized || normalizePhone(row.telefone);
+    if (phoneNormalized.length < 8) throw new Error("Telefone inválido para importação.");
 
     const descParts = [selectedCampanhaNome ? `Lead importado da campanha "${selectedCampanhaNome}"` : "Lead importado via CSV"];
     if (row.action === "import_alert") descParts.push("⚠️ Importado com alerta de duplicidade");
@@ -298,20 +294,44 @@ export default function ImportadorLeadsPage() {
         : `— duplicado de lead "${row.duplicateInfo.leadNome}" (${row.duplicateInfo.statusLead})`);
     }
 
-    ops.push(
-      supabase.from("lead_historico").insert({ lead_id: newLead.id, usuario_id: profileId, tipo_evento: "lead_criado", descricao: descParts.join(" ") }).then()
-    );
+    const ops = [
+      supabase.from("lead_contatos").insert({ lead_id: newLead.id, tipo_contato: "telefone", valor: phoneNormalized, tem_whatsapp: false }),
+      ...(row.email
+        ? [supabase.from("lead_contatos").insert({ lead_id: newLead.id, tipo_contato: "email", valor: row.email, tem_whatsapp: false })]
+        : []),
+      supabase.from("lead_historico").insert({ lead_id: newLead.id, usuario_id: profileId, tipo_evento: "lead_criado", descricao: descParts.join(" ") }),
+      ...(firstRotina
+        ? (() => {
+            const nextDate = new Date();
+            nextDate.setDate(nextDate.getDate() + Math.max(firstRotina.dias_apos_anterior || 0, 1));
+            return [
+              supabase.from("lead_tarefas_contato").insert({
+                lead_id: newLead.id,
+                tentativa: 1,
+                data_contato: nextDate.toISOString(),
+                periodo: firstRotina.periodo_contato,
+                status: "pendente",
+                responsavel_id: null,
+              }),
+            ];
+          })()
+        : []),
+    ];
 
-    if (firstRotina) {
-      const nextDate = new Date();
-      nextDate.setDate(nextDate.getDate() + Math.max(firstRotina.dias_apos_anterior || 0, 1));
-      ops.push(
-        supabase.from("lead_tarefas_contato").insert({ lead_id: newLead.id, tentativa: 1, data_contato: nextDate.toISOString(), periodo: firstRotina.periodo_contato, status: "pendente", responsavel_id: null }).then()
-      );
+    const results = await Promise.all(ops);
+    const writeError = results.find((result: any) => result.error)?.error;
+
+    if (writeError) {
+      await Promise.allSettled([
+        supabase.from("lead_tarefas_contato").delete().eq("lead_id", newLead.id),
+        supabase.from("lead_historico").delete().eq("lead_id", newLead.id),
+        supabase.from("lead_contatos").delete().eq("lead_id", newLead.id),
+      ]);
+      await supabase.from("leads").delete().eq("id", newLead.id);
+      throw writeError;
     }
 
-    await Promise.all(ops);
-    return { nome: row.nome, telefone: row.telefone, leadId: newLead.id, status: "ok" };
+    return { nome: row.nome, telefone: applyPhoneMask(phoneNormalized), leadId: newLead.id, status: "ok" };
   };
 
   const handleImport = useCallback(async () => {
