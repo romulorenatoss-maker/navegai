@@ -560,7 +560,9 @@ export default function LeadsPage() {
   });
 
   const { data: fluxoConfig } = useQuery({
-    queryKey: ["configuracao-fluxo-leads"],
+    queryKey: ["config-fluxo-leads"],
+    refetchOnWindowFocus: true,
+    staleTime: 30_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("configuracao_fluxo_leads")
