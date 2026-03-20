@@ -1637,6 +1637,8 @@ export default function AvaliacaoOSPage() {
   
   const evalTotalScore = evalPerguntas.reduce((a, p) => (evalAnswers[p.id] === "sim" || evalAnswers[p.id] === "na") ? a + p.peso : a, 0);
   const evalMaxScore = evalPerguntas.reduce((a, p) => evalAnswers[p.id] != null ? a + p.peso : a, 0);
+  // Compute display score from answers when nota_final is null (e.g. after admin edit)
+  const displayScore = evalScore ?? (evalMaxScore > 0 ? (evalTotalScore / evalMaxScore) * 100 : null);
 
   // Auto-finalize when all answerable questions are answered
   const autoFinalizeTriggered = useRef(false);
@@ -1723,8 +1725,9 @@ export default function AvaliacaoOSPage() {
     addText(`Atendente: ${evalAtendenteNome || "Não definido"}`, 10);
     addText(`Técnico: ${evalTecnicoNome || "Não definido"}`, 10);
     addText(`Status: ${statusLabel[evalOsData.status]?.text || evalOsData.status}`, 10);
-    if (evalScore != null) {
-      addText(`Nota Final: ${evalScore.toFixed(1)}%`, 12, "bold");
+    const pdfScore = evalScore ?? (evalMaxScore > 0 ? (evalTotalScore / evalMaxScore) * 100 : null);
+    if (pdfScore != null) {
+      addText(`Nota Final: ${pdfScore.toFixed(1)}%`, 12, "bold");
     }
     y += 4;
     addLine();
@@ -1992,7 +1995,7 @@ export default function AvaliacaoOSPage() {
               <Check className="w-6 h-6 sm:w-8 sm:h-8 text-success" />
             </div>
             <h2 className="text-lg sm:text-xl font-bold text-foreground">Avaliação Concluída!</h2>
-            <p className="text-2xl sm:text-3xl font-bold text-primary font-tabular mt-2">{evalScore?.toFixed(1)}%</p>
+            <p className="text-2xl sm:text-3xl font-bold text-primary font-tabular mt-2">{displayScore?.toFixed(1)}%</p>
             <p className="text-sm text-muted-foreground mt-1">{globalAnsweredCount} perguntas respondidas</p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mt-3">
               {canEdit && (
