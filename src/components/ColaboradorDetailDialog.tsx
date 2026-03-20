@@ -468,6 +468,51 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
                   </Button>
                 </div>
               )}
+
+              {/* Gerenciar 2FA */}
+              {isAdmin && (
+                <div className="border border-border rounded-lg p-4 space-y-3 mt-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {mfaStatus?.has_mfa ? (
+                        <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                      ) : (
+                        <ShieldOff className="w-4 h-4 text-muted-foreground" />
+                      )}
+                      <p className="text-body font-medium text-foreground">Autenticação 2FA</p>
+                    </div>
+                    <Badge variant="outline" className={cn(
+                      "text-xs",
+                      mfaStatus?.has_mfa
+                        ? "text-emerald-600 border-emerald-300 bg-emerald-50 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800"
+                        : "text-muted-foreground"
+                    )}>
+                      {mfaStatus?.has_mfa ? "Ativo" : "Inativo"}
+                    </Badge>
+                  </div>
+                  {mfaStatus?.has_mfa ? (
+                    <>
+                      <p className="text-sm text-muted-foreground">
+                        Este colaborador possui 2FA ativo. Desative caso ele tenha perdido o celular e precise reconfigurar.
+                      </p>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleUnenrollMfa}
+                        disabled={mfaUnenrolling}
+                        className="press-effect"
+                      >
+                        {mfaUnenrolling ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <ShieldOff className="w-4 h-4 mr-1" />}
+                        Desativar 2FA
+                      </Button>
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Este colaborador não possui 2FA configurado. Ele pode ativar na engrenagem do cabeçalho.
+                    </p>
+                  )}
+                </div>
+              )}
             </TabsContent>
 
             {/* Permissões Tab */}
