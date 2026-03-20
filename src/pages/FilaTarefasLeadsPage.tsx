@@ -50,6 +50,13 @@ export default function FilaTarefasLeadsPage() {
   const [attemptNumero, setAttemptNumero] = useState("");
   const [attemptResultado, setAttemptResultado] = useState("");
 
+  // Live clock for countdown
+  const [nowClock, setNowClock] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNowClock(new Date()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
+
   const { data: allProfiles = [] } = useQuery({
     queryKey: ["profiles-for-tarefas"],
     queryFn: async () => { const { data } = await supabase.from("profiles").select("id, nome").eq("ativo", true); return data || []; },
