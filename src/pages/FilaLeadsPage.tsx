@@ -296,18 +296,18 @@ export default function FilaLeadsPage() {
 
   // Build unified task list: automatic tasks + manual agendamentos + leads from priority queue (matching "Hoje" logic)
   const unifiedTarefas = useMemo(() => {
-    const seen = new Set<string>(); // track lead_ids already added
+    const seenLeadIds = new Set<string>(); // track lead_ids to prevent duplicates
     const items: any[] = [];
 
     // 1. Automatic tasks from lead_tarefas_contato (only captured/assigned leads)
     const STATUS_EXCLUIDOS_TAREFAS = ["importado", "fila_captura"];
     tarefas.forEach((t: any) => {
-      if (seen.has(t.id)) return;
+      if (seenLeadIds.has(t.lead_id)) return; // skip if lead already added
       const lead = tarefaLeads.find((l: any) => l.id === t.lead_id);
       // Skip leads that haven't been captured yet
       if (lead && STATUS_EXCLUIDOS_TAREFAS.includes(lead.status_lead)) return;
       if (lead && !lead.responsavel_id) return; // no one assigned
-      seen.add(t.id);
+      seenLeadIds.add(t.lead_id);
       items.push({
         ...t,
         _tipo_agenda: "automatico" as const,
@@ -317,9 +317,11 @@ export default function FilaLeadsPage() {
       });
     });
 
-    // 2. Manual agendamentos
+    // 2. Manual agendamentos (only if lead not already added)
     leadsComAgendamento.forEach(lead => {
       if (!lead.agendamento_retorno) return;
+      if (seenLeadIds.has(lead.id)) return; // skip if already in list
+      seenLeadIds.add(lead.id);
       items.push({
         id: `agenda-${lead.id}`,
         lead_id: lead.id,
@@ -336,13 +338,12 @@ export default function FilaLeadsPage() {
 
     // 3. Active leads from queue that match "Hoje" logic but have no explicit tarefa
     //    This mirrors the attendant's view: overdue cadence, new leads without interactions, etc.
-    const tarefaLeadIdSet = new Set(items.map((t: any) => t.lead_id));
     const now = new Date();
     const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
     const in8hours = new Date(now.getTime() + 8 * 60 * 60 * 1000);
 
     leads.forEach(lead => {
-      if (tarefaLeadIdSet.has(lead.id)) return; // already has a tarefa entry
+      if (seenLeadIds.has(lead.id)) return; // already has a tarefa entry
       if (["importado", "fila_captura"].includes(lead.status_lead)) return; // not captured yet
       if (!["em_contato", "interessado", "reservado", "em_atendimento"].includes(lead.status_lead)) return;
       if (!lead.responsavel_id && !lead.reserved_by) return; // unassigned, skip
