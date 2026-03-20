@@ -18,32 +18,43 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const authHeader = req.headers.get("Authorization");
 
-    if (!supabaseUrl || !serviceRoleKey) {
+    if (!supabaseUrl || !serviceRoleKey || !anonKey) {
       return new Response(JSON.stringify({ error: "Configuração do servidor incompleta" }), { status: 500, headers: jsonHeaders });
     }
 
-    const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: jsonHeaders });
     }
 
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+    const callerClient = createClient(supabaseUrl, anonKey, {
       auth: { autoRefreshToken: false, persistSession: false },
       global: { headers: { Authorization: authHeader } },
+    });
+
+    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
     });
 
     const {
       data: { user: caller },
       error: authError,
-    } = await supabaseAdmin.auth.getUser();
+    } = await callerClient.auth.getUser();
 
     if (authError || !caller) {
       return new Response(JSON.stringify({ error: "Não autorizado" }), { status: 401, headers: jsonHeaders });
     }
 
-    const { data: isAdmin, error: roleError } = await supabaseAdmin.rpc("is_admin", { _user_id: caller.id });
-    if (roleError || !isAdmin) {
+    const { data: roleData, error: roleError } = await adminClient
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", caller.id)
+      .eq("role", "admin")
+      .maybeSingle();
+
+    if (roleError || !roleData) {
       return new Response(JSON.stringify({ error: "Apenas administradores podem gerenciar 2FA." }), { status: 403, headers: jsonHeaders });
     }
 
@@ -56,7 +67,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === "check") {
-      const { data, error } = await supabaseAdmin.auth.admin.mfa.listFactors({ userId: targetUserId });
+      const { data, error } = await adminClient.auth.admin.mfa.listFactors({ userId: targetUserId });
       if (error) {
         return new Response(JSON.stringify({ error: error.message }), { status: 400, headers: jsonHeaders });
       }
@@ -70,7 +81,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === "unenroll") {
-      const { data, error: listErr } = await supabaseAdmin.auth.admin.mfa.listFactors({ userId: targetUserId });
+      const { data, error: listErr } = await adminClient.auth.admin.mfa.listFactors({ userId: targetUserId });
       if (listErr) {
         return new Response(JSON.stringify({ error: listErr.message }), { status: 400, headers: jsonHeaders });
       }
@@ -78,7 +89,7 @@ Deno.serve(async (req) => {
       const factors = data?.factors?.filter((factor: any) => factor.factor_type === "totp") || [];
 
       for (const factor of factors) {
-        const { error: deleteErr } = await supabaseAdmin.auth.admin.mfa.deleteFactor({
+        const { error: deleteErr } = await adminClient.auth.admin.mfa.deleteFactor({
           userId: targetUserId,
           id: factor.id,
         });
