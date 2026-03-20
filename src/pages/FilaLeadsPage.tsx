@@ -1357,8 +1357,33 @@ export default function FilaLeadsPage() {
                             {tarefa.tentativa ? <Badge variant="secondary" className="text-xs">{tarefa.tentativa}ª</Badge> : <span className="text-xs text-muted-foreground">—</span>}
                           </TableCell>
                           <TableCell className="text-xs">
-                            <div>{fmtDateShort(tarefa.data_contato)}</div>
-                            {tarefa.periodo && <div className="text-muted-foreground">{PERIODO_LABELS[tarefa.periodo] || tarefa.periodo}</div>}
+                            {(() => {
+                              const now = new Date();
+                              const isManualItem = tarefa._tipo_agenda === "manual";
+                              let deadline: Date;
+                              if (isManualItem) {
+                                deadline = new Date(tarefa.data_contato);
+                              } else if (tarefa.periodo) {
+                                deadline = getEffectiveDeadline(new Date(tarefa.data_contato), tarefa.periodo);
+                              } else {
+                                deadline = new Date(tarefa.data_contato);
+                              }
+                              const diffMs = deadline.getTime() - now.getTime();
+                              const hoursLeft = diffMs / (1000 * 60 * 60);
+                              const isExp = isOv || diffMs <= 0;
+                              const countdown = formatCountdown(deadline, now);
+                              const color = isExp ? "text-destructive font-medium" : hoursLeft <= 2 ? "text-yellow-700 dark:text-yellow-400 font-medium" : "text-muted-foreground";
+                              return (
+                                <div className="flex flex-col gap-0.5">
+                                  <div>{fmtDateShort(tarefa.data_contato)}</div>
+                                  {tarefa.periodo && <div className="text-muted-foreground">{PERIODO_LABELS[tarefa.periodo] || tarefa.periodo}</div>}
+                                  <span className={`flex items-center gap-1 ${color}`}>
+                                    <Clock className="w-3 h-3" />
+                                    {isExp ? `Expirado ${countdown}` : `Expira em ${countdown}`}
+                                  </span>
+                                </div>
+                              );
+                            })()}
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline" className={`text-[10px] ${isManual ? "border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-300" : "border-muted-foreground/30 text-muted-foreground"}`}>
