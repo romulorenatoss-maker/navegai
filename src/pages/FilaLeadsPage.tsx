@@ -1150,6 +1150,7 @@ export default function FilaLeadsPage() {
                       <TableHead className="w-8">#</TableHead>
                       <TableHead>Lead</TableHead>
                       <TableHead>Telefone(s)</TableHead>
+                      <TableHead>Último Responsável</TableHead>
                       <TableHead>Tentativas Anteriores</TableHead>
                       <TableHead>Última Tentativa</TableHead>
                       <TableHead className="text-right">Ação</TableHead>
