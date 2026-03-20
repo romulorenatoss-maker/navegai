@@ -1482,7 +1482,7 @@ export default function AvaliacaoOSPage() {
 
   const handleSaveEditing = async () => {
     setIsEditing(false);
-    // Re-finalize the evaluation
+    // Re-finalize the evaluation — the DB trigger will auto-conclude OS if all questions answered
     await handleFinalizeEvaluation();
   };
 
