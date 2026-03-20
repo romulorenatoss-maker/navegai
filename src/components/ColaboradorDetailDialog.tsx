@@ -57,7 +57,6 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordLoading, setPasswordLoading] = useState(false);
-  const [mfaLoading, setMfaLoading] = useState(false);
   const [mfaUnenrolling, setMfaUnenrolling] = useState(false);
 
   // Reset state when dialog closes
