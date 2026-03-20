@@ -1060,12 +1060,16 @@ export default function FilaLeadsPage() {
                               {(() => {
                                 const hasInteracoes = item.tentativaAtual > 1;
                                 const isExpired = item.nextAttemptExpired || item.isOverdue;
+                                const isCaptured = !!(item.lead.responsavel_id || item.lead.reserved_by);
                                 let displayStatus = item.lead.status_lead;
                                 let badgeClass = "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200";
                                 
                                 if (isExpired) {
                                   displayStatus = "expirado";
                                   badgeClass = "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+                                } else if (isCaptured && !hasInteracoes && displayStatus !== "em_atendimento" && displayStatus !== "em_contato") {
+                                  displayStatus = "vendo_lead";
+                                  badgeClass = "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
                                 } else if (hasInteracoes || displayStatus === "em_atendimento" || displayStatus === "em_contato") {
                                   displayStatus = "em_atendimento";
                                   badgeClass = "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200";
