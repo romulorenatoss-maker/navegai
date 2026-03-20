@@ -1105,11 +1105,9 @@ export default function LeadsPage() {
     const cutoff = new Date(now.getTime() - tempoExibicaoHoras * 60 * 60 * 1000);
     let result = priorityQueue;
 
-    // Time filter: only show leads whose updated_at is older than configured hours
-    result = result.filter((item) => new Date(item.lead.updated_at) <= cutoff);
-
-    // Time filter
     if (filaFiltro === "hoje") {
+      // "Hoje": apply time-based visibility filter + today scope
+      result = result.filter((item) => new Date(item.lead.updated_at) <= cutoff);
       const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
       const in8hours = new Date(now.getTime() + 8 * 60 * 60 * 1000);
       result = result.filter((item) => {
@@ -1121,6 +1119,7 @@ export default function LeadsPage() {
         return false;
       });
     }
+    // "Todos": show ALL leads associated to the person, no time filter
 
     return result;
   }, [priorityQueue, filaFiltro, tempoExibicaoHoras]);
@@ -2396,7 +2395,7 @@ export default function LeadsPage() {
                     className="h-6 text-[10px] px-2"
                     onClick={() => setFilaFiltro("todos")}
                   >
-                    Todos ({priorityQueue.filter(item => new Date(item.lead.updated_at) <= new Date(Date.now() - tempoExibicaoHoras * 60 * 60 * 1000)).length})
+                    Todos ({priorityQueue.length})
                   </Button>
                 </div>
               </div>
