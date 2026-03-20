@@ -144,18 +144,28 @@ export default function FilaTarefasLeadsPage() {
   });
 
   // Sort: atrasados/expirados first, then today, then future
+  // Filter out leads that are not captured/assigned (e.g. importado, novo without responsavel)
+  const STATUS_EXCLUIDOS_TAREFAS = ["importado"];
+
   const sortedTarefas = useMemo(() => {
-    return [...tarefas].sort((a: any, b: any) => {
-      const aAtrasado = a.status === "atrasado" || isTarefaExpirada(a);
-      const bAtrasado = b.status === "atrasado" || isTarefaExpirada(b);
-      if (aAtrasado && !bAtrasado) return -1;
-      if (!aAtrasado && bAtrasado) return 1;
-      // Same status: sort by scheduled date first, then by creation date
-      const dateDiff = new Date(a.data_contato).getTime() - new Date(b.data_contato).getTime();
-      if (dateDiff !== 0) return dateDiff;
-      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-    });
-  }, [tarefas]);
+    return [...tarefas]
+      .filter((t: any) => {
+        const lead = leads.find((l: any) => l.id === t.lead_id);
+        if (!lead) return true; // keep if lead not loaded yet
+        // Exclude leads that haven't been captured yet
+        if (STATUS_EXCLUIDOS_TAREFAS.includes(lead.status_lead)) return false;
+        return true;
+      })
+      .sort((a: any, b: any) => {
+        const aAtrasado = a.status === "atrasado" || isTarefaExpirada(a);
+        const bAtrasado = b.status === "atrasado" || isTarefaExpirada(b);
+        if (aAtrasado && !bAtrasado) return -1;
+        if (!aAtrasado && bAtrasado) return 1;
+        const dateDiff = new Date(a.data_contato).getTime() - new Date(b.data_contato).getTime();
+        if (dateDiff !== 0) return dateDiff;
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      });
+  }, [tarefas, leads]);
 
   const getLeadName = (leadId: string) => leads.find((l: any) => l.id === leadId)?.nome || "—";
   const getLeadContatos = (leadId: string) => contatos.filter((c: any) => c.lead_id === leadId && c.tipo_contato === "telefone");
