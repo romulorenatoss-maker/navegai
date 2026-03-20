@@ -508,7 +508,7 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
                   {mfaStatus?.has_mfa ? (
                     <>
                       <p className="text-sm text-muted-foreground">
-                        Este colaborador possui 2FA ativo. Desative caso ele tenha perdido o celular e precise reconfigurar.
+                        Este colaborador possui 2FA ativo. Ao desativar, o vínculo atual é removido e ele terá que escanear um novo QR Code para ativar novamente.
                       </p>
                       <Button
                         variant="destructive"
@@ -523,7 +523,7 @@ export default function ColaboradorDetailDialog({ open, onOpenChange, collaborat
                     </>
                   ) : (
                     <p className="text-sm text-muted-foreground">
-                      Este colaborador não possui 2FA configurado. Ele pode ativar na engrenagem do cabeçalho.
+                      Este colaborador não possui 2FA configurado. Ao ativar novamente, o sistema pedirá um novo escaneamento do QR Code.
                     </p>
                   )}
                 </div>
