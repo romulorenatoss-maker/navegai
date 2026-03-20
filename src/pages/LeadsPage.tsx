@@ -2395,7 +2395,7 @@ export default function LeadsPage() {
                     className="h-6 text-[10px] px-2"
                     onClick={() => setFilaFiltro("todos")}
                   >
-                    Todos ({priorityQueue.filter(item => new Date(item.lead.updated_at) <= new Date(Date.now() - tempoExibicaoHoras * 60 * 60 * 1000)).length})
+                    Todos ({priorityQueue.length})
                   </Button>
                 </div>
               </div>
