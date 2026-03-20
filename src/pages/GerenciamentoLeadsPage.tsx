@@ -88,7 +88,7 @@ export default function GerenciamentoLeadsPage() {
 
   // ─── Server-side paginated query ─────────────────
   const { data: queryResult, isLoading } = useQuery({
-    queryKey: ["gerenciamento-leads", filterStatus, filterSearch, filterDateFrom?.toISOString(), filterDateTo?.toISOString(), page, pageSize],
+    queryKey: ["gerenciamento-leads", filterStatus, filterSearch, filterCampanha, filterDateFrom?.toISOString(), filterDateTo?.toISOString(), page, pageSize],
     queryFn: async () => {
       let query = supabase
         .from("leads")
