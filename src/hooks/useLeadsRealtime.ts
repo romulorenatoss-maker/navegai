@@ -36,7 +36,7 @@ type TableName = "leads" | "lead_contatos" | "lead_interacoes" | "lead_tarefas_c
 const TABLE_KEY_MAP: Record<TableName, string[]> = {
   leads: ["fila-leads", "leads-list", "leads-captura", "leads-com-agendamento"],
   lead_contatos: ["all-lead-contatos", "captura-contatos", "fila-contatos"],
-  lead_interacoes: ["all-lead-interacoes", "captura-interacoes", "fila-interacoes"],
+  lead_interacoes: ["all-lead-interacoes", "captura-interacoes", "fila-interacoes", "fila-tarefas-leads"],
   lead_tarefas_contato: ["fila-tarefas-leads", "leads-list"],
   lead_historico: ["all-lead-transfers"],
 };
