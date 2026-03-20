@@ -167,9 +167,10 @@ export default function ImportadorLeadsPage() {
       const numero = mapping.numero ? raw[mapping.numero] || "" : "";
       const plano = mapping.plano ? raw[mapping.plano] || "" : "";
       const repetidor = mapping.repetidor ? raw[mapping.repetidor] || "" : "";
+      const descricao = mapping.descricao ? raw[mapping.descricao] || "" : "";
       const phoneNorm = normalizePhone(telefone);
 
-      const extraFields = { cidade, bairro, rua, numero, plano, repetidor };
+      const extraFields = { cidade, bairro, rua, numero, plano, repetidor, descricao };
 
       // Validate
       if (!nome.trim() || phoneNorm.length < 8) {
@@ -275,6 +276,7 @@ export default function ImportadorLeadsPage() {
       campanha_id: (campanhaId && campanhaId !== "__none") ? campanhaId : null,
       cidade_id: cidadeId, bairro_id: bairroId, rua_id: ruaId,
       numero_endereco: row.numero || null, plano_id: planoId, repetidor: row.repetidor || null,
+      descricao: row.descricao || null,
     } as any).select().single();
 
     if (error || !newLead) throw error || new Error("Falha ao criar lead");

@@ -19,6 +19,7 @@ export interface PreviewRow {
   numero: string;
   plano: string;
   repetidor: string;
+  descricao: string;
   status: RowStatus;
   action: RowAction;
   duplicateInfo?: {

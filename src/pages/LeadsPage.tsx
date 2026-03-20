@@ -39,6 +39,7 @@ interface Lead {
   responsavel_id: string | null;
   plano_id: string | null;
   repetidor: string | null;
+  descricao: string | null;
   data_criacao: string;
   created_at: string;
   updated_at: string;
@@ -359,6 +360,8 @@ export default function LeadsPage() {
   const [localBairroId, setLocalBairroId] = useState<string | null>(null);
   const [localRuaId, setLocalRuaId] = useState<string | null>(null);
   const [localNumeroEnd, setLocalNumeroEnd] = useState("");
+  const [localDescricao, setLocalDescricao] = useState("");
+  const descricaoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Duplicate alert state
   const [dupeAlert, setDupeAlert] = useState<{
@@ -641,6 +644,7 @@ export default function LeadsPage() {
       setLocalBairroId(selectedLead.bairro_id);
       setLocalRuaId(selectedLead.rua_id);
       setLocalNumeroEnd(selectedLead.numero_endereco || "");
+      setLocalDescricao(selectedLead.descricao || "");
     }
   }, [selectedLead?.id]);
 
@@ -2889,6 +2893,26 @@ export default function LeadsPage() {
                           {objecoes.map(o => <SelectItem key={o.id} value={o.id}>{o.descricao}</SelectItem>)}
                         </SelectContent>
                       </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Descrição</Label>
+                      <Textarea
+                        className="text-xs min-h-[60px] resize-y"
+                        placeholder="Detalhes importantes sobre este lead..."
+                        value={localDescricao}
+                        disabled={isVisionMode}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setLocalDescricao(val);
+                          if (descricaoTimerRef.current) clearTimeout(descricaoTimerRef.current);
+                          descricaoTimerRef.current = setTimeout(async () => {
+                            if (!selectedLead) return;
+                            try {
+                              await supabase.from("leads").update({ descricao: val || null } as any).eq("id", selectedLead.id);
+                            } catch {}
+                          }, 1000);
+                        }}
+                      />
                     </div>
 
                     {/* Address */}

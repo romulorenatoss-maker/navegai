@@ -13,6 +13,7 @@ export interface ColumnMapping {
   numero: string;
   plano: string;
   repetidor: string;
+  descricao: string;
 }
 
 interface Props {
@@ -31,10 +32,11 @@ const KNOWN_ALIASES: Record<keyof ColumnMapping, string[]> = {
   numero: ["numero", "número", "num", "nº", "number"],
   plano: ["plano", "plan", "produto", "servico", "serviço"],
   repetidor: ["repetidor", "repeater", "pop"],
+  descricao: ["descricao", "descrição", "description", "observacao", "observação", "obs", "detalhe", "detalhes", "nota", "notas"],
 };
 
 export const EMPTY_MAPPING: ColumnMapping = {
-  nome: "", telefone: "", email: "", cidade: "", bairro: "", rua: "", numero: "", plano: "", repetidor: "",
+  nome: "", telefone: "", email: "", cidade: "", bairro: "", rua: "", numero: "", plano: "", repetidor: "", descricao: "",
 };
 
 export function autoDetectMapping(headers: string[]): ColumnMapping {
@@ -60,6 +62,7 @@ const FIELD_LABELS: Record<keyof ColumnMapping, { label: string; required: boole
   numero: { label: "Número", required: false },
   plano: { label: "Plano", required: false },
   repetidor: { label: "Repetidor", required: false },
+  descricao: { label: "Descrição", required: false },
 };
 
 export default function ColumnMapper({ headers, mapping, onChange }: Props) {
