@@ -352,19 +352,14 @@ export default function FilaLeadsPage() {
       });
     });
 
-    // 3. Active leads from queue that match "Hoje" logic but have no explicit tarefa
-    //    This mirrors the attendant's view: overdue cadence, new leads without interactions, etc.
+    // 3. Active leads from queue that match visibility window but have no explicit tarefa
     const now = new Date();
-    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-    const in8hours = new Date(now.getTime() + 8 * 60 * 60 * 1000);
 
     leads.forEach(lead => {
-      if (seenLeadIds.has(lead.id)) return; // already has a tarefa entry
-      if (["importado", "fila_captura"].includes(lead.status_lead)) return; // not captured yet
+      if (seenLeadIds.has(lead.id)) return;
+      if (["importado", "fila_captura"].includes(lead.status_lead)) return;
       if (!["em_contato", "interessado", "reservado", "em_atendimento"].includes(lead.status_lead)) return;
-      if (!lead.responsavel_id && !lead.reserved_by) return; // unassigned, skip
-      // Time filter
-      if (new Date(lead.updated_at) > cutoff2) return;
+      if (!lead.responsavel_id && !lead.reserved_by) return;
 
       const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
       const tentativaAtual = interacoes.length + 1;
@@ -380,18 +375,14 @@ export default function FilaLeadsPage() {
         }
       }
 
-      // Match "Hoje" filter logic from attendant's view
-      let showToday = false;
-      if (lead.agendamento_retorno && new Date(lead.agendamento_retorno) <= endOfToday) {
-        showToday = true;
-      } else if (proximoContato && (proximoContato <= endOfToday || proximoContato <= in8hours)) {
-        showToday = true;
-      } else if (!proximoContato && !ultimaInteracao) {
-        // New lead with no interactions — always show
-        showToday = true;
+      // Use configured window: show if deadline is within windowMs or already overdue
+      const deadline = lead.agendamento_retorno ? new Date(lead.agendamento_retorno) : proximoContato;
+      if (!deadline && ultimaInteracao) return; // has interactions but no next date — skip
+      if (deadline) {
+        const timeUntil = deadline.getTime() - now.getTime();
+        if (timeUntil > windowMs) return; // too far in the future
       }
-
-      if (!showToday) return;
+      // New leads (no interactions, no deadline) always show
 
       const isOverdue = !!proximoContato && proximoContato < now;
       const refDate = proximoContato || new Date(lead.created_at);
