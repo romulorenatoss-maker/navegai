@@ -1725,8 +1725,9 @@ export default function AvaliacaoOSPage() {
     addText(`Atendente: ${evalAtendenteNome || "Não definido"}`, 10);
     addText(`Técnico: ${evalTecnicoNome || "Não definido"}`, 10);
     addText(`Status: ${statusLabel[evalOsData.status]?.text || evalOsData.status}`, 10);
-    if (evalScore != null) {
-      addText(`Nota Final: ${evalScore.toFixed(1)}%`, 12, "bold");
+    const pdfScore = evalScore ?? (evalMaxScore > 0 ? (evalTotalScore / evalMaxScore) * 100 : null);
+    if (pdfScore != null) {
+      addText(`Nota Final: ${pdfScore.toFixed(1)}%`, 12, "bold");
     }
     y += 4;
     addLine();
