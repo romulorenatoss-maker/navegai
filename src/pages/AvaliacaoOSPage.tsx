@@ -119,7 +119,7 @@ export default function AvaliacaoOSPage() {
   
   const [atendenteId, setAtendenteId] = useState("");
   const [tecnicoId, setTecnicoId] = useState("");
-  const [formDataAbertura, setFormDataAbertura] = useState<Date>(new Date());
+  const [formDataAbertura, setFormDataAbertura] = useState<Date | null>(null);
 
   // Evaluation state (full-page)
   const [evalAvaliacaoId, setEvalAvaliacaoId] = useState<string | null>(null);
