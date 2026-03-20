@@ -28,7 +28,7 @@ import {
   ArrowUpDown, ArrowUp, ArrowDown,
 } from "lucide-react";
 import { startOfDay, endOfDay, isWithinInterval } from "date-fns";
-import { isTarefaExpirada, getPeriodoEndHour, PERIODO_LABELS, PERIODO_HORA, skipWeekend, isWeekend } from "@/lib/lead-task-utils";
+import { isTarefaExpirada, getEffectiveDeadline, getPeriodoEndHour, PERIODO_LABELS, PERIODO_HORA, skipWeekend, isWeekend } from "@/lib/lead-task-utils";
 interface Lead {
   id: string; nome: string; status_lead: string; responsavel_id: string | null;
   updated_at: string; created_at: string; agendamento_retorno: string | null;
@@ -47,6 +47,17 @@ interface QueueItem {
 // ─── Helpers ────────────────────────────────────────────
 const fmtDate = (d: string | Date) => { try { return format(new Date(d), "dd/MM/yyyy HH:mm", { locale: ptBR }); } catch { return String(d); } };
 const fmtDateShort = (d: string | Date) => { try { return format(new Date(d), "dd/MM HH:mm", { locale: ptBR }); } catch { return String(d); } };
+function formatCountdown(target: Date, now: Date): string {
+  const diffMs = target.getTime() - now.getTime();
+  const absDiff = Math.abs(diffMs);
+  const days = Math.floor(absDiff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((absDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const mins = Math.floor((absDiff % (1000 * 60 * 60)) / (1000 * 60));
+  const prefix = diffMs < 0 ? "−" : "";
+  if (days > 0) return `${prefix}${days}d ${hours}h`;
+  if (hours > 0) return `${prefix}${hours}h ${mins}m`;
+  return `${prefix}${mins}m`;
+}
 const STATUS_MAP: Record<string, string> = { novo: "Novo", em_contato: "Em Contato", em_atendimento: "Em tratativa", interessado: "Interessado", aguardando_decisao_avaliador: "Aguardando Decisão", fila_captura: "Fila de Captura", reservado: "Reservado", expirado: "Expirado", cancelado_pendente_analise: "Cancelado (Análise)", vendo_lead: "Vendo Lead" };
 
 export default function FilaLeadsPage() {
@@ -1346,8 +1357,33 @@ export default function FilaLeadsPage() {
                             {tarefa.tentativa ? <Badge variant="secondary" className="text-xs">{tarefa.tentativa}ª</Badge> : <span className="text-xs text-muted-foreground">—</span>}
                           </TableCell>
                           <TableCell className="text-xs">
-                            <div>{fmtDateShort(tarefa.data_contato)}</div>
-                            {tarefa.periodo && <div className="text-muted-foreground">{PERIODO_LABELS[tarefa.periodo] || tarefa.periodo}</div>}
+                            {(() => {
+                              const now = new Date();
+                              const isManualItem = tarefa._tipo_agenda === "manual";
+                              let deadline: Date;
+                              if (isManualItem) {
+                                deadline = new Date(tarefa.data_contato);
+                              } else if (tarefa.periodo) {
+                                deadline = getEffectiveDeadline(new Date(tarefa.data_contato), tarefa.periodo);
+                              } else {
+                                deadline = new Date(tarefa.data_contato);
+                              }
+                              const diffMs = deadline.getTime() - now.getTime();
+                              const hoursLeft = diffMs / (1000 * 60 * 60);
+                              const isExp = isOv || diffMs <= 0;
+                              const countdown = formatCountdown(deadline, now);
+                              const color = isExp ? "text-destructive font-medium" : hoursLeft <= 2 ? "text-yellow-700 dark:text-yellow-400 font-medium" : "text-muted-foreground";
+                              return (
+                                <div className="flex flex-col gap-0.5">
+                                  <div>{fmtDateShort(tarefa.data_contato)}</div>
+                                  {tarefa.periodo && <div className="text-muted-foreground">{PERIODO_LABELS[tarefa.periodo] || tarefa.periodo}</div>}
+                                  <span className={`flex items-center gap-1 ${color}`}>
+                                    <Clock className="w-3 h-3" />
+                                    {isExp ? `Expirado ${countdown}` : `Expira em ${countdown}`}
+                                  </span>
+                                </div>
+                              );
+                            })()}
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline" className={`text-[10px] ${isManual ? "border-blue-300 text-blue-700 dark:border-blue-700 dark:text-blue-300" : "border-muted-foreground/30 text-muted-foreground"}`}>
