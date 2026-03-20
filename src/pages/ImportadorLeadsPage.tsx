@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
-import { normalizePhone } from "@/lib/phone-utils";
+import { applyPhoneMask, normalizePhone } from "@/lib/phone-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
