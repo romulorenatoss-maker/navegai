@@ -644,6 +644,7 @@ export default function LeadsPage() {
       setLocalBairroId(selectedLead.bairro_id);
       setLocalRuaId(selectedLead.rua_id);
       setLocalNumeroEnd(selectedLead.numero_endereco || "");
+      setLocalDescricao(selectedLead.descricao || "");
     }
   }, [selectedLead?.id]);
 
