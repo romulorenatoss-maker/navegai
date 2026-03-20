@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  User, FileText, Trash2, Lock, Loader2, ShieldCheck,
+  User, FileText, Trash2, Lock, Loader2, ShieldCheck, ShieldOff,
   Eye, MessageSquare, CheckCircle2, Clock, AlertCircle, Shield
 } from "lucide-react";
 import PermissoesTelasTab from "@/components/PermissoesTelasTab";
