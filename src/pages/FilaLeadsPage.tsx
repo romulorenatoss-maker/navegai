@@ -435,15 +435,12 @@ export default function FilaLeadsPage() {
 
   const queue = useMemo<QueueItem[]>(() => {
     const now = new Date();
-    const cutoff = new Date(now.getTime() - tempoExibicaoHoras * 60 * 60 * 1000);
     // Only show leads that are captured/assigned — exclude importado, fila_captura, and unassigned leads
     const FILA_EXCLUDED_STATUS = ["importado", "fila_captura"];
     return leads
       .filter(lead => {
         if (FILA_EXCLUDED_STATUS.includes(lead.status_lead)) return false;
         if (!lead.responsavel_id && !lead.reserved_by) return false;
-        // Time filter: only show leads whose updated_at is older than configured hours
-        if (new Date(lead.updated_at) > cutoff) return false;
         return true;
       })
       .map(lead => {
@@ -468,7 +465,7 @@ export default function FilaLeadsPage() {
       if (!a.nextAttemptExpired && b.nextAttemptExpired) return 1;
       return a.nextAttempt.getTime() - b.nextAttempt.getTime();
     });
-  }, [leads, allContatos, allInteracoes, cadencia, profiles, tempoExibicaoHoras]);
+  }, [leads, allContatos, allInteracoes, cadencia, profiles]);
 
   // ─── Fila de Captura (ONLY truly available leads) ──
   const capturaLeads = useMemo(() => {
