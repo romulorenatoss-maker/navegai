@@ -47,6 +47,17 @@ interface QueueItem {
 // ─── Helpers ────────────────────────────────────────────
 const fmtDate = (d: string | Date) => { try { return format(new Date(d), "dd/MM/yyyy HH:mm", { locale: ptBR }); } catch { return String(d); } };
 const fmtDateShort = (d: string | Date) => { try { return format(new Date(d), "dd/MM HH:mm", { locale: ptBR }); } catch { return String(d); } };
+function formatCountdown(target: Date, now: Date): string {
+  const diffMs = target.getTime() - now.getTime();
+  const absDiff = Math.abs(diffMs);
+  const days = Math.floor(absDiff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((absDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const mins = Math.floor((absDiff % (1000 * 60 * 60)) / (1000 * 60));
+  const prefix = diffMs < 0 ? "−" : "";
+  if (days > 0) return `${prefix}${days}d ${hours}h`;
+  if (hours > 0) return `${prefix}${hours}h ${mins}m`;
+  return `${prefix}${mins}m`;
+}
 const STATUS_MAP: Record<string, string> = { novo: "Novo", em_contato: "Em Contato", em_atendimento: "Em tratativa", interessado: "Interessado", aguardando_decisao_avaliador: "Aguardando Decisão", fila_captura: "Fila de Captura", reservado: "Reservado", expirado: "Expirado", cancelado_pendente_analise: "Cancelado (Análise)", vendo_lead: "Vendo Lead" };
 
 export default function FilaLeadsPage() {
