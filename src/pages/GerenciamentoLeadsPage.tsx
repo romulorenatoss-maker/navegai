@@ -321,6 +321,22 @@ export default function GerenciamentoLeadsPage() {
               </Select>
             </div>
 
+            {/* Campanha */}
+            <div className="w-48">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Campanha</label>
+              <Select value={filterCampanha} onValueChange={v => handleFilterChange(setFilterCampanha, v)}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {campanhasList.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Date from */}
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">De</label>
