@@ -972,7 +972,7 @@ export default function FilaLeadsPage() {
         const dias = nextR?.dias_apos_anterior || 1;
         const per = nextR?.periodo_contato || "manha";
         const nd = new Date(); nd.setDate(nd.getDate() + dias); const ndSkipped = skipWeekend(nd); const ndFinal = setBrazilHour(ndSkipped, PERIODO_HORA[per] || 9);
-        await supabase.from("lead_tarefas_contato").insert({ lead_id: selectedTarefa.lead_id, tentativa: nextT, data_contato: ndSkipped.toISOString(), periodo: per, status: "pendente", responsavel_id: profile.id });
+        await supabase.from("lead_tarefas_contato").insert({ lead_id: selectedTarefa.lead_id, tentativa: nextT, data_contato: ndFinal.toISOString(), periodo: per, status: "pendente", responsavel_id: profile.id });
       }
       const leadStatus = tarefaLeads.find((l: any) => l.id === selectedTarefa.lead_id)?.status_lead;
       const tarefaLeadUpdate: any = { agendamento_retorno: null };
