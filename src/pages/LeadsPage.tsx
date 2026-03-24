@@ -1045,9 +1045,8 @@ export default function LeadsPage() {
           const regra = cadencia.find(c => c.numero_tentativa === 1) || cadencia[0];
           if (regra) {
             const base = new Date(transferDate);
-            base.setHours(PERIODO_HORA[regra.periodo] || 9, 0, 0, 0);
+            proximoContato = setBrazilHour(base, PERIODO_HORA[regra.periodo] || 9);
             // If the period already passed on transfer day, keep it (shows as overdue = immediate)
-            proximoContato = base;
           } else {
             proximoContato = transferDate;
           }
