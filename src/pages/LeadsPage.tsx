@@ -1239,8 +1239,7 @@ export default function LeadsPage() {
     else if (hour < 18) periodo = "tarde";
     else periodo = "noite";
     // Schedule for start of the determined period today
-    const taskDate = new Date(now);
-    taskDate.setHours(PERIODO_HORA[periodo] || 9, 0, 0, 0);
+    const taskDate = setBrazilHour(new Date(now), PERIODO_HORA[periodo] || 9);
     // If the period start already passed (e.g. it's 10h, manha starts at 9h), use current time
     if (taskDate < now) {
       taskDate.setTime(now.getTime());
