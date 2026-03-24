@@ -1280,15 +1280,15 @@ export default function AvaliacaoOSPage() {
   const handleFinalizeEvaluation = async () => {
     if (!evalAvaliacaoId || !evalOsId) return;
 
-    // Check that employee selections are set based on evaluator's sector
+    // Check that BOTH employee selections are always set before finalizing
     const currentOsData = evalOsData;
     if (currentOsData) {
-      if (hasTecnicoAccess && !currentOsData.tecnico_id) {
-        toast.error("Selecione o técnico avaliado antes de finalizar.");
+      if (!currentOsData.atendente_id) {
+        toast.error("Selecione o atendente avaliado antes de finalizar.");
         return;
       }
-      if (hasAtendimentoAccess && !currentOsData.atendente_id) {
-        toast.error("Selecione o atendente avaliado antes de finalizar.");
+      if (!currentOsData.tecnico_id) {
+        toast.error("Selecione o técnico avaliado antes de finalizar.");
         return;
       }
     }
