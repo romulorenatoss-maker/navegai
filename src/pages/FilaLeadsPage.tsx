@@ -450,39 +450,101 @@ export default function FilaLeadsPage() {
 
   const tempoExibicaoHoras = (fluxoConfig as any)?.tempo_exibicao_leads_horas ?? 1;
 
+  const activeTarefaByLead = useMemo(() => {
+    const byLead = new Map<string, any>();
+
+    tarefas.forEach((t: any) => {
+      const current = byLead.get(t.lead_id);
+      if (!current) {
+        byLead.set(t.lead_id, t);
+        return;
+      }
+
+      const currentDate = new Date(current.data_contato).getTime();
+      const nextDate = new Date(t.data_contato).getTime();
+      const isEarlier = nextDate < currentDate;
+      const isSameDateWithEarlierCreation =
+        nextDate === currentDate &&
+        new Date(t.created_at).getTime() < new Date(current.created_at).getTime();
+
+      if (isEarlier || isSameDateWithEarlierCreation) {
+        byLead.set(t.lead_id, t);
+      }
+    });
+
+    return byLead;
+  }, [tarefas]);
+
   const queue = useMemo<QueueItem[]>(() => {
     const now = new Date();
-    // Only show leads that are captured/assigned — exclude importado, fila_captura, and unassigned leads
     const FILA_EXCLUDED_STATUS = ["importado", "fila_captura"];
+
     return leads
-      .filter(lead => {
+      .filter((lead) => {
         if (FILA_EXCLUDED_STATUS.includes(lead.status_lead)) return false;
         if (!lead.responsavel_id && !lead.reserved_by) return false;
         return true;
       })
-      .map(lead => {
-      const contatos = allContatos.filter(c => c.lead_id === lead.id);
-      const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
-      const tentativaAtual = interacoes.length + 1;
-      const ultimaInteracao = interacoes[0]?.data_interacao || null;
-      let proximoContato: Date | null = null;
-      if (ultimaInteracao && cadencia.length > 0) {
-        const regra = cadencia.find(c => c.numero_tentativa === tentativaAtual) || cadencia[cadencia.length - 1];
-        if (regra) { const base = addDays(new Date(ultimaInteracao), regra.dias_apos); base.setHours(PERIODO_HORA[regra.periodo] || 9, 0, 0, 0); proximoContato = base; }
-      }
-      const isOverdue = !!proximoContato && proximoContato < now;
-      const isScheduled = !!lead.agendamento_retorno;
-      const scheduleReady = isScheduled && new Date(lead.agendamento_retorno!) <= now;
-      let nextAttempt = proximoContato || (lead.agendamento_retorno ? new Date(lead.agendamento_retorno) : addDays(new Date(lead.created_at), 1));
-      const nextAttemptExpired = nextAttempt < now;
-      const ultimoResponsavel = interacoes.length > 0 ? getProfileName((interacoes[0] as any).colaborador_id) : getProfileName(lead.responsavel_id || lead.reserved_by);
-      return { lead, contatos, tentativaAtual, proximoContato, ultimaInteracao, responsavelNome: ultimoResponsavel, isOverdue, isScheduled, scheduleReady, nextAttempt, nextAttemptExpired };
-    }).sort((a, b) => {
-      if (a.nextAttemptExpired && !b.nextAttemptExpired) return -1;
-      if (!a.nextAttemptExpired && b.nextAttemptExpired) return 1;
-      return a.nextAttempt.getTime() - b.nextAttempt.getTime();
-    });
-  }, [leads, allContatos, allInteracoes, cadencia, profiles]);
+      .map((lead) => {
+        const contatos = allContatos.filter((c) => c.lead_id === lead.id);
+        const interacoes = allInteracoes.filter((i: any) => i.lead_id === lead.id);
+        const activeTarefa = activeTarefaByLead.get(lead.id) || null;
+        const tentativaAtual = activeTarefa?.tentativa ?? interacoes.length + 1;
+        const ultimaInteracao = interacoes[0]?.data_interacao || null;
+
+        let proximoContato: Date | null = null;
+
+        if (activeTarefa) {
+          proximoContato = activeTarefa.periodo
+            ? getEffectiveDeadline(new Date(activeTarefa.data_contato), activeTarefa.periodo)
+            : new Date(activeTarefa.data_contato);
+        } else if (ultimaInteracao && rotinaTentativas.length > 0) {
+          const regrasAtivas = rotinaTentativas.filter((r: any) => r.ativo !== false);
+          const regra =
+            regrasAtivas.find((r: any) => r.tentativa_numero === tentativaAtual) ||
+            regrasAtivas[regrasAtivas.length - 1];
+
+          if (regra) {
+            const base = addDays(new Date(ultimaInteracao), regra.dias_apos_anterior ?? 1);
+            const skipped = skipWeekend(base);
+            skipped.setHours(PERIODO_HORA[regra.periodo_contato] || 9, 0, 0, 0);
+            proximoContato = getEffectiveDeadline(skipped, regra.periodo_contato);
+          }
+        }
+
+        const isScheduled = !activeTarefa && !!lead.agendamento_retorno;
+        const scheduleReady = isScheduled && new Date(lead.agendamento_retorno!) <= now;
+        const nextAttempt =
+          proximoContato ||
+          (lead.agendamento_retorno ? new Date(lead.agendamento_retorno) : addDays(new Date(lead.created_at), 1));
+        const isOverdue = activeTarefa
+          ? activeTarefa.status === "atrasado" || nextAttempt < now
+          : !!proximoContato && proximoContato < now;
+        const nextAttemptExpired = isOverdue || nextAttempt < now;
+        const ultimoResponsavel = interacoes.length > 0
+          ? getProfileName((interacoes[0] as any).colaborador_id)
+          : getProfileName(lead.responsavel_id || lead.reserved_by);
+
+        return {
+          lead,
+          contatos,
+          tentativaAtual,
+          proximoContato,
+          ultimaInteracao,
+          responsavelNome: ultimoResponsavel,
+          isOverdue,
+          isScheduled,
+          scheduleReady,
+          nextAttempt,
+          nextAttemptExpired,
+        };
+      })
+      .sort((a, b) => {
+        if (a.nextAttemptExpired && !b.nextAttemptExpired) return -1;
+        if (!a.nextAttemptExpired && b.nextAttemptExpired) return 1;
+        return a.nextAttempt.getTime() - b.nextAttempt.getTime();
+      });
+  }, [leads, allContatos, allInteracoes, activeTarefaByLead, rotinaTentativas, profiles]);
 
   // ─── Fila de Captura (ONLY truly available leads) ──
   const capturaLeads = useMemo(() => {
