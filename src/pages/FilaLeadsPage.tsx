@@ -28,7 +28,7 @@ import {
   ArrowUpDown, ArrowUp, ArrowDown,
 } from "lucide-react";
 import { startOfDay, endOfDay, isWithinInterval } from "date-fns";
-import { isTarefaExpirada, getEffectiveDeadline, getPeriodoEndHour, PERIODO_LABELS, PERIODO_HORA, skipWeekend, isWeekend } from "@/lib/lead-task-utils";
+import { isTarefaExpirada, getEffectiveDeadline, getPeriodoEndHour, PERIODO_LABELS, PERIODO_HORA, skipWeekend, isWeekend, setBrazilHour } from "@/lib/lead-task-utils";
 interface Lead {
   id: string; nome: string; status_lead: string; responsavel_id: string | null;
   updated_at: string; created_at: string; agendamento_retorno: string | null;
@@ -384,8 +384,8 @@ export default function FilaLeadsPage() {
         const regra = cadencia.find(c => c.numero_tentativa === tentativaAtual) || cadencia[cadencia.length - 1];
         if (regra) {
           const base = addDays(new Date(ultimaInteracao), regra.dias_apos);
-          base.setHours(PERIODO_HORA[regra.periodo] || 9, 0, 0, 0);
-          proximoContato = base;
+          const baseWithHour = setBrazilHour(base, PERIODO_HORA[regra.periodo] || 9);
+          proximoContato = baseWithHour;
         }
       }
 
@@ -507,8 +507,8 @@ export default function FilaLeadsPage() {
           if (regra) {
             const base = addDays(new Date(ultimaInteracao), regra.dias_apos_anterior ?? 1);
             const skipped = skipWeekend(base);
-            skipped.setHours(PERIODO_HORA[regra.periodo_contato] || 9, 0, 0, 0);
-            proximoContato = getEffectiveDeadline(skipped, regra.periodo_contato);
+            const skippedWithHour = setBrazilHour(skipped, PERIODO_HORA[regra.periodo_contato] || 9);
+            proximoContato = getEffectiveDeadline(skippedWithHour, regra.periodo_contato);
           }
         }
 
@@ -971,8 +971,8 @@ export default function FilaLeadsPage() {
         const nextR = rotinaTentativas.find((r: any) => r.tentativa_numero === nextT);
         const dias = nextR?.dias_apos_anterior || 1;
         const per = nextR?.periodo_contato || "manha";
-        const nd = new Date(); nd.setDate(nd.getDate() + dias); const ndSkipped = skipWeekend(nd); ndSkipped.setHours(PERIODO_HORA[per] || 9, 0, 0, 0);
-        await supabase.from("lead_tarefas_contato").insert({ lead_id: selectedTarefa.lead_id, tentativa: nextT, data_contato: ndSkipped.toISOString(), periodo: per, status: "pendente", responsavel_id: profile.id });
+        const nd = new Date(); nd.setDate(nd.getDate() + dias); const ndSkipped = skipWeekend(nd); const ndFinal = setBrazilHour(ndSkipped, PERIODO_HORA[per] || 9);
+        await supabase.from("lead_tarefas_contato").insert({ lead_id: selectedTarefa.lead_id, tentativa: nextT, data_contato: ndFinal.toISOString(), periodo: per, status: "pendente", responsavel_id: profile.id });
       }
       const leadStatus = tarefaLeads.find((l: any) => l.id === selectedTarefa.lead_id)?.status_lead;
       const tarefaLeadUpdate: any = { agendamento_retorno: null };

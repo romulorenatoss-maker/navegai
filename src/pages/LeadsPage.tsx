@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { format, addDays, setHours, setMinutes } from "date-fns";
-import { skipWeekend, PERIODO_HORA } from "@/lib/lead-task-utils";
+import { skipWeekend, PERIODO_HORA, setBrazilHour } from "@/lib/lead-task-utils";
 import { ptBR } from "date-fns/locale";
 import {
   Search, Plus, Phone, User, Users, History, ArrowRight, Trash2,
@@ -1036,8 +1036,7 @@ export default function LeadsPage() {
         const regra = cadencia.find(c => c.numero_tentativa === tentativaAtual) || cadencia[cadencia.length - 1];
         if (regra) {
           const base = addDays(new Date(ultimaInteracao), regra.dias_apos);
-          base.setHours(PERIODO_HORA[regra.periodo] || 9, 0, 0, 0);
-          proximoContato = base;
+          proximoContato = setBrazilHour(base, PERIODO_HORA[regra.periodo] || 9);
         }
       } else if (!ultimaInteracao) {
         // No interactions in current cycle: use transfer date if available, else data_criacao
@@ -1046,9 +1045,8 @@ export default function LeadsPage() {
           const regra = cadencia.find(c => c.numero_tentativa === 1) || cadencia[0];
           if (regra) {
             const base = new Date(transferDate);
-            base.setHours(PERIODO_HORA[regra.periodo] || 9, 0, 0, 0);
+            proximoContato = setBrazilHour(base, PERIODO_HORA[regra.periodo] || 9);
             // If the period already passed on transfer day, keep it (shows as overdue = immediate)
-            proximoContato = base;
           } else {
             proximoContato = transferDate;
           }
@@ -1241,8 +1239,7 @@ export default function LeadsPage() {
     else if (hour < 18) periodo = "tarde";
     else periodo = "noite";
     // Schedule for start of the determined period today
-    const taskDate = new Date(now);
-    taskDate.setHours(PERIODO_HORA[periodo] || 9, 0, 0, 0);
+    const taskDate = setBrazilHour(new Date(now), PERIODO_HORA[periodo] || 9);
     // If the period start already passed (e.g. it's 10h, manha starts at 9h), use current time
     if (taskDate < now) {
       taskDate.setTime(now.getTime());
