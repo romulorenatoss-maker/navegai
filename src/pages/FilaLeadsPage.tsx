@@ -1072,9 +1072,9 @@ export default function FilaLeadsPage() {
                         const campanha = getCampanhaNome(item.lead);
                         const cidade = getCidadeNome(item.lead);
                         const _now2 = new Date();
-                        const _nextD = item.nextAttempt ? new Date(item.nextAttempt) : null;
+                        const _nextD = item.proximoContato || (item.nextAttempt ? new Date(item.nextAttempt) : null);
                         const _schedD = item.lead.agendamento_retorno ? new Date(item.lead.agendamento_retorno) : null;
-                        const _urgRef = _schedD || _nextD;
+                        const _urgRef = _nextD || _schedD;
                         const _hrsLeft = _urgRef ? (_urgRef.getTime() - _now2.getTime()) / (1000 * 60 * 60) : null;
                         let rowBg = "";
                         if (_hrsLeft !== null) {
