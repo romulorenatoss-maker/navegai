@@ -1036,8 +1036,7 @@ export default function LeadsPage() {
         const regra = cadencia.find(c => c.numero_tentativa === tentativaAtual) || cadencia[cadencia.length - 1];
         if (regra) {
           const base = addDays(new Date(ultimaInteracao), regra.dias_apos);
-          base.setHours(PERIODO_HORA[regra.periodo] || 9, 0, 0, 0);
-          proximoContato = base;
+          proximoContato = setBrazilHour(base, PERIODO_HORA[regra.periodo] || 9);
         }
       } else if (!ultimaInteracao) {
         // No interactions in current cycle: use transfer date if available, else data_criacao
