@@ -507,8 +507,8 @@ export default function FilaLeadsPage() {
           if (regra) {
             const base = addDays(new Date(ultimaInteracao), regra.dias_apos_anterior ?? 1);
             const skipped = skipWeekend(base);
-            skipped.setHours(PERIODO_HORA[regra.periodo_contato] || 9, 0, 0, 0);
-            proximoContato = getEffectiveDeadline(skipped, regra.periodo_contato);
+            const skippedWithHour = setBrazilHour(skipped, PERIODO_HORA[regra.periodo_contato] || 9);
+            proximoContato = getEffectiveDeadline(skippedWithHour, regra.periodo_contato);
           }
         }
 
