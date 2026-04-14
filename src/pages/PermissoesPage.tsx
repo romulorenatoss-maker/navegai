@@ -197,13 +197,13 @@ export default function PermissoesPage() {
     mutationFn: async ({ resourceId, action, value }: { resourceId: string; action: string; value: boolean | null }) => {
       const existing = userOverrides.find((o) => o.resource_id === resourceId);
       if (existing) {
-        await supabase.from("user_permission_overrides").update({ [action]: value }).eq("id", existing.id);
+        await supabase.from("user_permission_overrides").update({ [action]: value } as any).eq("id", existing.id);
       } else {
         await supabase.from("user_permission_overrides").insert({
           profile_id: selectedProfileId,
           resource_id: resourceId,
           [action]: value,
-        });
+        } as any);
       }
     },
     onSuccess: () => {
