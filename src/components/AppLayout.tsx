@@ -136,7 +136,7 @@ export function AppLayout() {
               <div className="w-7 h-7 rounded-md bg-sidebar-primary flex items-center justify-center">
                 <span className="text-sidebar-primary-foreground text-xs font-bold">N</span>
               </div>
-              <span className="font-semibold text-sm">Nexus Ops</span>
+              <span className="font-semibold text-sm">Navegaí</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
