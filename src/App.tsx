@@ -14,7 +14,9 @@ import ColaboradoresPage from "./pages/ColaboradoresPage";
 import TiposServicoPage from "./pages/TiposServicoPage";
 
 import PerguntasPage from "./pages/PerguntasPage";
-import ChecklistsCadastroPage from "./pages/ChecklistsCadastroPage";
+import TaskTemplatesPage from "./pages/TaskTemplatesPage";
+import TaskExecucaoPage from "./pages/TaskExecucaoPage";
+import TaskGestaoPage from "./pages/TaskGestaoPage";
 import CadastroEnderecosPage from "./pages/CadastroEnderecosPage";
 import ClientesPage from "./pages/ClientesPage";
 import MinhasAvaliacoesPage from "./pages/MinhasAvaliacoesPage";
@@ -63,9 +65,9 @@ const App = () => (
               <Route path="/avaliacoes/pesquisa" element={<AvaliacaoOSPage />} />
               <Route path="/avaliacoes/perguntas" element={<PerguntasPage />} />
               <Route path="/avaliacoes/minhas" element={<MinhasAvaliacoesPage />} />
-              <Route path="/checklists/cadastro" element={<ChecklistsCadastroPage />} />
-              <Route path="/checklists/execucao" element={<PlaceholderPage title="Execução de Checklist" description="Painel de tarefas do executor." />} />
-              <Route path="/checklists/gestao" element={<PlaceholderPage title="Gestão de Checklists" description="Acompanhe todas as tarefas geradas pelos checklists." />} />
+              <Route path="/checklists/cadastro" element={<TaskTemplatesPage />} />
+              <Route path="/checklists/execucao" element={<TaskExecucaoPage />} />
+              <Route path="/checklists/gestao" element={<TaskGestaoPage />} />
               <Route path="/cadastros/setores" element={<SetoresPage />} />
               <Route path="/cadastros/avaliadores" element={<ColaboradoresPage />} />
               <Route path="/cadastros/colaboradores" element={<ColaboradoresPage />} />
