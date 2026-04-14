@@ -65,9 +65,9 @@ const App = () => (
               <Route path="/avaliacoes/pesquisa" element={<AvaliacaoOSPage />} />
               <Route path="/avaliacoes/perguntas" element={<PerguntasPage />} />
               <Route path="/avaliacoes/minhas" element={<MinhasAvaliacoesPage />} />
-              <Route path="/checklists/cadastro" element={<TaskTemplatesPage />} />
-              <Route path="/checklists/execucao" element={<TaskExecucaoPage />} />
-              <Route path="/checklists/gestao" element={<TaskGestaoPage />} />
+              <Route path="/checklists/cadastro" element={<OperationalCadastroPage />} />
+              <Route path="/checklists/execucao" element={<OperationalExecucaoPage />} />
+              <Route path="/checklists/gestao" element={<OperationalGestaoPage />} />
               <Route path="/cadastros/setores" element={<SetoresPage />} />
               <Route path="/cadastros/avaliadores" element={<ColaboradoresPage />} />
               <Route path="/cadastros/colaboradores" element={<ColaboradoresPage />} />
