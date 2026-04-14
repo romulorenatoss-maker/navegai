@@ -139,13 +139,13 @@ export default function PermissoesPage() {
     mutationFn: async ({ resourceId, action, value }: { resourceId: string; action: string; value: boolean }) => {
       const existing = groupPerms.find((gp) => gp.resource_id === resourceId);
       if (existing) {
-        await supabase.from("group_permissions").update({ [action]: value }).eq("id", existing.id);
+        await supabase.from("group_permissions").update({ [action]: value } as any).eq("id", existing.id);
       } else {
         await supabase.from("group_permissions").insert({
           group_id: selectedGroupId,
           resource_id: resourceId,
           [action]: value,
-        });
+        } as any);
       }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["perm-group-perms", selectedGroupId] }),
