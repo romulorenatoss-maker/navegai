@@ -37,11 +37,11 @@ const allNavSections = [
     ],
   },
   {
-    title: "Checklists",
+    title: "Tarefas",
     items: [
-      { to: "/checklists/cadastro", icon: ListChecks, label: "Cadastro" },
+      { to: "/checklists/cadastro", icon: ListChecks, label: "Templates" },
       { to: "/checklists/execucao", icon: PlayCircle, label: "Execução" },
-      { to: "/checklists/gestao", icon: FolderKanban, label: "Gestão" },
+      { to: "/checklists/gestao", icon: FolderKanban, label: "Gestão / Rankings" },
     ],
   },
   {
