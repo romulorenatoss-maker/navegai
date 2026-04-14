@@ -1133,6 +1133,646 @@ export type Database = {
           },
         ]
       }
+      operational_assignments: {
+        Row: {
+          created_at: string
+          data_prevista: string
+          evidencia_url: string | null
+          fim_em: string | null
+          horario_inicio_previsto: string | null
+          horario_limite: string | null
+          id: string
+          inicio_em: string | null
+          observacao: string | null
+          pontuacao_obtida: number | null
+          responsavel_id: string | null
+          status: string
+          template_id: string
+          tempo_gasto_minutos: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_prevista?: string
+          evidencia_url?: string | null
+          fim_em?: string | null
+          horario_inicio_previsto?: string | null
+          horario_limite?: string | null
+          id?: string
+          inicio_em?: string | null
+          observacao?: string | null
+          pontuacao_obtida?: number | null
+          responsavel_id?: string | null
+          status?: string
+          template_id: string
+          tempo_gasto_minutos?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_prevista?: string
+          evidencia_url?: string | null
+          fim_em?: string | null
+          horario_inicio_previsto?: string | null
+          horario_limite?: string | null
+          id?: string
+          inicio_em?: string | null
+          observacao?: string | null
+          pontuacao_obtida?: number | null
+          responsavel_id?: string | null
+          status?: string
+          template_id?: string
+          tempo_gasto_minutos?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_assignments_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_assignments_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "operational_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operational_contingencies: {
+        Row: {
+          assignment_id: string
+          check_answer_id: string | null
+          created_at: string
+          descricao: string
+          id: string
+          prazo_sla: string | null
+          resolvida_em: string | null
+          responsavel_id: string | null
+          status: string
+          step_log_id: string | null
+          updated_at: string
+          validada_em: string | null
+          validada_por: string | null
+        }
+        Insert: {
+          assignment_id: string
+          check_answer_id?: string | null
+          created_at?: string
+          descricao: string
+          id?: string
+          prazo_sla?: string | null
+          resolvida_em?: string | null
+          responsavel_id?: string | null
+          status?: string
+          step_log_id?: string | null
+          updated_at?: string
+          validada_em?: string | null
+          validada_por?: string | null
+        }
+        Update: {
+          assignment_id?: string
+          check_answer_id?: string | null
+          created_at?: string
+          descricao?: string
+          id?: string
+          prazo_sla?: string | null
+          resolvida_em?: string | null
+          responsavel_id?: string | null
+          status?: string
+          step_log_id?: string | null
+          updated_at?: string
+          validada_em?: string | null
+          validada_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_contingencies_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "operational_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_contingencies_check_answer_id_fkey"
+            columns: ["check_answer_id"]
+            isOneToOne: false
+            referencedRelation: "operational_execution_check_answers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_contingencies_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_contingencies_step_log_id_fkey"
+            columns: ["step_log_id"]
+            isOneToOne: false
+            referencedRelation: "operational_execution_step_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_contingencies_validada_por_fkey"
+            columns: ["validada_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operational_contingency_resolution_logs: {
+        Row: {
+          acao: string
+          contingency_id: string
+          created_at: string
+          evidencia_url: string | null
+          executado_por: string | null
+          id: string
+          observacao: string | null
+        }
+        Insert: {
+          acao: string
+          contingency_id: string
+          created_at?: string
+          evidencia_url?: string | null
+          executado_por?: string | null
+          id?: string
+          observacao?: string | null
+        }
+        Update: {
+          acao?: string
+          contingency_id?: string
+          created_at?: string
+          evidencia_url?: string | null
+          executado_por?: string | null
+          id?: string
+          observacao?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_contingency_resolution_logs_contingency_id_fkey"
+            columns: ["contingency_id"]
+            isOneToOne: false
+            referencedRelation: "operational_contingencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_contingency_resolution_logs_executado_por_fkey"
+            columns: ["executado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operational_execution_check_answers: {
+        Row: {
+          assignment_id: string
+          check_item_id: string
+          conforme: boolean | null
+          created_at: string
+          evidencia_url: string | null
+          id: string
+          observacao: string | null
+          resposta: string | null
+        }
+        Insert: {
+          assignment_id: string
+          check_item_id: string
+          conforme?: boolean | null
+          created_at?: string
+          evidencia_url?: string | null
+          id?: string
+          observacao?: string | null
+          resposta?: string | null
+        }
+        Update: {
+          assignment_id?: string
+          check_item_id?: string
+          conforme?: boolean | null
+          created_at?: string
+          evidencia_url?: string | null
+          id?: string
+          observacao?: string | null
+          resposta?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_execution_check_answers_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "operational_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_execution_check_answers_check_item_id_fkey"
+            columns: ["check_item_id"]
+            isOneToOne: false
+            referencedRelation: "operational_template_check_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operational_execution_logs: {
+        Row: {
+          acao: string
+          assignment_id: string
+          created_at: string
+          detalhes: Json | null
+          executado_por: string | null
+          id: string
+        }
+        Insert: {
+          acao: string
+          assignment_id: string
+          created_at?: string
+          detalhes?: Json | null
+          executado_por?: string | null
+          id?: string
+        }
+        Update: {
+          acao?: string
+          assignment_id?: string
+          created_at?: string
+          detalhes?: Json | null
+          executado_por?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_execution_logs_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "operational_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_execution_logs_executado_por_fkey"
+            columns: ["executado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operational_execution_step_logs: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          evidencia_url: string | null
+          fim_em: string | null
+          id: string
+          inicio_em: string | null
+          observacao: string | null
+          status: string
+          step_id: string
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          evidencia_url?: string | null
+          fim_em?: string | null
+          id?: string
+          inicio_em?: string | null
+          observacao?: string | null
+          status?: string
+          step_id: string
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          evidencia_url?: string | null
+          fim_em?: string | null
+          id?: string
+          inicio_em?: string | null
+          observacao?: string | null
+          status?: string
+          step_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_execution_step_logs_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "operational_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_execution_step_logs_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "operational_template_steps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operational_rankings: {
+        Row: {
+          contingencias_abertas: number | null
+          contingencias_resolvidas: number | null
+          created_at: string
+          id: string
+          periodo_fim: string
+          periodo_inicio: string
+          periodo_tipo: string
+          profile_id: string
+          rotinas_atrasadas: number | null
+          rotinas_no_prazo: number | null
+          score_medio: number | null
+          total_rotinas: number | null
+        }
+        Insert: {
+          contingencias_abertas?: number | null
+          contingencias_resolvidas?: number | null
+          created_at?: string
+          id?: string
+          periodo_fim: string
+          periodo_inicio: string
+          periodo_tipo: string
+          profile_id: string
+          rotinas_atrasadas?: number | null
+          rotinas_no_prazo?: number | null
+          score_medio?: number | null
+          total_rotinas?: number | null
+        }
+        Update: {
+          contingencias_abertas?: number | null
+          contingencias_resolvidas?: number | null
+          created_at?: string
+          id?: string
+          periodo_fim?: string
+          periodo_inicio?: string
+          periodo_tipo?: string
+          profile_id?: string
+          rotinas_atrasadas?: number | null
+          rotinas_no_prazo?: number | null
+          score_medio?: number | null
+          total_rotinas?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_rankings_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operational_score_logs: {
+        Row: {
+          assignment_id: string
+          conformidade: number | null
+          created_at: string
+          id: string
+          pontualidade: number | null
+          profile_id: string
+          qualidade_evidencia: number | null
+          score_final: number | null
+          sla_correcoes: number | null
+        }
+        Insert: {
+          assignment_id: string
+          conformidade?: number | null
+          created_at?: string
+          id?: string
+          pontualidade?: number | null
+          profile_id: string
+          qualidade_evidencia?: number | null
+          score_final?: number | null
+          sla_correcoes?: number | null
+        }
+        Update: {
+          assignment_id?: string
+          conformidade?: number | null
+          created_at?: string
+          id?: string
+          pontualidade?: number | null
+          profile_id?: string
+          qualidade_evidencia?: number | null
+          score_final?: number | null
+          sla_correcoes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_score_logs_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "operational_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_score_logs_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operational_template_check_items: {
+        Row: {
+          created_at: string
+          exige_foto: boolean | null
+          exige_observacao: boolean | null
+          gera_contingencia_se_reprovado: boolean | null
+          id: string
+          ordem: number
+          pergunta: string
+          template_id: string
+          tipo_resposta: string
+        }
+        Insert: {
+          created_at?: string
+          exige_foto?: boolean | null
+          exige_observacao?: boolean | null
+          gera_contingencia_se_reprovado?: boolean | null
+          id?: string
+          ordem?: number
+          pergunta: string
+          template_id: string
+          tipo_resposta?: string
+        }
+        Update: {
+          created_at?: string
+          exige_foto?: boolean | null
+          exige_observacao?: boolean | null
+          gera_contingencia_se_reprovado?: boolean | null
+          id?: string
+          ordem?: number
+          pergunta?: string
+          template_id?: string
+          tipo_resposta?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_template_check_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "operational_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operational_template_steps: {
+        Row: {
+          created_at: string
+          exige_foto: boolean | null
+          exige_observacao: boolean | null
+          exige_video: boolean | null
+          horario_previsto: string | null
+          id: string
+          nome: string
+          ordem: number
+          prazo_limite_minutos: number | null
+          template_id: string
+        }
+        Insert: {
+          created_at?: string
+          exige_foto?: boolean | null
+          exige_observacao?: boolean | null
+          exige_video?: boolean | null
+          horario_previsto?: string | null
+          id?: string
+          nome: string
+          ordem?: number
+          prazo_limite_minutos?: number | null
+          template_id: string
+        }
+        Update: {
+          created_at?: string
+          exige_foto?: boolean | null
+          exige_observacao?: boolean | null
+          exige_video?: boolean | null
+          horario_previsto?: string | null
+          id?: string
+          nome?: string
+          ordem?: number
+          prazo_limite_minutos?: number | null
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_template_steps_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "operational_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operational_templates: {
+        Row: {
+          ativo: boolean | null
+          created_at: string
+          data_fim: string | null
+          data_inicio: string | null
+          descricao: string | null
+          dia_fixo_mes: number | null
+          dias_da_semana: number[] | null
+          exigir_foto: boolean | null
+          exigir_observacao: boolean | null
+          exigir_video: boolean | null
+          gerar_contingencia_automatica: boolean | null
+          horario_inicio_previsto: string | null
+          horario_limite_execucao: string | null
+          id: string
+          intervalo_dias: number | null
+          nome: string
+          prazo_sla_correcao_horas: number | null
+          pular_semanas: number | null
+          recorrencia_tipo: string
+          responsavel_contingencia_id: string | null
+          responsavel_id: string | null
+          setor_id: string | null
+          tipo_execucao: string
+          tolerancia_minutos: number | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          descricao?: string | null
+          dia_fixo_mes?: number | null
+          dias_da_semana?: number[] | null
+          exigir_foto?: boolean | null
+          exigir_observacao?: boolean | null
+          exigir_video?: boolean | null
+          gerar_contingencia_automatica?: boolean | null
+          horario_inicio_previsto?: string | null
+          horario_limite_execucao?: string | null
+          id?: string
+          intervalo_dias?: number | null
+          nome: string
+          prazo_sla_correcao_horas?: number | null
+          pular_semanas?: number | null
+          recorrencia_tipo?: string
+          responsavel_contingencia_id?: string | null
+          responsavel_id?: string | null
+          setor_id?: string | null
+          tipo_execucao?: string
+          tolerancia_minutos?: number | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          descricao?: string | null
+          dia_fixo_mes?: number | null
+          dias_da_semana?: number[] | null
+          exigir_foto?: boolean | null
+          exigir_observacao?: boolean | null
+          exigir_video?: boolean | null
+          gerar_contingencia_automatica?: boolean | null
+          horario_inicio_previsto?: string | null
+          horario_limite_execucao?: string | null
+          id?: string
+          intervalo_dias?: number | null
+          nome?: string
+          prazo_sla_correcao_horas?: number | null
+          pular_semanas?: number | null
+          recorrencia_tipo?: string
+          responsavel_contingencia_id?: string | null
+          responsavel_id?: string | null
+          setor_id?: string | null
+          tipo_execucao?: string
+          tolerancia_minutos?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_templates_responsavel_contingencia_id_fkey"
+            columns: ["responsavel_contingencia_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_templates_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_templates_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ordens_servico: {
         Row: {
           atendente_id: string | null
