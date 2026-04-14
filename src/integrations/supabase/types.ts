@@ -1918,6 +1918,277 @@ export type Database = {
         }
         Relationships: []
       }
+      task_assignments: {
+        Row: {
+          created_at: string
+          data_prevista: string
+          evidencia_url: string | null
+          fim_em: string | null
+          id: string
+          inicio_em: string | null
+          motivo_bloqueio: string | null
+          observacao: string | null
+          pontuacao_obtida: number | null
+          prazo_limite: string | null
+          responsavel_id: string | null
+          status: string
+          template_id: string
+          tempo_gasto_minutos: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_prevista?: string
+          evidencia_url?: string | null
+          fim_em?: string | null
+          id?: string
+          inicio_em?: string | null
+          motivo_bloqueio?: string | null
+          observacao?: string | null
+          pontuacao_obtida?: number | null
+          prazo_limite?: string | null
+          responsavel_id?: string | null
+          status?: string
+          template_id: string
+          tempo_gasto_minutos?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_prevista?: string
+          evidencia_url?: string | null
+          fim_em?: string | null
+          id?: string
+          inicio_em?: string | null
+          motivo_bloqueio?: string | null
+          observacao?: string | null
+          pontuacao_obtida?: number | null
+          prazo_limite?: string | null
+          responsavel_id?: string | null
+          status?: string
+          template_id?: string
+          tempo_gasto_minutos?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_assignments_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_assignments_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "task_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_execution_logs: {
+        Row: {
+          acao: string
+          assignment_id: string
+          created_at: string
+          detalhes: Json | null
+          id: string
+          profile_id: string
+        }
+        Insert: {
+          acao: string
+          assignment_id: string
+          created_at?: string
+          detalhes?: Json | null
+          id?: string
+          profile_id: string
+        }
+        Update: {
+          acao?: string
+          assignment_id?: string
+          created_at?: string
+          detalhes?: Json | null
+          id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_execution_logs_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "task_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_execution_logs_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_score_logs: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          descricao: string | null
+          id: string
+          profile_id: string
+          tipo: string
+          valor: number
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          profile_id: string
+          tipo: string
+          valor?: number
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          profile_id?: string
+          tipo?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_score_logs_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "task_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_score_logs_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_templates: {
+        Row: {
+          ativo: boolean
+          bonus_antecipacao: number
+          created_at: string
+          descricao: string | null
+          dias_execucao: number[] | null
+          dificuldade: string
+          exigir_evidencia_foto: boolean
+          id: string
+          meta_execucao_minutos: number | null
+          obrigar_observacao: boolean
+          penalidade_atraso: number
+          penalidade_nao_execucao: number
+          pontuacao_base: number
+          prazo_horas: number
+          prioridade: string
+          setor_id: string | null
+          tipo_recorrencia: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          bonus_antecipacao?: number
+          created_at?: string
+          descricao?: string | null
+          dias_execucao?: number[] | null
+          dificuldade?: string
+          exigir_evidencia_foto?: boolean
+          id?: string
+          meta_execucao_minutos?: number | null
+          obrigar_observacao?: boolean
+          penalidade_atraso?: number
+          penalidade_nao_execucao?: number
+          pontuacao_base?: number
+          prazo_horas?: number
+          prioridade?: string
+          setor_id?: string | null
+          tipo_recorrencia?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          bonus_antecipacao?: number
+          created_at?: string
+          descricao?: string | null
+          dias_execucao?: number[] | null
+          dificuldade?: string
+          exigir_evidencia_foto?: boolean
+          id?: string
+          meta_execucao_minutos?: number | null
+          obrigar_observacao?: boolean
+          penalidade_atraso?: number
+          penalidade_nao_execucao?: number
+          pontuacao_base?: number
+          prazo_horas?: number
+          prioridade?: string
+          setor_id?: string | null
+          tipo_recorrencia?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_templates_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_user_streaks: {
+        Row: {
+          id: string
+          nivel: string
+          pontuacao_total: number
+          profile_id: string
+          streak_atual: number
+          streak_maximo: number
+          ultima_execucao_no_prazo: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          nivel?: string
+          pontuacao_total?: number
+          profile_id: string
+          streak_atual?: number
+          streak_maximo?: number
+          ultima_execucao_no_prazo?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          nivel?: string
+          pontuacao_total?: number
+          profile_id?: string
+          streak_atual?: number
+          streak_maximo?: number
+          ultima_execucao_no_prazo?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_user_streaks_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tipo_servico_checklists: {
         Row: {
           checklist_id: string
