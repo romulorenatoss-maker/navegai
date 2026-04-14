@@ -14,9 +14,9 @@ import ColaboradoresPage from "./pages/ColaboradoresPage";
 import TiposServicoPage from "./pages/TiposServicoPage";
 
 import PerguntasPage from "./pages/PerguntasPage";
-import TaskTemplatesPage from "./pages/TaskTemplatesPage";
-import TaskExecucaoPage from "./pages/TaskExecucaoPage";
-import TaskGestaoPage from "./pages/TaskGestaoPage";
+import OperationalCadastroPage from "./pages/OperationalCadastroPage";
+import OperationalExecucaoPage from "./pages/OperationalExecucaoPage";
+import OperationalGestaoPage from "./pages/OperationalGestaoPage";
 import CadastroEnderecosPage from "./pages/CadastroEnderecosPage";
 import ClientesPage from "./pages/ClientesPage";
 import MinhasAvaliacoesPage from "./pages/MinhasAvaliacoesPage";
