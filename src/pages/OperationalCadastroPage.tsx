@@ -19,7 +19,7 @@ interface CheckItemForm { pergunta: string; ordem: number; tipo_resposta: string
 interface TemplateForm {
   nome: string; descricao: string; tipo_execucao: string; setor_id: string; responsavel_id: string;
   recorrencia_tipo: string; dias_da_semana: number[]; intervalo_dias: number; pular_semanas: number;
-  dia_fixo_mes: number | null; data_inicio: string; data_fim: string;
+  dia_fixo_mes: number | null; data_inicio: string; data_fim: string; repetir_sempre: boolean;
   horario_inicio_previsto: string; horario_limite_execucao: string; tolerancia_minutos: number;
   exigir_foto: boolean; exigir_video: boolean; exigir_observacao: boolean;
   gerar_contingencia_automatica: boolean; prazo_sla_correcao_horas: number; responsavel_contingencia_id: string;
@@ -28,7 +28,7 @@ interface TemplateForm {
 const defaultForm: TemplateForm = {
   nome: "", descricao: "", tipo_execucao: "simples", setor_id: "", responsavel_id: "",
   recorrencia_tipo: "unica", dias_da_semana: [], intervalo_dias: 1, pular_semanas: 0,
-  dia_fixo_mes: null, data_inicio: new Date().toISOString().slice(0, 10), data_fim: "",
+  dia_fixo_mes: null, data_inicio: new Date().toISOString().slice(0, 10), data_fim: "", repetir_sempre: false,
   horario_inicio_previsto: "08:00", horario_limite_execucao: "18:00", tolerancia_minutos: 0,
   exigir_foto: false, exigir_video: false, exigir_observacao: false,
   gerar_contingencia_automatica: false, prazo_sla_correcao_horas: 24, responsavel_contingencia_id: "",
@@ -164,6 +164,7 @@ export default function OperationalCadastroPage() {
       recorrencia_tipo: t.recorrencia_tipo, dias_da_semana: t.dias_da_semana || [],
       intervalo_dias: t.intervalo_dias || 1, pular_semanas: t.pular_semanas || 0,
       dia_fixo_mes: t.dia_fixo_mes, data_inicio: t.data_inicio || "", data_fim: t.data_fim || "",
+      repetir_sempre: !t.data_inicio && !t.data_fim && t.recorrencia_tipo !== "unica",
       horario_inicio_previsto: t.horario_inicio_previsto || "08:00",
       horario_limite_execucao: t.horario_limite_execucao || "18:00",
       tolerancia_minutos: t.tolerancia_minutos || 0,
@@ -359,21 +360,45 @@ export default function OperationalCadastroPage() {
 
               {/* RECORRÊNCIA */}
               <TabsContent value="recorrencia" className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label>Tipo de Recorrência</Label>
-                    <Select value={form.recorrencia_tipo} onValueChange={v => set("recorrencia_tipo", v)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(RECORRENCIA_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Data Início</Label>
-                    <Input type="date" value={form.data_inicio} onChange={e => set("data_inicio", e.target.value)} />
-                  </div>
+                <div className="space-y-1.5">
+                  <Label>Tipo de Recorrência</Label>
+                  <Select value={form.recorrencia_tipo} onValueChange={v => set("recorrencia_tipo", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(RECORRENCIA_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
+
+                {form.recorrencia_tipo !== "unica" && (
+                  <div className="flex items-center gap-2 bg-muted/50 rounded-lg border border-border p-3">
+                    <Switch
+                      checked={form.repetir_sempre}
+                      onCheckedChange={v => {
+                        set("repetir_sempre", v);
+                        if (v) { set("data_inicio", ""); set("data_fim", ""); }
+                      }}
+                    />
+                    <div>
+                      <Label className="cursor-pointer">Repetir sempre</Label>
+                      <p className="text-caption text-muted-foreground">Ignora data início/fim e gera automaticamente na próxima ocorrência configurada.</p>
+                    </div>
+                  </div>
+                )}
+
+                {!form.repetir_sempre && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label>Data Início</Label>
+                      <Input type="date" value={form.data_inicio} onChange={e => set("data_inicio", e.target.value)} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Data Fim (opcional)</Label>
+                      <Input type="date" value={form.data_fim} onChange={e => set("data_fim", e.target.value)} />
+                    </div>
+                  </div>
+                )}
+
                 {(form.recorrencia_tipo === "semanal" || form.recorrencia_tipo === "personalizada") && (
                   <div className="space-y-1.5">
                     <Label>Dias da Semana</Label>
@@ -405,10 +430,6 @@ export default function OperationalCadastroPage() {
                     <Input type="number" min={1} max={31} value={form.dia_fixo_mes || ""} onChange={e => set("dia_fixo_mes", +e.target.value || null)} />
                   </div>
                 )}
-                <div className="space-y-1.5">
-                  <Label>Data Fim (opcional)</Label>
-                  <Input type="date" value={form.data_fim} onChange={e => set("data_fim", e.target.value)} />
-                </div>
               </TabsContent>
 
               {/* EVIDÊNCIAS */}
