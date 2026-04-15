@@ -73,6 +73,7 @@ interface Props {
   allAnswers: Record<string, FieldAnswer>;
   onChange: (fieldId: string, answer: Partial<FieldAnswer>) => void;
   assignmentId: string;
+  showValidation?: boolean;
 }
 
 function evaluateVisibility(condition: any, allAnswers: Record<string, FieldAnswer>): boolean {
