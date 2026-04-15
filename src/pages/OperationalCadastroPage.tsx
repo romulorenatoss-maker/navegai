@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TIPO_EXECUCAO_LABELS, RECORRENCIA_LABELS } from "@/hooks/useOperationalScoring";
-import { TemplateForm, SectionForm, FieldForm, defaultTemplate, defaultSection, defaultField } from "@/components/operational/types";
+import { TemplateForm, SectionForm, FieldForm, StepForm, defaultTemplate, defaultSection, defaultField, defaultStep } from "@/components/operational/types";
 import { TabGeral } from "@/components/operational/TabGeral";
 import { TabFormBuilder } from "@/components/operational/TabFormBuilder";
 import { TabWorkflow } from "@/components/operational/TabWorkflow";
@@ -22,6 +22,7 @@ export default function OperationalCadastroPage() {
   const [form, setForm] = useState<TemplateForm>(defaultTemplate);
   const [sections, setSections] = useState<SectionForm[]>([]);
   const [fields, setFields] = useState<FieldForm[]>([]);
+  const [steps, setSteps] = useState<StepForm[]>([]);
   const [activeTab, setActiveTab] = useState("geral");
   const [filterExecutor, setFilterExecutor] = useState("__all");
   const [filterAvaliador, setFilterAvaliador] = useState("__all");
@@ -228,6 +229,7 @@ export default function OperationalCadastroPage() {
     setForm(defaultTemplate);
     setSections([]);
     setFields([]);
+    setSteps([]);
     setActiveTab("geral");
     setDialogOpen(true);
   };
