@@ -10,8 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Shield, Users, Eye, PenLine, Plus, Trash2, Save, Lock } from "lucide-react";
+import { Shield, Users, Eye, PenLine, Plus, Trash2, Save, Lock, UserX } from "lucide-react";
 
 type DataScopeValue = "none" | "own" | "team" | "all";
 const SCOPE_LABELS: Record<DataScopeValue, string> = { none: "Nenhum", own: "Próprio", team: "Equipe", all: "Todos" };
@@ -75,6 +76,7 @@ export default function PermissoesPage() {
   const queryClient = useQueryClient();
   const [selectedGroupId, setSelectedGroupId] = useState<string>("");
   const [selectedProfileId, setSelectedProfileId] = useState<string>("");
+  const [filterCargo, setFilterCargo] = useState<string>("administrador");
   const [newGroupDialog, setNewGroupDialog] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupDesc, setNewGroupDesc] = useState("");
