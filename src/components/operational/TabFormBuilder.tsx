@@ -258,28 +258,6 @@ function FieldDetailDialog({ field, onSave, onClose }: { field: FieldForm; onSav
             <Textarea value={local.descricao} onChange={e => upd("descricao", e.target.value)} placeholder="Instruções para o executor..." maxLength={1000} />
           </div>
 
-          <div className="grid grid-cols-4 gap-3">
-            <div className="space-y-1.5">
-              <Label>Peso</Label>
-              <Input type="number" min={0} step={0.1} value={local.peso} onChange={e => upd("peso", +e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Nota Máxima</Label>
-              <Input type="number" min={0} value={local.nota_maxima} onChange={e => upd("nota_maxima", +e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Penalidade (%)</Label>
-              <Input type="number" min={0} max={100} value={local.penalidade_reprovacao} onChange={e => upd("penalidade_reprovacao", +e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Criticidade</Label>
-              <Select value={local.criticidade} onValueChange={v => upd("criticidade", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{CRITICIDADE_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-          </div>
-
           {/* Toggles */}
           <div className="grid grid-cols-2 gap-3">
             {[
