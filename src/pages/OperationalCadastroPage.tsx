@@ -24,6 +24,10 @@ interface TemplateForm {
   exigir_foto: boolean; exigir_video: boolean; exigir_observacao: boolean;
   gerar_contingencia_automatica: boolean; prazo_sla_correcao_horas: number; responsavel_contingencia_id: string;
   requer_aprovacao_gestor: boolean; bloquear_fechamento_com_contingencia: boolean;
+  executor_profile_id: string; executor_setor_id: string;
+  avaliador_profile_id: string; avaliador_setor_id: string;
+  avaliado_profile_id: string; avaliado_setor_id: string;
+  modo_pontuacao: string; destino_score: string;
 }
 
 const defaultForm: TemplateForm = {
@@ -34,6 +38,10 @@ const defaultForm: TemplateForm = {
   exigir_foto: false, exigir_video: false, exigir_observacao: false,
   gerar_contingencia_automatica: false, prazo_sla_correcao_horas: 24, responsavel_contingencia_id: "",
   requer_aprovacao_gestor: false, bloquear_fechamento_com_contingencia: false,
+  executor_profile_id: "", executor_setor_id: "",
+  avaliador_profile_id: "", avaliador_setor_id: "",
+  avaliado_profile_id: "", avaliado_setor_id: "",
+  modo_pontuacao: "pontuar_avaliado", destino_score: "individual",
 };
 
 // ---- Preview de recorrência ----
@@ -243,6 +251,14 @@ export default function OperationalCadastroPage() {
         responsavel_contingencia_id: form.responsavel_contingencia_id || null,
         requer_aprovacao_gestor: form.requer_aprovacao_gestor,
         bloquear_fechamento_com_contingencia: form.bloquear_fechamento_com_contingencia,
+        executor_profile_id: form.executor_profile_id || null,
+        executor_setor_id: form.executor_setor_id || null,
+        avaliador_profile_id: form.avaliador_profile_id || null,
+        avaliador_setor_id: form.avaliador_setor_id || null,
+        avaliado_profile_id: form.avaliado_profile_id || null,
+        avaliado_setor_id: form.avaliado_setor_id || null,
+        modo_pontuacao: form.modo_pontuacao,
+        destino_score: form.destino_score,
       };
 
       let templateId: string;
@@ -323,6 +339,14 @@ export default function OperationalCadastroPage() {
       responsavel_contingencia_id: t.responsavel_contingencia_id || "",
       requer_aprovacao_gestor: t.requer_aprovacao_gestor || false,
       bloquear_fechamento_com_contingencia: t.bloquear_fechamento_com_contingencia || false,
+      executor_profile_id: t.executor_profile_id || "",
+      executor_setor_id: t.executor_setor_id || "",
+      avaliador_profile_id: t.avaliador_profile_id || "",
+      avaliador_setor_id: t.avaliador_setor_id || "",
+      avaliado_profile_id: t.avaliado_profile_id || "",
+      avaliado_setor_id: t.avaliado_setor_id || "",
+      modo_pontuacao: t.modo_pontuacao || "pontuar_avaliado",
+      destino_score: t.destino_score || "individual",
     });
 
     // Load steps
@@ -449,13 +473,14 @@ export default function OperationalCadastroPage() {
           <DialogHeader><DialogTitle>{editingId ? "Editar Rotina" : "Nova Rotina"}</DialogTitle></DialogHeader>
           <form onSubmit={e => { e.preventDefault(); upsert.mutate(); }}>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="w-full mb-4">
-                <TabsTrigger value="geral" className="flex-1">Geral</TabsTrigger>
-                <TabsTrigger value="recorrencia" className="flex-1">Recorrência</TabsTrigger>
-                <TabsTrigger value="evidencias" className="flex-1">Evidências</TabsTrigger>
-                {form.tipo_execucao === "etapas" && <TabsTrigger value="etapas" className="flex-1">Etapas</TabsTrigger>}
-                {form.tipo_execucao === "checklist_inspecao" && <TabsTrigger value="checklist" className="flex-1">Checklist</TabsTrigger>}
-                <TabsTrigger value="contingencia" className="flex-1">Contingência</TabsTrigger>
+              <TabsList className="w-full mb-4 flex-wrap h-auto gap-1">
+                <TabsTrigger value="geral" className="flex-1 min-w-[60px]">Geral</TabsTrigger>
+                <TabsTrigger value="responsaveis" className="flex-1 min-w-[80px]">Responsáveis</TabsTrigger>
+                <TabsTrigger value="recorrencia" className="flex-1 min-w-[80px]">Recorrência</TabsTrigger>
+                <TabsTrigger value="evidencias" className="flex-1 min-w-[70px]">Evidências</TabsTrigger>
+                {form.tipo_execucao === "etapas" && <TabsTrigger value="etapas" className="flex-1 min-w-[60px]">Etapas</TabsTrigger>}
+                {form.tipo_execucao === "checklist_inspecao" && <TabsTrigger value="checklist" className="flex-1 min-w-[70px]">Checklist</TabsTrigger>}
+                <TabsTrigger value="contingencia" className="flex-1 min-w-[80px]">Contingência</TabsTrigger>
               </TabsList>
 
               {/* GERAL */}
@@ -506,6 +531,102 @@ export default function OperationalCadastroPage() {
                     <Label>Tolerância (min)</Label>
                     <Input type="number" min={0} value={form.tolerancia_minutos} onChange={e => set("tolerancia_minutos", +e.target.value)} />
                   </div>
+                </div>
+              </TabsContent>
+
+              {/* RESPONSÁVEIS */}
+              <TabsContent value="responsaveis" className="space-y-4">
+                <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-4">
+                  <p className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Executor (quem executa a tarefa)</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label>Executor (Colaborador)</Label>
+                      <Select value={form.executor_profile_id} onValueChange={v => set("executor_profile_id", v)}>
+                        <SelectTrigger><SelectValue placeholder="Mesmo do Responsável" /></SelectTrigger>
+                        <SelectContent>{colaboradores.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Executor (Setor)</Label>
+                      <Select value={form.executor_setor_id} onValueChange={v => set("executor_setor_id", v)}>
+                        <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                        <SelectContent>{setores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-4">
+                  <p className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Avaliador (quem audita / inspeciona)</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label>Avaliador (Colaborador)</Label>
+                      <Select value={form.avaliador_profile_id} onValueChange={v => set("avaliador_profile_id", v)}>
+                        <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                        <SelectContent>{colaboradores.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Avaliador (Setor)</Label>
+                      <Select value={form.avaliador_setor_id} onValueChange={v => set("avaliador_setor_id", v)}>
+                        <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                        <SelectContent>{setores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-4">
+                  <p className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Avaliado / Pontuado (quem recebe a nota)</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label>Avaliado (Colaborador)</Label>
+                      <Select value={form.avaliado_profile_id} onValueChange={v => set("avaliado_profile_id", v)}>
+                        <SelectTrigger><SelectValue placeholder="Mesmo do Executor" /></SelectTrigger>
+                        <SelectContent>{colaboradores.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Avaliado (Setor)</Label>
+                      <Select value={form.avaliado_setor_id} onValueChange={v => set("avaliado_setor_id", v)}>
+                        <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                        <SelectContent>{setores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-4">
+                  <p className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Modo de Pontuação</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label>Quem pontuar</Label>
+                      <Select value={form.modo_pontuacao} onValueChange={v => set("modo_pontuacao", v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pontuar_executor">Somente Executor</SelectItem>
+                          <SelectItem value="pontuar_avaliado">Somente Avaliado</SelectItem>
+                          <SelectItem value="pontuar_ambos">Ambos (Executor + Avaliado)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Destino do Score</Label>
+                      <Select value={form.destino_score} onValueChange={v => set("destino_score", v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="individual">Média Individual</SelectItem>
+                          <SelectItem value="setor">Média Setorial</SelectItem>
+                          <SelectItem value="ambos">Ambos</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <p className="text-caption text-muted-foreground">
+                    {form.modo_pontuacao === "pontuar_executor" && "O score será atribuído apenas ao executor da tarefa."}
+                    {form.modo_pontuacao === "pontuar_avaliado" && "O score será atribuído ao avaliado. Não conformidades penalizam imediatamente e permanentemente."}
+                    {form.modo_pontuacao === "pontuar_ambos" && "Executor recebe score de execução. Avaliado recebe score de conformidade. Não conformidades penalizam o avaliado permanentemente."}
+                  </p>
                 </div>
               </TabsContent>
 
