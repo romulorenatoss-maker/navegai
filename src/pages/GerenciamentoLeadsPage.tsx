@@ -561,10 +561,16 @@ export default function GerenciamentoLeadsPage() {
                   aria-label="Selecionar todos"
                 />
               </TableHead>
-              <TableHead>Nome</TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => { if (sortColumn === "nome") { setSortAsc(!sortAsc); } else { setSortColumn("nome"); setSortAsc(true); } setPage(0); }}>
+                <span className="flex items-center gap-1">Nome {sortColumn === "nome" ? (sortAsc ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 text-muted-foreground/50" />}</span>
+              </TableHead>
               <TableHead className="w-40">Status</TableHead>
-              <TableHead className="w-36">Data Criação</TableHead>
-              <TableHead className="w-44">Responsável</TableHead>
+              <TableHead className="w-36 cursor-pointer select-none" onClick={() => { if (sortColumn === "created_at") { setSortAsc(!sortAsc); } else { setSortColumn("created_at"); setSortAsc(false); } setPage(0); }}>
+                <span className="flex items-center gap-1">Data Criação {sortColumn === "created_at" ? (sortAsc ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 text-muted-foreground/50" />}</span>
+              </TableHead>
+              <TableHead className="w-44 cursor-pointer select-none" onClick={() => { if (sortColumn === "responsavel_id") { setSortAsc(!sortAsc); } else { setSortColumn("responsavel_id"); setSortAsc(true); } setPage(0); }}>
+                <span className="flex items-center gap-1">Responsável {sortColumn === "responsavel_id" ? (sortAsc ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 text-muted-foreground/50" />}</span>
+              </TableHead>
               <TableHead className="w-36">Campanha</TableHead>
               <TableHead className="w-12"></TableHead>
             </TableRow>
