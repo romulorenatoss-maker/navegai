@@ -12,7 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Loader2, Search, Send, Filter, ChevronLeft, ChevronRight, CheckSquare, Trash2, Archive } from "lucide-react";
+import { Loader2, Search, Send, Filter, ChevronLeft, ChevronRight, CheckSquare, Trash2, Archive, Eye } from "lucide-react";
+import LeadPostCaptureDialog from "@/components/LeadPostCaptureDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -88,6 +89,7 @@ export default function GerenciamentoLeadsPage() {
   const [deleting, setDeleting] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [sendProgress, setSendProgress] = useState<{ current: number; total: number } | null>(null);
+  const [viewLead, setViewLead] = useState<{ id: string; nome: string } | null>(null);
 
   // ─── Server-side paginated query ─────────────────
   const { data: queryResult, isLoading } = useQuery({
@@ -560,18 +562,19 @@ export default function GerenciamentoLeadsPage() {
               <TableHead className="w-36">Data Criação</TableHead>
               <TableHead className="w-44">Responsável</TableHead>
               <TableHead className="w-36">Campanha</TableHead>
+              <TableHead className="w-12"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-10">
+                <TableCell colSpan={7} className="text-center py-10">
                   <Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground" />
                 </TableCell>
               </TableRow>
             ) : leads.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                   Nenhum lead encontrado
                 </TableCell>
               </TableRow>
@@ -594,6 +597,11 @@ export default function GerenciamentoLeadsPage() {
                   </TableCell>
                   <TableCell className="text-sm">
                     {lead.campanha_id ? (campanhasMap[lead.campanha_id] || "—") : <span className="text-muted-foreground">—</span>}
+                  </TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setViewLead({ id: lead.id, nome: lead.nome })} title="Ver histórico">
+                      <Eye className="w-3.5 h-3.5 text-muted-foreground" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))
@@ -630,6 +638,14 @@ export default function GerenciamentoLeadsPage() {
           </div>
         </div>
       </Card>
+
+      <LeadPostCaptureDialog
+        open={!!viewLead}
+        onOpenChange={(open) => { if (!open) setViewLead(null); }}
+        leadId={viewLead?.id || null}
+        leadName={viewLead?.nome || ""}
+        onGoToLead={() => setViewLead(null)}
+      />
     </div>
   );
 }
