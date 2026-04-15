@@ -494,11 +494,39 @@ export default function OperationalExecucaoPage() {
           </div>
 
           {isEditable && selectedAssignment?.status !== "pendente" && (
-            <div className="border-t border-border p-3 flex items-center gap-2 bg-card safe-area-bottom">
+            <div className="border-t border-border p-3 flex items-center gap-2 bg-card safe-area-bottom flex-wrap">
               <Button type="button" variant="outline" size="sm" onClick={handleSaveDraft} disabled={!exec.dirty}>
                 <Save className="w-3.5 h-3.5 mr-1" /> Rascunho
               </Button>
               <div className="flex-1" />
+              {needsAdminReopen ? (
+                <Button type="button" size="sm" variant="outline" onClick={async () => {
+                  try {
+                    const prevStatus = selectedAssignment.status;
+                    await (supabase as any).from("operational_assignments").update({
+                      status: "em_andamento",
+                      fim_em: null,
+                      avaliador_inicio_em: null,
+                      avaliador_fim_em: null,
+                    }).eq("id", selectedAssignment.id);
+                    await (supabase as any).from("operational_audit_trail").insert({
+                      assignment_id: selectedAssignment.id,
+                      tipo_evento: "admin_reabriu_para_edicao",
+                      executado_por: profile?.id,
+                      motivo: "Edição administrativa",
+                      dados_anteriores: { status: prevStatus },
+                      dados_novos: { status: "em_andamento" },
+                    });
+                    toast.success("Tarefa reaberta para edição");
+                    setSelectedAssignment({ ...selectedAssignment, status: "em_andamento" });
+                    qc.invalidateQueries({ queryKey: ["exec_assignments"] });
+                  } catch (e: any) {
+                    toast.error("Erro ao reabrir: " + e.message);
+                  }
+                }}>
+                  <RotateCcw className="w-3.5 h-3.5 mr-1" /> Reabrir para Edição
+                </Button>
+              ) : null}
               <Button type="button" size="sm" onClick={handleSubmit} disabled={exec.isSubmitting}>
                 <Send className="w-3.5 h-3.5 mr-1" /> {exec.isSubmitting ? "Enviando..." : "Enviar para Avaliação"}
               </Button>
