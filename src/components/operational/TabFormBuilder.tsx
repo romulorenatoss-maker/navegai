@@ -345,26 +345,33 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
                   <Label className="text-caption">Tipo de evidência aceito</Label>
                   <div className="flex gap-2">
                     {[
-                      { tipo: "foto", label: "Foto", icon: Camera },
-                      { tipo: "video", label: "Vídeo", icon: FileVideo },
-                      { tipo: "arquivo", label: "Arquivo", icon: FileText },
+                      { tipo: "foto", label: "Foto", icon: Camera, desc: "Executor tira ou envia foto como prova" },
+                      { tipo: "video", label: "Vídeo", icon: FileVideo, desc: "Executor grava ou envia vídeo" },
+                      { tipo: "arquivo", label: "Arquivo", icon: FileText, desc: "Executor anexa PDF, planilha ou doc" },
                     ].map(ev => (
                       <button key={ev.tipo} type="button" onClick={() => upd("tipo_evidencia", ev.tipo)}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded text-xs font-medium border transition-colors ${
+                        className={`flex flex-col items-center gap-1 px-3 py-2 rounded text-xs font-medium border transition-colors ${
                           local.tipo_evidencia === ev.tipo
                             ? "bg-primary/10 border-primary text-primary"
                             : "bg-card border-border text-muted-foreground hover:bg-muted"
                         }`}>
-                        <ev.icon className="w-3.5 h-3.5" /> {ev.label}
+                        <ev.icon className="w-4 h-4" />
+                        {ev.label}
                       </button>
                     ))}
                     <button type="button" onClick={() => upd("tipo_evidencia", "qualquer")}
-                      className={`flex items-center gap-1.5 px-3 py-2 rounded text-xs font-medium border transition-colors ${
+                      className={`flex flex-col items-center gap-1 px-3 py-2 rounded text-xs font-medium border transition-colors ${
                         local.tipo_evidencia === "qualquer"
                           ? "bg-primary/10 border-primary text-primary"
                           : "bg-card border-border text-muted-foreground hover:bg-muted"
                       }`}>Qualquer</button>
                   </div>
+                  <p className="text-caption text-muted-foreground">
+                    {local.tipo_evidencia === "foto" && "O executor precisará tirar ou enviar uma foto como comprovação."}
+                    {local.tipo_evidencia === "video" && "O executor precisará gravar ou enviar um vídeo como comprovação."}
+                    {local.tipo_evidencia === "arquivo" && "O executor precisará anexar um documento (PDF, planilha, etc)."}
+                    {local.tipo_evidencia === "qualquer" && "O executor pode enviar qualquer tipo de arquivo como comprovação."}
+                  </p>
                 </div>
               )}
             </div>
