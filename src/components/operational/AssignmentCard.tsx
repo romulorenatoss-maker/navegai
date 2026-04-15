@@ -136,4 +136,5 @@ export function AssignmentCard({ assignment: a, onClick }: Props) {
         )}
       </div>
     </div>
-  );
+}
+
