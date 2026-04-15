@@ -986,8 +986,9 @@ export default function DashboardPage() {
           </div>
         </motion.div>
       )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-4">
-            {sectorPendingSummary.map(s => (
+    </div>
+  );
+}
               <div key={s.setor_id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
                 <span className="text-body font-medium text-foreground">{s.setor_nome}</span>
                 <span className={cn(
