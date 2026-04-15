@@ -61,7 +61,7 @@ export default function OperationalExecucaoPage() {
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [filterResponsavel, setFilterResponsavel] = useState<string>("__all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [openAccordion, setOpenAccordion] = useState<string | null>("pendentes");
+  const [openAccordion, setOpenAccordion] = useState<string | null>("hoje");
 
   const today = new Date().toISOString().slice(0, 10);
 
