@@ -99,6 +99,107 @@ export function useApprovalFlow(assignmentId: string | null) {
     enabled: !!assignmentId,
   });
 
+  // Load existing approval answers
+  const { data: existingApprovalAnswers = [] } = useQuery({
+    queryKey: ["approval_answers", assignmentId],
+    queryFn: async () => {
+      if (!assignmentId) return [];
+      const { data, error } = await (supabase as any).from("operational_approval_answers")
+        .select("*").eq("assignment_id", assignmentId);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!assignmentId,
+  });
+
+  // Load contingency resolution logs for timeline
+  const { data: contingencyLogs = [] } = useQuery({
+    queryKey: ["approval_contingency_logs", assignmentId],
+    queryFn: async () => {
+      if (!assignmentId) return [];
+      // Get contingency IDs for this assignment
+      const contIds = contingencies.map((c: any) => c.id);
+      if (contIds.length === 0) return [];
+      const { data, error } = await (supabase as any).from("operational_contingency_resolution_logs")
+        .select("*, executor:profiles!operational_contingency_resolution_logs_executado_por_fkey(nome)")
+        .in("contingency_id", contIds).order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!assignmentId && contingencies.length > 0,
+  });
+
+  // Hydrate approver answers from existing
+  useState(() => {
+    // This will be handled via useEffect below
+  });
+
+  // Check pending contingencies
+  const pendingContingencies = useMemo(() =>
+    contingencies.filter((c: any) => !["validada", "descartada"].includes(c.status)),
+    [contingencies]
+  );
+
+  const canAnswerApproverQuestions = pendingContingencies.length === 0;
+
+  // Update approver answer draft
+  const updateApproverAnswer = useCallback((fieldId: string, patch: Partial<ApproverAnswerDraft>) => {
+    setApproverAnswers(prev => ({
+      ...prev,
+      [fieldId]: {
+        ...prev[fieldId],
+        field_id: fieldId,
+        resposta: prev[fieldId]?.resposta ?? "conforme",
+        observacao: prev[fieldId]?.observacao ?? "",
+        peso: prev[fieldId]?.peso ?? 1,
+        ...patch,
+      },
+    }));
+  }, []);
+
+  // Save approver answers
+  const saveApproverAnswers = useMutation({
+    mutationFn: async (fields: SnapshotField[]) => {
+      if (!profile?.id || !assignmentId) throw new Error("Não autenticado");
+      if (!canAnswerApproverQuestions) throw new Error("Existem contingências pendentes. Resolva-as antes de responder.");
+
+      const approverFields = fields.filter(f => f.aprovador_pergunta);
+      for (const f of approverFields) {
+        const draft = approverAnswers[f.id];
+        if (!draft) continue;
+
+        const payload = {
+          assignment_id: assignmentId,
+          field_id: f.id,
+          resposta: draft.resposta,
+          observacao: draft.observacao || null,
+          peso: f.aprovador_peso || 1,
+          respondido_por: profile.id,
+          respondido_em: new Date().toISOString(),
+        };
+
+        const existing = existingApprovalAnswers.find((a: any) => a.field_id === f.id);
+        if (existing) {
+          await (supabase as any).from("operational_approval_answers").update(payload).eq("id", existing.id);
+        } else {
+          await (supabase as any).from("operational_approval_answers").insert(payload);
+        }
+      }
+
+      await (supabase as any).from("operational_audit_trail").insert({
+        assignment_id: assignmentId,
+        tipo_evento: "aprovador_respondeu_perguntas",
+        executado_por: profile.id,
+        dados_novos: { total_respostas: Object.keys(approverAnswers).length },
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["approval_answers"] });
+      toast.success("Respostas do aprovador salvas!");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   // Calculate score breakdown from snapshot + reviews
   const calculateBreakdown = useCallback((assignment: any, snapshotFields: SnapshotField[]): ScoreBreakdown => {
     // Executor score from assignment columns
