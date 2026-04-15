@@ -116,7 +116,7 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
   const isEditable = !disabled && field.editavel_por.includes(userRole);
   const isReturned = review?.devolvido === true;
   const error = validateField(field, answer);
-  const val = answer || {};
+  const val: FieldAnswer = answer || { field_id: field.id };
 
   const update = (patch: Partial<FieldAnswer>) => onChange(field.id, patch);
 
