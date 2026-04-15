@@ -1135,6 +1135,7 @@ export type Database = {
       }
       operational_assignments: {
         Row: {
+          aprovador_id: string | null
           avaliado_id: string | null
           avaliador_fim_em: string | null
           avaliador_id: string | null
@@ -1153,12 +1154,17 @@ export type Database = {
           score_avaliado: number | null
           score_avaliador: number | null
           score_executor: number | null
+          setor_avaliado_id: string | null
+          setor_avaliador_id: string | null
+          setor_executor_id: string | null
           status: string
           template_id: string
           tempo_gasto_minutos: number | null
           updated_at: string
+          validador_contingencia_id: string | null
         }
         Insert: {
+          aprovador_id?: string | null
           avaliado_id?: string | null
           avaliador_fim_em?: string | null
           avaliador_id?: string | null
@@ -1177,12 +1183,17 @@ export type Database = {
           score_avaliado?: number | null
           score_avaliador?: number | null
           score_executor?: number | null
+          setor_avaliado_id?: string | null
+          setor_avaliador_id?: string | null
+          setor_executor_id?: string | null
           status?: string
           template_id: string
           tempo_gasto_minutos?: number | null
           updated_at?: string
+          validador_contingencia_id?: string | null
         }
         Update: {
+          aprovador_id?: string | null
           avaliado_id?: string | null
           avaliador_fim_em?: string | null
           avaliador_id?: string | null
@@ -1201,12 +1212,23 @@ export type Database = {
           score_avaliado?: number | null
           score_avaliador?: number | null
           score_executor?: number | null
+          setor_avaliado_id?: string | null
+          setor_avaliador_id?: string | null
+          setor_executor_id?: string | null
           status?: string
           template_id?: string
           tempo_gasto_minutos?: number | null
           updated_at?: string
+          validador_contingencia_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "operational_assignments_aprovador_id_fkey"
+            columns: ["aprovador_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "operational_assignments_avaliado_id_fkey"
             columns: ["avaliado_id"]
@@ -1229,10 +1251,38 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "operational_assignments_setor_avaliado_id_fkey"
+            columns: ["setor_avaliado_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_assignments_setor_avaliador_id_fkey"
+            columns: ["setor_avaliador_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_assignments_setor_executor_id_fkey"
+            columns: ["setor_executor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "operational_assignments_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "operational_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_assignments_validador_contingencia_id_fkey"
+            columns: ["validador_contingencia_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1613,7 +1663,9 @@ export type Database = {
           assignment_id: string
           conformidade: number | null
           created_at: string
+          detalhe_calculo: Json | null
           id: string
+          peso_item: number | null
           pontualidade: number | null
           profile_id: string
           qualidade_evidencia: number | null
@@ -1627,7 +1679,9 @@ export type Database = {
           assignment_id: string
           conformidade?: number | null
           created_at?: string
+          detalhe_calculo?: Json | null
           id?: string
+          peso_item?: number | null
           pontualidade?: number | null
           profile_id: string
           qualidade_evidencia?: number | null
@@ -1641,7 +1695,9 @@ export type Database = {
           assignment_id?: string
           conformidade?: number | null
           created_at?: string
+          detalhe_calculo?: Json | null
           id?: string
+          peso_item?: number | null
           pontualidade?: number | null
           profile_id?: string
           qualidade_evidencia?: number | null
@@ -1689,8 +1745,11 @@ export type Database = {
           exige_observacao: boolean | null
           gera_contingencia_se_reprovado: boolean | null
           id: string
+          nota_maxima: number
           ordem: number
+          penalidade_reprovacao: number
           pergunta: string
+          peso: number
           template_id: string
           tipo_resposta: string
         }
@@ -1700,8 +1759,11 @@ export type Database = {
           exige_observacao?: boolean | null
           gera_contingencia_se_reprovado?: boolean | null
           id?: string
+          nota_maxima?: number
           ordem?: number
+          penalidade_reprovacao?: number
           pergunta: string
+          peso?: number
           template_id: string
           tipo_resposta?: string
         }
@@ -1711,8 +1773,11 @@ export type Database = {
           exige_observacao?: boolean | null
           gera_contingencia_se_reprovado?: boolean | null
           id?: string
+          nota_maxima?: number
           ordem?: number
+          penalidade_reprovacao?: number
           pergunta?: string
+          peso?: number
           template_id?: string
           tipo_resposta?: string
         }
@@ -1736,6 +1801,7 @@ export type Database = {
           id: string
           nome: string
           ordem: number
+          peso: number
           prazo_limite_minutos: number | null
           template_id: string
         }
@@ -1748,6 +1814,7 @@ export type Database = {
           id?: string
           nome: string
           ordem?: number
+          peso?: number
           prazo_limite_minutos?: number | null
           template_id: string
         }
@@ -1760,6 +1827,7 @@ export type Database = {
           id?: string
           nome?: string
           ordem?: number
+          peso?: number
           prazo_limite_minutos?: number | null
           template_id?: string
         }
@@ -1775,6 +1843,8 @@ export type Database = {
       }
       operational_templates: {
         Row: {
+          aprovador_profile_id: string | null
+          aprovador_setor_id: string | null
           ativo: boolean | null
           avaliado_profile_id: string | null
           avaliado_setor_id: string | null
@@ -1810,8 +1880,12 @@ export type Database = {
           tipo_execucao: string
           tolerancia_minutos: number | null
           updated_at: string
+          validador_contingencia_profile_id: string | null
+          validador_contingencia_setor_id: string | null
         }
         Insert: {
+          aprovador_profile_id?: string | null
+          aprovador_setor_id?: string | null
           ativo?: boolean | null
           avaliado_profile_id?: string | null
           avaliado_setor_id?: string | null
@@ -1847,8 +1921,12 @@ export type Database = {
           tipo_execucao?: string
           tolerancia_minutos?: number | null
           updated_at?: string
+          validador_contingencia_profile_id?: string | null
+          validador_contingencia_setor_id?: string | null
         }
         Update: {
+          aprovador_profile_id?: string | null
+          aprovador_setor_id?: string | null
           ativo?: boolean | null
           avaliado_profile_id?: string | null
           avaliado_setor_id?: string | null
@@ -1884,8 +1962,24 @@ export type Database = {
           tipo_execucao?: string
           tolerancia_minutos?: number | null
           updated_at?: string
+          validador_contingencia_profile_id?: string | null
+          validador_contingencia_setor_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "operational_templates_aprovador_profile_id_fkey"
+            columns: ["aprovador_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_templates_aprovador_setor_id_fkey"
+            columns: ["aprovador_setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "operational_templates_avaliado_profile_id_fkey"
             columns: ["avaliado_profile_id"]
@@ -1945,6 +2039,20 @@ export type Database = {
           {
             foreignKeyName: "operational_templates_setor_id_fkey"
             columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_templates_validador_contingencia_profile_id_fkey"
+            columns: ["validador_contingencia_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_templates_validador_contingencia_setor_id_fkey"
+            columns: ["validador_contingencia_setor_id"]
             isOneToOne: false
             referencedRelation: "setores"
             referencedColumns: ["id"]
