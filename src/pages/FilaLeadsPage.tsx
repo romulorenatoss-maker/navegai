@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -72,12 +73,16 @@ export default function FilaLeadsPage() {
   const [activeTab, setActiveTab] = useState("fila");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // ─── Pagination state (10 per page) ─────
+  // ─── Pagination state ─────
   const PAGE_SIZE = 10;
+  const FILA_PAGE_SIZE = 20;
   const [filaPage, setFilaPage] = useState(1);
   const [capturaPage, setCapturaPage] = useState(1);
   const [tarefaPage, setTarefaPage] = useState(1);
   const [notifPage, setNotifPage] = useState(1);
+
+  // ─── Fila bulk selection ─────
+  const [selectedFilaIds, setSelectedFilaIds] = useState<Set<string>>(new Set());
 
   // Filters
   const [filterStatus, setFilterStatus] = useState("todos");
@@ -635,11 +640,13 @@ export default function FilaLeadsPage() {
   const totalTarefasAtrasadas = sortedTarefas.filter((t: any) => t.status === "atrasado" || isTarefaExpirada(t)).length;
 
   // ─── Pagination helper ─────
-  const paginate = <T,>(arr: T[], page: number) => arr.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const totalPages = (total: number) => Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const paginateWithSize = <T,>(arr: T[], page: number, size: number) => arr.slice((page - 1) * size, page * size);
+  const paginate = <T,>(arr: T[], page: number) => paginateWithSize(arr, page, PAGE_SIZE);
+  const totalPagesWithSize = (total: number, size: number) => Math.max(1, Math.ceil(total / size));
+  const totalPages = (total: number) => totalPagesWithSize(total, PAGE_SIZE);
 
-  const PaginationBar = ({ page, setPage, total }: { page: number; setPage: (p: number) => void; total: number }) => {
-    const tp = totalPages(total);
+  const PaginationBar = ({ page, setPage, total, pageSize = PAGE_SIZE }: { page: number; setPage: (p: number) => void; total: number; pageSize?: number }) => {
+    const tp = totalPagesWithSize(total, pageSize);
     if (tp <= 1) return null;
     return (
       <div className="flex items-center justify-between px-4 py-2 border-t">
@@ -762,6 +769,24 @@ export default function FilaLeadsPage() {
       await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "lead_reaberto_captura", descricao: "Lead reaberto e enviado para Fila de Captura." });
     },
     onSuccess: () => { toast.success("Lead reaberto e enviado para Fila de Captura!"); setActiveTab("captura"); queryClient.invalidateQueries({ queryKey: ["fila-leads"] }); queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] }); },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const bulkSendToCapturaMutation = useMutation({
+    mutationFn: async (leadIds: string[]) => {
+      if (!profile) throw new Error("Perfil não encontrado.");
+      for (const leadId of leadIds) {
+        await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", leadId).in("status", ["pendente", "atrasado"]);
+        await supabase.from("leads").update({ status_lead: "fila_captura", responsavel_id: null, reserved_by: null, reserved_at: null, notificacao_vista: false } as any).eq("id", leadId);
+        await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "lead_reaberto_captura", descricao: "Lead reenviado para Fila de Captura pelo gerenciador." });
+      }
+    },
+    onSuccess: () => {
+      toast.success(`${selectedFilaIds.size} lead(s) enviado(s) para Fila de Captura!`);
+      setSelectedFilaIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
+    },
     onError: (err: any) => toast.error(err.message),
   });
 
@@ -1088,6 +1113,22 @@ export default function FilaLeadsPage() {
             </CardContent>
           </Card>
 
+          {/* Bulk action bar */}
+          {selectedFilaIds.size > 0 && (
+            <Card>
+              <CardContent className="p-3 flex items-center gap-3">
+                <Badge variant="secondary" className="text-xs">{selectedFilaIds.size} selecionado(s)</Badge>
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setSelectedFilaIds(new Set())}>
+                  <XCircle className="w-3.5 h-3.5" /> Limpar Seleção
+                </Button>
+                <Button size="sm" className="h-7 text-xs gap-1" onClick={() => bulkSendToCapturaMutation.mutate([...selectedFilaIds])} disabled={bulkSendToCapturaMutation.isPending}>
+                  {bulkSendToCapturaMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                  Enviar para Fila de Captura
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Queue Table */}
           <Card>
             <CardContent className="p-0 overflow-auto max-h-[calc(100vh-360px)]">
@@ -1100,6 +1141,22 @@ export default function FilaLeadsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-10">
+                          <Checkbox
+                            checked={(() => {
+                              const pageIds = paginateWithSize(filteredQueue, filaPage, FILA_PAGE_SIZE).map(i => i.lead.id);
+                              return pageIds.length > 0 && pageIds.every(id => selectedFilaIds.has(id));
+                            })()}
+                            onCheckedChange={(checked) => {
+                              const pageIds = paginateWithSize(filteredQueue, filaPage, FILA_PAGE_SIZE).map(i => i.lead.id);
+                              setSelectedFilaIds(prev => {
+                                const next = new Set(prev);
+                                pageIds.forEach(id => checked ? next.add(id) : next.delete(id));
+                                return next;
+                              });
+                            }}
+                          />
+                        </TableHead>
                         <TableHead className="w-8">#</TableHead>
                         <TableHead className="cursor-pointer select-none" onClick={() => toggleFilaSort("nome")}><span className="flex items-center">Lead<SortIcon col="nome" /></span></TableHead>
                         <TableHead>Telefone(s)</TableHead>
@@ -1127,9 +1184,9 @@ export default function FilaLeadsPage() {
                             return filaSortDir === "asc" ? cmp : -cmp;
                           });
                         }
-                        const paged = paginate(sorted, filaPage);
+                        const paged = paginateWithSize(sorted, filaPage, FILA_PAGE_SIZE);
                         return paged.map((item, idx) => {
-                        const globalIdx = (filaPage - 1) * PAGE_SIZE + idx;
+                        const globalIdx = (filaPage - 1) * FILA_PAGE_SIZE + idx;
                         const phones = item.contatos.filter(c => c.tipo_contato === "telefone");
                         const campanha = getCampanhaNome(item.lead);
                         const cidade = getCidadeNome(item.lead);
@@ -1146,6 +1203,18 @@ export default function FilaLeadsPage() {
                         }
                         return (
                           <TableRow key={item.lead.id} className={rowBg}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedFilaIds.has(item.lead.id)}
+                                onCheckedChange={(checked) => {
+                                  setSelectedFilaIds(prev => {
+                                    const next = new Set(prev);
+                                    checked ? next.add(item.lead.id) : next.delete(item.lead.id);
+                                    return next;
+                                  });
+                                }}
+                              />
+                            </TableCell>
                              <TableCell className="text-xs text-muted-foreground font-mono">{globalIdx + 1}</TableCell>
                             <TableCell>
                               <div className="flex flex-col gap-0.5">
@@ -1248,7 +1317,7 @@ export default function FilaLeadsPage() {
                 </div>
               )}
             </CardContent>
-            <PaginationBar page={filaPage} setPage={setFilaPage} total={filteredQueue.length} />
+            <PaginationBar page={filaPage} setPage={setFilaPage} total={filteredQueue.length} pageSize={FILA_PAGE_SIZE} />
           </Card>
         </TabsContent>
 
