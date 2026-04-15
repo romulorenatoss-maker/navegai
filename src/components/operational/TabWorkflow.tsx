@@ -22,7 +22,7 @@ export function TabWorkflow({ form, set, fields = [] }: Props) {
   ];
 
   const totalPenalidades = autoQuestions.reduce((s, q) => s + q.pontos, 0);
-  const totalCampos = uniqueFields.reduce((s, f) => s + (f.impacta_score ? f.peso * f.nota_maxima : 0), 0);
+  const totalCampos = uniqueFields.reduce((s, f) => s + (f.impacta_score ? f.nota_maxima : 0), 0);
   const totalGeral = totalCampos + totalPenalidades;
 
   return (
@@ -113,8 +113,6 @@ export function TabWorkflow({ form, set, fields = [] }: Props) {
                 <TableHead className="w-[40px] text-center">#</TableHead>
                 <TableHead>Pergunta / Campo</TableHead>
                 <TableHead className="w-[100px] text-center">Tipo</TableHead>
-                <TableHead className="w-[80px] text-center">Peso</TableHead>
-                <TableHead className="w-[90px] text-center">Nota Máx.</TableHead>
                 <TableHead className="w-[100px] text-right">Pontos</TableHead>
               </TableRow>
             </TableHeader>
@@ -127,15 +125,13 @@ export function TabWorkflow({ form, set, fields = [] }: Props) {
                   <TableCell className="text-center">
                     <Badge variant="destructive" className="text-xs">Automática</Badge>
                   </TableCell>
-                  <TableCell className="text-center text-sm">—</TableCell>
-                  <TableCell className="text-center text-sm">—</TableCell>
                   <TableCell className="text-right text-sm font-medium text-destructive">-{q.pontos}</TableCell>
                 </TableRow>
               ))}
 
               {form.habilitar_perguntas_automaticas && (
                 <TableRow className="bg-muted/30">
-                  <TableCell colSpan={5} className="text-xs font-medium text-right text-muted-foreground">Subtotal Penalidades</TableCell>
+                  <TableCell colSpan={3} className="text-xs font-medium text-right text-muted-foreground">Subtotal Penalidades</TableCell>
                   <TableCell className="text-right text-sm font-bold text-destructive">-{totalPenalidades}</TableCell>
                 </TableRow>
               )}
@@ -143,7 +139,7 @@ export function TabWorkflow({ form, set, fields = [] }: Props) {
               {/* 2) Campos do formulário na ordem original */}
               {uniqueFields.map((f, i) => {
                 const idx = (form.habilitar_perguntas_automaticas ? autoQuestions.length : 0) + i + 1;
-                const pontos = f.impacta_score ? f.peso * f.nota_maxima : 0;
+                const pontos = f.impacta_score ? f.nota_maxima : 0;
                 const hasApprover = !!f.aprovador_pergunta?.trim();
                 return (
                   <TableRow key={f.tempId}>
@@ -159,8 +155,6 @@ export function TabWorkflow({ form, set, fields = [] }: Props) {
                     <TableCell className="text-center">
                       <Badge variant={f.impacta_score ? "outline" : "secondary"} className="text-xs">{f.tipo}</Badge>
                     </TableCell>
-                    <TableCell className="text-center text-sm">{f.peso}</TableCell>
-                    <TableCell className="text-center text-sm">{f.nota_maxima}</TableCell>
                     <TableCell className="text-right text-sm font-medium">{pontos}</TableCell>
                   </TableRow>
                 );
@@ -168,14 +162,14 @@ export function TabWorkflow({ form, set, fields = [] }: Props) {
 
               {uniqueFields.length > 0 && (
                 <TableRow className="bg-muted/30">
-                  <TableCell colSpan={5} className="text-xs font-medium text-right text-muted-foreground">Subtotal Campos</TableCell>
+                  <TableCell colSpan={3} className="text-xs font-medium text-right text-muted-foreground">Subtotal Campos</TableCell>
                   <TableCell className="text-right text-sm font-bold">{totalCampos}</TableCell>
                 </TableRow>
               )}
             </TableBody>
             <TableFooter>
               <TableRow>
-                <TableCell colSpan={5} className="text-sm font-bold text-right">Pontos Totais</TableCell>
+                <TableCell colSpan={3} className="text-sm font-bold text-right">Pontos Totais</TableCell>
                 <TableCell className="text-right text-sm font-bold">{totalGeral}</TableCell>
               </TableRow>
             </TableFooter>
