@@ -248,6 +248,7 @@ export default function OperationalCadastroPage() {
       validador_contingencia_setor_id: t.validador_contingencia_setor_id || "",
       modo_pontuacao: t.modo_pontuacao || "pontuar_avaliado",
       destino_score: t.destino_score || "individual",
+      tipo_atribuicao_avaliado: t.tipo_atribuicao_avaliado || "individual",
       peso_recorrencia: t.peso_recorrencia ?? 1.0,
     });
 
