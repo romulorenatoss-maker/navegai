@@ -180,8 +180,13 @@ export default function OperationalExecucaoPage() {
   }, [visibleFields, exec.answers]);
 
   const isOwner = selectedAssignment?.responsavel_id === profile?.id;
-  const isEditable = selectedAssignment && ["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status) && (isOwner || isAdmin);
+  const isAdminEditing = isAdmin && selectedAssignment && !["nao_executada"].includes(selectedAssignment.status);
+  const isEditable = selectedAssignment && (
+    (["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status) && (isOwner || isAdmin)) ||
+    isAdminEditing
+  );
   const isDevolvida = selectedAssignment?.status === "devolvida";
+  const needsAdminReopen = isAdmin && selectedAssignment && ["aguardando_avaliacao", "aguardando_aprovacao", "concluida", "aprovada"].includes(selectedAssignment.status);
 
   const handleStart = () => {
     if (selectedAssignment) exec.startTask.mutate(selectedAssignment.id);
