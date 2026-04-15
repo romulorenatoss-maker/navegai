@@ -76,6 +76,18 @@ export default function OperationalAvaliacaoPage() {
     [snapshotFields, answersMap]
   );
 
+  // FIX #1: Use weighted score preview
+  const weightedScore = useMemo(() =>
+    review.weightedScorePreview(snapshotFields),
+    [review.weightedScorePreview, snapshotFields]
+  );
+
+  // FIX #5: Check review completeness
+  const reviewComplete = useMemo(() =>
+    review.isReviewComplete(visibleFields),
+    [review.isReviewComplete, visibleFields]
+  );
+
   const openReview = useCallback((a: any) => {
     setSelectedAssignment(a);
     setReviewDialogOpen(true);
@@ -99,25 +111,31 @@ export default function OperationalAvaliacaoPage() {
     if (selectedAssignment) review.startEvaluation.mutate(selectedAssignment.id);
   };
 
+  // FIX #2: devolver_total only marks already non-conforme as devolvido, does NOT touch unreviewed
   const handleDecision = (action: "aprovar" | "devolver_parcial" | "devolver_total" | "reprovar") => {
-    // For devolver_total, auto-mark all non-conforme fields as devolvido
     if (action === "devolver_total") {
       for (const f of visibleFields) {
-        if (review.reviewDrafts[f.id]?.conforme === null || review.reviewDrafts[f.id]?.conforme === undefined) {
-          review.updateReview(f.id, { conforme: false, devolvido: true });
-        } else if (review.reviewDrafts[f.id]?.conforme === false) {
+        const draft = review.reviewDrafts[f.id];
+        if (draft?.conforme === false) {
           review.updateReview(f.id, { devolvido: true });
         }
+        // Unreviewed fields (conforme === null) are LEFT UNTOUCHED
       }
     }
     setDecisionDialog({ open: true, action });
     setDecisionMotivo("");
   };
 
+  // FIX #6: Pass motivo to saveReviews
   const confirmDecision = () => {
     if (!decisionDialog.action || !selectedAssignment) return;
     review.saveReviews.mutate(
-      { assignment: selectedAssignment, fields: snapshotFields, action: decisionDialog.action },
+      {
+        assignment: selectedAssignment,
+        fields: snapshotFields,
+        action: decisionDialog.action,
+        motivo: decisionMotivo || undefined,
+      },
       {
         onSuccess: () => {
           setDecisionDialog({ open: false, action: null });
@@ -207,14 +225,14 @@ export default function OperationalAvaliacaoPage() {
                 </div>
                 <Progress value={reviewProgress} className="h-2" />
               </div>
-              {review.scorePreview && (
+              {weightedScore && (
                 <div className="text-right shrink-0">
-                  <p className="text-[10px] text-muted-foreground">Score Estimado</p>
-                  <p className={`text-lg font-bold ${review.scorePreview.scoreEstimado >= 80 ? "text-green-600" : review.scorePreview.scoreEstimado >= 50 ? "text-amber-600" : "text-red-600"}`}>
-                    {review.scorePreview.scoreEstimado}
+                  <p className="text-[10px] text-muted-foreground">Score Ponderado</p>
+                  <p className={`text-lg font-bold ${weightedScore.scoreEstimado >= 80 ? "text-green-600" : weightedScore.scoreEstimado >= 50 ? "text-amber-600" : "text-red-600"}`}>
+                    {weightedScore.scoreEstimado}
                   </p>
                   <p className="text-[10px] text-muted-foreground">
-                    ✓{review.scorePreview.conformes} ✗{review.scorePreview.naoConformes} ↺{review.scorePreview.devolvidos}
+                    ✓{weightedScore.conformes} ✗{weightedScore.naoConformes} ↺{weightedScore.devolvidos}
                   </p>
                 </div>
               )}
@@ -324,21 +342,33 @@ export default function OperationalAvaliacaoPage() {
             )}
           </div>
 
-          {/* Footer */}
+          {/* Footer - FIX #5: Disable actions when review is incomplete */}
           {isReviewable && selectedAssignment?.status !== "aguardando_avaliacao" && (
             <div className="border-t border-border p-3 bg-card safe-area-bottom">
+              {!reviewComplete && (
+                <p className="text-[10px] text-amber-600 mb-2 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" />
+                  Revise todos os campos obrigatórios antes de tomar uma decisão.
+                </p>
+              )}
               <div className="flex items-center gap-2 flex-wrap">
-                <Button variant="outline" size="sm" onClick={() => handleDecision("devolver_parcial")} className="text-amber-700 border-amber-300 hover:bg-amber-50">
+                <Button variant="outline" size="sm" onClick={() => handleDecision("devolver_parcial")}
+                  disabled={!reviewComplete}
+                  className="text-amber-700 border-amber-300 hover:bg-amber-50">
                   <RotateCcw className="w-3.5 h-3.5 mr-1" /> Devolver Parcial
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => handleDecision("devolver_total")} className="text-amber-700 border-amber-300 hover:bg-amber-50">
+                <Button variant="outline" size="sm" onClick={() => handleDecision("devolver_total")}
+                  disabled={!reviewComplete}
+                  className="text-amber-700 border-amber-300 hover:bg-amber-50">
                   <RotateCcw className="w-3.5 h-3.5 mr-1" /> Devolver Total
                 </Button>
                 <div className="flex-1" />
-                <Button variant="outline" size="sm" onClick={() => handleDecision("reprovar")} className="text-red-700 border-red-300 hover:bg-red-50">
+                <Button variant="outline" size="sm" onClick={() => handleDecision("reprovar")}
+                  disabled={!reviewComplete}
+                  className="text-red-700 border-red-300 hover:bg-red-50">
                   <XCircle className="w-3.5 h-3.5 mr-1" /> Reprovar
                 </Button>
-                <Button size="sm" onClick={() => handleDecision("aprovar")}>
+                <Button size="sm" onClick={() => handleDecision("aprovar")} disabled={!reviewComplete}>
                   <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Aprovar
                 </Button>
               </div>
@@ -365,7 +395,7 @@ export default function OperationalAvaliacaoPage() {
             </DialogDescription>
           </DialogHeader>
 
-          {(decisionDialog.action === "reprovar" || decisionDialog.action === "devolver_total") && (
+          {(decisionDialog.action === "reprovar" || decisionDialog.action === "devolver_total" || decisionDialog.action === "devolver_parcial") && (
             <div className="space-y-2">
               <Label className="text-sm">Justificativa</Label>
               <Textarea value={decisionMotivo} onChange={e => setDecisionMotivo(e.target.value)}
@@ -373,15 +403,15 @@ export default function OperationalAvaliacaoPage() {
             </div>
           )}
 
-          {review.scorePreview && (
+          {weightedScore && (
             <div className="bg-muted/50 rounded-lg p-3 text-sm">
               <p className="font-medium mb-1">Resumo da avaliação:</p>
               <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                <div><p className="text-green-600 font-semibold text-lg">{review.scorePreview.conformes}</p><p className="text-muted-foreground">Conformes</p></div>
-                <div><p className="text-red-600 font-semibold text-lg">{review.scorePreview.naoConformes}</p><p className="text-muted-foreground">Não Conformes</p></div>
-                <div><p className="text-amber-600 font-semibold text-lg">{review.scorePreview.devolvidos}</p><p className="text-muted-foreground">Devolvidos</p></div>
+                <div><p className="text-green-600 font-semibold text-lg">{weightedScore.conformes}</p><p className="text-muted-foreground">Conformes</p></div>
+                <div><p className="text-red-600 font-semibold text-lg">{weightedScore.naoConformes}</p><p className="text-muted-foreground">Não Conformes</p></div>
+                <div><p className="text-amber-600 font-semibold text-lg">{weightedScore.devolvidos}</p><p className="text-muted-foreground">Devolvidos</p></div>
               </div>
-              <p className="text-center mt-2 font-semibold">Score Estimado: {review.scorePreview.scoreEstimado}%</p>
+              <p className="text-center mt-2 font-semibold">Score Ponderado: {weightedScore.scoreEstimado}%</p>
             </div>
           )}
 
