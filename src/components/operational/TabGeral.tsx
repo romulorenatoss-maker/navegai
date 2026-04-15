@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Users } from "lucide-react";
 import { TemplateForm } from "./types";
 import { TIPO_EXECUCAO_LABELS } from "@/hooks/useOperationalScoring";
 
@@ -25,7 +28,15 @@ type RoleConfig = {
   showSetorMembers?: boolean;
 };
 
-export function TabGeral({ form, set, setores, colaboradores }: Props) {
+  const [membrosDialogOpen, setMembrosDialogOpen] = useState(false);
+  const [membrosDialogTitle, setMembrosDialogTitle] = useState("");
+  const [membrosDialogList, setMembrosDialogList] = useState<any[]>([]);
+
+  const openMembrosDialog = (title: string, membros: any[]) => {
+    setMembrosDialogTitle(title);
+    setMembrosDialogList(membros);
+    setMembrosDialogOpen(true);
+  };
   // Fetch colaborador_setores to know who belongs to which sector
   const { data: colaboradorSetores = [] } = useQuery({
     queryKey: ["colaborador_setores_all"],
@@ -141,17 +152,14 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
                   </Select>
                   {form[r.setorKey] && (() => {
                     const membros = getMembrosDoSetor(form[r.setorKey] as string);
+                    const setorNome = setores.find((s: any) => s.id === form[r.setorKey])?.nome || "Setor";
                     return membros.length > 0 ? (
-                      <div className="space-y-1">
-                        <p className="text-[10px] text-muted-foreground font-medium">Membros do setor ({membros.length}):</p>
-                        <div className="flex flex-wrap gap-1">
-                          {membros.map((c: any) => (
-                            <Badge key={c.id} variant="outline" className="text-[10px]">{c.nome}</Badge>
-                          ))}
-                        </div>
-                      </div>
+                      <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1.5"
+                        onClick={() => openMembrosDialog(`Membros — ${setorNome} (${r.label})`, membros)}>
+                        <Users className="w-3 h-3" /> {membros.length} membro{membros.length !== 1 ? "s" : ""}
+                      </Button>
                     ) : (
-                      <p className="text-[10px] text-amber-600">Nenhum colaborador associado a este setor</p>
+                      <p className="text-[10px] text-destructive">Nenhum colaborador associado</p>
                     );
                   })()}
                 </div>
@@ -197,13 +205,10 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
                   </Select>
                 )}
                 {avaliadoSetorMembers.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {avaliadoSetorMembers.map((c: any) => (
-                      <Badge key={c.id} variant={form.avaliado_profile_id === c.id ? "default" : "outline"} className="text-xs cursor-pointer" onClick={() => set("avaliado_profile_id", c.id)}>
-                        {c.nome}
-                      </Badge>
-                    ))}
-                  </div>
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1.5 mt-1"
+                    onClick={() => openMembrosDialog("Membros do Setor Avaliado", avaliadoSetorMembers)}>
+                    <Users className="w-3 h-3" /> {avaliadoSetorMembers.length} membro{avaliadoSetorMembers.length !== 1 ? "s" : ""}
+                  </Button>
                 )}
               </div>
             )}
@@ -263,6 +268,23 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
           <Input type="number" min={1} value={form.sla_horas} onChange={e => set("sla_horas", +e.target.value)} />
         </div>
       </div>
+
+      {/* Dialog de Membros */}
+      <Dialog open={membrosDialogOpen} onOpenChange={setMembrosDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>{membrosDialogTitle}</DialogTitle></DialogHeader>
+          <div className="space-y-1.5 max-h-60 overflow-y-auto">
+            {membrosDialogList.map((c: any) => (
+              <div key={c.id} className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 border border-border">
+                <span className="text-sm text-foreground">{c.nome}</span>
+              </div>
+            ))}
+            {membrosDialogList.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">Nenhum membro encontrado.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
