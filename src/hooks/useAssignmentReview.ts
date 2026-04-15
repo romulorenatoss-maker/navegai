@@ -89,6 +89,11 @@ export function useAssignmentReview(assignmentId: string | null) {
     }));
   }, []);
 
+  // Update contingency prazo for a specific field
+  const updateContingencyPrazo = useCallback((fieldId: string, horas: number) => {
+    setContingencyPrazos(prev => ({ ...prev, [fieldId]: horas }));
+  }, []);
+
   // FIX #3: Batch mark section conforme — SKIP fields already reviewed
   const markSectionConforme = useCallback((fields: SnapshotField[]) => {
     setReviewDrafts(prev => {
