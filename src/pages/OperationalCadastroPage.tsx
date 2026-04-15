@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TIPO_EXECUCAO_LABELS, RECORRENCIA_LABELS } from "@/hooks/useOperationalScoring";
-import { TemplateForm, SectionForm, FieldForm, defaultTemplate, defaultSection, defaultField } from "@/components/operational/types";
+import { TemplateForm, SectionForm, FieldForm, StepForm, defaultTemplate, defaultSection, defaultField, defaultStep } from "@/components/operational/types";
 import { TabGeral } from "@/components/operational/TabGeral";
 import { TabFormBuilder } from "@/components/operational/TabFormBuilder";
 import { TabWorkflow } from "@/components/operational/TabWorkflow";
@@ -22,6 +22,7 @@ export default function OperationalCadastroPage() {
   const [form, setForm] = useState<TemplateForm>(defaultTemplate);
   const [sections, setSections] = useState<SectionForm[]>([]);
   const [fields, setFields] = useState<FieldForm[]>([]);
+  const [steps, setSteps] = useState<StepForm[]>([]);
   const [activeTab, setActiveTab] = useState("geral");
   const [filterExecutor, setFilterExecutor] = useState("__all");
   const [filterAvaliador, setFilterAvaliador] = useState("__all");
@@ -145,6 +146,7 @@ export default function OperationalCadastroPage() {
         // Clean old sections/fields
         await (supabase as any).from("operational_template_fields").delete().eq("template_id", templateId);
         await (supabase as any).from("operational_template_sections").delete().eq("template_id", templateId);
+        await (supabase as any).from("operational_template_steps").delete().eq("template_id", templateId);
       } else {
         payload.versao = 1;
         const { data, error } = await (supabase as any).from("operational_templates").insert(payload).select().single();
@@ -194,6 +196,19 @@ export default function OperationalCadastroPage() {
         );
         if (error) throw error;
       }
+
+      // Insert steps
+      if (steps.length > 0) {
+        const { error } = await (supabase as any).from("operational_template_steps").insert(
+          steps.map((s, i) => ({
+            template_id: templateId, nome: s.nome || `Etapa ${i + 1}`, ordem: i,
+            peso: s.peso, horario_inicio: s.horario_inicio || null, horario_fim: s.horario_fim || null,
+            prazo_limite_minutos: s.prazo_limite_minutos, exige_foto: s.exige_foto,
+            exige_observacao: s.exige_observacao, exige_video: s.exige_video,
+          }))
+        );
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["operational_templates"] });
@@ -228,6 +243,7 @@ export default function OperationalCadastroPage() {
     setForm(defaultTemplate);
     setSections([]);
     setFields([]);
+    setSteps([]);
     setActiveTab("geral");
     setDialogOpen(true);
   };
@@ -302,6 +318,16 @@ export default function OperationalCadastroPage() {
       aprovador_tipos_evidencia: f.aprovador_tipos_evidencia || ["foto"],
     }));
     setFields(loadedFields);
+
+    // Load steps
+    const { data: stps } = await (supabase as any).from("operational_template_steps")
+      .select("*").eq("template_id", t.id).order("ordem");
+    setSteps((stps || []).map((s: any) => ({
+      id: s.id, tempId: s.id, nome: s.nome, ordem: s.ordem, peso: s.peso,
+      horario_inicio: s.horario_inicio || "08:00", horario_fim: s.horario_fim || "09:00",
+      prazo_limite_minutos: s.prazo_limite_minutos, exige_foto: s.exige_foto || false,
+      exige_observacao: s.exige_observacao || false, exige_video: s.exige_video || false,
+    })));
 
     setActiveTab("geral");
     setDialogOpen(true);
@@ -416,7 +442,7 @@ export default function OperationalCadastroPage() {
               </TabsList>
 
               <TabsContent value="geral">
-                <TabGeral form={form} set={set} setores={setores} colaboradores={colaboradores} />
+                <TabGeral form={form} set={set} setores={setores} colaboradores={colaboradores} steps={steps} setSteps={setSteps} />
               </TabsContent>
               <TabsContent value="campos">
                 <TabFormBuilder sections={sections} setSections={setSections} fields={fields} setFields={setFields} setores={setores} />

@@ -1710,6 +1710,8 @@ export type Database = {
       operational_execution_step_logs: {
         Row: {
           assignment_id: string
+          atrasado: boolean | null
+          atraso_minutos: number | null
           created_at: string
           evidencia_url: string | null
           fim_em: string | null
@@ -1721,6 +1723,8 @@ export type Database = {
         }
         Insert: {
           assignment_id: string
+          atrasado?: boolean | null
+          atraso_minutos?: number | null
           created_at?: string
           evidencia_url?: string | null
           fim_em?: string | null
@@ -1732,6 +1736,8 @@ export type Database = {
         }
         Update: {
           assignment_id?: string
+          atrasado?: boolean | null
+          atraso_minutos?: number | null
           created_at?: string
           evidencia_url?: string | null
           fim_em?: string | null
@@ -1764,6 +1770,7 @@ export type Database = {
           created_at: string
           evidencia_url: string | null
           field_id: string
+          historico_alteracoes: Json | null
           id: string
           respondido_em: string
           respondido_por: string
@@ -1779,6 +1786,7 @@ export type Database = {
           created_at?: string
           evidencia_url?: string | null
           field_id: string
+          historico_alteracoes?: Json | null
           id?: string
           respondido_em?: string
           respondido_por: string
@@ -1794,6 +1802,7 @@ export type Database = {
           created_at?: string
           evidencia_url?: string | null
           field_id?: string
+          historico_alteracoes?: Json | null
           id?: string
           respondido_em?: string
           respondido_por?: string
@@ -2313,6 +2322,8 @@ export type Database = {
           exige_foto: boolean | null
           exige_observacao: boolean | null
           exige_video: boolean | null
+          horario_fim: string | null
+          horario_inicio: string | null
           horario_previsto: string | null
           id: string
           nome: string
@@ -2326,6 +2337,8 @@ export type Database = {
           exige_foto?: boolean | null
           exige_observacao?: boolean | null
           exige_video?: boolean | null
+          horario_fim?: string | null
+          horario_inicio?: string | null
           horario_previsto?: string | null
           id?: string
           nome: string
@@ -2339,6 +2352,8 @@ export type Database = {
           exige_foto?: boolean | null
           exige_observacao?: boolean | null
           exige_video?: boolean | null
+          horario_fim?: string | null
+          horario_inicio?: string | null
           horario_previsto?: string | null
           id?: string
           nome?: string

@@ -18,7 +18,7 @@ export function useAssignmentExecution(assignmentId: string | null) {
     queryFn: async () => {
       if (!assignmentId) return [];
       const { data, error } = await (supabase as any).from("operational_field_answers")
-        .select("*").eq("assignment_id", assignmentId).order("created_at", { ascending: false });
+        .select("*, profiles:respondido_por(nome)").eq("assignment_id", assignmentId).order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -53,6 +53,10 @@ export function useAssignmentExecution(assignmentId: string | null) {
           valor_data: a.valor_data,
           valor_json: a.valor_json,
           evidencia_url: a.evidencia_url,
+          respondido_por_nome: a.profiles?.nome || null,
+          respondido_em: a.respondido_em,
+          versao: a.versao || 1,
+          historico_alteracoes: a.historico_alteracoes || [],
         };
       }
     }
@@ -102,11 +106,17 @@ export function useAssignmentExecution(assignmentId: string | null) {
       // Delete existing answers for this assignment by this user, then re-insert
       // Use upsert-like approach: delete old, insert new
       for (const entry of entries) {
+        const now = new Date().toISOString();
         // Check if exists
         const { data: existing } = await (supabase as any).from("operational_field_answers")
-          .select("id").eq("assignment_id", assignmentId).eq("field_id", entry.field_id).limit(1);
+          .select("id, versao, historico_alteracoes").eq("assignment_id", assignmentId).eq("field_id", entry.field_id).limit(1);
 
         if (existing && existing.length > 0) {
+          const oldVersao = existing[0].versao || 1;
+          const newVersao = oldVersao + 1;
+          const oldHistory = existing[0].historico_alteracoes || [];
+          const newHistory = [...oldHistory, { nome: profile.nome || "Usuário", data: now, versao: newVersao }];
+
           await (supabase as any).from("operational_field_answers")
             .update({
               valor_texto: entry.valor_texto ?? null,
@@ -115,10 +125,13 @@ export function useAssignmentExecution(assignmentId: string | null) {
               valor_data: entry.valor_data ?? null,
               valor_json: entry.valor_json ?? null,
               evidencia_url: entry.evidencia_url ?? null,
-              respondido_em: new Date().toISOString(),
+              respondido_em: now,
+              versao: newVersao,
+              historico_alteracoes: newHistory,
             })
             .eq("id", existing[0].id);
         } else {
+          const initialHistory = [{ nome: profile.nome || "Usuário", data: now, versao: 1 }];
           await (supabase as any).from("operational_field_answers")
             .insert({
               assignment_id: assignmentId,
@@ -130,6 +143,7 @@ export function useAssignmentExecution(assignmentId: string | null) {
               valor_json: entry.valor_json ?? null,
               evidencia_url: entry.evidencia_url ?? null,
               respondido_por: profile.id,
+              historico_alteracoes: initialHistory,
             });
         }
       }

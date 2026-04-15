@@ -1,3 +1,17 @@
+export interface StepForm {
+  id?: string;
+  tempId: string;
+  nome: string;
+  ordem: number;
+  peso: number;
+  horario_inicio: string;
+  horario_fim: string;
+  prazo_limite_minutos: number | null;
+  exige_foto: boolean;
+  exige_observacao: boolean;
+  exige_video: boolean;
+}
+
 export interface SectionForm {
   id?: string;
   tempId: string;
@@ -208,4 +222,17 @@ export const defaultSection = (ordem: number): SectionForm => ({
   peso: 1,
   ordem,
   cor: SECTION_COLORS[ordem % SECTION_COLORS.length],
+});
+
+export const defaultStep = (ordem: number): StepForm => ({
+  tempId: crypto.randomUUID(),
+  nome: "",
+  ordem,
+  peso: 1,
+  horario_inicio: "08:00",
+  horario_fim: "09:00",
+  prazo_limite_minutos: null,
+  exige_foto: false,
+  exige_observacao: false,
+  exige_video: false,
 });
