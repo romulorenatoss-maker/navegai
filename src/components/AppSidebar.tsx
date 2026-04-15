@@ -44,6 +44,7 @@ const allNavSections = [
       { to: "/checklists/execucao", icon: PlayCircle, label: "Execução" },
       { to: "/checklists/avaliacao", icon: ClipboardCheck, label: "Avaliação" },
       { to: "/checklists/aprovacao", icon: Shield, label: "Aprovação Final" },
+      { to: "/checklists/contingencias", icon: AlertTriangle, label: "Contingências" },
       { to: "/checklists/gestao", icon: FolderKanban, label: "Gestão / Rankings" },
     ],
   },
