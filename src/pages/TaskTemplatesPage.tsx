@@ -148,16 +148,15 @@ export default function TaskTemplatesPage() {
                 <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Setor</th>
                 <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Recorrência</th>
                 <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Prioridade</th>
-                <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Pts Base</th>
                 <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Status</th>
                 <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {isLoading ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">Carregando...</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Carregando...</td></tr>
               ) : templates.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhum template cadastrado.</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhum template cadastrado.</td></tr>
               ) : templates.map((t: any) => (
                 <tr key={t.id} className="hover:bg-muted/50 transition-colors">
                   <td className="px-4 py-3">
@@ -175,7 +174,7 @@ export default function TaskTemplatesPage() {
                       {PRIORIDADE_CONFIG[t.prioridade]?.label || t.prioridade}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-center text-body font-medium text-foreground font-tabular">{t.pontuacao_base}</td>
+                  
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${t.ativo ? "badge-complete" : "badge-expired"}`}>
                       {t.ativo ? "Ativo" : "Inativo"}
