@@ -130,6 +130,7 @@ export default function OperationalCadastroPage() {
         tipo_atribuicao_avaliado: form.tipo_atribuicao_avaliado,
         penalidade_contingencia: form.penalidade_contingencia,
         penalidade_sla_contingencia: form.penalidade_sla_contingencia,
+        penalidade_fora_prazo: form.penalidade_fora_prazo,
         habilitar_perguntas_automaticas: form.habilitar_perguntas_automaticas,
       };
 
@@ -257,6 +258,7 @@ export default function OperationalCadastroPage() {
       peso_recorrencia: t.peso_recorrencia ?? 1.0,
       penalidade_contingencia: t.penalidade_contingencia ?? 10,
       penalidade_sla_contingencia: t.penalidade_sla_contingencia ?? 15,
+      penalidade_fora_prazo: t.penalidade_fora_prazo ?? 20,
       habilitar_perguntas_automaticas: t.habilitar_perguntas_automaticas ?? true,
     });
 

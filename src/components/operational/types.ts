@@ -79,6 +79,7 @@ export interface TemplateForm {
   tipo_atribuicao_avaliado: string;
   penalidade_contingencia: number;
   penalidade_sla_contingencia: number;
+  penalidade_fora_prazo: number;
   habilitar_perguntas_automaticas: boolean;
 }
 
@@ -135,6 +136,7 @@ export const defaultTemplate: TemplateForm = {
   tipo_atribuicao_avaliado: "individual",
   penalidade_contingencia: 10,
   penalidade_sla_contingencia: 15,
+  penalidade_fora_prazo: 20,
   habilitar_perguntas_automaticas: true,
 };
 
