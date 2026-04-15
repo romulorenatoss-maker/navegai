@@ -1151,14 +1151,18 @@ export type Database = {
           observacao: string | null
           pontuacao_obtida: number | null
           responsavel_id: string | null
+          rodada_atual: number
           score_avaliado: number | null
           score_avaliador: number | null
           score_executor: number | null
+          score_final_ajustado: number | null
           setor_avaliado_id: string | null
           setor_avaliador_id: string | null
           setor_executor_id: string | null
           status: string
           template_id: string
+          template_snapshot: Json | null
+          template_versao: number | null
           tempo_gasto_minutos: number | null
           updated_at: string
           validador_contingencia_id: string | null
@@ -1180,14 +1184,18 @@ export type Database = {
           observacao?: string | null
           pontuacao_obtida?: number | null
           responsavel_id?: string | null
+          rodada_atual?: number
           score_avaliado?: number | null
           score_avaliador?: number | null
           score_executor?: number | null
+          score_final_ajustado?: number | null
           setor_avaliado_id?: string | null
           setor_avaliador_id?: string | null
           setor_executor_id?: string | null
           status?: string
           template_id: string
+          template_snapshot?: Json | null
+          template_versao?: number | null
           tempo_gasto_minutos?: number | null
           updated_at?: string
           validador_contingencia_id?: string | null
@@ -1209,14 +1217,18 @@ export type Database = {
           observacao?: string | null
           pontuacao_obtida?: number | null
           responsavel_id?: string | null
+          rodada_atual?: number
           score_avaliado?: number | null
           score_avaliador?: number | null
           score_executor?: number | null
+          score_final_ajustado?: number | null
           setor_avaliado_id?: string | null
           setor_avaliador_id?: string | null
           setor_executor_id?: string | null
           status?: string
           template_id?: string
+          template_snapshot?: Json | null
+          template_versao?: number | null
           tempo_gasto_minutos?: number | null
           updated_at?: string
           validador_contingencia_id?: string | null
@@ -1342,6 +1354,8 @@ export type Database = {
           created_at: string
           descricao: string
           id: string
+          origin_field_id: string | null
+          origin_review_id: string | null
           prazo_sla: string | null
           resolvida_em: string | null
           responsavel_id: string | null
@@ -1357,6 +1371,8 @@ export type Database = {
           created_at?: string
           descricao: string
           id?: string
+          origin_field_id?: string | null
+          origin_review_id?: string | null
           prazo_sla?: string | null
           resolvida_em?: string | null
           responsavel_id?: string | null
@@ -1372,6 +1388,8 @@ export type Database = {
           created_at?: string
           descricao?: string
           id?: string
+          origin_field_id?: string | null
+          origin_review_id?: string | null
           prazo_sla?: string | null
           resolvida_em?: string | null
           responsavel_id?: string | null
@@ -1394,6 +1412,20 @@ export type Database = {
             columns: ["check_answer_id"]
             isOneToOne: false
             referencedRelation: "operational_execution_check_answers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_contingencies_origin_field_id_fkey"
+            columns: ["origin_field_id"]
+            isOneToOne: false
+            referencedRelation: "operational_template_fields"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_contingencies_origin_review_id_fkey"
+            columns: ["origin_review_id"]
+            isOneToOne: false
+            referencedRelation: "operational_field_reviews"
             referencedColumns: ["id"]
           },
           {
@@ -1605,6 +1637,160 @@ export type Database = {
           },
         ]
       }
+      operational_field_answers: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          evidencia_url: string | null
+          field_id: string
+          id: string
+          respondido_em: string
+          respondido_por: string
+          valor_booleano: boolean | null
+          valor_data: string | null
+          valor_json: Json | null
+          valor_numero: number | null
+          valor_texto: string | null
+          versao: number
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          evidencia_url?: string | null
+          field_id: string
+          id?: string
+          respondido_em?: string
+          respondido_por: string
+          valor_booleano?: boolean | null
+          valor_data?: string | null
+          valor_json?: Json | null
+          valor_numero?: number | null
+          valor_texto?: string | null
+          versao?: number
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          evidencia_url?: string | null
+          field_id?: string
+          id?: string
+          respondido_em?: string
+          respondido_por?: string
+          valor_booleano?: boolean | null
+          valor_data?: string | null
+          valor_json?: Json | null
+          valor_numero?: number | null
+          valor_texto?: string | null
+          versao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_field_answers_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "operational_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_field_answers_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "operational_template_fields"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_field_answers_respondido_por_fkey"
+            columns: ["respondido_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operational_field_reviews: {
+        Row: {
+          answer_id: string | null
+          assignment_id: string
+          avaliado_em: string
+          avaliador_id: string
+          conforme: boolean | null
+          created_at: string
+          devolvido: boolean
+          field_id: string
+          id: string
+          motivo_devolucao: string | null
+          observacao: string | null
+          reincidencia_ref: string | null
+          rodada: number
+        }
+        Insert: {
+          answer_id?: string | null
+          assignment_id: string
+          avaliado_em?: string
+          avaliador_id: string
+          conforme?: boolean | null
+          created_at?: string
+          devolvido?: boolean
+          field_id: string
+          id?: string
+          motivo_devolucao?: string | null
+          observacao?: string | null
+          reincidencia_ref?: string | null
+          rodada?: number
+        }
+        Update: {
+          answer_id?: string | null
+          assignment_id?: string
+          avaliado_em?: string
+          avaliador_id?: string
+          conforme?: boolean | null
+          created_at?: string
+          devolvido?: boolean
+          field_id?: string
+          id?: string
+          motivo_devolucao?: string | null
+          observacao?: string | null
+          reincidencia_ref?: string | null
+          rodada?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_field_reviews_answer_id_fkey"
+            columns: ["answer_id"]
+            isOneToOne: false
+            referencedRelation: "operational_field_answers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_field_reviews_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "operational_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_field_reviews_avaliador_id_fkey"
+            columns: ["avaliador_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_field_reviews_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "operational_template_fields"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_field_reviews_reincidencia_ref_fkey"
+            columns: ["reincidencia_ref"]
+            isOneToOne: false
+            referencedRelation: "operational_field_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       operational_rankings: {
         Row: {
           contingencias_abertas: number | null
@@ -1738,6 +1924,57 @@ export type Database = {
           },
         ]
       }
+      operational_score_overrides: {
+        Row: {
+          aprovador_id: string
+          assignment_id: string
+          created_at: string
+          diferenca: number | null
+          id: string
+          justificativa: string
+          score_ajustado: number
+          score_original: number
+          tipo: string
+        }
+        Insert: {
+          aprovador_id: string
+          assignment_id: string
+          created_at?: string
+          diferenca?: number | null
+          id?: string
+          justificativa: string
+          score_ajustado: number
+          score_original: number
+          tipo: string
+        }
+        Update: {
+          aprovador_id?: string
+          assignment_id?: string
+          created_at?: string
+          diferenca?: number | null
+          id?: string
+          justificativa?: string
+          score_ajustado?: number
+          score_original?: number
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_score_overrides_aprovador_id_fkey"
+            columns: ["aprovador_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_score_overrides_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "operational_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       operational_template_check_items: {
         Row: {
           created_at: string
@@ -1784,6 +2021,140 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "operational_template_check_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "operational_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operational_template_fields: {
+        Row: {
+          condicao_visibilidade: Json | null
+          created_at: string
+          criticidade: string
+          descricao: string | null
+          editavel_por: string[]
+          exige_evidencia: boolean | null
+          formula: Json | null
+          gera_contingencia: boolean | null
+          id: string
+          impacta_score: boolean
+          label: string
+          nota_maxima: number
+          obrigatorio: boolean
+          opcoes: Json | null
+          ordem: number
+          penalidade_reprovacao: number
+          peso: number
+          section_id: string | null
+          template_id: string
+          tipo: string
+          tipo_evidencia: string | null
+          validacao: Json | null
+          visivel_para: string[]
+        }
+        Insert: {
+          condicao_visibilidade?: Json | null
+          created_at?: string
+          criticidade?: string
+          descricao?: string | null
+          editavel_por?: string[]
+          exige_evidencia?: boolean | null
+          formula?: Json | null
+          gera_contingencia?: boolean | null
+          id?: string
+          impacta_score?: boolean
+          label: string
+          nota_maxima?: number
+          obrigatorio?: boolean
+          opcoes?: Json | null
+          ordem?: number
+          penalidade_reprovacao?: number
+          peso?: number
+          section_id?: string | null
+          template_id: string
+          tipo: string
+          tipo_evidencia?: string | null
+          validacao?: Json | null
+          visivel_para?: string[]
+        }
+        Update: {
+          condicao_visibilidade?: Json | null
+          created_at?: string
+          criticidade?: string
+          descricao?: string | null
+          editavel_por?: string[]
+          exige_evidencia?: boolean | null
+          formula?: Json | null
+          gera_contingencia?: boolean | null
+          id?: string
+          impacta_score?: boolean
+          label?: string
+          nota_maxima?: number
+          obrigatorio?: boolean
+          opcoes?: Json | null
+          ordem?: number
+          penalidade_reprovacao?: number
+          peso?: number
+          section_id?: string | null
+          template_id?: string
+          tipo?: string
+          tipo_evidencia?: string | null
+          validacao?: Json | null
+          visivel_para?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_template_fields_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "operational_template_sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_template_fields_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "operational_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operational_template_sections: {
+        Row: {
+          cor: string | null
+          created_at: string
+          descricao: string | null
+          id: string
+          nome: string
+          ordem: number
+          peso: number
+          template_id: string
+        }
+        Insert: {
+          cor?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome: string
+          ordem?: number
+          peso?: number
+          template_id: string
+        }
+        Update: {
+          cor?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string
+          ordem?: number
+          peso?: number
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_template_sections_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "operational_templates"
@@ -1870,6 +2241,7 @@ export type Database = {
           intervalo_dias: number | null
           modo_pontuacao: string
           nome: string
+          permite_devolucao_parcial: boolean | null
           peso_recorrencia: number
           prazo_sla_correcao_horas: number | null
           pular_semanas: number | null
@@ -1878,11 +2250,13 @@ export type Database = {
           responsavel_contingencia_id: string | null
           responsavel_id: string | null
           setor_id: string | null
+          sla_horas: number | null
           tipo_execucao: string
           tolerancia_minutos: number | null
           updated_at: string
           validador_contingencia_profile_id: string | null
           validador_contingencia_setor_id: string | null
+          versao: number
         }
         Insert: {
           aprovador_profile_id?: string | null
@@ -1912,6 +2286,7 @@ export type Database = {
           intervalo_dias?: number | null
           modo_pontuacao?: string
           nome: string
+          permite_devolucao_parcial?: boolean | null
           peso_recorrencia?: number
           prazo_sla_correcao_horas?: number | null
           pular_semanas?: number | null
@@ -1920,11 +2295,13 @@ export type Database = {
           responsavel_contingencia_id?: string | null
           responsavel_id?: string | null
           setor_id?: string | null
+          sla_horas?: number | null
           tipo_execucao?: string
           tolerancia_minutos?: number | null
           updated_at?: string
           validador_contingencia_profile_id?: string | null
           validador_contingencia_setor_id?: string | null
+          versao?: number
         }
         Update: {
           aprovador_profile_id?: string | null
@@ -1954,6 +2331,7 @@ export type Database = {
           intervalo_dias?: number | null
           modo_pontuacao?: string
           nome?: string
+          permite_devolucao_parcial?: boolean | null
           peso_recorrencia?: number
           prazo_sla_correcao_horas?: number | null
           pular_semanas?: number | null
@@ -1962,11 +2340,13 @@ export type Database = {
           responsavel_contingencia_id?: string | null
           responsavel_id?: string | null
           setor_id?: string | null
+          sla_horas?: number | null
           tipo_execucao?: string
           tolerancia_minutos?: number | null
           updated_at?: string
           validador_contingencia_profile_id?: string | null
           validador_contingencia_setor_id?: string | null
+          versao?: number
         }
         Relationships: [
           {
