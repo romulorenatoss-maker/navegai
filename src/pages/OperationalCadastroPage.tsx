@@ -128,6 +128,9 @@ export default function OperationalCadastroPage() {
         destino_score: form.destino_score,
         peso_recorrencia: form.peso_recorrencia,
         tipo_atribuicao_avaliado: form.tipo_atribuicao_avaliado,
+        penalidade_contingencia: form.penalidade_contingencia,
+        penalidade_sla_contingencia: form.penalidade_sla_contingencia,
+        habilitar_perguntas_automaticas: form.habilitar_perguntas_automaticas,
       };
 
       let templateId: string;
