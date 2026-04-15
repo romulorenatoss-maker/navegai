@@ -31,7 +31,7 @@ type RoleConfig = {
   showSetorMembers?: boolean;
 };
 
-export function TabGeral({ form, set, setores, colaboradores }: Props) {
+export function TabGeral({ form, set, setores, colaboradores, steps = [], setSteps }: Props) {
   const [membrosDialogOpen, setMembrosDialogOpen] = useState(false);
   const [membrosDialogTitle, setMembrosDialogTitle] = useState("");
   const [membrosDialogList, setMembrosDialogList] = useState<any[]>([]);
