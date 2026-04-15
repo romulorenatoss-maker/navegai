@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, X } from "lucide-react";
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, X, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -197,6 +197,36 @@ export default function OperationalCadastroPage() {
   const addCheckItem = () => setCheckItems(c => [...c, { pergunta: "", ordem: c.length, tipo_resposta: "conforme_nao_conforme", exige_foto: false, exige_observacao: false, gera_contingencia_se_reprovado: false }]);
   const removeCheckItem = (i: number) => setCheckItems(c => c.filter((_, idx) => idx !== i));
   const updateCheckItem = (i: number, field: keyof CheckItemForm, val: any) => setCheckItems(c => c.map((item, idx) => idx === i ? { ...item, [field]: val } : item));
+
+  // Drag & drop for steps
+  const dragStepIdx = useRef<number | null>(null);
+  const handleStepDragStart = useCallback((i: number) => { dragStepIdx.current = i; }, []);
+  const handleStepDrop = useCallback((targetIdx: number) => {
+    const from = dragStepIdx.current;
+    if (from === null || from === targetIdx) return;
+    setSteps(prev => {
+      const arr = [...prev];
+      const [moved] = arr.splice(from, 1);
+      arr.splice(targetIdx, 0, moved);
+      return arr.map((s, i) => ({ ...s, ordem: i }));
+    });
+    dragStepIdx.current = null;
+  }, []);
+
+  // Drag & drop for check items
+  const dragCheckIdx = useRef<number | null>(null);
+  const handleCheckDragStart = useCallback((i: number) => { dragCheckIdx.current = i; }, []);
+  const handleCheckDrop = useCallback((targetIdx: number) => {
+    const from = dragCheckIdx.current;
+    if (from === null || from === targetIdx) return;
+    setCheckItems(prev => {
+      const arr = [...prev];
+      const [moved] = arr.splice(from, 1);
+      arr.splice(targetIdx, 0, moved);
+      return arr.map((c, i) => ({ ...c, ordem: i }));
+    });
+    dragCheckIdx.current = null;
+  }, []);
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -411,8 +441,18 @@ export default function OperationalCadastroPage() {
                   </div>
                   {steps.length === 0 && <p className="text-caption text-muted-foreground text-center py-4">Nenhuma etapa. Adicione pelo menos uma.</p>}
                   {steps.map((s, i) => (
-                    <div key={i} className="bg-muted/50 rounded-lg border border-border p-3 space-y-2">
+                    <div
+                      key={i}
+                      draggable
+                      onDragStart={() => handleStepDragStart(i)}
+                      onDragOver={e => e.preventDefault()}
+                      onDrop={() => handleStepDrop(i)}
+                      className="bg-muted/50 rounded-lg border border-border p-3 space-y-2 cursor-default"
+                    >
                       <div className="flex items-center gap-2">
+                        <span className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground" title="Arraste para reordenar">
+                          <GripVertical className="w-4 h-4" />
+                        </span>
                         <span className="text-caption font-medium text-muted-foreground">#{i + 1}</span>
                         <Input value={s.nome} onChange={e => updateStep(i, "nome", e.target.value)} placeholder="Nome da etapa" className="flex-1" />
                         <Button type="button" variant="ghost" size="sm" onClick={() => removeStep(i)} className="text-destructive"><X className="w-3 h-3" /></Button>
@@ -439,8 +479,18 @@ export default function OperationalCadastroPage() {
                   </div>
                   {checkItems.length === 0 && <p className="text-caption text-muted-foreground text-center py-4">Nenhum item. Adicione pelo menos um.</p>}
                   {checkItems.map((c, i) => (
-                    <div key={i} className="bg-muted/50 rounded-lg border border-border p-3 space-y-2">
+                    <div
+                      key={i}
+                      draggable
+                      onDragStart={() => handleCheckDragStart(i)}
+                      onDragOver={e => e.preventDefault()}
+                      onDrop={() => handleCheckDrop(i)}
+                      className="bg-muted/50 rounded-lg border border-border p-3 space-y-2 cursor-default"
+                    >
                       <div className="flex items-center gap-2">
+                        <span className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground" title="Arraste para reordenar">
+                          <GripVertical className="w-4 h-4" />
+                        </span>
                         <span className="text-caption font-medium text-muted-foreground">#{i + 1}</span>
                         <Input value={c.pergunta} onChange={e => updateCheckItem(i, "pergunta", e.target.value)} placeholder="Pergunta/item de inspeção" className="flex-1" />
                         <Button type="button" variant="ghost" size="sm" onClick={() => removeCheckItem(i)} className="text-destructive"><X className="w-3 h-3" /></Button>
