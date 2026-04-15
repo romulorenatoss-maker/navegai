@@ -395,7 +395,7 @@ export default function OperationalCadastroPage() {
                 <TabGeral form={form} set={set} setores={setores} colaboradores={colaboradores} />
               </TabsContent>
               <TabsContent value="campos">
-                <TabFormBuilder sections={sections} setSections={setSections} fields={fields} setFields={setFields} />
+                <TabFormBuilder sections={sections} setSections={setSections} fields={fields} setFields={setFields} setores={setores} />
               </TabsContent>
               <TabsContent value="workflow">
                 <TabWorkflow form={form} set={set} />
