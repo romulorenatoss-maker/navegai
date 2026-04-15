@@ -638,6 +638,14 @@ export default function GerenciamentoLeadsPage() {
           </div>
         </div>
       </Card>
+
+      <LeadPostCaptureDialog
+        open={!!viewLead}
+        onOpenChange={(open) => { if (!open) setViewLead(null); }}
+        leadId={viewLead?.id || null}
+        leadName={viewLead?.nome || ""}
+        onGoToLead={() => setViewLead(null)}
+      />
     </div>
   );
 }
