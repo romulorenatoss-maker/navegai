@@ -177,9 +177,14 @@ export default function DesempenhoColaboradorPage() {
   });
 
   const avgScore = useMemo(() => {
-    if (!targetProfileId) return null;
-    return calcularMediaColaborador(notasPorSetorData, targetProfileId);
-  }, [notasPorSetorData, targetProfileId]);
+    if (!targetProfileId || evaluations.length === 0) return null;
+    // Compute average from OS visible in the filtered evaluations list
+    const osNotas = evaluations
+      .map(ev => calcularNotaPorOS(notasPorSetorData, targetProfileId, ev.os_id))
+      .filter((n): n is number => n !== null);
+    if (osNotas.length === 0) return null;
+    return calculateAverage(osNotas);
+  }, [notasPorSetorData, targetProfileId, evaluations]);
 
   // Most frequent errors
   const { data: frequentErrors = [] } = useQuery({
