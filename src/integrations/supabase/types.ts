@@ -2280,6 +2280,8 @@ export type Database = {
           cor: string | null
           created_at: string
           descricao: string | null
+          horario_fim: string | null
+          horario_inicio: string | null
           id: string
           nome: string
           ordem: number
@@ -2290,6 +2292,8 @@ export type Database = {
           cor?: string | null
           created_at?: string
           descricao?: string | null
+          horario_fim?: string | null
+          horario_inicio?: string | null
           id?: string
           nome: string
           ordem?: number
@@ -2300,6 +2304,8 @@ export type Database = {
           cor?: string | null
           created_at?: string
           descricao?: string | null
+          horario_fim?: string | null
+          horario_inicio?: string | null
           id?: string
           nome?: string
           ordem?: number
