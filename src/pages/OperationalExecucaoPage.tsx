@@ -15,23 +15,38 @@ import { DynamicFieldRenderer, SnapshotField, FieldAnswer, evaluateVisibility } 
 import { useAssignmentExecution } from "@/hooks/useAssignmentExecution";
 
 export default function OperationalExecucaoPage() {
-  const { profile } = useAuth();
+  const { profile, isAdmin } = useAuth();
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState("pendentes");
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
   const [execDialogOpen, setExecDialogOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [filterResponsavel, setFilterResponsavel] = useState<string>("__all");
 
   const today = new Date().toISOString().slice(0, 10);
 
+  // Admin: load all profiles for filter
+  const { data: allProfiles = [] } = useQuery({
+    queryKey: ["profiles_for_exec_filter"],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("id, nome").eq("ativo", true).order("nome");
+      return data || [];
+    },
+    enabled: isAdmin,
+    staleTime: 60000,
+  });
+
   const { data: assignments = [], isLoading } = useQuery({
-    queryKey: ["my_operational_assignments", profile?.id],
+    queryKey: ["my_operational_assignments", profile?.id, isAdmin],
     queryFn: async () => {
       if (!profile?.id) return [];
-      const { data, error } = await (supabase as any).from("operational_assignments")
+      let q = (supabase as any).from("operational_assignments")
         .select("*, operational_templates(nome, tipo_execucao)")
-        .or(`responsavel_id.eq.${profile.id}`)
         .order("data_prevista", { ascending: true });
+      if (!isAdmin) {
+        q = q.or(`responsavel_id.eq.${profile.id}`);
+      }
+      const { data, error } = await q.limit(500);
       if (error) throw error;
       return data;
     },
