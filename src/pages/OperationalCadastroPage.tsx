@@ -34,6 +34,151 @@ const defaultForm: TemplateForm = {
   gerar_contingencia_automatica: false, prazo_sla_correcao_horas: 24, responsavel_contingencia_id: "",
 };
 
+// ---- Preview de recorrência ----
+function generatePreviewDates(form: TemplateForm): Date[] {
+  if (form.recorrencia_tipo === "unica") {
+    const d = form.data_inicio ? new Date(form.data_inicio + "T12:00:00") : new Date();
+    return [d];
+  }
+
+  const now = new Date();
+  const start = form.repetir_sempre || !form.data_inicio
+    ? now
+    : new Date(form.data_inicio + "T00:00:00");
+  const endLimit = new Date(now);
+  endLimit.setMonth(endLimit.getMonth() + 3);
+  const end = form.data_fim && !form.repetir_sempre
+    ? new Date(Math.min(new Date(form.data_fim + "T23:59:59").getTime(), endLimit.getTime()))
+    : endLimit;
+
+  const dates: Date[] = [];
+  const cursor = new Date(Math.max(start.getTime(), now.getTime()));
+  cursor.setHours(0, 0, 0, 0);
+  const maxDates = 50;
+
+  if (form.recorrencia_tipo === "diaria") {
+    while (cursor <= end && dates.length < maxDates) {
+      dates.push(new Date(cursor));
+      cursor.setDate(cursor.getDate() + 1);
+    }
+  } else if (form.recorrencia_tipo === "semanal") {
+    const dias = form.dias_da_semana.length > 0 ? form.dias_da_semana : [1, 2, 3, 4, 5];
+    while (cursor <= end && dates.length < maxDates) {
+      if (dias.includes(cursor.getDay())) {
+        dates.push(new Date(cursor));
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+  } else if (form.recorrencia_tipo === "mensal") {
+    const diaFixo = form.dia_fixo_mes || cursor.getDate();
+    const m = new Date(cursor);
+    m.setDate(diaFixo);
+    if (m < cursor) m.setMonth(m.getMonth() + 1);
+    while (m <= end && dates.length < maxDates) {
+      dates.push(new Date(m));
+      m.setMonth(m.getMonth() + 1);
+    }
+  } else if (form.recorrencia_tipo === "personalizada") {
+    const dias = form.dias_da_semana.length > 0 ? form.dias_da_semana : null;
+    const intervalo = form.intervalo_dias || 1;
+    let weekCounter = 0;
+    let lastWeek = -1;
+
+    while (cursor <= end && dates.length < maxDates) {
+      const curWeek = Math.floor(cursor.getTime() / (7 * 24 * 60 * 60 * 1000));
+      if (curWeek !== lastWeek) {
+        lastWeek = curWeek;
+        weekCounter++;
+      }
+      const skipThisWeek = form.pular_semanas > 0 && weekCounter % (form.pular_semanas + 1) !== 1;
+      const diaMatch = !dias || dias.includes(cursor.getDay());
+
+      if (!skipThisWeek && diaMatch) {
+        dates.push(new Date(cursor));
+      }
+      cursor.setDate(cursor.getDate() + (dias ? 1 : intervalo));
+    }
+  }
+
+  return dates;
+}
+
+const DIAS_SEMANA_FULL = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+
+function RecurrencePreview({ form }: { form: TemplateForm }) {
+  const dates = useMemo(() => generatePreviewDates(form), [
+    form.recorrencia_tipo, form.dias_da_semana, form.intervalo_dias, form.pular_semanas,
+    form.dia_fixo_mes, form.data_inicio, form.data_fim, form.repetir_sempre,
+  ]);
+
+  if (form.recorrencia_tipo === "unica" && !form.data_inicio) return null;
+
+  const horario = form.horario_inicio_previsto || null;
+  const horarioLimite = form.horario_limite_execucao || null;
+
+  // Group by month
+  const grouped: Record<string, Date[]> = {};
+  for (const d of dates) {
+    const key = d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+    (grouped[key] ??= []).push(d);
+  }
+
+  return (
+    <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <CalendarDays className="w-4 h-4 text-primary" />
+        <p className="text-sm font-medium text-foreground">
+          Preview — próximas {dates.length} ocorrências
+        </p>
+        {form.repetir_sempre && (
+          <span className="text-caption bg-primary/10 text-primary px-2 py-0.5 rounded font-medium">∞ Sem fim</span>
+        )}
+      </div>
+
+      {dates.length === 0 ? (
+        <p className="text-caption text-muted-foreground text-center py-2">
+          Nenhuma data gerada. Verifique a configuração de recorrência.
+        </p>
+      ) : (
+        <div className="max-h-[200px] overflow-y-auto space-y-3 pr-1">
+          {Object.entries(grouped).map(([month, monthDates]) => (
+            <div key={month}>
+              <p className="text-caption font-semibold text-muted-foreground uppercase tracking-wider mb-1 capitalize">
+                {month}
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
+                {monthDates.map((d, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-2 bg-card border border-border rounded px-2 py-1.5 text-caption"
+                  >
+                    <span className="font-medium text-foreground">
+                      {d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {DIAS_SEMANA_FULL[d.getDay()].slice(0, 3)}
+                    </span>
+                    {horario && (
+                      <span className="text-primary font-medium ml-auto">{horario}</span>
+                    )}
+                    {horarioLimite && horario && (
+                      <span className="text-muted-foreground">– {horarioLimite}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {dates.length >= 50 && (
+        <p className="text-caption text-muted-foreground italic">Mostrando até 50 ocorrências (3 meses).</p>
+      )}
+    </div>
+  );
+}
+
 export default function OperationalCadastroPage() {
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
