@@ -305,7 +305,7 @@ export default function TaskExecucaoPage() {
           <p className="text-caption text-destructive">❌ Cancelada{a.observacao ? ` — ${a.observacao}` : ""}</p>
         )}
 
-        {!isDone && (
+        {!isDone && !isDevolvida && !isAguardando && (
           <div className="flex gap-2 pt-1">
             {!isRunning && (
               <Button size="sm" onClick={() => startTask.mutate(a.id)} className="press-effect flex-1">
