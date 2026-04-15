@@ -276,6 +276,13 @@ export function useAssignmentReview(assignmentId: string | null) {
       if (!assignment.avaliador_inicio_em) {
         updateData.avaliador_inicio_em = now;
       }
+      // Set aprovador_id from template snapshot when sending to approval
+      if (newStatus === "aguardando_aprovacao") {
+        const snap = assignment.template_snapshot;
+        if (snap?.aprovador_profile_id) {
+          updateData.aprovador_id = snap.aprovador_profile_id;
+        }
+      }
 
       const { error } = await (supabase as any).from("operational_assignments")
         .update(updateData).eq("id", assignmentId);

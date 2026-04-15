@@ -35,7 +35,7 @@ export default function OperationalAprovacaoPage() {
           executor:profiles!operational_assignments_responsavel_id_fkey(nome),
           avaliador:profiles!operational_assignments_avaliador_id_fkey(nome),
           avaliado:profiles!operational_assignments_avaliado_id_fkey(nome)`)
-        .in("status", ["aguardando_aprovacao", "aprovada", "reprovada", "concluida"])
+        .in("status", ["aguardando_aprovacao", "aprovada", "reprovada", "concluida", "devolvida"])
         .order("updated_at", { ascending: false });
 
       // Filter by aprovador unless admin
