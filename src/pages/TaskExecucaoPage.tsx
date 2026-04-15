@@ -67,12 +67,35 @@ export default function TaskExecucaoPage() {
   const today = new Date().toISOString().split("T")[0];
 
   const filtered = useMemo(() => {
-    const hoje = assignments.filter((a: any) => a.data_prevista === today && !["concluida", "nao_executada"].includes(a.status));
-    const pendentes = assignments.filter((a: any) => a.status === "pendente" && a.data_prevista !== today);
-    const atrasadas = assignments.filter((a: any) => a.status === "atrasada" || (a.status === "pendente" && a.prazo_limite && new Date(a.prazo_limite) < new Date()));
+    // Hoje: somente tarefas com data_prevista = hoje E status ativo (pendente/em_andamento)
+    const hoje = assignments.filter((a: any) => 
+      a.data_prevista === today && 
+      ["pendente", "em_andamento"].includes(a.status)
+    );
+    // Pendentes: pendentes de outros dias (não hoje)
+    const pendentes = assignments.filter((a: any) => 
+      a.status === "pendente" && a.data_prevista !== today
+    );
+    // Atrasadas
+    const atrasadas = assignments.filter((a: any) => 
+      a.status === "atrasada" || 
+      (a.status === "pendente" && a.prazo_limite && new Date(a.prazo_limite) < new Date())
+    );
+    // Devolvidas: bloqueada ou devolvida (contingências para resolver)
+    const devolvidas = assignments.filter((a: any) => 
+      ["bloqueada", "devolvida"].includes(a.status)
+    );
+    // Aguardando avaliação: separado, NÃO entra em concluídas
+    const aguardando = assignments.filter((a: any) => 
+      a.status === "aguardando_avaliacao"
+    );
+    // Concluídas: SOMENTE 100% concluídas
     const concluidas = assignments.filter((a: any) => a.status === "concluida");
-    const historico = assignments.filter((a: any) => ["concluida", "nao_executada", "bloqueada"].includes(a.status));
-    return { hoje, pendentes, atrasadas, concluidas, historico };
+    // Histórico: todos os terminais
+    const historico = assignments.filter((a: any) => 
+      ["concluida", "nao_executada"].includes(a.status)
+    );
+    return { hoje, pendentes, atrasadas, devolvidas, aguardando, concluidas, historico };
   }, [assignments, today]);
 
   // === Executor Actions ===
