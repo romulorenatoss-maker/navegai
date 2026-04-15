@@ -45,6 +45,7 @@ export default function OperationalCadastroPage() {
       if (error) throw error;
       return data;
     },
+    staleTime: 0,
   });
 
   const { data: colaboradores = [] } = useQuery({
