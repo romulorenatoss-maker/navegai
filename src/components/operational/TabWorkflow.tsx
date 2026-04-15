@@ -54,6 +54,29 @@ export function TabWorkflow({ form, set }: Props) {
           <Input type="number" min={1} value={form.prazo_sla_correcao_horas} onChange={e => set("prazo_sla_correcao_horas", +e.target.value)} className="max-w-[200px]" />
         </div>
       </div>
+
+      <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-4">
+        <p className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Penalidades de Gamificação</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label>Penalidade por contingência (pontos)</Label>
+            <Input type="number" min={0} max={100} value={form.penalidade_contingencia} onChange={e => set("penalidade_contingencia", +e.target.value)} className="max-w-[200px]" />
+            <p className="text-caption text-muted-foreground">Pontos descontados se houver qualquer contingência.</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Penalidade SLA contingência (pontos)</Label>
+            <Input type="number" min={0} max={100} value={form.penalidade_sla_contingencia} onChange={e => set("penalidade_sla_contingencia", +e.target.value)} className="max-w-[200px]" />
+            <p className="text-caption text-muted-foreground">Pontos descontados por contingência resolvida fora do prazo.</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <Switch checked={form.habilitar_perguntas_automaticas} onCheckedChange={v => set("habilitar_perguntas_automaticas", v)} />
+          <div>
+            <Label className="cursor-pointer">Habilitar perguntas automáticas na aprovação</Label>
+            <p className="text-caption text-muted-foreground">Gera automaticamente perguntas sobre contingência e SLA na tela de aprovação final.</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
