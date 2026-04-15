@@ -1,40 +1,25 @@
-import { useState, useEffect, useCallback } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useMemo, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Play, Square, Camera, Clock, AlertTriangle, CheckCircle2, Shield, ChevronRight, Upload, MessageSquare } from "lucide-react";
+import { Play, Send, Save, Clock, ChevronLeft, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { STATUS_CONFIG, CONTINGENCY_STATUS, TIPO_EXECUCAO_LABELS } from "@/hooks/useOperationalScoring";
-
-function formatTimer(seconds: number) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
+import { Progress } from "@/components/ui/progress";
+import { STATUS_CONFIG } from "@/hooks/useOperationalScoring";
+import { AssignmentCard } from "@/components/operational/AssignmentCard";
+import { DynamicFieldRenderer, SnapshotField, FieldAnswer } from "@/components/operational/DynamicFieldRenderer";
+import { useAssignmentExecution } from "@/hooks/useAssignmentExecution";
 
 export default function OperationalExecucaoPage() {
   const { profile } = useAuth();
   const qc = useQueryClient();
-  const [activeTab, setActiveTab] = useState("hoje");
+  const [activeTab, setActiveTab] = useState("pendentes");
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
-  const [executionDialogOpen, setExecutionDialogOpen] = useState(false);
-  const [observacao, setObservacao] = useState("");
-  const [timer, setTimer] = useState(0);
-  const [timerActive, setTimerActive] = useState(false);
-
-  // Timer
-  useEffect(() => {
-    if (!timerActive) return;
-    const iv = setInterval(() => setTimer(t => t + 1), 1000);
-    return () => clearInterval(iv);
-  }, [timerActive]);
+  const [execDialogOpen, setExecDialogOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -43,406 +28,261 @@ export default function OperationalExecucaoPage() {
     queryFn: async () => {
       if (!profile?.id) return [];
       const { data, error } = await (supabase as any).from("operational_assignments")
-        .select("*, operational_templates(nome, descricao, tipo_execucao, exigir_foto, exigir_observacao, gerar_contingencia_automatica, prazo_sla_correcao_horas, responsavel_contingencia_id, requer_aprovacao_gestor, bloquear_fechamento_com_contingencia, modo_pontuacao, destino_score, setores: setores!operational_templates_setor_id_fkey(nome))")
-        .or(`responsavel_id.eq.${profile.id},avaliador_id.eq.${profile.id},avaliado_id.eq.${profile.id}`)
+        .select("*, operational_templates(nome, tipo_execucao)")
+        .or(`responsavel_id.eq.${profile.id}`)
         .order("data_prevista", { ascending: true });
       if (error) throw error;
       return data;
     },
     enabled: !!profile?.id,
+    staleTime: 15000,
   });
 
-  const { data: contingencies = [] } = useQuery({
-    queryKey: ["my_contingencies", profile?.id],
-    queryFn: async () => {
-      if (!profile?.id) return [];
-      const { data, error } = await (supabase as any).from("operational_contingencies")
-        .select("*, operational_assignments(operational_templates(nome))")
-        .eq("responsavel_id", profile.id)
-        .in("status", ["aberta", "em_andamento"])
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!profile?.id,
-  });
+  // Tabs filtering
+  const pendentes = assignments.filter((a: any) => ["pendente"].includes(a.status));
+  const emAndamento = assignments.filter((a: any) => ["em_andamento"].includes(a.status));
+  const devolvidas = assignments.filter((a: any) => ["devolvida"].includes(a.status));
+  const concluidas = assignments.filter((a: any) => ["concluida", "aprovada", "aguardando_avaliacao", "aguardando_aprovacao"].includes(a.status)).slice(0, 50);
 
-  // Load steps/check items for selected assignment
-  const { data: templateSteps = [] } = useQuery({
-    queryKey: ["assignment_steps", selectedAssignment?.template_id],
-    queryFn: async () => {
-      if (!selectedAssignment?.template_id) return [];
-      const { data } = await (supabase as any).from("operational_template_steps").select("*").eq("template_id", selectedAssignment.template_id).order("ordem");
-      return data || [];
-    },
-    enabled: !!selectedAssignment?.template_id && selectedAssignment?.operational_templates?.tipo_execucao === "etapas",
-  });
+  const exec = useAssignmentExecution(selectedAssignment?.id || null);
 
-  const { data: checkItems = [] } = useQuery({
-    queryKey: ["assignment_check_items", selectedAssignment?.template_id],
-    queryFn: async () => {
-      if (!selectedAssignment?.template_id) return [];
-      const { data } = await (supabase as any).from("operational_template_check_items").select("*").eq("template_id", selectedAssignment.template_id).order("ordem");
-      return data || [];
-    },
-    enabled: !!selectedAssignment?.template_id && selectedAssignment?.operational_templates?.tipo_execucao === "checklist_inspecao",
-  });
+  // Snapshot data
+  const snapshot = selectedAssignment?.template_snapshot;
+  const snapshotSections: any[] = useMemo(() => snapshot?.sections?.sort((a: any, b: any) => a.ordem - b.ordem) || [], [snapshot]);
+  const snapshotFields: SnapshotField[] = useMemo(() => snapshot?.fields?.sort((a: any, b: any) => a.ordem - b.ordem) || [], [snapshot]);
 
-  const { data: stepLogs = [] } = useQuery({
-    queryKey: ["step_logs", selectedAssignment?.id],
-    queryFn: async () => {
-      if (!selectedAssignment?.id) return [];
-      const { data } = await (supabase as any).from("operational_execution_step_logs").select("*").eq("assignment_id", selectedAssignment.id);
-      return data || [];
-    },
-    enabled: !!selectedAssignment?.id,
-  });
-
-  const { data: checkAnswers = [] } = useQuery({
-    queryKey: ["check_answers", selectedAssignment?.id],
-    queryFn: async () => {
-      if (!selectedAssignment?.id) return [];
-      const { data } = await (supabase as any).from("operational_execution_check_answers").select("*").eq("assignment_id", selectedAssignment.id);
-      return data || [];
-    },
-    enabled: !!selectedAssignment?.id,
-  });
-
-  const startTask = useMutation({
-    mutationFn: async (a: any) => {
-      const { error } = await (supabase as any).from("operational_assignments").update({ status: "em_andamento", inicio_em: new Date().toISOString() }).eq("id", a.id);
-      if (error) throw error;
-      await (supabase as any).from("operational_execution_logs").insert({ assignment_id: a.id, acao: "iniciou", executado_por: profile?.id });
-    },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["my_operational_assignments"] }); toast.success("Tarefa iniciada!"); },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  const completeTask = useMutation({
-    mutationFn: async () => {
-      if (!selectedAssignment) return;
-      const now = new Date().toISOString();
-      const tempoGasto = selectedAssignment.inicio_em
-        ? Math.round((Date.now() - new Date(selectedAssignment.inicio_em).getTime()) / 60000)
-        : timer / 60;
-      const tpl = selectedAssignment.operational_templates;
-      const nextStatus = tpl?.requer_aprovacao_gestor ? "aguardando_aprovacao" : "concluida";
-      const { error } = await (supabase as any).from("operational_assignments").update({
-        status: nextStatus, fim_em: now, tempo_gasto_minutos: Math.round(tempoGasto), observacao: observacao || null,
-      }).eq("id", selectedAssignment.id);
-      if (error) throw error;
-      await (supabase as any).from("operational_execution_logs").insert({ assignment_id: selectedAssignment.id, acao: "concluiu", executado_por: profile?.id, detalhes: { tempo_gasto_minutos: Math.round(tempoGasto), observacao } });
-      // Audit trail
-      await (supabase as any).from("operational_audit_trail").insert({
-        assignment_id: selectedAssignment.id, tipo_evento: "conclusao", executado_por: profile?.id,
-        dados_novos: { status: nextStatus, tempo_gasto_minutos: Math.round(tempoGasto) },
-      });
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["my_operational_assignments"] });
-      const tpl = selectedAssignment?.operational_templates;
-      toast.success(tpl?.requer_aprovacao_gestor ? "Tarefa enviada para aprovação!" : "Tarefa concluída!");
-      setExecutionDialogOpen(false); setTimerActive(false); setTimer(0);
-    },
-    onError: (e: any) => {
-      if (e.message?.includes("contingência")) {
-        toast.error("Não é possível concluir: existem contingências pendentes. Resolva-as primeiro.");
-      } else {
-        toast.error(e.message);
-      }
-    },
-  });
-
-  const answerCheckItem = useMutation({
-    mutationFn: async ({ checkItemId, conforme, obs }: { checkItemId: string; conforme: boolean; obs?: string }) => {
-      if (!selectedAssignment) return;
-      // Upsert answer
-      const existing = checkAnswers.find((a: any) => a.check_item_id === checkItemId);
-      if (existing) {
-        await (supabase as any).from("operational_execution_check_answers").update({ conforme, observacao: obs || null }).eq("id", existing.id);
-      } else {
-        await (supabase as any).from("operational_execution_check_answers").insert({ assignment_id: selectedAssignment.id, check_item_id: checkItemId, conforme, observacao: obs || null });
-      }
-      // Auto-create contingency if non-conforme and template requires it
-      if (!conforme) {
-        const item = checkItems.find((ci: any) => ci.id === checkItemId);
-        const tpl = selectedAssignment.operational_templates;
-        if (item?.gera_contingencia_se_reprovado || tpl?.gerar_contingencia_automatica) {
-          const slaHours = tpl?.prazo_sla_correcao_horas || 24;
-          const prazoSla = new Date(Date.now() + slaHours * 3600000).toISOString();
-          await (supabase as any).from("operational_contingencies").insert({
-            assignment_id: selectedAssignment.id,
-            check_answer_id: existing?.id || null,
-            descricao: `Não conformidade: ${item?.pergunta || "Item reprovado"}`,
-            responsavel_id: tpl?.responsavel_contingencia_id || profile?.id,
-            prazo_sla: prazoSla,
-          });
-          toast.warning("Contingência criada automaticamente.");
-        }
-      }
-    },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["check_answers"] }); },
-  });
-
-  const completeStep = useMutation({
-    mutationFn: async (stepId: string) => {
-      if (!selectedAssignment) return;
-      const existing = stepLogs.find((l: any) => l.step_id === stepId);
-      if (existing) {
-        await (supabase as any).from("operational_execution_step_logs").update({ status: "concluida", fim_em: new Date().toISOString() }).eq("id", existing.id);
-      } else {
-        await (supabase as any).from("operational_execution_step_logs").insert({ assignment_id: selectedAssignment.id, step_id: stepId, status: "concluida", inicio_em: new Date().toISOString(), fim_em: new Date().toISOString() });
-      }
-    },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["step_logs"] }); toast.success("Etapa concluída!"); },
-  });
-
-  const resolveContingency = useMutation({
-    mutationFn: async ({ id, obs }: { id: string; obs: string }) => {
-      await (supabase as any).from("operational_contingencies").update({ status: "resolvida", resolvida_em: new Date().toISOString() }).eq("id", id);
-      await (supabase as any).from("operational_contingency_resolution_logs").insert({ contingency_id: id, acao: "resolveu", observacao: obs, executado_por: profile?.id });
-    },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["my_contingencies"] }); toast.success("Contingência resolvida!"); },
-  });
-
-  const openExecution = (a: any) => {
-    setSelectedAssignment(a);
-    setObservacao("");
-    setTimer(0);
-    if (a.inicio_em) {
-      const elapsed = Math.round((Date.now() - new Date(a.inicio_em).getTime()) / 1000);
-      setTimer(elapsed);
-      setTimerActive(a.status === "em_andamento");
+  // Group fields by section
+  const fieldsBySection = useMemo(() => {
+    const map: Record<string, SnapshotField[]> = {};
+    for (const f of snapshotFields) {
+      const key = f.section_id || "__nosection";
+      (map[key] ??= []).push(f);
     }
-    setExecutionDialogOpen(true);
+    return map;
+  }, [snapshotFields]);
+
+  // Set initial section when opening
+  const openExecution = useCallback((a: any) => {
+    setSelectedAssignment(a);
+    setExecDialogOpen(true);
+    const sections = a.template_snapshot?.sections?.sort((x: any, y: any) => x.ordem - y.ordem);
+    setActiveSection(sections?.[0]?.id || null);
+  }, []);
+
+  const closeExecution = () => {
+    if (exec.dirty) exec.saveDraft();
+    setExecDialogOpen(false);
+    setSelectedAssignment(null);
   };
 
-  // Filter assignments
-  const todayAssignments = assignments.filter((a: any) => a.data_prevista === today && !["concluida", "aprovada", "nao_executada"].includes(a.status));
-  const pendingAssignments = assignments.filter((a: any) => a.data_prevista > today && a.status === "pendente");
-  const lateAssignments = assignments.filter((a: any) => (a.data_prevista < today && a.status !== "concluida" && a.status !== "aprovada" && a.status !== "nao_executada") || a.status === "atrasada");
-  const awaitingApproval = assignments.filter((a: any) => a.status === "aguardando_aprovacao");
-  const doneAssignments = assignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 50);
+  // Progress calculation
+  const progress = useMemo(() => {
+    if (!snapshotFields.length) return 0;
+    const filled = snapshotFields.filter(f => {
+      const a = exec.answers[f.id];
+      return a && (a.valor_texto != null && a.valor_texto !== "" || a.valor_numero != null || a.valor_booleano != null || a.valor_data != null || a.valor_json != null);
+    }).length;
+    return Math.round((filled / snapshotFields.length) * 100);
+  }, [snapshotFields, exec.answers]);
 
-  const renderCard = (a: any) => {
-    const tpl = a.operational_templates;
-    const statusConf = STATUS_CONFIG[a.status] || STATUS_CONFIG.pendente;
-    return (
-      <div key={a.id} onClick={() => openExecution(a)}
-        className="bg-card border border-border rounded-lg p-4 shadow-card hover:shadow-md transition-all cursor-pointer active:scale-[0.98]">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-body font-medium text-foreground truncate">{tpl?.nome || "Rotina"}</h3>
-            <p className="text-caption text-muted-foreground mt-0.5">{tpl?.setores?.nome || "—"}</p>
-          </div>
-          <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border shrink-0 ${statusConf.class}`}>
-            {statusConf.label}
-          </span>
-        </div>
-        <div className="flex items-center gap-3 mt-3 text-caption text-muted-foreground">
-          <span className="inline-flex items-center px-2 py-0.5 rounded border badge-active">{TIPO_EXECUCAO_LABELS[tpl?.tipo_execucao] || "—"}</span>
-          <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{a.data_prevista}</span>
-          {a.horario_limite && <span>{a.horario_limite}</span>}
-        </div>
-        <div className="flex items-center justify-end mt-2">
-          <ChevronRight className="w-4 h-4 text-muted-foreground" />
-        </div>
-      </div>
-    );
+  // Is assignment editable by current user?
+  const isEditable = selectedAssignment && ["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status);
+  const isDevolvida = selectedAssignment?.status === "devolvida";
+
+  const handleStart = () => {
+    if (selectedAssignment) exec.startTask.mutate(selectedAssignment.id);
   };
 
-  const renderContingencyCard = (c: any) => {
-    const statusConf = CONTINGENCY_STATUS[c.status] || CONTINGENCY_STATUS.aberta;
-    const isVencida = c.prazo_sla && new Date(c.prazo_sla) < new Date() && c.status === "aberta";
-    return (
-      <div key={c.id} className="bg-card border border-border rounded-lg p-4 shadow-card">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-body font-medium text-foreground">{c.descricao}</h3>
-            <p className="text-caption text-muted-foreground mt-0.5">{c.operational_assignments?.operational_templates?.nome || "—"}</p>
-          </div>
-          <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border shrink-0 ${isVencida ? CONTINGENCY_STATUS.vencida.class : statusConf.class}`}>
-            {isVencida ? "Vencida" : statusConf.label}
-          </span>
-        </div>
-        {c.prazo_sla && <p className="text-caption text-muted-foreground mt-2">SLA: {new Date(c.prazo_sla).toLocaleString("pt-BR")}</p>}
-        <div className="flex gap-2 mt-3">
-          <Button size="sm" variant="outline" onClick={() => {
-            const obs = prompt("Descreva a resolução:");
-            if (obs) resolveContingency.mutate({ id: c.id, obs });
-          }}>Resolver</Button>
-        </div>
-      </div>
-    );
+  const handleSubmit = () => {
+    const errors = exec.validateAll(snapshotFields, selectedAssignment?.status);
+    if (errors.length > 0) {
+      toast.error(`Corrija ${errors.length} erro(s) antes de enviar`, { description: errors.slice(0, 3).join("; ") });
+      return;
+    }
+    exec.submit.mutate({ assignment: selectedAssignment, fields: snapshotFields });
+    setExecDialogOpen(false);
   };
+
+  const handleSaveDraft = async () => {
+    await exec.saveDraft();
+    toast.success("Rascunho salvo!");
+  };
+
+  const renderEmptyState = (msg: string) => (
+    <div className="text-center py-12 text-muted-foreground">
+      <p className="text-sm">{msg}</p>
+    </div>
+  );
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-section font-semibold text-foreground">Painel Operacional</h1>
-        <p className="text-body text-muted-foreground">Gerencie suas rotinas e tarefas diárias.</p>
+        <h1 className="text-lg md:text-xl font-semibold text-foreground">Execução Operacional</h1>
+        <p className="text-sm text-muted-foreground">Formulários e rotinas atribuídos a você.</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full mb-4 flex-wrap h-auto gap-1">
-          <TabsTrigger value="hoje" className="flex-1 min-w-[70px]">
-            Hoje {todayAssignments.length > 0 && <span className="ml-1 bg-primary/20 text-primary px-1.5 rounded-full text-caption">{todayAssignments.length}</span>}
+          <TabsTrigger value="pendentes" className="flex-1 min-w-[70px]">
+            Pendentes {pendentes.length > 0 && <span className="ml-1 bg-yellow-500/20 text-yellow-700 px-1.5 rounded-full text-[10px]">{pendentes.length}</span>}
           </TabsTrigger>
-          <TabsTrigger value="proximas" className="flex-1 min-w-[70px]">Próximas</TabsTrigger>
-          <TabsTrigger value="atraso" className="flex-1 min-w-[70px]">
-            Atraso {lateAssignments.length > 0 && <span className="ml-1 bg-destructive/20 text-destructive px-1.5 rounded-full text-caption">{lateAssignments.length}</span>}
+          <TabsTrigger value="andamento" className="flex-1 min-w-[70px]">
+            Em Andamento {emAndamento.length > 0 && <span className="ml-1 bg-primary/20 text-primary px-1.5 rounded-full text-[10px]">{emAndamento.length}</span>}
           </TabsTrigger>
-          {awaitingApproval.length > 0 && (
-            <TabsTrigger value="aprovacao" className="flex-1 min-w-[70px]">
-              Aprovação <span className="ml-1 bg-purple-500/20 text-purple-600 px-1.5 rounded-full text-caption">{awaitingApproval.length}</span>
-            </TabsTrigger>
-          )}
-          <TabsTrigger value="contingencias" className="flex-1 min-w-[70px]">
-            Conting. {contingencies.length > 0 && <span className="ml-1 bg-orange-500/20 text-orange-600 px-1.5 rounded-full text-caption">{contingencies.length}</span>}
+          <TabsTrigger value="devolvidas" className="flex-1 min-w-[70px]">
+            Devolvidas {devolvidas.length > 0 && <span className="ml-1 bg-amber-500/20 text-amber-700 px-1.5 rounded-full text-[10px]">{devolvidas.length}</span>}
           </TabsTrigger>
           <TabsTrigger value="historico" className="flex-1 min-w-[70px]">Histórico</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="hoje" className="space-y-3">
-          {isLoading ? <p className="text-center text-muted-foreground py-8">Carregando...</p> :
-            todayAssignments.length === 0 ? <p className="text-center text-muted-foreground py-8">Nenhuma rotina para hoje.</p> :
-            todayAssignments.map(renderCard)}
+        <TabsContent value="pendentes" className="space-y-3">
+          {isLoading ? renderEmptyState("Carregando...") : pendentes.length === 0 ? renderEmptyState("Nenhuma rotina pendente.") : pendentes.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
         </TabsContent>
-        <TabsContent value="proximas" className="space-y-3">
-          {pendingAssignments.length === 0 ? <p className="text-center text-muted-foreground py-8">Nenhuma rotina futura.</p> :
-            pendingAssignments.map(renderCard)}
+        <TabsContent value="andamento" className="space-y-3">
+          {emAndamento.length === 0 ? renderEmptyState("Nenhuma rotina em andamento.") : emAndamento.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
         </TabsContent>
-        <TabsContent value="atraso" className="space-y-3">
-          {lateAssignments.length === 0 ? <p className="text-center text-muted-foreground py-8">Nenhuma rotina em atraso.</p> :
-            lateAssignments.map(renderCard)}
-        </TabsContent>
-        <TabsContent value="aprovacao" className="space-y-3">
-          {awaitingApproval.length === 0 ? <p className="text-center text-muted-foreground py-8">Nenhuma rotina aguardando aprovação.</p> :
-            awaitingApproval.map(renderCard)}
-        </TabsContent>
-        <TabsContent value="contingencias" className="space-y-3">
-          {contingencies.length === 0 ? <p className="text-center text-muted-foreground py-8">Nenhuma contingência pendente.</p> :
-            contingencies.map(renderContingencyCard)}
+        <TabsContent value="devolvidas" className="space-y-3">
+          {devolvidas.length === 0 ? renderEmptyState("Nenhuma rotina devolvida.") : devolvidas.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
         </TabsContent>
         <TabsContent value="historico" className="space-y-3">
-          {doneAssignments.length === 0 ? <p className="text-center text-muted-foreground py-8">Nenhuma rotina concluída.</p> :
-            doneAssignments.map(renderCard)}
+          {concluidas.length === 0 ? renderEmptyState("Nenhuma rotina concluída.") : concluidas.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
         </TabsContent>
       </Tabs>
 
       {/* Execution Dialog */}
-      <Dialog open={executionDialogOpen} onOpenChange={setExecutionDialogOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          {selectedAssignment && (() => {
-            const tpl = selectedAssignment.operational_templates;
-            const statusConf = STATUS_CONFIG[selectedAssignment.status] || STATUS_CONFIG.pendente;
-            const isActive = selectedAssignment.status === "em_andamento";
-            const isDone = selectedAssignment.status === "concluida";
-
-            return (
-              <>
-                <DialogHeader>
-                  <DialogTitle>{tpl?.nome || "Rotina"}</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${statusConf.class}`}>{statusConf.label}</span>
-                    <span className="text-caption text-muted-foreground">{TIPO_EXECUCAO_LABELS[tpl?.tipo_execucao] || ""}</span>
-                  </div>
-
-                  {tpl?.descricao && <p className="text-body text-muted-foreground">{tpl.descricao}</p>}
-
-                  {/* Timer */}
-                  {(isActive || isDone) && (
-                    <div className="bg-muted/50 rounded-lg border border-border p-4 text-center">
-                      <p className="text-caption text-muted-foreground mb-1">Tempo de Execução</p>
-                      <p className="text-2xl font-mono font-bold text-foreground">{formatTimer(timer)}</p>
-                    </div>
+      <Dialog open={execDialogOpen} onOpenChange={v => { if (!v) closeExecution(); }}>
+        <DialogContent className="max-w-2xl max-h-[95vh] overflow-hidden flex flex-col p-0">
+          {/* Header */}
+          <div className="p-4 border-b border-border">
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={closeExecution}>
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-sm font-semibold text-foreground truncate">{snapshot?.nome || "Rotina"}</h2>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>{selectedAssignment?.data_prevista}</span>
+                  {selectedAssignment?.status && (
+                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${STATUS_CONFIG[selectedAssignment.status]?.class || ""}`}>
+                      {STATUS_CONFIG[selectedAssignment.status]?.label}
+                    </span>
                   )}
-
-                  {/* Steps for etapas type */}
-                  {tpl?.tipo_execucao === "etapas" && templateSteps.length > 0 && (
-                    <div className="space-y-2">
-                      <Label className="text-caption font-medium text-muted-foreground uppercase">Etapas</Label>
-                      {templateSteps.map((step: any, i: number) => {
-                        const log = stepLogs.find((l: any) => l.step_id === step.id);
-                        const completed = log?.status === "concluida";
-                        const prevCompleted = i === 0 || stepLogs.find((l: any) => l.step_id === templateSteps[i - 1]?.id)?.status === "concluida";
-                        return (
-                          <div key={step.id} className={`flex items-center gap-3 p-3 rounded-lg border ${completed ? "bg-green-50 border-green-200" : "bg-card border-border"}`}>
-                            {completed ? <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" /> : <div className="w-5 h-5 rounded-full border-2 border-muted-foreground shrink-0" />}
-                            <span className="text-body flex-1">{step.nome}</span>
-                            {!completed && isActive && prevCompleted && (
-                              <Button size="sm" onClick={() => completeStep.mutate(step.id)}>Concluir</Button>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* Check items for checklist type */}
-                  {tpl?.tipo_execucao === "checklist_inspecao" && checkItems.length > 0 && (
-                    <div className="space-y-2">
-                      <Label className="text-caption font-medium text-muted-foreground uppercase">Itens de Inspeção</Label>
-                      {checkItems.map((item: any) => {
-                        const answer = checkAnswers.find((a: any) => a.check_item_id === item.id);
-                        return (
-                          <div key={item.id} className={`p-3 rounded-lg border ${answer?.conforme === true ? "bg-green-50 border-green-200" : answer?.conforme === false ? "bg-red-50 border-red-200" : "bg-card border-border"}`}>
-                            <p className="text-body mb-2">{item.pergunta}</p>
-                            {isActive && !isDone && (
-                              <div className="flex gap-2">
-                                <Button size="sm" variant={answer?.conforme === true ? "default" : "outline"}
-                                  onClick={() => answerCheckItem.mutate({ checkItemId: item.id, conforme: true })}
-                                  className="flex-1">
-                                  <CheckCircle2 className="w-3 h-3 mr-1" />
-                                  {item.tipo_resposta === "sim_nao" ? "Sim" : "Conforme"}
-                                </Button>
-                                <Button size="sm" variant={answer?.conforme === false ? "destructive" : "outline"}
-                                  onClick={() => answerCheckItem.mutate({ checkItemId: item.id, conforme: false })}
-                                  className="flex-1">
-                                  <AlertTriangle className="w-3 h-3 mr-1" />
-                                  {item.tipo_resposta === "sim_nao" ? "Não" : "Não Conforme"}
-                                </Button>
-                              </div>
-                            )}
-                            {answer && <p className="text-caption mt-1 text-muted-foreground">{answer.conforme ? "✅ Aprovado" : "❌ Reprovado"}</p>}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* Observation */}
-                  {(isActive || selectedAssignment.status === "pendente") && (
-                    <div className="space-y-1.5">
-                      <Label>Observação</Label>
-                      <Textarea value={observacao} onChange={e => setObservacao(e.target.value)} placeholder="Adicione uma observação..." />
-                    </div>
-                  )}
-
-                  {/* Actions */}
-                  {!isDone && (
-                    <div className="flex gap-2">
-                      {selectedAssignment.status === "pendente" && (
-                        <Button className="flex-1 press-effect" onClick={() => {
-                          startTask.mutate(selectedAssignment);
-                          setTimerActive(true);
-                        }}>
-                          <Play className="w-4 h-4 mr-2" /> Iniciar
-                        </Button>
-                      )}
-                      {isActive && (
-                        <Button className="flex-1 press-effect" onClick={() => completeTask.mutate()}>
-                          <Square className="w-4 h-4 mr-2" /> Concluir
-                        </Button>
-                      )}
-                    </div>
+                  {isDevolvida && (
+                    <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
+                      <AlertTriangle className="w-3 h-3" /> Rodada {selectedAssignment?.rodada_atual}
+                    </span>
                   )}
                 </div>
+              </div>
+              {exec.dirty && <span className="text-[10px] text-muted-foreground">Não salvo</span>}
+            </div>
+
+            {/* Progress bar */}
+            <div className="mt-3">
+              <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                <span>Progresso</span>
+                <span className="font-medium">{progress}%</span>
+              </div>
+              <Progress value={progress} className="h-2" />
+            </div>
+
+            {/* Section nav */}
+            {snapshotSections.length > 1 && (
+              <div className="flex gap-1.5 mt-3 overflow-x-auto pb-1">
+                {snapshotSections.map((s: any) => {
+                  const sFields = fieldsBySection[s.id] || [];
+                  const filled = sFields.filter(f => {
+                    const a = exec.answers[f.id];
+                    return a && (a.valor_texto != null && a.valor_texto !== "" || a.valor_numero != null || a.valor_booleano != null || a.valor_data != null || a.valor_json != null);
+                  }).length;
+                  const allFilled = filled === sFields.length && sFields.length > 0;
+                  return (
+                    <button key={s.id} type="button" onClick={() => setActiveSection(s.id)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border whitespace-nowrap transition-colors ${activeSection === s.id ? "bg-primary/10 border-primary text-primary" : "bg-card border-border text-muted-foreground hover:bg-muted"}`}>
+                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.cor || "#3b82f6" }} />
+                      {s.nome || "Seção"}
+                      {allFilled && <CheckCircle2 className="w-3 h-3 text-green-600" />}
+                      <span className="text-[10px] opacity-70">{filled}/{sFields.length}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Body — scrollable fields */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-6">
+            {selectedAssignment?.status === "pendente" && (
+              <div className="text-center py-6">
+                <p className="text-sm text-muted-foreground mb-3">Inicie a tarefa para começar o preenchimento.</p>
+                <Button onClick={handleStart} disabled={exec.startTask.isPending}>
+                  <Play className="w-4 h-4 mr-2" /> Iniciar Tarefa
+                </Button>
+              </div>
+            )}
+
+            {isEditable && selectedAssignment?.status !== "pendente" && (
+              <>
+                {snapshotSections.length === 0 ? (
+                  // No sections, render all fields flat
+                  <div className="space-y-3">
+                    {snapshotFields.map(f => (
+                      <DynamicFieldRenderer key={f.id} field={f} answer={exec.answers[f.id]}
+                        review={exec.getLatestReview(f.id)} userRole="executor"
+                        disabled={isDevolvida && !exec.getLatestReview(f.id)?.devolvido}
+                        allAnswers={exec.answers} onChange={exec.updateAnswer} assignmentId={selectedAssignment.id} />
+                    ))}
+                  </div>
+                ) : (
+                  // Render active section
+                  snapshotSections.filter(s => !activeSection || s.id === activeSection).map((section: any) => {
+                    const sFields = fieldsBySection[section.id] || [];
+                    return (
+                      <div key={section.id}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: section.cor || "#3b82f6" }} />
+                          <h3 className="text-sm font-semibold text-foreground">{section.nome}</h3>
+                          {section.descricao && <p className="text-xs text-muted-foreground">— {section.descricao}</p>}
+                        </div>
+                        <div className="space-y-3">
+                          {sFields.map(f => (
+                            <DynamicFieldRenderer key={f.id} field={f} answer={exec.answers[f.id]}
+                              review={exec.getLatestReview(f.id)} userRole="executor"
+                              disabled={isDevolvida && !exec.getLatestReview(f.id)?.devolvido}
+                              allAnswers={exec.answers} onChange={exec.updateAnswer} assignmentId={selectedAssignment.id} />
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </>
-            );
-          })()}
+            )}
+
+            {/* Read-only view for completed */}
+            {!isEditable && selectedAssignment && (
+              <div className="space-y-3">
+                {snapshotFields.map(f => (
+                  <DynamicFieldRenderer key={f.id} field={f} answer={exec.answers[f.id]}
+                    review={exec.getLatestReview(f.id)} userRole="executor"
+                    disabled={true} allAnswers={exec.answers} onChange={() => {}} assignmentId={selectedAssignment?.id || ""} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Footer actions — sticky */}
+          {isEditable && selectedAssignment?.status !== "pendente" && (
+            <div className="border-t border-border p-3 flex items-center gap-2 bg-card safe-area-bottom">
+              <Button type="button" variant="outline" size="sm" onClick={handleSaveDraft} disabled={!exec.dirty}>
+                <Save className="w-3.5 h-3.5 mr-1" /> Rascunho
+              </Button>
+              <div className="flex-1" />
+              <Button type="button" size="sm" onClick={handleSubmit} disabled={exec.isSubmitting}>
+                <Send className="w-3.5 h-3.5 mr-1" /> {exec.isSubmitting ? "Enviando..." : "Enviar para Avaliação"}
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
