@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { SectionForm, FieldForm, FIELD_TYPES, CRITICIDADE_OPTIONS, SECTION_COLORS, defaultField, defaultSection } from "./types";
+import { SectionForm, FieldForm, FIELD_TYPES, SECTION_COLORS, defaultField, defaultSection } from "./types";
 
 interface Props {
   sections: SectionForm[];
