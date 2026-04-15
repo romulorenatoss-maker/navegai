@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Settings2, Copy, AlertTriangle, Camera, FileVideo, FileText } from "lucide-react";
+import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Settings2, Copy, AlertTriangle, Camera, FileVideo, FileText, Clock } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
@@ -17,9 +17,10 @@ interface Props {
   fields: FieldForm[];
   setFields: React.Dispatch<React.SetStateAction<FieldForm[]>>;
   setores?: any[];
+  tipoExecucao?: string;
 }
 
-export function TabFormBuilder({ sections, setSections, fields, setFields, setores = [] }: Props) {
+export function TabFormBuilder({ sections, setSections, fields, setFields, setores = [], tipoExecucao = "checklist_inspecao" }: Props) {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<FieldForm | null>(null);
 
