@@ -136,7 +136,17 @@ export default function OperationalExecucaoPage() {
     setExecDialogOpen(true);
     const sections = a.template_snapshot?.sections?.sort((x: any, y: any) => x.ordem - y.ordem);
     setActiveSection(sections?.[0]?.id || null);
-  }, []);
+
+    // Log view event
+    if (profile?.id) {
+      (supabase as any).from("operational_execution_logs").insert({
+        assignment_id: a.id,
+        acao: "visualizou",
+        executado_por: profile.id,
+        detalhes: { viewed_at: new Date().toISOString() },
+      }).then(() => {});
+    }
+  }, [profile?.id]);
 
   const closeExecution = async () => {
     if (exec.dirty) await exec.saveDraft();
