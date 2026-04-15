@@ -81,6 +81,10 @@ export default function GerenciamentoLeadsPage() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(20);
 
+  // Sorting
+  const [sortColumn, setSortColumn] = useState<"nome" | "created_at" | "responsavel_id">("created_at");
+  const [sortAsc, setSortAsc] = useState(false);
+
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
