@@ -24,7 +24,7 @@ export function TabWorkflow({ form, set, fields = [] }: Props) {
   ];
 
   const totalPenalidades = autoQuestions.reduce((s, q) => s + q.pontos, 0);
-  const totalCampos = uniqueFields.reduce((s, f) => s + (f.impacta_score ? f.nota_maxima : 0), 0);
+  const totalCampos = uniqueFields.reduce((s, f) => s + f.aprovador_peso, 0);
   const totalGeral = totalCampos + totalPenalidades;
 
   return (
@@ -141,23 +141,17 @@ export function TabWorkflow({ form, set, fields = [] }: Props) {
               {/* 2) Campos do formulário na ordem original */}
               {uniqueFields.map((f, i) => {
                 const idx = (form.habilitar_perguntas_automaticas ? autoQuestions.length : 0) + i + 1;
-                const pontos = f.impacta_score ? f.nota_maxima : 0;
-                const hasApprover = !!f.aprovador_pergunta?.trim();
                 return (
                   <TableRow key={f.tempId}>
                     <TableCell className="text-center text-sm text-muted-foreground">{idx}</TableCell>
                     <TableCell className="text-sm">
-                      <div>{f.label || <span className="text-muted-foreground italic">Sem nome</span>}</div>
-                      {hasApprover && (
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          Aprovador: {f.aprovador_pergunta} (peso {f.aprovador_peso})
-                        </div>
-                      )}
+                      <div className="font-medium">{f.aprovador_pergunta}</div>
+                      <div className="text-xs text-muted-foreground">Campo: {f.label}</div>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge variant={f.impacta_score ? "outline" : "secondary"} className="text-xs">{f.tipo}</Badge>
+                      <Badge variant="outline" className="text-xs">Aprovador</Badge>
                     </TableCell>
-                    <TableCell className="text-right text-sm font-medium">{pontos}</TableCell>
+                    <TableCell className="text-right text-sm font-medium">{f.aprovador_peso}</TableCell>
                   </TableRow>
                 );
               })}
