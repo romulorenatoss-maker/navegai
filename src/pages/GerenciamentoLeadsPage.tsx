@@ -124,7 +124,7 @@ export default function GerenciamentoLeadsPage() {
         query = query.lte("created_at", endOfDay.toISOString());
       }
 
-      query = query.order("created_at", { ascending: false }).range(page * pageSize, (page + 1) * pageSize - 1);
+      query = query.order(sortColumn, { ascending: sortAsc }).range(page * pageSize, (page + 1) * pageSize - 1);
 
       const { data, error, count } = await query;
       if (error) throw error;
