@@ -372,34 +372,42 @@ export default function OperationalGestaoPage() {
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase px-4 py-2">#</th>
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase px-4 py-2">Colaborador</th>
                   <th className="text-center text-caption font-medium text-muted-foreground uppercase px-4 py-2">Total</th>
-                  <th className="text-center text-caption font-medium text-muted-foreground uppercase px-4 py-2">Concluídas</th>
                   <th className="text-center text-caption font-medium text-muted-foreground uppercase px-4 py-2">Taxa</th>
-                  <th className="text-center text-caption font-medium text-muted-foreground uppercase px-4 py-2">Score Médio</th>
+                  <th className="text-center text-caption font-medium text-muted-foreground uppercase px-4 py-2">Executor</th>
+                  <th className="text-center text-caption font-medium text-muted-foreground uppercase px-4 py-2">Avaliado</th>
+                  <th className="text-center text-caption font-medium text-muted-foreground uppercase px-4 py-2">Avaliador</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {rankings.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Sem dados no período.</td></tr>
-                ) : rankings.map((r, i) => (
-                  <tr key={r.id} className="hover:bg-muted/50">
-                    <td className="px-4 py-3 text-caption font-medium text-muted-foreground">
-                      {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
-                    </td>
-                    <td className="px-4 py-3 text-body font-medium text-foreground">{r.nome}</td>
-                    <td className="px-4 py-3 text-center text-body font-tabular">{r.total}</td>
-                    <td className="px-4 py-3 text-center text-body font-tabular">{r.concluidas}</td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${r.taxa >= 80 ? "badge-complete" : r.taxa >= 50 ? "bg-yellow-100 text-yellow-800 border-yellow-200" : "bg-red-100 text-red-800 border-red-200"}`}>
-                        {r.taxa}%
+                  <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">Sem dados no período.</td></tr>
+                ) : rankings.map((r, i) => {
+                  const renderScore = (v: number | null) => {
+                    if (v == null) return <span className="text-caption text-muted-foreground">—</span>;
+                    return (
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${v >= 80 ? "badge-complete" : v >= 50 ? "bg-yellow-100 text-yellow-800 border-yellow-200" : "bg-red-100 text-red-800 border-red-200"}`}>
+                        {v}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${r.scoreMedio >= 80 ? "badge-complete" : r.scoreMedio >= 50 ? "bg-yellow-100 text-yellow-800 border-yellow-200" : "bg-red-100 text-red-800 border-red-200"}`}>
-                        {r.scoreMedio}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                    );
+                  };
+                  return (
+                    <tr key={r.id} className="hover:bg-muted/50">
+                      <td className="px-4 py-3 text-caption font-medium text-muted-foreground">
+                        {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
+                      </td>
+                      <td className="px-4 py-3 text-body font-medium text-foreground">{r.nome}</td>
+                      <td className="px-4 py-3 text-center text-body font-tabular">{r.total}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${r.taxa >= 80 ? "badge-complete" : r.taxa >= 50 ? "bg-yellow-100 text-yellow-800 border-yellow-200" : "bg-red-100 text-red-800 border-red-200"}`}>
+                          {r.taxa}%
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">{renderScore(r.scoreExecMedio)}</td>
+                      <td className="px-4 py-3 text-center">{renderScore(r.scoreAvdoMedio)}</td>
+                      <td className="px-4 py-3 text-center">{renderScore(r.scoreAvdrMedio)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
