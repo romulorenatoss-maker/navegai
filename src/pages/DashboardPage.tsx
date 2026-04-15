@@ -989,8 +989,6 @@ export default function DashboardPage() {
     </div>
   );
 }
-              <div key={s.setor_id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
-                <span className="text-body font-medium text-foreground">{s.setor_nome}</span>
                 <span className={cn(
                   "text-body font-bold font-tabular px-2 py-0.5 rounded",
                   s.pending_count > 3 ? "bg-destructive/10 text-destructive" :
