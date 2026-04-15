@@ -598,6 +598,11 @@ export default function GerenciamentoLeadsPage() {
                   <TableCell className="text-sm">
                     {lead.campanha_id ? (campanhasMap[lead.campanha_id] || "—") : <span className="text-muted-foreground">—</span>}
                   </TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setViewLead({ id: lead.id, nome: lead.nome })} title="Ver histórico">
+                      <Eye className="w-3.5 h-3.5 text-muted-foreground" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))
             )}
