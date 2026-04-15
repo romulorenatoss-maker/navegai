@@ -9,19 +9,29 @@ export interface ScreenDef {
 
 export const ALL_SCREENS: ScreenDef[] = [
   // Principal
-  { path: "/", label: "Dashboard", group: "Principal" },
+  { path: "/", label: "Dashboard OS", group: "Principal" },
   { path: "/leads/dashboard", label: "Dashboard de Leads", group: "Principal" },
   { path: "/leads/dashboard-vendas", label: "Dashboard Vendas", group: "Principal" },
   // Avaliações
   { path: "/avaliacoes/pesquisa", label: "Criar OS / Buscar", group: "Avaliações" },
   { path: "/avaliacoes/minhas", label: "Minhas Avaliações", group: "Avaliações" },
   { path: "/leads", label: "Meus Leads", group: "Avaliações" },
-  { path: "/assistente", label: "Assistente", group: "Avaliações" },
-  // Checklists
-  { path: "/checklists/cadastro", label: "Cadastro de Checklists", group: "Checklists" },
-  { path: "/checklists/execucao", label: "Execução", group: "Checklists" },
-  // Avaliação removida do menu mas rota preservada
-  { path: "/checklists/gestao", label: "Gestão", group: "Checklists" },
+  { path: "/assistente", label: "Assistente Naví", group: "Avaliações" },
+  // Leads
+  { path: "/leads/fila", label: "Gerenciador de Leads", group: "Leads" },
+  { path: "/leads/arquivados", label: "Leads Arquivados", group: "Leads" },
+  { path: "/leads/importador", label: "Importador de Leads", group: "Leads" },
+  { path: "/leads/gerenciamento", label: "Gerenciamento de Leads", group: "Leads" },
+  { path: "/leads/campanhas", label: "Campanhas", group: "Leads" },
+  // Tarefas
+  { path: "/checklists/cadastro", label: "Templates", group: "Tarefas" },
+  { path: "/checklists/execucao", label: "Execução", group: "Tarefas" },
+  { path: "/checklists/avaliacao", label: "Avaliação", group: "Tarefas" },
+  { path: "/checklists/aprovacao", label: "Aprovação Final", group: "Tarefas" },
+  { path: "/checklists/contingencias", label: "Contingências", group: "Tarefas" },
+  { path: "/checklists/dashboard", label: "Dashboard Operacional", group: "Tarefas" },
+  { path: "/checklists/rankings", label: "Rankings", group: "Tarefas" },
+  { path: "/checklists/gestao", label: "Gestão", group: "Tarefas" },
   // Cadastros
   { path: "/cadastros/setores", label: "Setores", group: "Cadastros" },
   { path: "/cadastros/servicos", label: "Tipos de Serviço", group: "Cadastros" },
@@ -29,12 +39,6 @@ export const ALL_SCREENS: ScreenDef[] = [
   { path: "/leads/objecoes", label: "Objeções", group: "Cadastros" },
   { path: "/cadastros/clientes", label: "Clientes", group: "Cadastros" },
   { path: "/cadastros/enderecos", label: "Endereços", group: "Cadastros" },
-  // Leads
-  { path: "/leads/fila", label: "Gerenciador de Leads", group: "Leads" },
-  { path: "/leads/gerenciamento", label: "Gerenciamento de Leads", group: "Leads" },
-  { path: "/leads/arquivados", label: "Leads Arquivados", group: "Leads" },
-  { path: "/leads/importador", label: "Importador de Leads", group: "Leads" },
-  { path: "/leads/campanhas", label: "Campanhas", group: "Leads" },
   // Configurações
   { path: "/cadastros/colaboradores", label: "Colaboradores", group: "Configurações" },
   { path: "/leads/rotina", label: "Rotina de Tentativas", group: "Configurações" },
@@ -42,6 +46,7 @@ export const ALL_SCREENS: ScreenDef[] = [
   { path: "/relatorios", label: "Relatórios de OS", group: "Sistema" },
   { path: "/leads/relatorios", label: "Relatórios de Leads", group: "Sistema" },
   { path: "/desempenho", label: "Desempenho", group: "Sistema" },
+  { path: "/desempenho/operacional", label: "Desempenho Operacional", group: "Sistema" },
   { path: "/auditoria", label: "Auditoria", group: "Sistema" },
   { path: "/configuracoes", label: "Configurações", group: "Sistema" },
 ];
