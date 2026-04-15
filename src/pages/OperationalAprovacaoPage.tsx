@@ -21,7 +21,7 @@ export default function OperationalAprovacaoPage() {
   const [activeTab, setActiveTab] = useState("pendentes");
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
-  const [activeView, setActiveView] = useState<"formulario" | "score" | "historico">("score");
+  const [activeView, setActiveView] = useState<"formulario" | "score" | "historico" | "perguntas">("score");
   const [decisionDialog, setDecisionDialog] = useState<{ open: boolean; action: "aprovar" | "reprovar_devolver" | "encerrar" | null }>({ open: false, action: null });
   const [decisionMotivo, setDecisionMotivo] = useState("");
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
