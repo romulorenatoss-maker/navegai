@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -46,13 +46,15 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
     return map;
   }, [colaboradorSetores]);
 
-  // Get members for avaliado sector
-  const avaliadoSetorMembers = useMemo(() => {
-    const setorId = form.avaliado_setor_id;
+  // Get members for any sector
+  const getMembrosDoSetor = useCallback((setorId: string) => {
     if (!setorId) return [];
     const ids = setorMembros.get(setorId) || [];
     return colaboradores.filter((c: any) => ids.includes(c.id));
-  }, [form.avaliado_setor_id, setorMembros, colaboradores]);
+  }, [setorMembros, colaboradores]);
+
+  // Get members for avaliado sector
+  const avaliadoSetorMembers = useMemo(() => getMembrosDoSetor(form.avaliado_setor_id), [form.avaliado_setor_id, getMembrosDoSetor]);
 
   const getAssignmentMode = (profileKey: keyof TemplateForm, setorKey: keyof TemplateForm): "nome" | "setor" => {
     if (form[profileKey]) return "nome";
@@ -132,12 +134,26 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
                   <SelectContent>{colaboradores.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
                 </Select>
               ) : (
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <Select value={form[r.setorKey] as string} onValueChange={v => set(r.setorKey as any, v)}>
                     <SelectTrigger className="h-8"><SelectValue placeholder="Selecione setor" /></SelectTrigger>
                     <SelectContent>{setores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground">Qualquer membro do setor poderá executar</p>
+                  {form[r.setorKey] && (() => {
+                    const membros = getMembrosDoSetor(form[r.setorKey] as string);
+                    return membros.length > 0 ? (
+                      <div className="space-y-1">
+                        <p className="text-[10px] text-muted-foreground font-medium">Membros do setor ({membros.length}):</p>
+                        <div className="flex flex-wrap gap-1">
+                          {membros.map((c: any) => (
+                            <Badge key={c.id} variant="outline" className="text-[10px]">{c.nome}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-amber-600">Nenhum colaborador associado a este setor</p>
+                    );
+                  })()}
                 </div>
               )}
             </div>
