@@ -23,6 +23,7 @@ interface TemplateForm {
   horario_inicio_previsto: string; horario_limite_execucao: string; tolerancia_minutos: number;
   exigir_foto: boolean; exigir_video: boolean; exigir_observacao: boolean;
   gerar_contingencia_automatica: boolean; prazo_sla_correcao_horas: number; responsavel_contingencia_id: string;
+  requer_aprovacao_gestor: boolean; bloquear_fechamento_com_contingencia: boolean;
 }
 
 const defaultForm: TemplateForm = {
@@ -32,6 +33,7 @@ const defaultForm: TemplateForm = {
   horario_inicio_previsto: "08:00", horario_limite_execucao: "18:00", tolerancia_minutos: 0,
   exigir_foto: false, exigir_video: false, exigir_observacao: false,
   gerar_contingencia_automatica: false, prazo_sla_correcao_horas: 24, responsavel_contingencia_id: "",
+  requer_aprovacao_gestor: false, bloquear_fechamento_com_contingencia: false,
 };
 
 // ---- Preview de recorrência ----
@@ -239,6 +241,8 @@ export default function OperationalCadastroPage() {
         gerar_contingencia_automatica: form.gerar_contingencia_automatica,
         prazo_sla_correcao_horas: form.prazo_sla_correcao_horas,
         responsavel_contingencia_id: form.responsavel_contingencia_id || null,
+        requer_aprovacao_gestor: form.requer_aprovacao_gestor,
+        bloquear_fechamento_com_contingencia: form.bloquear_fechamento_com_contingencia,
       };
 
       let templateId: string;
@@ -317,6 +321,8 @@ export default function OperationalCadastroPage() {
       gerar_contingencia_automatica: t.gerar_contingencia_automatica,
       prazo_sla_correcao_horas: t.prazo_sla_correcao_horas || 24,
       responsavel_contingencia_id: t.responsavel_contingencia_id || "",
+      requer_aprovacao_gestor: t.requer_aprovacao_gestor || false,
+      bloquear_fechamento_com_contingencia: t.bloquear_fechamento_com_contingencia || false,
     });
 
     // Load steps
@@ -706,6 +712,24 @@ export default function OperationalCadastroPage() {
                       </div>
                     </div>
                   )}
+                </div>
+
+                <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-4">
+                  <p className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Controles de Compliance</p>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={form.requer_aprovacao_gestor} onCheckedChange={v => set("requer_aprovacao_gestor", v)} />
+                    <div>
+                      <Label className="cursor-pointer">Requer aprovação do gestor</Label>
+                      <p className="text-caption text-muted-foreground">Ao concluir, o status será "Aguardando Aprovação" até que um gestor/admin aprove.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={form.bloquear_fechamento_com_contingencia} onCheckedChange={v => set("bloquear_fechamento_com_contingencia", v)} />
+                    <div>
+                      <Label className="cursor-pointer">Bloquear fechamento com contingências pendentes</Label>
+                      <p className="text-caption text-muted-foreground">Não permite concluir se houver contingências abertas ou em andamento.</p>
+                    </div>
+                  </div>
                 </div>
               </TabsContent>
             </Tabs>

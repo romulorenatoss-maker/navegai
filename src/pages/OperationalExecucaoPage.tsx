@@ -43,7 +43,7 @@ export default function OperationalExecucaoPage() {
     queryFn: async () => {
       if (!profile?.id) return [];
       const { data, error } = await (supabase as any).from("operational_assignments")
-        .select("*, operational_templates(nome, descricao, tipo_execucao, exigir_foto, exigir_observacao, gerar_contingencia_automatica, prazo_sla_correcao_horas, responsavel_contingencia_id, setores(nome))")
+        .select("*, operational_templates(nome, descricao, tipo_execucao, exigir_foto, exigir_observacao, gerar_contingencia_automatica, prazo_sla_correcao_horas, responsavel_contingencia_id, requer_aprovacao_gestor, bloquear_fechamento_com_contingencia, setores(nome))")
         .eq("responsavel_id", profile.id)
         .order("data_prevista", { ascending: true });
       if (error) throw error;
@@ -125,18 +125,32 @@ export default function OperationalExecucaoPage() {
       const tempoGasto = selectedAssignment.inicio_em
         ? Math.round((Date.now() - new Date(selectedAssignment.inicio_em).getTime()) / 60000)
         : timer / 60;
+      const tpl = selectedAssignment.operational_templates;
+      const nextStatus = tpl?.requer_aprovacao_gestor ? "aguardando_aprovacao" : "concluida";
       const { error } = await (supabase as any).from("operational_assignments").update({
-        status: "concluida", fim_em: now, tempo_gasto_minutos: Math.round(tempoGasto), observacao: observacao || null,
+        status: nextStatus, fim_em: now, tempo_gasto_minutos: Math.round(tempoGasto), observacao: observacao || null,
       }).eq("id", selectedAssignment.id);
       if (error) throw error;
       await (supabase as any).from("operational_execution_logs").insert({ assignment_id: selectedAssignment.id, acao: "concluiu", executado_por: profile?.id, detalhes: { tempo_gasto_minutos: Math.round(tempoGasto), observacao } });
+      // Audit trail
+      await (supabase as any).from("operational_audit_trail").insert({
+        assignment_id: selectedAssignment.id, tipo_evento: "conclusao", executado_por: profile?.id,
+        dados_novos: { status: nextStatus, tempo_gasto_minutos: Math.round(tempoGasto) },
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["my_operational_assignments"] });
-      toast.success("Tarefa concluída!");
+      const tpl = selectedAssignment?.operational_templates;
+      toast.success(tpl?.requer_aprovacao_gestor ? "Tarefa enviada para aprovação!" : "Tarefa concluída!");
       setExecutionDialogOpen(false); setTimerActive(false); setTimer(0);
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => {
+      if (e.message?.includes("contingência")) {
+        toast.error("Não é possível concluir: existem contingências pendentes. Resolva-as primeiro.");
+      } else {
+        toast.error(e.message);
+      }
+    },
   });
 
   const answerCheckItem = useMutation({
@@ -204,10 +218,11 @@ export default function OperationalExecucaoPage() {
   };
 
   // Filter assignments
-  const todayAssignments = assignments.filter((a: any) => a.data_prevista === today && !["concluida", "nao_executada"].includes(a.status));
+  const todayAssignments = assignments.filter((a: any) => a.data_prevista === today && !["concluida", "aprovada", "nao_executada"].includes(a.status));
   const pendingAssignments = assignments.filter((a: any) => a.data_prevista > today && a.status === "pendente");
-  const lateAssignments = assignments.filter((a: any) => (a.data_prevista < today && a.status !== "concluida" && a.status !== "nao_executada") || a.status === "atrasada");
-  const doneAssignments = assignments.filter((a: any) => a.status === "concluida").slice(0, 50);
+  const lateAssignments = assignments.filter((a: any) => (a.data_prevista < today && a.status !== "concluida" && a.status !== "aprovada" && a.status !== "nao_executada") || a.status === "atrasada");
+  const awaitingApproval = assignments.filter((a: any) => a.status === "aguardando_aprovacao");
+  const doneAssignments = assignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 50);
 
   const renderCard = (a: any) => {
     const tpl = a.operational_templates;
@@ -270,17 +285,22 @@ export default function OperationalExecucaoPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full mb-4 flex-wrap h-auto gap-1">
-          <TabsTrigger value="hoje" className="flex-1 min-w-[80px]">
+          <TabsTrigger value="hoje" className="flex-1 min-w-[70px]">
             Hoje {todayAssignments.length > 0 && <span className="ml-1 bg-primary/20 text-primary px-1.5 rounded-full text-caption">{todayAssignments.length}</span>}
           </TabsTrigger>
-          <TabsTrigger value="proximas" className="flex-1 min-w-[80px]">Próximas</TabsTrigger>
-          <TabsTrigger value="atraso" className="flex-1 min-w-[80px]">
+          <TabsTrigger value="proximas" className="flex-1 min-w-[70px]">Próximas</TabsTrigger>
+          <TabsTrigger value="atraso" className="flex-1 min-w-[70px]">
             Atraso {lateAssignments.length > 0 && <span className="ml-1 bg-destructive/20 text-destructive px-1.5 rounded-full text-caption">{lateAssignments.length}</span>}
           </TabsTrigger>
-          <TabsTrigger value="contingencias" className="flex-1 min-w-[80px]">
-            Contingências {contingencies.length > 0 && <span className="ml-1 bg-orange-500/20 text-orange-600 px-1.5 rounded-full text-caption">{contingencies.length}</span>}
+          {awaitingApproval.length > 0 && (
+            <TabsTrigger value="aprovacao" className="flex-1 min-w-[70px]">
+              Aprovação <span className="ml-1 bg-purple-500/20 text-purple-600 px-1.5 rounded-full text-caption">{awaitingApproval.length}</span>
+            </TabsTrigger>
+          )}
+          <TabsTrigger value="contingencias" className="flex-1 min-w-[70px]">
+            Conting. {contingencies.length > 0 && <span className="ml-1 bg-orange-500/20 text-orange-600 px-1.5 rounded-full text-caption">{contingencies.length}</span>}
           </TabsTrigger>
-          <TabsTrigger value="historico" className="flex-1 min-w-[80px]">Histórico</TabsTrigger>
+          <TabsTrigger value="historico" className="flex-1 min-w-[70px]">Histórico</TabsTrigger>
         </TabsList>
 
         <TabsContent value="hoje" className="space-y-3">
@@ -295,6 +315,10 @@ export default function OperationalExecucaoPage() {
         <TabsContent value="atraso" className="space-y-3">
           {lateAssignments.length === 0 ? <p className="text-center text-muted-foreground py-8">Nenhuma rotina em atraso.</p> :
             lateAssignments.map(renderCard)}
+        </TabsContent>
+        <TabsContent value="aprovacao" className="space-y-3">
+          {awaitingApproval.length === 0 ? <p className="text-center text-muted-foreground py-8">Nenhuma rotina aguardando aprovação.</p> :
+            awaitingApproval.map(renderCard)}
         </TabsContent>
         <TabsContent value="contingencias" className="space-y-3">
           {contingencies.length === 0 ? <p className="text-center text-muted-foreground py-8">Nenhuma contingência pendente.</p> :

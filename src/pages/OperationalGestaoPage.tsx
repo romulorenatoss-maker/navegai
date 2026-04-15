@@ -1,14 +1,21 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { STATUS_CONFIG, CONTINGENCY_STATUS, calculateOperationalScore } from "@/hooks/useOperationalScoring";
-import { BarChart3, AlertTriangle, CheckCircle2, Clock, Users, TrendingUp } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { STATUS_CONFIG, CONTINGENCY_STATUS, AUDIT_EVENT_LABELS } from "@/hooks/useOperationalScoring";
+import { BarChart3, AlertTriangle, CheckCircle2, Clock, Users, Shield, RotateCcw, History, ThumbsUp, ThumbsDown } from "lucide-react";
 
 export default function OperationalGestaoPage() {
+  const { profile } = useAuth();
+  const qc = useQueryClient();
   const [periodoInicio, setPeriodoInicio] = useState(() => {
     const d = new Date(); d.setDate(d.getDate() - 30);
     return d.toISOString().slice(0, 10);
@@ -18,11 +25,17 @@ export default function OperationalGestaoPage() {
   const [filtroColaborador, setFiltroColaborador] = useState("todos");
   const [filtroStatus, setFiltroStatus] = useState("todos");
 
+  // Dialogs
+  const [approvalDialog, setApprovalDialog] = useState<{ open: boolean; assignment: any; action: "aprovar" | "reprovar" }>({ open: false, assignment: null, action: "aprovar" });
+  const [reopenDialog, setReopenDialog] = useState<{ open: boolean; assignment: any }>({ open: false, assignment: null });
+  const [auditDialog, setAuditDialog] = useState<{ open: boolean; assignmentId: string | null }>({ open: false, assignmentId: null });
+  const [motivo, setMotivo] = useState("");
+
   const { data: assignments = [] } = useQuery({
     queryKey: ["gestao_assignments", periodoInicio, periodoFim],
     queryFn: async () => {
       const { data, error } = await (supabase as any).from("operational_assignments")
-        .select("*, operational_templates(nome, tipo_execucao, setor_id, setores(nome), horario_limite_execucao), profiles!operational_assignments_responsavel_id_fkey(id, nome)")
+        .select("*, operational_templates(nome, tipo_execucao, setor_id, requer_aprovacao_gestor, bloquear_fechamento_com_contingencia, setores(nome), horario_limite_execucao), profiles!operational_assignments_responsavel_id_fkey(id, nome)")
         .gte("data_prevista", periodoInicio)
         .lte("data_prevista", periodoFim)
         .order("data_prevista", { ascending: false });
@@ -44,6 +57,20 @@ export default function OperationalGestaoPage() {
     },
   });
 
+  const { data: auditLogs = [] } = useQuery({
+    queryKey: ["audit_trail", auditDialog.assignmentId],
+    queryFn: async () => {
+      if (!auditDialog.assignmentId) return [];
+      const { data, error } = await (supabase as any).from("operational_audit_trail")
+        .select("*, profiles:executado_por(nome)")
+        .eq("assignment_id", auditDialog.assignmentId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!auditDialog.assignmentId,
+  });
+
   const { data: setores = [] } = useQuery({
     queryKey: ["setores_ativos"],
     queryFn: async () => {
@@ -62,6 +89,84 @@ export default function OperationalGestaoPage() {
     },
   });
 
+  // Approve/Reject mutation
+  const approveReject = useMutation({
+    mutationFn: async ({ assignmentId, action, motivo: m }: { assignmentId: string; action: "aprovar" | "reprovar"; motivo: string }) => {
+      const newStatus = action === "aprovar" ? "aprovada" : "reprovada";
+      const { error } = await (supabase as any).from("operational_assignments")
+        .update({ status: newStatus })
+        .eq("id", assignmentId);
+      if (error) throw error;
+      await (supabase as any).from("operational_audit_trail").insert({
+        assignment_id: assignmentId,
+        tipo_evento: action === "aprovar" ? "aprovacao" : "reprovacao",
+        executado_por: profile?.id,
+        motivo: m || null,
+        dados_novos: { status: newStatus },
+      });
+      await (supabase as any).from("operational_execution_logs").insert({
+        assignment_id: assignmentId,
+        acao: action === "aprovar" ? "aprovou" : "reprovou",
+        executado_por: profile?.id,
+        detalhes: { motivo: m },
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["gestao_assignments"] });
+      toast.success(approvalDialog.action === "aprovar" ? "Rotina aprovada!" : "Rotina reprovada!");
+      setApprovalDialog({ open: false, assignment: null, action: "aprovar" });
+      setMotivo("");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  // Reopen mutation
+  const reopenAssignment = useMutation({
+    mutationFn: async ({ assignmentId, motivo: m }: { assignmentId: string; motivo: string }) => {
+      if (!m.trim()) throw new Error("Motivo é obrigatório para reabertura.");
+      const assignment = assignments.find((a: any) => a.id === assignmentId);
+      const { error } = await (supabase as any).from("operational_assignments")
+        .update({ status: "em_andamento", fim_em: null, pontuacao_obtida: null })
+        .eq("id", assignmentId);
+      if (error) throw error;
+      await (supabase as any).from("operational_audit_trail").insert({
+        assignment_id: assignmentId,
+        tipo_evento: "reabertura",
+        executado_por: profile?.id,
+        motivo: m,
+        dados_anteriores: { status: assignment?.status, pontuacao_obtida: assignment?.pontuacao_obtida },
+        dados_novos: { status: "em_andamento" },
+      });
+      await (supabase as any).from("operational_execution_logs").insert({
+        assignment_id: assignmentId,
+        acao: "reabriu",
+        executado_por: profile?.id,
+        detalhes: { motivo: m },
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["gestao_assignments"] });
+      toast.success("Rotina reaberta!");
+      setReopenDialog({ open: false, assignment: null });
+      setMotivo("");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  // Validate contingency
+  const validateContingency = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any).from("operational_contingencies")
+        .update({ status: "validada", validada_por: profile?.id, validada_em: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["gestao_contingencies"] });
+      toast.success("Contingência validada!");
+    },
+  });
+
   const filtered = useMemo(() => {
     return assignments.filter((a: any) => {
       if (filtroSetor !== "todos" && a.operational_templates?.setor_id !== filtroSetor) return false;
@@ -71,22 +176,21 @@ export default function OperationalGestaoPage() {
     });
   }, [assignments, filtroSetor, filtroColaborador, filtroStatus]);
 
+  const awaitingApproval = useMemo(() => assignments.filter((a: any) => a.status === "aguardando_aprovacao"), [assignments]);
+
   // Metrics
   const metrics = useMemo(() => {
     const total = filtered.length;
-    const concluidas = filtered.filter((a: any) => a.status === "concluida").length;
-    const atrasadas = filtered.filter((a: any) => a.status === "atrasada" || (a.data_prevista < new Date().toISOString().slice(0, 10) && !["concluida", "nao_executada"].includes(a.status))).length;
-    const naoExecutadas = filtered.filter((a: any) => a.status === "nao_executada").length;
+    const concluidas = filtered.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).length;
+    const atrasadas = filtered.filter((a: any) => a.status === "atrasada" || (a.data_prevista < new Date().toISOString().slice(0, 10) && !["concluida", "aprovada", "nao_executada"].includes(a.status))).length;
+    const pendentesAprovacao = filtered.filter((a: any) => a.status === "aguardando_aprovacao").length;
     const contingenciasAbertas = contingencies.filter((c: any) => ["aberta", "em_andamento"].includes(c.status)).length;
     const contingenciasVencidas = contingencies.filter((c: any) => c.status === "aberta" && c.prazo_sla && new Date(c.prazo_sla) < new Date()).length;
     const taxaConclusao = total > 0 ? Math.round((concluidas / total) * 100) : 0;
-    const slaContingencias = contingencies.length > 0
-      ? Math.round((contingencies.filter((c: any) => c.status === "validada" || c.status === "resolvida").length / contingencies.length) * 100)
-      : 100;
-    return { total, concluidas, atrasadas, naoExecutadas, contingenciasAbertas, contingenciasVencidas, taxaConclusao, slaContingencias };
+    return { total, concluidas, atrasadas, pendentesAprovacao, contingenciasAbertas, contingenciasVencidas, taxaConclusao };
   }, [filtered, contingencies]);
 
-  // Rankings
+  // Rankings (score from DB now)
   const rankings = useMemo(() => {
     const byUser: Record<string, { nome: string; total: number; concluidas: number; noPrazo: number; scoreSum: number }> = {};
     filtered.forEach((a: any) => {
@@ -94,18 +198,9 @@ export default function OperationalGestaoPage() {
       if (!uid) return;
       if (!byUser[uid]) byUser[uid] = { nome: a.profiles?.nome || "—", total: 0, concluidas: 0, noPrazo: 0, scoreSum: 0 };
       byUser[uid].total++;
-      if (a.status === "concluida") {
+      if (["concluida", "aprovada"].includes(a.status)) {
         byUser[uid].concluidas++;
-        const noPrazo = a.fim_em && a.horario_limite ? new Date(a.fim_em).toTimeString() <= a.horario_limite : true;
-        if (noPrazo) byUser[uid].noPrazo++;
-        const score = calculateOperationalScore({
-          prazoLimite: a.data_prevista + "T" + (a.horario_limite || "23:59") + ":00",
-          fimEm: a.fim_em, status: a.status,
-          totalItens: 1, itensConformes: 1,
-          evidenciaValidada: null,
-          totalContingencias: 0, contingenciasNoPrazo: 0,
-        });
-        byUser[uid].scoreSum += score.scoreFinal;
+        if (a.pontuacao_obtida != null) byUser[uid].scoreSum += Number(a.pontuacao_obtida);
       }
     });
     return Object.entries(byUser)
@@ -128,7 +223,7 @@ export default function OperationalGestaoPage() {
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-6">
         <h1 className="text-section font-semibold text-foreground">Gestão Operacional</h1>
-        <p className="text-body text-muted-foreground">Acompanhe performance, SLA e conformidade das rotinas.</p>
+        <p className="text-body text-muted-foreground">Acompanhe performance, SLA, aprovações e conformidade das rotinas.</p>
       </div>
 
       {/* Filters */}
@@ -176,19 +271,72 @@ export default function OperationalGestaoPage() {
       </div>
 
       {/* Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <MetricCard icon={BarChart3} label="Total Rotinas" value={metrics.total} sub={`${metrics.taxaConclusao}% concluídas`} />
         <MetricCard icon={CheckCircle2} label="Concluídas" value={metrics.concluidas} color="text-green-600" />
         <MetricCard icon={Clock} label="Em Atraso" value={metrics.atrasadas} color="text-orange-600" />
+        <MetricCard icon={Shield} label="Aguard. Aprovação" value={metrics.pendentesAprovacao} color="text-purple-600" />
         <MetricCard icon={AlertTriangle} label="Contingências" value={metrics.contingenciasAbertas} sub={`${metrics.contingenciasVencidas} vencidas`} color="text-red-600" />
       </div>
 
-      <Tabs defaultValue="ranking">
-        <TabsList className="mb-4">
+      <Tabs defaultValue={awaitingApproval.length > 0 ? "aprovacoes" : "ranking"}>
+        <TabsList className="mb-4 flex-wrap h-auto gap-1">
+          {awaitingApproval.length > 0 && (
+            <TabsTrigger value="aprovacoes">
+              <Shield className="w-3 h-3 mr-1" />Aprovações
+              <span className="ml-1 bg-purple-500/20 text-purple-600 px-1.5 rounded-full text-caption">{awaitingApproval.length}</span>
+            </TabsTrigger>
+          )}
           <TabsTrigger value="ranking"><Users className="w-3 h-3 mr-1" />Ranking</TabsTrigger>
           <TabsTrigger value="rotinas"><BarChart3 className="w-3 h-3 mr-1" />Rotinas</TabsTrigger>
           <TabsTrigger value="contingencias"><AlertTriangle className="w-3 h-3 mr-1" />Contingências</TabsTrigger>
         </TabsList>
+
+        {/* Aprovações */}
+        <TabsContent value="aprovacoes">
+          <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase px-4 py-2">Rotina</th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase px-4 py-2">Responsável</th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase px-4 py-2">Data</th>
+                  <th className="text-center text-caption font-medium text-muted-foreground uppercase px-4 py-2">Score</th>
+                  <th className="text-right text-caption font-medium text-muted-foreground uppercase px-4 py-2">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {awaitingApproval.length === 0 ? (
+                  <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Nenhuma rotina aguardando aprovação.</td></tr>
+                ) : awaitingApproval.map((a: any) => (
+                  <tr key={a.id} className="hover:bg-muted/50">
+                    <td className="px-4 py-3 text-body font-medium text-foreground">{a.operational_templates?.nome || "—"}</td>
+                    <td className="px-4 py-3 text-body text-muted-foreground">{a.profiles?.nome || "—"}</td>
+                    <td className="px-4 py-3 text-body text-muted-foreground">{a.data_prevista}</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border badge-active">
+                        {a.pontuacao_obtida != null ? Math.round(a.pontuacao_obtida) : "—"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button size="sm" variant="outline" className="text-green-700" onClick={() => { setApprovalDialog({ open: true, assignment: a, action: "aprovar" }); setMotivo(""); }}>
+                          <ThumbsUp className="w-3 h-3 mr-1" />Aprovar
+                        </Button>
+                        <Button size="sm" variant="outline" className="text-destructive" onClick={() => { setApprovalDialog({ open: true, assignment: a, action: "reprovar" }); setMotivo(""); }}>
+                          <ThumbsDown className="w-3 h-3 mr-1" />Reprovar
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => { setAuditDialog({ open: true, assignmentId: a.id }); }}>
+                          <History className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </TabsContent>
 
         {/* Ranking */}
         <TabsContent value="ranking">
@@ -243,14 +391,16 @@ export default function OperationalGestaoPage() {
                     <th className="text-left text-caption font-medium text-muted-foreground uppercase px-4 py-2">Responsável</th>
                     <th className="text-left text-caption font-medium text-muted-foreground uppercase px-4 py-2">Data</th>
                     <th className="text-center text-caption font-medium text-muted-foreground uppercase px-4 py-2">Status</th>
-                    <th className="text-center text-caption font-medium text-muted-foreground uppercase px-4 py-2">Tempo</th>
+                    <th className="text-center text-caption font-medium text-muted-foreground uppercase px-4 py-2">Score</th>
+                    <th className="text-right text-caption font-medium text-muted-foreground uppercase px-4 py-2">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {filtered.length === 0 ? (
-                    <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Sem rotinas no período.</td></tr>
+                    <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Sem rotinas no período.</td></tr>
                   ) : filtered.slice(0, 100).map((a: any) => {
                     const sc = STATUS_CONFIG[a.status] || STATUS_CONFIG.pendente;
+                    const canReopen = ["concluida", "aprovada", "reprovada", "nao_executada"].includes(a.status);
                     return (
                       <tr key={a.id} className="hover:bg-muted/50">
                         <td className="px-4 py-3 text-body font-medium text-foreground">{a.operational_templates?.nome || "—"}</td>
@@ -259,7 +409,21 @@ export default function OperationalGestaoPage() {
                         <td className="px-4 py-3 text-center">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${sc.class}`}>{sc.label}</span>
                         </td>
-                        <td className="px-4 py-3 text-center text-body font-tabular">{a.tempo_gasto_minutos ? `${a.tempo_gasto_minutos}min` : "—"}</td>
+                        <td className="px-4 py-3 text-center text-body font-tabular">
+                          {a.pontuacao_obtida != null ? Math.round(a.pontuacao_obtida) : "—"}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            {canReopen && (
+                              <Button size="sm" variant="ghost" title="Reabrir" onClick={() => { setReopenDialog({ open: true, assignment: a }); setMotivo(""); }}>
+                                <RotateCcw className="w-3 h-3" />
+                              </Button>
+                            )}
+                            <Button size="sm" variant="ghost" title="Trilha de Auditoria" onClick={() => setAuditDialog({ open: true, assignmentId: a.id })}>
+                              <History className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </td>
                       </tr>
                     );
                   })}
@@ -280,11 +444,12 @@ export default function OperationalGestaoPage() {
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase px-4 py-2">Responsável</th>
                   <th className="text-center text-caption font-medium text-muted-foreground uppercase px-4 py-2">SLA</th>
                   <th className="text-center text-caption font-medium text-muted-foreground uppercase px-4 py-2">Status</th>
+                  <th className="text-right text-caption font-medium text-muted-foreground uppercase px-4 py-2">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {contingencies.length === 0 ? (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Sem contingências no período.</td></tr>
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Sem contingências no período.</td></tr>
                 ) : contingencies.map((c: any) => {
                   const sc = CONTINGENCY_STATUS[c.status] || CONTINGENCY_STATUS.aberta;
                   const isVencida = c.prazo_sla && new Date(c.prazo_sla) < new Date() && c.status === "aberta";
@@ -299,6 +464,13 @@ export default function OperationalGestaoPage() {
                           {isVencida ? "Vencida" : sc.label}
                         </span>
                       </td>
+                      <td className="px-4 py-3 text-right">
+                        {c.status === "resolvida" && (
+                          <Button size="sm" variant="outline" onClick={() => validateContingency.mutate(c.id)}>
+                            <CheckCircle2 className="w-3 h-3 mr-1" />Validar
+                          </Button>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
@@ -307,6 +479,99 @@ export default function OperationalGestaoPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Approval/Rejection Dialog */}
+      <Dialog open={approvalDialog.open} onOpenChange={o => { if (!o) setApprovalDialog({ open: false, assignment: null, action: "aprovar" }); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{approvalDialog.action === "aprovar" ? "Aprovar Rotina" : "Reprovar Rotina"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <p className="text-body font-medium text-foreground">{approvalDialog.assignment?.operational_templates?.nome}</p>
+              <p className="text-caption text-muted-foreground">Responsável: {approvalDialog.assignment?.profiles?.nome} | Data: {approvalDialog.assignment?.data_prevista}</p>
+              {approvalDialog.assignment?.pontuacao_obtida != null && (
+                <p className="text-caption text-muted-foreground">Score calculado: {Math.round(approvalDialog.assignment.pontuacao_obtida)}</p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label>{approvalDialog.action === "reprovar" ? "Motivo da reprovação *" : "Observação (opcional)"}</Label>
+              <Textarea value={motivo} onChange={e => setMotivo(e.target.value)} placeholder={approvalDialog.action === "reprovar" ? "Informe o motivo..." : "Observação..."} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setApprovalDialog({ open: false, assignment: null, action: "aprovar" })}>Cancelar</Button>
+            <Button
+              disabled={approveReject.isPending || (approvalDialog.action === "reprovar" && !motivo.trim())}
+              onClick={() => approveReject.mutate({ assignmentId: approvalDialog.assignment?.id, action: approvalDialog.action, motivo })}
+              className={approvalDialog.action === "aprovar" ? "" : "bg-destructive text-destructive-foreground hover:bg-destructive/90"}
+            >
+              {approveReject.isPending ? "Processando..." : approvalDialog.action === "aprovar" ? "Confirmar Aprovação" : "Confirmar Reprovação"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reopen Dialog */}
+      <Dialog open={reopenDialog.open} onOpenChange={o => { if (!o) setReopenDialog({ open: false, assignment: null }); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reabrir Rotina</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <p className="text-body font-medium text-foreground">{reopenDialog.assignment?.operational_templates?.nome}</p>
+              <p className="text-caption text-muted-foreground">Status atual: {STATUS_CONFIG[reopenDialog.assignment?.status]?.label || reopenDialog.assignment?.status}</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Motivo da reabertura *</Label>
+              <Textarea value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Informe o motivo da reabertura..." />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReopenDialog({ open: false, assignment: null })}>Cancelar</Button>
+            <Button
+              disabled={reopenAssignment.isPending || !motivo.trim()}
+              onClick={() => reopenAssignment.mutate({ assignmentId: reopenDialog.assignment?.id, motivo })}
+            >
+              {reopenAssignment.isPending ? "Processando..." : "Confirmar Reabertura"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Audit Trail Dialog */}
+      <Dialog open={auditDialog.open} onOpenChange={o => { if (!o) setAuditDialog({ open: false, assignmentId: null }); }}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><History className="w-4 h-4" />Trilha de Auditoria</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {auditLogs.length === 0 ? (
+              <p className="text-center text-muted-foreground py-4">Nenhum registro de auditoria.</p>
+            ) : auditLogs.map((log: any) => (
+              <div key={log.id} className="bg-muted/50 rounded-lg border border-border p-3 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border bg-card">
+                    {AUDIT_EVENT_LABELS[log.tipo_evento] || log.tipo_evento}
+                  </span>
+                  <span className="text-caption text-muted-foreground">
+                    {new Date(log.created_at).toLocaleString("pt-BR")}
+                  </span>
+                </div>
+                <p className="text-caption text-muted-foreground">Por: {log.profiles?.nome || "Sistema"}</p>
+                {log.motivo && <p className="text-body text-foreground">Motivo: {log.motivo}</p>}
+                {log.dados_anteriores && (
+                  <p className="text-caption text-muted-foreground">Anterior: {JSON.stringify(log.dados_anteriores)}</p>
+                )}
+                {log.dados_novos && (
+                  <p className="text-caption text-muted-foreground">Novo: {JSON.stringify(log.dados_novos)}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
