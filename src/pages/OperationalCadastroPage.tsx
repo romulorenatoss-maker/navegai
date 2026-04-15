@@ -713,6 +713,24 @@ export default function OperationalCadastroPage() {
                     </div>
                   )}
                 </div>
+
+                <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-4">
+                  <p className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Controles de Compliance</p>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={form.requer_aprovacao_gestor} onCheckedChange={v => set("requer_aprovacao_gestor", v)} />
+                    <div>
+                      <Label className="cursor-pointer">Requer aprovação do gestor</Label>
+                      <p className="text-caption text-muted-foreground">Ao concluir, o status será "Aguardando Aprovação" até que um gestor/admin aprove.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={form.bloquear_fechamento_com_contingencia} onCheckedChange={v => set("bloquear_fechamento_com_contingencia", v)} />
+                    <div>
+                      <Label className="cursor-pointer">Bloquear fechamento com contingências pendentes</Label>
+                      <p className="text-caption text-muted-foreground">Não permite concluir se houver contingências abertas ou em andamento.</p>
+                    </div>
+                  </div>
+                </div>
               </TabsContent>
             </Tabs>
 
