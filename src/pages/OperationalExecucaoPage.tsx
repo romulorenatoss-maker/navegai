@@ -69,21 +69,26 @@ export default function OperationalExecucaoPage() {
     setActiveSection(sections?.[0]?.id || null);
   }, []);
 
-  const closeExecution = () => {
-    if (exec.dirty) exec.saveDraft();
+  const closeExecution = async () => {
+    if (exec.dirty) await exec.saveDraft();
     setExecDialogOpen(false);
     setSelectedAssignment(null);
   };
 
-  // Progress calculation
+  // Progress calculation — only visible fields
+  const visibleFields = useMemo(() => 
+    snapshotFields.filter(f => evaluateVisibility(f.condicao_visibilidade, exec.answers)),
+    [snapshotFields, exec.answers]
+  );
+
   const progress = useMemo(() => {
-    if (!snapshotFields.length) return 0;
-    const filled = snapshotFields.filter(f => {
+    if (!visibleFields.length) return 0;
+    const filled = visibleFields.filter(f => {
       const a = exec.answers[f.id];
       return a && (a.valor_texto != null && a.valor_texto !== "" || a.valor_numero != null || a.valor_booleano != null || a.valor_data != null || a.valor_json != null);
     }).length;
-    return Math.round((filled / snapshotFields.length) * 100);
-  }, [snapshotFields, exec.answers]);
+    return Math.round((filled / visibleFields.length) * 100);
+  }, [visibleFields, exec.answers]);
 
   // Is assignment editable by current user?
   const isEditable = selectedAssignment && ["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status);
@@ -94,13 +99,23 @@ export default function OperationalExecucaoPage() {
   };
 
   const handleSubmit = () => {
-    const errors = exec.validateAll(snapshotFields, selectedAssignment?.status);
+    const visibleFields = snapshotFields.filter(f => 
+      evaluateVisibility(f.condicao_visibilidade, exec.answers)
+    );
+    const errors = exec.validateAll(visibleFields, selectedAssignment?.status);
     if (errors.length > 0) {
       toast.error(`Corrija ${errors.length} erro(s) antes de enviar`, { description: errors.slice(0, 3).join("; ") });
       return;
     }
-    exec.submit.mutate({ assignment: selectedAssignment, fields: snapshotFields });
-    setExecDialogOpen(false);
+    exec.submit.mutate(
+      { assignment: selectedAssignment, fields: visibleFields },
+      {
+        onSuccess: () => {
+          setExecDialogOpen(false);
+          setSelectedAssignment(null);
+        },
+      }
+    );
   };
 
   const handleSaveDraft = async () => {
