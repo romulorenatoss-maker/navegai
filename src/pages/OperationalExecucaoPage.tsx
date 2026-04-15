@@ -205,6 +205,7 @@ export default function OperationalExecucaoPage() {
             {snapshotSections.length > 1 && (
               <div className="flex gap-1.5 mt-3 overflow-x-auto pb-1">
                 {snapshotSections.map((s: any) => {
+                  const sFields = fieldsBySection[s.id] || [];
                   const sFieldsVisible = sFields.filter(f => evaluateVisibility(f.condicao_visibilidade, exec.answers));
                   const filled = sFieldsVisible.filter(f => {
                     const a = exec.answers[f.id];
