@@ -444,10 +444,10 @@ export default function OperationalCadastroPage() {
               </TabsList>
 
               <TabsContent value="geral">
-                <TabGeral form={form} set={set} setores={setores} colaboradores={colaboradores} steps={steps} setSteps={setSteps} />
+                <TabGeral form={form} set={set} setores={setores} colaboradores={colaboradores} />
               </TabsContent>
               <TabsContent value="campos">
-                <TabFormBuilder sections={sections} setSections={setSections} fields={fields} setFields={setFields} setores={setores} />
+                <TabFormBuilder sections={sections} setSections={setSections} fields={fields} setFields={setFields} setores={setores} tipoExecucao={form.tipo_execucao} />
               </TabsContent>
               <TabsContent value="workflow">
                 <TabWorkflow form={form} set={set} fields={fields} />
