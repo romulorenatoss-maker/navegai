@@ -55,7 +55,7 @@ export function AssignmentCard({ assignment: a, onClick }: Props) {
   const isReturned = a.status === "devolvida";
   const hasContingency = a.contingency_count > 0;
 
-  const responsavelNome = a.profiles?.nome || "";
+  const descricao = snapshot?.descricao || "";
   const responsavelFoto = a.profiles?.foto_url || "";
   const initials = responsavelNome
     ? responsavelNome.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()
