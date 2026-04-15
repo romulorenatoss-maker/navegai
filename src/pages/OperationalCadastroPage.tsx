@@ -13,6 +13,7 @@ import { TabGeral } from "@/components/operational/TabGeral";
 import { TabFormBuilder } from "@/components/operational/TabFormBuilder";
 import { TabWorkflow } from "@/components/operational/TabWorkflow";
 import { TabRecorrencia } from "@/components/operational/TabRecorrencia";
+import { TabTarefasExecutadas } from "@/components/operational/TabTarefasExecutadas";
 
 export default function OperationalCadastroPage() {
   const qc = useQueryClient();
@@ -439,6 +440,7 @@ export default function OperationalCadastroPage() {
                 <TabsTrigger value="campos" className="flex-1 min-w-[80px]">Campos</TabsTrigger>
                 <TabsTrigger value="workflow" className="flex-1 min-w-[70px]">Workflow</TabsTrigger>
                 <TabsTrigger value="recorrencia" className="flex-1 min-w-[80px]">Recorrência</TabsTrigger>
+                {editingId && <TabsTrigger value="tarefas" className="flex-1 min-w-[100px]">Tarefas Executadas</TabsTrigger>}
               </TabsList>
 
               <TabsContent value="geral">
@@ -453,6 +455,11 @@ export default function OperationalCadastroPage() {
               <TabsContent value="recorrencia">
                 <TabRecorrencia form={form} set={set} />
               </TabsContent>
+              {editingId && (
+                <TabsContent value="tarefas">
+                  <TabTarefasExecutadas templateId={editingId} />
+                </TabsContent>
+              )}
             </Tabs>
 
             <DialogFooter className="mt-4">
