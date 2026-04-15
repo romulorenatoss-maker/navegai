@@ -208,7 +208,7 @@ export default function OperationalCadastroPage() {
     queryKey: ["operational_templates"],
     queryFn: async () => {
       const { data, error } = await (supabase as any).from("operational_templates")
-        .select("*, setores(nome), profiles!operational_templates_responsavel_id_fkey(nome)")
+        .select("*, setores!operational_templates_setor_id_fkey(nome), profiles!operational_templates_responsavel_id_fkey(nome)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
