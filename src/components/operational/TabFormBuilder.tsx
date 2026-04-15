@@ -238,14 +238,14 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
 
   const answerOptions = local.aprovador_tipo_resposta === "sim_nao"
     ? [
-        { label: "Sim", value: "sim" as const, cls: "bg-emerald-500 text-white" },
+        { label: "Sim", value: "sim" as const, cls: "bg-success text-success-foreground" },
         { label: "Não", value: "nao" as const, cls: "bg-destructive text-destructive-foreground" },
-        { label: "N/A", value: "na" as const, cls: "bg-muted-foreground/20 text-foreground" },
+        { label: "N/A", value: "na" as const, cls: "bg-muted text-foreground" },
       ]
     : [
-        { label: "Conforme", value: "sim" as const, cls: "bg-emerald-500 text-white" },
+        { label: "Conforme", value: "sim" as const, cls: "bg-success text-success-foreground" },
         { label: "Não Conf.", value: "nao" as const, cls: "bg-destructive text-destructive-foreground" },
-        { label: "N/A", value: "na" as const, cls: "bg-muted-foreground/20 text-foreground" },
+        { label: "N/A", value: "na" as const, cls: "bg-muted text-foreground" },
       ];
 
   return (
