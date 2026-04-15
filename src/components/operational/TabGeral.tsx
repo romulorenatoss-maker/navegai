@@ -219,20 +219,6 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
           </div>
         </div>
 
-        {/* Aprovador */}
-        <div className="bg-muted/50 rounded-lg border border-border p-3">
-          <p className="text-xs font-medium text-muted-foreground mb-2">Aprovador — <span className="font-normal">Aprovação final (opcional)</span></p>
-          <div className="grid grid-cols-2 gap-3">
-            <Select value={form.aprovador_profile_id} onValueChange={v => set("aprovador_profile_id", v)}>
-              <SelectTrigger className="h-8"><SelectValue placeholder="Colaborador" /></SelectTrigger>
-              <SelectContent>{colaboradores.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
-            </Select>
-            <Select value={form.aprovador_setor_id} onValueChange={v => set("aprovador_setor_id", v)}>
-              <SelectTrigger className="h-8"><SelectValue placeholder="Setor" /></SelectTrigger>
-              <SelectContent>{setores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-        </div>
 
         {/* Validador Contingência */}
         <div className="bg-muted/50 rounded-lg border border-border p-3">
