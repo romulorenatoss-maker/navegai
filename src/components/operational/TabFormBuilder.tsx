@@ -131,6 +131,7 @@ export function TabFormBuilder({ sections, setSections, fields, setFields }: Pro
                           <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: section.cor }} />
                           <Input value={section.nome} onChange={e => updateSection(section.tempId, "nome", e.target.value)}
                             placeholder="Nome da seção" className="h-7 text-sm font-medium flex-1" maxLength={100} />
+                          <span className="text-[10px] text-muted-foreground whitespace-nowrap">{sectionFields.length} campo{sectionFields.length !== 1 ? "s" : ""}</span>
                           <Input type="number" min={0.1} step={0.1} value={section.peso} onChange={e => updateSection(section.tempId, "peso", +e.target.value)}
                             className="h-7 w-16 text-sm text-center" title="Peso da seção" />
                           <Select value={section.cor} onValueChange={v => updateSection(section.tempId, "cor", v)}>
