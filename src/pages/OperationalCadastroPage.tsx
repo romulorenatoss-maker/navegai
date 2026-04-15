@@ -182,6 +182,13 @@ export default function OperationalCadastroPage() {
             validacao: f.validacao, condicao_visibilidade: f.condicao_visibilidade,
             formula: f.formula,
             visivel_para: f.visivel_para, editavel_por: f.editavel_por,
+            aprovador_verificar: f.aprovador_verificar || false,
+            aprovador_pergunta: f.aprovador_verificar ? (f.aprovador_pergunta || null) : null,
+            aprovador_tipo_resposta: f.aprovador_tipo_resposta || "conforme",
+            aprovador_peso: f.aprovador_peso ?? 1,
+            aprovador_obriga_observacao_nao: f.aprovador_obriga_observacao_nao ?? true,
+            aprovador_exige_evidencia_nao: f.aprovador_exige_evidencia_nao ?? false,
+            aprovador_tipos_evidencia: f.aprovador_tipos_evidencia || ["foto"],
           }))
         );
         if (error) throw error;
@@ -284,6 +291,13 @@ export default function OperationalCadastroPage() {
       opcoes: f.opcoes || [], validacao: f.validacao, condicao_visibilidade: f.condicao_visibilidade,
       formula: f.formula, visivel_para: f.visivel_para || ["executor", "avaliador"],
       editavel_por: f.editavel_por || ["executor"],
+      aprovador_verificar: f.aprovador_verificar ?? !!f.aprovador_pergunta,
+      aprovador_pergunta: f.aprovador_pergunta || "",
+      aprovador_tipo_resposta: f.aprovador_tipo_resposta || "conforme",
+      aprovador_peso: f.aprovador_peso ?? 1,
+      aprovador_obriga_observacao_nao: f.aprovador_obriga_observacao_nao ?? true,
+      aprovador_exige_evidencia_nao: f.aprovador_exige_evidencia_nao ?? false,
+      aprovador_tipos_evidencia: f.aprovador_tipos_evidencia || ["foto"],
     }));
     setFields(loadedFields);
 
