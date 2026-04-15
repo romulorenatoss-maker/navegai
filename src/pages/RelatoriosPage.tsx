@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   CalendarIcon, Filter, Trash2, Download, Loader2,
-  FileText, Search, Eye
+  FileText, Search, Eye, ArrowUpDown, ArrowUp, ArrowDown
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -96,6 +96,36 @@ export default function RelatoriosPage() {
   const [osList, setOsList] = useState<OSRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  // Sorting
+  type SortKey = "numero_os" | "data_abertura" | "cliente_nome" | "tipo_servico_nome" | "tecnico_nome" | "atendente_nome" | "status";
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const sortedOsList = (() => {
+    if (!sortKey) return osList;
+    return [...osList].sort((a, b) => {
+      const valA = (a[sortKey] || "").toString().toLowerCase();
+      const valB = (b[sortKey] || "").toString().toLowerCase();
+      if (valA < valB) return sortDir === "asc" ? -1 : 1;
+      if (valA > valB) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+  })();
+
+  const SortIcon = ({ col }: { col: SortKey }) => {
+    if (sortKey !== col) return <ArrowUpDown className="w-3 h-3 ml-1 inline opacity-40" />;
+    return sortDir === "asc" ? <ArrowUp className="w-3 h-3 ml-1 inline" /> : <ArrowDown className="w-3 h-3 ml-1 inline" />;
+  };
 
   // Delete dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
