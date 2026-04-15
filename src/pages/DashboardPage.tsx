@@ -669,33 +669,117 @@ export default function DashboardPage() {
         ))}
       </motion.div>
 
-      {/* Admin: Pending by Sector */}
-      {isAdmin && sectorPendingSummary.length > 0 && (
-        <motion.div variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
-          <div className="p-4 border-b border-border flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-warning" />
-            <h2 className="text-body font-semibold text-foreground">Pendências por Setor</h2>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-4">
-            {sectorPendingSummary.map(s => (
-              <div key={s.setor_id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
-                <span className="text-body font-medium text-foreground">{s.setor_nome}</span>
-                <span className={cn(
-                  "text-body font-bold font-tabular px-2 py-0.5 rounded",
-                  s.pending_count > 3 ? "bg-destructive/10 text-destructive" :
-                  s.pending_count > 1 ? "bg-warning/10 text-warning" :
-                  "bg-primary/10 text-primary"
-                )}>{s.pending_count} OS</span>
+      {/* Score averages - Atendimento, Técnico and Média de Equipe */}
+      <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {(() => {
+          const atendiSetor = setorMedias.find(s => s.setor_nome.toLowerCase().includes("atendimento"));
+          const tecnicoSetor = setorMedias.find(s => s.setor_nome.toLowerCase().includes("cnico"));
+          const equipeMedia = atendiSetor && tecnicoSetor
+            ? calculateAverage([atendiSetor.media, tecnicoSetor.media])
+            : atendiSetor ? atendiSetor.media : tecnicoSetor ? tecnicoSetor.media : null;
+          const equipeTotal = (atendiSetor?.total_avaliacoes || 0) + (tecnicoSetor?.total_avaliacoes || 0);
+          const sectors = [
+            { label: "Média Atendimento", data: atendiSetor },
+            { label: "Média Técnico", data: tecnicoSetor },
+            { label: "Média de Equipe", data: equipeMedia !== null ? { media: equipeMedia, total_avaliacoes: equipeTotal } : null },
+          ];
+          return sectors.map((s) => (
+            <motion.div key={s.label} variants={itemVariants}
+              className="bg-card border border-border rounded-lg p-4 shadow-card">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-caption text-muted-foreground font-medium uppercase tracking-wider">{s.label}</span>
+                <BarChart3 className="w-4 h-4 text-primary" />
               </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
+              {s.data ? (
+                <>
+                  <div className={cn("inline-flex px-3 py-1 rounded-lg", getScoreBg(s.data.media))}>
+                    <span className={cn("text-section font-bold font-tabular", getScoreColor(s.data.media))}>{s.data.media.toFixed(1)}%</span>
+                  </div>
+                  <p className="text-caption text-muted-foreground mt-1">{s.data.total_avaliacoes} avaliação(ões)</p>
+                </>
+              ) : (
+                <p className="text-caption text-muted-foreground">Sem dados no período</p>
+              )}
+            </motion.div>
+          ));
+        })()}
+      </motion.div>
 
+      {/* Employee Rankings - Atendimento and Técnico side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {(() => {
+          const groups = new Map<string, TecnicoMedia[]>();
+          tecnicoMedias.forEach(t => {
+            const setor = t.setor_nome || "Sem setor";
+            if (!groups.has(setor)) groups.set(setor, []);
+            groups.get(setor)!.push(t);
+          });
+          const sortedEntries = Array.from(groups.entries()).sort(([a], [b]) => {
+            if (a.toLowerCase().includes("atendimento")) return -1;
+            if (b.toLowerCase().includes("atendimento")) return 1;
+            return a.localeCompare(b);
+          });
+          return sortedEntries.map(([setorNome, employees]) => (
+            <motion.div key={setorNome} variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
+              <div className="p-4 border-b border-border flex items-center gap-2">
+                <Users className="w-4 h-4 text-primary" />
+                <h2 className="text-body font-semibold text-foreground">Ranking — {setorNome}</h2>
+              </div>
+              <div className="divide-y divide-border">
+                {employees.length > 0 ? employees.map((t, i) => (
+                  <div key={t.profile_id}
+                    className="px-4 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors cursor-pointer"
+                    onClick={() => navigate(`/desempenho?id=${t.profile_id}`)}>
+                    <span className="text-caption font-medium text-muted-foreground font-tabular w-6">{i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-body font-medium text-primary underline underline-offset-2 truncate">{t.nome}</p>
+                      <p className="text-caption text-muted-foreground">{t.total_avaliacoes} avaliação(ões)</p>
+                    </div>
+                    <div className={cn("px-3 py-1 rounded-lg", getScoreBg(t.media))}>
+                      <span className={cn("text-body font-bold font-tabular", getScoreColor(t.media))}>{t.media.toFixed(1)}%</span>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="px-4 py-6 text-center text-caption text-muted-foreground">Sem dados no período</div>
+                )}
+              </div>
+            </motion.div>
+          ));
+        })()}
+      </div>
 
-      {/* ═══════════════════════════════════════════════════════════ */}
-      {/* SECTION 2: Avaliações Pendentes de Outros Setores */}
-      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* Client ranking */}
+      <motion.div variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
+        <div className="p-4 border-b border-border flex items-center gap-2">
+          <Trophy className="w-4 h-4 text-warning" />
+          <h2 className="text-body font-semibold text-foreground">Clientes com mais OS nos últimos 60 dias</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 w-12">#</th>
+                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Cliente</th>
+                <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Qtd. OS</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {ranking.map((r, i) => (
+                <tr key={r.cliente_id} className="hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate(`/cadastros/clientes?id=${r.cliente_id}`)}>
+                  <td className="px-4 py-3 text-body font-tabular text-muted-foreground">{i + 1}</td>
+                  <td className="px-4 py-3 text-body font-medium text-primary underline underline-offset-2">{r.cliente_nome}</td>
+                  <td className="px-4 py-3 text-body font-semibold font-tabular text-right">{r.os_count}</td>
+                </tr>
+              ))}
+              {ranking.length === 0 && (
+                <tr><td colSpan={3} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhum dado nos últimos 60 dias.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </motion.div>
+
+      {/* Avaliações Aguardando Outros Setores */}
       <motion.div variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
         <div className="p-4 border-b border-border flex items-center gap-2">
           <Hourglass className="w-4 h-4 text-muted-foreground" />
@@ -752,9 +836,30 @@ export default function DashboardPage() {
         </div>
       </motion.div>
 
-      {/* ═══════════════════════════════════════════════════════════ */}
-      {/* SECTION 3: Avaliações Concluídas */}
-      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* Admin: Pending by Sector */}
+      {isAdmin && sectorPendingSummary.length > 0 && (
+        <motion.div variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
+          <div className="p-4 border-b border-border flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-warning" />
+            <h2 className="text-body font-semibold text-foreground">Pendências por Setor</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-4">
+            {sectorPendingSummary.map(s => (
+              <div key={s.setor_id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
+                <span className="text-body font-medium text-foreground">{s.setor_nome}</span>
+                <span className={cn(
+                  "text-body font-bold font-tabular px-2 py-0.5 rounded",
+                  s.pending_count > 3 ? "bg-destructive/10 text-destructive" :
+                  s.pending_count > 1 ? "bg-warning/10 text-warning" :
+                  "bg-primary/10 text-primary"
+                )}>{s.pending_count} OS</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Avaliações Concluídas */}
       <motion.div variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
         <div className="p-4 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -881,121 +986,6 @@ export default function DashboardPage() {
           </div>
         </motion.div>
       )}
-
-      {/* Score averages - Atendimento, Técnico and Média de Equipe */}
-      <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {(() => {
-          const atendiSetor = setorMedias.find(s => s.setor_nome.toLowerCase().includes("atendimento"));
-          const tecnicoSetor = setorMedias.find(s => s.setor_nome.toLowerCase().includes("cnico"));
-
-          // Média de Equipe: average between both sectors (when both exist)
-          const equipeMedia = atendiSetor && tecnicoSetor
-            ? calculateAverage([atendiSetor.media, tecnicoSetor.media])
-            : atendiSetor ? atendiSetor.media : tecnicoSetor ? tecnicoSetor.media : null;
-          const equipeTotal = (atendiSetor?.total_avaliacoes || 0) + (tecnicoSetor?.total_avaliacoes || 0);
-
-          const sectors = [
-            { label: "Média Atendimento", data: atendiSetor },
-            { label: "Média Técnico", data: tecnicoSetor },
-            { label: "Média de Equipe", data: equipeMedia !== null ? { media: equipeMedia, total_avaliacoes: equipeTotal } : null },
-          ];
-          return sectors.map((s) => (
-            <motion.div key={s.label} variants={itemVariants}
-              className="bg-card border border-border rounded-lg p-4 shadow-card">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-caption text-muted-foreground font-medium uppercase tracking-wider">{s.label}</span>
-                <BarChart3 className="w-4 h-4 text-primary" />
-              </div>
-              {s.data ? (
-                <>
-                  <div className={cn("inline-flex px-3 py-1 rounded-lg", getScoreBg(s.data.media))}>
-                    <span className={cn("text-section font-bold font-tabular", getScoreColor(s.data.media))}>{s.data.media.toFixed(1)}%</span>
-                  </div>
-                  <p className="text-caption text-muted-foreground mt-1">{s.data.total_avaliacoes} avaliação(ões)</p>
-                </>
-              ) : (
-                <p className="text-caption text-muted-foreground">Sem dados no período</p>
-              )}
-            </motion.div>
-          ));
-        })()}
-      </motion.div>
-
-      {/* Employee Rankings - Atendimento and Técnico side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {(() => {
-          const groups = new Map<string, TecnicoMedia[]>();
-          tecnicoMedias.forEach(t => {
-            const setor = t.setor_nome || "Sem setor";
-            if (!groups.has(setor)) groups.set(setor, []);
-            groups.get(setor)!.push(t);
-          });
-
-          const sortedEntries = Array.from(groups.entries()).sort(([a], [b]) => {
-            if (a.toLowerCase().includes("atendimento")) return -1;
-            if (b.toLowerCase().includes("atendimento")) return 1;
-            return a.localeCompare(b);
-          });
-
-          return sortedEntries.map(([setorNome, employees]) => (
-            <motion.div key={setorNome} variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
-              <div className="p-4 border-b border-border flex items-center gap-2">
-                <Users className="w-4 h-4 text-primary" />
-                <h2 className="text-body font-semibold text-foreground">Ranking — {setorNome}</h2>
-              </div>
-              <div className="divide-y divide-border">
-                {employees.length > 0 ? employees.map((t, i) => (
-                  <div key={t.profile_id}
-                    className="px-4 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors cursor-pointer"
-                    onClick={() => navigate(`/desempenho?id=${t.profile_id}`)}>
-                    <span className="text-caption font-medium text-muted-foreground font-tabular w-6">{i + 1}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-body font-medium text-primary underline underline-offset-2 truncate">{t.nome}</p>
-                      <p className="text-caption text-muted-foreground">{t.total_avaliacoes} avaliação(ões)</p>
-                    </div>
-                    <div className={cn("px-3 py-1 rounded-lg", getScoreBg(t.media))}>
-                      <span className={cn("text-body font-bold font-tabular", getScoreColor(t.media))}>{t.media.toFixed(1)}%</span>
-                    </div>
-                  </div>
-                )) : (
-                  <div className="px-4 py-6 text-center text-caption text-muted-foreground">Sem dados no período</div>
-                )}
-              </div>
-            </motion.div>
-          ));
-        })()}
-      </div>
-
-      {/* Client ranking */}
-      <motion.div variants={itemVariants} initial="hidden" animate="show" className="bg-card border border-border rounded-lg shadow-card">
-        <div className="p-4 border-b border-border flex items-center gap-2">
-          <Trophy className="w-4 h-4 text-warning" />
-          <h2 className="text-body font-semibold text-foreground">Clientes com mais OS nos últimos 60 dias</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 w-12">#</th>
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Cliente</th>
-                <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Qtd. OS</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {ranking.map((r, i) => (
-                <tr key={r.cliente_id} className="hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate(`/cadastros/clientes?id=${r.cliente_id}`)}>
-                  <td className="px-4 py-3 text-body font-tabular text-muted-foreground">{i + 1}</td>
-                  <td className="px-4 py-3 text-body font-medium text-primary underline underline-offset-2">{r.cliente_nome}</td>
-                  <td className="px-4 py-3 text-body font-semibold font-tabular text-right">{r.os_count}</td>
-                </tr>
-              ))}
-              {ranking.length === 0 && (
-                <tr><td colSpan={3} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhum dado nos últimos 60 dias.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </motion.div>
     </div>
   );
 }
