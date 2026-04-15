@@ -1870,6 +1870,7 @@ export type Database = {
           intervalo_dias: number | null
           modo_pontuacao: string
           nome: string
+          peso_recorrencia: number
           prazo_sla_correcao_horas: number | null
           pular_semanas: number | null
           recorrencia_tipo: string
@@ -1911,6 +1912,7 @@ export type Database = {
           intervalo_dias?: number | null
           modo_pontuacao?: string
           nome: string
+          peso_recorrencia?: number
           prazo_sla_correcao_horas?: number | null
           pular_semanas?: number | null
           recorrencia_tipo?: string
@@ -1952,6 +1954,7 @@ export type Database = {
           intervalo_dias?: number | null
           modo_pontuacao?: string
           nome?: string
+          peso_recorrencia?: number
           prazo_sla_correcao_horas?: number | null
           pular_semanas?: number | null
           recorrencia_tipo?: string
@@ -3381,6 +3384,23 @@ export type Database = {
       atomic_reserve_lead: {
         Args: { _lead_id: string; _profile_id: string; _user_id: string }
         Returns: boolean
+      }
+      calcular_media_operacional_ponderada: {
+        Args: {
+          _data_fim?: string
+          _data_inicio?: string
+          _profile_id: string
+          _tipo?: string
+        }
+        Returns: number
+      }
+      calcular_nota_global: {
+        Args: { _data_fim?: string; _data_inicio?: string; _profile_id: string }
+        Returns: {
+          nota_global: number
+          nota_operacional: number
+          nota_os: number
+        }[]
       }
       calcular_notas_por_setor: {
         Args: { p_data_fim?: string; p_data_inicio?: string }
