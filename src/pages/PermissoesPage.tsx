@@ -369,14 +369,56 @@ export default function PermissoesPage() {
 
         {/* USERS TAB */}
         <TabsContent value="users" className="space-y-4">
-          <Select value={selectedProfileId} onValueChange={setSelectedProfileId}>
-            <SelectTrigger className="w-64"><SelectValue placeholder="Selecione um usuário" /></SelectTrigger>
-            <SelectContent>
-              {profiles.map((p: any) => (
-                <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo})</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="w-40">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Cargo</label>
+              <Select value={filterCargo} onValueChange={v => { setFilterCargo(v); setSelectedProfileId(""); }}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="administrador">Administrador</SelectItem>
+                  <SelectItem value="avaliador">Avaliador</SelectItem>
+                  <SelectItem value="avaliado">Avaliado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Usuário</label>
+              <Select value={selectedProfileId} onValueChange={setSelectedProfileId}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione um usuário" /></SelectTrigger>
+                <SelectContent>
+                  {filteredProfiles.map((p: any) => (
+                    <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {selectedProfileId && (
+              <div className="flex items-end">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="sm" variant="destructive" className="gap-1.5 h-9 mt-auto">
+                      <UserX className="w-4 h-4" /> Desativar Usuário
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Desativar usuário?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        O perfil será desativado e todas as permissões (grupos, overrides e telas) serão removidas. Esta ação pode ser revertida reativando o colaborador.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => deactivateUser.mutate(selectedProfileId)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Desativar
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            )}
+          </div>
 
           {selectedProfileId && (
             <div className="grid gap-4 md:grid-cols-2">
