@@ -60,13 +60,27 @@ export function useAssignmentExecution(assignmentId: string | null) {
     setDirty(false);
   }, [savedAnswers]);
 
+  // Track which fields have been logged for interaction
+  const loggedFieldsRef = useRef<Set<string>>(new Set());
+
   const updateAnswer = useCallback((fieldId: string, patch: Partial<FieldAnswer>) => {
     setAnswers(prev => ({
       ...prev,
       [fieldId]: { ...prev[fieldId], field_id: fieldId, ...patch },
     }));
     setDirty(true);
-  }, []);
+
+    // Log first interaction with each field
+    if (assignmentId && profile?.id && !loggedFieldsRef.current.has(fieldId)) {
+      loggedFieldsRef.current.add(fieldId);
+      (supabase as any).from("operational_execution_logs").insert({
+        assignment_id: assignmentId,
+        acao: "preencheu_campo",
+        executado_por: profile.id,
+        detalhes: { field_id: fieldId, interacted_at: new Date().toISOString() },
+      }).then(() => {});
+    }
+  }, [assignmentId, profile?.id]);
 
   // Auto-save with debounce (5 seconds)
   useEffect(() => {
