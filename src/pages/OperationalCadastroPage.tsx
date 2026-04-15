@@ -35,10 +35,12 @@ const PESO_RECORRENCIA_MAP: Record<string, number> = {
   unica: 2.0, diaria: 1.0, semanal: 1.5, quinzenal: 2.0, mensal: 3.0, personalizada: 2.0,
 };
 
+const getLocalToday = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+
 const defaultForm: TemplateForm = {
   nome: "", descricao: "", tipo_execucao: "simples", setor_id: "", responsavel_id: "",
   recorrencia_tipo: "unica", dias_da_semana: [], intervalo_dias: 1, pular_semanas: 0,
-  dia_fixo_mes: null, data_inicio: new Date().toISOString().slice(0, 10), data_fim: "", repetir_sempre: false,
+  dia_fixo_mes: null, data_inicio: getLocalToday(), data_fim: "", repetir_sempre: false,
   horario_inicio_previsto: "08:00", horario_limite_execucao: "18:00", tolerancia_minutos: 0,
   exigir_foto: false, exigir_video: false, exigir_observacao: false,
   gerar_contingencia_automatica: false, prazo_sla_correcao_horas: 24, responsavel_contingencia_id: "",
