@@ -218,10 +218,11 @@ export default function OperationalExecucaoPage() {
   };
 
   // Filter assignments
-  const todayAssignments = assignments.filter((a: any) => a.data_prevista === today && !["concluida", "nao_executada"].includes(a.status));
+  const todayAssignments = assignments.filter((a: any) => a.data_prevista === today && !["concluida", "aprovada", "nao_executada"].includes(a.status));
   const pendingAssignments = assignments.filter((a: any) => a.data_prevista > today && a.status === "pendente");
-  const lateAssignments = assignments.filter((a: any) => (a.data_prevista < today && a.status !== "concluida" && a.status !== "nao_executada") || a.status === "atrasada");
-  const doneAssignments = assignments.filter((a: any) => a.status === "concluida").slice(0, 50);
+  const lateAssignments = assignments.filter((a: any) => (a.data_prevista < today && a.status !== "concluida" && a.status !== "aprovada" && a.status !== "nao_executada") || a.status === "atrasada");
+  const awaitingApproval = assignments.filter((a: any) => a.status === "aguardando_aprovacao");
+  const doneAssignments = assignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 50);
 
   const renderCard = (a: any) => {
     const tpl = a.operational_templates;
