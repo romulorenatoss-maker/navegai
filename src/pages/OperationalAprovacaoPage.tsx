@@ -373,6 +373,36 @@ export default function OperationalAprovacaoPage() {
 
             {activeView === "perguntas" && (
               <div className="space-y-4">
+                {/* Automatic system questions */}
+                {snapshot?.habilitar_perguntas_automaticas !== false && approval.contingencies.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Perguntas Automáticas do Sistema</h4>
+                    <div className="border rounded-lg p-3 space-y-2 bg-blue-50/30 border-blue-200">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium">Houve contingência nesta tarefa?</p>
+                        <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 border border-red-200">SIM</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Resposta automática — {approval.contingencies.length} contingência(s) registrada(s)</p>
+                    </div>
+                    <div className="border rounded-lg p-3 space-y-2 bg-blue-50/30 border-blue-200">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium">Contingência resolvida dentro do prazo?</p>
+                        {(() => {
+                          const resolved = approval.contingencies.filter((c: any) => c.resolvida_em);
+                          const dentroPrazo = resolved.filter((c: any) => c.prazo_sla && new Date(c.resolvida_em) <= new Date(c.prazo_sla));
+                          const allInTime = resolved.length > 0 && dentroPrazo.length === resolved.length;
+                          return (
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium border ${allInTime ? "bg-green-100 text-green-700 border-green-200" : "bg-red-100 text-red-700 border-red-200"}`}>
+                              {allInTime ? "SIM" : "NÃO"}
+                            </span>
+                          );
+                        })()}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Resposta automática — permite override manual com justificativa</p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Alert if contingencies are pending */}
                 {!approval.canAnswerApproverQuestions && (
                   <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 flex items-start gap-2">
