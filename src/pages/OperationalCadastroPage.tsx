@@ -292,6 +292,32 @@ export default function OperationalCadastroPage() {
         <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Novo Template</Button>
       </div>
 
+      {/* Filters */}
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
+        <Select value={filterExecutor} onValueChange={setFilterExecutor}>
+          <SelectTrigger className="w-[170px] h-8 text-xs"><SelectValue placeholder="Executor" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all">Executor: Todos</SelectItem>
+            {executorProfiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterAvaliador} onValueChange={setFilterAvaliador}>
+          <SelectTrigger className="w-[170px] h-8 text-xs"><SelectValue placeholder="Avaliador" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all">Avaliador: Todos</SelectItem>
+            {avaliadorProfiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterAvaliado} onValueChange={setFilterAvaliado}>
+          <SelectTrigger className="w-[170px] h-8 text-xs"><SelectValue placeholder="Avaliado" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all">Avaliado: Todos</SelectItem>
+            {avaliadoProfiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Templates table */}
       <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
         <div className="overflow-x-auto">
@@ -310,9 +336,9 @@ export default function OperationalCadastroPage() {
             <tbody className="divide-y divide-border">
               {isLoading ? (
                 <tr><td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">Carregando...</td></tr>
-              ) : templates.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhum template cadastrado.</td></tr>
-              ) : templates.map((t: any) => (
+              ) : filteredTemplates.length === 0 ? (
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhum template encontrado.</td></tr>
+              ) : filteredTemplates.map((t: any) => (
                 <tr key={t.id} className="hover:bg-muted/50 transition-colors">
                   <td className="px-4 py-3">
                     <span className="text-body font-medium text-foreground">{t.nome}</span>
