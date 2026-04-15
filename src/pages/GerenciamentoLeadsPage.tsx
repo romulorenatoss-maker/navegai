@@ -12,7 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Loader2, Search, Send, Filter, ChevronLeft, ChevronRight, CheckSquare } from "lucide-react";
+import { Loader2, Search, Send, Filter, ChevronLeft, ChevronRight, CheckSquare, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
@@ -82,8 +83,9 @@ export default function GerenciamentoLeadsPage() {
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // Sending state
+  // Sending / deleting state
   const [sending, setSending] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [sendProgress, setSendProgress] = useState<{ current: number; total: number } | null>(null);
 
   // ─── Server-side paginated query ─────────────────
@@ -271,6 +273,40 @@ export default function GerenciamentoLeadsPage() {
     }
   }, [selectedIds, profile, queryClient]);
 
+  // ─── Delete selected ─────────────────
+  const handleDeleteSelected = useCallback(async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+
+    setDeleting(true);
+    setSendProgress({ current: 0, total: ids.length });
+
+    const BATCH_SIZE = 20;
+    try {
+      for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+        const batch = ids.slice(i, i + BATCH_SIZE);
+        // Delete related records first
+        await supabase.from("lead_contatos").delete().in("lead_id", batch);
+        await supabase.from("lead_interacoes").delete().in("lead_id", batch);
+        await supabase.from("lead_tarefas_contato").delete().in("lead_id", batch);
+        await supabase.from("lead_historico").delete().in("lead_id", batch);
+        const { error } = await supabase.from("leads").delete().in("id", batch);
+        if (error) throw error;
+        setSendProgress({ current: Math.min(i + BATCH_SIZE, ids.length), total: ids.length });
+      }
+
+      toast.success(`${ids.length} leads excluídos com sucesso!`);
+      setSelectedIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ["gerenciamento-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["campanhas-leads-stats"] });
+    } catch (err: any) {
+      toast.error("Erro ao excluir: " + err.message);
+    } finally {
+      setDeleting(false);
+      setSendProgress(null);
+    }
+  }, [selectedIds, queryClient]);
+
   // Reset page when filters change
   const handleFilterChange = useCallback((setter: (v: any) => void, value: any) => {
     setter(value);
@@ -406,10 +442,33 @@ export default function GerenciamentoLeadsPage() {
                   <span className="text-xs text-muted-foreground">{sendProgress.current}/{sendProgress.total}</span>
                 </div>
               )}
-              <Button size="sm" onClick={handleSendToQueue} disabled={sending} className="gap-1.5">
+              <Button size="sm" onClick={handleSendToQueue} disabled={sending || deleting} className="gap-1.5">
                 {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                 Enviar para Fila
               </Button>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button size="sm" variant="destructive" disabled={sending || deleting} className="gap-1.5">
+                    {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                    Excluir Selecionados
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir {selectedIds.size} lead{selectedIds.size > 1 ? "s" : ""}?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta ação é irreversível. Todos os contatos, interações, tarefas e histórico dos leads selecionados serão removidos permanentemente.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteSelected} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Excluir
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </CardContent>
         </Card>
