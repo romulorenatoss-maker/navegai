@@ -43,8 +43,8 @@ export default function OperationalExecucaoPage() {
     queryFn: async () => {
       if (!profile?.id) return [];
       const { data, error } = await (supabase as any).from("operational_assignments")
-        .select("*, operational_templates(nome, descricao, tipo_execucao, exigir_foto, exigir_observacao, gerar_contingencia_automatica, prazo_sla_correcao_horas, responsavel_contingencia_id, requer_aprovacao_gestor, bloquear_fechamento_com_contingencia, setores(nome))")
-        .eq("responsavel_id", profile.id)
+        .select("*, operational_templates(nome, descricao, tipo_execucao, exigir_foto, exigir_observacao, gerar_contingencia_automatica, prazo_sla_correcao_horas, responsavel_contingencia_id, requer_aprovacao_gestor, bloquear_fechamento_com_contingencia, modo_pontuacao, destino_score, setores(nome))")
+        .or(`responsavel_id.eq.${profile.id},avaliador_id.eq.${profile.id},avaliado_id.eq.${profile.id}`)
         .order("data_prevista", { ascending: true });
       if (error) throw error;
       return data;
