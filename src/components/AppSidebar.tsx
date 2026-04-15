@@ -42,6 +42,7 @@ const allNavSections = [
       { to: "/checklists/cadastro", icon: ListChecks, label: "Templates" },
       { to: "/checklists/execucao", icon: PlayCircle, label: "Execução" },
       { to: "/checklists/avaliacao", icon: ClipboardCheck, label: "Avaliação" },
+      { to: "/checklists/aprovacao", icon: Shield, label: "Aprovação Final" },
       { to: "/checklists/gestao", icon: FolderKanban, label: "Gestão / Rankings" },
     ],
   },
