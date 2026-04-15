@@ -41,7 +41,7 @@ export function TabTarefasExecutadas({ templateId }: Props) {
       if (!templateId) return [];
       const { data, error } = await (supabase as any)
         .from("operational_assignments")
-        .select("id, status, data_prevista, inicio_em, fim_em, responsavel_id, avaliado_id, profiles!operational_assignments_responsavel_id_fkey(nome)")
+        .select("id, numero_tarefa, status, data_prevista, inicio_em, fim_em, responsavel_id, avaliado_id, profiles!operational_assignments_responsavel_id_fkey(nome)")
         .eq("template_id", templateId)
         .order("data_prevista", { ascending: false });
       if (error) throw error;
