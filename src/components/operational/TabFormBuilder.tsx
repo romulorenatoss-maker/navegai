@@ -526,9 +526,12 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
                             </div>
                           )}
                           {local.gera_contingencia && (
-                            <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded p-2 text-caption text-orange-700 dark:text-orange-400 flex items-center gap-1.5">
-                              <AlertTriangle className="w-3.5 h-3.5" />
-                              Contingência será gerada automaticamente • Criticidade: <strong>{local.criticidade}</strong>
+                            <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded p-2 text-caption text-orange-700 dark:text-orange-400 space-y-1">
+                              <p className="flex items-center gap-1.5 font-medium">
+                                <AlertTriangle className="w-3.5 h-3.5" />
+                                Contingência será gerada automaticamente
+                              </p>
+                              <p className="text-orange-600 dark:text-orange-400/80">Executor receberá pendência com prazo SLA e cronômetro de tempo decorrido.</p>
                             </div>
                           )}
                         </div>
