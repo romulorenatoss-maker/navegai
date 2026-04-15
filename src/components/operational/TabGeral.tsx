@@ -342,25 +342,6 @@ export function TabGeral({ form, set, setores, colaboradores, steps = [], setSte
         </div>
       </div>
 
-      {/* SLA / Horários */}
-      <div className="grid grid-cols-4 gap-3">
-        <div className="space-y-1.5">
-          <Label>Horário Início</Label>
-          <Input type="time" value={form.horario_inicio_previsto} onChange={e => set("horario_inicio_previsto", e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Horário Limite</Label>
-          <Input type="time" value={form.horario_limite_execucao} onChange={e => set("horario_limite_execucao", e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Tolerância (min)</Label>
-          <Input type="number" min={0} value={form.tolerancia_minutos} onChange={e => set("tolerancia_minutos", +e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label>SLA (horas)</Label>
-          <Input type="number" min={1} value={form.sla_horas} onChange={e => set("sla_horas", +e.target.value)} />
-        </div>
-      </div>
 
       {/* Dialog de Membros */}
       <Dialog open={membrosDialogOpen} onOpenChange={setMembrosDialogOpen}>

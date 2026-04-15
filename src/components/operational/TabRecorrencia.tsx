@@ -70,17 +70,25 @@ export function TabRecorrencia({ form, set }: Props) {
             <SelectContent>{Object.entries(RECORRENCIA_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
           </Select>
         </div>
-        <div className="space-y-2">
-          <Label>Multiplicador (Peso)</Label>
-          <div className="grid grid-cols-5 gap-1.5">
-            {[{ l: "Diária", p: 1.0 }, { l: "Semanal", p: 1.5 }, { l: "Quinzenal", p: 2.0 }, { l: "Mensal", p: 3.0 }, { l: "Pontual", p: 2.0 }].map(item => (
-              <button key={item.l} type="button" onClick={() => set("peso_recorrencia", item.p)}
-                className={`text-center rounded-md px-1.5 py-2 border transition-colors cursor-pointer ${form.peso_recorrencia === item.p ? "bg-primary/10 border-primary text-primary ring-1 ring-primary/30 font-semibold" : "bg-card border-border text-muted-foreground hover:border-primary/40"}`}>
-                <span className="block text-[10px]">{item.l}</span>
-                <span className="block font-bold text-sm">×{item.p}</span>
-              </button>
-            ))}
-          </div>
+      </div>
+
+      {/* Horários e SLA */}
+      <div className="grid grid-cols-4 gap-3">
+        <div className="space-y-1.5">
+          <Label>Horário Início</Label>
+          <Input type="time" value={form.horario_inicio_previsto} onChange={e => set("horario_inicio_previsto", e.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Horário Limite</Label>
+          <Input type="time" value={form.horario_limite_execucao} onChange={e => set("horario_limite_execucao", e.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Tolerância (min)</Label>
+          <Input type="number" min={0} value={form.tolerancia_minutos} onChange={e => set("tolerancia_minutos", +e.target.value)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>SLA (horas)</Label>
+          <Input type="number" min={1} value={form.sla_horas} onChange={e => set("sla_horas", +e.target.value)} />
         </div>
       </div>
 
