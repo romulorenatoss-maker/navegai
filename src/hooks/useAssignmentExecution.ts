@@ -53,6 +53,10 @@ export function useAssignmentExecution(assignmentId: string | null) {
           valor_data: a.valor_data,
           valor_json: a.valor_json,
           evidencia_url: a.evidencia_url,
+          respondido_por_nome: a.profiles?.nome || null,
+          respondido_em: a.respondido_em,
+          versao: a.versao || 1,
+          historico_alteracoes: a.historico_alteracoes || [],
         };
       }
     }
