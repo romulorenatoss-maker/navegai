@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Progress } from "@/components/ui/progress";
 import { STATUS_CONFIG } from "@/hooks/useOperationalScoring";
 import { AssignmentCard } from "@/components/operational/AssignmentCard";
-import { DynamicFieldRenderer, SnapshotField, FieldAnswer } from "@/components/operational/DynamicFieldRenderer";
+import { DynamicFieldRenderer, SnapshotField, FieldAnswer, evaluateVisibility } from "@/components/operational/DynamicFieldRenderer";
 import { useAssignmentExecution } from "@/hooks/useAssignmentExecution";
 
 export default function OperationalExecucaoPage() {
@@ -69,21 +69,26 @@ export default function OperationalExecucaoPage() {
     setActiveSection(sections?.[0]?.id || null);
   }, []);
 
-  const closeExecution = () => {
-    if (exec.dirty) exec.saveDraft();
+  const closeExecution = async () => {
+    if (exec.dirty) await exec.saveDraft();
     setExecDialogOpen(false);
     setSelectedAssignment(null);
   };
 
-  // Progress calculation
+  // Progress calculation — only visible fields
+  const visibleFields = useMemo(() => 
+    snapshotFields.filter(f => evaluateVisibility(f.condicao_visibilidade, exec.answers)),
+    [snapshotFields, exec.answers]
+  );
+
   const progress = useMemo(() => {
-    if (!snapshotFields.length) return 0;
-    const filled = snapshotFields.filter(f => {
+    if (!visibleFields.length) return 0;
+    const filled = visibleFields.filter(f => {
       const a = exec.answers[f.id];
       return a && (a.valor_texto != null && a.valor_texto !== "" || a.valor_numero != null || a.valor_booleano != null || a.valor_data != null || a.valor_json != null);
     }).length;
-    return Math.round((filled / snapshotFields.length) * 100);
-  }, [snapshotFields, exec.answers]);
+    return Math.round((filled / visibleFields.length) * 100);
+  }, [visibleFields, exec.answers]);
 
   // Is assignment editable by current user?
   const isEditable = selectedAssignment && ["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status);
@@ -94,13 +99,23 @@ export default function OperationalExecucaoPage() {
   };
 
   const handleSubmit = () => {
-    const errors = exec.validateAll(snapshotFields, selectedAssignment?.status);
+    const visibleFields = snapshotFields.filter(f => 
+      evaluateVisibility(f.condicao_visibilidade, exec.answers)
+    );
+    const errors = exec.validateAll(visibleFields, selectedAssignment?.status);
     if (errors.length > 0) {
       toast.error(`Corrija ${errors.length} erro(s) antes de enviar`, { description: errors.slice(0, 3).join("; ") });
       return;
     }
-    exec.submit.mutate({ assignment: selectedAssignment, fields: snapshotFields });
-    setExecDialogOpen(false);
+    exec.submit.mutate(
+      { assignment: selectedAssignment, fields: visibleFields },
+      {
+        onSuccess: () => {
+          setExecDialogOpen(false);
+          setSelectedAssignment(null);
+        },
+      }
+    );
   };
 
   const handleSaveDraft = async () => {
@@ -191,18 +206,19 @@ export default function OperationalExecucaoPage() {
               <div className="flex gap-1.5 mt-3 overflow-x-auto pb-1">
                 {snapshotSections.map((s: any) => {
                   const sFields = fieldsBySection[s.id] || [];
-                  const filled = sFields.filter(f => {
+                  const sFieldsVisible = sFields.filter(f => evaluateVisibility(f.condicao_visibilidade, exec.answers));
+                  const filled = sFieldsVisible.filter(f => {
                     const a = exec.answers[f.id];
                     return a && (a.valor_texto != null && a.valor_texto !== "" || a.valor_numero != null || a.valor_booleano != null || a.valor_data != null || a.valor_json != null);
                   }).length;
-                  const allFilled = filled === sFields.length && sFields.length > 0;
+                  const allFilled = filled === sFieldsVisible.length && sFieldsVisible.length > 0;
                   return (
                     <button key={s.id} type="button" onClick={() => setActiveSection(s.id)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border whitespace-nowrap transition-colors ${activeSection === s.id ? "bg-primary/10 border-primary text-primary" : "bg-card border-border text-muted-foreground hover:bg-muted"}`}>
                       <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.cor || "#3b82f6" }} />
                       {s.nome || "Seção"}
                       {allFilled && <CheckCircle2 className="w-3 h-3 text-green-600" />}
-                      <span className="text-[10px] opacity-70">{filled}/{sFields.length}</span>
+                      <span className="text-[10px] opacity-70">{filled}/{sFieldsVisible.length}</span>
                     </button>
                   );
                 })}
@@ -229,7 +245,7 @@ export default function OperationalExecucaoPage() {
                     {snapshotFields.map(f => (
                       <DynamicFieldRenderer key={f.id} field={f} answer={exec.answers[f.id]}
                         review={exec.getLatestReview(f.id)} userRole="executor"
-                        disabled={isDevolvida && !exec.getLatestReview(f.id)?.devolvido}
+                        disabled={isDevolvida && exec.getLatestReview(f.id)?.devolvido !== true}
                         allAnswers={exec.answers} onChange={exec.updateAnswer} assignmentId={selectedAssignment.id} />
                     ))}
                   </div>
@@ -248,7 +264,7 @@ export default function OperationalExecucaoPage() {
                           {sFields.map(f => (
                             <DynamicFieldRenderer key={f.id} field={f} answer={exec.answers[f.id]}
                               review={exec.getLatestReview(f.id)} userRole="executor"
-                              disabled={isDevolvida && !exec.getLatestReview(f.id)?.devolvido}
+                              disabled={isDevolvida && exec.getLatestReview(f.id)?.devolvido !== true}
                               allAnswers={exec.answers} onChange={exec.updateAnswer} assignmentId={selectedAssignment.id} />
                           ))}
                         </div>
