@@ -155,8 +155,27 @@ export default function OperationalExecucaoPage() {
     <div className="p-4 md:p-6 max-w-3xl mx-auto">
       <div className="mb-6">
         <h1 className="text-lg md:text-xl font-semibold text-foreground">Execução Operacional</h1>
-        <p className="text-sm text-muted-foreground">Formulários e rotinas atribuídos a você.</p>
+        <p className="text-sm text-muted-foreground">
+          {isAdmin ? "Visualização administrativa de todas as rotinas." : "Formulários e rotinas atribuídos a você."}
+        </p>
       </div>
+
+      {isAdmin && (
+        <div className="mb-4 flex items-center gap-2">
+          <label className="text-sm text-muted-foreground whitespace-nowrap">Colaborador:</label>
+          <Select value={filterResponsavel} onValueChange={setFilterResponsavel}>
+            <SelectTrigger className="w-[260px]">
+              <SelectValue placeholder="Todos os colaboradores" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">Todos os colaboradores</SelectItem>
+              {allProfiles.map((p: any) => (
+                <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full mb-4 flex-wrap h-auto gap-1">
