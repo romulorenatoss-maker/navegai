@@ -69,6 +69,7 @@ export interface TemplateForm {
   modo_pontuacao: string;
   destino_score: string;
   peso_recorrencia: number;
+  tipo_atribuicao_avaliado: string;
 }
 
 export const FIELD_TYPES: Record<string, string> = {
@@ -121,6 +122,7 @@ export const defaultTemplate: TemplateForm = {
   validador_contingencia_profile_id: "", validador_contingencia_setor_id: "",
   modo_pontuacao: "pontuar_avaliado", destino_score: "individual",
   peso_recorrencia: 2.0,
+  tipo_atribuicao_avaliado: "individual",
 };
 
 export const defaultField = (sectionTempId: string, ordem: number): FieldForm => ({
