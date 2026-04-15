@@ -3,12 +3,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Play, CheckCircle2, AlertTriangle, Clock, Camera, MessageSquare, Shield, HelpCircle, Flame } from "lucide-react";
+import { Play, CheckCircle2, Clock, Shield, Flame, RotateCcw, XCircle, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { calculateTaskScore } from "@/hooks/useTaskScoring";
 import { PRIORIDADE_CONFIG, NIVEL_CONFIG } from "@/hooks/useTaskScoring";
 
@@ -27,11 +28,13 @@ function timeLeft(deadline: string | null): string {
   return `${h}h ${m}min`;
 }
 
+type ActionType = "concluir" | "bloquear" | "reabrir" | "cancelar";
+
 export default function TaskExecucaoPage() {
-  const { profile } = useAuth();
+  const { profile, isAdmin } = useAuth();
   const qc = useQueryClient();
   const [tab, setTab] = useState("hoje");
-  const [actionDialog, setActionDialog] = useState<{ assignment: any; type: string } | null>(null);
+  const [actionDialog, setActionDialog] = useState<{ assignment: any; type: ActionType } | null>(null);
   const [obs, setObs] = useState("");
 
   const profileId = profile?.id;
@@ -72,7 +75,7 @@ export default function TaskExecucaoPage() {
     return { hoje, pendentes, atrasadas, concluidas, historico };
   }, [assignments, today]);
 
-  // Actions
+  // === Executor Actions ===
   const startTask = useMutation({
     mutationFn: async (id: string) => {
       await (supabase as any).from("task_assignments").update({ status: "em_andamento", inicio_em: new Date().toISOString() }).eq("id", id);
@@ -89,7 +92,6 @@ export default function TaskExecucaoPage() {
       const assignment = assignments.find((a: any) => a.id === id);
       if (!assignment) throw new Error("Tarefa não encontrada");
       const tmpl = assignment.task_templates;
-
       if (tmpl.obrigar_observacao && !observacao.trim()) throw new Error("Observação obrigatória.");
 
       const now = new Date();
@@ -130,11 +132,90 @@ export default function TaskExecucaoPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  // === Admin Actions ===
+  const reopenTask = useMutation({
+    mutationFn: async ({ id, motivo }: { id: string; motivo: string }) => {
+      if (!motivo.trim()) throw new Error("Motivo da reabertura é obrigatório.");
+      const assignment = assignments.find((a: any) => a.id === id);
+      const previousStatus = assignment?.status || "desconhecido";
+
+      await (supabase as any).from("task_assignments").update({
+        status: "pendente",
+        inicio_em: null,
+        fim_em: null,
+        tempo_gasto_minutos: null,
+        pontuacao_obtida: null,
+        observacao: null,
+        motivo_bloqueio: null,
+      }).eq("id", id);
+
+      if (profileId) {
+        await (supabase as any).from("task_execution_logs").insert({
+          assignment_id: id, profile_id: profileId, acao: "admin_reabriu",
+          detalhes: { motivo, status_anterior: previousStatus },
+        });
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["my_task_assignments"] });
+      setActionDialog(null); setObs("");
+      toast.success("Tarefa reaberta e devolvida ao executor.");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const cancelTask = useMutation({
+    mutationFn: async ({ id, motivo }: { id: string; motivo: string }) => {
+      if (!motivo.trim()) throw new Error("Motivo do cancelamento é obrigatório.");
+      const assignment = assignments.find((a: any) => a.id === id);
+      const previousStatus = assignment?.status || "desconhecido";
+
+      await (supabase as any).from("task_assignments").update({
+        status: "nao_executada",
+        observacao: `[CANCELADA ADMIN] ${motivo}`,
+      }).eq("id", id);
+
+      if (profileId) {
+        await (supabase as any).from("task_execution_logs").insert({
+          assignment_id: id, profile_id: profileId, acao: "admin_cancelou",
+          detalhes: { motivo, status_anterior: previousStatus },
+        });
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["my_task_assignments"] });
+      setActionDialog(null); setObs("");
+      toast.info("Tarefa cancelada pelo administrador.");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const handleDialogAction = () => {
+    if (!actionDialog) return;
+    const { assignment, type } = actionDialog;
+    switch (type) {
+      case "concluir": completeTask.mutate({ id: assignment.id, observacao: obs }); break;
+      case "bloquear": blockTask.mutate({ id: assignment.id, motivo: obs }); break;
+      case "reabrir": reopenTask.mutate({ id: assignment.id, motivo: obs }); break;
+      case "cancelar": cancelTask.mutate({ id: assignment.id, motivo: obs }); break;
+    }
+  };
+
+  const isActionPending = completeTask.isPending || blockTask.isPending || reopenTask.isPending || cancelTask.isPending;
+
+  const DIALOG_CONFIG: Record<ActionType, { title: string; placeholder: string; btnLabel: string; btnClass: string }> = {
+    concluir: { title: "Concluir Tarefa", placeholder: "Observação sobre a execução...", btnLabel: "Concluir", btnClass: "bg-green-600 hover:bg-green-700" },
+    bloquear: { title: "Reportar Bloqueio", placeholder: "Descreva o impedimento...", btnLabel: "Bloquear", btnClass: "bg-destructive hover:bg-destructive/90" },
+    reabrir: { title: "Reabrir Tarefa (Admin)", placeholder: "Motivo da reabertura (obrigatório)...", btnLabel: "Reabrir Tarefa", btnClass: "bg-orange-600 hover:bg-orange-700" },
+    cancelar: { title: "Cancelar Tarefa (Admin)", placeholder: "Motivo do cancelamento (obrigatório)...", btnLabel: "Cancelar Tarefa", btnClass: "bg-destructive hover:bg-destructive/90" },
+  };
+
   const renderCard = (a: any) => {
     const tmpl = a.task_templates;
     const prio = PRIORIDADE_CONFIG[tmpl?.prioridade] || PRIORIDADE_CONFIG.media;
     const isRunning = a.status === "em_andamento";
     const isLate = a.prazo_limite && new Date(a.prazo_limite) < new Date() && !["concluida", "nao_executada"].includes(a.status);
+    const isDone = ["concluida", "nao_executada", "bloqueada"].includes(a.status);
 
     return (
       <div key={a.id} className={`bg-card border rounded-lg p-4 space-y-3 transition-all ${isLate ? "border-destructive/50 bg-destructive/5" : "border-border"}`}>
@@ -143,7 +224,26 @@ export default function TaskExecucaoPage() {
             <h3 className="text-body font-semibold text-foreground truncate">{tmpl?.titulo || "Tarefa"}</h3>
             {tmpl?.descricao && <p className="text-caption text-muted-foreground mt-0.5 line-clamp-2">{tmpl.descricao}</p>}
           </div>
-          <Badge variant="outline" className={prio.class}>{prio.label}</Badge>
+          <div className="flex items-center gap-1.5">
+            <Badge variant="outline" className={prio.class}>{prio.label}</Badge>
+            {isAdmin && isDone && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="icon" variant="ghost" className="h-7 w-7">
+                    <MoreVertical className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setActionDialog({ assignment: a, type: "reabrir" })}>
+                    <RotateCcw className="w-4 h-4 mr-2 text-orange-500" /> Reabrir Tarefa
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setActionDialog({ assignment: a, type: "cancelar" })} className="text-destructive">
+                    <XCircle className="w-4 h-4 mr-2" /> Cancelar Tarefa
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2 text-caption text-muted-foreground">
@@ -164,7 +264,11 @@ export default function TaskExecucaoPage() {
           <p className="text-caption text-orange-600">🚫 {a.motivo_bloqueio}</p>
         )}
 
-        {!["concluida", "nao_executada", "bloqueada"].includes(a.status) && (
+        {a.status === "nao_executada" && (
+          <p className="text-caption text-destructive">❌ Cancelada{a.observacao ? ` — ${a.observacao}` : ""}</p>
+        )}
+
+        {!isDone && (
           <div className="flex gap-2 pt-1">
             {!isRunning && (
               <Button size="sm" onClick={() => startTask.mutate(a.id)} className="press-effect flex-1">
@@ -186,10 +290,10 @@ export default function TaskExecucaoPage() {
   };
 
   const nivel = streak ? NIVEL_CONFIG[streak.nivel] || NIVEL_CONFIG.bronze : NIVEL_CONFIG.bronze;
+  const dlg = actionDialog ? DIALOG_CONFIG[actionDialog.type] : null;
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto">
-      {/* User Stats Header */}
       <div className="bg-card border border-border rounded-lg p-4 mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-section font-semibold text-foreground">Minhas Tarefas</h1>
@@ -239,29 +343,40 @@ export default function TaskExecucaoPage() {
         )}
       </Tabs>
 
-      {/* Action Dialog */}
+      {/* Action Dialog (unified) */}
       <Dialog open={!!actionDialog} onOpenChange={() => { setActionDialog(null); setObs(""); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{actionDialog?.type === "concluir" ? "Concluir Tarefa" : "Reportar Bloqueio"}</DialogTitle>
+            <DialogTitle>{dlg?.title}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            <Textarea
-              placeholder={actionDialog?.type === "concluir" ? "Observação sobre a execução..." : "Descreva o impedimento..."}
-              value={obs} onChange={e => setObs(e.target.value)}
-            />
-          </div>
+          {actionDialog && (
+            <div className="space-y-3">
+              {(actionDialog.type === "reabrir" || actionDialog.type === "cancelar") && (
+                <div className="bg-muted/50 border border-border rounded-lg p-3 text-caption space-y-1">
+                  <p className="font-medium text-foreground">{actionDialog.assignment.task_templates?.titulo}</p>
+                  <p className="text-muted-foreground">Status atual: <Badge variant="outline" className="ml-1">{actionDialog.assignment.status}</Badge></p>
+                  {actionDialog.assignment.pontuacao_obtida != null && (
+                    <p className="text-muted-foreground">Pontuação: {actionDialog.assignment.pontuacao_obtida}pts</p>
+                  )}
+                  {actionDialog.type === "reabrir" && (
+                    <p className="text-orange-600 text-xs mt-2">⚠ A tarefa voltará para "Pendente" e a pontuação será zerada. O executor deverá refazê-la.</p>
+                  )}
+                  {actionDialog.type === "cancelar" && (
+                    <p className="text-destructive text-xs mt-2">⚠ A tarefa será marcada como "Não executada" e a pontuação será removida.</p>
+                  )}
+                </div>
+              )}
+              <Textarea
+                placeholder={dlg?.placeholder}
+                value={obs} onChange={e => setObs(e.target.value)}
+              />
+            </div>
+          )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setActionDialog(null); setObs(""); }}>Cancelar</Button>
-            {actionDialog?.type === "concluir" ? (
-              <Button className="press-effect bg-green-600 hover:bg-green-700" onClick={() => completeTask.mutate({ id: actionDialog.assignment.id, observacao: obs })} disabled={completeTask.isPending}>
-                {completeTask.isPending ? "Salvando..." : "Concluir"}
-              </Button>
-            ) : (
-              <Button variant="destructive" className="press-effect" onClick={() => blockTask.mutate({ id: actionDialog!.assignment.id, motivo: obs })} disabled={blockTask.isPending}>
-                {blockTask.isPending ? "Salvando..." : "Bloquear"}
-              </Button>
-            )}
+            <Button variant="outline" onClick={() => { setActionDialog(null); setObs(""); }}>Voltar</Button>
+            <Button className={`press-effect ${dlg?.btnClass}`} onClick={handleDialogAction} disabled={isActionPending}>
+              {isActionPending ? "Salvando..." : dlg?.btnLabel}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
