@@ -89,6 +89,7 @@ export default function GerenciamentoLeadsPage() {
   const [deleting, setDeleting] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [sendProgress, setSendProgress] = useState<{ current: number; total: number } | null>(null);
+  const [viewLead, setViewLead] = useState<{ id: string; nome: string } | null>(null);
 
   // ─── Server-side paginated query ─────────────────
   const { data: queryResult, isLoading } = useQuery({
