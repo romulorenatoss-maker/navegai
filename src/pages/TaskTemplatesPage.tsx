@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { PRIORIDADE_CONFIG, DIFICULDADE_CONFIG } from "@/hooks/useTaskScoring";
+import { PRIORIDADE_CONFIG } from "@/hooks/useTaskScoring";
 
 const RECORRENCIA_LABELS: Record<string, string> = { unica: "Única", diaria: "Diária", semanal: "Semanal", mensal: "Mensal" };
 const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -23,11 +23,6 @@ interface FormState {
   dias_execucao: number[];
   prazo_horas: number;
   prioridade: string;
-  dificuldade: string;
-  pontuacao_base: number;
-  bonus_antecipacao: number;
-  penalidade_atraso: number;
-  penalidade_nao_execucao: number;
   meta_execucao_minutos: number;
   obrigar_observacao: boolean;
   exigir_evidencia_foto: boolean;
@@ -35,8 +30,7 @@ interface FormState {
 
 const defaultForm: FormState = {
   titulo: "", descricao: "", setor_id: "", tipo_recorrencia: "unica",
-  dias_execucao: [], prazo_horas: 24, prioridade: "media", dificuldade: "media",
-  pontuacao_base: 80, bonus_antecipacao: 10, penalidade_atraso: 20, penalidade_nao_execucao: 40,
+  dias_execucao: [], prazo_horas: 24, prioridade: "media",
   meta_execucao_minutos: 60, obrigar_observacao: false, exigir_evidencia_foto: false,
 };
 
@@ -74,11 +68,6 @@ export default function TaskTemplatesPage() {
         dias_execucao: form.dias_execucao,
         prazo_horas: form.prazo_horas,
         prioridade: form.prioridade,
-        dificuldade: form.dificuldade,
-        pontuacao_base: form.pontuacao_base,
-        bonus_antecipacao: form.bonus_antecipacao,
-        penalidade_atraso: form.penalidade_atraso,
-        penalidade_nao_execucao: form.penalidade_nao_execucao,
         meta_execucao_minutos: form.meta_execucao_minutos || null,
         obrigar_observacao: form.obrigar_observacao,
         exigir_evidencia_foto: form.exigir_evidencia_foto,
@@ -124,9 +113,7 @@ export default function TaskTemplatesPage() {
     setForm({
       titulo: t.titulo, descricao: t.descricao || "", setor_id: t.setor_id || "",
       tipo_recorrencia: t.tipo_recorrencia, dias_execucao: t.dias_execucao || [],
-      prazo_horas: t.prazo_horas, prioridade: t.prioridade, dificuldade: t.dificuldade,
-      pontuacao_base: t.pontuacao_base, bonus_antecipacao: t.bonus_antecipacao,
-      penalidade_atraso: t.penalidade_atraso, penalidade_nao_execucao: t.penalidade_nao_execucao,
+      prazo_horas: t.prazo_horas, prioridade: t.prioridade,
       meta_execucao_minutos: t.meta_execucao_minutos || 60,
       obrigar_observacao: t.obrigar_observacao, exigir_evidencia_foto: t.exigir_evidencia_foto,
     });
@@ -135,11 +122,6 @@ export default function TaskTemplatesPage() {
 
   const closeDialog = () => { setDialogOpen(false); setEditingId(null); };
 
-  const handleDificuldadeChange = (v: string) => {
-    const d = DIFICULDADE_CONFIG[v]?.defaults;
-    if (d) setForm(f => ({ ...f, dificuldade: v, pontuacao_base: d.base, bonus_antecipacao: d.bonus, penalidade_atraso: d.atraso, penalidade_nao_execucao: d.naoExec }));
-    else setForm(f => ({ ...f, dificuldade: v }));
-  };
 
   const toggleDia = (dia: number) => {
     setForm(f => ({ ...f, dias_execucao: f.dias_execucao.includes(dia) ? f.dias_execucao.filter(d => d !== dia) : [...f.dias_execucao, dia].sort() }));
