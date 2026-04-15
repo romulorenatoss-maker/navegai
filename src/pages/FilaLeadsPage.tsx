@@ -1317,7 +1317,7 @@ export default function FilaLeadsPage() {
                 </div>
               )}
             </CardContent>
-            <PaginationBar page={filaPage} setPage={setFilaPage} total={filteredQueue.length} />
+            <PaginationBar page={filaPage} setPage={setFilaPage} total={filteredQueue.length} pageSize={FILA_PAGE_SIZE} />
           </Card>
         </TabsContent>
 
