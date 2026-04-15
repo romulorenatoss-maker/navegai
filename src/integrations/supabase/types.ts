@@ -1254,6 +1254,7 @@ export type Database = {
           horario_limite: string | null
           id: string
           inicio_em: string | null
+          numero_tarefa: number
           observacao: string | null
           pontuacao_obtida: number | null
           responsavel_id: string | null
@@ -1287,6 +1288,7 @@ export type Database = {
           horario_limite?: string | null
           id?: string
           inicio_em?: string | null
+          numero_tarefa?: number
           observacao?: string | null
           pontuacao_obtida?: number | null
           responsavel_id?: string | null
@@ -1320,6 +1322,7 @@ export type Database = {
           horario_limite?: string | null
           id?: string
           inicio_em?: string | null
+          numero_tarefa?: number
           observacao?: string | null
           pontuacao_obtida?: number | null
           responsavel_id?: string | null
