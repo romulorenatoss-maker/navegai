@@ -88,41 +88,84 @@ export function useAssignmentReview(assignmentId: string | null) {
     }));
   }, []);
 
-  // Batch: mark all fields in a section as conforme
+  // FIX #3: Batch mark section conforme — SKIP fields already reviewed
   const markSectionConforme = useCallback((fields: SnapshotField[]) => {
     setReviewDrafts(prev => {
       const next = { ...prev };
       for (const f of fields) {
-        next[f.id] = { ...next[f.id], field_id: f.id, conforme: true, observacao: next[f.id]?.observacao ?? "", devolvido: false, motivo_devolucao: "" };
+        // Skip fields that already have a review decision
+        if (next[f.id]?.conforme !== null && next[f.id]?.conforme !== undefined) continue;
+        next[f.id] = { field_id: f.id, conforme: true, observacao: "", devolvido: false, motivo_devolucao: "" };
       }
       return next;
     });
   }, []);
 
-  // Score preview calculation
+  // FIX #1: Weighted score preview using peso and nota_maxima from snapshot fields
   const scorePreview = useMemo(() => {
     const reviewed = Object.values(reviewDrafts).filter(r => r.conforme !== null);
     if (reviewed.length === 0) return null;
     const conformes = reviewed.filter(r => r.conforme === true).length;
     const naoConformes = reviewed.filter(r => r.conforme === false).length;
     const devolvidos = reviewed.filter(r => r.devolvido).length;
-    const scoreEstimado = reviewed.length > 0 ? Math.round((conformes / reviewed.length) * 100) : 0;
-    return { total: reviewed.length, conformes, naoConformes, devolvidos, scoreEstimado };
+
+    // Simple percentage kept as fallback display
+    const scoreSimples = reviewed.length > 0 ? Math.round((conformes / reviewed.length) * 100) : 0;
+
+    return { total: reviewed.length, conformes, naoConformes, devolvidos, scoreEstimado: scoreSimples };
+  }, [reviewDrafts]);
+
+  // FIX #1: Weighted score that matches the DB trigger formula
+  const weightedScorePreview = useCallback((snapshotFields: SnapshotField[]) => {
+    const reviewed = Object.values(reviewDrafts).filter(r => r.conforme !== null);
+    if (reviewed.length === 0) return null;
+
+    let pesoTotal = 0;
+    let pesoAcertado = 0;
+
+    for (const r of reviewed) {
+      const field = snapshotFields.find(f => f.id === r.field_id);
+      const peso = field?.peso ?? 1;
+      const notaMax = field?.nota_maxima ?? 10;
+      pesoTotal += peso * notaMax;
+      if (r.conforme === true) {
+        pesoAcertado += peso * notaMax;
+      }
+      // Non-conforme = 0 points (penalty is immediate and permanent)
+    }
+
+    const scorePonderado = pesoTotal > 0 ? Math.round((pesoAcertado / pesoTotal) * 100) : 0;
+
+    const conformes = reviewed.filter(r => r.conforme === true).length;
+    const naoConformes = reviewed.filter(r => r.conforme === false).length;
+    const devolvidos = reviewed.filter(r => r.devolvido).length;
+
+    return { total: reviewed.length, conformes, naoConformes, devolvidos, scoreEstimado: scorePonderado };
+  }, [reviewDrafts]);
+
+  // FIX #5: Check if all required visible fields are reviewed
+  const isReviewComplete = useCallback((visibleFields: SnapshotField[]) => {
+    const requiredFields = visibleFields.filter(f => f.obrigatorio !== false);
+    return requiredFields.every(f => {
+      const draft = reviewDrafts[f.id];
+      return draft?.conforme !== null && draft?.conforme !== undefined;
+    });
   }, [reviewDrafts]);
 
   // Save all reviews
   const saveReviews = useMutation({
-    mutationFn: async ({ assignment, fields, action }: { assignment: any; fields: SnapshotField[]; action: "aprovar" | "devolver_parcial" | "devolver_total" | "reprovar" }) => {
+    mutationFn: async ({ assignment, fields, action, motivo }: { assignment: any; fields: SnapshotField[]; action: "aprovar" | "devolver_parcial" | "devolver_total" | "reprovar"; motivo?: string }) => {
       if (!profile?.id || !assignmentId) throw new Error("Não autenticado");
 
       const rodada = assignment.rodada_atual || 1;
       const now = new Date().toISOString();
 
-      // Persist field reviews
+      // Persist field reviews and collect IDs for contingency linking
       const reviewEntries = Object.values(reviewDrafts).filter(r => r.conforme !== null);
+      const persistedReviewIds: Record<string, string> = {};
+
       for (const r of reviewEntries) {
         const answer = getFieldAnswer(r.field_id);
-        // Check if review already exists for this field+rodada
         const existing = existingReviews.find((er: any) => er.field_id === r.field_id && er.rodada === rodada);
 
         const reviewData = {
@@ -141,12 +184,14 @@ export function useAssignmentReview(assignmentId: string | null) {
         if (existing) {
           await (supabase as any).from("operational_field_reviews")
             .update(reviewData).eq("id", existing.id);
+          persistedReviewIds[r.field_id] = existing.id;
         } else {
-          await (supabase as any).from("operational_field_reviews")
-            .insert(reviewData);
+          const { data: inserted } = await (supabase as any).from("operational_field_reviews")
+            .insert(reviewData).select("id").single();
+          if (inserted) persistedReviewIds[r.field_id] = inserted.id;
         }
 
-        // Auto-create contingency for non-conforme fields with gera_contingencia
+        // FIX #4: Create contingency AFTER review is persisted, with origin_review_id
         if (r.conforme === false) {
           const field = fields.find(f => f.id === r.field_id);
           if (field?.gera_contingencia) {
@@ -159,6 +204,7 @@ export function useAssignmentReview(assignmentId: string | null) {
               await (supabase as any).from("operational_contingencies").insert({
                 assignment_id: assignmentId,
                 origin_field_id: r.field_id,
+                origin_review_id: persistedReviewIds[r.field_id] || null,
                 descricao: `Não conformidade: ${field.label}${r.observacao ? ` — ${r.observacao}` : ""}`,
                 responsavel_id: assignment.responsavel_id,
                 prazo_sla: prazoSla,
@@ -202,11 +248,12 @@ export function useAssignmentReview(assignmentId: string | null) {
         .update(updateData).eq("id", assignmentId);
       if (error) throw error;
 
-      // Audit trail
+      // FIX #6: Persist motivo in audit trail
       await (supabase as any).from("operational_audit_trail").insert({
         assignment_id: assignmentId,
         tipo_evento: action === "aprovar" ? "avaliacao_aprovada" : action === "reprovar" ? "avaliacao_reprovada" : "avaliacao_devolvida",
         executado_por: profile.id,
+        motivo: motivo || null,
         dados_novos: {
           status: newStatus,
           rodada: newRodada,
@@ -220,7 +267,7 @@ export function useAssignmentReview(assignmentId: string | null) {
         assignment_id: assignmentId,
         acao: `avaliador_${action}`,
         executado_por: profile.id,
-        detalhes: { action, rodada: newRodada },
+        detalhes: { action, rodada: newRodada, motivo: motivo || null },
       });
     },
     onSuccess: () => {
@@ -257,6 +304,8 @@ export function useAssignmentReview(assignmentId: string | null) {
     contingencies,
     reviewDrafts,
     scorePreview,
+    weightedScorePreview,
+    isReviewComplete,
     getFieldAnswer,
     updateReview,
     markSectionConforme,
