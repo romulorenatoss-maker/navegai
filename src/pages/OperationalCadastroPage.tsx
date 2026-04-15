@@ -319,6 +319,8 @@ export default function OperationalCadastroPage() {
       gerar_contingencia_automatica: t.gerar_contingencia_automatica,
       prazo_sla_correcao_horas: t.prazo_sla_correcao_horas || 24,
       responsavel_contingencia_id: t.responsavel_contingencia_id || "",
+      requer_aprovacao_gestor: t.requer_aprovacao_gestor || false,
+      bloquear_fechamento_com_contingencia: t.bloquear_fechamento_com_contingencia || false,
     });
 
     // Load steps
