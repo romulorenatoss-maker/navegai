@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Progress } from "@/components/ui/progress";
 import { STATUS_CONFIG } from "@/hooks/useOperationalScoring";
 import { AssignmentCard } from "@/components/operational/AssignmentCard";
-import { DynamicFieldRenderer, SnapshotField, FieldAnswer } from "@/components/operational/DynamicFieldRenderer";
+import { DynamicFieldRenderer, SnapshotField, FieldAnswer, evaluateVisibility } from "@/components/operational/DynamicFieldRenderer";
 import { useAssignmentExecution } from "@/hooks/useAssignmentExecution";
 
 export default function OperationalExecucaoPage() {
