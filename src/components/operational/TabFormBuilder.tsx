@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Settings2, Copy, AlertTriangle, Camera, FileVideo, FileText } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -237,14 +238,14 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
 
   const answerOptions = local.aprovador_tipo_resposta === "sim_nao"
     ? [
-        { label: "Sim", value: "sim" as const, cls: "bg-emerald-500 text-white" },
+        { label: "Sim", value: "sim" as const, cls: "bg-success text-success-foreground" },
         { label: "Não", value: "nao" as const, cls: "bg-destructive text-destructive-foreground" },
-        { label: "N/A", value: "na" as const, cls: "bg-muted-foreground/20 text-foreground" },
+        { label: "N/A", value: "na" as const, cls: "bg-muted text-foreground" },
       ]
     : [
-        { label: "Conforme", value: "sim" as const, cls: "bg-emerald-500 text-white" },
+        { label: "Conforme", value: "sim" as const, cls: "bg-success text-success-foreground" },
         { label: "Não Conf.", value: "nao" as const, cls: "bg-destructive text-destructive-foreground" },
-        { label: "N/A", value: "na" as const, cls: "bg-muted-foreground/20 text-foreground" },
+        { label: "N/A", value: "na" as const, cls: "bg-muted text-foreground" },
       ];
 
   return (
@@ -258,8 +259,8 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Informações Básicas</p>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Label *</Label>
-                <Input value={local.label} onChange={e => upd("label", e.target.value)} maxLength={255} />
+                <Label>Pergunta do Avaliador *</Label>
+                <Input value={local.label} onChange={e => upd("label", e.target.value)} placeholder="Ex: Verificar nível do óleo" maxLength={255} />
               </div>
               <div className="space-y-1.5">
                 <Label>Tipo</Label>
@@ -469,24 +470,12 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
                 {/* ── Pré-visualização ── */}
                 {local.aprovador_pergunta?.trim() && (
                   <div className="space-y-2 border-t border-border pt-3">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pré-visualização</p>
-                    <div className="bg-card border border-border rounded-lg p-4 space-y-3">
+                    <p className="text-caption text-muted-foreground uppercase tracking-wider font-semibold">Pré-visualização</p>
+                    <div className="bg-muted/30 border border-border rounded-lg p-4">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-foreground">{local.aprovador_pergunta}</p>
-                          <div className="flex items-center gap-3 mt-1">
-                            <span className="text-caption text-muted-foreground">Nota: <strong>{local.aprovador_peso ?? 1}</strong></span>
-                            {local.gera_contingencia && (
-                              <span className="text-caption text-orange-600 flex items-center gap-1">
-                                <AlertTriangle className="w-3 h-3" /> Gera contingência
-                              </span>
-                            )}
-                            {local.exige_evidencia && (
-                              <span className="text-caption text-primary flex items-center gap-1">
-                                <Camera className="w-3 h-3" /> Evidência ({local.tipo_evidencia})
-                              </span>
-                            )}
-                          </div>
+                          <p className="text-body font-medium text-foreground">{local.aprovador_pergunta}</p>
+                          <p className="text-caption text-muted-foreground">Nota: {local.aprovador_peso ?? 1}</p>
                         </div>
                         <div className="flex bg-muted rounded-md p-0.5 gap-0.5 shrink-0">
                           {answerOptions.map(opt => (
@@ -498,49 +487,45 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
                           ))}
                         </div>
                       </div>
-
-                      {previewAnswer === "nao" && (
-                        <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-3">
-                          <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
-                            <AlertTriangle className="w-3.5 h-3.5" />
-                            Reprovado — {local.aprovador_obriga_observacao_nao ? "descrição obrigatória" : "descrição opcional"}
-                          </div>
-                          {local.aprovador_obriga_observacao_nao && (
-                            <Textarea placeholder="Descreva a irregularidade..." className="bg-card h-16 text-caption" disabled />
-                          )}
-                          {local.aprovador_exige_evidencia_nao && (
-                            <div>
-                              <Label className="text-caption mb-1.5 block">Evidência obrigatória</Label>
-                              <div className="flex gap-2">
-                                {(local.aprovador_tipos_evidencia || []).map(t => {
-                                  const icons: Record<string, typeof Camera> = { foto: Camera, video: FileVideo, documento: FileText };
-                                  const Icon = icons[t] || FileText;
-                                  return (
-                                    <Button key={t} type="button" variant="outline" size="sm" className="text-caption" disabled>
-                                      <Icon className="w-3.5 h-3.5 mr-1.5" /> {t.charAt(0).toUpperCase() + t.slice(1)}
-                                    </Button>
-                                  );
-                                })}
+                      <AnimatePresence>
+                        {previewAnswer === "nao" && (
+                          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+                            <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 mt-3 space-y-3">
+                              <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
+                                <AlertTriangle className="w-3.5 h-3.5" /> Descrição obrigatória
                               </div>
+                              <div className="space-y-1.5">
+                                <Label className="text-caption">Descrição *</Label>
+                                <Textarea placeholder="Descreva a irregularidade..." className="bg-card h-20 text-caption" disabled />
+                              </div>
+                              <div>
+                                <Label className="text-caption mb-1.5 block">Evidência (opcional)</Label>
+                                <div className="flex gap-2">
+                                  <Button type="button" variant="outline" size="sm" className="text-caption" disabled><Camera className="w-3.5 h-3.5 mr-1.5" /> Foto</Button>
+                                  <Button type="button" variant="outline" size="sm" className="text-caption" disabled><FileVideo className="w-3.5 h-3.5 mr-1.5" /> Vídeo</Button>
+                                  <Button type="button" variant="outline" size="sm" className="text-caption" disabled><FileText className="w-3.5 h-3.5 mr-1.5" /> Doc</Button>
+                                </div>
+                              </div>
+                              {local.gera_contingencia && (
+                                <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded p-2 text-caption text-orange-700 dark:text-orange-400 space-y-1">
+                                  <p className="flex items-center gap-1.5 font-medium">
+                                    <AlertTriangle className="w-3.5 h-3.5" />
+                                    Contingência será gerada automaticamente
+                                  </p>
+                                  <p className="text-orange-600 dark:text-orange-400/80">Executor receberá pendência com prazo SLA e cronômetro de tempo decorrido.</p>
+                                </div>
+                              )}
                             </div>
-                          )}
-                          {local.gera_contingencia && (
-                            <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded p-2 text-caption text-orange-700 dark:text-orange-400 space-y-1">
-                              <p className="flex items-center gap-1.5 font-medium">
-                                <AlertTriangle className="w-3.5 h-3.5" />
-                                Contingência será gerada automaticamente
-                              </p>
-                              <p className="text-orange-600 dark:text-orange-400/80">Executor receberá pendência com prazo SLA e cronômetro de tempo decorrido.</p>
+                          </motion.div>
+                        )}
+                        {previewAnswer === "sim" && (
+                          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+                            <div className="bg-success/10 border border-success/20 rounded p-2 mt-3 text-caption text-success">
+                              ✓ Aprovado — +{local.aprovador_peso ?? 1} pontos
                             </div>
-                          )}
-                        </div>
-                      )}
-
-                      {previewAnswer === "sim" && (
-                        <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded p-2 text-caption text-emerald-700 dark:text-emerald-400">
-                          ✓ Aprovado — +{local.aprovador_peso ?? 1} pontos
-                        </div>
-                      )}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </div>
                 )}
