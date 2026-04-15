@@ -1,16 +1,34 @@
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
-import { TemplateForm } from "./types";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { TemplateForm, FieldForm } from "./types";
 
 interface Props {
   form: TemplateForm;
   set: <K extends keyof TemplateForm>(k: K, v: TemplateForm[K]) => void;
+  fields?: FieldForm[];
 }
 
-export function TabWorkflow({ form, set }: Props) {
+export function TabWorkflow({ form, set, fields = [] }: Props) {
+  const scoringFields = fields.filter(f => f.impacta_score);
+  const approverFields = fields.filter(f => f.aprovador_pergunta?.trim());
+
+  const totalPesosCampos = scoringFields.reduce((s, f) => s + (f.peso * f.nota_maxima), 0);
+  const totalPesosAprovador = approverFields.reduce((s, f) => s + f.aprovador_peso, 0);
+
+  const autoQuestions = [
+    { label: "Houve contingência nesta tarefa?", pontos: form.penalidade_contingencia, tipo: "Penalidade" },
+    { label: "Contingência resolvida dentro do prazo?", pontos: form.penalidade_sla_contingencia, tipo: "Penalidade" },
+  ];
+
+  const totalPenalidades = form.penalidade_contingencia + form.penalidade_sla_contingencia;
+  const totalGeral = totalPesosCampos + totalPesosAprovador + totalPenalidades;
+
   return (
     <div className="space-y-4">
+      {/* Aprovação */}
       <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-4">
         <p className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Aprovação</p>
         <div className="flex items-center gap-3">
@@ -22,6 +40,7 @@ export function TabWorkflow({ form, set }: Props) {
         </div>
       </div>
 
+      {/* Devolução */}
       <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-4">
         <p className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Devolução</p>
         <div className="flex items-center gap-3">
@@ -33,6 +52,7 @@ export function TabWorkflow({ form, set }: Props) {
         </div>
       </div>
 
+      {/* Contingência */}
       <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-4">
         <p className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Contingência</p>
         <div className="flex items-center gap-3">
@@ -55,26 +75,137 @@ export function TabWorkflow({ form, set }: Props) {
         </div>
       </div>
 
+      {/* Penalidades de Gamificação */}
       <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-4">
         <p className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Penalidades de Gamificação</p>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label>Penalidade por contingência (pontos)</Label>
             <Input type="number" min={0} max={100} value={form.penalidade_contingencia} onChange={e => set("penalidade_contingencia", +e.target.value)} className="max-w-[200px]" />
-            <p className="text-caption text-muted-foreground">Pontos descontados se houver qualquer contingência.</p>
           </div>
           <div className="space-y-1.5">
             <Label>Penalidade SLA contingência (pontos)</Label>
             <Input type="number" min={0} max={100} value={form.penalidade_sla_contingencia} onChange={e => set("penalidade_sla_contingencia", +e.target.value)} className="max-w-[200px]" />
-            <p className="text-caption text-muted-foreground">Pontos descontados por contingência resolvida fora do prazo.</p>
           </div>
         </div>
+
         <div className="flex items-center gap-3">
           <Switch checked={form.habilitar_perguntas_automaticas} onCheckedChange={v => set("habilitar_perguntas_automaticas", v)} />
           <div>
             <Label className="cursor-pointer">Habilitar perguntas automáticas na aprovação</Label>
             <p className="text-caption text-muted-foreground">Gera automaticamente perguntas sobre contingência e SLA na tela de aprovação final.</p>
           </div>
+        </div>
+
+        {/* Resumo de pontuação */}
+        <div className="border border-border rounded-lg overflow-hidden mt-4">
+          <div className="bg-muted px-4 py-2">
+            <p className="text-sm font-semibold">Resumo de Pontuação do Template</p>
+          </div>
+
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Pergunta / Campo</TableHead>
+                <TableHead className="w-[100px] text-center">Tipo</TableHead>
+                <TableHead className="w-[80px] text-center">Peso</TableHead>
+                <TableHead className="w-[100px] text-center">Nota Máx.</TableHead>
+                <TableHead className="w-[100px] text-right">Pontos</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {/* Campos que impactam score */}
+              {scoringFields.length > 0 && (
+                <TableRow className="bg-muted/30">
+                  <TableCell colSpan={5} className="py-1.5 text-xs font-semibold text-muted-foreground uppercase">
+                    Campos de Avaliação
+                  </TableCell>
+                </TableRow>
+              )}
+              {scoringFields.map(f => (
+                <TableRow key={f.tempId}>
+                  <TableCell className="text-sm">{f.label || <span className="text-muted-foreground italic">Sem nome</span>}</TableCell>
+                  <TableCell className="text-center">
+                    <Badge variant="outline" className="text-xs">{f.tipo}</Badge>
+                  </TableCell>
+                  <TableCell className="text-center text-sm">{f.peso}</TableCell>
+                  <TableCell className="text-center text-sm">{f.nota_maxima}</TableCell>
+                  <TableCell className="text-right text-sm font-medium">{f.peso * f.nota_maxima}</TableCell>
+                </TableRow>
+              ))}
+              {scoringFields.length > 0 && (
+                <TableRow className="bg-muted/20">
+                  <TableCell colSpan={4} className="text-sm font-medium text-right">Subtotal Campos</TableCell>
+                  <TableCell className="text-right text-sm font-bold">{totalPesosCampos}</TableCell>
+                </TableRow>
+              )}
+
+              {/* Perguntas do aprovador */}
+              {approverFields.length > 0 && (
+                <TableRow className="bg-muted/30">
+                  <TableCell colSpan={5} className="py-1.5 text-xs font-semibold text-muted-foreground uppercase">
+                    Perguntas do Aprovador
+                  </TableCell>
+                </TableRow>
+              )}
+              {approverFields.map(f => (
+                <TableRow key={`apr-${f.tempId}`}>
+                  <TableCell className="text-sm">{f.aprovador_pergunta}</TableCell>
+                  <TableCell className="text-center">
+                    <Badge variant="secondary" className="text-xs">Aprovador</Badge>
+                  </TableCell>
+                  <TableCell className="text-center text-sm">{f.aprovador_peso}</TableCell>
+                  <TableCell className="text-center text-sm">—</TableCell>
+                  <TableCell className="text-right text-sm font-medium">{f.aprovador_peso}</TableCell>
+                </TableRow>
+              ))}
+              {approverFields.length > 0 && (
+                <TableRow className="bg-muted/20">
+                  <TableCell colSpan={4} className="text-sm font-medium text-right">Subtotal Aprovador</TableCell>
+                  <TableCell className="text-right text-sm font-bold">{totalPesosAprovador}</TableCell>
+                </TableRow>
+              )}
+
+              {/* Perguntas automáticas / penalidades */}
+              {form.habilitar_perguntas_automaticas && (
+                <>
+                  <TableRow className="bg-muted/30">
+                    <TableCell colSpan={5} className="py-1.5 text-xs font-semibold text-muted-foreground uppercase">
+                      Perguntas Automáticas (Penalidades)
+                    </TableCell>
+                  </TableRow>
+                  {autoQuestions.map((q, i) => (
+                    <TableRow key={`auto-${i}`}>
+                      <TableCell className="text-sm">{q.label}</TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="destructive" className="text-xs">{q.tipo}</Badge>
+                      </TableCell>
+                      <TableCell className="text-center text-sm">—</TableCell>
+                      <TableCell className="text-center text-sm">—</TableCell>
+                      <TableCell className="text-right text-sm font-medium text-destructive">-{q.pontos}</TableCell>
+                    </TableRow>
+                  ))}
+                  <TableRow className="bg-muted/20">
+                    <TableCell colSpan={4} className="text-sm font-medium text-right">Subtotal Penalidades</TableCell>
+                    <TableCell className="text-right text-sm font-bold text-destructive">-{totalPenalidades}</TableCell>
+                  </TableRow>
+                </>
+              )}
+            </TableBody>
+            <TableFooter>
+              <TableRow>
+                <TableCell colSpan={4} className="text-sm font-bold text-right">Pontos Totais</TableCell>
+                <TableCell className="text-right text-sm font-bold">{totalGeral}</TableCell>
+              </TableRow>
+            </TableFooter>
+          </Table>
+
+          {fields.length === 0 && (
+            <div className="p-4 text-center text-sm text-muted-foreground">
+              Adicione campos na aba "Formulário" para visualizar a pontuação.
+            </div>
+          )}
         </div>
       </div>
     </div>

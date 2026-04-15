@@ -404,7 +404,7 @@ export default function OperationalCadastroPage() {
                 <TabFormBuilder sections={sections} setSections={setSections} fields={fields} setFields={setFields} setores={setores} />
               </TabsContent>
               <TabsContent value="workflow">
-                <TabWorkflow form={form} set={set} />
+                <TabWorkflow form={form} set={set} fields={fields} />
               </TabsContent>
               <TabsContent value="recorrencia">
                 <TabRecorrencia form={form} set={set} />
