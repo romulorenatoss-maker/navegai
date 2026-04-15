@@ -189,7 +189,8 @@ export default function DesempenhoColaboradorPage() {
   }, [notasPorSetorData, targetProfileId, evaluations]);
 
   // Most frequent errors
-  const { data: frequentErrors = { errors: [], byTipo: [] } } = useQuery({
+  type FreqErrorsResult = { errors: { pergunta_id: string; pergunta: string; count: number }[]; byTipo: { tipo_id: string; tipo_nome: string; count: number }[] };
+  const { data: frequentErrors = { errors: [], byTipo: [] } } = useQuery<FreqErrorsResult>({
     queryKey: ["perf_errors", targetProfileId, appliedStart?.toISOString(), appliedEnd?.toISOString()],
     queryFn: async () => {
       const empty = { errors: [] as { pergunta_id: string; pergunta: string; count: number }[], byTipo: [] as { tipo_id: string; tipo_nome: string; count: number }[] };
