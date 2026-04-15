@@ -418,12 +418,31 @@ export default function OperationalExecucaoPage() {
 
           {/* Body */}
           <div className="flex-1 overflow-y-auto p-4 space-y-6">
-            {selectedAssignment?.status === "pendente" && (
+            {selectedAssignment?.status === "pendente" && !isAdmin && (
               <div className="text-center py-6">
                 <p className="text-sm text-muted-foreground mb-3">Inicie a tarefa para começar o preenchimento.</p>
                 <Button onClick={handleStart} disabled={exec.startTask.isPending}>
                   <Play className="w-4 h-4 mr-2" /> Iniciar Tarefa
                 </Button>
+              </div>
+            )}
+
+            {selectedAssignment?.status === "pendente" && isAdmin && (
+              <div className="text-center py-6">
+                <p className="text-sm text-muted-foreground mb-3">Tarefa pendente. Como administrador, você pode iniciar ou editar.</p>
+                <Button onClick={handleStart} disabled={exec.startTask.isPending}>
+                  <Play className="w-4 h-4 mr-2" /> Iniciar Tarefa
+                </Button>
+              </div>
+            )}
+
+            {needsAdminReopen && (
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-3">
+                <div className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-400">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span className="font-medium">Modo Administrador:</span>
+                  <span>Esta tarefa está em <strong>{STATUS_CONFIG[selectedAssignment.status]?.label}</strong>. Você pode editar os campos diretamente.</span>
+                </div>
               </div>
             )}
 
