@@ -188,7 +188,7 @@ export default function DesempenhoColaboradorPage() {
   }, [notasPorSetorData, targetProfileId, evaluations]);
 
   // Most frequent errors
-  const { data: frequentErrors = [] } = useQuery({
+  const { data: frequentErrors = { errors: [], byTipo: [] } } = useQuery({
     queryKey: ["perf_errors", targetProfileId, appliedStart?.toISOString(), appliedEnd?.toISOString()],
     queryFn: async () => {
       if (!targetProfileId) return [];
@@ -593,7 +593,7 @@ export default function DesempenhoColaboradorPage() {
           </div>
 
           {/* Most Frequent Errors */}
-          {(frequentErrors as any)?.errors?.length > 0 && (
+          {frequentErrors.errors.length > 0 && (
             <div className="bg-card border border-border rounded-lg shadow-card">
               <div className="p-4 border-b border-border flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-destructive" />
@@ -601,11 +601,11 @@ export default function DesempenhoColaboradorPage() {
               </div>
 
               {/* Cards by tipo de serviço */}
-              {(frequentErrors as any)?.byTipo?.length > 0 && (
+              {frequentErrors.byTipo.length > 0 && (
                 <div className="p-4 border-b border-border">
                   <p className="text-caption text-muted-foreground mb-2 font-medium uppercase tracking-wider">Erros por Tipo de Serviço</p>
                   <div className="flex flex-wrap gap-2">
-                    {(frequentErrors as any).byTipo.map((t: any) => (
+                    {frequentErrors.byTipo.map((t: any) => (
                       <div
                         key={t.tipo_id}
                         className="inline-flex items-center gap-2 bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2 shadow-sm"
@@ -629,7 +629,7 @@ export default function DesempenhoColaboradorPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {(frequentErrors as any)?.errors?.map((err: any) => (
+                    {frequentErrors.errors.map((err: any) => (
                       <tr key={err.pergunta_id} className="hover:bg-muted/50">
                         <td className="px-4 py-3 text-body text-foreground">{err.pergunta}</td>
                         <td className="px-4 py-3 text-body font-bold text-destructive font-tabular text-right">{err.count}</td>
