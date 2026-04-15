@@ -717,10 +717,11 @@ export default function OperationalCadastroPage() {
                     <Label>Início do Ciclo</Label>
                     <Input
                       type="date"
-                      min={new Date().toISOString().slice(0, 10)}
+                      min={(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })()}
                       value={form.data_inicio}
                       onChange={e => {
-                        const today = new Date().toISOString().slice(0, 10);
+                        const d = new Date();
+                        const today = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
                         set("data_inicio", e.target.value >= today ? e.target.value : today);
                       }}
                     />
