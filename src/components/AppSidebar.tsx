@@ -5,6 +5,7 @@ import {
   PanelLeftClose, PanelLeft, UserPlus, ListOrdered, LayoutGrid, Settings, UserCheck, ClipboardList,
   FileUp, MessageSquare, FileBarChart, Archive, MapPin, Megaphone, Bot, Trophy, CheckSquare,
 } from "lucide-react";
+import { Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
@@ -42,6 +43,7 @@ const allNavSections = [
       { to: "/checklists/cadastro", icon: ListChecks, label: "Templates" },
       { to: "/checklists/execucao", icon: PlayCircle, label: "Execução" },
       { to: "/checklists/avaliacao", icon: ClipboardCheck, label: "Avaliação" },
+      { to: "/checklists/aprovacao", icon: Shield, label: "Aprovação Final" },
       { to: "/checklists/gestao", icon: FolderKanban, label: "Gestão / Rankings" },
     ],
   },
