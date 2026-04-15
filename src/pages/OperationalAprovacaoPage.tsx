@@ -192,6 +192,13 @@ export default function OperationalAprovacaoPage() {
         <p className="text-sm text-muted-foreground">Aprovação, override de score e consolidação de assignments.</p>
       </div>
 
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <Label className="text-xs text-muted-foreground">De:</Label>
+        <Input type="date" value={filterStart} onChange={e => setFilterStart(e.target.value)} className="w-[150px] h-9 text-sm" />
+        <Label className="text-xs text-muted-foreground">Até:</Label>
+        <Input type="date" value={filterEnd} onChange={e => setFilterEnd(e.target.value)} className="w-[150px] h-9 text-sm" />
+      </div>
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full mb-4 flex-wrap h-auto gap-1">
           <TabsTrigger value="pendentes" className="flex-1 min-w-[70px]">
