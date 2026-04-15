@@ -1,3 +1,17 @@
+export interface StepForm {
+  id?: string;
+  tempId: string;
+  nome: string;
+  ordem: number;
+  peso: number;
+  horario_inicio: string;
+  horario_fim: string;
+  prazo_limite_minutos: number | null;
+  exige_foto: boolean;
+  exige_observacao: boolean;
+  exige_video: boolean;
+}
+
 export interface SectionForm {
   id?: string;
   tempId: string;
