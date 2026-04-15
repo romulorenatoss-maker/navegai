@@ -4,28 +4,58 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Play, Send, Save, Clock, ChevronLeft, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Play, Send, Save, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { STATUS_CONFIG } from "@/hooks/useOperationalScoring";
 import { AssignmentCard } from "@/components/operational/AssignmentCard";
 import { DynamicFieldRenderer, SnapshotField, FieldAnswer, evaluateVisibility } from "@/components/operational/DynamicFieldRenderer";
 import { useAssignmentExecution } from "@/hooks/useAssignmentExecution";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+
+interface AccordionSectionProps {
+  title: string;
+  count: number;
+  colorClass: string;
+  badgeBg: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}
+
+function AccordionSection({ title, count, colorClass, badgeBg, defaultOpen = false, children }: AccordionSectionProps) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-3 bg-card border border-border rounded-lg hover:bg-muted/50 transition-colors active:scale-[0.99]">
+        <div className="flex items-center gap-2.5">
+          <span className="text-sm font-medium text-foreground">{title}</span>
+          <span className={`inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-[11px] font-semibold ${badgeBg} ${colorClass}`}>
+            {count}
+          </span>
+        </div>
+        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </CollapsibleTrigger>
+      <CollapsibleContent className="mt-2 space-y-2">
+        {children}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
 
 export default function OperationalExecucaoPage() {
   const { profile, isAdmin } = useAuth();
   const qc = useQueryClient();
-  const [activeTab, setActiveTab] = useState("pendentes");
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
   const [execDialogOpen, setExecDialogOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [filterResponsavel, setFilterResponsavel] = useState<string>("__all");
+  const [searchTerm, setSearchTerm] = useState("");
 
   const today = new Date().toISOString().slice(0, 10);
 
-  // Admin: load all profiles for filter
   const { data: allProfiles = [] } = useQuery({
     queryKey: ["profiles_for_exec_filter"],
     queryFn: async () => {
@@ -54,13 +84,21 @@ export default function OperationalExecucaoPage() {
     staleTime: 15000,
   });
 
-  // Apply collaborator filter for admin
   const filteredAssignments = useMemo(() => {
-    if (!isAdmin || filterResponsavel === "__all") return assignments;
-    return assignments.filter((a: any) => a.responsavel_id === filterResponsavel);
-  }, [assignments, isAdmin, filterResponsavel]);
+    let list = assignments;
+    if (isAdmin && filterResponsavel !== "__all") {
+      list = list.filter((a: any) => a.responsavel_id === filterResponsavel);
+    }
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      list = list.filter((a: any) => {
+        const nome = a.template_snapshot?.nome || a.operational_templates?.nome || "";
+        return nome.toLowerCase().includes(term);
+      });
+    }
+    return list;
+  }, [assignments, isAdmin, filterResponsavel, searchTerm]);
 
-  // Tabs filtering
   const pendentes = filteredAssignments.filter((a: any) => ["pendente"].includes(a.status));
   const emAndamento = filteredAssignments.filter((a: any) => ["em_andamento"].includes(a.status));
   const devolvidas = filteredAssignments.filter((a: any) => ["devolvida"].includes(a.status));
@@ -68,12 +106,10 @@ export default function OperationalExecucaoPage() {
 
   const exec = useAssignmentExecution(selectedAssignment?.id || null);
 
-  // Snapshot data
   const snapshot = selectedAssignment?.template_snapshot;
   const snapshotSections: any[] = useMemo(() => snapshot?.sections?.sort((a: any, b: any) => a.ordem - b.ordem) || [], [snapshot]);
   const snapshotFields: SnapshotField[] = useMemo(() => snapshot?.fields?.sort((a: any, b: any) => a.ordem - b.ordem) || [], [snapshot]);
 
-  // Group fields by section
   const fieldsBySection = useMemo(() => {
     const map: Record<string, SnapshotField[]> = {};
     for (const f of snapshotFields) {
@@ -83,7 +119,6 @@ export default function OperationalExecucaoPage() {
     return map;
   }, [snapshotFields]);
 
-  // Set initial section when opening
   const openExecution = useCallback((a: any) => {
     setSelectedAssignment(a);
     setExecDialogOpen(true);
@@ -97,8 +132,7 @@ export default function OperationalExecucaoPage() {
     setSelectedAssignment(null);
   };
 
-  // Progress calculation — only visible fields
-  const visibleFields = useMemo(() => 
+  const visibleFields = useMemo(() =>
     snapshotFields.filter(f => evaluateVisibility(f.condicao_visibilidade, exec.answers)),
     [snapshotFields, exec.answers]
   );
@@ -112,7 +146,6 @@ export default function OperationalExecucaoPage() {
     return Math.round((filled / visibleFields.length) * 100);
   }, [visibleFields, exec.answers]);
 
-  // Is assignment editable by current user? Admin viewing others' tasks = read-only
   const isOwner = selectedAssignment?.responsavel_id === profile?.id;
   const isEditable = selectedAssignment && ["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status) && (isOwner || !isAdmin);
   const isDevolvida = selectedAssignment?.status === "devolvida";
@@ -122,7 +155,7 @@ export default function OperationalExecucaoPage() {
   };
 
   const handleSubmit = () => {
-    const visibleFields = snapshotFields.filter(f => 
+    const visibleFields = snapshotFields.filter(f =>
       evaluateVisibility(f.condicao_visibilidade, exec.answers)
     );
     const errors = exec.validateAll(visibleFields, selectedAssignment?.status);
@@ -147,68 +180,97 @@ export default function OperationalExecucaoPage() {
   };
 
   const renderEmptyState = (msg: string) => (
-    <div className="text-center py-12 text-muted-foreground">
-      <p className="text-sm">{msg}</p>
+    <div className="text-center py-6 text-muted-foreground">
+      <p className="text-xs">{msg}</p>
     </div>
   );
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-lg md:text-xl font-semibold text-foreground">Execução Operacional</h1>
-        <p className="text-sm text-muted-foreground">
+      {/* Header */}
+      <div className="mb-4">
+        <h1 className="text-lg font-semibold text-foreground">Execução Operacional</h1>
+        <p className="text-xs text-muted-foreground">
           {isAdmin ? "Visualização administrativa de todas as rotinas." : "Formulários e rotinas atribuídos a você."}
         </p>
       </div>
 
-      {isAdmin && (
-        <div className="mb-4 flex items-center gap-2">
-          <label className="text-sm text-muted-foreground whitespace-nowrap">Colaborador:</label>
+      {/* Search + Filter bar */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Pesquisar"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="pl-9 h-9 text-sm"
+          />
+        </div>
+        {isAdmin && (
           <Select value={filterResponsavel} onValueChange={setFilterResponsavel}>
-            <SelectTrigger className="w-[260px]">
-              <SelectValue placeholder="Todos os colaboradores" />
+            <SelectTrigger className="w-[200px] h-9">
+              <SelectValue placeholder="Todos" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="__all">Todos os colaboradores</SelectItem>
+              <SelectItem value="__all">Todos</SelectItem>
               {allProfiles.map((p: any) => (
                 <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
               ))}
             </SelectContent>
           </Select>
+        )}
+      </div>
+
+      {/* Accordion sections */}
+      {isLoading ? (
+        <div className="text-center py-12 text-muted-foreground text-sm">Carregando...</div>
+      ) : (
+        <div className="space-y-3">
+          <AccordionSection
+            title="Pendentes"
+            count={pendentes.length}
+            colorClass="text-yellow-700"
+            badgeBg="bg-yellow-500/20"
+            defaultOpen={pendentes.length > 0}
+          >
+            {pendentes.length === 0 ? renderEmptyState("Nenhuma rotina pendente.") : pendentes.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+          </AccordionSection>
+
+          <AccordionSection
+            title="Em Andamento"
+            count={emAndamento.length}
+            colorClass="text-primary"
+            badgeBg="bg-primary/20"
+            defaultOpen={emAndamento.length > 0}
+          >
+            {emAndamento.length === 0 ? renderEmptyState("Nenhuma rotina em andamento.") : emAndamento.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+          </AccordionSection>
+
+          <AccordionSection
+            title="Devolvidas"
+            count={devolvidas.length}
+            colorClass="text-destructive"
+            badgeBg="bg-destructive/20"
+            defaultOpen={devolvidas.length > 0}
+          >
+            {devolvidas.length === 0 ? renderEmptyState("Nenhuma rotina devolvida.") : devolvidas.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+          </AccordionSection>
+
+          <AccordionSection
+            title="Finalizada"
+            count={concluidas.length}
+            colorClass="text-green-700"
+            badgeBg="bg-green-500/20"
+          >
+            {concluidas.length === 0 ? renderEmptyState("Nenhuma rotina finalizada.") : concluidas.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+          </AccordionSection>
         </div>
       )}
-
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full mb-4 flex-wrap h-auto gap-1">
-          <TabsTrigger value="pendentes" className="flex-1 min-w-[70px]">
-            Pendentes {pendentes.length > 0 && <span className="ml-1 bg-yellow-500/20 text-yellow-700 px-1.5 rounded-full text-[10px]">{pendentes.length}</span>}
-          </TabsTrigger>
-          <TabsTrigger value="andamento" className="flex-1 min-w-[70px]">
-            Em Andamento {emAndamento.length > 0 && <span className="ml-1 bg-primary/20 text-primary px-1.5 rounded-full text-[10px]">{emAndamento.length}</span>}
-          </TabsTrigger>
-          <TabsTrigger value="devolvidas" className="flex-1 min-w-[70px]">
-            Devolvidas {devolvidas.length > 0 && <span className="ml-1 bg-amber-500/20 text-amber-700 px-1.5 rounded-full text-[10px]">{devolvidas.length}</span>}
-          </TabsTrigger>
-          <TabsTrigger value="historico" className="flex-1 min-w-[70px]">Histórico</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="pendentes" className="space-y-3">
-          {isLoading ? renderEmptyState("Carregando...") : pendentes.length === 0 ? renderEmptyState("Nenhuma rotina pendente.") : pendentes.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
-        </TabsContent>
-        <TabsContent value="andamento" className="space-y-3">
-          {emAndamento.length === 0 ? renderEmptyState("Nenhuma rotina em andamento.") : emAndamento.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
-        </TabsContent>
-        <TabsContent value="devolvidas" className="space-y-3">
-          {devolvidas.length === 0 ? renderEmptyState("Nenhuma rotina devolvida.") : devolvidas.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
-        </TabsContent>
-        <TabsContent value="historico" className="space-y-3">
-          {concluidas.length === 0 ? renderEmptyState("Nenhuma rotina concluída.") : concluidas.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
-        </TabsContent>
-      </Tabs>
 
       {/* Execution Dialog */}
       <Dialog open={execDialogOpen} onOpenChange={v => { if (!v) closeExecution(); }}>
         <DialogContent className="max-w-2xl max-h-[95vh] overflow-hidden flex flex-col p-0">
+          <VisuallyHidden><DialogTitle>{snapshot?.nome || "Rotina"}</DialogTitle></VisuallyHidden>
           {/* Header */}
           <div className="p-4 border-b border-border">
             <div className="flex items-center gap-2">
@@ -234,7 +296,6 @@ export default function OperationalExecucaoPage() {
               {exec.dirty && <span className="text-[10px] text-muted-foreground">Não salvo</span>}
             </div>
 
-            {/* Progress bar */}
             <div className="mt-3">
               <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                 <span>Progresso</span>
@@ -243,7 +304,6 @@ export default function OperationalExecucaoPage() {
               <Progress value={progress} className="h-2" />
             </div>
 
-            {/* Section nav */}
             {snapshotSections.length > 1 && (
               <div className="flex gap-1.5 mt-3 overflow-x-auto pb-1">
                 {snapshotSections.map((s: any) => {
@@ -268,7 +328,7 @@ export default function OperationalExecucaoPage() {
             )}
           </div>
 
-          {/* Body — scrollable fields */}
+          {/* Body */}
           <div className="flex-1 overflow-y-auto p-4 space-y-6">
             {selectedAssignment?.status === "pendente" && (
               <div className="text-center py-6">
@@ -282,7 +342,6 @@ export default function OperationalExecucaoPage() {
             {isEditable && selectedAssignment?.status !== "pendente" && (
               <>
                 {snapshotSections.length === 0 ? (
-                  // No sections, render all fields flat
                   <div className="space-y-3">
                     {snapshotFields.map(f => (
                       <DynamicFieldRenderer key={f.id} field={f} answer={exec.answers[f.id]}
@@ -292,7 +351,6 @@ export default function OperationalExecucaoPage() {
                     ))}
                   </div>
                 ) : (
-                  // Render active section
                   snapshotSections.filter(s => !activeSection || s.id === activeSection).map((section: any) => {
                     const sFields = fieldsBySection[section.id] || [];
                     return (
@@ -317,7 +375,6 @@ export default function OperationalExecucaoPage() {
               </>
             )}
 
-            {/* Read-only view for completed */}
             {!isEditable && selectedAssignment && (
               <div className="space-y-3">
                 {snapshotFields.map(f => (
@@ -329,7 +386,6 @@ export default function OperationalExecucaoPage() {
             )}
           </div>
 
-          {/* Footer actions — sticky */}
           {isEditable && selectedAssignment?.status !== "pendente" && (
             <div className="border-t border-border p-3 flex items-center gap-2 bg-card safe-area-bottom">
               <Button type="button" variant="outline" size="sm" onClick={handleSaveDraft} disabled={!exec.dirty}>
