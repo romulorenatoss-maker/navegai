@@ -9,8 +9,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Users } from "lucide-react";
-import { TemplateForm } from "./types";
+import { Switch } from "@/components/ui/switch";
+import { Users, Plus, Trash2, GripVertical, Clock } from "lucide-react";
+import { TemplateForm, StepForm, defaultStep } from "./types";
 import { TIPO_EXECUCAO_LABELS } from "@/hooks/useOperationalScoring";
 
 interface Props {
@@ -18,6 +19,8 @@ interface Props {
   set: <K extends keyof TemplateForm>(k: K, v: TemplateForm[K]) => void;
   setores: any[];
   colaboradores: any[];
+  steps?: StepForm[];
+  setSteps?: (steps: StepForm[]) => void;
 }
 
 type RoleConfig = {
