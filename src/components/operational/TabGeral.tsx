@@ -46,13 +46,15 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
     return map;
   }, [colaboradorSetores]);
 
-  // Get members for avaliado sector
-  const avaliadoSetorMembers = useMemo(() => {
-    const setorId = form.avaliado_setor_id;
+  // Get members for any sector
+  const getMembrosDoSetor = useCallback((setorId: string) => {
     if (!setorId) return [];
     const ids = setorMembros.get(setorId) || [];
     return colaboradores.filter((c: any) => ids.includes(c.id));
-  }, [form.avaliado_setor_id, setorMembros, colaboradores]);
+  }, [setorMembros, colaboradores]);
+
+  // Get members for avaliado sector
+  const avaliadoSetorMembers = useMemo(() => getMembrosDoSetor(form.avaliado_setor_id), [form.avaliado_setor_id, getMembrosDoSetor]);
 
   const getAssignmentMode = (profileKey: keyof TemplateForm, setorKey: keyof TemplateForm): "nome" | "setor" => {
     if (form[profileKey]) return "nome";
