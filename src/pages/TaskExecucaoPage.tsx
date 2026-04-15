@@ -67,12 +67,35 @@ export default function TaskExecucaoPage() {
   const today = new Date().toISOString().split("T")[0];
 
   const filtered = useMemo(() => {
-    const hoje = assignments.filter((a: any) => a.data_prevista === today && !["concluida", "nao_executada"].includes(a.status));
-    const pendentes = assignments.filter((a: any) => a.status === "pendente" && a.data_prevista !== today);
-    const atrasadas = assignments.filter((a: any) => a.status === "atrasada" || (a.status === "pendente" && a.prazo_limite && new Date(a.prazo_limite) < new Date()));
+    // Hoje: somente tarefas com data_prevista = hoje E status ativo (pendente/em_andamento)
+    const hoje = assignments.filter((a: any) => 
+      a.data_prevista === today && 
+      ["pendente", "em_andamento"].includes(a.status)
+    );
+    // Pendentes: pendentes de outros dias (não hoje)
+    const pendentes = assignments.filter((a: any) => 
+      a.status === "pendente" && a.data_prevista !== today
+    );
+    // Atrasadas
+    const atrasadas = assignments.filter((a: any) => 
+      a.status === "atrasada" || 
+      (a.status === "pendente" && a.prazo_limite && new Date(a.prazo_limite) < new Date())
+    );
+    // Devolvidas: bloqueada ou devolvida (contingências para resolver)
+    const devolvidas = assignments.filter((a: any) => 
+      ["bloqueada", "devolvida"].includes(a.status)
+    );
+    // Aguardando avaliação: separado, NÃO entra em concluídas
+    const aguardando = assignments.filter((a: any) => 
+      a.status === "aguardando_avaliacao"
+    );
+    // Concluídas: SOMENTE 100% concluídas
     const concluidas = assignments.filter((a: any) => a.status === "concluida");
-    const historico = assignments.filter((a: any) => ["concluida", "nao_executada", "bloqueada"].includes(a.status));
-    return { hoje, pendentes, atrasadas, concluidas, historico };
+    // Histórico: todos os terminais
+    const historico = assignments.filter((a: any) => 
+      ["concluida", "nao_executada"].includes(a.status)
+    );
+    return { hoje, pendentes, atrasadas, devolvidas, aguardando, concluidas, historico };
   }, [assignments, today]);
 
   // === Executor Actions ===
@@ -215,7 +238,10 @@ export default function TaskExecucaoPage() {
     const prio = PRIORIDADE_CONFIG[tmpl?.prioridade] || PRIORIDADE_CONFIG.media;
     const isRunning = a.status === "em_andamento";
     const isLate = a.prazo_limite && new Date(a.prazo_limite) < new Date() && !["concluida", "nao_executada"].includes(a.status);
-    const isDone = ["concluida", "nao_executada", "bloqueada"].includes(a.status);
+    const isDone = ["concluida", "nao_executada"].includes(a.status);
+    const isDevolvida = ["bloqueada", "devolvida"].includes(a.status);
+    const isAguardando = a.status === "aguardando_avaliacao";
+    const showAdminMenu = isAdmin && (isDone || isDevolvida || isAguardando);
 
     return (
       <div key={a.id} className={`bg-card border rounded-lg p-4 space-y-3 transition-all ${isLate ? "border-destructive/50 bg-destructive/5" : "border-border"}`}>
@@ -226,7 +252,7 @@ export default function TaskExecucaoPage() {
           </div>
           <div className="flex items-center gap-1.5">
             <Badge variant="outline" className={prio.class}>{prio.label}</Badge>
-            {isAdmin && isDone && (
+            {showAdminMenu && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button size="icon" variant="ghost" className="h-7 w-7">
@@ -260,15 +286,26 @@ export default function TaskExecucaoPage() {
           </div>
         )}
 
-        {a.status === "bloqueada" && (
-          <p className="text-caption text-orange-600">🚫 {a.motivo_bloqueio}</p>
+        {(a.status === "bloqueada" || a.status === "devolvida") && (
+          <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 space-y-1">
+            <p className="text-caption font-medium text-orange-700 dark:text-orange-400">
+              🔄 {a.status === "devolvida" ? "Devolvida — Pendência para resolver" : `Bloqueada — ${a.motivo_bloqueio || "Impedimento"}`}
+            </p>
+            {a.observacao && <p className="text-xs text-muted-foreground">{a.observacao}</p>}
+          </div>
+        )}
+
+        {a.status === "aguardando_avaliacao" && (
+          <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-2">
+            <p className="text-caption text-blue-700 dark:text-blue-400">⏳ Aguardando avaliação</p>
+          </div>
         )}
 
         {a.status === "nao_executada" && (
           <p className="text-caption text-destructive">❌ Cancelada{a.observacao ? ` — ${a.observacao}` : ""}</p>
         )}
 
-        {!isDone && (
+        {!isDone && !isDevolvida && !isAguardando && (
           <div className="flex gap-2 pt-1">
             {!isRunning && (
               <Button size="sm" onClick={() => startTask.mutate(a.id)} className="press-effect flex-1">
@@ -312,10 +349,14 @@ export default function TaskExecucaoPage() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="w-full grid grid-cols-5 mb-4">
+        <TabsList className="w-full grid grid-cols-7 mb-4">
           <TabsTrigger value="hoje" className="text-caption">Hoje ({filtered.hoje.length})</TabsTrigger>
-          <TabsTrigger value="pendentes" className="text-caption">Pendentes ({filtered.pendentes.length})</TabsTrigger>
+          <TabsTrigger value="pendentes" className="text-caption">Futuras ({filtered.pendentes.length})</TabsTrigger>
           <TabsTrigger value="atrasadas" className="text-caption">Atraso ({filtered.atrasadas.length})</TabsTrigger>
+          <TabsTrigger value="devolvidas" className="text-caption">
+            <span className={filtered.devolvidas.length > 0 ? "text-orange-600" : ""}>Devolvidas ({filtered.devolvidas.length})</span>
+          </TabsTrigger>
+          <TabsTrigger value="aguardando" className="text-caption">Avaliação ({filtered.aguardando.length})</TabsTrigger>
           <TabsTrigger value="concluidas" className="text-caption">OK ({filtered.concluidas.length})</TabsTrigger>
           <TabsTrigger value="historico" className="text-caption">Histórico</TabsTrigger>
         </TabsList>
@@ -328,10 +369,16 @@ export default function TaskExecucaoPage() {
               {filtered.hoje.length === 0 ? <p className="text-center text-muted-foreground py-8">Nenhuma tarefa para hoje 🎉</p> : filtered.hoje.map(renderCard)}
             </TabsContent>
             <TabsContent value="pendentes" className="space-y-3 mt-0">
-              {filtered.pendentes.length === 0 ? <p className="text-center text-muted-foreground py-8">Sem pendências</p> : filtered.pendentes.map(renderCard)}
+              {filtered.pendentes.length === 0 ? <p className="text-center text-muted-foreground py-8">Sem pendências futuras</p> : filtered.pendentes.map(renderCard)}
             </TabsContent>
             <TabsContent value="atrasadas" className="space-y-3 mt-0">
               {filtered.atrasadas.length === 0 ? <p className="text-center text-muted-foreground py-8">Nenhuma tarefa em atraso 👍</p> : filtered.atrasadas.map(renderCard)}
+            </TabsContent>
+            <TabsContent value="devolvidas" className="space-y-3 mt-0">
+              {filtered.devolvidas.length === 0 ? <p className="text-center text-muted-foreground py-8">Sem devoluções pendentes</p> : filtered.devolvidas.map(renderCard)}
+            </TabsContent>
+            <TabsContent value="aguardando" className="space-y-3 mt-0">
+              {filtered.aguardando.length === 0 ? <p className="text-center text-muted-foreground py-8">Nenhuma tarefa aguardando avaliação</p> : filtered.aguardando.map(renderCard)}
             </TabsContent>
             <TabsContent value="concluidas" className="space-y-3 mt-0">
               {filtered.concluidas.length === 0 ? <p className="text-center text-muted-foreground py-8">Nada concluído ainda</p> : filtered.concluidas.map(renderCard)}
