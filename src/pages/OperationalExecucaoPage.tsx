@@ -285,17 +285,22 @@ export default function OperationalExecucaoPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full mb-4 flex-wrap h-auto gap-1">
-          <TabsTrigger value="hoje" className="flex-1 min-w-[80px]">
+          <TabsTrigger value="hoje" className="flex-1 min-w-[70px]">
             Hoje {todayAssignments.length > 0 && <span className="ml-1 bg-primary/20 text-primary px-1.5 rounded-full text-caption">{todayAssignments.length}</span>}
           </TabsTrigger>
-          <TabsTrigger value="proximas" className="flex-1 min-w-[80px]">Próximas</TabsTrigger>
-          <TabsTrigger value="atraso" className="flex-1 min-w-[80px]">
+          <TabsTrigger value="proximas" className="flex-1 min-w-[70px]">Próximas</TabsTrigger>
+          <TabsTrigger value="atraso" className="flex-1 min-w-[70px]">
             Atraso {lateAssignments.length > 0 && <span className="ml-1 bg-destructive/20 text-destructive px-1.5 rounded-full text-caption">{lateAssignments.length}</span>}
           </TabsTrigger>
-          <TabsTrigger value="contingencias" className="flex-1 min-w-[80px]">
-            Contingências {contingencies.length > 0 && <span className="ml-1 bg-orange-500/20 text-orange-600 px-1.5 rounded-full text-caption">{contingencies.length}</span>}
+          {awaitingApproval.length > 0 && (
+            <TabsTrigger value="aprovacao" className="flex-1 min-w-[70px]">
+              Aprovação <span className="ml-1 bg-purple-500/20 text-purple-600 px-1.5 rounded-full text-caption">{awaitingApproval.length}</span>
+            </TabsTrigger>
+          )}
+          <TabsTrigger value="contingencias" className="flex-1 min-w-[70px]">
+            Conting. {contingencies.length > 0 && <span className="ml-1 bg-orange-500/20 text-orange-600 px-1.5 rounded-full text-caption">{contingencies.length}</span>}
           </TabsTrigger>
-          <TabsTrigger value="historico" className="flex-1 min-w-[80px]">Histórico</TabsTrigger>
+          <TabsTrigger value="historico" className="flex-1 min-w-[70px]">Histórico</TabsTrigger>
         </TabsList>
 
         <TabsContent value="hoje" className="space-y-3">
@@ -310,6 +315,10 @@ export default function OperationalExecucaoPage() {
         <TabsContent value="atraso" className="space-y-3">
           {lateAssignments.length === 0 ? <p className="text-center text-muted-foreground py-8">Nenhuma rotina em atraso.</p> :
             lateAssignments.map(renderCard)}
+        </TabsContent>
+        <TabsContent value="aprovacao" className="space-y-3">
+          {awaitingApproval.length === 0 ? <p className="text-center text-muted-foreground py-8">Nenhuma rotina aguardando aprovação.</p> :
+            awaitingApproval.map(renderCard)}
         </TabsContent>
         <TabsContent value="contingencias" className="space-y-3">
           {contingencies.length === 0 ? <p className="text-center text-muted-foreground py-8">Nenhuma contingência pendente.</p> :
