@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Loader2, Search, Send, Filter, ChevronLeft, ChevronRight, CheckSquare, Trash2, Archive, Eye } from "lucide-react";
+import { Loader2, Search, Send, Filter, ChevronLeft, ChevronRight, CheckSquare, Trash2, Archive, Eye, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import LeadPostCaptureDialog from "@/components/LeadPostCaptureDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
