@@ -20,6 +20,8 @@ export interface SectionForm {
   peso: number;
   ordem: number;
   cor: string;
+  horario_inicio: string;
+  horario_fim: string;
 }
 
 export interface OpcaoRegra {
@@ -222,6 +224,8 @@ export const defaultSection = (ordem: number): SectionForm => ({
   peso: 1,
   ordem,
   cor: SECTION_COLORS[ordem % SECTION_COLORS.length],
+  horario_inicio: "",
+  horario_fim: "",
 });
 
 export const defaultStep = (ordem: number): StepForm => ({
