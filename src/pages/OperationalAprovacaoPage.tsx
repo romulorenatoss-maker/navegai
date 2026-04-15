@@ -364,8 +364,171 @@ export default function OperationalAprovacaoPage() {
               </div>
             )}
 
+            {activeView === "perguntas" && (
+              <div className="space-y-4">
+                {/* Alert if contingencies are pending */}
+                {!approval.canAnswerApproverQuestions && (
+                  <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 flex items-start gap-2">
+                    <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-amber-800">Contingências pendentes ({approval.pendingContingencies.length})</p>
+                      <p className="text-xs text-amber-700 mt-0.5">As perguntas do aprovador somente poderão ser respondidas após a conclusão de todas as contingências.</p>
+                    </div>
+                  </div>
+                )}
+
+                {approverFields.length === 0 ? (
+                  renderEmptyState("Nenhuma pergunta do aprovador configurada neste template.")
+                ) : (
+                  <div className="space-y-3">
+                    {approverFields.map(f => {
+                      const draft = approval.approverAnswers[f.id];
+                      const existing = approval.existingApprovalAnswers.find((a: any) => a.field_id === f.id);
+                      const resposta = draft?.resposta ?? existing?.resposta ?? "";
+                      const observacao = draft?.observacao ?? existing?.observacao ?? "";
+                      const isDisabled = !isPendente || !approval.canAnswerApproverQuestions;
+
+                      // Show review info for this field
+                      const fieldReview = reviewDraftsMap[f.id];
+                      const fieldAnswer = answersMap[f.id];
+                      const fieldContingency = approval.contingencies.find((c: any) => c.origin_field_id === f.id);
+
+                      return (
+                        <div key={f.id} className="border rounded-lg p-3 space-y-3 bg-card">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="text-sm font-medium text-foreground">{f.aprovador_pergunta}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">Campo: {f.label} • Peso: {f.aprovador_peso || 1}</p>
+                            </div>
+                            {fieldContingency && (
+                              <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+                                fieldContingency.status === "validada" ? "bg-green-100 text-green-700 border-green-200" :
+                                fieldContingency.status === "aberta" ? "bg-red-100 text-red-700 border-red-200" :
+                                "bg-amber-100 text-amber-700 border-amber-200"
+                              }`}>
+                                Contingência: {fieldContingency.status}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Context: executor answer + reviewer decision */}
+                          <div className="grid grid-cols-2 gap-2 text-xs bg-muted/30 rounded p-2">
+                            <div>
+                              <span className="text-muted-foreground">Executor:</span>{" "}
+                              <span className={fieldAnswer?.valor_booleano === false ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
+                                {fieldAnswer?.valor_booleano === true ? "Conforme" : fieldAnswer?.valor_booleano === false ? "Não Conforme" : "—"}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Avaliador:</span>{" "}
+                              <span className={fieldReview?.conforme === false ? "text-red-600 font-medium" : fieldReview?.conforme === true ? "text-green-600 font-medium" : ""}>
+                                {fieldReview?.conforme === true ? "Conforme" : fieldReview?.conforme === false ? "Não Conforme" : "—"}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Approver answer buttons */}
+                          <div className="flex gap-2">
+                            {["conforme", "nao_conforme", "na"].map(opt => (
+                              <button key={opt} type="button" disabled={isDisabled}
+                                onClick={() => approval.updateApproverAnswer(f.id, { resposta: opt })}
+                                className={`flex-1 px-3 py-2 rounded-md border text-xs font-medium transition-colors ${
+                                  resposta === opt
+                                    ? opt === "conforme" ? "bg-green-100 text-green-800 border-green-300 ring-2 ring-green-400/30"
+                                    : opt === "nao_conforme" ? "bg-red-100 text-red-800 border-red-300 ring-2 ring-red-400/30"
+                                    : "bg-muted text-muted-foreground border-border ring-2 ring-muted-foreground/30"
+                                    : "bg-card border-border text-muted-foreground hover:bg-muted"
+                                } ${isDisabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}>
+                                {opt === "conforme" ? "Conforme" : opt === "nao_conforme" ? "Não Conforme" : "N/A"}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Observation */}
+                          <Textarea placeholder="Observação do aprovador..." value={observacao} disabled={isDisabled}
+                            onChange={e => approval.updateApproverAnswer(f.id, { observacao: e.target.value })}
+                            className="text-xs min-h-[40px]" />
+                        </div>
+                      );
+                    })}
+
+                    {isPendente && approval.canAnswerApproverQuestions && (
+                      <Button size="sm" onClick={() => approval.saveApproverAnswers.mutate(snapshotFields)}
+                        disabled={approval.isSaving}>
+                        <MessageSquare className="w-3.5 h-3.5 mr-1" />
+                        {approval.isSaving ? "Salvando..." : "Salvar Respostas do Aprovador"}
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {activeView === "historico" && (
-              <div className="space-y-3">
+              <div className="space-y-4">
+                {/* Assignment timeline summary */}
+                {selectedAssignment && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                    <div className="border rounded p-2 text-center">
+                      <p className="text-muted-foreground">Início</p>
+                      <p className="font-medium">{selectedAssignment.inicio_em ? new Date(selectedAssignment.inicio_em).toLocaleString("pt-BR") : "—"}</p>
+                    </div>
+                    <div className="border rounded p-2 text-center">
+                      <p className="text-muted-foreground">Conclusão</p>
+                      <p className="font-medium">{selectedAssignment.fim_em ? new Date(selectedAssignment.fim_em).toLocaleString("pt-BR") : "—"}</p>
+                    </div>
+                    <div className="border rounded p-2 text-center">
+                      <p className="text-muted-foreground">Rodadas</p>
+                      <p className="font-medium">{selectedAssignment.rodada_atual || 1}</p>
+                    </div>
+                    <div className={`border rounded p-2 text-center ${selectedAssignment.fim_em && selectedAssignment.horario_limite && new Date(selectedAssignment.fim_em) > new Date(selectedAssignment.data_prevista + "T" + selectedAssignment.horario_limite) ? "border-red-300 bg-red-50/30" : ""}`}>
+                      <p className="text-muted-foreground">Status Prazo</p>
+                      <p className="font-medium">
+                        {selectedAssignment.fim_em && selectedAssignment.horario_limite
+                          ? new Date(selectedAssignment.fim_em) > new Date(selectedAssignment.data_prevista + "T" + selectedAssignment.horario_limite) ? "⚠️ Atrasado" : "✅ No prazo"
+                          : "—"}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Contingencies summary */}
+                {approval.contingencies.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" /> Contingências ({approval.contingencies.length})
+                    </h4>
+                    <div className="space-y-2">
+                      {approval.contingencies.map((c: any) => {
+                        const slaInfo = c.prazo_sla ? (() => {
+                          const diff = new Date(c.prazo_sla).getTime() - Date.now();
+                          const isExpired = diff < 0;
+                          return { isExpired, label: isExpired ? `Vencido há ${Math.ceil(Math.abs(diff) / 86400000)}d` : `${Math.ceil(diff / 3600000)}h restantes` };
+                        })() : null;
+
+                        return (
+                          <div key={c.id} className={`p-2 border rounded text-xs space-y-1 ${slaInfo?.isExpired ? "border-red-300 bg-red-50/30" : "border-border"}`}>
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="truncate font-medium">{c.descricao}</span>
+                              <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+                                c.status === "validada" ? "bg-green-100 text-green-700 border-green-200" :
+                                c.status === "aberta" ? "bg-red-100 text-red-700 border-red-200" :
+                                c.status === "resolvida" ? "bg-blue-100 text-blue-700 border-blue-200" :
+                                "bg-muted text-muted-foreground border-border"
+                              }`}>{c.status}</span>
+                            </div>
+                            {slaInfo && (
+                              <p className={`flex items-center gap-1 ${slaInfo.isExpired ? "text-red-600" : "text-muted-foreground"}`}>
+                                <Clock className="w-3 h-3" /> {slaInfo.label}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Trilha de Auditoria</h4>
                 {approval.auditTrail.length === 0 ? (
                   renderEmptyState("Nenhum registro de auditoria.")
