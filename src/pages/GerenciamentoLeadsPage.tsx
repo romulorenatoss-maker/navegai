@@ -574,7 +574,7 @@ export default function GerenciamentoLeadsPage() {
               </TableRow>
             ) : leads.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                   Nenhum lead encontrado
                 </TableCell>
               </TableRow>
