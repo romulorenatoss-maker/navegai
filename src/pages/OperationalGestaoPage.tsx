@@ -488,6 +488,11 @@ export default function OperationalGestaoPage() {
                                 <RotateCcw className="w-3 h-3" />
                               </Button>
                             )}
+                            {a.pontuacao_obtida != null && (
+                              <Button size="sm" variant="ghost" title="Ajustar Score" onClick={() => { setScoreDialog({ open: true, assignment: a }); setNewScore(String(Math.round(a.pontuacao_obtida))); setMotivo(""); }}>
+                                <Pencil className="w-3 h-3" />
+                              </Button>
+                            )}
                             <Button size="sm" variant="ghost" title="Trilha de Auditoria" onClick={() => setAuditDialog({ open: true, assignmentId: a.id })}>
                               <History className="w-3 h-3" />
                             </Button>
