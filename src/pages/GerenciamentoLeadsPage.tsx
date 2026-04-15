@@ -518,7 +518,7 @@ export default function GerenciamentoLeadsPage() {
 
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="destructive" disabled={sending || deleting} className="gap-1.5">
+                  <Button size="sm" variant="destructive" disabled={sending || deleting || archiving} className="gap-1.5">
                     {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                     Excluir Selecionados
                   </Button>
