@@ -1203,6 +1203,18 @@ export default function FilaLeadsPage() {
                         }
                         return (
                           <TableRow key={item.lead.id} className={rowBg}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedFilaIds.has(item.lead.id)}
+                                onCheckedChange={(checked) => {
+                                  setSelectedFilaIds(prev => {
+                                    const next = new Set(prev);
+                                    checked ? next.add(item.lead.id) : next.delete(item.lead.id);
+                                    return next;
+                                  });
+                                }}
+                              />
+                            </TableCell>
                              <TableCell className="text-xs text-muted-foreground font-mono">{globalIdx + 1}</TableCell>
                             <TableCell>
                               <div className="flex flex-col gap-0.5">
