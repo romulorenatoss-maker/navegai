@@ -70,18 +70,6 @@ export function TabRecorrencia({ form, set }: Props) {
             <SelectContent>{Object.entries(RECORRENCIA_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
           </Select>
         </div>
-        <div className="space-y-2">
-          <Label>Multiplicador (Peso)</Label>
-          <div className="grid grid-cols-5 gap-1.5">
-            {[{ l: "Diária", p: 1.0 }, { l: "Semanal", p: 1.5 }, { l: "Quinzenal", p: 2.0 }, { l: "Mensal", p: 3.0 }, { l: "Pontual", p: 2.0 }].map(item => (
-              <button key={item.l} type="button" onClick={() => set("peso_recorrencia", item.p)}
-                className={`text-center rounded-md px-1.5 py-2 border transition-colors cursor-pointer ${form.peso_recorrencia === item.p ? "bg-primary/10 border-primary text-primary ring-1 ring-primary/30 font-semibold" : "bg-card border-border text-muted-foreground hover:border-primary/40"}`}>
-                <span className="block text-[10px]">{item.l}</span>
-                <span className="block font-bold text-sm">×{item.p}</span>
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
 
       {form.recorrencia_tipo !== "unica" && (
