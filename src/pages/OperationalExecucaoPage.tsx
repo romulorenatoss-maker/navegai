@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Play, Send, Save, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock, CircleDot, RotateCcw, CheckCheck } from "lucide-react";
+import { Play, Send, Save, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock, CircleDot, RotateCcw, CheckCheck, CalendarClock, ListTodo } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
@@ -61,7 +61,7 @@ export default function OperationalExecucaoPage() {
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [filterResponsavel, setFilterResponsavel] = useState<string>("__all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [openAccordion, setOpenAccordion] = useState<string | null>("pendentes");
+  const [openAccordion, setOpenAccordion] = useState<string | null>("hoje");
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -108,7 +108,10 @@ export default function OperationalExecucaoPage() {
     return list;
   }, [assignments, isAdmin, filterResponsavel, searchTerm]);
 
-  const pendentes = filteredAssignments.filter((a: any) => ["pendente"].includes(a.status));
+  const hoje = filteredAssignments.filter((a: any) => 
+    ["pendente", "em_andamento", "devolvida"].includes(a.status) && a.data_prevista === today
+  );
+  const aFazer = filteredAssignments.filter((a: any) => ["pendente"].includes(a.status));
   const emAndamento = filteredAssignments.filter((a: any) => ["em_andamento"].includes(a.status));
   const devolvidas = filteredAssignments.filter((a: any) => ["devolvida"].includes(a.status));
   const concluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada", "aguardando_avaliacao", "aguardando_aprovacao"].includes(a.status)).slice(0, 50);
@@ -236,16 +239,29 @@ export default function OperationalExecucaoPage() {
       ) : (
         <div className="space-y-3">
           <AccordionSection
-            title="Pendentes"
-            count={pendentes.length}
-            icon={<Clock className="w-4 h-4" style={{ color: "#eab308" }} />}
+            title="Tarefas de Hoje"
+            count={hoje.length}
+            icon={<CalendarClock className="w-4 h-4" style={{ color: "#f97316" }} />}
+            borderColor="#f97316"
+            badgeBg="bg-orange-500/15"
+            badgeText="text-orange-700 dark:text-orange-400"
+            isOpen={openAccordion === "hoje"}
+            onToggle={() => setOpenAccordion(openAccordion === "hoje" ? null : "hoje")}
+          >
+            {hoje.length === 0 ? renderEmptyState("Nenhuma tarefa para hoje.") : hoje.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+          </AccordionSection>
+
+          <AccordionSection
+            title="A Fazer"
+            count={aFazer.length}
+            icon={<ListTodo className="w-4 h-4" style={{ color: "#eab308" }} />}
             borderColor="#eab308"
             badgeBg="bg-yellow-500/15"
             badgeText="text-yellow-700 dark:text-yellow-400"
-            isOpen={openAccordion === "pendentes"}
-            onToggle={() => setOpenAccordion(openAccordion === "pendentes" ? null : "pendentes")}
+            isOpen={openAccordion === "afazer"}
+            onToggle={() => setOpenAccordion(openAccordion === "afazer" ? null : "afazer")}
           >
-            {pendentes.length === 0 ? renderEmptyState("Nenhuma rotina pendente.") : pendentes.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+            {aFazer.length === 0 ? renderEmptyState("Nenhuma rotina a fazer.") : aFazer.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
           </AccordionSection>
 
           <AccordionSection
