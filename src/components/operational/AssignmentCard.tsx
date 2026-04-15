@@ -55,6 +55,7 @@ export function AssignmentCard({ assignment: a, onClick }: Props) {
   const isReturned = a.status === "devolvida";
   const hasContingency = a.contingency_count > 0;
 
+  const descricao = snapshot?.descricao || "";
   const responsavelNome = a.profiles?.nome || "";
   const responsavelFoto = a.profiles?.foto_url || "";
   const initials = responsavelNome
@@ -67,8 +68,9 @@ export function AssignmentCard({ assignment: a, onClick }: Props) {
   return (
     <div onClick={() => onClick(a)}
       className={`bg-card border rounded-lg p-3 shadow-card hover:shadow-md transition-all cursor-pointer active:scale-[0.98] ${isReturned ? "border-amber-400" : countdown?.isExpired ? "border-destructive/60" : countdown?.isUrgent ? "border-orange-400" : "border-border"}`}>
+
+      {/* Top row: avatar + title + chevron */}
       <div className="flex items-center gap-3">
-        {/* Avatar */}
         <Avatar className="h-9 w-9 shrink-0">
           <AvatarImage src={responsavelFoto} alt={responsavelNome} />
           <AvatarFallback className="text-[11px] bg-muted text-muted-foreground font-medium">
@@ -77,56 +79,63 @@ export function AssignmentCard({ assignment: a, onClick }: Props) {
         </Avatar>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <h3 className="text-sm font-medium text-foreground truncate">{nome}</h3>
-              {responsavelNome && (
-                <p className="text-[11px] text-muted-foreground truncate">{responsavelNome}</p>
-              )}
-            </div>
-            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border shrink-0 ${statusConf.class}`}>
-              {statusConf.label}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground flex-wrap">
-            {tipo && <span className="inline-flex items-center px-2 py-0.5 rounded border badge-active">{TIPO_EXECUCAO_LABELS[tipo] || tipo}</span>}
-
-            {/* Countdown or static time */}
-            {countdown ? (
-              <span className={`flex items-center gap-1 font-medium rounded px-1.5 py-0.5 ${
-                countdown.isExpired
-                  ? "bg-destructive/10 text-destructive"
-                  : countdown.isUrgent
-                    ? "bg-orange-500/10 text-orange-600 animate-pulse"
-                    : countdown.isWarning
-                      ? "bg-amber-500/10 text-amber-600"
-                      : "text-muted-foreground"
-              }`}>
-                {countdown.isExpired ? <TimerOff className="w-3 h-3" /> : <Timer className="w-3 h-3" />}
-                {countdown.label}
-              </span>
-            ) : (
-              <>
-                <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{a.data_prevista}</span>
-                {a.horario_limite && <span>até {a.horario_limite}</span>}
-              </>
-            )}
-
-            {a.rodada_atual > 1 && (
-              <span className="flex items-center gap-1 text-amber-600">
-                <RotateCcw className="w-3 h-3" /> Rodada {a.rodada_atual}
-              </span>
-            )}
-            {hasContingency && <span className="flex items-center gap-1 text-orange-600"><AlertTriangle className="w-3 h-3" />Contingência</span>}
-            {a.score_executor != null && (
-              <span className="flex items-center gap-1 text-primary"><CheckCircle2 className="w-3 h-3" />{Math.round(a.score_executor)}pts</span>
-            )}
-          </div>
+          <h3 className="text-sm font-medium text-foreground truncate">{nome}</h3>
+          {responsavelNome && (
+            <p className="text-[11px] text-muted-foreground truncate">{responsavelNome}</p>
+          )}
         </div>
 
         <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
       </div>
+
+      {/* Description collapsed below title */}
+      {descricao && (
+        <p className="text-[11px] text-muted-foreground mt-1.5 ml-12 line-clamp-1">{descricao}</p>
+      )}
+
+      {/* Status + badges row below */}
+      <div className="flex items-center gap-1.5 mt-2 ml-12 flex-wrap">
+        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border ${statusConf.class}`}>
+          {statusConf.label}
+        </span>
+        {tipo && (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] border border-border text-muted-foreground">
+            {TIPO_EXECUCAO_LABELS[tipo] || tipo}
+          </span>
+        )}
+
+        {/* Countdown or static time */}
+        {countdown ? (
+          <span className={`flex items-center gap-1 text-[10px] font-medium rounded px-1.5 py-0.5 ${
+            countdown.isExpired
+              ? "bg-destructive/10 text-destructive"
+              : countdown.isUrgent
+                ? "bg-orange-500/10 text-orange-600 animate-pulse"
+                : countdown.isWarning
+                  ? "bg-amber-500/10 text-amber-600"
+                  : "text-muted-foreground"
+          }`}>
+            {countdown.isExpired ? <TimerOff className="w-3 h-3" /> : <Timer className="w-3 h-3" />}
+            {countdown.label}
+          </span>
+        ) : (
+          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <Clock className="w-3 h-3" />{a.data_prevista}
+            {a.horario_limite && <span className="ml-0.5">até {a.horario_limite}</span>}
+          </span>
+        )}
+
+        {a.rodada_atual > 1 && (
+          <span className="flex items-center gap-1 text-[10px] text-amber-600">
+            <RotateCcw className="w-3 h-3" /> R{a.rodada_atual}
+          </span>
+        )}
+        {hasContingency && <span className="flex items-center gap-1 text-[10px] text-orange-600"><AlertTriangle className="w-3 h-3" /></span>}
+        {a.score_executor != null && (
+          <span className="flex items-center gap-1 text-[10px] text-primary"><CheckCircle2 className="w-3 h-3" />{Math.round(a.score_executor)}pts</span>
+        )}
+      </div>
     </div>
   );
 }
+
