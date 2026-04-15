@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   CalendarIcon, Filter, Trash2, Download, Loader2,
-  FileText, Search, Eye
+  FileText, Search, Eye, ArrowUpDown, ArrowUp, ArrowDown
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -96,6 +96,36 @@ export default function RelatoriosPage() {
   const [osList, setOsList] = useState<OSRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  // Sorting
+  type SortKey = "numero_os" | "data_abertura" | "cliente_nome" | "tipo_servico_nome" | "tecnico_nome" | "atendente_nome" | "status";
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const sortedOsList = (() => {
+    if (!sortKey) return osList;
+    return [...osList].sort((a, b) => {
+      const valA = (a[sortKey] || "").toString().toLowerCase();
+      const valB = (b[sortKey] || "").toString().toLowerCase();
+      if (valA < valB) return sortDir === "asc" ? -1 : 1;
+      if (valA > valB) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+  })();
+
+  const SortIcon = ({ col }: { col: SortKey }) => {
+    if (sortKey !== col) return <ArrowUpDown className="w-3 h-3 ml-1 inline opacity-40" />;
+    return sortDir === "asc" ? <ArrowUp className="w-3 h-3 ml-1 inline" /> : <ArrowDown className="w-3 h-3 ml-1 inline" />;
+  };
 
   // Delete dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -827,18 +857,18 @@ export default function RelatoriosPage() {
                       {...(someSelected ? { "data-state": "indeterminate" } : {})}
                     />
                   </th>
-                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">OS</th>
-                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Data Abertura</th>
-                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Cliente</th>
-                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Tipo de Serviço</th>
-                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Técnico</th>
-                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Atendente</th>
-                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Status</th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("numero_os")}>OS <SortIcon col="numero_os" /></th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("data_abertura")}>Data Abertura <SortIcon col="data_abertura" /></th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("cliente_nome")}>Cliente <SortIcon col="cliente_nome" /></th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("tipo_servico_nome")}>Tipo de Serviço <SortIcon col="tipo_servico_nome" /></th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("tecnico_nome")}>Técnico <SortIcon col="tecnico_nome" /></th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("atendente_nome")}>Atendente <SortIcon col="atendente_nome" /></th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("status")}>Status <SortIcon col="status" /></th>
                   <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 w-16">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {osList.map((item) => (
+                {sortedOsList.map((item) => (
                   <tr
                     key={item.id}
                     className={cn(
