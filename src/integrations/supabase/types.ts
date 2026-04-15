@@ -1135,6 +1135,10 @@ export type Database = {
       }
       operational_assignments: {
         Row: {
+          avaliado_id: string | null
+          avaliador_fim_em: string | null
+          avaliador_id: string | null
+          avaliador_inicio_em: string | null
           created_at: string
           data_prevista: string
           evidencia_url: string | null
@@ -1146,12 +1150,19 @@ export type Database = {
           observacao: string | null
           pontuacao_obtida: number | null
           responsavel_id: string | null
+          score_avaliado: number | null
+          score_avaliador: number | null
+          score_executor: number | null
           status: string
           template_id: string
           tempo_gasto_minutos: number | null
           updated_at: string
         }
         Insert: {
+          avaliado_id?: string | null
+          avaliador_fim_em?: string | null
+          avaliador_id?: string | null
+          avaliador_inicio_em?: string | null
           created_at?: string
           data_prevista?: string
           evidencia_url?: string | null
@@ -1163,12 +1174,19 @@ export type Database = {
           observacao?: string | null
           pontuacao_obtida?: number | null
           responsavel_id?: string | null
+          score_avaliado?: number | null
+          score_avaliador?: number | null
+          score_executor?: number | null
           status?: string
           template_id: string
           tempo_gasto_minutos?: number | null
           updated_at?: string
         }
         Update: {
+          avaliado_id?: string | null
+          avaliador_fim_em?: string | null
+          avaliador_id?: string | null
+          avaliador_inicio_em?: string | null
           created_at?: string
           data_prevista?: string
           evidencia_url?: string | null
@@ -1180,12 +1198,29 @@ export type Database = {
           observacao?: string | null
           pontuacao_obtida?: number | null
           responsavel_id?: string | null
+          score_avaliado?: number | null
+          score_avaliador?: number | null
+          score_executor?: number | null
           status?: string
           template_id?: string
           tempo_gasto_minutos?: number | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "operational_assignments_avaliado_id_fkey"
+            columns: ["avaliado_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_assignments_avaliador_id_fkey"
+            columns: ["avaliador_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "operational_assignments_responsavel_id_fkey"
             columns: ["responsavel_id"]
@@ -1584,6 +1619,9 @@ export type Database = {
           qualidade_evidencia: number | null
           score_final: number | null
           sla_correcoes: number | null
+          target_profile_id: string | null
+          target_setor_id: string | null
+          tipo_score: string
         }
         Insert: {
           assignment_id: string
@@ -1595,6 +1633,9 @@ export type Database = {
           qualidade_evidencia?: number | null
           score_final?: number | null
           sla_correcoes?: number | null
+          target_profile_id?: string | null
+          target_setor_id?: string | null
+          tipo_score?: string
         }
         Update: {
           assignment_id?: string
@@ -1606,6 +1647,9 @@ export type Database = {
           qualidade_evidencia?: number | null
           score_final?: number | null
           sla_correcoes?: number | null
+          target_profile_id?: string | null
+          target_setor_id?: string | null
+          tipo_score?: string
         }
         Relationships: [
           {
@@ -1620,6 +1664,20 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_score_logs_target_profile_id_fkey"
+            columns: ["target_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_score_logs_target_setor_id_fkey"
+            columns: ["target_setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
             referencedColumns: ["id"]
           },
         ]
@@ -1718,13 +1776,20 @@ export type Database = {
       operational_templates: {
         Row: {
           ativo: boolean | null
+          avaliado_profile_id: string | null
+          avaliado_setor_id: string | null
+          avaliador_profile_id: string | null
+          avaliador_setor_id: string | null
           bloquear_fechamento_com_contingencia: boolean
           created_at: string
           data_fim: string | null
           data_inicio: string | null
           descricao: string | null
+          destino_score: string
           dia_fixo_mes: number | null
           dias_da_semana: number[] | null
+          executor_profile_id: string | null
+          executor_setor_id: string | null
           exigir_foto: boolean | null
           exigir_observacao: boolean | null
           exigir_video: boolean | null
@@ -1733,6 +1798,7 @@ export type Database = {
           horario_limite_execucao: string | null
           id: string
           intervalo_dias: number | null
+          modo_pontuacao: string
           nome: string
           prazo_sla_correcao_horas: number | null
           pular_semanas: number | null
@@ -1747,13 +1813,20 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean | null
+          avaliado_profile_id?: string | null
+          avaliado_setor_id?: string | null
+          avaliador_profile_id?: string | null
+          avaliador_setor_id?: string | null
           bloquear_fechamento_com_contingencia?: boolean
           created_at?: string
           data_fim?: string | null
           data_inicio?: string | null
           descricao?: string | null
+          destino_score?: string
           dia_fixo_mes?: number | null
           dias_da_semana?: number[] | null
+          executor_profile_id?: string | null
+          executor_setor_id?: string | null
           exigir_foto?: boolean | null
           exigir_observacao?: boolean | null
           exigir_video?: boolean | null
@@ -1762,6 +1835,7 @@ export type Database = {
           horario_limite_execucao?: string | null
           id?: string
           intervalo_dias?: number | null
+          modo_pontuacao?: string
           nome: string
           prazo_sla_correcao_horas?: number | null
           pular_semanas?: number | null
@@ -1776,13 +1850,20 @@ export type Database = {
         }
         Update: {
           ativo?: boolean | null
+          avaliado_profile_id?: string | null
+          avaliado_setor_id?: string | null
+          avaliador_profile_id?: string | null
+          avaliador_setor_id?: string | null
           bloquear_fechamento_com_contingencia?: boolean
           created_at?: string
           data_fim?: string | null
           data_inicio?: string | null
           descricao?: string | null
+          destino_score?: string
           dia_fixo_mes?: number | null
           dias_da_semana?: number[] | null
+          executor_profile_id?: string | null
+          executor_setor_id?: string | null
           exigir_foto?: boolean | null
           exigir_observacao?: boolean | null
           exigir_video?: boolean | null
@@ -1791,6 +1872,7 @@ export type Database = {
           horario_limite_execucao?: string | null
           id?: string
           intervalo_dias?: number | null
+          modo_pontuacao?: string
           nome?: string
           prazo_sla_correcao_horas?: number | null
           pular_semanas?: number | null
@@ -1804,6 +1886,48 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "operational_templates_avaliado_profile_id_fkey"
+            columns: ["avaliado_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_templates_avaliado_setor_id_fkey"
+            columns: ["avaliado_setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_templates_avaliador_profile_id_fkey"
+            columns: ["avaliador_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_templates_avaliador_setor_id_fkey"
+            columns: ["avaliador_setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_templates_executor_profile_id_fkey"
+            columns: ["executor_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_templates_executor_setor_id_fkey"
+            columns: ["executor_setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "operational_templates_responsavel_contingencia_id_fkey"
             columns: ["responsavel_contingencia_id"]
