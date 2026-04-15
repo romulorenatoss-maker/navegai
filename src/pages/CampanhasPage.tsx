@@ -46,32 +46,37 @@ export default function CampanhasPage() {
     },
   });
 
-  // Fetch all leads with campanha_id to compute stats
-  const { data: allLeads = [] } = useQuery({
+  // Fetch leads stats per campaign using paginated fetching to avoid 1000-row limit
+  const { data: statsMap = {} } = useQuery({
     queryKey: ["campanhas-leads-stats"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("leads")
-        .select("id, campanha_id, status_lead");
-      if (error) throw error;
-      return data as LeadRow[];
+      const map: Record<string, { total: number; convertidos: number; arquivados: number; perdidos: number }> = {};
+      let offset = 0;
+      const BATCH = 1000;
+      while (true) {
+        const { data, error } = await supabase
+          .from("leads")
+          .select("campanha_id, status_lead")
+          .not("campanha_id", "is", null)
+          .range(offset, offset + BATCH - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        for (const lead of data) {
+          const cid = lead.campanha_id!;
+          if (!map[cid]) map[cid] = { total: 0, convertidos: 0, arquivados: 0, perdidos: 0 };
+          const s = map[cid];
+          s.total++;
+          if (lead.status_lead === "convertido") s.convertidos++;
+          if (lead.status_lead === "arquivado") s.arquivados++;
+          if (lead.status_lead === "perdido") s.perdidos++;
+        }
+        if (data.length < BATCH) break;
+        offset += BATCH;
+      }
+      return map;
     },
+    staleTime: 30_000,
   });
-
-  // Compute stats per campaign
-  const statsMap = useMemo(() => {
-    const map: Record<string, { total: number; convertidos: number; arquivados: number; perdidos: number }> = {};
-    for (const lead of allLeads) {
-      if (!lead.campanha_id) continue;
-      if (!map[lead.campanha_id]) map[lead.campanha_id] = { total: 0, convertidos: 0, arquivados: 0, perdidos: 0 };
-      const s = map[lead.campanha_id];
-      s.total++;
-      if (lead.status_lead === "convertido") s.convertidos++;
-      if (lead.status_lead === "arquivado") s.arquivados++;
-      if (lead.status_lead === "perdido") s.perdidos++;
-    }
-    return map;
-  }, [allLeads]);
 
   const openCreate = () => {
     setEditId(null);
