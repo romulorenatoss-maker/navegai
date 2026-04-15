@@ -141,13 +141,24 @@ function RecurrencePreview({ form }: { form: TemplateForm }) {
 
   return (
     <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-3">
-      <div className="flex items-center gap-2">
-        <CalendarDays className="w-4 h-4 text-primary" />
-        <p className="text-sm font-medium text-foreground">
-          Preview — próximas {dates.length} ocorrências
-        </p>
-        {form.repetir_sempre && (
-          <span className="text-caption bg-primary/10 text-primary px-2 py-0.5 rounded font-medium">∞ Sem fim</span>
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <CalendarDays className="w-4 h-4 text-primary" />
+          <p className="text-sm font-medium text-foreground">
+            Preview — próximas {dates.length} ocorrências
+          </p>
+          {form.repetir_sempre && (
+            <span className="text-caption bg-primary/10 text-primary px-2 py-0.5 rounded font-medium">∞ Sem fim</span>
+          )}
+        </div>
+        {form.repetir_sempre && dates.length > 0 && (
+          <p className="text-caption text-muted-foreground ml-6">
+            Início do ciclo:{" "}
+            <span className="font-semibold text-foreground">
+              {dates[0].toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })}
+              {" "}({DIAS_SEMANA_FULL[dates[0].getDay()]})
+            </span>
+          </p>
         )}
       </div>
 
