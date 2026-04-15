@@ -31,6 +31,8 @@ interface OSRow {
   tipo_servico_id: string | null;
   tipo_servico_nome: string | null;
   colaborador_avaliado_id: string | null;
+  tecnico_nome: string | null;
+  atendente_nome: string | null;
 }
 
 // --- Helpers ---
@@ -185,6 +187,13 @@ export default function RelatoriosPage() {
       if (!avaliadorByOS[a.ordem_servico_id]) avaliadorByOS[a.ordem_servico_id] = new Set();
       avaliadorByOS[a.ordem_servico_id].add(a.avaliador_id);
     });
+    // Fetch profile names for tecnico and atendente
+    const profileIds = [...new Set(osData.flatMap((o) => [o.tecnico_id, o.atendente_id]).filter(Boolean))] as string[];
+    const profileNamesMap: Record<string, string> = {};
+    if (profileIds.length > 0) {
+      const { data: profilesData } = await supabase.from("profiles").select("id, nome").in("id", profileIds);
+      (profilesData || []).forEach((p: any) => { profileNamesMap[p.id] = p.nome; });
+    }
 
     let results = osData.map((os) => ({
       ...os,
@@ -192,6 +201,8 @@ export default function RelatoriosPage() {
       tipo_servico_nome: os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || null : null,
       setor_id: os.tipo_servico_id ? tipoSetorMap[os.tipo_servico_id] || null : null,
       avaliador_ids: avaliadorByOS[os.id] || new Set<string>(),
+      tecnico_nome: os.tecnico_id ? profileNamesMap[os.tecnico_id] || null : null,
+      atendente_nome: os.atendente_id ? profileNamesMap[os.atendente_id] || null : null,
     }));
 
     // Client-side filters only apply in combined mode (not direct search)
@@ -820,6 +831,8 @@ export default function RelatoriosPage() {
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Data Abertura</th>
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Cliente</th>
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Tipo de Serviço</th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Técnico</th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Atendente</th>
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Status</th>
                   <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 w-16">Ações</th>
                 </tr>
@@ -845,6 +858,8 @@ export default function RelatoriosPage() {
                     </td>
                     <td className="px-4 py-3 text-body text-muted-foreground">{item.cliente_nome || "—"}</td>
                     <td className="px-4 py-3 text-body text-muted-foreground">{item.tipo_servico_nome || "—"}</td>
+                    <td className="px-4 py-3 text-body text-muted-foreground">{item.tecnico_nome || <span className="text-destructive font-medium">—</span>}</td>
+                    <td className="px-4 py-3 text-body text-muted-foreground">{item.atendente_nome || <span className="text-destructive font-medium">—</span>}</td>
                     <td className="px-4 py-3">
                       <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border", statusBadge[item.status])}>
                         {statusText[item.status] || item.status}
@@ -865,7 +880,7 @@ export default function RelatoriosPage() {
                 ))}
                 {osList.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">
+                    <td colSpan={9} className="px-4 py-8 text-center text-body text-muted-foreground">
                       Nenhuma OS encontrada no período selecionado.
                     </td>
                   </tr>
