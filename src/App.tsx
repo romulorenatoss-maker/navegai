@@ -17,6 +17,7 @@ import PerguntasPage from "./pages/PerguntasPage";
 import OperationalCadastroPage from "./pages/OperationalCadastroPage";
 import OperationalExecucaoPage from "./pages/OperationalExecucaoPage";
 import OperationalGestaoPage from "./pages/OperationalGestaoPage";
+import OperationalAvaliacaoPage from "./pages/OperationalAvaliacaoPage";
 import CadastroEnderecosPage from "./pages/CadastroEnderecosPage";
 import ClientesPage from "./pages/ClientesPage";
 import MinhasAvaliacoesPage from "./pages/MinhasAvaliacoesPage";
@@ -69,6 +70,7 @@ const App = () => (
               <Route path="/checklists/cadastro" element={<OperationalCadastroPage />} />
               <Route path="/checklists/execucao" element={<OperationalExecucaoPage />} />
               <Route path="/checklists/gestao" element={<OperationalGestaoPage />} />
+              <Route path="/checklists/avaliacao" element={<OperationalAvaliacaoPage />} />
               <Route path="/cadastros/setores" element={<SetoresPage />} />
               <Route path="/cadastros/avaliadores" element={<ColaboradoresPage />} />
               <Route path="/cadastros/colaboradores" element={<ColaboradoresPage />} />
