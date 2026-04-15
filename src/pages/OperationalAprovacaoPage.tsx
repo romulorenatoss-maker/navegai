@@ -227,10 +227,10 @@ export default function OperationalAprovacaoPage() {
             </div>
 
             <div className="flex gap-1.5 mt-3">
-              {(["score", "formulario", "historico"] as const).map(v => (
+              {(["score", "perguntas", "formulario", "historico"] as const).map(v => (
                 <button key={v} type="button" onClick={() => setActiveView(v)}
                   className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${activeView === v ? "bg-primary/10 border-primary text-primary" : "bg-card border-border text-muted-foreground hover:bg-muted"}`}>
-                  {v === "score" ? "Score & Breakdown" : v === "formulario" ? "Formulário" : "Histórico"}
+                  {v === "score" ? "Score & Breakdown" : v === "formulario" ? "Formulário" : v === "perguntas" ? `Perguntas (${approverFields.length})` : "Histórico"}
                 </button>
               ))}
             </div>
