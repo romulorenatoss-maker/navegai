@@ -185,18 +185,34 @@ export function useAssignmentExecution(assignmentId: string | null) {
         }).eq("id", assignment.id);
       if (error) throw error;
 
+      // Calculate time from first view to completion
+      const { data: viewLog } = await (supabase as any).from("operational_execution_logs")
+        .select("created_at")
+        .eq("assignment_id", assignment.id)
+        .eq("acao", "visualizou")
+        .order("created_at", { ascending: true })
+        .limit(1);
+
+      const tempoVisualizacaoAteConclusao = viewLog?.[0]
+        ? Math.round((Date.now() - new Date(viewLog[0].created_at).getTime()) / 60000)
+        : null;
+
       await (supabase as any).from("operational_execution_logs").insert({
         assignment_id: assignment.id,
         acao: "enviou_para_avaliacao",
         executado_por: profile.id,
-        detalhes: { tempo_gasto_minutos: tempoGasto, total_campos: Object.keys(answers).length },
+        detalhes: {
+          tempo_gasto_minutos: tempoGasto,
+          total_campos: Object.keys(answers).length,
+          tempo_visualizacao_ate_conclusao_minutos: tempoVisualizacaoAteConclusao,
+        },
       });
 
       await (supabase as any).from("operational_audit_trail").insert({
         assignment_id: assignment.id,
         tipo_evento: "conclusao",
         executado_por: profile.id,
-        dados_novos: { status: nextStatus, tempo_gasto_minutos: tempoGasto },
+        dados_novos: { status: nextStatus, tempo_gasto_minutos: tempoGasto, tempo_visualizacao_ate_conclusao_minutos: tempoVisualizacaoAteConclusao },
       });
     },
     onSuccess: () => {
