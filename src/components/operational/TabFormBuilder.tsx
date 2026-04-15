@@ -453,6 +453,8 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
                 </div>
               </div>
             )}
+              </>
+            )}
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
