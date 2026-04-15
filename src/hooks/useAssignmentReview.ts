@@ -95,6 +95,11 @@ export function useAssignmentReview(assignmentId: string | null) {
     setContingencyPrazos(prev => ({ ...prev, [fieldId]: horas }));
   }, []);
 
+  // Register contingency data from modal (prazo + motivo)
+  const registerContingencyData = useCallback((fieldId: string, prazoResolucao: string, motivoInstrucao: string) => {
+    setPendingContingencyData(prev => ({ ...prev, [fieldId]: { prazoResolucao, motivoInstrucao } }));
+  }, []);
+
   // FIX #3: Batch mark section conforme — SKIP fields already reviewed
   const markSectionConforme = useCallback((fields: SnapshotField[]) => {
     setReviewDrafts(prev => {
