@@ -8,6 +8,15 @@ export interface SectionForm {
   cor: string;
 }
 
+export interface OpcaoRegra {
+  valor: string;
+  label: string;
+  cor: string;
+  requer_descricao: boolean;
+  requer_evidencia: boolean;
+  gera_contingencia: boolean;
+}
+
 export interface FieldForm {
   id?: string;
   tempId: string;
@@ -26,6 +35,7 @@ export interface FieldForm {
   exige_evidencia: boolean;
   tipo_evidencia: string;
   opcoes: any[];
+  opcoes_regras: OpcaoRegra[];
   validacao: any;
   condicao_visibilidade: any;
   formula: any;
