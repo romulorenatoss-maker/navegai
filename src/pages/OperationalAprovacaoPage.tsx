@@ -186,6 +186,9 @@ export default function OperationalAprovacaoPage() {
           <TabsTrigger value="pendentes" className="flex-1 min-w-[70px]">
             Pendentes {pendentes.length > 0 && <span className="ml-1 bg-purple-500/20 text-purple-700 px-1.5 rounded-full text-[10px]">{pendentes.length}</span>}
           </TabsTrigger>
+          <TabsTrigger value="devolvidos" className="flex-1 min-w-[70px]">
+            Devolvidos {devolvidos.length > 0 && <span className="ml-1 bg-amber-500/20 text-amber-700 px-1.5 rounded-full text-[10px]">{devolvidos.length}</span>}
+          </TabsTrigger>
           <TabsTrigger value="aprovados" className="flex-1 min-w-[70px]">
             Aprovados {aprovados.length > 0 && <span className="ml-1 bg-emerald-500/20 text-emerald-700 px-1.5 rounded-full text-[10px]">{aprovados.length}</span>}
           </TabsTrigger>
@@ -194,6 +197,9 @@ export default function OperationalAprovacaoPage() {
 
         <TabsContent value="pendentes" className="space-y-3">
           {isLoading ? renderEmptyState("Carregando...") : pendentes.length === 0 ? renderEmptyState("Nenhuma aprovação pendente.") : pendentes.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openApproval} />)}
+        </TabsContent>
+        <TabsContent value="devolvidos" className="space-y-3">
+          {devolvidos.length === 0 ? renderEmptyState("Nenhuma tarefa devolvida ou aguardando reaprovação.") : devolvidos.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openApproval} />)}
         </TabsContent>
         <TabsContent value="aprovados" className="space-y-3">
           {aprovados.length === 0 ? renderEmptyState("Nenhum aprovado recente.") : aprovados.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openApproval} />)}
