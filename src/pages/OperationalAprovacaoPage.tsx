@@ -52,6 +52,7 @@ export default function OperationalAprovacaoPage() {
   });
 
   const pendentes = assignments.filter((a: any) => a.status === "aguardando_aprovacao");
+  const devolvidos = assignments.filter((a: any) => a.status === "devolvida" || (a.status === "aguardando_aprovacao" && approval.contingencies.some((c: any) => !["validada", "descartada"].includes(c.status))));
   const aprovados = assignments.filter((a: any) => a.status === "aprovada");
   const historico = assignments.filter((a: any) => ["concluida", "reprovada"].includes(a.status)).slice(0, 50);
 
