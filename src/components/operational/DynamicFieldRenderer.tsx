@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -47,6 +48,11 @@ export interface FieldAnswer {
   valor_data?: string | null;
   valor_json?: any;
   evidencia_url?: string | null;
+  // Metadata for display
+  respondido_por_nome?: string | null;
+  respondido_em?: string | null;
+  versao?: number;
+  historico_alteracoes?: Array<{ nome: string; data: string; versao: number }>;
 }
 
 export interface FieldReview {
