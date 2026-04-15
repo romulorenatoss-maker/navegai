@@ -105,16 +105,27 @@ export default function OperationalExecucaoPage() {
         return nome.toLowerCase().includes(term);
       });
     }
+    // Filtro de data: mostra apenas a data selecionada para hoje/a fazer
+    if (filterDate) {
+      list = list.filter((a: any) => {
+        // Tarefas finalizadas/aguardando mostram sempre, o resto filtra por data
+        if (["concluida", "aprovada", "aguardando_avaliacao", "aguardando_aprovacao", "nao_executada"].includes(a.status)) return true;
+        // Devolvidas sempre visíveis
+        if (a.status === "devolvida") return true;
+        return a.data_prevista === filterDate || (a.data_prevista < filterDate && !["concluida", "aprovada"].includes(a.status));
+      });
+    }
     return list;
-  }, [assignments, isAdmin, filterResponsavel, searchTerm]);
+  }, [assignments, isAdmin, filterResponsavel, searchTerm, filterDate]);
 
   const hoje = filteredAssignments.filter((a: any) => 
-    ["pendente", "em_andamento", "devolvida"].includes(a.status) && a.data_prevista === today
+    ["pendente", "em_andamento", "devolvida"].includes(a.status) && a.data_prevista === filterDate
   );
-  const aFazer = filteredAssignments.filter((a: any) => ["pendente"].includes(a.status));
+  const aFazer = filteredAssignments.filter((a: any) => ["pendente"].includes(a.status) && a.data_prevista !== filterDate);
   const emAndamento = filteredAssignments.filter((a: any) => ["em_andamento"].includes(a.status));
   const devolvidas = filteredAssignments.filter((a: any) => ["devolvida"].includes(a.status));
-  const concluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada", "aguardando_avaliacao", "aguardando_aprovacao"].includes(a.status)).slice(0, 50);
+  const aguardandoAvaliacao = filteredAssignments.filter((a: any) => ["aguardando_avaliacao", "aguardando_aprovacao"].includes(a.status));
+  const concluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 50);
 
   const exec = useAssignmentExecution(selectedAssignment?.id || null);
 
