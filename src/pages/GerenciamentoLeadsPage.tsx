@@ -70,6 +70,7 @@ function statusBadge(status: string) {
 export default function GerenciamentoLeadsPage() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // Filters
   const [filterStatus, setFilterStatus] = useState("importado");
