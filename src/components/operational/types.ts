@@ -132,7 +132,7 @@ export const defaultField = (sectionTempId: string, ordem: number): FieldForm =>
   ordem,
   obrigatorio: true,
   peso: 1,
-  nota_maxima: 10,
+  nota_maxima: 100,
   penalidade_reprovacao: 100,
   impacta_score: true,
   criticidade: "media",
