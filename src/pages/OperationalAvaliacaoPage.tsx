@@ -76,6 +76,15 @@ export default function OperationalAvaliacaoPage() {
     [snapshotFields, answersMap]
   );
 
+  // Count executor "não conforme" fields
+  const naoConformeFields = useMemo(() => {
+    return visibleFields.filter(f => {
+      if (f.tipo !== "conforme" && f.tipo !== "sim_nao") return false;
+      const ans = answersMap[f.id];
+      return ans?.valor_booleano === false;
+    });
+  }, [visibleFields, answersMap]);
+
   // FIX #1: Use weighted score preview
   const weightedScore = useMemo(() =>
     review.weightedScorePreview(snapshotFields),
