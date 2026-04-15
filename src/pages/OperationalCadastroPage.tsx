@@ -701,7 +701,7 @@ export default function OperationalCadastroPage() {
                       onCheckedChange={v => {
                         set("repetir_sempre", v);
                         if (v) {
-                          const today = new Date().toISOString().slice(0, 10);
+                          const today = getLocalToday();
                           set("data_inicio", form.data_inicio && form.data_inicio >= today ? form.data_inicio : today);
                           set("data_fim", "");
                         }
