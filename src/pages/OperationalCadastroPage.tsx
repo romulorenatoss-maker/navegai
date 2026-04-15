@@ -126,6 +126,7 @@ export default function OperationalCadastroPage() {
         modo_pontuacao: form.modo_pontuacao,
         destino_score: form.destino_score,
         peso_recorrencia: form.peso_recorrencia,
+        tipo_atribuicao_avaliado: form.tipo_atribuicao_avaliado,
       };
 
       let templateId: string;
