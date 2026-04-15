@@ -664,12 +664,33 @@ export default function OperationalCadastroPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <Label>Multiplicador (Peso na Média)</Label>
                     <Input type="number" min={0.1} max={10} step={0.1} value={form.peso_recorrencia} onChange={e => set("peso_recorrencia", +e.target.value || 1)} />
-                    <p className="text-caption text-muted-foreground">
-                      Auto: Diária=1.0, Semanal=1.5, Quinzenal=2.0, Mensal=3.0. Editável.
-                    </p>
+                    <div className="bg-muted/50 border border-border rounded-md p-2.5 space-y-1">
+                      <p className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Fator peso por periodicidade</p>
+                      <div className="grid grid-cols-5 gap-1">
+                        {[
+                          { label: "Diária", peso: 1.0 },
+                          { label: "Semanal", peso: 1.5 },
+                          { label: "Quinzenal", peso: 2.0 },
+                          { label: "Mensal", peso: 3.0 },
+                          { label: "Pontual", peso: 2.0 },
+                        ].map(item => (
+                          <div
+                            key={item.label}
+                            className={`text-center rounded px-1.5 py-1 text-caption border ${
+                              form.peso_recorrencia === item.peso
+                                ? "bg-primary/10 border-primary text-primary font-semibold"
+                                : "bg-card border-border text-muted-foreground"
+                            }`}
+                          >
+                            <span className="block text-[10px] leading-tight">{item.label}</span>
+                            <span className="block font-bold text-xs">×{item.peso}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
