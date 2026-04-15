@@ -28,6 +28,7 @@ import PlaceholderPage from "./pages/PlaceholderPage";
 import RelatoriosPage from "./pages/RelatoriosPage";
 import DesempenhoColaboradorPage from "./pages/DesempenhoColaboradorPage";
 import DesempenhoOperacionalPage from "./pages/DesempenhoOperacionalPage";
+import RankingsOperacionalPage from "./pages/RankingsOperacionalPage";
 import LeadsPage from "./pages/LeadsPage";
 import FilaLeadsPage from "./pages/FilaLeadsPage";
 import DashboardLeadsPage from "./pages/DashboardLeadsPage";
@@ -77,6 +78,7 @@ const App = () => (
               <Route path="/checklists/aprovacao" element={<OperationalAprovacaoPage />} />
               <Route path="/checklists/contingencias" element={<OperationalContingenciasPage />} />
               <Route path="/checklists/dashboard" element={<DashboardOperacionalKPIPage />} />
+              <Route path="/checklists/rankings" element={<RankingsOperacionalPage />} />
               <Route path="/cadastros/setores" element={<SetoresPage />} />
               <Route path="/cadastros/avaliadores" element={<ColaboradoresPage />} />
               <Route path="/cadastros/colaboradores" element={<ColaboradoresPage />} />
