@@ -4,6 +4,7 @@ import {
   BarChart3, Building2, Users, HelpCircle, Wrench, LogOut, Star,
   PanelLeftClose, PanelLeft, UserPlus, ListOrdered, LayoutGrid, Settings, UserCheck, ClipboardList,
   FileUp, MessageSquare, FileBarChart, Archive, MapPin, Megaphone, Bot, Trophy, CheckSquare,
+  AlertTriangle,
 } from "lucide-react";
 import { Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -44,6 +45,7 @@ const allNavSections = [
       { to: "/checklists/execucao", icon: PlayCircle, label: "Execução" },
       { to: "/checklists/avaliacao", icon: ClipboardCheck, label: "Avaliação" },
       { to: "/checklists/aprovacao", icon: Shield, label: "Aprovação Final" },
+      { to: "/checklists/contingencias", icon: AlertTriangle, label: "Contingências" },
       { to: "/checklists/gestao", icon: FolderKanban, label: "Gestão / Rankings" },
     ],
   },
