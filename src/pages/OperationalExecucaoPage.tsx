@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Play, Send, Save, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search } from "lucide-react";
+import { Play, Send, Save, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
@@ -71,7 +71,7 @@ export default function OperationalExecucaoPage() {
     queryFn: async () => {
       if (!profile?.id) return [];
       let q = (supabase as any).from("operational_assignments")
-        .select("*, operational_templates(nome, tipo_execucao)")
+        .select("*, operational_templates(nome, tipo_execucao), profiles:responsavel_id(id, nome, foto_url)")
         .order("data_prevista", { ascending: true });
       if (!isAdmin) {
         q = q.or(`responsavel_id.eq.${profile.id}`);
@@ -147,7 +147,7 @@ export default function OperationalExecucaoPage() {
   }, [visibleFields, exec.answers]);
 
   const isOwner = selectedAssignment?.responsavel_id === profile?.id;
-  const isEditable = selectedAssignment && ["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status) && (isOwner || !isAdmin);
+  const isEditable = selectedAssignment && ["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status) && (isOwner || isAdmin);
   const isDevolvida = selectedAssignment?.status === "devolvida";
 
   const handleStart = () => {
@@ -279,8 +279,13 @@ export default function OperationalExecucaoPage() {
               </Button>
               <div className="flex-1 min-w-0">
                 <h2 className="text-sm font-semibold text-foreground truncate">{snapshot?.nome || "Rotina"}</h2>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                   <span>{selectedAssignment?.data_prevista}</span>
+                  {selectedAssignment?.horario_limite && (
+                    <span className="flex items-center gap-1 font-medium text-foreground">
+                      <Clock className="w-3 h-3" /> até {selectedAssignment.horario_limite}
+                    </span>
+                  )}
                   {selectedAssignment?.status && (
                     <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${STATUS_CONFIG[selectedAssignment.status]?.class || ""}`}>
                       {STATUS_CONFIG[selectedAssignment.status]?.label}
