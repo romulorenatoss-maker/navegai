@@ -147,7 +147,7 @@ export default function OperationalExecucaoPage() {
   }, [visibleFields, exec.answers]);
 
   const isOwner = selectedAssignment?.responsavel_id === profile?.id;
-  const isEditable = selectedAssignment && ["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status) && (isOwner || !isAdmin);
+  const isEditable = selectedAssignment && ["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status) && (isOwner || isAdmin);
   const isDevolvida = selectedAssignment?.status === "devolvida";
 
   const handleStart = () => {
