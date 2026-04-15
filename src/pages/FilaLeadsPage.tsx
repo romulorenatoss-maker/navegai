@@ -72,12 +72,16 @@ export default function FilaLeadsPage() {
   const [activeTab, setActiveTab] = useState("fila");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // ─── Pagination state (10 per page) ─────
+  // ─── Pagination state ─────
   const PAGE_SIZE = 10;
+  const FILA_PAGE_SIZE = 20;
   const [filaPage, setFilaPage] = useState(1);
   const [capturaPage, setCapturaPage] = useState(1);
   const [tarefaPage, setTarefaPage] = useState(1);
   const [notifPage, setNotifPage] = useState(1);
+
+  // ─── Fila bulk selection ─────
+  const [selectedFilaIds, setSelectedFilaIds] = useState<Set<string>>(new Set());
 
   // Filters
   const [filterStatus, setFilterStatus] = useState("todos");
