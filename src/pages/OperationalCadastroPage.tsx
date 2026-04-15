@@ -319,6 +319,16 @@ export default function OperationalCadastroPage() {
     }));
     setFields(loadedFields);
 
+    // Load steps
+    const { data: stps } = await (supabase as any).from("operational_template_steps")
+      .select("*").eq("template_id", t.id).order("ordem");
+    setSteps((stps || []).map((s: any) => ({
+      id: s.id, tempId: s.id, nome: s.nome, ordem: s.ordem, peso: s.peso,
+      horario_inicio: s.horario_inicio || "08:00", horario_fim: s.horario_fim || "09:00",
+      prazo_limite_minutos: s.prazo_limite_minutos, exige_foto: s.exige_foto || false,
+      exige_observacao: s.exige_observacao || false, exige_video: s.exige_video || false,
+    })));
+
     setActiveTab("geral");
     setDialogOpen(true);
   };
