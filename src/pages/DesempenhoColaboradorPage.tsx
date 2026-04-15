@@ -195,6 +195,11 @@ export default function DesempenhoColaboradorPage() {
       const from = appliedStart ? startOfDay(appliedStart).toISOString() : startOfDay(startOfMonth(now)).toISOString();
       const to = appliedEnd ? endOfDay(appliedEnd).toISOString() : endOfDay(endOfMonth(now)).toISOString();
 
+      // Get the sectors this person belongs to
+      const { data: sectorLinks } = await supabase
+        .from("colaborador_setores").select("setor_id").eq("profile_id", targetProfileId);
+      const mySetorIds = sectorLinks?.map(l => l.setor_id) || [];
+
       const { data: osData } = await supabase
         .from("ordens_servico")
         .select("id")
@@ -222,22 +227,28 @@ export default function DesempenhoColaboradorPage() {
 
       if (!respostas?.length) return [];
 
+      // Get all pergunta details including setor_avaliado_id to filter by person's sectors
+      const allPerguntaIds = [...new Set(respostas.map(r => r.pergunta_id))];
+      const { data: perguntas } = await (supabase as any)
+        .from("perguntas_avaliacao")
+        .select("id, pergunta, setor_avaliado_id")
+        .in("id", allPerguntaIds);
+
+      const perguntaMap: Record<string, { pergunta: string; setor_avaliado_id: string | null }> = {};
+      (perguntas || []).forEach((p: any) => { perguntaMap[p.id] = { pergunta: p.pergunta, setor_avaliado_id: p.setor_avaliado_id }; });
+
+      // Only count errors for questions whose setor_avaliado_id matches the person's sectors
       const errorCount: Record<string, number> = {};
       respostas.forEach(r => {
+        const pInfo = perguntaMap[r.pergunta_id];
+        if (!pInfo) return;
+        const setorId = pInfo.setor_avaliado_id;
+        if (setorId && mySetorIds.length > 0 && !mySetorIds.includes(setorId)) return;
         errorCount[r.pergunta_id] = (errorCount[r.pergunta_id] || 0) + 1;
       });
 
-      const perguntaIds = Object.keys(errorCount);
-      const { data: perguntas } = await supabase
-        .from("perguntas_avaliacao")
-        .select("id, pergunta")
-        .in("id", perguntaIds);
-
-      const perguntaMap: Record<string, string> = {};
-      perguntas?.forEach(p => { perguntaMap[p.id] = p.pergunta; });
-
       return Object.entries(errorCount)
-        .map(([id, count]) => ({ pergunta_id: id, pergunta: perguntaMap[id] || "—", count }))
+        .map(([id, count]) => ({ pergunta_id: id, pergunta: perguntaMap[id]?.pergunta || "—", count }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 10);
     },
