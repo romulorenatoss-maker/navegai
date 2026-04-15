@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { SectionForm, FieldForm, FIELD_TYPES, CRITICIDADE_OPTIONS, SECTION_COLORS, defaultField, defaultSection } from "./types";
+import { SectionForm, FieldForm, FIELD_TYPES, SECTION_COLORS, defaultField, defaultSection } from "./types";
 
 interface Props {
   sections: SectionForm[];
@@ -92,7 +92,7 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
     });
   };
 
-  const crit = (c: string) => CRITICIDADE_OPTIONS.find(o => o.value === c);
+  
 
   return (
     <div className="space-y-3">
@@ -176,9 +176,8 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                                             <SelectTrigger className="h-7 w-[140px] text-caption"><SelectValue /></SelectTrigger>
                                             <SelectContent>{Object.entries(FIELD_TYPES).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
                                           </Select>
-                                          <span className={`text-[10px] px-1.5 py-0.5 rounded border ${crit(field.criticidade)?.color || ""}`}>
-                                            {crit(field.criticidade)?.label}
-                                          </span>
+                                          {field.gera_contingencia && <span className="text-[10px] px-1.5 py-0.5 rounded border border-orange-200 bg-orange-100 text-orange-700">Conting.</span>}
+                                          {field.aprovador_verificar && <span className="text-[10px] px-1.5 py-0.5 rounded border border-primary/30 bg-primary/10 text-primary">Aprovador</span>}
                                           {field.obrigatorio && <span className="text-[10px] text-primary font-medium">Obrig.</span>}
                                           <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100" onClick={() => setEditingField(field)}>
                                             <Settings2 className="w-3.5 h-3.5" />
@@ -309,26 +308,22 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
                 <Switch checked={local.gera_contingencia} onCheckedChange={v => upd("gera_contingencia", v)} />
                 <div>
                   <Label className="cursor-pointer text-sm font-medium">Gera Contingência</Label>
-                  <p className="text-caption text-muted-foreground">Se marcado "Não Conforme", cria contingência automaticamente.</p>
+                  <p className="text-caption text-muted-foreground">Se marcado "Não Conforme", cria contingência automaticamente para o executor resolver.</p>
                 </div>
               </div>
 
               {local.gera_contingencia && (
                 <div className="pl-4 border-l-2 border-orange-300 space-y-2">
-                  <div className="space-y-1.5">
-                    <Label>Criticidade</Label>
-                    <div className="flex gap-2">
-                      {CRITICIDADE_OPTIONS.map(c => (
-                        <button key={c.value} type="button" onClick={() => upd("criticidade", c.value)}
-                          className={`px-3 py-1.5 rounded text-xs font-medium border transition-colors ${
-                            local.criticidade === c.value ? c.color : "bg-card border-border text-muted-foreground hover:bg-muted"
-                          }`}>{c.label}</button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Penalidade por reprovação (pontos)</Label>
-                    <Input type="number" min={0} max={100} value={local.penalidade_reprovacao} onChange={e => upd("penalidade_reprovacao", +e.target.value)} className="max-w-[180px]" />
+                  <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-lg p-3 text-caption space-y-1.5">
+                    <p className="font-medium text-orange-700 dark:text-orange-400 flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5" /> O que acontece ao reprovar:
+                    </p>
+                    <ul className="text-orange-600 dark:text-orange-400/80 space-y-0.5 pl-5 list-disc">
+                      <li>Uma contingência é criada automaticamente para o executor</li>
+                      <li>O executor recebe uma pendência com prazo SLA para solucionar</li>
+                      <li>Um cronômetro de tempo decorrido é iniciado</li>
+                      <li>Penalidades de gamificação são aplicadas conforme configurado em Workflow</li>
+                    </ul>
                   </div>
                 </div>
               )}
@@ -349,26 +344,33 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
                   <Label className="text-caption">Tipo de evidência aceito</Label>
                   <div className="flex gap-2">
                     {[
-                      { tipo: "foto", label: "Foto", icon: Camera },
-                      { tipo: "video", label: "Vídeo", icon: FileVideo },
-                      { tipo: "arquivo", label: "Arquivo", icon: FileText },
+                      { tipo: "foto", label: "Foto", icon: Camera, desc: "Executor tira ou envia foto como prova" },
+                      { tipo: "video", label: "Vídeo", icon: FileVideo, desc: "Executor grava ou envia vídeo" },
+                      { tipo: "arquivo", label: "Arquivo", icon: FileText, desc: "Executor anexa PDF, planilha ou doc" },
                     ].map(ev => (
                       <button key={ev.tipo} type="button" onClick={() => upd("tipo_evidencia", ev.tipo)}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded text-xs font-medium border transition-colors ${
+                        className={`flex flex-col items-center gap-1 px-3 py-2 rounded text-xs font-medium border transition-colors ${
                           local.tipo_evidencia === ev.tipo
                             ? "bg-primary/10 border-primary text-primary"
                             : "bg-card border-border text-muted-foreground hover:bg-muted"
                         }`}>
-                        <ev.icon className="w-3.5 h-3.5" /> {ev.label}
+                        <ev.icon className="w-4 h-4" />
+                        {ev.label}
                       </button>
                     ))}
                     <button type="button" onClick={() => upd("tipo_evidencia", "qualquer")}
-                      className={`flex items-center gap-1.5 px-3 py-2 rounded text-xs font-medium border transition-colors ${
+                      className={`flex flex-col items-center gap-1 px-3 py-2 rounded text-xs font-medium border transition-colors ${
                         local.tipo_evidencia === "qualquer"
                           ? "bg-primary/10 border-primary text-primary"
                           : "bg-card border-border text-muted-foreground hover:bg-muted"
                       }`}>Qualquer</button>
                   </div>
+                  <p className="text-caption text-muted-foreground">
+                    {local.tipo_evidencia === "foto" && "O executor precisará tirar ou enviar uma foto como comprovação."}
+                    {local.tipo_evidencia === "video" && "O executor precisará gravar ou enviar um vídeo como comprovação."}
+                    {local.tipo_evidencia === "arquivo" && "O executor precisará anexar um documento (PDF, planilha, etc)."}
+                    {local.tipo_evidencia === "qualquer" && "O executor pode enviar qualquer tipo de arquivo como comprovação."}
+                  </p>
                 </div>
               )}
             </div>
@@ -523,9 +525,12 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
                             </div>
                           )}
                           {local.gera_contingencia && (
-                            <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded p-2 text-caption text-orange-700 dark:text-orange-400 flex items-center gap-1.5">
-                              <AlertTriangle className="w-3.5 h-3.5" />
-                              Contingência será gerada automaticamente • Criticidade: <strong>{local.criticidade}</strong>
+                            <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded p-2 text-caption text-orange-700 dark:text-orange-400 space-y-1">
+                              <p className="flex items-center gap-1.5 font-medium">
+                                <AlertTriangle className="w-3.5 h-3.5" />
+                                Contingência será gerada automaticamente
+                              </p>
+                              <p className="text-orange-600 dark:text-orange-400/80">Executor receberá pendência com prazo SLA e cronômetro de tempo decorrido.</p>
                             </div>
                           )}
                         </div>
