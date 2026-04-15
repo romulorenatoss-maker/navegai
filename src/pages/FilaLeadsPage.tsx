@@ -644,8 +644,8 @@ export default function FilaLeadsPage() {
   const totalPagesWithSize = (total: number, size: number) => Math.max(1, Math.ceil(total / size));
   const totalPages = (total: number) => totalPagesWithSize(total, PAGE_SIZE);
 
-  const PaginationBar = ({ page, setPage, total }: { page: number; setPage: (p: number) => void; total: number }) => {
-    const tp = totalPages(total);
+  const PaginationBar = ({ page, setPage, total, pageSize = PAGE_SIZE }: { page: number; setPage: (p: number) => void; total: number; pageSize?: number }) => {
+    const tp = totalPagesWithSize(total, pageSize);
     if (tp <= 1) return null;
     return (
       <div className="flex items-center justify-between px-4 py-2 border-t">
