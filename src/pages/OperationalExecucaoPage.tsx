@@ -318,6 +318,19 @@ export default function OperationalExecucaoPage() {
           </AccordionSection>
 
           <AccordionSection
+            title="Aguardando Avaliação"
+            count={aguardandoAvaliacao.length}
+            icon={<Hourglass className="w-4 h-4" style={{ color: "#8b5cf6" }} />}
+            borderColor="#8b5cf6"
+            badgeBg="bg-violet-500/15"
+            badgeText="text-violet-700 dark:text-violet-400"
+            isOpen={openAccordion === "aguardando"}
+            onToggle={() => setOpenAccordion(openAccordion === "aguardando" ? null : "aguardando")}
+          >
+            {aguardandoAvaliacao.length === 0 ? renderEmptyState("Nenhuma rotina aguardando avaliação.") : aguardandoAvaliacao.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+          </AccordionSection>
+
+          <AccordionSection
             title="Finalizadas"
             count={concluidas.length}
             icon={<CheckCheck className="w-4 h-4" style={{ color: "#22c55e" }} />}
