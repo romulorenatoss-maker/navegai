@@ -12,10 +12,10 @@ interface Props {
 }
 
 export function TabWorkflow({ form, set, fields = [] }: Props) {
-  // Deduplicate by tempId and only show fields that have a label (actual questions)
+  // Only fields with aprovador_verificar enabled and a question filled
   const uniqueFields = fields
     .filter((f, i, arr) => arr.findIndex(x => x.tempId === f.tempId) === i)
-    .filter(f => f.label?.trim());
+    .filter(f => f.aprovador_verificar && f.aprovador_pergunta?.trim());
 
   const autoQuestions = [
     { label: "Tarefa executada fora do prazo?", key: "penalidade_fora_prazo" as const, pontos: form.penalidade_fora_prazo },
