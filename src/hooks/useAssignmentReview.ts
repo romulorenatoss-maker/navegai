@@ -343,6 +343,7 @@ export function useAssignmentReview(assignmentId: string | null) {
     getFieldAnswer,
     updateReview,
     updateContingencyPrazo,
+    registerContingencyData,
     markSectionConforme,
     saveReviews,
     startEvaluation,
