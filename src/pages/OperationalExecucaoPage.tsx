@@ -66,19 +66,6 @@ export default function OperationalExecucaoPage() {
   const [filterDate, setFilterDate] = useState<string>(today);
   const [submitAttempted, setSubmitAttempted] = useState(false);
 
-  // Profiles filtrados: só quem tem tarefas em aberto
-  const profilesWithTasks = useMemo(() => {
-    if (!isAdmin) return [];
-    const openStatuses = ["pendente", "em_andamento", "devolvida", "aguardando_avaliacao", "aguardando_aprovacao"];
-    const idsWithTasks = new Set(
-      assignments
-        .filter((a: any) => openStatuses.includes(a.status))
-        .map((a: any) => a.responsavel_id)
-        .filter(Boolean)
-    );
-    return allProfilesRaw.filter((p: any) => idsWithTasks.has(p.id));
-  }, [isAdmin, assignments, allProfilesRaw]);
-
   const { data: allProfilesRaw = [] } = useQuery({
     queryKey: ["profiles_for_exec_filter"],
     queryFn: async () => {
@@ -106,6 +93,19 @@ export default function OperationalExecucaoPage() {
     enabled: !!profile?.id,
     staleTime: 15000,
   });
+
+  // Profiles filtrados: só quem tem tarefas em aberto
+  const profilesWithTasks = useMemo(() => {
+    if (!isAdmin) return [];
+    const openStatuses = ["pendente", "em_andamento", "devolvida", "aguardando_avaliacao", "aguardando_aprovacao"];
+    const idsWithTasks = new Set(
+      assignments
+        .filter((a: any) => openStatuses.includes(a.status))
+        .map((a: any) => a.responsavel_id)
+        .filter(Boolean)
+    );
+    return allProfilesRaw.filter((p: any) => idsWithTasks.has(p.id));
+  }, [isAdmin, assignments, allProfilesRaw]);
 
   const filteredAssignments = useMemo(() => {
     let list = assignments;
