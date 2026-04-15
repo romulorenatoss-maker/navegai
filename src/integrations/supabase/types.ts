@@ -1202,6 +1202,54 @@ export type Database = {
           },
         ]
       }
+      operational_audit_trail: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          dados_anteriores: Json | null
+          dados_novos: Json | null
+          executado_por: string | null
+          id: string
+          motivo: string | null
+          tipo_evento: string
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          dados_anteriores?: Json | null
+          dados_novos?: Json | null
+          executado_por?: string | null
+          id?: string
+          motivo?: string | null
+          tipo_evento: string
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          dados_anteriores?: Json | null
+          dados_novos?: Json | null
+          executado_por?: string | null
+          id?: string
+          motivo?: string | null
+          tipo_evento?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_audit_trail_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "operational_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_audit_trail_executado_por_fkey"
+            columns: ["executado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       operational_contingencies: {
         Row: {
           assignment_id: string
@@ -1670,6 +1718,7 @@ export type Database = {
       operational_templates: {
         Row: {
           ativo: boolean | null
+          bloquear_fechamento_com_contingencia: boolean
           created_at: string
           data_fim: string | null
           data_inicio: string | null
@@ -1688,6 +1737,7 @@ export type Database = {
           prazo_sla_correcao_horas: number | null
           pular_semanas: number | null
           recorrencia_tipo: string
+          requer_aprovacao_gestor: boolean
           responsavel_contingencia_id: string | null
           responsavel_id: string | null
           setor_id: string | null
@@ -1697,6 +1747,7 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean | null
+          bloquear_fechamento_com_contingencia?: boolean
           created_at?: string
           data_fim?: string | null
           data_inicio?: string | null
@@ -1715,6 +1766,7 @@ export type Database = {
           prazo_sla_correcao_horas?: number | null
           pular_semanas?: number | null
           recorrencia_tipo?: string
+          requer_aprovacao_gestor?: boolean
           responsavel_contingencia_id?: string | null
           responsavel_id?: string | null
           setor_id?: string | null
@@ -1724,6 +1776,7 @@ export type Database = {
         }
         Update: {
           ativo?: boolean | null
+          bloquear_fechamento_com_contingencia?: boolean
           created_at?: string
           data_fim?: string | null
           data_inicio?: string | null
@@ -1742,6 +1795,7 @@ export type Database = {
           prazo_sla_correcao_horas?: number | null
           pular_semanas?: number | null
           recorrencia_tipo?: string
+          requer_aprovacao_gestor?: boolean
           responsavel_contingencia_id?: string | null
           responsavel_id?: string | null
           setor_id?: string | null
