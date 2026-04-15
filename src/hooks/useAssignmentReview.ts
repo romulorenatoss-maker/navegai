@@ -197,8 +197,10 @@ export function useAssignmentReview(assignmentId: string | null) {
           if (field?.gera_contingencia) {
             const existingContingency = contingencies.find((c: any) => c.origin_field_id === r.field_id && !["validada", "descartada"].includes(c.status));
             if (!existingContingency) {
+              // Use custom prazo if available, otherwise fallback to template SLA
+              const customPrazoHoras = contingencyPrazos[r.field_id];
               const templateSnapshot = assignment.template_snapshot;
-              const slaHours = templateSnapshot?.prazo_sla_correcao_horas || 24;
+              const slaHours = customPrazoHoras || templateSnapshot?.prazo_sla_correcao_horas || 24;
               const prazoSla = new Date(Date.now() + slaHours * 3600000).toISOString();
 
               await (supabase as any).from("operational_contingencies").insert({
