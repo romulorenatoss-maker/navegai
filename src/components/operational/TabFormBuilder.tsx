@@ -258,7 +258,7 @@ function FieldDetailDialog({ field, onSave, onClose }: { field: FieldForm; onSav
             <Textarea value={local.descricao} onChange={e => upd("descricao", e.target.value)} placeholder="Instruções para o executor..." maxLength={1000} />
           </div>
 
-          {/* Toggles */}
+          {/* Peso removido — Toggles */}
           <div className="grid grid-cols-2 gap-3">
             {[
               { k: "obrigatorio" as const, l: "Obrigatório" },
@@ -322,28 +322,6 @@ function FieldDetailDialog({ field, onSave, onClose }: { field: FieldForm; onSav
             </div>
           </div>
 
-          {/* Validação avançada */}
-          <div className="space-y-1.5">
-            <Label>Validação Avançada (JSON)</Label>
-            <Textarea
-              value={local.validacao ? JSON.stringify(local.validacao, null, 2) : ""}
-              onChange={e => { try { upd("validacao", e.target.value ? JSON.parse(e.target.value) : null); } catch {} }}
-              placeholder='{"min": 0, "max": 100, "regex": "^\\d+$"}'
-              rows={3} className="font-mono text-xs"
-            />
-            <p className="text-caption text-muted-foreground">Campos: min, max, regex, extensoes_permitidas, tamanho_maximo_mb</p>
-          </div>
-
-          {/* Condição de visibilidade */}
-          <div className="space-y-1.5">
-            <Label>Condição de Visibilidade (JSON)</Label>
-            <Textarea
-              value={local.condicao_visibilidade ? JSON.stringify(local.condicao_visibilidade, null, 2) : ""}
-              onChange={e => { try { upd("condicao_visibilidade", e.target.value ? JSON.parse(e.target.value) : null); } catch {} }}
-              placeholder='{"campo_ref": "field_id", "operador": "igual", "valor": true}'
-              rows={3} className="font-mono text-xs"
-            />
-          </div>
 
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
