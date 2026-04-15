@@ -17,6 +17,7 @@ export function useAssignmentReview(assignmentId: string | null) {
   const { profile } = useAuth();
   const qc = useQueryClient();
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, FieldReviewDraft>>({});
+  const [contingencyPrazos, setContingencyPrazos] = useState<Record<string, number>>({});
 
   // Load existing answers for this assignment
   const { data: fieldAnswers = [] } = useQuery({
