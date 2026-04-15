@@ -84,15 +84,25 @@ export default function DesempenhoOperacionalPage() {
   });
 
   // ── Computed stats ──
+  // ── Computed stats (with weighted average using multiplicador) ──
   const myExecutorLogs = scoreLogs.filter((s: any) => s.tipo_score === "executor" && s.profile_id === profileId);
   const myAvaliadoLogs = scoreLogs.filter((s: any) => s.tipo_score === "avaliado" && s.target_profile_id === profileId);
   const myAvaliadorLogs = scoreLogs.filter((s: any) => s.tipo_score === "avaliador" && s.profile_id === profileId);
 
-  const avg = (logs: any[]) => logs.length > 0 ? Math.round(logs.reduce((a: number, b: any) => a + (b.score_final || 0), 0) / logs.length) : null;
+  const weightedAvg = (logs: any[]) => {
+    if (logs.length === 0) return null;
+    let sumWeighted = 0, sumWeights = 0;
+    logs.forEach((l: any) => {
+      const w = l.detalhe_calculo?.peso_recorrencia ?? 1;
+      sumWeighted += (l.score_final || 0) * w;
+      sumWeights += w;
+    });
+    return sumWeights > 0 ? Math.round(sumWeighted / sumWeights) : null;
+  };
 
-  const avgExecutor = avg(myExecutorLogs);
-  const avgAvaliado = avg(myAvaliadoLogs);
-  const avgAvaliador = avg(myAvaliadorLogs);
+  const avgExecutor = weightedAvg(myExecutorLogs);
+  const avgAvaliado = weightedAvg(myAvaliadoLogs);
+  const avgAvaliador = weightedAvg(myAvaliadorLogs);
 
   // ── Rankings ──
   const rankings = useMemo(() => {
@@ -136,11 +146,12 @@ export default function DesempenhoOperacionalPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <SummaryCard icon={<Target className="w-5 h-5" />} label="Média Executor" value={avgExecutor} />
-        <SummaryCard icon={<User className="w-5 h-5" />} label="Média como Avaliado" value={avgAvaliado} />
-        <SummaryCard icon={<BarChart3 className="w-5 h-5" />} label="Média como Avaliador" value={avgAvaliador} />
-        <SummaryCard icon={<Trophy className="w-5 h-5" />} label="Posição no Ranking" value={myRankPosition || null} suffix={`/ ${rankings.length}`} plain />
+        <SummaryCard icon={<User className="w-5 h-5" />} label="Média Avaliado" value={avgAvaliado} />
+        <SummaryCard icon={<BarChart3 className="w-5 h-5" />} label="Média Avaliador" value={avgAvaliador} />
+        <SummaryCard icon={<TrendingUp className="w-5 h-5" />} label="Nota Global" value={avgExecutor != null ? Math.round((avgExecutor || 0) * 0.4 + 0) : null} suffix="(Op 40%)" />
+        <SummaryCard icon={<Trophy className="w-5 h-5" />} label="Posição Ranking" value={myRankPosition || null} suffix={`/ ${rankings.length}`} plain />
       </div>
 
       {/* Tabs */}
@@ -172,6 +183,9 @@ export default function DesempenhoOperacionalPage() {
                           <p className="text-body font-medium text-foreground truncate">{template?.nome || "—"}</p>
                           <p className="text-caption text-muted-foreground">
                             {assignment?.data_prevista ? format(new Date(assignment.data_prevista), "dd/MM/yyyy") : "—"} · {template?.tipo_execucao || "—"}
+                            {det.peso_recorrencia && det.peso_recorrencia !== 1 && (
+                              <span className="ml-1 text-primary font-medium">×{det.peso_recorrencia}</span>
+                            )}
                           </p>
                         </div>
                         <div className="flex items-center gap-3">
