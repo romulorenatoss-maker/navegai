@@ -2151,6 +2151,7 @@ export type Database = {
       }
       operational_template_fields: {
         Row: {
+          aprovador_verificar: boolean
           condicao_visibilidade: Json | null
           created_at: string
           criticidade: string
@@ -2176,6 +2177,7 @@ export type Database = {
           visivel_para: string[]
         }
         Insert: {
+          aprovador_verificar?: boolean
           condicao_visibilidade?: Json | null
           created_at?: string
           criticidade?: string
@@ -2201,6 +2203,7 @@ export type Database = {
           visivel_para?: string[]
         }
         Update: {
+          aprovador_verificar?: boolean
           condicao_visibilidade?: Json | null
           created_at?: string
           criticidade?: string
