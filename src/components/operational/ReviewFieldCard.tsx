@@ -49,9 +49,17 @@ function renderAnswerValue(field: SnapshotField, answer: any) {
 export function ReviewFieldCard({ field, answer, review, previousReview, onChange, disabled }: Props) {
   const draft: FieldReviewDraft = review || { field_id: field.id, conforme: null, observacao: "", devolvido: false, motivo_devolucao: "" };
   const isReincidente = previousReview?.conforme === false;
+  const executorNaoConforme = (field.tipo === "conforme" || field.tipo === "sim_nao") && answer?.valor_booleano === false;
 
   return (
-    <div className={`border rounded-lg overflow-hidden transition-colors ${draft.conforme === false ? "border-red-300 bg-red-50/30" : draft.conforme === true ? "border-green-300 bg-green-50/30" : "border-border bg-card"}`}>
+    <div className={`border rounded-lg overflow-hidden transition-colors ${draft.conforme === false ? "border-red-300 bg-red-50/30" : draft.conforme === true ? "border-green-300 bg-green-50/30" : executorNaoConforme ? "border-orange-300 bg-orange-50/20" : "border-border bg-card"}`}>
+      {/* Executor não conforme alert */}
+      {executorNaoConforme && draft.conforme === null && (
+        <div className="bg-orange-100 border-b border-orange-200 px-3 py-1.5 flex items-center gap-2">
+          <AlertTriangle className="w-3.5 h-3.5 text-orange-700" />
+          <span className="text-[11px] font-medium text-orange-800">Executor marcou como Não Conforme — requer avaliação</span>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-border/50">
         <div className="flex items-center gap-2">
