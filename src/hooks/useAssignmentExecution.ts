@@ -76,7 +76,8 @@ export function useAssignmentExecution(assignmentId: string | null) {
       saveDraft();
     }, 5000);
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
-  }, [answers, dirty]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [answers, dirty, assignmentId, profile?.id]);
 
   const saveDraft = useCallback(async () => {
     if (!assignmentId || !profile?.id || !dirty) return;

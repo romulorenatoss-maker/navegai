@@ -245,7 +245,7 @@ export default function OperationalExecucaoPage() {
                     {snapshotFields.map(f => (
                       <DynamicFieldRenderer key={f.id} field={f} answer={exec.answers[f.id]}
                         review={exec.getLatestReview(f.id)} userRole="executor"
-                        disabled={isDevolvida && !exec.getLatestReview(f.id)?.devolvido}
+                        disabled={isDevolvida && exec.getLatestReview(f.id)?.devolvido !== true}
                         allAnswers={exec.answers} onChange={exec.updateAnswer} assignmentId={selectedAssignment.id} />
                     ))}
                   </div>
@@ -264,7 +264,7 @@ export default function OperationalExecucaoPage() {
                           {sFields.map(f => (
                             <DynamicFieldRenderer key={f.id} field={f} answer={exec.answers[f.id]}
                               review={exec.getLatestReview(f.id)} userRole="executor"
-                              disabled={isDevolvida && !exec.getLatestReview(f.id)?.devolvido}
+                              disabled={isDevolvida && exec.getLatestReview(f.id)?.devolvido !== true}
                               allAnswers={exec.answers} onChange={exec.updateAnswer} assignmentId={selectedAssignment.id} />
                           ))}
                         </div>
