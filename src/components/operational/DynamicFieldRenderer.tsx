@@ -86,7 +86,8 @@ function validateField(field: SnapshotField, answer: FieldAnswer | undefined): s
     answer.valor_numero != null ||
     answer.valor_booleano != null ||
     answer.valor_data != null ||
-    answer.valor_json != null
+    answer.valor_json != null ||
+    answer.evidencia_url != null && answer.evidencia_url !== ""
   );
 
   if (field.obrigatorio && !hasValue) return "Campo obrigatório";
