@@ -4,12 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Play, Send, Save, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock } from "lucide-react";
+import { Play, Send, Save, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock, CircleDot, RotateCcw, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { STATUS_CONFIG } from "@/hooks/useOperationalScoring";
 import { AssignmentCard } from "@/components/operational/AssignmentCard";
 import { DynamicFieldRenderer, SnapshotField, FieldAnswer, evaluateVisibility } from "@/components/operational/DynamicFieldRenderer";
@@ -19,29 +18,38 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 interface AccordionSectionProps {
   title: string;
   count: number;
-  colorClass: string;
+  icon: React.ReactNode;
+  borderColor: string;
   badgeBg: string;
-  defaultOpen?: boolean;
+  badgeText: string;
+  isOpen: boolean;
+  onToggle: () => void;
   children: React.ReactNode;
 }
 
-function AccordionSection({ title, count, colorClass, badgeBg, defaultOpen = false, children }: AccordionSectionProps) {
-  const [open, setOpen] = useState(defaultOpen);
+function AccordionSection({ title, count, icon, borderColor, badgeBg, badgeText, isOpen, onToggle, children }: AccordionSectionProps) {
   return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-3 bg-card border border-border rounded-lg hover:bg-muted/50 transition-colors active:scale-[0.99]">
-        <div className="flex items-center gap-2.5">
-          <span className="text-sm font-medium text-foreground">{title}</span>
-          <span className={`inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-[11px] font-semibold ${badgeBg} ${colorClass}`}>
+    <div className={`rounded-xl border overflow-hidden transition-all duration-300 ${isOpen ? "shadow-md border-transparent" : "border-border hover:border-muted-foreground/20"}`}
+      style={{ borderLeftWidth: "4px", borderLeftColor: borderColor }}>
+      <button type="button" onClick={onToggle}
+        className={`w-full flex items-center justify-between px-4 py-3.5 transition-colors ${isOpen ? "bg-muted/60" : "bg-card hover:bg-muted/30"}`}>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ backgroundColor: `${borderColor}15` }}>
+            {icon}
+          </div>
+          <span className="text-sm font-semibold text-foreground">{title}</span>
+          <span className={`inline-flex items-center justify-center min-w-[24px] h-6 px-2 rounded-full text-xs font-bold ${badgeBg} ${badgeText}`}>
             {count}
           </span>
         </div>
-        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
-      </CollapsibleTrigger>
-      <CollapsibleContent className="mt-2 space-y-2">
-        {children}
-      </CollapsibleContent>
-    </Collapsible>
+        <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} />
+      </button>
+      <div className={`transition-all duration-300 ease-in-out ${isOpen ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0 overflow-hidden"}`}>
+        <div className="px-4 pb-4 pt-2 space-y-2">
+          {children}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -53,6 +61,7 @@ export default function OperationalExecucaoPage() {
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [filterResponsavel, setFilterResponsavel] = useState<string>("__all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [openAccordion, setOpenAccordion] = useState<string | null>("pendentes");
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -229,9 +238,12 @@ export default function OperationalExecucaoPage() {
           <AccordionSection
             title="Pendentes"
             count={pendentes.length}
-            colorClass="text-yellow-700"
-            badgeBg="bg-yellow-500/20"
-            defaultOpen={pendentes.length > 0}
+            icon={<Clock className="w-4 h-4" style={{ color: "#eab308" }} />}
+            borderColor="#eab308"
+            badgeBg="bg-yellow-500/15"
+            badgeText="text-yellow-700 dark:text-yellow-400"
+            isOpen={openAccordion === "pendentes"}
+            onToggle={() => setOpenAccordion(openAccordion === "pendentes" ? null : "pendentes")}
           >
             {pendentes.length === 0 ? renderEmptyState("Nenhuma rotina pendente.") : pendentes.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
           </AccordionSection>
@@ -239,9 +251,12 @@ export default function OperationalExecucaoPage() {
           <AccordionSection
             title="Em Andamento"
             count={emAndamento.length}
-            colorClass="text-primary"
-            badgeBg="bg-primary/20"
-            defaultOpen={emAndamento.length > 0}
+            icon={<CircleDot className="w-4 h-4" style={{ color: "#3b82f6" }} />}
+            borderColor="#3b82f6"
+            badgeBg="bg-blue-500/15"
+            badgeText="text-blue-700 dark:text-blue-400"
+            isOpen={openAccordion === "andamento"}
+            onToggle={() => setOpenAccordion(openAccordion === "andamento" ? null : "andamento")}
           >
             {emAndamento.length === 0 ? renderEmptyState("Nenhuma rotina em andamento.") : emAndamento.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
           </AccordionSection>
@@ -249,18 +264,25 @@ export default function OperationalExecucaoPage() {
           <AccordionSection
             title="Devolvidas"
             count={devolvidas.length}
-            colorClass="text-destructive"
-            badgeBg="bg-destructive/20"
-            defaultOpen={devolvidas.length > 0}
+            icon={<RotateCcw className="w-4 h-4" style={{ color: "#ef4444" }} />}
+            borderColor="#ef4444"
+            badgeBg="bg-red-500/15"
+            badgeText="text-red-700 dark:text-red-400"
+            isOpen={openAccordion === "devolvidas"}
+            onToggle={() => setOpenAccordion(openAccordion === "devolvidas" ? null : "devolvidas")}
           >
             {devolvidas.length === 0 ? renderEmptyState("Nenhuma rotina devolvida.") : devolvidas.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
           </AccordionSection>
 
           <AccordionSection
-            title="Finalizada"
+            title="Finalizadas"
             count={concluidas.length}
-            colorClass="text-green-700"
-            badgeBg="bg-green-500/20"
+            icon={<CheckCheck className="w-4 h-4" style={{ color: "#22c55e" }} />}
+            borderColor="#22c55e"
+            badgeBg="bg-green-500/15"
+            badgeText="text-green-700 dark:text-green-400"
+            isOpen={openAccordion === "finalizadas"}
+            onToggle={() => setOpenAccordion(openAccordion === "finalizadas" ? null : "finalizadas")}
           >
             {concluidas.length === 0 ? renderEmptyState("Nenhuma rotina finalizada.") : concluidas.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
           </AccordionSection>
