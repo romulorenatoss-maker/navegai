@@ -666,30 +666,28 @@ export default function OperationalCadastroPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Multiplicador (Peso na Média)</Label>
-                    <Input type="number" min={0.1} max={10} step={0.1} value={form.peso_recorrencia} onChange={e => set("peso_recorrencia", +e.target.value || 1)} />
-                    <div className="bg-muted/50 border border-border rounded-md p-2.5 space-y-1">
-                      <p className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Fator peso por periodicidade</p>
-                      <div className="grid grid-cols-5 gap-1">
-                        {[
-                          { label: "Diária", peso: 1.0 },
-                          { label: "Semanal", peso: 1.5 },
-                          { label: "Quinzenal", peso: 2.0 },
-                          { label: "Mensal", peso: 3.0 },
-                          { label: "Pontual", peso: 2.0 },
-                        ].map(item => (
-                          <div
-                            key={item.label}
-                            className={`text-center rounded px-1.5 py-1 text-caption border ${
-                              form.peso_recorrencia === item.peso
-                                ? "bg-primary/10 border-primary text-primary font-semibold"
-                                : "bg-card border-border text-muted-foreground"
-                            }`}
-                          >
-                            <span className="block text-[10px] leading-tight">{item.label}</span>
-                            <span className="block font-bold text-xs">×{item.peso}</span>
-                          </div>
-                        ))}
-                      </div>
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {[
+                        { label: "Diária", peso: 1.0 },
+                        { label: "Semanal", peso: 1.5 },
+                        { label: "Quinzenal", peso: 2.0 },
+                        { label: "Mensal", peso: 3.0 },
+                        { label: "Pontual", peso: 2.0 },
+                      ].map(item => (
+                        <button
+                          type="button"
+                          key={item.label}
+                          onClick={() => set("peso_recorrencia", item.peso)}
+                          className={`text-center rounded-md px-1.5 py-2 border transition-colors cursor-pointer ${
+                            form.peso_recorrencia === item.peso
+                              ? "bg-primary/10 border-primary text-primary ring-1 ring-primary/30 font-semibold"
+                              : "bg-card border-border text-muted-foreground hover:border-primary/40 hover:bg-muted"
+                          }`}
+                        >
+                          <span className="block text-[10px] leading-tight">{item.label}</span>
+                          <span className="block font-bold text-sm">×{item.peso}</span>
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>
