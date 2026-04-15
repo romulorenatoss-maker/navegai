@@ -195,6 +195,7 @@ export default function OperationalExecucaoPage() {
   };
 
   const handleSubmit = () => {
+    setSubmitAttempted(true);
     const visibleFields = snapshotFields.filter(f =>
       evaluateVisibility(f.condicao_visibilidade, exec.answers)
     );
@@ -209,6 +210,7 @@ export default function OperationalExecucaoPage() {
         onSuccess: () => {
           setExecDialogOpen(false);
           setSelectedAssignment(null);
+          setSubmitAttempted(false);
         },
       }
     );
