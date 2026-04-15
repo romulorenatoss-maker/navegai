@@ -270,17 +270,30 @@ export default function OperationalExecucaoPage() {
         {isAdmin && (
           <Select value={filterResponsavel} onValueChange={setFilterResponsavel}>
             <SelectTrigger className="w-[200px] h-9">
-              <SelectValue placeholder="Todos" />
+              <Filter className="w-3.5 h-3.5 mr-1" />
+              <SelectValue placeholder="Visão de..." />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="__all">Todos</SelectItem>
-              {allProfiles.map((p: any) => (
-                <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+              <SelectItem value="__all">Todos os executores</SelectItem>
+              {profilesWithTasks.map((p: any) => (
+                <SelectItem key={p.id} value={p.id}>👁 {p.nome}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         )}
       </div>
+
+      {/* Admin vision mode banner */}
+      {isAdmin && filterResponsavel !== "__all" && (
+        <div className="mb-4 flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-lg px-3 py-2">
+          <span className="text-sm font-medium text-primary">
+            👁 Modo Visão: {profilesWithTasks.find((p: any) => p.id === filterResponsavel)?.nome || "Colaborador"}
+          </span>
+          <Button size="sm" variant="ghost" className="ml-auto h-7 text-xs" onClick={() => setFilterResponsavel("__all")}>
+            Sair da visão
+          </Button>
+        </div>
+      )}
 
       {/* Accordion sections */}
       {isLoading ? (
