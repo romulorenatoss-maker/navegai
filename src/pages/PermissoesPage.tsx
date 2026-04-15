@@ -214,7 +214,29 @@ export default function PermissoesPage() {
     },
   });
 
-  if (!isAdmin) {
+  const deactivateUser = useMutation({
+    mutationFn: async (profileId: string) => {
+      // Remove group assignments
+      await supabase.from("user_group_assignments").delete().eq("profile_id", profileId);
+      // Remove overrides
+      await supabase.from("user_permission_overrides").delete().eq("profile_id", profileId);
+      // Remove screen permissions
+      await supabase.from("permissoes_tela").delete().eq("profile_id", profileId);
+      // Deactivate profile
+      const { error } = await supabase.from("profiles").update({ ativo: false } as any).eq("id", profileId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Usuário desativado e permissões removidas!");
+      setSelectedProfileId("");
+      queryClient.invalidateQueries({ queryKey: ["perm-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["perm-user-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["perm-user-overrides"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const filteredProfiles = profiles.filter((p: any) => filterCargo === "all" || p.cargo === filterCargo);
     return <div className="p-6 text-muted-foreground">Acesso restrito a administradores.</div>;
   }
 
