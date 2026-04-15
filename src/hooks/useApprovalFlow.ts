@@ -19,10 +19,18 @@ export interface OverrideDraft {
   justificativa: string;
 }
 
+export interface ApproverAnswerDraft {
+  field_id: string;
+  resposta: string; // conforme | nao_conforme | na
+  observacao: string;
+  peso: number;
+}
+
 export function useApprovalFlow(assignmentId: string | null) {
   const { profile } = useAuth();
   const qc = useQueryClient();
   const [overrideDraft, setOverrideDraft] = useState<OverrideDraft | null>(null);
+  const [approverAnswers, setApproverAnswers] = useState<Record<string, ApproverAnswerDraft>>({});
 
   // Load field answers
   const { data: fieldAnswers = [] } = useQuery({
