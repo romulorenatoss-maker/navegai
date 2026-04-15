@@ -349,10 +349,14 @@ export default function TaskExecucaoPage() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="w-full grid grid-cols-5 mb-4">
+        <TabsList className="w-full grid grid-cols-7 mb-4">
           <TabsTrigger value="hoje" className="text-caption">Hoje ({filtered.hoje.length})</TabsTrigger>
-          <TabsTrigger value="pendentes" className="text-caption">Pendentes ({filtered.pendentes.length})</TabsTrigger>
+          <TabsTrigger value="pendentes" className="text-caption">Futuras ({filtered.pendentes.length})</TabsTrigger>
           <TabsTrigger value="atrasadas" className="text-caption">Atraso ({filtered.atrasadas.length})</TabsTrigger>
+          <TabsTrigger value="devolvidas" className="text-caption">
+            <span className={filtered.devolvidas.length > 0 ? "text-orange-600" : ""}>Devolvidas ({filtered.devolvidas.length})</span>
+          </TabsTrigger>
+          <TabsTrigger value="aguardando" className="text-caption">Avaliação ({filtered.aguardando.length})</TabsTrigger>
           <TabsTrigger value="concluidas" className="text-caption">OK ({filtered.concluidas.length})</TabsTrigger>
           <TabsTrigger value="historico" className="text-caption">Histórico</TabsTrigger>
         </TabsList>
@@ -365,10 +369,16 @@ export default function TaskExecucaoPage() {
               {filtered.hoje.length === 0 ? <p className="text-center text-muted-foreground py-8">Nenhuma tarefa para hoje 🎉</p> : filtered.hoje.map(renderCard)}
             </TabsContent>
             <TabsContent value="pendentes" className="space-y-3 mt-0">
-              {filtered.pendentes.length === 0 ? <p className="text-center text-muted-foreground py-8">Sem pendências</p> : filtered.pendentes.map(renderCard)}
+              {filtered.pendentes.length === 0 ? <p className="text-center text-muted-foreground py-8">Sem pendências futuras</p> : filtered.pendentes.map(renderCard)}
             </TabsContent>
             <TabsContent value="atrasadas" className="space-y-3 mt-0">
               {filtered.atrasadas.length === 0 ? <p className="text-center text-muted-foreground py-8">Nenhuma tarefa em atraso 👍</p> : filtered.atrasadas.map(renderCard)}
+            </TabsContent>
+            <TabsContent value="devolvidas" className="space-y-3 mt-0">
+              {filtered.devolvidas.length === 0 ? <p className="text-center text-muted-foreground py-8">Sem devoluções pendentes</p> : filtered.devolvidas.map(renderCard)}
+            </TabsContent>
+            <TabsContent value="aguardando" className="space-y-3 mt-0">
+              {filtered.aguardando.length === 0 ? <p className="text-center text-muted-foreground py-8">Nenhuma tarefa aguardando avaliação</p> : filtered.aguardando.map(renderCard)}
             </TabsContent>
             <TabsContent value="concluidas" className="space-y-3 mt-0">
               {filtered.concluidas.length === 0 ? <p className="text-center text-muted-foreground py-8">Nada concluído ainda</p> : filtered.concluidas.map(renderCard)}
