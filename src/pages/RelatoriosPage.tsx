@@ -831,6 +831,8 @@ export default function RelatoriosPage() {
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Data Abertura</th>
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Cliente</th>
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Tipo de Serviço</th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Técnico</th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Atendente</th>
                   <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Status</th>
                   <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 w-16">Ações</th>
                 </tr>
@@ -856,6 +858,8 @@ export default function RelatoriosPage() {
                     </td>
                     <td className="px-4 py-3 text-body text-muted-foreground">{item.cliente_nome || "—"}</td>
                     <td className="px-4 py-3 text-body text-muted-foreground">{item.tipo_servico_nome || "—"}</td>
+                    <td className="px-4 py-3 text-body text-muted-foreground">{item.tecnico_nome || <span className="text-destructive font-medium">—</span>}</td>
+                    <td className="px-4 py-3 text-body text-muted-foreground">{item.atendente_nome || <span className="text-destructive font-medium">—</span>}</td>
                     <td className="px-4 py-3">
                       <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border", statusBadge[item.status])}>
                         {statusText[item.status] || item.status}
