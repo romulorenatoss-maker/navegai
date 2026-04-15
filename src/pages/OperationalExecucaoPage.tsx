@@ -112,8 +112,9 @@ export default function OperationalExecucaoPage() {
     return Math.round((filled / visibleFields.length) * 100);
   }, [visibleFields, exec.answers]);
 
-  // Is assignment editable by current user?
-  const isEditable = selectedAssignment && ["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status);
+  // Is assignment editable by current user? Admin viewing others' tasks = read-only
+  const isOwner = selectedAssignment?.responsavel_id === profile?.id;
+  const isEditable = selectedAssignment && ["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status) && (isOwner || !isAdmin);
   const isDevolvida = selectedAssignment?.status === "devolvida";
 
   const handleStart = () => {
