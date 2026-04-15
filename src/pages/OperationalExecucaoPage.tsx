@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Play, Send, Save, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search } from "lucide-react";
+import { Play, Send, Save, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
