@@ -10,8 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Shield, Users, Eye, PenLine, Plus, Trash2, Save, Lock } from "lucide-react";
+import { Shield, Users, Eye, PenLine, Plus, Trash2, Save, Lock, UserX } from "lucide-react";
 
 type DataScopeValue = "none" | "own" | "team" | "all";
 const SCOPE_LABELS: Record<DataScopeValue, string> = { none: "Nenhum", own: "Próprio", team: "Equipe", all: "Todos" };
@@ -75,6 +76,7 @@ export default function PermissoesPage() {
   const queryClient = useQueryClient();
   const [selectedGroupId, setSelectedGroupId] = useState<string>("");
   const [selectedProfileId, setSelectedProfileId] = useState<string>("");
+  const [filterCargo, setFilterCargo] = useState<string>("administrador");
   const [newGroupDialog, setNewGroupDialog] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupDesc, setNewGroupDesc] = useState("");
@@ -212,6 +214,30 @@ export default function PermissoesPage() {
     },
   });
 
+  const deactivateUser = useMutation({
+    mutationFn: async (profileId: string) => {
+      // Remove group assignments
+      await supabase.from("user_group_assignments").delete().eq("profile_id", profileId);
+      // Remove overrides
+      await supabase.from("user_permission_overrides").delete().eq("profile_id", profileId);
+      // Remove screen permissions
+      await supabase.from("permissoes_tela").delete().eq("profile_id", profileId);
+      // Deactivate profile
+      const { error } = await supabase.from("profiles").update({ ativo: false } as any).eq("id", profileId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Usuário desativado e permissões removidas!");
+      setSelectedProfileId("");
+      queryClient.invalidateQueries({ queryKey: ["perm-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["perm-user-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["perm-user-overrides"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const filteredProfiles = profiles.filter((p: any) => filterCargo === "all" || p.cargo === filterCargo);
+
   if (!isAdmin) {
     return <div className="p-6 text-muted-foreground">Acesso restrito a administradores.</div>;
   }
@@ -343,14 +369,56 @@ export default function PermissoesPage() {
 
         {/* USERS TAB */}
         <TabsContent value="users" className="space-y-4">
-          <Select value={selectedProfileId} onValueChange={setSelectedProfileId}>
-            <SelectTrigger className="w-64"><SelectValue placeholder="Selecione um usuário" /></SelectTrigger>
-            <SelectContent>
-              {profiles.map((p: any) => (
-                <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo})</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="w-40">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Cargo</label>
+              <Select value={filterCargo} onValueChange={v => { setFilterCargo(v); setSelectedProfileId(""); }}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="administrador">Administrador</SelectItem>
+                  <SelectItem value="avaliador">Avaliador</SelectItem>
+                  <SelectItem value="avaliado">Avaliado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Usuário</label>
+              <Select value={selectedProfileId} onValueChange={setSelectedProfileId}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione um usuário" /></SelectTrigger>
+                <SelectContent>
+                  {filteredProfiles.map((p: any) => (
+                    <SelectItem key={p.id} value={p.id}>{p.nome} ({p.cargo})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {selectedProfileId && (
+              <div className="flex items-end">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="sm" variant="destructive" className="gap-1.5 h-9 mt-auto">
+                      <UserX className="w-4 h-4" /> Desativar Usuário
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Desativar usuário?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        O perfil será desativado e todas as permissões (grupos, overrides e telas) serão removidas. Esta ação pode ser revertida reativando o colaborador.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => deactivateUser.mutate(selectedProfileId)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Desativar
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            )}
+          </div>
 
           {selectedProfileId && (
             <div className="grid gap-4 md:grid-cols-2">
