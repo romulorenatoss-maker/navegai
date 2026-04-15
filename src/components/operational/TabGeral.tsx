@@ -28,7 +28,15 @@ type RoleConfig = {
   showSetorMembers?: boolean;
 };
 
-export function TabGeral({ form, set, setores, colaboradores }: Props) {
+  const [membrosDialogOpen, setMembrosDialogOpen] = useState(false);
+  const [membrosDialogTitle, setMembrosDialogTitle] = useState("");
+  const [membrosDialogList, setMembrosDialogList] = useState<any[]>([]);
+
+  const openMembrosDialog = (title: string, membros: any[]) => {
+    setMembrosDialogTitle(title);
+    setMembrosDialogList(membros);
+    setMembrosDialogOpen(true);
+  };
   // Fetch colaborador_setores to know who belongs to which sector
   const { data: colaboradorSetores = [] } = useQuery({
     queryKey: ["colaborador_setores_all"],
