@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { STATUS_CONFIG, CONTINGENCY_STATUS, AUDIT_EVENT_LABELS } from "@/hooks/useOperationalScoring";
-import { BarChart3, AlertTriangle, CheckCircle2, Clock, Users, Shield, RotateCcw, History, ThumbsUp, ThumbsDown } from "lucide-react";
+import { BarChart3, AlertTriangle, CheckCircle2, Clock, Users, Shield, RotateCcw, History, ThumbsUp, ThumbsDown, Pencil } from "lucide-react";
 
 export default function OperationalGestaoPage() {
   const { profile } = useAuth();
@@ -29,7 +29,9 @@ export default function OperationalGestaoPage() {
   const [approvalDialog, setApprovalDialog] = useState<{ open: boolean; assignment: any; action: "aprovar" | "reprovar" }>({ open: false, assignment: null, action: "aprovar" });
   const [reopenDialog, setReopenDialog] = useState<{ open: boolean; assignment: any }>({ open: false, assignment: null });
   const [auditDialog, setAuditDialog] = useState<{ open: boolean; assignmentId: string | null }>({ open: false, assignmentId: null });
+  const [scoreDialog, setScoreDialog] = useState<{ open: boolean; assignment: any }>({ open: false, assignment: null });
   const [motivo, setMotivo] = useState("");
+  const [newScore, setNewScore] = useState("");
 
   const { data: assignments = [] } = useQuery({
     queryKey: ["gestao_assignments", periodoInicio, periodoFim],
@@ -165,6 +167,40 @@ export default function OperationalGestaoPage() {
       qc.invalidateQueries({ queryKey: ["gestao_contingencies"] });
       toast.success("Contingência validada!");
     },
+  });
+
+  // Score adjustment mutation
+  const adjustScore = useMutation({
+    mutationFn: async ({ assignmentId, score, motivo: m }: { assignmentId: string; score: number; motivo: string }) => {
+      if (!m.trim()) throw new Error("Justificativa é obrigatória para ajuste de score.");
+      if (score < 0 || score > 100) throw new Error("Score deve estar entre 0 e 100.");
+      const assignment = assignments.find((a: any) => a.id === assignmentId);
+      const oldScore = assignment?.pontuacao_obtida;
+      const { error } = await (supabase as any).from("operational_assignments")
+        .update({ pontuacao_obtida: score, score_executor: score })
+        .eq("id", assignmentId);
+      if (error) throw error;
+      await (supabase as any).from("operational_score_logs")
+        .update({ score_final: score })
+        .eq("assignment_id", assignmentId)
+        .eq("tipo_score", "executor");
+      await (supabase as any).from("operational_audit_trail").insert({
+        assignment_id: assignmentId,
+        tipo_evento: "ajuste_score",
+        executado_por: profile?.id,
+        motivo: m,
+        dados_anteriores: { pontuacao_obtida: oldScore },
+        dados_novos: { pontuacao_obtida: score },
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["gestao_assignments"] });
+      toast.success("Score ajustado com sucesso!");
+      setScoreDialog({ open: false, assignment: null });
+      setMotivo("");
+      setNewScore("");
+    },
+    onError: (e: any) => toast.error(e.message),
   });
 
   const filtered = useMemo(() => {
@@ -452,6 +488,11 @@ export default function OperationalGestaoPage() {
                                 <RotateCcw className="w-3 h-3" />
                               </Button>
                             )}
+                            {a.pontuacao_obtida != null && (
+                              <Button size="sm" variant="ghost" title="Ajustar Score" onClick={() => { setScoreDialog({ open: true, assignment: a }); setNewScore(String(Math.round(a.pontuacao_obtida))); setMotivo(""); }}>
+                                <Pencil className="w-3 h-3" />
+                              </Button>
+                            )}
                             <Button size="sm" variant="ghost" title="Trilha de Auditoria" onClick={() => setAuditDialog({ open: true, assignmentId: a.id })}>
                               <History className="w-3 h-3" />
                             </Button>
@@ -603,6 +644,43 @@ export default function OperationalGestaoPage() {
               </div>
             ))}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Score Adjustment Dialog */}
+      <Dialog open={scoreDialog.open} onOpenChange={o => { if (!o) { setScoreDialog({ open: false, assignment: null }); setMotivo(""); setNewScore(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Pencil className="w-4 h-4" />Ajustar Score</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <p className="text-body font-medium text-foreground">{scoreDialog.assignment?.operational_templates?.nome}</p>
+              <p className="text-caption text-muted-foreground">
+                Responsável: {scoreDialog.assignment?.profiles?.nome} | Data: {scoreDialog.assignment?.data_prevista}
+              </p>
+              <p className="text-caption text-muted-foreground">
+                Score atual: <span className="font-medium text-foreground">{scoreDialog.assignment?.pontuacao_obtida != null ? Math.round(scoreDialog.assignment.pontuacao_obtida) : "—"}</span>
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Novo Score (0-100) *</Label>
+              <Input type="number" min={0} max={100} value={newScore} onChange={e => setNewScore(e.target.value)} placeholder="Ex: 85" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Justificativa *</Label>
+              <Textarea value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Informe o motivo do ajuste..." />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setScoreDialog({ open: false, assignment: null }); setMotivo(""); setNewScore(""); }}>Cancelar</Button>
+            <Button
+              disabled={adjustScore.isPending || !motivo.trim() || !newScore}
+              onClick={() => adjustScore.mutate({ assignmentId: scoreDialog.assignment?.id, score: parseInt(newScore), motivo })}
+            >
+              {adjustScore.isPending ? "Processando..." : "Confirmar Ajuste"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

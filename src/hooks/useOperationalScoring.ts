@@ -122,6 +122,7 @@ export const AUDIT_EVENT_LABELS: Record<string, string> = {
   contingencia_resolvida: "Contingência Resolvida",
   contingencia_validada: "Contingência Validada",
   inicio: "Início",
+  ajuste_score: "Ajuste de Score",
 };
 
 export const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
