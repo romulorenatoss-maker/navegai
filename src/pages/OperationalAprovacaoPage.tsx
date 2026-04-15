@@ -54,10 +54,18 @@ export default function OperationalAprovacaoPage() {
     staleTime: 15000,
   });
 
-  const pendentes = assignments.filter((a: any) => a.status === "aguardando_aprovacao");
-  const devolvidos = assignments.filter((a: any) => a.status === "devolvida" || (a.status === "aguardando_aprovacao" && approval.contingencies.some((c: any) => !["validada", "descartada"].includes(c.status))));
-  const aprovados = assignments.filter((a: any) => a.status === "aprovada");
-  const historico = assignments.filter((a: any) => ["concluida", "reprovada"].includes(a.status)).slice(0, 50);
+  const filteredByDate = useMemo(() => {
+    return assignments.filter((a: any) => {
+      const d = a.data_prevista;
+      if (!d) return true;
+      return d >= filterStart && d <= filterEnd;
+    });
+  }, [assignments, filterStart, filterEnd]);
+
+  const pendentes = filteredByDate.filter((a: any) => a.status === "aguardando_aprovacao");
+  const devolvidos = filteredByDate.filter((a: any) => a.status === "devolvida" || (a.status === "aguardando_aprovacao" && approval.contingencies.some((c: any) => !["validada", "descartada"].includes(c.status))));
+  const aprovados = filteredByDate.filter((a: any) => a.status === "aprovada");
+  const historico = filteredByDate.filter((a: any) => ["concluida", "reprovada"].includes(a.status)).slice(0, 50);
 
   const approval = useApprovalFlow(selectedAssignment?.id || null);
 
