@@ -464,19 +464,47 @@ export default function OperationalExecucaoPage() {
                 ) : (
                   snapshotSections.filter(s => !activeSection || s.id === activeSection).map((section: any) => {
                     const sFields = fieldsBySection[section.id] || [];
+                    // Calculate section deadline status
+                    const sectionLate = (() => {
+                      if (!section.horario_fim || !selectedAssignment?.data_prevista) return false;
+                      const deadlineStr = `${selectedAssignment.data_prevista}T${section.horario_fim}`;
+                      return new Date(deadlineStr) < new Date();
+                    })();
+                    const sectionTimeRemaining = (() => {
+                      if (!section.horario_fim || !selectedAssignment?.data_prevista) return null;
+                      const deadlineStr = `${selectedAssignment.data_prevista}T${section.horario_fim}`;
+                      const diff = new Date(deadlineStr).getTime() - Date.now();
+                      if (diff <= 0) return "Atrasado";
+                      const h = Math.floor(diff / 3600000);
+                      const m = Math.floor((diff % 3600000) / 60000);
+                      return h > 0 ? `${h}h ${m}min restantes` : `${m}min restantes`;
+                    })();
                     return (
                       <div key={section.id}>
-                        <div className="flex items-center gap-2 mb-3">
+                        <div className="flex items-center gap-2 mb-1">
                           <div className="w-3 h-3 rounded-full" style={{ backgroundColor: section.cor || "#3b82f6" }} />
                           <h3 className="text-sm font-semibold text-foreground">{section.nome}</h3>
                           {section.descricao && <p className="text-xs text-muted-foreground">— {section.descricao}</p>}
                         </div>
+                        {(section.horario_inicio || section.horario_fim) && (
+                          <div className={`flex items-center gap-2 mb-3 ml-5 text-xs ${sectionLate ? "text-destructive font-semibold" : "text-muted-foreground"}`}>
+                            <Clock className="w-3.5 h-3.5" />
+                            {section.horario_inicio && <span>Início: {section.horario_inicio}</span>}
+                            {section.horario_fim && <span>• Limite: {section.horario_fim}</span>}
+                            {sectionTimeRemaining && (
+                              <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${sectionLate ? "bg-destructive/10 text-destructive" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"}`}>
+                                {sectionLate ? "⚠ ATRASADO" : `⏱ ${sectionTimeRemaining}`}
+                              </span>
+                            )}
+                          </div>
+                        )}
                         <div className="space-y-3">
                           {sFields.map(f => (
                             <DynamicFieldRenderer key={f.id} field={f} answer={exec.answers[f.id]}
                               review={exec.getLatestReview(f.id)} userRole="executor"
                               disabled={isDevolvida && exec.getLatestReview(f.id)?.devolvido !== true}
-                              allAnswers={exec.answers} onChange={exec.updateAnswer} assignmentId={selectedAssignment.id} />
+                              allAnswers={exec.answers} onChange={exec.updateAnswer} assignmentId={selectedAssignment.id}
+                              showValidation={submitAttempted} />
                           ))}
                         </div>
                       </div>
