@@ -89,6 +89,12 @@ export default function OperationalAprovacaoPage() {
     [selectedAssignment, approval.getBlockingReasons]
   );
 
+  // Fields that have approver questions configured
+  const approverFields = useMemo(() =>
+    snapshotFields.filter(f => f.aprovador_pergunta && f.aprovador_pergunta.trim() !== ""),
+    [snapshotFields]
+  );
+
   const openApproval = useCallback((a: any) => {
     setSelectedAssignment(a);
     setApprovalDialogOpen(true);
