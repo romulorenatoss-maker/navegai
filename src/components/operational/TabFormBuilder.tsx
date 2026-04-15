@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Settings2, Copy } from "lucide-react";
+import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Settings2, Copy, AlertTriangle, Camera, FileVideo, FileText } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -231,8 +231,12 @@ export function TabFormBuilder({ sections, setSections, fields, setFields }: Pro
 function FieldDetailDialog({ field, onSave, onClose }: { field: FieldForm; onSave: (u: Partial<FieldForm>) => void; onClose: () => void }) {
   const [local, setLocal] = useState<FieldForm>({ ...field });
   const upd = <K extends keyof FieldForm>(k: K, v: FieldForm[K]) => setLocal(f => ({ ...f, [k]: v }));
+  const [previewAnswer, setPreviewAnswer] = useState<"sim" | "nao" | "na" | null>(null);
 
-  const toggleRole = (arr: string[], role: string) => arr.includes(role) ? arr.filter(r => r !== role) : [...arr, role];
+  const toggleEvidenciaTipo = (tipo: string) => {
+    const current = local.aprovador_tipos_evidencia || [];
+    upd("aprovador_tipos_evidencia", current.includes(tipo) ? current.filter(t => t !== tipo) : [...current, tipo]);
+  };
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -302,7 +306,7 @@ function FieldDetailDialog({ field, onSave, onClose }: { field: FieldForm; onSav
           {/* Pergunta do Aprovador */}
           <div className="bg-muted/50 rounded-lg border border-border p-3 space-y-3">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Pergunta do Aprovador</p>
-            <p className="text-caption text-muted-foreground">O aprovador responderá esta pergunta ao revisar a tarefa concluída. Funciona como avaliação por campo.</p>
+            <p className="text-caption text-muted-foreground">O aprovador responderá esta pergunta ao revisar a tarefa concluída.</p>
             <div className="space-y-1.5">
               <Label>Pergunta</Label>
               <Input
@@ -312,7 +316,7 @@ function FieldDetailDialog({ field, onSave, onClose }: { field: FieldForm; onSav
                 maxLength={500}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <Label>Tipo de Resposta</Label>
                 <Select value={local.aprovador_tipo_resposta || "conforme"} onValueChange={v => upd("aprovador_tipo_resposta", v)}>
@@ -327,7 +331,87 @@ function FieldDetailDialog({ field, onSave, onClose }: { field: FieldForm; onSav
                 <Label>Peso</Label>
                 <Input type="number" min={0} step={0.1} value={local.aprovador_peso ?? 1} onChange={e => upd("aprovador_peso", +e.target.value)} />
               </div>
+              <div className="space-y-3 pt-5">
+                <div className="flex items-center gap-2">
+                  <Switch checked={local.aprovador_obriga_observacao_nao} onCheckedChange={v => upd("aprovador_obriga_observacao_nao", v)} />
+                  <Label className="cursor-pointer text-caption">Observação obrigatória ao reprovar</Label>
+                </div>
+              </div>
             </div>
+
+            <div className="flex items-center gap-2">
+              <Switch checked={local.aprovador_exige_evidencia_nao} onCheckedChange={v => upd("aprovador_exige_evidencia_nao", v)} />
+              <Label className="cursor-pointer text-caption">Exigir evidência ao reprovar</Label>
+            </div>
+
+            {local.aprovador_exige_evidencia_nao && (
+              <div className="space-y-1.5 pl-4 border-l-2 border-primary/20">
+                <Label className="text-caption">Tipos de evidência aceitos</Label>
+                <div className="flex gap-2">
+                  {[
+                    { tipo: "foto", label: "Foto", icon: Camera },
+                    { tipo: "video", label: "Vídeo", icon: FileVideo },
+                    { tipo: "documento", label: "Documento", icon: FileText },
+                  ].map(ev => (
+                    <button key={ev.tipo} type="button" onClick={() => toggleEvidenciaTipo(ev.tipo)}
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-caption border transition-colors ${
+                        (local.aprovador_tipos_evidencia || []).includes(ev.tipo) 
+                          ? "bg-primary/10 border-primary text-primary" 
+                          : "bg-card border-border text-muted-foreground hover:bg-muted"
+                      }`}>
+                      <ev.icon className="w-3.5 h-3.5" /> {ev.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Preview da pergunta */}
+            {local.aprovador_pergunta && (
+              <div className="border border-border rounded-lg p-3 bg-card space-y-2">
+                <p className="text-caption font-medium text-muted-foreground">Preview</p>
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-foreground flex-1">{local.aprovador_pergunta}</p>
+                  <div className="flex bg-muted rounded-md p-0.5 gap-0.5 shrink-0">
+                    {(local.aprovador_tipo_resposta === "sim_nao" 
+                      ? [{ label: "Sim", value: "sim" as const, cls: "bg-success text-success-foreground" }, { label: "Não", value: "nao" as const, cls: "bg-destructive text-destructive-foreground" }, { label: "N/A", value: "na" as const, cls: "bg-muted text-foreground" }]
+                      : [{ label: "Conforme", value: "sim" as const, cls: "bg-success text-success-foreground" }, { label: "Não Conf.", value: "nao" as const, cls: "bg-destructive text-destructive-foreground" }, { label: "N/A", value: "na" as const, cls: "bg-muted text-foreground" }]
+                    ).map(opt => (
+                      <button key={opt.value} type="button" onClick={() => setPreviewAnswer(previewAnswer === opt.value ? null : opt.value)}
+                        className={`px-2.5 py-1 rounded text-[11px] font-medium transition-all min-w-[44px] ${
+                          previewAnswer === opt.value ? opt.cls : "text-foreground hover:bg-background/50"
+                        }`}>{opt.label}</button>
+                    ))}
+                  </div>
+                </div>
+
+                {previewAnswer === "nao" && (
+                  <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 mt-2 space-y-2">
+                    <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      {local.aprovador_obriga_observacao_nao ? "Descrição obrigatória" : "Descrição (opcional)"}
+                    </div>
+                    <Textarea placeholder="Descreva a irregularidade..." className="bg-card h-16 text-caption" disabled />
+                    {local.aprovador_exige_evidencia_nao && (
+                      <div>
+                        <Label className="text-caption mb-1.5 block">Evidência obrigatória</Label>
+                        <div className="flex gap-2">
+                          {(local.aprovador_tipos_evidencia || []).includes("foto") && (
+                            <Button type="button" variant="outline" size="sm" className="text-caption" disabled><Camera className="w-3.5 h-3.5 mr-1.5" /> Foto</Button>
+                          )}
+                          {(local.aprovador_tipos_evidencia || []).includes("video") && (
+                            <Button type="button" variant="outline" size="sm" className="text-caption" disabled><FileVideo className="w-3.5 h-3.5 mr-1.5" /> Vídeo</Button>
+                          )}
+                          {(local.aprovador_tipos_evidencia || []).includes("documento") && (
+                            <Button type="button" variant="outline" size="sm" className="text-caption" disabled><FileText className="w-3.5 h-3.5 mr-1.5" /> Doc</Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
 

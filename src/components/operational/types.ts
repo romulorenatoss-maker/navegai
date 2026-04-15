@@ -35,6 +35,9 @@ export interface FieldForm {
   aprovador_pergunta: string;
   aprovador_tipo_resposta: string;
   aprovador_peso: number;
+  aprovador_obriga_observacao_nao: boolean;
+  aprovador_exige_evidencia_nao: boolean;
+  aprovador_tipos_evidencia: string[];
 }
 
 export interface TemplateForm {
@@ -154,6 +157,9 @@ export const defaultField = (sectionTempId: string, ordem: number): FieldForm =>
   aprovador_pergunta: "",
   aprovador_tipo_resposta: "conforme",
   aprovador_peso: 1,
+  aprovador_obriga_observacao_nao: true,
+  aprovador_exige_evidencia_nao: false,
+  aprovador_tipos_evidencia: ["foto"],
 });
 
 export const defaultSection = (ordem: number): SectionForm => ({
