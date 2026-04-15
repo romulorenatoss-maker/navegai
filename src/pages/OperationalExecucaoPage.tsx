@@ -19,29 +19,38 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 interface AccordionSectionProps {
   title: string;
   count: number;
-  colorClass: string;
+  icon: React.ReactNode;
+  borderColor: string;
   badgeBg: string;
-  defaultOpen?: boolean;
+  badgeText: string;
+  isOpen: boolean;
+  onToggle: () => void;
   children: React.ReactNode;
 }
 
-function AccordionSection({ title, count, colorClass, badgeBg, defaultOpen = false, children }: AccordionSectionProps) {
-  const [open, setOpen] = useState(defaultOpen);
+function AccordionSection({ title, count, icon, borderColor, badgeBg, badgeText, isOpen, onToggle, children }: AccordionSectionProps) {
   return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-3 bg-card border border-border rounded-lg hover:bg-muted/50 transition-colors active:scale-[0.99]">
-        <div className="flex items-center gap-2.5">
-          <span className="text-sm font-medium text-foreground">{title}</span>
-          <span className={`inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-[11px] font-semibold ${badgeBg} ${colorClass}`}>
+    <div className={`rounded-xl border overflow-hidden transition-all duration-300 ${isOpen ? "shadow-md border-transparent" : "border-border hover:border-muted-foreground/20"}`}
+      style={{ borderLeftWidth: "4px", borderLeftColor: borderColor }}>
+      <button type="button" onClick={onToggle}
+        className={`w-full flex items-center justify-between px-4 py-3.5 transition-colors ${isOpen ? "bg-muted/60" : "bg-card hover:bg-muted/30"}`}>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ backgroundColor: `${borderColor}15` }}>
+            {icon}
+          </div>
+          <span className="text-sm font-semibold text-foreground">{title}</span>
+          <span className={`inline-flex items-center justify-center min-w-[24px] h-6 px-2 rounded-full text-xs font-bold ${badgeBg} ${badgeText}`}>
             {count}
           </span>
         </div>
-        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
-      </CollapsibleTrigger>
-      <CollapsibleContent className="mt-2 space-y-2">
-        {children}
-      </CollapsibleContent>
-    </Collapsible>
+        <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} />
+      </button>
+      <div className={`transition-all duration-300 ease-in-out ${isOpen ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0 overflow-hidden"}`}>
+        <div className="px-4 pb-4 pt-2 space-y-2">
+          {children}
+        </div>
+      </div>
+    </div>
   );
 }
 
