@@ -406,13 +406,25 @@ export default function OperationalExecucaoPage() {
                     return a && (a.valor_texto != null && a.valor_texto !== "" || a.valor_numero != null || a.valor_booleano != null || a.valor_data != null || a.valor_json != null);
                   }).length;
                   const allFilled = filled === sFieldsVisible.length && sFieldsVisible.length > 0;
+                  const isLate = (() => {
+                    if (!s.horario_fim || !selectedAssignment?.data_prevista) return false;
+                    return new Date(`${selectedAssignment.data_prevista}T${s.horario_fim}`) < new Date();
+                  })();
                   return (
                     <button key={s.id} type="button" onClick={() => setActiveSection(s.id)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border whitespace-nowrap transition-colors ${activeSection === s.id ? "bg-primary/10 border-primary text-primary" : "bg-card border-border text-muted-foreground hover:bg-muted"}`}>
-                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.cor || "#3b82f6" }} />
-                      {s.nome || "Seção"}
-                      {allFilled && <CheckCircle2 className="w-3 h-3 text-green-600" />}
-                      <span className="text-[10px] opacity-70">{filled}/{sFieldsVisible.length}</span>
+                      className={`flex flex-col items-start gap-0.5 px-3 py-1.5 rounded-md text-xs font-medium border whitespace-nowrap transition-colors ${activeSection === s.id ? "bg-primary/10 border-primary text-primary" : isLate && !allFilled ? "bg-destructive/5 border-destructive/30 text-destructive" : "bg-card border-border text-muted-foreground hover:bg-muted"}`}>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.cor || "#3b82f6" }} />
+                        {s.nome || "Seção"}
+                        {allFilled && <CheckCircle2 className="w-3 h-3 text-green-600" />}
+                        {isLate && !allFilled && <AlertTriangle className="w-3 h-3 text-destructive" />}
+                        <span className="text-[10px] opacity-70">{filled}/{sFieldsVisible.length}</span>
+                      </div>
+                      {s.horario_fim && (
+                        <span className={`text-[10px] ${isLate && !allFilled ? "text-destructive" : "text-muted-foreground"}`}>
+                          {s.horario_inicio && `${s.horario_inicio} — `}{s.horario_fim}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
