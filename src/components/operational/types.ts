@@ -31,6 +31,10 @@ export interface FieldForm {
   formula: any;
   visivel_para: string[];
   editavel_por: string[];
+  // Pergunta do aprovador
+  aprovador_pergunta: string;
+  aprovador_tipo_resposta: string;
+  aprovador_peso: number;
 }
 
 export interface TemplateForm {
@@ -147,6 +151,9 @@ export const defaultField = (sectionTempId: string, ordem: number): FieldForm =>
   formula: null,
   visivel_para: ["executor", "avaliador"],
   editavel_por: ["executor"],
+  aprovador_pergunta: "",
+  aprovador_tipo_resposta: "conforme",
+  aprovador_peso: 1,
 });
 
 export const defaultSection = (ordem: number): SectionForm => ({
