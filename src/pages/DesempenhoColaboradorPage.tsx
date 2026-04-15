@@ -202,26 +202,30 @@ export default function DesempenhoColaboradorPage() {
 
       const { data: osData } = await supabase
         .from("ordens_servico")
-        .select("id")
+        .select("id, tipo_servico_id")
         .or(`tecnico_id.eq.${targetProfileId},atendente_id.eq.${targetProfileId},colaborador_avaliado_id.eq.${targetProfileId}`)
         .gte("data_abertura", from)
         .lte("data_abertura", to);
 
       if (!osData?.length) return [];
       const osIds = osData.map(o => o.id);
+      const osMap: Record<string, string | null> = {};
+      osData.forEach(o => { osMap[o.id] = o.tipo_servico_id; });
 
       const { data: avals } = await supabase
         .from("avaliacoes")
-        .select("id")
+        .select("id, ordem_servico_id")
         .in("ordem_servico_id", osIds)
         .eq("concluida", true);
 
       if (!avals?.length) return [];
       const avalIds = avals.map(a => a.id);
+      const avalOsMap: Record<string, string> = {};
+      avals.forEach(a => { avalOsMap[a.id] = a.ordem_servico_id; });
 
       const { data: respostas } = await supabase
         .from("respostas_avaliacao")
-        .select("pergunta_id")
+        .select("pergunta_id, avaliacao_id")
         .in("avaliacao_id", avalIds)
         .eq("resposta", "nao");
 
@@ -239,18 +243,38 @@ export default function DesempenhoColaboradorPage() {
 
       // Only count errors for questions whose setor_avaliado_id matches the person's sectors
       const errorCount: Record<string, number> = {};
+      const errorsByTipo: Record<string, number> = {};
       respostas.forEach(r => {
         const pInfo = perguntaMap[r.pergunta_id];
         if (!pInfo) return;
         const setorId = pInfo.setor_avaliado_id;
         if (setorId && mySetorIds.length > 0 && !mySetorIds.includes(setorId)) return;
         errorCount[r.pergunta_id] = (errorCount[r.pergunta_id] || 0) + 1;
+        const osId = avalOsMap[r.avaliacao_id];
+        const tipoId = osId ? osMap[osId] : null;
+        if (tipoId) {
+          errorsByTipo[tipoId] = (errorsByTipo[tipoId] || 0) + 1;
+        }
       });
 
-      return Object.entries(errorCount)
+      // Resolve tipo_servico names
+      const tipoIds = Object.keys(errorsByTipo);
+      let tipoNames: Record<string, string> = {};
+      if (tipoIds.length > 0) {
+        const { data: tipos } = await supabase.from("tipos_servico").select("id, nome").in("id", tipoIds);
+        tipos?.forEach(t => { tipoNames[t.id] = t.nome; });
+      }
+
+      const errorsByTipoArr = Object.entries(errorsByTipo)
+        .map(([id, count]) => ({ tipo_id: id, tipo_nome: tipoNames[id] || "Sem tipo", count }))
+        .sort((a, b) => b.count - a.count);
+
+      const errorsArr = Object.entries(errorCount)
         .map(([id, count]) => ({ pergunta_id: id, pergunta: perguntaMap[id]?.pergunta || "—", count }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 10);
+
+      return { errors: errorsArr, byTipo: errorsByTipoArr };
     },
     enabled: !!targetProfileId,
   });
@@ -569,12 +593,33 @@ export default function DesempenhoColaboradorPage() {
           </div>
 
           {/* Most Frequent Errors */}
-          {frequentErrors.length > 0 && (
+          {(frequentErrors as any)?.errors?.length > 0 && (
             <div className="bg-card border border-border rounded-lg shadow-card">
               <div className="p-4 border-b border-border flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-destructive" />
                 <h2 className="text-body font-semibold text-foreground">Erros Mais Frequentes</h2>
               </div>
+
+              {/* Cards by tipo de serviço */}
+              {(frequentErrors as any)?.byTipo?.length > 0 && (
+                <div className="p-4 border-b border-border">
+                  <p className="text-caption text-muted-foreground mb-2 font-medium uppercase tracking-wider">Erros por Tipo de Serviço</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(frequentErrors as any).byTipo.map((t: any) => (
+                      <div
+                        key={t.tipo_id}
+                        className="inline-flex items-center gap-2 bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2 shadow-sm"
+                      >
+                        <span className="text-sm font-medium text-foreground">{t.tipo_nome}</span>
+                        <span className="text-sm font-bold text-destructive bg-destructive/10 rounded-full px-2 py-0.5 min-w-[24px] text-center">
+                          {t.count}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -584,7 +629,7 @@ export default function DesempenhoColaboradorPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {frequentErrors.map(err => (
+                    {(frequentErrors as any)?.errors?.map((err: any) => (
                       <tr key={err.pergunta_id} className="hover:bg-muted/50">
                         <td className="px-4 py-3 text-body text-foreground">{err.pergunta}</td>
                         <td className="px-4 py-3 text-body font-bold text-destructive font-tabular text-right">{err.count}</td>
