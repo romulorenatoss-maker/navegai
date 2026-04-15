@@ -244,36 +244,6 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
         </div>
       </div>
 
-      {/* Pontuação */}
-      <div className="bg-muted/50 rounded-lg border border-border p-3 space-y-3">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Pontuação</p>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label>Quem pontuar</Label>
-            <Select value={form.modo_pontuacao} onValueChange={v => set("modo_pontuacao", v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pontuar_executor">Somente Executor</SelectItem>
-                <SelectItem value="pontuar_avaliado">Somente Avaliado</SelectItem>
-                <SelectItem value="pontuar_ambos">Ambos</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Destino do Score</Label>
-            <Select value={form.destino_score} onValueChange={v => set("destino_score", v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="individual">Individual</SelectItem>
-                <SelectItem value="setor">Setorial</SelectItem>
-                <SelectItem value="executor_avaliado">Executor + Avaliado</SelectItem>
-                <SelectItem value="ambos">Ambos</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
-
       {/* SLA / Horários */}
       <div className="grid grid-cols-4 gap-3">
         <div className="space-y-1.5">
