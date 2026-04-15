@@ -257,6 +257,7 @@ export default function OperationalCadastroPage() {
       peso_recorrencia: t.peso_recorrencia ?? 1.0,
       penalidade_contingencia: t.penalidade_contingencia ?? 10,
       penalidade_sla_contingencia: t.penalidade_sla_contingencia ?? 15,
+      penalidade_fora_prazo: t.penalidade_fora_prazo ?? 20,
       habilitar_perguntas_automaticas: t.habilitar_perguntas_automaticas ?? true,
     });
 

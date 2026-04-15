@@ -136,6 +136,7 @@ export const defaultTemplate: TemplateForm = {
   tipo_atribuicao_avaliado: "individual",
   penalidade_contingencia: 10,
   penalidade_sla_contingencia: 15,
+  penalidade_fora_prazo: 20,
   habilitar_perguntas_automaticas: true,
 };
 
