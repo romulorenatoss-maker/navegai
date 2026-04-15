@@ -56,6 +56,35 @@ export default function OperationalCadastroPage() {
     },
   });
 
+  // Build profile maps for filters — only show names that have templates associated
+  const { executorProfiles, avaliadorProfiles, avaliadoProfiles } = useMemo(() => {
+    const execMap = new Map<string, string>();
+    const avalMap = new Map<string, string>();
+    const avdoMap = new Map<string, string>();
+    const profileMap = new Map(colaboradores.map((c: any) => [c.id, c.nome]));
+    for (const t of templates) {
+      if (t.executor_profile_id && profileMap.has(t.executor_profile_id))
+        execMap.set(t.executor_profile_id, profileMap.get(t.executor_profile_id)!);
+      if (t.avaliador_profile_id && profileMap.has(t.avaliador_profile_id))
+        avalMap.set(t.avaliador_profile_id, profileMap.get(t.avaliador_profile_id)!);
+      if (t.avaliado_profile_id && profileMap.has(t.avaliado_profile_id))
+        avdoMap.set(t.avaliado_profile_id, profileMap.get(t.avaliado_profile_id)!);
+    }
+    return {
+      executorProfiles: Array.from(execMap, ([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome)),
+      avaliadorProfiles: Array.from(avalMap, ([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome)),
+      avaliadoProfiles: Array.from(avdoMap, ([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome)),
+    };
+  }, [templates, colaboradores]);
+
+  const filteredTemplates = useMemo(() => {
+    let list = templates;
+    if (filterExecutor !== "__all") list = list.filter((t: any) => t.executor_profile_id === filterExecutor);
+    if (filterAvaliador !== "__all") list = list.filter((t: any) => t.avaliador_profile_id === filterAvaliador);
+    if (filterAvaliado !== "__all") list = list.filter((t: any) => t.avaliado_profile_id === filterAvaliado);
+    return list;
+  }, [templates, filterExecutor, filterAvaliador, filterAvaliado]);
+
   const set = <K extends keyof TemplateForm>(k: K, v: TemplateForm[K]) => setForm(f => ({ ...f, [k]: v }));
 
   const upsert = useMutation({
