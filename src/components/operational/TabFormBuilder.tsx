@@ -231,8 +231,12 @@ export function TabFormBuilder({ sections, setSections, fields, setFields }: Pro
 function FieldDetailDialog({ field, onSave, onClose }: { field: FieldForm; onSave: (u: Partial<FieldForm>) => void; onClose: () => void }) {
   const [local, setLocal] = useState<FieldForm>({ ...field });
   const upd = <K extends keyof FieldForm>(k: K, v: FieldForm[K]) => setLocal(f => ({ ...f, [k]: v }));
+  const [previewAnswer, setPreviewAnswer] = useState<"sim" | "nao" | "na" | null>(null);
 
-  const toggleRole = (arr: string[], role: string) => arr.includes(role) ? arr.filter(r => r !== role) : [...arr, role];
+  const toggleEvidenciaTipo = (tipo: string) => {
+    const current = local.aprovador_tipos_evidencia || [];
+    upd("aprovador_tipos_evidencia", current.includes(tipo) ? current.filter(t => t !== tipo) : [...current, tipo]);
+  };
 
   return (
     <Dialog open onOpenChange={onClose}>
