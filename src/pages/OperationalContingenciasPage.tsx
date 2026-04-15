@@ -275,7 +275,7 @@ export default function OperationalContingenciasPage() {
                 )}
 
                 {/* Validator actions */}
-                {isResolved && isAdmin && (
+                {isResolved && selected && cm.canValidate(selected) && (
                   <>
                     <div className="flex-1" />
                     <Button size="sm" variant="outline"
