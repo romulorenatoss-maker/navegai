@@ -130,6 +130,7 @@ export default function OperationalCadastroPage() {
         tipo_atribuicao_avaliado: form.tipo_atribuicao_avaliado,
         penalidade_contingencia: form.penalidade_contingencia,
         penalidade_sla_contingencia: form.penalidade_sla_contingencia,
+        penalidade_fora_prazo: form.penalidade_fora_prazo,
         habilitar_perguntas_automaticas: form.habilitar_perguntas_automaticas,
       };
 
