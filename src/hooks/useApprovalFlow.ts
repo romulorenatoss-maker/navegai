@@ -130,9 +130,11 @@ export function useApprovalFlow(assignmentId: string | null) {
       final: Number(assignment.score_avaliador) || 0,
     };
 
-    // Final consolidated: use score_final_ajustado if exists, else average
-    const finalConsolidado = Number(assignment.score_final_ajustado) ||
-      Math.round((executor.final + avaliado.final + avaliador.final) / 3);
+    // Final consolidated: use score_final_ajustado if exists (nullish check to respect 0), else average
+    const calculado = Math.round((executor.final + avaliado.final + avaliador.final) / 3);
+    const finalConsolidado = assignment.score_final_ajustado != null
+      ? Number(assignment.score_final_ajustado)
+      : calculado;
 
     return { executor, avaliado, avaliador, finalConsolidado };
   }, [fieldReviews]);
@@ -238,8 +240,18 @@ export function useApprovalFlow(assignmentId: string | null) {
 
   // Final decision
   const finalDecision = useMutation({
-    mutationFn: async ({ assignment, action, motivo }: { assignment: any; action: "aprovar" | "reprovar_devolver" | "encerrar"; motivo?: string }) => {
+    mutationFn: async ({ assignment, action, motivo, scoreFinal }: { assignment: any; action: "aprovar" | "reprovar_devolver" | "encerrar"; motivo?: string; scoreFinal?: number }) => {
       if (!profile?.id || !assignmentId) throw new Error("Não autenticado");
+
+      // Backend-side blocking enforcement
+      const blockReasons = getBlockingReasons(assignment);
+      if (action === "aprovar" && blockReasons.length > 0) {
+        throw new Error(`Bloqueado: ${blockReasons.join(" ")}`);
+      }
+      if (action !== "aprovar" && !motivo?.trim()) {
+        throw new Error("Justificativa obrigatória para esta ação.");
+      }
+
       const now = new Date().toISOString();
 
       let newStatus: string;
@@ -260,13 +272,33 @@ export function useApprovalFlow(assignmentId: string | null) {
           newStatus = "aprovada";
       }
 
+      // Build update payload — always persist score on approval/encerrar
+      const updatePayload: any = {
+        status: newStatus,
+        rodada_atual: newRodada,
+        aprovador_id: profile.id,
+        updated_at: now,
+      };
+
+      if (action === "aprovar" || action === "encerrar") {
+        // Persist score: use provided scoreFinal, or existing override, or calculated average
+        const existingOverride = assignment.score_final_ajustado;
+        if (scoreFinal != null) {
+          updatePayload.score_final_ajustado = scoreFinal;
+        } else if (existingOverride == null) {
+          // Calculate and persist
+          const calcScore = Math.round(
+            ((Number(assignment.score_executor) || 0) +
+             (Number(assignment.score_avaliado) || 0) +
+             (Number(assignment.score_avaliador) || 0)) / 3
+          );
+          updatePayload.score_final_ajustado = calcScore;
+        }
+        // If existingOverride != null and no new scoreFinal, keep existing value
+      }
+
       const { error } = await (supabase as any).from("operational_assignments")
-        .update({
-          status: newStatus,
-          rodada_atual: newRodada,
-          aprovador_id: profile.id,
-          updated_at: now,
-        }).eq("id", assignmentId);
+        .update(updatePayload).eq("id", assignmentId);
       if (error) throw error;
 
       await (supabase as any).from("operational_audit_trail").insert({

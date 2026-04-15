@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { ChevronLeft, CheckCircle2, XCircle, RotateCcw, AlertTriangle, Shield, Pencil, Lock, History, TrendingUp, TrendingDown } from "lucide-react";
+import { ChevronLeft, CheckCircle2, RotateCcw, AlertTriangle, Shield, Pencil, Lock, History, TrendingUp, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -17,7 +17,7 @@ import { ReviewFieldCard } from "@/components/operational/ReviewFieldCard";
 import { useApprovalFlow } from "@/hooks/useApprovalFlow";
 
 export default function OperationalAprovacaoPage() {
-  const { profile } = useAuth();
+  const { profile, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState("pendentes");
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
@@ -27,16 +27,23 @@ export default function OperationalAprovacaoPage() {
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
 
   const { data: assignments = [], isLoading } = useQuery({
-    queryKey: ["aprovacao_assignments", profile?.id],
+    queryKey: ["aprovacao_assignments", profile?.id, isAdmin],
     queryFn: async () => {
       if (!profile?.id) return [];
-      const { data, error } = await (supabase as any).from("operational_assignments")
+      let query = (supabase as any).from("operational_assignments")
         .select(`*, operational_templates(nome, tipo_execucao),
           executor:profiles!operational_assignments_responsavel_id_fkey(nome),
           avaliador:profiles!operational_assignments_avaliador_id_fkey(nome),
           avaliado:profiles!operational_assignments_avaliado_id_fkey(nome)`)
         .in("status", ["aguardando_aprovacao", "aprovada", "reprovada", "concluida"])
         .order("updated_at", { ascending: false });
+
+      // Filter by aprovador unless admin
+      if (!isAdmin) {
+        query = query.eq("aprovador_id", profile.id);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
@@ -117,7 +124,12 @@ export default function OperationalAprovacaoPage() {
   const confirmDecision = () => {
     if (!decisionDialog.action || !selectedAssignment) return;
     approval.finalDecision.mutate(
-      { assignment: selectedAssignment, action: decisionDialog.action, motivo: decisionMotivo || undefined },
+      {
+        assignment: selectedAssignment,
+        action: decisionDialog.action,
+        motivo: decisionMotivo || undefined,
+        scoreFinal: scoreBreakdown?.finalConsolidado,
+      },
       {
         onSuccess: () => {
           setDecisionDialog({ open: false, action: null });
