@@ -205,13 +205,10 @@ type RoleConfig = {
                   </Select>
                 )}
                 {avaliadoSetorMembers.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {avaliadoSetorMembers.map((c: any) => (
-                      <Badge key={c.id} variant={form.avaliado_profile_id === c.id ? "default" : "outline"} className="text-xs cursor-pointer" onClick={() => set("avaliado_profile_id", c.id)}>
-                        {c.nome}
-                      </Badge>
-                    ))}
-                  </div>
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1.5 mt-1"
+                    onClick={() => openMembrosDialog("Membros do Setor Avaliado", avaliadoSetorMembers)}>
+                    <Users className="w-3 h-3" /> {avaliadoSetorMembers.length} membro{avaliadoSetorMembers.length !== 1 ? "s" : ""}
+                  </Button>
                 )}
               </div>
             )}
