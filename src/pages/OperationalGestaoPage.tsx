@@ -169,6 +169,40 @@ export default function OperationalGestaoPage() {
     },
   });
 
+  // Score adjustment mutation
+  const adjustScore = useMutation({
+    mutationFn: async ({ assignmentId, score, motivo: m }: { assignmentId: string; score: number; motivo: string }) => {
+      if (!m.trim()) throw new Error("Justificativa é obrigatória para ajuste de score.");
+      if (score < 0 || score > 100) throw new Error("Score deve estar entre 0 e 100.");
+      const assignment = assignments.find((a: any) => a.id === assignmentId);
+      const oldScore = assignment?.pontuacao_obtida;
+      const { error } = await (supabase as any).from("operational_assignments")
+        .update({ pontuacao_obtida: score, score_executor: score })
+        .eq("id", assignmentId);
+      if (error) throw error;
+      await (supabase as any).from("operational_score_logs")
+        .update({ score_final: score })
+        .eq("assignment_id", assignmentId)
+        .eq("tipo_score", "executor");
+      await (supabase as any).from("operational_audit_trail").insert({
+        assignment_id: assignmentId,
+        tipo_evento: "ajuste_score",
+        executado_por: profile?.id,
+        motivo: m,
+        dados_anteriores: { pontuacao_obtida: oldScore },
+        dados_novos: { pontuacao_obtida: score },
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["gestao_assignments"] });
+      toast.success("Score ajustado com sucesso!");
+      setScoreDialog({ open: false, assignment: null });
+      setMotivo("");
+      setNewScore("");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const filtered = useMemo(() => {
     return assignments.filter((a: any) => {
       if (filtroSetor !== "todos" && a.operational_templates?.setor_id !== filtroSetor) return false;
