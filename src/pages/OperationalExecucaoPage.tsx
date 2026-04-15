@@ -108,7 +108,10 @@ export default function OperationalExecucaoPage() {
     return list;
   }, [assignments, isAdmin, filterResponsavel, searchTerm]);
 
-  const pendentes = filteredAssignments.filter((a: any) => ["pendente"].includes(a.status));
+  const hoje = filteredAssignments.filter((a: any) => 
+    ["pendente", "em_andamento", "devolvida"].includes(a.status) && a.data_prevista === today
+  );
+  const aFazer = filteredAssignments.filter((a: any) => ["pendente"].includes(a.status));
   const emAndamento = filteredAssignments.filter((a: any) => ["em_andamento"].includes(a.status));
   const devolvidas = filteredAssignments.filter((a: any) => ["devolvida"].includes(a.status));
   const concluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada", "aguardando_avaliacao", "aguardando_aprovacao"].includes(a.status)).slice(0, 50);
