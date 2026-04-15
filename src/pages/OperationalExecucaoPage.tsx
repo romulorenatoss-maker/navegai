@@ -279,8 +279,13 @@ export default function OperationalExecucaoPage() {
               </Button>
               <div className="flex-1 min-w-0">
                 <h2 className="text-sm font-semibold text-foreground truncate">{snapshot?.nome || "Rotina"}</h2>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                   <span>{selectedAssignment?.data_prevista}</span>
+                  {selectedAssignment?.horario_limite && (
+                    <span className="flex items-center gap-1 font-medium text-foreground">
+                      <Clock className="w-3 h-3" /> até {selectedAssignment.horario_limite}
+                    </span>
+                  )}
                   {selectedAssignment?.status && (
                     <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${STATUS_CONFIG[selectedAssignment.status]?.class || ""}`}>
                       {STATUS_CONFIG[selectedAssignment.status]?.label}
