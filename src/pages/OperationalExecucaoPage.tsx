@@ -238,9 +238,12 @@ export default function OperationalExecucaoPage() {
           <AccordionSection
             title="Pendentes"
             count={pendentes.length}
-            colorClass="text-yellow-700"
-            badgeBg="bg-yellow-500/20"
-            defaultOpen={pendentes.length > 0}
+            icon={<Clock className="w-4 h-4" style={{ color: "#eab308" }} />}
+            borderColor="#eab308"
+            badgeBg="bg-yellow-500/15"
+            badgeText="text-yellow-700 dark:text-yellow-400"
+            isOpen={openAccordion === "pendentes"}
+            onToggle={() => setOpenAccordion(openAccordion === "pendentes" ? null : "pendentes")}
           >
             {pendentes.length === 0 ? renderEmptyState("Nenhuma rotina pendente.") : pendentes.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
           </AccordionSection>
@@ -248,9 +251,12 @@ export default function OperationalExecucaoPage() {
           <AccordionSection
             title="Em Andamento"
             count={emAndamento.length}
-            colorClass="text-primary"
-            badgeBg="bg-primary/20"
-            defaultOpen={emAndamento.length > 0}
+            icon={<CircleDot className="w-4 h-4" style={{ color: "#3b82f6" }} />}
+            borderColor="#3b82f6"
+            badgeBg="bg-blue-500/15"
+            badgeText="text-blue-700 dark:text-blue-400"
+            isOpen={openAccordion === "andamento"}
+            onToggle={() => setOpenAccordion(openAccordion === "andamento" ? null : "andamento")}
           >
             {emAndamento.length === 0 ? renderEmptyState("Nenhuma rotina em andamento.") : emAndamento.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
           </AccordionSection>
@@ -258,18 +264,25 @@ export default function OperationalExecucaoPage() {
           <AccordionSection
             title="Devolvidas"
             count={devolvidas.length}
-            colorClass="text-destructive"
-            badgeBg="bg-destructive/20"
-            defaultOpen={devolvidas.length > 0}
+            icon={<RotateCcw className="w-4 h-4" style={{ color: "#ef4444" }} />}
+            borderColor="#ef4444"
+            badgeBg="bg-red-500/15"
+            badgeText="text-red-700 dark:text-red-400"
+            isOpen={openAccordion === "devolvidas"}
+            onToggle={() => setOpenAccordion(openAccordion === "devolvidas" ? null : "devolvidas")}
           >
             {devolvidas.length === 0 ? renderEmptyState("Nenhuma rotina devolvida.") : devolvidas.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
           </AccordionSection>
 
           <AccordionSection
-            title="Finalizada"
+            title="Finalizadas"
             count={concluidas.length}
-            colorClass="text-green-700"
-            badgeBg="bg-green-500/20"
+            icon={<CheckCheck className="w-4 h-4" style={{ color: "#22c55e" }} />}
+            borderColor="#22c55e"
+            badgeBg="bg-green-500/15"
+            badgeText="text-green-700 dark:text-green-400"
+            isOpen={openAccordion === "finalizadas"}
+            onToggle={() => setOpenAccordion(openAccordion === "finalizadas" ? null : "finalizadas")}
           >
             {concluidas.length === 0 ? renderEmptyState("Nenhuma rotina finalizada.") : concluidas.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
           </AccordionSection>
