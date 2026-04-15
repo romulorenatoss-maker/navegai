@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Play, Send, Save, Clock, ChevronLeft, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,23 +15,38 @@ import { DynamicFieldRenderer, SnapshotField, FieldAnswer, evaluateVisibility } 
 import { useAssignmentExecution } from "@/hooks/useAssignmentExecution";
 
 export default function OperationalExecucaoPage() {
-  const { profile } = useAuth();
+  const { profile, isAdmin } = useAuth();
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState("pendentes");
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
   const [execDialogOpen, setExecDialogOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [filterResponsavel, setFilterResponsavel] = useState<string>("__all");
 
   const today = new Date().toISOString().slice(0, 10);
 
+  // Admin: load all profiles for filter
+  const { data: allProfiles = [] } = useQuery({
+    queryKey: ["profiles_for_exec_filter"],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("id, nome").eq("ativo", true).order("nome");
+      return data || [];
+    },
+    enabled: isAdmin,
+    staleTime: 60000,
+  });
+
   const { data: assignments = [], isLoading } = useQuery({
-    queryKey: ["my_operational_assignments", profile?.id],
+    queryKey: ["my_operational_assignments", profile?.id, isAdmin],
     queryFn: async () => {
       if (!profile?.id) return [];
-      const { data, error } = await (supabase as any).from("operational_assignments")
+      let q = (supabase as any).from("operational_assignments")
         .select("*, operational_templates(nome, tipo_execucao)")
-        .or(`responsavel_id.eq.${profile.id}`)
         .order("data_prevista", { ascending: true });
+      if (!isAdmin) {
+        q = q.or(`responsavel_id.eq.${profile.id}`);
+      }
+      const { data, error } = await q.limit(500);
       if (error) throw error;
       return data;
     },
@@ -38,11 +54,17 @@ export default function OperationalExecucaoPage() {
     staleTime: 15000,
   });
 
+  // Apply collaborator filter for admin
+  const filteredAssignments = useMemo(() => {
+    if (!isAdmin || filterResponsavel === "__all") return assignments;
+    return assignments.filter((a: any) => a.responsavel_id === filterResponsavel);
+  }, [assignments, isAdmin, filterResponsavel]);
+
   // Tabs filtering
-  const pendentes = assignments.filter((a: any) => ["pendente"].includes(a.status));
-  const emAndamento = assignments.filter((a: any) => ["em_andamento"].includes(a.status));
-  const devolvidas = assignments.filter((a: any) => ["devolvida"].includes(a.status));
-  const concluidas = assignments.filter((a: any) => ["concluida", "aprovada", "aguardando_avaliacao", "aguardando_aprovacao"].includes(a.status)).slice(0, 50);
+  const pendentes = filteredAssignments.filter((a: any) => ["pendente"].includes(a.status));
+  const emAndamento = filteredAssignments.filter((a: any) => ["em_andamento"].includes(a.status));
+  const devolvidas = filteredAssignments.filter((a: any) => ["devolvida"].includes(a.status));
+  const concluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada", "aguardando_avaliacao", "aguardando_aprovacao"].includes(a.status)).slice(0, 50);
 
   const exec = useAssignmentExecution(selectedAssignment?.id || null);
 
@@ -90,8 +112,9 @@ export default function OperationalExecucaoPage() {
     return Math.round((filled / visibleFields.length) * 100);
   }, [visibleFields, exec.answers]);
 
-  // Is assignment editable by current user?
-  const isEditable = selectedAssignment && ["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status);
+  // Is assignment editable by current user? Admin viewing others' tasks = read-only
+  const isOwner = selectedAssignment?.responsavel_id === profile?.id;
+  const isEditable = selectedAssignment && ["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status) && (isOwner || !isAdmin);
   const isDevolvida = selectedAssignment?.status === "devolvida";
 
   const handleStart = () => {
@@ -133,8 +156,27 @@ export default function OperationalExecucaoPage() {
     <div className="p-4 md:p-6 max-w-3xl mx-auto">
       <div className="mb-6">
         <h1 className="text-lg md:text-xl font-semibold text-foreground">Execução Operacional</h1>
-        <p className="text-sm text-muted-foreground">Formulários e rotinas atribuídos a você.</p>
+        <p className="text-sm text-muted-foreground">
+          {isAdmin ? "Visualização administrativa de todas as rotinas." : "Formulários e rotinas atribuídos a você."}
+        </p>
       </div>
+
+      {isAdmin && (
+        <div className="mb-4 flex items-center gap-2">
+          <label className="text-sm text-muted-foreground whitespace-nowrap">Colaborador:</label>
+          <Select value={filterResponsavel} onValueChange={setFilterResponsavel}>
+            <SelectTrigger className="w-[260px]">
+              <SelectValue placeholder="Todos os colaboradores" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">Todos os colaboradores</SelectItem>
+              {allProfiles.map((p: any) => (
+                <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full mb-4 flex-wrap h-auto gap-1">
