@@ -2166,6 +2166,7 @@ export type Database = {
           nota_maxima: number
           obrigatorio: boolean
           opcoes: Json | null
+          opcoes_regras: Json | null
           ordem: number
           penalidade_reprovacao: number
           peso: number
@@ -2192,6 +2193,7 @@ export type Database = {
           nota_maxima?: number
           obrigatorio?: boolean
           opcoes?: Json | null
+          opcoes_regras?: Json | null
           ordem?: number
           penalidade_reprovacao?: number
           peso?: number
@@ -2218,6 +2220,7 @@ export type Database = {
           nota_maxima?: number
           obrigatorio?: boolean
           opcoes?: Json | null
+          opcoes_regras?: Json | null
           ordem?: number
           penalidade_reprovacao?: number
           peso?: number
