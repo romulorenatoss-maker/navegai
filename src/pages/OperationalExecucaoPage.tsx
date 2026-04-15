@@ -64,6 +64,7 @@ export default function OperationalExecucaoPage() {
   const [openAccordion, setOpenAccordion] = useState<string | null>("hoje");
   const today = new Date().toISOString().slice(0, 10);
   const [filterDate, setFilterDate] = useState<string>(today);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   const { data: allProfiles = [] } = useQuery({
     queryKey: ["profiles_for_exec_filter"],
