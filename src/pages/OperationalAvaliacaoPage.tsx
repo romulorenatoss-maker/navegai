@@ -76,6 +76,15 @@ export default function OperationalAvaliacaoPage() {
     [snapshotFields, answersMap]
   );
 
+  // Count executor "não conforme" fields
+  const naoConformeFields = useMemo(() => {
+    return visibleFields.filter(f => {
+      if (f.tipo !== "conforme" && f.tipo !== "sim_nao") return false;
+      const ans = answersMap[f.id];
+      return ans?.valor_booleano === false;
+    });
+  }, [visibleFields, answersMap]);
+
   // FIX #1: Use weighted score preview
   const weightedScore = useMemo(() =>
     review.weightedScorePreview(snapshotFields),
@@ -238,6 +247,21 @@ export default function OperationalAvaliacaoPage() {
               )}
             </div>
 
+            {/* Não conforme summary */}
+            {naoConformeFields.length > 0 && (
+              <div className="mt-3 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-orange-600 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-orange-800">
+                    {naoConformeFields.length} campo{naoConformeFields.length > 1 ? "s" : ""} marcado{naoConformeFields.length > 1 ? "s" : ""} como Não Conforme pelo executor
+                  </p>
+                  <p className="text-[10px] text-orange-600 truncate">
+                    {naoConformeFields.map(f => f.label).join(", ")}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Section nav */}
             {snapshotSections.length > 1 && (
               <div className="flex gap-1.5 mt-3 overflow-x-auto pb-1">
@@ -245,11 +269,13 @@ export default function OperationalAvaliacaoPage() {
                   const sFields = (fieldsBySection[s.id] || []).filter(f => evaluateVisibility(f.condicao_visibilidade, answersMap));
                   const reviewed = sFields.filter(f => review.reviewDrafts[f.id]?.conforme !== null && review.reviewDrafts[f.id]?.conforme !== undefined).length;
                   const allReviewed = reviewed === sFields.length && sFields.length > 0;
+                  const hasNaoConforme = sFields.some(f => (f.tipo === "conforme" || f.tipo === "sim_nao") && answersMap[f.id]?.valor_booleano === false);
                   return (
                     <button key={s.id} type="button" onClick={() => setActiveSection(s.id)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border whitespace-nowrap transition-colors ${activeSection === s.id ? "bg-primary/10 border-primary text-primary" : "bg-card border-border text-muted-foreground hover:bg-muted"}`}>
                       <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.cor || "#3b82f6" }} />
                       {s.nome || "Seção"}
+                      {hasNaoConforme && !allReviewed && <AlertTriangle className="w-3 h-3 text-orange-500" />}
                       {allReviewed && <CheckCircle2 className="w-3 h-3 text-green-600" />}
                       <span className="text-[10px] opacity-70">{reviewed}/{sFields.length}</span>
                     </button>
