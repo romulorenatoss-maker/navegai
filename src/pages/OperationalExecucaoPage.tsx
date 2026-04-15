@@ -239,6 +239,12 @@ export default function OperationalExecucaoPage() {
             className="pl-9 h-9 text-sm"
           />
         </div>
+        <Input
+          type="date"
+          value={filterDate}
+          onChange={e => setFilterDate(e.target.value || today)}
+          className="w-[160px] h-9 text-sm"
+        />
         {isAdmin && (
           <Select value={filterResponsavel} onValueChange={setFilterResponsavel}>
             <SelectTrigger className="w-[200px] h-9">
