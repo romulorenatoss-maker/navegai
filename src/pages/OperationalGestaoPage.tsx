@@ -646,6 +646,43 @@ export default function OperationalGestaoPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Score Adjustment Dialog */}
+      <Dialog open={scoreDialog.open} onOpenChange={o => { if (!o) { setScoreDialog({ open: false, assignment: null }); setMotivo(""); setNewScore(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Pencil className="w-4 h-4" />Ajustar Score</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <p className="text-body font-medium text-foreground">{scoreDialog.assignment?.operational_templates?.nome}</p>
+              <p className="text-caption text-muted-foreground">
+                Responsável: {scoreDialog.assignment?.profiles?.nome} | Data: {scoreDialog.assignment?.data_prevista}
+              </p>
+              <p className="text-caption text-muted-foreground">
+                Score atual: <span className="font-medium text-foreground">{scoreDialog.assignment?.pontuacao_obtida != null ? Math.round(scoreDialog.assignment.pontuacao_obtida) : "—"}</span>
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Novo Score (0-100) *</Label>
+              <Input type="number" min={0} max={100} value={newScore} onChange={e => setNewScore(e.target.value)} placeholder="Ex: 85" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Justificativa *</Label>
+              <Textarea value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Informe o motivo do ajuste..." />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setScoreDialog({ open: false, assignment: null }); setMotivo(""); setNewScore(""); }}>Cancelar</Button>
+            <Button
+              disabled={adjustScore.isPending || !motivo.trim() || !newScore}
+              onClick={() => adjustScore.mutate({ assignmentId: scoreDialog.assignment?.id, score: parseInt(newScore), motivo })}
+            >
+              {adjustScore.isPending ? "Processando..." : "Confirmar Ajuste"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
