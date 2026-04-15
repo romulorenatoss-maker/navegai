@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TIPO_EXECUCAO_LABELS, RECORRENCIA_LABELS } from "@/hooks/useOperationalScoring";
 import { TemplateForm, SectionForm, FieldForm, defaultTemplate, defaultSection, defaultField } from "@/components/operational/types";
 import { TabGeral } from "@/components/operational/TabGeral";
@@ -22,6 +23,9 @@ export default function OperationalCadastroPage() {
   const [sections, setSections] = useState<SectionForm[]>([]);
   const [fields, setFields] = useState<FieldForm[]>([]);
   const [activeTab, setActiveTab] = useState("geral");
+  const [filterExecutor, setFilterExecutor] = useState("__all");
+  const [filterAvaliador, setFilterAvaliador] = useState("__all");
+  const [filterAvaliado, setFilterAvaliado] = useState("__all");
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ["operational_templates"],
@@ -51,6 +55,35 @@ export default function OperationalCadastroPage() {
       return data;
     },
   });
+
+  // Build profile maps for filters — only show names that have templates associated
+  const { executorProfiles, avaliadorProfiles, avaliadoProfiles } = useMemo(() => {
+    const execMap = new Map<string, string>();
+    const avalMap = new Map<string, string>();
+    const avdoMap = new Map<string, string>();
+    const profileMap = new Map(colaboradores.map((c: any) => [c.id, c.nome]));
+    for (const t of templates) {
+      if (t.executor_profile_id && profileMap.has(t.executor_profile_id))
+        execMap.set(t.executor_profile_id, profileMap.get(t.executor_profile_id)!);
+      if (t.avaliador_profile_id && profileMap.has(t.avaliador_profile_id))
+        avalMap.set(t.avaliador_profile_id, profileMap.get(t.avaliador_profile_id)!);
+      if (t.avaliado_profile_id && profileMap.has(t.avaliado_profile_id))
+        avdoMap.set(t.avaliado_profile_id, profileMap.get(t.avaliado_profile_id)!);
+    }
+    return {
+      executorProfiles: Array.from(execMap, ([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome)),
+      avaliadorProfiles: Array.from(avalMap, ([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome)),
+      avaliadoProfiles: Array.from(avdoMap, ([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome)),
+    };
+  }, [templates, colaboradores]);
+
+  const filteredTemplates = useMemo(() => {
+    let list = templates;
+    if (filterExecutor !== "__all") list = list.filter((t: any) => t.executor_profile_id === filterExecutor);
+    if (filterAvaliador !== "__all") list = list.filter((t: any) => t.avaliador_profile_id === filterAvaliador);
+    if (filterAvaliado !== "__all") list = list.filter((t: any) => t.avaliado_profile_id === filterAvaliado);
+    return list;
+  }, [templates, filterExecutor, filterAvaliador, filterAvaliado]);
 
   const set = <K extends keyof TemplateForm>(k: K, v: TemplateForm[K]) => setForm(f => ({ ...f, [k]: v }));
 
@@ -259,6 +292,32 @@ export default function OperationalCadastroPage() {
         <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Novo Template</Button>
       </div>
 
+      {/* Filters */}
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
+        <Select value={filterExecutor} onValueChange={setFilterExecutor}>
+          <SelectTrigger className="w-[170px] h-8 text-xs"><SelectValue placeholder="Executor" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all">Executor: Todos</SelectItem>
+            {executorProfiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterAvaliador} onValueChange={setFilterAvaliador}>
+          <SelectTrigger className="w-[170px] h-8 text-xs"><SelectValue placeholder="Avaliador" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all">Avaliador: Todos</SelectItem>
+            {avaliadorProfiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterAvaliado} onValueChange={setFilterAvaliado}>
+          <SelectTrigger className="w-[170px] h-8 text-xs"><SelectValue placeholder="Avaliado" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all">Avaliado: Todos</SelectItem>
+            {avaliadoProfiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Templates table */}
       <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
         <div className="overflow-x-auto">
@@ -277,9 +336,9 @@ export default function OperationalCadastroPage() {
             <tbody className="divide-y divide-border">
               {isLoading ? (
                 <tr><td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">Carregando...</td></tr>
-              ) : templates.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhum template cadastrado.</td></tr>
-              ) : templates.map((t: any) => (
+              ) : filteredTemplates.length === 0 ? (
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhum template encontrado.</td></tr>
+              ) : filteredTemplates.map((t: any) => (
                 <tr key={t.id} className="hover:bg-muted/50 transition-colors">
                   <td className="px-4 py-3">
                     <span className="text-body font-medium text-foreground">{t.nome}</span>
