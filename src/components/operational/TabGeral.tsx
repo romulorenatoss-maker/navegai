@@ -6,12 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Users, Plus, Trash2, GripVertical, Clock } from "lucide-react";
-import { TemplateForm, StepForm, defaultStep } from "./types";
+import { Users } from "lucide-react";
+import { TemplateForm } from "./types";
 import { TIPO_EXECUCAO_LABELS } from "@/hooks/useOperationalScoring";
 
 interface Props {
@@ -19,9 +17,8 @@ interface Props {
   set: <K extends keyof TemplateForm>(k: K, v: TemplateForm[K]) => void;
   setores: any[];
   colaboradores: any[];
-  steps?: StepForm[];
-  setSteps?: (steps: StepForm[]) => void;
 }
+
 
 type RoleConfig = {
   label: string;
@@ -31,7 +28,7 @@ type RoleConfig = {
   showSetorMembers?: boolean;
 };
 
-export function TabGeral({ form, set, setores, colaboradores, steps = [], setSteps }: Props) {
+export function TabGeral({ form, set, setores, colaboradores }: Props) {
   const [membrosDialogOpen, setMembrosDialogOpen] = useState(false);
   const [membrosDialogTitle, setMembrosDialogTitle] = useState("");
   const [membrosDialogList, setMembrosDialogList] = useState<any[]>([]);
@@ -221,109 +218,6 @@ export function TabGeral({ form, set, setores, colaboradores, steps = [], setSte
             )}
           </div>
       </div>
-
-      {/* Steps config when tipo_execucao is "etapas" */}
-      {form.tipo_execucao === "etapas" && setSteps && (
-        <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-foreground flex items-center gap-2">
-                <Clock className="w-4 h-4 text-primary" /> Configuração de Etapas
-              </p>
-              <p className="text-[10px] text-muted-foreground">Cada etapa tem uma janela de horário. Se preenchida fora do horário, será marcada como atrasada.</p>
-            </div>
-            <Button type="button" size="sm" variant="outline" onClick={() => setSteps([...steps, defaultStep(steps.length)])}>
-              <Plus className="w-3.5 h-3.5 mr-1" /> Etapa
-            </Button>
-          </div>
-          {steps.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">Nenhuma etapa configurada.</p>}
-          <div className="space-y-2">
-            {steps.sort((a, b) => a.ordem - b.ordem).map((step, idx) => (
-              <div key={step.tempId} className="flex items-start gap-2 p-3 bg-card rounded-md border border-border">
-                <div className="text-muted-foreground mt-1">
-                  <GripVertical className="w-3.5 h-3.5" />
-                </div>
-                <div className="flex-1 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-[10px] shrink-0">Etapa {idx + 1}</Badge>
-                    <Input
-                      value={step.nome}
-                      onChange={e => {
-                        const updated = [...steps];
-                        updated[idx] = { ...step, nome: e.target.value };
-                        setSteps(updated);
-                      }}
-                      placeholder="Nome da etapa"
-                      className="h-7 text-xs flex-1"
-                    />
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="space-y-0.5">
-                      <Label className="text-[10px] text-muted-foreground">Horário Início</Label>
-                      <Input
-                        type="time"
-                        value={step.horario_inicio}
-                        onChange={e => {
-                          const updated = [...steps];
-                          updated[idx] = { ...step, horario_inicio: e.target.value };
-                          setSteps(updated);
-                        }}
-                        className="h-7 text-xs"
-                      />
-                    </div>
-                    <div className="space-y-0.5">
-                      <Label className="text-[10px] text-muted-foreground">Horário Fim</Label>
-                      <Input
-                        type="time"
-                        value={step.horario_fim}
-                        onChange={e => {
-                          const updated = [...steps];
-                          updated[idx] = { ...step, horario_fim: e.target.value };
-                          setSteps(updated);
-                        }}
-                        className="h-7 text-xs"
-                      />
-                    </div>
-                    <div className="space-y-0.5">
-                      <Label className="text-[10px] text-muted-foreground">Peso</Label>
-                      <Input
-                        type="number"
-                        min={1}
-                        value={step.peso}
-                        onChange={e => {
-                          const updated = [...steps];
-                          updated[idx] = { ...step, peso: +e.target.value };
-                          setSteps(updated);
-                        }}
-                        className="h-7 text-xs"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4 text-[10px]">
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <Switch className="scale-75" checked={step.exige_foto} onCheckedChange={v => {
-                        const updated = [...steps]; updated[idx] = { ...step, exige_foto: v }; setSteps(updated);
-                      }} />
-                      <span>Foto</span>
-                    </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <Switch className="scale-75" checked={step.exige_observacao} onCheckedChange={v => {
-                        const updated = [...steps]; updated[idx] = { ...step, exige_observacao: v }; setSteps(updated);
-                      }} />
-                      <span>Observação</span>
-                    </label>
-                  </div>
-                </div>
-                <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive" onClick={() => {
-                  setSteps(steps.filter(s => s.tempId !== step.tempId).map((s, i) => ({ ...s, ordem: i })));
-                }}>
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
 
         {/* Validador Contingência */}

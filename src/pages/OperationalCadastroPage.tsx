@@ -162,6 +162,7 @@ export default function OperationalCadastroPage() {
           sections.map((s, i) => ({
             template_id: templateId, nome: s.nome || `Seção ${i + 1}`, descricao: s.descricao || null,
             peso: s.peso, ordem: i, cor: s.cor,
+            horario_inicio: s.horario_inicio || null, horario_fim: s.horario_fim || null,
           }))
         ).select();
         if (error) throw error;
@@ -292,6 +293,7 @@ export default function OperationalCadastroPage() {
       .select("*").eq("template_id", t.id).order("ordem");
     const loadedSections: SectionForm[] = (secs || []).map((s: any) => ({
       id: s.id, tempId: s.id, nome: s.nome, descricao: s.descricao || "", peso: s.peso, ordem: s.ordem, cor: s.cor || "#3b82f6",
+      horario_inicio: s.horario_inicio || "", horario_fim: s.horario_fim || "",
     }));
     setSections(loadedSections);
 
@@ -444,10 +446,10 @@ export default function OperationalCadastroPage() {
               </TabsList>
 
               <TabsContent value="geral">
-                <TabGeral form={form} set={set} setores={setores} colaboradores={colaboradores} steps={steps} setSteps={setSteps} />
+                <TabGeral form={form} set={set} setores={setores} colaboradores={colaboradores} />
               </TabsContent>
               <TabsContent value="campos">
-                <TabFormBuilder sections={sections} setSections={setSections} fields={fields} setFields={setFields} setores={setores} />
+                <TabFormBuilder sections={sections} setSections={setSections} fields={fields} setFields={setFields} setores={setores} tipoExecucao={form.tipo_execucao} />
               </TabsContent>
               <TabsContent value="workflow">
                 <TabWorkflow form={form} set={set} fields={fields} />

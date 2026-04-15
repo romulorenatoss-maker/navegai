@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Settings2, Copy, AlertTriangle, Camera, FileVideo, FileText } from "lucide-react";
+import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Settings2, Copy, AlertTriangle, Camera, FileVideo, FileText, Clock } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
@@ -17,9 +17,10 @@ interface Props {
   fields: FieldForm[];
   setFields: React.Dispatch<React.SetStateAction<FieldForm[]>>;
   setores?: any[];
+  tipoExecucao?: string;
 }
 
-export function TabFormBuilder({ sections, setSections, fields, setFields, setores = [] }: Props) {
+export function TabFormBuilder({ sections, setSections, fields, setFields, setores = [], tipoExecucao = "checklist_inspecao" }: Props) {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<FieldForm | null>(null);
 
@@ -158,6 +159,26 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                           <div className="p-3 space-y-2">
                             <Input value={section.descricao} onChange={e => updateSection(section.tempId, "descricao", e.target.value)}
                               placeholder="Descrição da seção (opcional)" className="text-sm mb-2" maxLength={500} />
+
+                            {tipoExecucao === "etapas" && (
+                              <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-md p-2 mb-2">
+                                <Clock className="w-4 h-4 text-primary shrink-0" />
+                                <div className="flex items-center gap-2 flex-1">
+                                  <div className="space-y-0.5">
+                                    <Label className="text-[10px] text-muted-foreground">Horário Início</Label>
+                                    <Input type="time" value={section.horario_inicio || ""} onChange={e => updateSection(section.tempId, "horario_inicio" as any, e.target.value)}
+                                      className="h-7 text-xs w-[110px]" />
+                                  </div>
+                                  <span className="text-muted-foreground text-xs mt-3">até</span>
+                                  <div className="space-y-0.5">
+                                    <Label className="text-[10px] text-muted-foreground">Horário Fim</Label>
+                                    <Input type="time" value={section.horario_fim || ""} onChange={e => updateSection(section.tempId, "horario_fim" as any, e.target.value)}
+                                      className="h-7 text-xs w-[110px]" />
+                                  </div>
+                                </div>
+                                <p className="text-[10px] text-muted-foreground max-w-[180px]">Campos desta etapa devem ser preenchidos neste horário. Fora do prazo = atraso automático.</p>
+                              </div>
+                            )}
 
                             <Droppable droppableId={section.tempId} type="FIELD">
                               {(fieldProvided) => (
