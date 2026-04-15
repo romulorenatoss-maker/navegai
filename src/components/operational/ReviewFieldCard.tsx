@@ -2,8 +2,9 @@ import { SnapshotField } from "./DynamicFieldRenderer";
 import { FieldReviewDraft } from "@/hooks/useAssignmentReview";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { CheckCircle2, XCircle, RotateCcw, AlertTriangle, Camera, FileText, ExternalLink } from "lucide-react";
+import { CheckCircle2, XCircle, RotateCcw, AlertTriangle, Camera, FileText, ExternalLink, Clock } from "lucide-react";
 
 interface Props {
   field: SnapshotField;
@@ -12,6 +13,9 @@ interface Props {
   previousReview?: any;
   onChange: (fieldId: string, patch: Partial<FieldReviewDraft>) => void;
   disabled?: boolean;
+  /** Prazo customizado em horas para contingência — só aparece se gera_contingencia e não conforme */
+  contingencyPrazoHoras?: number;
+  onContingencyPrazoChange?: (fieldId: string, horas: number) => void;
 }
 
 function renderAnswerValue(field: SnapshotField, answer: any) {
