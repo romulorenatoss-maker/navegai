@@ -169,7 +169,8 @@ export default function DesempenhoColaboradorPage() {
   const { data: notasPorSetorData = [] } = useQuery({
     queryKey: ["perf_notas_setor", targetProfileId, appliedStart?.toISOString(), appliedEnd?.toISOString()],
     queryFn: async () => {
-      if (!targetProfileId) return [];
+      const empty = { errors: [] as { pergunta_id: string; pergunta: string; count: number }[], byTipo: [] as { tipo_id: string; tipo_nome: string; count: number }[] };
+      if (!targetProfileId) return empty;
       const from = appliedStart ? startOfDay(appliedStart).toISOString() : startOfDay(startOfMonth(now)).toISOString();
       const to = appliedEnd ? endOfDay(appliedEnd).toISOString() : endOfDay(endOfMonth(now)).toISOString();
       return fetchNotasPorSetor(from, to);
@@ -207,7 +208,7 @@ export default function DesempenhoColaboradorPage() {
         .gte("data_abertura", from)
         .lte("data_abertura", to);
 
-      if (!osData?.length) return [];
+      if (!osData?.length) return empty;
       const osIds = osData.map(o => o.id);
       const osMap: Record<string, string | null> = {};
       osData.forEach(o => { osMap[o.id] = o.tipo_servico_id; });
@@ -218,7 +219,7 @@ export default function DesempenhoColaboradorPage() {
         .in("ordem_servico_id", osIds)
         .eq("concluida", true);
 
-      if (!avals?.length) return [];
+      if (!avals?.length) return empty;
       const avalIds = avals.map(a => a.id);
       const avalOsMap: Record<string, string> = {};
       avals.forEach(a => { avalOsMap[a.id] = a.ordem_servico_id; });
@@ -229,7 +230,7 @@ export default function DesempenhoColaboradorPage() {
         .in("avaliacao_id", avalIds)
         .eq("resposta", "nao");
 
-      if (!respostas?.length) return [];
+      if (!respostas?.length) return empty;
 
       // Get all pergunta details including setor_avaliado_id to filter by person's sectors
       const allPerguntaIds = [...new Set(respostas.map(r => r.pergunta_id))];
