@@ -2251,6 +2251,7 @@ export type Database = {
           responsavel_id: string | null
           setor_id: string | null
           sla_horas: number | null
+          tipo_atribuicao_avaliado: string
           tipo_execucao: string
           tolerancia_minutos: number | null
           updated_at: string
@@ -2296,6 +2297,7 @@ export type Database = {
           responsavel_id?: string | null
           setor_id?: string | null
           sla_horas?: number | null
+          tipo_atribuicao_avaliado?: string
           tipo_execucao?: string
           tolerancia_minutos?: number | null
           updated_at?: string
@@ -2341,6 +2343,7 @@ export type Database = {
           responsavel_id?: string | null
           setor_id?: string | null
           sla_horas?: number | null
+          tipo_atribuicao_avaliado?: string
           tipo_execucao?: string
           tolerancia_minutos?: number | null
           updated_at?: string
