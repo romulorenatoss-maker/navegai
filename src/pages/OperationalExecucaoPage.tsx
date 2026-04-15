@@ -164,6 +164,7 @@ export default function OperationalExecucaoPage() {
     if (exec.dirty) await exec.saveDraft();
     setExecDialogOpen(false);
     setSelectedAssignment(null);
+    setSubmitAttempted(false);
   };
 
   const visibleFields = useMemo(() =>
