@@ -2151,6 +2151,12 @@ export type Database = {
       }
       operational_template_fields: {
         Row: {
+          aprovador_exige_evidencia_nao: boolean | null
+          aprovador_obriga_observacao_nao: boolean | null
+          aprovador_pergunta: string | null
+          aprovador_peso: number | null
+          aprovador_tipo_resposta: string | null
+          aprovador_tipos_evidencia: Json | null
           aprovador_verificar: boolean
           condicao_visibilidade: Json | null
           created_at: string
@@ -2178,6 +2184,12 @@ export type Database = {
           visivel_para: string[]
         }
         Insert: {
+          aprovador_exige_evidencia_nao?: boolean | null
+          aprovador_obriga_observacao_nao?: boolean | null
+          aprovador_pergunta?: string | null
+          aprovador_peso?: number | null
+          aprovador_tipo_resposta?: string | null
+          aprovador_tipos_evidencia?: Json | null
           aprovador_verificar?: boolean
           condicao_visibilidade?: Json | null
           created_at?: string
@@ -2205,6 +2217,12 @@ export type Database = {
           visivel_para?: string[]
         }
         Update: {
+          aprovador_exige_evidencia_nao?: boolean | null
+          aprovador_obriga_observacao_nao?: boolean | null
+          aprovador_pergunta?: string | null
+          aprovador_peso?: number | null
+          aprovador_tipo_resposta?: string | null
+          aprovador_tipos_evidencia?: Json | null
           aprovador_verificar?: boolean
           condicao_visibilidade?: Json | null
           created_at?: string
