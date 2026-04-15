@@ -1191,6 +1191,54 @@ export type Database = {
           },
         ]
       }
+      operational_assignment_history: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          data_hora: string
+          detalhes_json: Json | null
+          etapa: string | null
+          id: string
+          tipo_evento: string
+          usuario_id: string | null
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          data_hora?: string
+          detalhes_json?: Json | null
+          etapa?: string | null
+          id?: string
+          tipo_evento: string
+          usuario_id?: string | null
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          data_hora?: string
+          detalhes_json?: Json | null
+          etapa?: string | null
+          id?: string
+          tipo_evento?: string
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_assignment_history_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "operational_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_assignment_history_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       operational_assignments: {
         Row: {
           aprovador_id: string | null
@@ -1410,10 +1458,15 @@ export type Database = {
           assignment_id: string
           check_answer_id: string | null
           created_at: string
+          dentro_prazo: boolean | null
           descricao: string
           id: string
+          impacto_score: number | null
+          motivo_instrucao: string | null
+          numero_contingencia: number
           origin_field_id: string | null
           origin_review_id: string | null
+          prazo_resolucao: string | null
           prazo_sla: string | null
           resolvida_em: string | null
           responsavel_id: string | null
@@ -1427,10 +1480,15 @@ export type Database = {
           assignment_id: string
           check_answer_id?: string | null
           created_at?: string
+          dentro_prazo?: boolean | null
           descricao: string
           id?: string
+          impacto_score?: number | null
+          motivo_instrucao?: string | null
+          numero_contingencia?: number
           origin_field_id?: string | null
           origin_review_id?: string | null
+          prazo_resolucao?: string | null
           prazo_sla?: string | null
           resolvida_em?: string | null
           responsavel_id?: string | null
@@ -1444,10 +1502,15 @@ export type Database = {
           assignment_id?: string
           check_answer_id?: string | null
           created_at?: string
+          dentro_prazo?: boolean | null
           descricao?: string
           id?: string
+          impacto_score?: number | null
+          motivo_instrucao?: string | null
+          numero_contingencia?: number
           origin_field_id?: string | null
           origin_review_id?: string | null
+          prazo_resolucao?: string | null
           prazo_sla?: string | null
           resolvida_em?: string | null
           responsavel_id?: string | null
@@ -2293,12 +2356,15 @@ export type Database = {
           exigir_observacao: boolean | null
           exigir_video: boolean | null
           gerar_contingencia_automatica: boolean | null
+          habilitar_perguntas_automaticas: boolean
           horario_inicio_previsto: string | null
           horario_limite_execucao: string | null
           id: string
           intervalo_dias: number | null
           modo_pontuacao: string
           nome: string
+          penalidade_contingencia: number
+          penalidade_sla_contingencia: number
           permite_devolucao_parcial: boolean | null
           peso_recorrencia: number
           prazo_sla_correcao_horas: number | null
@@ -2339,12 +2405,15 @@ export type Database = {
           exigir_observacao?: boolean | null
           exigir_video?: boolean | null
           gerar_contingencia_automatica?: boolean | null
+          habilitar_perguntas_automaticas?: boolean
           horario_inicio_previsto?: string | null
           horario_limite_execucao?: string | null
           id?: string
           intervalo_dias?: number | null
           modo_pontuacao?: string
           nome: string
+          penalidade_contingencia?: number
+          penalidade_sla_contingencia?: number
           permite_devolucao_parcial?: boolean | null
           peso_recorrencia?: number
           prazo_sla_correcao_horas?: number | null
@@ -2385,12 +2454,15 @@ export type Database = {
           exigir_observacao?: boolean | null
           exigir_video?: boolean | null
           gerar_contingencia_automatica?: boolean | null
+          habilitar_perguntas_automaticas?: boolean
           horario_inicio_previsto?: string | null
           horario_limite_execucao?: string | null
           id?: string
           intervalo_dias?: number | null
           modo_pontuacao?: string
           nome?: string
+          penalidade_contingencia?: number
+          penalidade_sla_contingencia?: number
           permite_devolucao_parcial?: boolean | null
           peso_recorrencia?: number
           prazo_sla_correcao_horas?: number | null
