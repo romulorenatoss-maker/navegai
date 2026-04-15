@@ -23,6 +23,7 @@ import MinhasAvaliacoesPage from "./pages/MinhasAvaliacoesPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import RelatoriosPage from "./pages/RelatoriosPage";
 import DesempenhoColaboradorPage from "./pages/DesempenhoColaboradorPage";
+import DesempenhoOperacionalPage from "./pages/DesempenhoOperacionalPage";
 import LeadsPage from "./pages/LeadsPage";
 import FilaLeadsPage from "./pages/FilaLeadsPage";
 import DashboardLeadsPage from "./pages/DashboardLeadsPage";
@@ -90,6 +91,7 @@ const App = () => (
               <Route path="/leads/objecoes" element={<ObjecoesLeadsPage />} />
               <Route path="/leads/relatorios" element={<RelatoriosLeadsPage />} />
               <Route path="/desempenho" element={<DesempenhoColaboradorPage />} />
+              <Route path="/desempenho/operacional" element={<DesempenhoOperacionalPage />} />
               <Route path="/assistente" element={<AssistentePage />} />
               <Route path="/auditoria" element={<PlaceholderPage title="Auditoria" description="Registro completo de todas as ações do sistema." />} />
               <Route path="/configuracoes" element={<PermissoesPage />} />

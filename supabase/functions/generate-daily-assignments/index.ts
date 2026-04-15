@@ -51,7 +51,6 @@ Deno.serve(async (req) => {
           if (dias && dias.length > 0) {
             shouldGenerate = dias.includes(dayOfWeek);
           } else {
-            // Interval-based: check if days since start is divisible by interval
             const interval = t.intervalo_dias || 1;
             if (t.data_inicio) {
               const start = new Date(t.data_inicio + "T00:00:00Z");
@@ -66,7 +65,10 @@ Deno.serve(async (req) => {
       }
 
       if (!shouldGenerate) { skipped++; continue; }
-      if (!t.responsavel_id) { skipped++; continue; }
+
+      // Resolve executor: profile > setor member > responsavel_id
+      const executorId = t.executor_profile_id || t.responsavel_id;
+      if (!executorId) { skipped++; continue; }
 
       // Check uniqueness
       const { data: existing } = await supabase
@@ -74,7 +76,7 @@ Deno.serve(async (req) => {
         .select("id")
         .eq("template_id", t.id)
         .eq("data_prevista", todayStr)
-        .eq("responsavel_id", t.responsavel_id)
+        .eq("responsavel_id", executorId)
         .maybeSingle();
 
       if (existing) { skipped++; continue; }
@@ -83,7 +85,14 @@ Deno.serve(async (req) => {
         .from("operational_assignments")
         .insert({
           template_id: t.id,
-          responsavel_id: t.responsavel_id,
+          responsavel_id: executorId,
+          avaliador_id: t.avaliador_profile_id || null,
+          avaliado_id: t.avaliado_profile_id || null,
+          aprovador_id: t.aprovador_profile_id || null,
+          validador_contingencia_id: t.validador_contingencia_profile_id || null,
+          setor_executor_id: t.executor_setor_id || t.setor_id || null,
+          setor_avaliador_id: t.avaliador_setor_id || null,
+          setor_avaliado_id: t.avaliado_setor_id || null,
           data_prevista: todayStr,
           horario_inicio_previsto: t.horario_inicio_previsto || null,
           horario_limite: t.horario_limite_execucao || null,
