@@ -8,6 +8,33 @@ export interface SectionForm {
   cor: string;
 }
 
+export interface OpcaoRegra {
+  valor: string;
+  label: string;
+  cor: string;
+  requer_descricao: boolean;
+  requer_evidencia: boolean;
+  gera_contingencia: boolean;
+}
+
+export const getDefaultOpcoesRegras = (tipo: string): OpcaoRegra[] => {
+  if (tipo === "conforme") return [
+    { valor: "conforme", label: "Conforme", cor: "success", requer_descricao: false, requer_evidencia: false, gera_contingencia: false },
+    { valor: "nao_conforme", label: "Não Conforme", cor: "destructive", requer_descricao: true, requer_evidencia: false, gera_contingencia: false },
+    { valor: "na", label: "N/A", cor: "muted", requer_descricao: false, requer_evidencia: false, gera_contingencia: false },
+  ];
+  if (tipo === "sim_nao") return [
+    { valor: "sim", label: "Sim", cor: "success", requer_descricao: false, requer_evidencia: false, gera_contingencia: false },
+    { valor: "nao", label: "Não", cor: "destructive", requer_descricao: true, requer_evidencia: false, gera_contingencia: false },
+    { valor: "na", label: "N/A", cor: "muted", requer_descricao: false, requer_evidencia: false, gera_contingencia: false },
+  ];
+  if (tipo === "nota_avaliacao") return [
+    { valor: "aprovado", label: "Aprovado (≥ mínimo)", cor: "success", requer_descricao: false, requer_evidencia: false, gera_contingencia: false },
+    { valor: "reprovado", label: "Reprovado (< mínimo)", cor: "destructive", requer_descricao: true, requer_evidencia: false, gera_contingencia: false },
+  ];
+  return [];
+};
+
 export interface FieldForm {
   id?: string;
   tempId: string;
@@ -26,6 +53,7 @@ export interface FieldForm {
   exige_evidencia: boolean;
   tipo_evidencia: string;
   opcoes: any[];
+  opcoes_regras: OpcaoRegra[];
   validacao: any;
   condicao_visibilidade: any;
   formula: any;
@@ -158,6 +186,7 @@ export const defaultField = (sectionTempId: string, ordem: number): FieldForm =>
   exige_evidencia: false,
   tipo_evidencia: "foto",
   opcoes: [],
+  opcoes_regras: [],
   validacao: null,
   condicao_visibilidade: null,
   formula: null,
