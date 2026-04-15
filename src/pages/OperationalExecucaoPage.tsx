@@ -180,8 +180,13 @@ export default function OperationalExecucaoPage() {
   }, [visibleFields, exec.answers]);
 
   const isOwner = selectedAssignment?.responsavel_id === profile?.id;
-  const isEditable = selectedAssignment && ["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status) && (isOwner || isAdmin);
+  const isAdminEditing = isAdmin && selectedAssignment && !["nao_executada"].includes(selectedAssignment.status);
+  const isEditable = selectedAssignment && (
+    (["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status) && (isOwner || isAdmin)) ||
+    isAdminEditing
+  );
   const isDevolvida = selectedAssignment?.status === "devolvida";
+  const needsAdminReopen = isAdmin && selectedAssignment && ["aguardando_avaliacao", "aguardando_aprovacao", "concluida", "aprovada"].includes(selectedAssignment.status);
 
   const handleStart = () => {
     if (selectedAssignment) exec.startTask.mutate(selectedAssignment.id);
@@ -413,12 +418,31 @@ export default function OperationalExecucaoPage() {
 
           {/* Body */}
           <div className="flex-1 overflow-y-auto p-4 space-y-6">
-            {selectedAssignment?.status === "pendente" && (
+            {selectedAssignment?.status === "pendente" && !isAdmin && (
               <div className="text-center py-6">
                 <p className="text-sm text-muted-foreground mb-3">Inicie a tarefa para começar o preenchimento.</p>
                 <Button onClick={handleStart} disabled={exec.startTask.isPending}>
                   <Play className="w-4 h-4 mr-2" /> Iniciar Tarefa
                 </Button>
+              </div>
+            )}
+
+            {selectedAssignment?.status === "pendente" && isAdmin && (
+              <div className="text-center py-6">
+                <p className="text-sm text-muted-foreground mb-3">Tarefa pendente. Como administrador, você pode iniciar ou editar.</p>
+                <Button onClick={handleStart} disabled={exec.startTask.isPending}>
+                  <Play className="w-4 h-4 mr-2" /> Iniciar Tarefa
+                </Button>
+              </div>
+            )}
+
+            {needsAdminReopen && (
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-3">
+                <div className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-400">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span className="font-medium">Modo Administrador:</span>
+                  <span>Esta tarefa está em <strong>{STATUS_CONFIG[selectedAssignment.status]?.label}</strong>. Você pode editar os campos diretamente.</span>
+                </div>
               </div>
             )}
 
@@ -470,11 +494,39 @@ export default function OperationalExecucaoPage() {
           </div>
 
           {isEditable && selectedAssignment?.status !== "pendente" && (
-            <div className="border-t border-border p-3 flex items-center gap-2 bg-card safe-area-bottom">
+            <div className="border-t border-border p-3 flex items-center gap-2 bg-card safe-area-bottom flex-wrap">
               <Button type="button" variant="outline" size="sm" onClick={handleSaveDraft} disabled={!exec.dirty}>
                 <Save className="w-3.5 h-3.5 mr-1" /> Rascunho
               </Button>
               <div className="flex-1" />
+              {needsAdminReopen ? (
+                <Button type="button" size="sm" variant="outline" onClick={async () => {
+                  try {
+                    const prevStatus = selectedAssignment.status;
+                    await (supabase as any).from("operational_assignments").update({
+                      status: "em_andamento",
+                      fim_em: null,
+                      avaliador_inicio_em: null,
+                      avaliador_fim_em: null,
+                    }).eq("id", selectedAssignment.id);
+                    await (supabase as any).from("operational_audit_trail").insert({
+                      assignment_id: selectedAssignment.id,
+                      tipo_evento: "admin_reabriu_para_edicao",
+                      executado_por: profile?.id,
+                      motivo: "Edição administrativa",
+                      dados_anteriores: { status: prevStatus },
+                      dados_novos: { status: "em_andamento" },
+                    });
+                    toast.success("Tarefa reaberta para edição");
+                    setSelectedAssignment({ ...selectedAssignment, status: "em_andamento" });
+                    qc.invalidateQueries({ queryKey: ["exec_assignments"] });
+                  } catch (e: any) {
+                    toast.error("Erro ao reabrir: " + e.message);
+                  }
+                }}>
+                  <RotateCcw className="w-3.5 h-3.5 mr-1" /> Reabrir para Edição
+                </Button>
+              ) : null}
               <Button type="button" size="sm" onClick={handleSubmit} disabled={exec.isSubmitting}>
                 <Send className="w-3.5 h-3.5 mr-1" /> {exec.isSubmitting ? "Enviando..." : "Enviar para Avaliação"}
               </Button>
