@@ -58,9 +58,9 @@ function generatePreviewDates(form: TemplateForm): Date[] {
   }
 
   const now = new Date();
-  const start = form.repetir_sempre || !form.data_inicio
-    ? now
-    : new Date(form.data_inicio + "T00:00:00");
+  const start = form.data_inicio
+    ? new Date(form.data_inicio + "T00:00:00")
+    : now;
   const endLimit = new Date(now);
   endLimit.setMonth(endLimit.getMonth() + 3);
   const end = form.data_fim && !form.repetir_sempre
