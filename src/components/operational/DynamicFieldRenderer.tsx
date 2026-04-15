@@ -273,6 +273,28 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
 
       {renderInput()}
 
+      {/* Who answered and when */}
+      {val.respondido_por_nome && val.respondido_em && (
+        <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-1 flex-wrap">
+          <span>Preenchido por <strong>{val.respondido_por_nome}</strong> em {format(new Date(val.respondido_em), "dd/MM/yyyy HH:mm")}</span>
+          {val.versao && val.versao > 1 && (
+            <span className="text-amber-600 font-medium">(v{val.versao} — alterado {(val.versao ?? 1) - 1}x)</span>
+          )}
+        </div>
+      )}
+      {val.historico_alteracoes && val.historico_alteracoes.length > 1 && (
+        <details className="mt-1">
+          <summary className="text-[10px] text-muted-foreground cursor-pointer hover:text-foreground">Histórico de alterações ({val.historico_alteracoes.length})</summary>
+          <div className="mt-1 space-y-0.5 pl-2 border-l-2 border-border">
+            {val.historico_alteracoes.map((h: any, i: number) => (
+              <p key={i} className="text-[10px] text-muted-foreground">
+                v{h.versao}: {h.nome} — {format(new Date(h.data), "dd/MM/yyyy HH:mm")}
+              </p>
+            ))}
+          </div>
+        </details>
+      )}
+
       {/* Evidence upload for non-file fields that require evidence */}
       {field.exige_evidencia && !["foto", "arquivo", "assinatura"].includes(field.tipo) && (
         <div className="mt-2">
