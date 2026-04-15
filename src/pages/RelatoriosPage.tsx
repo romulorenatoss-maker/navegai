@@ -880,7 +880,7 @@ export default function RelatoriosPage() {
                 ))}
                 {osList.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">
+                    <td colSpan={9} className="px-4 py-8 text-center text-body text-muted-foreground">
                       Nenhuma OS encontrada no período selecionado.
                     </td>
                   </tr>
