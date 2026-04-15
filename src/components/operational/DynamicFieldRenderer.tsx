@@ -73,6 +73,7 @@ interface Props {
   allAnswers: Record<string, FieldAnswer>;
   onChange: (fieldId: string, answer: Partial<FieldAnswer>) => void;
   assignmentId: string;
+  showValidation?: boolean;
 }
 
 function evaluateVisibility(condition: any, allAnswers: Record<string, FieldAnswer>): boolean {
@@ -121,7 +122,7 @@ function validateField(field: SnapshotField, answer: FieldAnswer | undefined): s
 
 export { evaluateVisibility, validateField };
 
-export function DynamicFieldRenderer({ field, answer, review, userRole, disabled, allAnswers, onChange, assignmentId }: Props) {
+export function DynamicFieldRenderer({ field, answer, review, userRole, disabled, allAnswers, onChange, assignmentId, showValidation = true }: Props) {
   const [uploading, setUploading] = useState(false);
 
   const isVisible = field.visivel_para.includes(userRole) && evaluateVisibility(field.condicao_visibilidade, allAnswers);
@@ -129,7 +130,7 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
 
   const isEditable = !disabled && field.editavel_por.includes(userRole);
   const isReturned = review?.devolvido === true;
-  const error = validateField(field, answer);
+  const error = showValidation ? validateField(field, answer) : null;
   const val: FieldAnswer = answer || { field_id: field.id };
 
   const update = (patch: Partial<FieldAnswer>) => onChange(field.id, patch);
