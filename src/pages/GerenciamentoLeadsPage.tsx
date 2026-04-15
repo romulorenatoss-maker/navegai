@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Loader2, Search, Send, Filter, ChevronLeft, ChevronRight, CheckSquare, Trash2 } from "lucide-react";
+import { Loader2, Search, Send, Filter, ChevronLeft, ChevronRight, CheckSquare, Trash2, Archive } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -86,6 +86,7 @@ export default function GerenciamentoLeadsPage() {
   // Sending / deleting state
   const [sending, setSending] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [archiving, setArchiving] = useState(false);
   const [sendProgress, setSendProgress] = useState<{ current: number; total: number } | null>(null);
 
   // ─── Server-side paginated query ─────────────────
@@ -307,6 +308,51 @@ export default function GerenciamentoLeadsPage() {
     }
   }, [selectedIds, queryClient]);
 
+  // ─── Archive selected ─────────────────
+  const handleArchiveSelected = useCallback(async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+
+    setArchiving(true);
+    setSendProgress({ current: 0, total: ids.length });
+
+    const BATCH_SIZE = 20;
+    try {
+      for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+        const batch = ids.slice(i, i + BATCH_SIZE);
+        const { error } = await supabase
+          .from("leads")
+          .update({ status_lead: "arquivado" } as any)
+          .in("id", batch);
+        if (error) throw error;
+        setSendProgress({ current: Math.min(i + BATCH_SIZE, ids.length), total: ids.length });
+      }
+
+      // Log history
+      if (profile) {
+        const historyBatch = ids.map(id => ({
+          lead_id: id,
+          usuario_id: profile.id,
+          tipo_evento: "alteracao_status",
+          descricao: "Lead arquivado via gerenciamento em massa.",
+        }));
+        for (let i = 0; i < historyBatch.length; i += 50) {
+          await supabase.from("lead_historico").insert(historyBatch.slice(i, i + 50));
+        }
+      }
+
+      toast.success(`${ids.length} leads arquivados com sucesso!`);
+      setSelectedIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ["gerenciamento-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["campanhas-leads-stats"] });
+    } catch (err: any) {
+      toast.error("Erro ao arquivar: " + err.message);
+    } finally {
+      setArchiving(false);
+      setSendProgress(null);
+    }
+  }, [selectedIds, profile, queryClient]);
+
   // Reset page when filters change
   const handleFilterChange = useCallback((setter: (v: any) => void, value: any) => {
     setter(value);
@@ -442,14 +488,37 @@ export default function GerenciamentoLeadsPage() {
                   <span className="text-xs text-muted-foreground">{sendProgress.current}/{sendProgress.total}</span>
                 </div>
               )}
-              <Button size="sm" onClick={handleSendToQueue} disabled={sending || deleting} className="gap-1.5">
+              <Button size="sm" onClick={handleSendToQueue} disabled={sending || deleting || archiving} className="gap-1.5">
                 {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                 Enviar para Fila
               </Button>
 
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="destructive" disabled={sending || deleting} className="gap-1.5">
+                  <Button size="sm" variant="outline" disabled={sending || deleting || archiving} className="gap-1.5">
+                    {archiving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Archive className="w-3.5 h-3.5" />}
+                    Arquivar Selecionados
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Arquivar {selectedIds.size} lead{selectedIds.size > 1 ? "s" : ""}?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Os leads serão movidos para o status "Arquivado". Os dados (contatos, interações, histórico) serão mantidos no sistema para consulta futura.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleArchiveSelected}>
+                      Arquivar
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button size="sm" variant="destructive" disabled={sending || deleting || archiving} className="gap-1.5">
                     {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                     Excluir Selecionados
                   </Button>
