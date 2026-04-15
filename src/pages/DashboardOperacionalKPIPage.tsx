@@ -36,11 +36,11 @@ export default function DashboardOperacionalKPIPage() {
 
   const dash = useOperationalDashboard({
     startDate, endDate,
-    templateId: templateId || undefined,
-    setorId: setorId || undefined,
-    executorId: executorId || undefined,
-    avaliadoId: avaliadoId || undefined,
-    avaliadorId: avaliadorId || undefined,
+    templateId: templateId && templateId !== "all" ? templateId : undefined,
+    setorId: setorId && setorId !== "all" ? setorId : undefined,
+    executorId: executorId && executorId !== "all" ? executorId : undefined,
+    avaliadoId: avaliadoId && avaliadoId !== "all" ? avaliadoId : undefined,
+    avaliadorId: avaliadorId && avaliadorId !== "all" ? avaliadorId : undefined,
   });
 
   const clearFilters = () => {
