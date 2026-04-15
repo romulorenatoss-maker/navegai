@@ -857,13 +857,13 @@ export default function RelatoriosPage() {
                       {...(someSelected ? { "data-state": "indeterminate" } : {})}
                     />
                   </th>
-                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">OS</th>
-                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Data Abertura</th>
-                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Cliente</th>
-                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Tipo de Serviço</th>
-                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Técnico</th>
-                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Atendente</th>
-                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Status</th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("numero_os")}>OS <SortIcon col="numero_os" /></th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("data_abertura")}>Data Abertura <SortIcon col="data_abertura" /></th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("cliente_nome")}>Cliente <SortIcon col="cliente_nome" /></th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("tipo_servico_nome")}>Tipo de Serviço <SortIcon col="tipo_servico_nome" /></th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("tecnico_nome")}>Técnico <SortIcon col="tecnico_nome" /></th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("atendente_nome")}>Atendente <SortIcon col="atendente_nome" /></th>
+                  <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("status")}>Status <SortIcon col="status" /></th>
                   <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2 w-16">Ações</th>
                 </tr>
               </thead>
