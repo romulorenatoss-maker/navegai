@@ -192,7 +192,8 @@ export default function DesempenhoColaboradorPage() {
   const { data: frequentErrors = { errors: [], byTipo: [] } } = useQuery({
     queryKey: ["perf_errors", targetProfileId, appliedStart?.toISOString(), appliedEnd?.toISOString()],
     queryFn: async () => {
-      if (!targetProfileId) return [];
+      const empty = { errors: [] as { pergunta_id: string; pergunta: string; count: number }[], byTipo: [] as { tipo_id: string; tipo_nome: string; count: number }[] };
+      if (!targetProfileId) return empty;
       const from = appliedStart ? startOfDay(appliedStart).toISOString() : startOfDay(startOfMonth(now)).toISOString();
       const to = appliedEnd ? endOfDay(appliedEnd).toISOString() : endOfDay(endOfMonth(now)).toISOString();
 
