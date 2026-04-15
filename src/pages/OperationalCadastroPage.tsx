@@ -252,6 +252,9 @@ export default function OperationalCadastroPage() {
       destino_score: t.destino_score || "individual",
       tipo_atribuicao_avaliado: t.tipo_atribuicao_avaliado || "individual",
       peso_recorrencia: t.peso_recorrencia ?? 1.0,
+      penalidade_contingencia: t.penalidade_contingencia ?? 10,
+      penalidade_sla_contingencia: t.penalidade_sla_contingencia ?? 15,
+      habilitar_perguntas_automaticas: t.habilitar_perguntas_automaticas ?? true,
     });
 
     // Load sections
