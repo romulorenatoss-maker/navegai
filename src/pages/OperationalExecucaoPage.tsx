@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Play, Send, Save, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock, CircleDot, RotateCcw, CheckCheck, CalendarClock, ListTodo } from "lucide-react";
+import { Play, Send, Save, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock, CircleDot, RotateCcw, CheckCheck, CalendarClock, ListTodo, Hourglass, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
@@ -62,8 +62,8 @@ export default function OperationalExecucaoPage() {
   const [filterResponsavel, setFilterResponsavel] = useState<string>("__all");
   const [searchTerm, setSearchTerm] = useState("");
   const [openAccordion, setOpenAccordion] = useState<string | null>("hoje");
-
   const today = new Date().toISOString().slice(0, 10);
+  const [filterDate, setFilterDate] = useState<string>(today);
 
   const { data: allProfiles = [] } = useQuery({
     queryKey: ["profiles_for_exec_filter"],
@@ -105,16 +105,27 @@ export default function OperationalExecucaoPage() {
         return nome.toLowerCase().includes(term);
       });
     }
+    // Filtro de data: mostra apenas a data selecionada para hoje/a fazer
+    if (filterDate) {
+      list = list.filter((a: any) => {
+        // Tarefas finalizadas/aguardando mostram sempre, o resto filtra por data
+        if (["concluida", "aprovada", "aguardando_avaliacao", "aguardando_aprovacao", "nao_executada"].includes(a.status)) return true;
+        // Devolvidas sempre visíveis
+        if (a.status === "devolvida") return true;
+        return a.data_prevista === filterDate || (a.data_prevista < filterDate && !["concluida", "aprovada"].includes(a.status));
+      });
+    }
     return list;
-  }, [assignments, isAdmin, filterResponsavel, searchTerm]);
+  }, [assignments, isAdmin, filterResponsavel, searchTerm, filterDate]);
 
   const hoje = filteredAssignments.filter((a: any) => 
-    ["pendente", "em_andamento", "devolvida"].includes(a.status) && a.data_prevista === today
+    ["pendente", "em_andamento", "devolvida"].includes(a.status) && a.data_prevista === filterDate
   );
-  const aFazer = filteredAssignments.filter((a: any) => ["pendente"].includes(a.status));
+  const aFazer = filteredAssignments.filter((a: any) => ["pendente"].includes(a.status) && a.data_prevista !== filterDate);
   const emAndamento = filteredAssignments.filter((a: any) => ["em_andamento"].includes(a.status));
   const devolvidas = filteredAssignments.filter((a: any) => ["devolvida"].includes(a.status));
-  const concluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada", "aguardando_avaliacao", "aguardando_aprovacao"].includes(a.status)).slice(0, 50);
+  const aguardandoAvaliacao = filteredAssignments.filter((a: any) => ["aguardando_avaliacao", "aguardando_aprovacao"].includes(a.status));
+  const concluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 50);
 
   const exec = useAssignmentExecution(selectedAssignment?.id || null);
 
@@ -228,6 +239,12 @@ export default function OperationalExecucaoPage() {
             className="pl-9 h-9 text-sm"
           />
         </div>
+        <Input
+          type="date"
+          value={filterDate}
+          onChange={e => setFilterDate(e.target.value || today)}
+          className="w-[160px] h-9 text-sm"
+        />
         {isAdmin && (
           <Select value={filterResponsavel} onValueChange={setFilterResponsavel}>
             <SelectTrigger className="w-[200px] h-9">
@@ -298,6 +315,19 @@ export default function OperationalExecucaoPage() {
             onToggle={() => setOpenAccordion(openAccordion === "devolvidas" ? null : "devolvidas")}
           >
             {devolvidas.length === 0 ? renderEmptyState("Nenhuma rotina devolvida.") : devolvidas.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+          </AccordionSection>
+
+          <AccordionSection
+            title="Aguardando Avaliação"
+            count={aguardandoAvaliacao.length}
+            icon={<Hourglass className="w-4 h-4" style={{ color: "#8b5cf6" }} />}
+            borderColor="#8b5cf6"
+            badgeBg="bg-violet-500/15"
+            badgeText="text-violet-700 dark:text-violet-400"
+            isOpen={openAccordion === "aguardando"}
+            onToggle={() => setOpenAccordion(openAccordion === "aguardando" ? null : "aguardando")}
+          >
+            {aguardandoAvaliacao.length === 0 ? renderEmptyState("Nenhuma rotina aguardando avaliação.") : aguardandoAvaliacao.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
           </AccordionSection>
 
           <AccordionSection

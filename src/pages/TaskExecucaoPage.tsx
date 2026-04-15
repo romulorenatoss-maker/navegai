@@ -67,11 +67,15 @@ export default function TaskExecucaoPage() {
   const today = new Date().toISOString().split("T")[0];
 
   const filtered = useMemo(() => {
-    // Hoje: somente tarefas com data_prevista = hoje E status ativo (pendente/em_andamento)
-    const hoje = assignments.filter((a: any) => 
-      a.data_prevista === today && 
-      ["pendente", "em_andamento"].includes(a.status)
-    );
+    // Hoje: tarefas de hoje ativas + tarefas expiradas de outros dias (atrasadas)
+    const hoje = assignments.filter((a: any) => {
+      if (["concluida", "nao_executada", "aguardando_avaliacao"].includes(a.status)) return false;
+      // É de hoje e ativa
+      if (a.data_prevista === today && ["pendente", "em_andamento"].includes(a.status)) return true;
+      // É de outro dia mas está expirada/atrasada — mostra como atrasada
+      if (a.data_prevista < today && ["pendente", "em_andamento", "atrasada"].includes(a.status)) return true;
+      return false;
+    });
     // Pendentes: pendentes de outros dias (não hoje)
     const pendentes = assignments.filter((a: any) => 
       a.status === "pendente" && a.data_prevista !== today
