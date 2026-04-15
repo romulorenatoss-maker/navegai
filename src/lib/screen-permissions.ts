@@ -20,6 +20,7 @@ export const ALL_SCREENS: ScreenDef[] = [
   // Checklists
   { path: "/checklists/cadastro", label: "Cadastro de Checklists", group: "Checklists" },
   { path: "/checklists/execucao", label: "Execução", group: "Checklists" },
+  // Avaliação removida do menu mas rota preservada
   { path: "/checklists/gestao", label: "Gestão", group: "Checklists" },
   // Cadastros
   { path: "/cadastros/setores", label: "Setores", group: "Cadastros" },
