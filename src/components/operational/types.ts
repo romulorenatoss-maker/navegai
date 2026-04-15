@@ -77,6 +77,9 @@ export interface TemplateForm {
   destino_score: string;
   peso_recorrencia: number;
   tipo_atribuicao_avaliado: string;
+  penalidade_contingencia: number;
+  penalidade_sla_contingencia: number;
+  habilitar_perguntas_automaticas: boolean;
 }
 
 export const FIELD_TYPES: Record<string, string> = {
@@ -130,6 +133,9 @@ export const defaultTemplate: TemplateForm = {
   modo_pontuacao: "pontuar_avaliado", destino_score: "individual",
   peso_recorrencia: 2.0,
   tipo_atribuicao_avaliado: "individual",
+  penalidade_contingencia: 10,
+  penalidade_sla_contingencia: 15,
+  habilitar_perguntas_automaticas: true,
 };
 
 export const defaultField = (sectionTempId: string, ordem: number): FieldForm => ({

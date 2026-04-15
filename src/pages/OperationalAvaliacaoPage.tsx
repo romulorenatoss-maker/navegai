@@ -305,7 +305,8 @@ export default function OperationalAvaliacaoPage() {
                         review={review.reviewDrafts[f.id]}
                         onChange={review.updateReview}
                         contingencyPrazoHoras={review.contingencyPrazos[f.id]}
-                        onContingencyPrazoChange={review.updateContingencyPrazo} />
+                        onContingencyPrazoChange={review.updateContingencyPrazo}
+                        onContingencyConfirm={review.registerContingencyData} />
                     ))}
                   </div>
                 ) : (
@@ -330,7 +331,8 @@ export default function OperationalAvaliacaoPage() {
                               review={review.reviewDrafts[f.id]}
                               onChange={review.updateReview}
                               contingencyPrazoHoras={review.contingencyPrazos[f.id]}
-                              onContingencyPrazoChange={review.updateContingencyPrazo} />
+                              onContingencyPrazoChange={review.updateContingencyPrazo}
+                              onContingencyConfirm={review.registerContingencyData} />
                           ))}
                         </div>
                       </div>

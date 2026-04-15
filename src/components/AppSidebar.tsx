@@ -43,7 +43,7 @@ const allNavSections = [
     items: [
       { to: "/checklists/cadastro", icon: ListChecks, label: "Templates" },
       { to: "/checklists/execucao", icon: PlayCircle, label: "Execução" },
-      { to: "/checklists/avaliacao", icon: ClipboardCheck, label: "Avaliação" },
+      // Avaliação removida do menu — lógica mantida internamente
       { to: "/checklists/aprovacao", icon: Shield, label: "Aprovação Final" },
       { to: "/checklists/contingencias", icon: AlertTriangle, label: "Contingências" },
       { to: "/checklists/dashboard", icon: PieChart, label: "Dashboard Operacional" },

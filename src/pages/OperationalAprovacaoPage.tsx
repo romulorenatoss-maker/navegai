@@ -52,6 +52,7 @@ export default function OperationalAprovacaoPage() {
   });
 
   const pendentes = assignments.filter((a: any) => a.status === "aguardando_aprovacao");
+  const devolvidos = assignments.filter((a: any) => a.status === "devolvida" || (a.status === "aguardando_aprovacao" && approval.contingencies.some((c: any) => !["validada", "descartada"].includes(c.status))));
   const aprovados = assignments.filter((a: any) => a.status === "aprovada");
   const historico = assignments.filter((a: any) => ["concluida", "reprovada"].includes(a.status)).slice(0, 50);
 
@@ -185,6 +186,9 @@ export default function OperationalAprovacaoPage() {
           <TabsTrigger value="pendentes" className="flex-1 min-w-[70px]">
             Pendentes {pendentes.length > 0 && <span className="ml-1 bg-purple-500/20 text-purple-700 px-1.5 rounded-full text-[10px]">{pendentes.length}</span>}
           </TabsTrigger>
+          <TabsTrigger value="devolvidos" className="flex-1 min-w-[70px]">
+            Devolvidos {devolvidos.length > 0 && <span className="ml-1 bg-amber-500/20 text-amber-700 px-1.5 rounded-full text-[10px]">{devolvidos.length}</span>}
+          </TabsTrigger>
           <TabsTrigger value="aprovados" className="flex-1 min-w-[70px]">
             Aprovados {aprovados.length > 0 && <span className="ml-1 bg-emerald-500/20 text-emerald-700 px-1.5 rounded-full text-[10px]">{aprovados.length}</span>}
           </TabsTrigger>
@@ -193,6 +197,9 @@ export default function OperationalAprovacaoPage() {
 
         <TabsContent value="pendentes" className="space-y-3">
           {isLoading ? renderEmptyState("Carregando...") : pendentes.length === 0 ? renderEmptyState("Nenhuma aprovação pendente.") : pendentes.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openApproval} />)}
+        </TabsContent>
+        <TabsContent value="devolvidos" className="space-y-3">
+          {devolvidos.length === 0 ? renderEmptyState("Nenhuma tarefa devolvida ou aguardando reaprovação.") : devolvidos.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openApproval} />)}
         </TabsContent>
         <TabsContent value="aprovados" className="space-y-3">
           {aprovados.length === 0 ? renderEmptyState("Nenhum aprovado recente.") : aprovados.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openApproval} />)}
@@ -366,6 +373,36 @@ export default function OperationalAprovacaoPage() {
 
             {activeView === "perguntas" && (
               <div className="space-y-4">
+                {/* Automatic system questions */}
+                {snapshot?.habilitar_perguntas_automaticas !== false && approval.contingencies.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Perguntas Automáticas do Sistema</h4>
+                    <div className="border rounded-lg p-3 space-y-2 bg-blue-50/30 border-blue-200">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium">Houve contingência nesta tarefa?</p>
+                        <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 border border-red-200">SIM</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Resposta automática — {approval.contingencies.length} contingência(s) registrada(s)</p>
+                    </div>
+                    <div className="border rounded-lg p-3 space-y-2 bg-blue-50/30 border-blue-200">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium">Contingência resolvida dentro do prazo?</p>
+                        {(() => {
+                          const resolved = approval.contingencies.filter((c: any) => c.resolvida_em);
+                          const dentroPrazo = resolved.filter((c: any) => c.prazo_sla && new Date(c.resolvida_em) <= new Date(c.prazo_sla));
+                          const allInTime = resolved.length > 0 && dentroPrazo.length === resolved.length;
+                          return (
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium border ${allInTime ? "bg-green-100 text-green-700 border-green-200" : "bg-red-100 text-red-700 border-red-200"}`}>
+                              {allInTime ? "SIM" : "NÃO"}
+                            </span>
+                          );
+                        })()}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Resposta automática — permite override manual com justificativa</p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Alert if contingencies are pending */}
                 {!approval.canAnswerApproverQuestions && (
                   <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 flex items-start gap-2">

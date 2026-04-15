@@ -126,6 +126,23 @@ export const AUDIT_EVENT_LABELS: Record<string, string> = {
   contingencia_validada: "Contingência Validada",
   inicio: "Início",
   ajuste_score: "Ajuste de Score",
+  avaliacao_aprovada: "Avaliação Aprovada",
+  avaliacao_reprovada: "Avaliação Reprovada",
+  avaliacao_devolvida: "Avaliação Devolvida",
+  aprovador_respondeu_perguntas: "Aprovador Respondeu Perguntas",
+  executor_visualizou: "Executor Visualizou",
+  executor_iniciou: "Executor Iniciou",
+  executor_respondeu_campo: "Executor Respondeu Campo",
+  executor_anexou_evidencia: "Executor Anexou Evidência",
+  avaliador_iniciou: "Avaliador Iniciou Avaliação",
+  avaliador_revisou_campo: "Avaliador Revisou Campo",
+  avaliador_gerou_contingencia: "Avaliador Gerou Contingência",
+  contingencia_prazo_definido: "Prazo de Contingência Definido",
+  contingencia_correcao_iniciada: "Correção Iniciada",
+  contingencia_venceu_sla: "Contingência Venceu SLA",
+  aprovacao_final: "Aprovação Final",
+  aprovacao_devolucao: "Devolução na Aprovação",
+  override_manual: "Override Manual de Score",
 };
 
 export const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
