@@ -252,7 +252,7 @@ export default function TaskExecucaoPage() {
           </div>
           <div className="flex items-center gap-1.5">
             <Badge variant="outline" className={prio.class}>{prio.label}</Badge>
-            {isAdmin && isDone && (
+            {showAdminMenu && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button size="icon" variant="ghost" className="h-7 w-7">
