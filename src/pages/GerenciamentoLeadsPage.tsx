@@ -488,10 +488,33 @@ export default function GerenciamentoLeadsPage() {
                   <span className="text-xs text-muted-foreground">{sendProgress.current}/{sendProgress.total}</span>
                 </div>
               )}
-              <Button size="sm" onClick={handleSendToQueue} disabled={sending || deleting} className="gap-1.5">
+              <Button size="sm" onClick={handleSendToQueue} disabled={sending || deleting || archiving} className="gap-1.5">
                 {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                 Enviar para Fila
               </Button>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button size="sm" variant="outline" disabled={sending || deleting || archiving} className="gap-1.5">
+                    {archiving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Archive className="w-3.5 h-3.5" />}
+                    Arquivar Selecionados
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Arquivar {selectedIds.size} lead{selectedIds.size > 1 ? "s" : ""}?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Os leads serão movidos para o status "Arquivado". Os dados (contatos, interações, histórico) serão mantidos no sistema para consulta futura.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleArchiveSelected}>
+                      Arquivar
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
 
               <AlertDialog>
                 <AlertDialogTrigger asChild>
