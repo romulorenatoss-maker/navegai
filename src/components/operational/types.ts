@@ -223,3 +223,16 @@ export const defaultSection = (ordem: number): SectionForm => ({
   ordem,
   cor: SECTION_COLORS[ordem % SECTION_COLORS.length],
 });
+
+export const defaultStep = (ordem: number): StepForm => ({
+  tempId: crypto.randomUUID(),
+  nome: "",
+  ordem,
+  peso: 1,
+  horario_inicio: "08:00",
+  horario_fim: "09:00",
+  prazo_limite_minutos: null,
+  exige_foto: false,
+  exige_observacao: false,
+  exige_video: false,
+});
