@@ -29,6 +29,16 @@ export function TabWorkflow({ form, set, fields = [] }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* Info sobre etapas */}
+      {form.tipo_execucao === "etapas" && (
+        <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-2">
+          <p className="text-caption font-medium text-primary uppercase tracking-wider">Controle Automático por Etapas</p>
+          <p className="text-caption text-muted-foreground">
+            Cada seção do formulário funciona como uma etapa com janela de horário. Se os campos de uma seção não forem preenchidos dentro do horário configurado, 
+            a etapa e todos os campos pendentes serão automaticamente marcados como <strong className="text-destructive">atrasados</strong>.
+          </p>
+        </div>
+      )}
       {/* Aprovação */}
       <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-4">
         <p className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Aprovação</p>
