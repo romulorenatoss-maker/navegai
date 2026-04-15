@@ -25,6 +25,9 @@ export default function OperationalAprovacaoPage() {
   const [decisionDialog, setDecisionDialog] = useState<{ open: boolean; action: "aprovar" | "reprovar_devolver" | "encerrar" | null }>({ open: false, action: null });
   const [decisionMotivo, setDecisionMotivo] = useState("");
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
+  const now = new Date();
+  const [filterStart, setFilterStart] = useState(() => new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10));
+  const [filterEnd, setFilterEnd] = useState(() => new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10));
 
   const { data: assignments = [], isLoading } = useQuery({
     queryKey: ["aprovacao_assignments", profile?.id, isAdmin],
