@@ -25,6 +25,9 @@ export default function OperationalAprovacaoPage() {
   const [decisionDialog, setDecisionDialog] = useState<{ open: boolean; action: "aprovar" | "reprovar_devolver" | "encerrar" | null }>({ open: false, action: null });
   const [decisionMotivo, setDecisionMotivo] = useState("");
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
+  const now = new Date();
+  const [filterStart, setFilterStart] = useState(() => new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10));
+  const [filterEnd, setFilterEnd] = useState(() => new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10));
 
   const { data: assignments = [], isLoading } = useQuery({
     queryKey: ["aprovacao_assignments", profile?.id, isAdmin],
@@ -51,10 +54,18 @@ export default function OperationalAprovacaoPage() {
     staleTime: 15000,
   });
 
-  const pendentes = assignments.filter((a: any) => a.status === "aguardando_aprovacao");
-  const devolvidos = assignments.filter((a: any) => a.status === "devolvida" || (a.status === "aguardando_aprovacao" && approval.contingencies.some((c: any) => !["validada", "descartada"].includes(c.status))));
-  const aprovados = assignments.filter((a: any) => a.status === "aprovada");
-  const historico = assignments.filter((a: any) => ["concluida", "reprovada"].includes(a.status)).slice(0, 50);
+  const filteredByDate = useMemo(() => {
+    return assignments.filter((a: any) => {
+      const d = a.data_prevista;
+      if (!d) return true;
+      return d >= filterStart && d <= filterEnd;
+    });
+  }, [assignments, filterStart, filterEnd]);
+
+  const pendentes = filteredByDate.filter((a: any) => a.status === "aguardando_aprovacao");
+  const devolvidos = filteredByDate.filter((a: any) => a.status === "devolvida" || (a.status === "aguardando_aprovacao" && approval.contingencies.some((c: any) => !["validada", "descartada"].includes(c.status))));
+  const aprovados = filteredByDate.filter((a: any) => a.status === "aprovada");
+  const historico = filteredByDate.filter((a: any) => ["concluida", "reprovada"].includes(a.status)).slice(0, 50);
 
   const approval = useApprovalFlow(selectedAssignment?.id || null);
 
@@ -179,6 +190,13 @@ export default function OperationalAprovacaoPage() {
           <Shield className="w-5 h-5 text-primary" /> Aprovação Final
         </h1>
         <p className="text-sm text-muted-foreground">Aprovação, override de score e consolidação de assignments.</p>
+      </div>
+
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <Label className="text-xs text-muted-foreground">De:</Label>
+        <Input type="date" value={filterStart} onChange={e => setFilterStart(e.target.value)} className="w-[150px] h-9 text-sm" />
+        <Label className="text-xs text-muted-foreground">Até:</Label>
+        <Input type="date" value={filterEnd} onChange={e => setFilterEnd(e.target.value)} className="w-[150px] h-9 text-sm" />
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
