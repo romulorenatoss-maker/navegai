@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Loader2, Search, Send, Filter, ChevronLeft, ChevronRight, CheckSquare, Trash2, Archive, Eye } from "lucide-react";
+import { Loader2, Search, Send, Filter, ChevronLeft, ChevronRight, CheckSquare, Trash2, Archive, Eye, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import LeadPostCaptureDialog from "@/components/LeadPostCaptureDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -81,6 +81,10 @@ export default function GerenciamentoLeadsPage() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(20);
 
+  // Sorting
+  const [sortColumn, setSortColumn] = useState<"nome" | "created_at" | "responsavel_id">("created_at");
+  const [sortAsc, setSortAsc] = useState(false);
+
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -93,7 +97,7 @@ export default function GerenciamentoLeadsPage() {
 
   // ─── Server-side paginated query ─────────────────
   const { data: queryResult, isLoading } = useQuery({
-    queryKey: ["gerenciamento-leads", filterStatus, filterSearch, filterCampanha, filterDateFrom?.toISOString(), filterDateTo?.toISOString(), page, pageSize],
+    queryKey: ["gerenciamento-leads", filterStatus, filterSearch, filterCampanha, filterDateFrom?.toISOString(), filterDateTo?.toISOString(), page, pageSize, sortColumn, sortAsc],
     queryFn: async () => {
       let query = supabase
         .from("leads")
@@ -120,7 +124,7 @@ export default function GerenciamentoLeadsPage() {
         query = query.lte("created_at", endOfDay.toISOString());
       }
 
-      query = query.order("created_at", { ascending: false }).range(page * pageSize, (page + 1) * pageSize - 1);
+      query = query.order(sortColumn, { ascending: sortAsc }).range(page * pageSize, (page + 1) * pageSize - 1);
 
       const { data, error, count } = await query;
       if (error) throw error;
@@ -557,10 +561,16 @@ export default function GerenciamentoLeadsPage() {
                   aria-label="Selecionar todos"
                 />
               </TableHead>
-              <TableHead>Nome</TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => { if (sortColumn === "nome") { setSortAsc(!sortAsc); } else { setSortColumn("nome"); setSortAsc(true); } setPage(0); }}>
+                <span className="flex items-center gap-1">Nome {sortColumn === "nome" ? (sortAsc ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 text-muted-foreground/50" />}</span>
+              </TableHead>
               <TableHead className="w-40">Status</TableHead>
-              <TableHead className="w-36">Data Criação</TableHead>
-              <TableHead className="w-44">Responsável</TableHead>
+              <TableHead className="w-36 cursor-pointer select-none" onClick={() => { if (sortColumn === "created_at") { setSortAsc(!sortAsc); } else { setSortColumn("created_at"); setSortAsc(false); } setPage(0); }}>
+                <span className="flex items-center gap-1">Data Criação {sortColumn === "created_at" ? (sortAsc ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 text-muted-foreground/50" />}</span>
+              </TableHead>
+              <TableHead className="w-44 cursor-pointer select-none" onClick={() => { if (sortColumn === "responsavel_id") { setSortAsc(!sortAsc); } else { setSortColumn("responsavel_id"); setSortAsc(true); } setPage(0); }}>
+                <span className="flex items-center gap-1">Responsável {sortColumn === "responsavel_id" ? (sortAsc ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 text-muted-foreground/50" />}</span>
+              </TableHead>
               <TableHead className="w-36">Campanha</TableHead>
               <TableHead className="w-12"></TableHead>
             </TableRow>
