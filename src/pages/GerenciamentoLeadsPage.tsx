@@ -308,6 +308,51 @@ export default function GerenciamentoLeadsPage() {
     }
   }, [selectedIds, queryClient]);
 
+  // ─── Archive selected ─────────────────
+  const handleArchiveSelected = useCallback(async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+
+    setArchiving(true);
+    setSendProgress({ current: 0, total: ids.length });
+
+    const BATCH_SIZE = 20;
+    try {
+      for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+        const batch = ids.slice(i, i + BATCH_SIZE);
+        const { error } = await supabase
+          .from("leads")
+          .update({ status_lead: "arquivado" } as any)
+          .in("id", batch);
+        if (error) throw error;
+        setSendProgress({ current: Math.min(i + BATCH_SIZE, ids.length), total: ids.length });
+      }
+
+      // Log history
+      if (profile) {
+        const historyBatch = ids.map(id => ({
+          lead_id: id,
+          usuario_id: profile.id,
+          tipo_evento: "alteracao_status",
+          descricao: "Lead arquivado via gerenciamento em massa.",
+        }));
+        for (let i = 0; i < historyBatch.length; i += 50) {
+          await supabase.from("lead_historico").insert(historyBatch.slice(i, i + 50));
+        }
+      }
+
+      toast.success(`${ids.length} leads arquivados com sucesso!`);
+      setSelectedIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ["gerenciamento-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["campanhas-leads-stats"] });
+    } catch (err: any) {
+      toast.error("Erro ao arquivar: " + err.message);
+    } finally {
+      setArchiving(false);
+      setSendProgress(null);
+    }
+  }, [selectedIds, profile, queryClient]);
+
   // Reset page when filters change
   const handleFilterChange = useCallback((setter: (v: any) => void, value: any) => {
     setter(value);
