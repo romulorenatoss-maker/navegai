@@ -79,7 +79,14 @@ export function AssignmentCard({ assignment: a, onClick }: Props) {
         </Avatar>
 
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-medium text-foreground truncate">{nome}</h3>
+          <div className="flex items-center gap-1.5">
+            {a.numero_tarefa && (
+              <span className="text-[10px] font-mono font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                #{String(a.numero_tarefa).padStart(4, "0")}
+              </span>
+            )}
+            <h3 className="text-sm font-medium text-foreground truncate">{nome}</h3>
+          </div>
           {responsavelNome && (
             <p className="text-[11px] text-muted-foreground truncate">{responsavelNome}</p>
           )}

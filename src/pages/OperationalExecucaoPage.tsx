@@ -365,7 +365,14 @@ export default function OperationalExecucaoPage() {
                 <ChevronLeft className="w-4 h-4" />
               </Button>
               <div className="flex-1 min-w-0">
-                <h2 className="text-sm font-semibold text-foreground truncate">{snapshot?.nome || "Rotina"}</h2>
+                <h2 className="text-sm font-semibold text-foreground truncate flex items-center gap-2">
+                  {selectedAssignment?.numero_tarefa && (
+                    <span className="text-[11px] font-mono font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded shrink-0">
+                      #{String(selectedAssignment.numero_tarefa).padStart(4, "0")}
+                    </span>
+                  )}
+                  {snapshot?.nome || "Rotina"}
+                </h2>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                   <span>{selectedAssignment?.data_prevista}</span>
                   {selectedAssignment?.horario_limite && (

@@ -41,7 +41,7 @@ export function TabTarefasExecutadas({ templateId }: Props) {
       if (!templateId) return [];
       const { data, error } = await (supabase as any)
         .from("operational_assignments")
-        .select("id, status, data_prevista, inicio_em, fim_em, responsavel_id, avaliado_id, profiles!operational_assignments_responsavel_id_fkey(nome)")
+        .select("id, numero_tarefa, status, data_prevista, inicio_em, fim_em, responsavel_id, avaliado_id, profiles!operational_assignments_responsavel_id_fkey(nome)")
         .eq("template_id", templateId)
         .order("data_prevista", { ascending: false });
       if (error) throw error;
@@ -245,6 +245,11 @@ export function TabTarefasExecutadas({ templateId }: Props) {
             <div key={a.id} className="flex items-center justify-between p-3 bg-card rounded-lg border border-border">
               <div className="flex-1 space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
+                  {a.numero_tarefa && (
+                    <span className="font-mono text-[11px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                      #{String(a.numero_tarefa).padStart(4, "0")}
+                    </span>
+                  )}
                   <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${STATUS_COLORS[a.status] || "bg-muted text-muted-foreground"}`}>
                     {STATUS_LABELS[a.status] || a.status}
                   </span>
