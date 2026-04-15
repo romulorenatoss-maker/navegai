@@ -1133,6 +1133,64 @@ export type Database = {
           },
         ]
       }
+      operational_approval_answers: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          field_id: string
+          id: string
+          observacao: string | null
+          peso: number
+          respondido_em: string
+          respondido_por: string
+          resposta: string
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          field_id: string
+          id?: string
+          observacao?: string | null
+          peso?: number
+          respondido_em?: string
+          respondido_por: string
+          resposta?: string
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          field_id?: string
+          id?: string
+          observacao?: string | null
+          peso?: number
+          respondido_em?: string
+          respondido_por?: string
+          resposta?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_approval_answers_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "operational_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_approval_answers_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "operational_template_fields"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_approval_answers_respondido_por_fkey"
+            columns: ["respondido_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       operational_assignments: {
         Row: {
           aprovador_id: string | null

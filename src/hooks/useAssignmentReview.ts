@@ -17,6 +17,7 @@ export function useAssignmentReview(assignmentId: string | null) {
   const { profile } = useAuth();
   const qc = useQueryClient();
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, FieldReviewDraft>>({});
+  const [contingencyPrazos, setContingencyPrazos] = useState<Record<string, number>>({});
 
   // Load existing answers for this assignment
   const { data: fieldAnswers = [] } = useQuery({
@@ -86,6 +87,11 @@ export function useAssignmentReview(assignmentId: string | null) {
       ...prev,
       [fieldId]: { ...prev[fieldId], field_id: fieldId, conforme: prev[fieldId]?.conforme ?? null, observacao: prev[fieldId]?.observacao ?? "", devolvido: prev[fieldId]?.devolvido ?? false, motivo_devolucao: prev[fieldId]?.motivo_devolucao ?? "", ...patch },
     }));
+  }, []);
+
+  // Update contingency prazo for a specific field
+  const updateContingencyPrazo = useCallback((fieldId: string, horas: number) => {
+    setContingencyPrazos(prev => ({ ...prev, [fieldId]: horas }));
   }, []);
 
   // FIX #3: Batch mark section conforme — SKIP fields already reviewed
@@ -197,8 +203,10 @@ export function useAssignmentReview(assignmentId: string | null) {
           if (field?.gera_contingencia) {
             const existingContingency = contingencies.find((c: any) => c.origin_field_id === r.field_id && !["validada", "descartada"].includes(c.status));
             if (!existingContingency) {
+              // Use custom prazo if available, otherwise fallback to template SLA
+              const customPrazoHoras = contingencyPrazos[r.field_id];
               const templateSnapshot = assignment.template_snapshot;
-              const slaHours = templateSnapshot?.prazo_sla_correcao_horas || 24;
+              const slaHours = customPrazoHoras || templateSnapshot?.prazo_sla_correcao_horas || 24;
               const prazoSla = new Date(Date.now() + slaHours * 3600000).toISOString();
 
               await (supabase as any).from("operational_contingencies").insert({
@@ -303,11 +311,13 @@ export function useAssignmentReview(assignmentId: string | null) {
     existingReviews,
     contingencies,
     reviewDrafts,
+    contingencyPrazos,
     scorePreview,
     weightedScorePreview,
     isReviewComplete,
     getFieldAnswer,
     updateReview,
+    updateContingencyPrazo,
     markSectionConforme,
     saveReviews,
     startEvaluation,

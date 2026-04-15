@@ -303,7 +303,9 @@ export default function OperationalAvaliacaoPage() {
                     {visibleFields.map(f => (
                       <ReviewFieldCard key={f.id} field={f} answer={review.getFieldAnswer(f.id)}
                         review={review.reviewDrafts[f.id]}
-                        onChange={review.updateReview} />
+                        onChange={review.updateReview}
+                        contingencyPrazoHoras={review.contingencyPrazos[f.id]}
+                        onContingencyPrazoChange={review.updateContingencyPrazo} />
                     ))}
                   </div>
                 ) : (
@@ -326,7 +328,9 @@ export default function OperationalAvaliacaoPage() {
                           {sFields.map(f => (
                             <ReviewFieldCard key={f.id} field={f} answer={review.getFieldAnswer(f.id)}
                               review={review.reviewDrafts[f.id]}
-                              onChange={review.updateReview} />
+                              onChange={review.updateReview}
+                              contingencyPrazoHoras={review.contingencyPrazos[f.id]}
+                              onContingencyPrazoChange={review.updateContingencyPrazo} />
                           ))}
                         </div>
                       </div>

@@ -30,6 +30,13 @@ export interface SnapshotField {
   visivel_para: string[];
   editavel_por: string[];
   section_id?: string;
+  // Approver question fields
+  aprovador_pergunta?: string;
+  aprovador_tipo_resposta?: string;
+  aprovador_peso?: number;
+  aprovador_obriga_observacao_nao?: boolean;
+  aprovador_exige_evidencia_nao?: boolean;
+  aprovador_tipos_evidencia?: string[];
 }
 
 export interface FieldAnswer {

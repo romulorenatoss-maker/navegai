@@ -2,8 +2,9 @@ import { SnapshotField } from "./DynamicFieldRenderer";
 import { FieldReviewDraft } from "@/hooks/useAssignmentReview";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { CheckCircle2, XCircle, RotateCcw, AlertTriangle, Camera, FileText, ExternalLink } from "lucide-react";
+import { CheckCircle2, XCircle, RotateCcw, AlertTriangle, Camera, FileText, ExternalLink, Clock } from "lucide-react";
 
 interface Props {
   field: SnapshotField;
@@ -12,6 +13,9 @@ interface Props {
   previousReview?: any;
   onChange: (fieldId: string, patch: Partial<FieldReviewDraft>) => void;
   disabled?: boolean;
+  /** Prazo customizado em horas para contingência — só aparece se gera_contingencia e não conforme */
+  contingencyPrazoHoras?: number;
+  onContingencyPrazoChange?: (fieldId: string, horas: number) => void;
 }
 
 function renderAnswerValue(field: SnapshotField, answer: any) {
@@ -46,7 +50,7 @@ function renderAnswerValue(field: SnapshotField, answer: any) {
   }
 }
 
-export function ReviewFieldCard({ field, answer, review, previousReview, onChange, disabled }: Props) {
+export function ReviewFieldCard({ field, answer, review, previousReview, onChange, disabled, contingencyPrazoHoras, onContingencyPrazoChange }: Props) {
   const draft: FieldReviewDraft = review || { field_id: field.id, conforme: null, observacao: "", devolvido: false, motivo_devolucao: "" };
   const isReincidente = previousReview?.conforme === false;
   const executorNaoConforme = (field.tipo === "conforme" || field.tipo === "sim_nao") && answer?.valor_booleano === false;
@@ -128,6 +132,24 @@ export function ReviewFieldCard({ field, answer, review, previousReview, onChang
                   onChange={e => onChange(field.id, { motivo_devolucao: e.target.value })}
                   className="text-xs min-h-[30px] border-amber-300" />
               )}
+            </div>
+          )}
+
+          {/* Prazo de contingência customizado */}
+          {draft.conforme === false && field.gera_contingencia && onContingencyPrazoChange && (
+            <div className="p-2 bg-orange-50 border border-orange-200 rounded space-y-1">
+              <Label className="text-xs text-orange-800 flex items-center gap-1">
+                <Clock className="w-3 h-3" /> Prazo para resolução (horas)
+              </Label>
+              <Input
+                type="number"
+                min={1}
+                max={720}
+                value={contingencyPrazoHoras ?? 24}
+                disabled={disabled}
+                onChange={e => onContingencyPrazoChange(field.id, Number(e.target.value) || 24)}
+                className="text-xs h-8 w-32 border-orange-300"
+              />
             </div>
           )}
         </div>
