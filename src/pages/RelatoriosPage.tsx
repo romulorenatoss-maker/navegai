@@ -868,7 +868,7 @@ export default function RelatoriosPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {osList.map((item) => (
+                {sortedOsList.map((item) => (
                   <tr
                     key={item.id}
                     className={cn(
