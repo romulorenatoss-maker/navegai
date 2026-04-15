@@ -169,8 +169,7 @@ export default function DesempenhoColaboradorPage() {
   const { data: notasPorSetorData = [] } = useQuery({
     queryKey: ["perf_notas_setor", targetProfileId, appliedStart?.toISOString(), appliedEnd?.toISOString()],
     queryFn: async () => {
-      const empty = { errors: [] as { pergunta_id: string; pergunta: string; count: number }[], byTipo: [] as { tipo_id: string; tipo_nome: string; count: number }[] };
-      if (!targetProfileId) return empty;
+      if (!targetProfileId) return [];
       const from = appliedStart ? startOfDay(appliedStart).toISOString() : startOfDay(startOfMonth(now)).toISOString();
       const to = appliedEnd ? endOfDay(appliedEnd).toISOString() : endOfDay(endOfMonth(now)).toISOString();
       return fetchNotasPorSetor(from, to);
