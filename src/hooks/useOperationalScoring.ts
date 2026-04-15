@@ -1,20 +1,16 @@
 /**
  * Operational Performance Scoring Engine
- * Score = Pontualidade(40%) + Conformidade(30%) + Qualidade Evidência(20%) + SLA Correções(10%)
- * Always clamped 0–100
+ * Score is now calculated by DB trigger — this file provides labels/configs only.
+ * The calculateOperationalScore function is kept for backward compat in gestão rankings display.
  */
 
 export interface OperationalScoreInput {
-  // Pontualidade
-  prazoLimite: string | null; // ISO timestamp
+  prazoLimite: string | null;
   fimEm: string | null;
   status: string;
-  // Conformidade
   totalItens: number;
   itensConformes: number;
-  // Qualidade Evidência
-  evidenciaValidada: boolean | null; // null = sem revisão manual → default 100
-  // SLA Correções
+  evidenciaValidada: boolean | null;
   totalContingencias: number;
   contingenciasNoPrazo: number;
 }
@@ -28,7 +24,6 @@ export interface OperationalScoreResult {
 }
 
 export function calculateOperationalScore(input: OperationalScoreInput): OperationalScoreResult {
-  // Pontualidade (40%)
   let pontualidade = 0;
   if (input.status === 'concluida' && input.fimEm && input.prazoLimite) {
     const prazo = new Date(input.prazoLimite).getTime();
@@ -38,29 +33,26 @@ export function calculateOperationalScore(input: OperationalScoreInput): Operati
     } else {
       const atrasoMs = fim - prazo;
       const atrasoHoras = atrasoMs / (1000 * 60 * 60);
-      pontualidade = Math.max(0, 100 - (atrasoHoras * 10)); // -10 per hour late
+      pontualidade = Math.max(0, 100 - (atrasoHoras * 10));
     }
   } else if (input.status === 'nao_executada') {
     pontualidade = 0;
   } else if (input.status === 'em_andamento' || input.status === 'pendente') {
-    pontualidade = 50; // partial
+    pontualidade = 50;
   }
 
-  // Conformidade (30%)
   let conformidade = 100;
   if (input.totalItens > 0) {
     conformidade = (input.itensConformes / input.totalItens) * 100;
   }
 
-  // Qualidade Evidência (20%)
-  let qualidadeEvidencia = 100; // default if no manual review
+  let qualidadeEvidencia = 100;
   if (input.evidenciaValidada === false) {
     qualidadeEvidencia = 30;
   } else if (input.evidenciaValidada === true) {
     qualidadeEvidencia = 100;
   }
 
-  // SLA Correções (10%)
   let slaCorrecoes = 100;
   if (input.totalContingencias > 0) {
     slaCorrecoes = (input.contingenciasNoPrazo / input.totalContingencias) * 100;
@@ -100,6 +92,10 @@ export const STATUS_CONFIG: Record<string, { label: string; class: string }> = {
   pendente: { label: "Pendente", class: "bg-yellow-100 text-yellow-800 border-yellow-200" },
   em_andamento: { label: "Em Andamento", class: "bg-blue-100 text-blue-800 border-blue-200" },
   concluida: { label: "Concluída", class: "badge-complete" },
+  aguardando_aprovacao: { label: "Aguardando Aprovação", class: "bg-purple-100 text-purple-800 border-purple-200" },
+  aprovada: { label: "Aprovada", class: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+  reprovada: { label: "Reprovada", class: "bg-red-100 text-red-800 border-red-200" },
+  reaberta: { label: "Reaberta", class: "bg-amber-100 text-amber-800 border-amber-200" },
   atrasada: { label: "Atrasada", class: "bg-orange-100 text-orange-800 border-orange-200" },
   nao_executada: { label: "Não Executada", class: "bg-red-100 text-red-800 border-red-200" },
   bloqueada: { label: "Bloqueada", class: "badge-expired" },
@@ -111,6 +107,21 @@ export const CONTINGENCY_STATUS: Record<string, { label: string; class: string }
   resolvida: { label: "Resolvida", class: "bg-green-100 text-green-800 border-green-200" },
   vencida: { label: "Vencida", class: "bg-red-200 text-red-900 border-red-300" },
   validada: { label: "Validada", class: "badge-complete" },
+  descartada: { label: "Descartada", class: "bg-gray-100 text-gray-600 border-gray-200" },
+};
+
+export const AUDIT_EVENT_LABELS: Record<string, string> = {
+  conclusao: "Conclusão",
+  aprovacao: "Aprovação",
+  reprovacao: "Reprovação",
+  reabertura: "Reabertura",
+  alteracao_sla: "Alteração SLA",
+  alteracao_responsavel: "Alteração Responsável",
+  encerramento_manual: "Encerramento Manual",
+  contingencia_criada: "Contingência Criada",
+  contingencia_resolvida: "Contingência Resolvida",
+  contingencia_validada: "Contingência Validada",
+  inicio: "Início",
 };
 
 export const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
