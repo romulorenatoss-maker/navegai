@@ -203,11 +203,14 @@ export function useAssignmentReview(assignmentId: string | null) {
           if (field?.gera_contingencia) {
             const existingContingency = contingencies.find((c: any) => c.origin_field_id === r.field_id && !["validada", "descartada"].includes(c.status));
             if (!existingContingency) {
-              // Use custom prazo if available, otherwise fallback to template SLA
+              // Use pending contingency data if available (from modal), otherwise fallback
+              const pendingData = pendingContingencyData[r.field_id];
               const customPrazoHoras = contingencyPrazos[r.field_id];
               const templateSnapshot = assignment.template_snapshot;
               const slaHours = customPrazoHoras || templateSnapshot?.prazo_sla_correcao_horas || 24;
-              const prazoSla = new Date(Date.now() + slaHours * 3600000).toISOString();
+              
+              const prazoResolucao = pendingData?.prazoResolucao || new Date(Date.now() + slaHours * 3600000).toISOString();
+              const motivoInstrucao = pendingData?.motivoInstrucao || `Não conformidade: ${field.label}${r.observacao ? ` — ${r.observacao}` : ""}`;
 
               await (supabase as any).from("operational_contingencies").insert({
                 assignment_id: assignmentId,
@@ -215,8 +218,24 @@ export function useAssignmentReview(assignmentId: string | null) {
                 origin_review_id: persistedReviewIds[r.field_id] || null,
                 descricao: `Não conformidade: ${field.label}${r.observacao ? ` — ${r.observacao}` : ""}`,
                 responsavel_id: assignment.responsavel_id,
-                prazo_sla: prazoSla,
+                prazo_sla: prazoResolucao,
+                prazo_resolucao: prazoResolucao,
+                motivo_instrucao: motivoInstrucao,
                 status: "aberta",
+              });
+
+              // Log to history
+              await (supabase as any).from("operational_assignment_history").insert({
+                assignment_id: assignmentId,
+                tipo_evento: "contingencia_criada",
+                usuario_id: profile.id,
+                etapa: "avaliacao",
+                detalhes_json: {
+                  field_id: r.field_id,
+                  field_label: field.label,
+                  prazo: prazoResolucao,
+                  motivo: motivoInstrucao,
+                },
               });
             }
           }
