@@ -29,7 +29,9 @@ export default function OperationalGestaoPage() {
   const [approvalDialog, setApprovalDialog] = useState<{ open: boolean; assignment: any; action: "aprovar" | "reprovar" }>({ open: false, assignment: null, action: "aprovar" });
   const [reopenDialog, setReopenDialog] = useState<{ open: boolean; assignment: any }>({ open: false, assignment: null });
   const [auditDialog, setAuditDialog] = useState<{ open: boolean; assignmentId: string | null }>({ open: false, assignmentId: null });
+  const [scoreDialog, setScoreDialog] = useState<{ open: boolean; assignment: any }>({ open: false, assignment: null });
   const [motivo, setMotivo] = useState("");
+  const [newScore, setNewScore] = useState("");
 
   const { data: assignments = [] } = useQuery({
     queryKey: ["gestao_assignments", periodoInicio, periodoFim],
