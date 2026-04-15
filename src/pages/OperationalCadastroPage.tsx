@@ -241,6 +241,8 @@ export default function OperationalCadastroPage() {
         gerar_contingencia_automatica: form.gerar_contingencia_automatica,
         prazo_sla_correcao_horas: form.prazo_sla_correcao_horas,
         responsavel_contingencia_id: form.responsavel_contingencia_id || null,
+        requer_aprovacao_gestor: form.requer_aprovacao_gestor,
+        bloquear_fechamento_com_contingencia: form.bloquear_fechamento_com_contingencia,
       };
 
       let templateId: string;
