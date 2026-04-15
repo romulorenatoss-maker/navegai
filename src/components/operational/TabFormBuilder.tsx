@@ -304,21 +304,33 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
 
           {/* ── Avaliação do Aprovador (molde OS) ── */}
           <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-4">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Avaliação do Aprovador</p>
-              <p className="text-caption text-muted-foreground mt-0.5">O aprovador responderá esta pergunta ao revisar a tarefa concluída, no mesmo formato da avaliação de OS.</p>
+            <div className="flex items-center gap-3">
+              <Switch checked={local.aprovador_verificar ?? false} onCheckedChange={v => {
+                upd("aprovador_verificar", v);
+                if (!v) upd("aprovador_pergunta", "");
+              }} />
+              <div>
+                <Label className="cursor-pointer font-medium">Deseja que o aprovador verifique este campo?</Label>
+                <p className="text-caption text-muted-foreground">Se ativado, o aprovador responderá uma pergunta ao revisar este campo.</p>
+              </div>
             </div>
 
-            {/* Pergunta */}
-            <div className="space-y-1.5">
-              <Label>Pergunta</Label>
-              <Input
-                value={local.aprovador_pergunta || ""}
-                onChange={e => upd("aprovador_pergunta", e.target.value)}
-                placeholder="Ex: O campo foi preenchido corretamente?"
-                maxLength={500}
-              />
-            </div>
+            {local.aprovador_verificar && (
+              <>
+                {/* Pergunta */}
+                <div className="space-y-1.5">
+                  <Label>Pergunta <span className="text-destructive">*</span></Label>
+                  <Input
+                    value={local.aprovador_pergunta || ""}
+                    onChange={e => upd("aprovador_pergunta", e.target.value)}
+                    placeholder="Ex: O campo foi preenchido corretamente?"
+                    maxLength={500}
+                    required
+                  />
+                  {!local.aprovador_pergunta?.trim() && (
+                    <p className="text-xs text-destructive">Preencha a pergunta do aprovador.</p>
+                  )}
+                </div>
 
             <div className="grid grid-cols-2 gap-4">
               {/* Tipo de resposta */}
