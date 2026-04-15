@@ -442,7 +442,7 @@ export default function OperationalCadastroPage() {
               </TabsList>
 
               <TabsContent value="geral">
-                <TabGeral form={form} set={set} setores={setores} colaboradores={colaboradores} />
+                <TabGeral form={form} set={set} setores={setores} colaboradores={colaboradores} steps={steps} setSteps={setSteps} />
               </TabsContent>
               <TabsContent value="campos">
                 <TabFormBuilder sections={sections} setSections={setSections} fields={fields} setFields={setFields} setores={setores} />
