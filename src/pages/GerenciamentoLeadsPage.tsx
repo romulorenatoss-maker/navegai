@@ -562,6 +562,7 @@ export default function GerenciamentoLeadsPage() {
               <TableHead className="w-36">Data Criação</TableHead>
               <TableHead className="w-44">Responsável</TableHead>
               <TableHead className="w-36">Campanha</TableHead>
+              <TableHead className="w-12"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
