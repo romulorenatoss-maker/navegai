@@ -50,7 +50,7 @@ function renderAnswerValue(field: SnapshotField, answer: any) {
   }
 }
 
-export function ReviewFieldCard({ field, answer, review, previousReview, onChange, disabled }: Props) {
+export function ReviewFieldCard({ field, answer, review, previousReview, onChange, disabled, contingencyPrazoHoras, onContingencyPrazoChange }: Props) {
   const draft: FieldReviewDraft = review || { field_id: field.id, conforme: null, observacao: "", devolvido: false, motivo_devolucao: "" };
   const isReincidente = previousReview?.conforme === false;
   const executorNaoConforme = (field.tipo === "conforme" || field.tipo === "sim_nao") && answer?.valor_booleano === false;
