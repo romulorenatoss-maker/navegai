@@ -92,7 +92,7 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
     });
   };
 
-  const crit = (c: string) => CRITICIDADE_OPTIONS.find(o => o.value === c);
+  
 
   return (
     <div className="space-y-3">
