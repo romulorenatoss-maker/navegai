@@ -43,7 +43,7 @@ export default function OperationalExecucaoPage() {
     queryFn: async () => {
       if (!profile?.id) return [];
       const { data, error } = await (supabase as any).from("operational_assignments")
-        .select("*, operational_templates(nome, descricao, tipo_execucao, exigir_foto, exigir_observacao, gerar_contingencia_automatica, prazo_sla_correcao_horas, responsavel_contingencia_id, setores(nome))")
+        .select("*, operational_templates(nome, descricao, tipo_execucao, exigir_foto, exigir_observacao, gerar_contingencia_automatica, prazo_sla_correcao_horas, responsavel_contingencia_id, requer_aprovacao_gestor, bloquear_fechamento_com_contingencia, setores(nome))")
         .eq("responsavel_id", profile.id)
         .order("data_prevista", { ascending: true });
       if (error) throw error;
@@ -125,18 +125,32 @@ export default function OperationalExecucaoPage() {
       const tempoGasto = selectedAssignment.inicio_em
         ? Math.round((Date.now() - new Date(selectedAssignment.inicio_em).getTime()) / 60000)
         : timer / 60;
+      const tpl = selectedAssignment.operational_templates;
+      const nextStatus = tpl?.requer_aprovacao_gestor ? "aguardando_aprovacao" : "concluida";
       const { error } = await (supabase as any).from("operational_assignments").update({
-        status: "concluida", fim_em: now, tempo_gasto_minutos: Math.round(tempoGasto), observacao: observacao || null,
+        status: nextStatus, fim_em: now, tempo_gasto_minutos: Math.round(tempoGasto), observacao: observacao || null,
       }).eq("id", selectedAssignment.id);
       if (error) throw error;
       await (supabase as any).from("operational_execution_logs").insert({ assignment_id: selectedAssignment.id, acao: "concluiu", executado_por: profile?.id, detalhes: { tempo_gasto_minutos: Math.round(tempoGasto), observacao } });
+      // Audit trail
+      await (supabase as any).from("operational_audit_trail").insert({
+        assignment_id: selectedAssignment.id, tipo_evento: "conclusao", executado_por: profile?.id,
+        dados_novos: { status: nextStatus, tempo_gasto_minutos: Math.round(tempoGasto) },
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["my_operational_assignments"] });
-      toast.success("Tarefa concluída!");
+      const tpl = selectedAssignment?.operational_templates;
+      toast.success(tpl?.requer_aprovacao_gestor ? "Tarefa enviada para aprovação!" : "Tarefa concluída!");
       setExecutionDialogOpen(false); setTimerActive(false); setTimer(0);
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => {
+      if (e.message?.includes("contingência")) {
+        toast.error("Não é possível concluir: existem contingências pendentes. Resolva-as primeiro.");
+      } else {
+        toast.error(e.message);
+      }
+    },
   });
 
   const answerCheckItem = useMutation({
