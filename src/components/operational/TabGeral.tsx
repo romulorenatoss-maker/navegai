@@ -268,6 +268,23 @@ type RoleConfig = {
           <Input type="number" min={1} value={form.sla_horas} onChange={e => set("sla_horas", +e.target.value)} />
         </div>
       </div>
+
+      {/* Dialog de Membros */}
+      <Dialog open={membrosDialogOpen} onOpenChange={setMembrosDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>{membrosDialogTitle}</DialogTitle></DialogHeader>
+          <div className="space-y-1.5 max-h-60 overflow-y-auto">
+            {membrosDialogList.map((c: any) => (
+              <div key={c.id} className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 border border-border">
+                <span className="text-sm text-foreground">{c.nome}</span>
+              </div>
+            ))}
+            {membrosDialogList.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">Nenhum membro encontrado.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
