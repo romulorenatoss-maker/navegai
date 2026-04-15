@@ -35,7 +35,7 @@ export default function OperationalGestaoPage() {
     queryKey: ["gestao_assignments", periodoInicio, periodoFim],
     queryFn: async () => {
       const { data, error } = await (supabase as any).from("operational_assignments")
-        .select("*, operational_templates(nome, tipo_execucao, setor_id, requer_aprovacao_gestor, bloquear_fechamento_com_contingencia, setores(nome), horario_limite_execucao), profiles!operational_assignments_responsavel_id_fkey(id, nome)")
+        .select("*, operational_templates(nome, tipo_execucao, setor_id, requer_aprovacao_gestor, bloquear_fechamento_com_contingencia, modo_pontuacao, destino_score, executor_setor_id, avaliador_setor_id, avaliado_setor_id, setores(nome), horario_limite_execucao), profiles!operational_assignments_responsavel_id_fkey(id, nome)")
         .gte("data_prevista", periodoInicio)
         .lte("data_prevista", periodoFim)
         .order("data_prevista", { ascending: false });
@@ -190,22 +190,47 @@ export default function OperationalGestaoPage() {
     return { total, concluidas, atrasadas, pendentesAprovacao, contingenciasAbertas, contingenciasVencidas, taxaConclusao };
   }, [filtered, contingencies]);
 
-  // Rankings (score from DB now)
+  // Rankings with triple score support
   const rankings = useMemo(() => {
-    const byUser: Record<string, { nome: string; total: number; concluidas: number; noPrazo: number; scoreSum: number }> = {};
+    const byUser: Record<string, { nome: string; total: number; concluidas: number; scoreExecSum: number; scoreAvdoSum: number; scoreAvdrSum: number; countExec: number; countAvdo: number; countAvdr: number }> = {};
     filtered.forEach((a: any) => {
+      // Executor
       const uid = a.responsavel_id;
-      if (!uid) return;
-      if (!byUser[uid]) byUser[uid] = { nome: a.profiles?.nome || "—", total: 0, concluidas: 0, noPrazo: 0, scoreSum: 0 };
-      byUser[uid].total++;
-      if (["concluida", "aprovada"].includes(a.status)) {
-        byUser[uid].concluidas++;
-        if (a.pontuacao_obtida != null) byUser[uid].scoreSum += Number(a.pontuacao_obtida);
+      if (uid) {
+        if (!byUser[uid]) byUser[uid] = { nome: a.profiles?.nome || "—", total: 0, concluidas: 0, scoreExecSum: 0, scoreAvdoSum: 0, scoreAvdrSum: 0, countExec: 0, countAvdo: 0, countAvdr: 0 };
+        byUser[uid].total++;
+        if (["concluida", "aprovada"].includes(a.status)) {
+          byUser[uid].concluidas++;
+          if (a.score_executor != null) { byUser[uid].scoreExecSum += Number(a.score_executor); byUser[uid].countExec++; }
+        }
+      }
+      // Avaliado (can differ from executor)
+      const avdoId = a.avaliado_id;
+      if (avdoId && avdoId !== uid) {
+        if (!byUser[avdoId]) byUser[avdoId] = { nome: "—", total: 0, concluidas: 0, scoreExecSum: 0, scoreAvdoSum: 0, scoreAvdrSum: 0, countExec: 0, countAvdo: 0, countAvdr: 0 };
+      }
+      if (avdoId && ["concluida", "aprovada"].includes(a.status) && a.score_avaliado != null) {
+        if (!byUser[avdoId]) byUser[avdoId] = { nome: "—", total: 0, concluidas: 0, scoreExecSum: 0, scoreAvdoSum: 0, scoreAvdrSum: 0, countExec: 0, countAvdo: 0, countAvdr: 0 };
+        byUser[avdoId].scoreAvdoSum += Number(a.score_avaliado);
+        byUser[avdoId].countAvdo++;
+      }
+      // Avaliador
+      const avdrId = a.avaliador_id;
+      if (avdrId && ["concluida", "aprovada"].includes(a.status) && a.score_avaliador != null) {
+        if (!byUser[avdrId]) byUser[avdrId] = { nome: "—", total: 0, concluidas: 0, scoreExecSum: 0, scoreAvdoSum: 0, scoreAvdrSum: 0, countExec: 0, countAvdo: 0, countAvdr: 0 };
+        byUser[avdrId].scoreAvdrSum += Number(a.score_avaliador);
+        byUser[avdrId].countAvdr++;
       }
     });
     return Object.entries(byUser)
-      .map(([id, u]) => ({ id, ...u, scoreMedio: u.concluidas > 0 ? Math.round(u.scoreSum / u.concluidas) : 0, taxa: u.total > 0 ? Math.round((u.concluidas / u.total) * 100) : 0 }))
-      .sort((a, b) => b.scoreMedio - a.scoreMedio);
+      .map(([id, u]) => ({
+        id, ...u,
+        scoreExecMedio: u.countExec > 0 ? Math.round(u.scoreExecSum / u.countExec) : null,
+        scoreAvdoMedio: u.countAvdo > 0 ? Math.round(u.scoreAvdoSum / u.countAvdo) : null,
+        scoreAvdrMedio: u.countAvdr > 0 ? Math.round(u.scoreAvdrSum / u.countAvdr) : null,
+        taxa: u.total > 0 ? Math.round((u.concluidas / u.total) * 100) : 0,
+      }))
+      .sort((a, b) => (b.scoreExecMedio ?? 0) - (a.scoreExecMedio ?? 0));
   }, [filtered]);
 
   const MetricCard = ({ icon: Icon, label, value, sub, color }: { icon: any; label: string; value: string | number; sub?: string; color?: string }) => (
