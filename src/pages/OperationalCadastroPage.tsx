@@ -196,6 +196,19 @@ export default function OperationalCadastroPage() {
         );
         if (error) throw error;
       }
+
+      // Insert steps
+      if (steps.length > 0) {
+        const { error } = await (supabase as any).from("operational_template_steps").insert(
+          steps.map((s, i) => ({
+            template_id: templateId, nome: s.nome || `Etapa ${i + 1}`, ordem: i,
+            peso: s.peso, horario_inicio: s.horario_inicio || null, horario_fim: s.horario_fim || null,
+            prazo_limite_minutos: s.prazo_limite_minutos, exige_foto: s.exige_foto,
+            exige_observacao: s.exige_observacao, exige_video: s.exige_video,
+          }))
+        );
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["operational_templates"] });
