@@ -772,7 +772,24 @@ export default function FilaLeadsPage() {
     onError: (err: any) => toast.error(err.message),
   });
 
-  const markAsLostMutation = useMutation({
+  const bulkSendToCapturaMutation = useMutation({
+    mutationFn: async (leadIds: string[]) => {
+      if (!profile) throw new Error("Perfil não encontrado.");
+      for (const leadId of leadIds) {
+        await supabase.from("lead_tarefas_contato").update({ status: "cancelada" } as any).eq("lead_id", leadId).in("status", ["pendente", "atrasado"]);
+        await supabase.from("leads").update({ status_lead: "fila_captura", responsavel_id: null, reserved_by: null, reserved_at: null, notificacao_vista: false } as any).eq("id", leadId);
+        await supabase.from("lead_historico").insert({ lead_id: leadId, usuario_id: profile.id, tipo_evento: "lead_reaberto_captura", descricao: "Lead reenviado para Fila de Captura pelo gerenciador." });
+      }
+    },
+    onSuccess: () => {
+      toast.success(`${selectedFilaIds.size} lead(s) enviado(s) para Fila de Captura!`);
+      setSelectedFilaIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ["fila-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["fila-tarefas-leads"] });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
     mutationFn: async (leadId: string) => {
       if (!profile) throw new Error("Perfil não encontrado.");
       // Cancel pending tasks
