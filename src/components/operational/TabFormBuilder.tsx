@@ -258,11 +258,10 @@ function FieldDetailDialog({ field, onSave, onClose }: { field: FieldForm; onSav
             <Textarea value={local.descricao} onChange={e => upd("descricao", e.target.value)} placeholder="Instruções para o executor..." maxLength={1000} />
           </div>
 
-          {/* Peso removido — Toggles */}
+          {/* Toggles */}
           <div className="grid grid-cols-2 gap-3">
             {[
               { k: "obrigatorio" as const, l: "Obrigatório" },
-              { k: "impacta_score" as const, l: "Impacta Score" },
               { k: "gera_contingencia" as const, l: "Gera Contingência" },
               { k: "exige_evidencia" as const, l: "Exige Evidência" },
             ].map(t => (
@@ -300,24 +299,33 @@ function FieldDetailDialog({ field, onSave, onClose }: { field: FieldForm; onSav
             </div>
           )}
 
-          {/* Visibilidade / Edição */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Visível para</Label>
-              <div className="flex gap-2 flex-wrap">
-                {ROLES.map(r => (
-                  <button key={r} type="button" onClick={() => upd("visivel_para", toggleRole(local.visivel_para, r))}
-                    className={`px-2.5 py-1 rounded text-caption border transition-colors ${local.visivel_para.includes(r) ? "bg-primary/10 border-primary text-primary" : "bg-card border-border text-muted-foreground"}`}>{r}</button>
-                ))}
-              </div>
+          {/* Pergunta do Aprovador */}
+          <div className="bg-muted/50 rounded-lg border border-border p-3 space-y-3">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Pergunta do Aprovador</p>
+            <p className="text-caption text-muted-foreground">O aprovador responderá esta pergunta ao revisar a tarefa concluída. Funciona como avaliação por campo.</p>
+            <div className="space-y-1.5">
+              <Label>Pergunta</Label>
+              <Input
+                value={local.aprovador_pergunta || ""}
+                onChange={e => upd("aprovador_pergunta", e.target.value)}
+                placeholder="Ex: O campo foi preenchido corretamente?"
+                maxLength={500}
+              />
             </div>
-            <div className="space-y-2">
-              <Label>Editável por</Label>
-              <div className="flex gap-2 flex-wrap">
-                {ROLES.map(r => (
-                  <button key={r} type="button" onClick={() => upd("editavel_por", toggleRole(local.editavel_por, r))}
-                    className={`px-2.5 py-1 rounded text-caption border transition-colors ${local.editavel_por.includes(r) ? "bg-primary/10 border-primary text-primary" : "bg-card border-border text-muted-foreground"}`}>{r}</button>
-                ))}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Tipo de Resposta</Label>
+                <Select value={local.aprovador_tipo_resposta || "conforme"} onValueChange={v => upd("aprovador_tipo_resposta", v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="conforme">Conforme / Não Conforme / N/A</SelectItem>
+                    <SelectItem value="sim_nao">Sim / Não / N/A</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Peso</Label>
+                <Input type="number" min={0} step={0.1} value={local.aprovador_peso ?? 1} onChange={e => upd("aprovador_peso", +e.target.value)} />
               </div>
             </div>
           </div>
