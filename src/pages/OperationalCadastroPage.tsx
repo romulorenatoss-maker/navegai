@@ -164,6 +164,7 @@ export default function OperationalCadastroPage() {
       recorrencia_tipo: t.recorrencia_tipo, dias_da_semana: t.dias_da_semana || [],
       intervalo_dias: t.intervalo_dias || 1, pular_semanas: t.pular_semanas || 0,
       dia_fixo_mes: t.dia_fixo_mes, data_inicio: t.data_inicio || "", data_fim: t.data_fim || "",
+      repetir_sempre: !t.data_inicio && !t.data_fim && t.recorrencia_tipo !== "unica",
       horario_inicio_previsto: t.horario_inicio_previsto || "08:00",
       horario_limite_execucao: t.horario_limite_execucao || "18:00",
       tolerancia_minutos: t.tolerancia_minutos || 0,
