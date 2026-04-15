@@ -187,6 +187,7 @@ export default function OperationalCadastroPage() {
 
   const openEdit = async (t: any) => {
     setEditingId(t.id);
+    setEditingVersion(t.versao || 1);
     setForm({
       nome: t.nome, descricao: t.descricao || "", tipo_execucao: t.tipo_execucao,
       setor_id: t.setor_id || "", responsavel_id: t.responsavel_id || "",
@@ -303,7 +304,7 @@ export default function OperationalCadastroPage() {
                         {t.ativo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
                       </Button>
                       <Button variant="ghost" size="sm" onClick={() => openEdit(t)} className="press-effect"><Pencil className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="sm" onClick={() => remove.mutate(t.id)} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="sm" onClick={() => { if (window.confirm(`Excluir template "${t.nome}"? Esta ação é irreversível e removerá todas as seções e campos associados.`)) remove.mutate(t.id); }} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
                     </div>
                   </td>
                 </tr>
@@ -317,7 +318,7 @@ export default function OperationalCadastroPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingId ? `Editar Template (v${form.peso_recorrencia})` : "Novo Template"}</DialogTitle>
+            <DialogTitle>{editingId ? `Editar Template (v${editingVersion})` : "Novo Template"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={e => { e.preventDefault(); upsert.mutate(); }}>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
