@@ -247,7 +247,7 @@ export default function TaskTemplatesPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Prazo (horas)</Label>
                 <Input type="number" min={1} value={form.prazo_horas} onChange={e => set("prazo_horas", +e.target.value)} />
@@ -261,42 +261,11 @@ export default function TaskTemplatesPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label>Dificuldade</Label>
-                <Select value={form.dificuldade} onValueChange={handleDificuldadeChange}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(DIFICULDADE_CONFIG).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
 
             <div className="space-y-1.5">
               <Label>Meta de Tempo (minutos)</Label>
               <Input type="number" min={1} value={form.meta_execucao_minutos} onChange={e => set("meta_execucao_minutos", +e.target.value)} />
-            </div>
-
-            <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-3">
-              <p className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Pontuação / Gamificação</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label>Pontuação Base</Label>
-                  <Input type="number" min={0} max={100} value={form.pontuacao_base} onChange={e => set("pontuacao_base", +e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Bônus Antecipação</Label>
-                  <Input type="number" min={0} value={form.bonus_antecipacao} onChange={e => set("bonus_antecipacao", +e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Penalidade Atraso</Label>
-                  <Input type="number" min={0} value={form.penalidade_atraso} onChange={e => set("penalidade_atraso", +e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Penalidade Não Execução</Label>
-                  <Input type="number" min={0} value={form.penalidade_nao_execucao} onChange={e => set("penalidade_nao_execucao", +e.target.value)} />
-                </div>
-              </div>
             </div>
 
             <div className="flex gap-6">
