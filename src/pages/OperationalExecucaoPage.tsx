@@ -239,16 +239,29 @@ export default function OperationalExecucaoPage() {
       ) : (
         <div className="space-y-3">
           <AccordionSection
-            title="Pendentes"
-            count={pendentes.length}
-            icon={<Clock className="w-4 h-4" style={{ color: "#eab308" }} />}
+            title="Tarefas de Hoje"
+            count={hoje.length}
+            icon={<CalendarClock className="w-4 h-4" style={{ color: "#f97316" }} />}
+            borderColor="#f97316"
+            badgeBg="bg-orange-500/15"
+            badgeText="text-orange-700 dark:text-orange-400"
+            isOpen={openAccordion === "hoje"}
+            onToggle={() => setOpenAccordion(openAccordion === "hoje" ? null : "hoje")}
+          >
+            {hoje.length === 0 ? renderEmptyState("Nenhuma tarefa para hoje.") : hoje.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+          </AccordionSection>
+
+          <AccordionSection
+            title="A Fazer"
+            count={aFazer.length}
+            icon={<ListTodo className="w-4 h-4" style={{ color: "#eab308" }} />}
             borderColor="#eab308"
             badgeBg="bg-yellow-500/15"
             badgeText="text-yellow-700 dark:text-yellow-400"
-            isOpen={openAccordion === "pendentes"}
-            onToggle={() => setOpenAccordion(openAccordion === "pendentes" ? null : "pendentes")}
+            isOpen={openAccordion === "afazer"}
+            onToggle={() => setOpenAccordion(openAccordion === "afazer" ? null : "afazer")}
           >
-            {pendentes.length === 0 ? renderEmptyState("Nenhuma rotina pendente.") : pendentes.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+            {aFazer.length === 0 ? renderEmptyState("Nenhuma rotina a fazer.") : aFazer.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
           </AccordionSection>
 
           <AccordionSection
