@@ -2860,6 +2860,7 @@ export type Database = {
           cargo: string | null
           created_at: string
           email: string
+          foto_url: string | null
           id: string
           nome: string
           pode_editar_avaliacoes: boolean
@@ -2873,6 +2874,7 @@ export type Database = {
           cargo?: string | null
           created_at?: string
           email: string
+          foto_url?: string | null
           id?: string
           nome: string
           pode_editar_avaliacoes?: boolean
@@ -2886,6 +2888,7 @@ export type Database = {
           cargo?: string | null
           created_at?: string
           email?: string
+          foto_url?: string | null
           id?: string
           nome?: string
           pode_editar_avaliacoes?: boolean
