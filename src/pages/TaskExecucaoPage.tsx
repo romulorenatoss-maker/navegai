@@ -238,7 +238,10 @@ export default function TaskExecucaoPage() {
     const prio = PRIORIDADE_CONFIG[tmpl?.prioridade] || PRIORIDADE_CONFIG.media;
     const isRunning = a.status === "em_andamento";
     const isLate = a.prazo_limite && new Date(a.prazo_limite) < new Date() && !["concluida", "nao_executada"].includes(a.status);
-    const isDone = ["concluida", "nao_executada", "bloqueada"].includes(a.status);
+    const isDone = ["concluida", "nao_executada"].includes(a.status);
+    const isDevolvida = ["bloqueada", "devolvida"].includes(a.status);
+    const isAguardando = a.status === "aguardando_avaliacao";
+    const showAdminMenu = isAdmin && (isDone || isDevolvida || isAguardando);
 
     return (
       <div key={a.id} className={`bg-card border rounded-lg p-4 space-y-3 transition-all ${isLate ? "border-destructive/50 bg-destructive/5" : "border-border"}`}>
