@@ -15,7 +15,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { getScoreColor, getScoreBg } from "@/lib/score-colors";
+
 
 // ── helpers ──
 const scoreColor = (v: number) => {
