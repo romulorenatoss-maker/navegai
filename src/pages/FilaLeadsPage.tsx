@@ -790,6 +790,7 @@ export default function FilaLeadsPage() {
     onError: (err: any) => toast.error(err.message),
   });
 
+  const markAsLostMutation = useMutation({
     mutationFn: async (leadId: string) => {
       if (!profile) throw new Error("Perfil não encontrado.");
       // Cancel pending tasks
