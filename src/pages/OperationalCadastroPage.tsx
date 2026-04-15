@@ -146,6 +146,7 @@ export default function OperationalCadastroPage() {
         // Clean old sections/fields
         await (supabase as any).from("operational_template_fields").delete().eq("template_id", templateId);
         await (supabase as any).from("operational_template_sections").delete().eq("template_id", templateId);
+        await (supabase as any).from("operational_template_steps").delete().eq("template_id", templateId);
       } else {
         payload.versao = 1;
         const { data, error } = await (supabase as any).from("operational_templates").insert(payload).select().single();
