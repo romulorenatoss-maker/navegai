@@ -187,6 +187,13 @@ export default function RelatoriosPage() {
       if (!avaliadorByOS[a.ordem_servico_id]) avaliadorByOS[a.ordem_servico_id] = new Set();
       avaliadorByOS[a.ordem_servico_id].add(a.avaliador_id);
     });
+    // Fetch profile names for tecnico and atendente
+    const profileIds = [...new Set(osData.flatMap((o) => [o.tecnico_id, o.atendente_id]).filter(Boolean))] as string[];
+    const profileNamesMap: Record<string, string> = {};
+    if (profileIds.length > 0) {
+      const { data: profilesData } = await supabase.from("profiles").select("id, nome").in("id", profileIds);
+      (profilesData || []).forEach((p: any) => { profileNamesMap[p.id] = p.nome; });
+    }
 
     let results = osData.map((os) => ({
       ...os,
@@ -194,6 +201,8 @@ export default function RelatoriosPage() {
       tipo_servico_nome: os.tipo_servico_id ? tipoNames[os.tipo_servico_id] || null : null,
       setor_id: os.tipo_servico_id ? tipoSetorMap[os.tipo_servico_id] || null : null,
       avaliador_ids: avaliadorByOS[os.id] || new Set<string>(),
+      tecnico_nome: os.tecnico_id ? profileNamesMap[os.tecnico_id] || null : null,
+      atendente_nome: os.atendente_id ? profileNamesMap[os.atendente_id] || null : null,
     }));
 
     // Client-side filters only apply in combined mode (not direct search)
