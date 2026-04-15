@@ -71,7 +71,7 @@ export default function OperationalExecucaoPage() {
     queryFn: async () => {
       if (!profile?.id) return [];
       let q = (supabase as any).from("operational_assignments")
-        .select("*, operational_templates(nome, tipo_execucao)")
+        .select("*, operational_templates(nome, tipo_execucao), profiles:responsavel_id(id, nome, foto_url)")
         .order("data_prevista", { ascending: true });
       if (!isAdmin) {
         q = q.or(`responsavel_id.eq.${profile.id}`);
