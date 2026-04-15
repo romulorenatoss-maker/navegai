@@ -58,9 +58,9 @@ function generatePreviewDates(form: TemplateForm): Date[] {
   }
 
   const now = new Date();
-  const start = form.repetir_sempre || !form.data_inicio
-    ? now
-    : new Date(form.data_inicio + "T00:00:00");
+  const start = form.data_inicio
+    ? new Date(form.data_inicio + "T00:00:00")
+    : now;
   const endLimit = new Date(now);
   endLimit.setMonth(endLimit.getMonth() + 3);
   const end = form.data_fim && !form.repetir_sempre
@@ -700,17 +700,35 @@ export default function OperationalCadastroPage() {
                       checked={form.repetir_sempre}
                       onCheckedChange={v => {
                         set("repetir_sempre", v);
-                        if (v) { set("data_inicio", ""); set("data_fim", ""); }
+                        if (v) {
+                          const today = new Date().toISOString().slice(0, 10);
+                          set("data_inicio", form.data_inicio && form.data_inicio >= today ? form.data_inicio : today);
+                          set("data_fim", "");
+                        }
                       }}
                     />
                     <div>
                       <Label className="cursor-pointer">Repetir sempre</Label>
-                      <p className="text-caption text-muted-foreground">Ignora data início/fim e gera automaticamente na próxima ocorrência configurada.</p>
+                      <p className="text-caption text-muted-foreground">Sem data fim. A primeira data será o início do ciclo.</p>
                     </div>
                   </div>
                 )}
 
-                {!form.repetir_sempre && (
+                {form.repetir_sempre ? (
+                  <div className="space-y-1.5">
+                    <Label>Início do Ciclo</Label>
+                    <Input
+                      type="date"
+                      min={new Date().toISOString().slice(0, 10)}
+                      value={form.data_inicio}
+                      onChange={e => {
+                        const today = new Date().toISOString().slice(0, 10);
+                        set("data_inicio", e.target.value >= today ? e.target.value : today);
+                      }}
+                    />
+                    <p className="text-caption text-muted-foreground">Primeira data de geração da rotina. Não pode ser anterior a hoje.</p>
+                  </div>
+                ) : (
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label>Data Início</Label>
