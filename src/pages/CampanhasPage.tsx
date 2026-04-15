@@ -21,11 +21,6 @@ interface Campanha {
   created_at: string;
 }
 
-interface LeadRow {
-  id: string;
-  campanha_id: string | null;
-  status_lead: string;
-}
 
 export default function CampanhasPage() {
   const queryClient = useQueryClient();
