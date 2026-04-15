@@ -152,17 +152,14 @@ type RoleConfig = {
                   </Select>
                   {form[r.setorKey] && (() => {
                     const membros = getMembrosDoSetor(form[r.setorKey] as string);
+                    const setorNome = setores.find((s: any) => s.id === form[r.setorKey])?.nome || "Setor";
                     return membros.length > 0 ? (
-                      <div className="space-y-1">
-                        <p className="text-[10px] text-muted-foreground font-medium">Membros do setor ({membros.length}):</p>
-                        <div className="flex flex-wrap gap-1">
-                          {membros.map((c: any) => (
-                            <Badge key={c.id} variant="outline" className="text-[10px]">{c.nome}</Badge>
-                          ))}
-                        </div>
-                      </div>
+                      <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1.5"
+                        onClick={() => openMembrosDialog(`Membros — ${setorNome} (${r.label})`, membros)}>
+                        <Users className="w-3 h-3" /> {membros.length} membro{membros.length !== 1 ? "s" : ""}
+                      </Button>
                     ) : (
-                      <p className="text-[10px] text-amber-600">Nenhum colaborador associado a este setor</p>
+                      <p className="text-[10px] text-destructive">Nenhum colaborador associado</p>
                     );
                   })()}
                 </div>
