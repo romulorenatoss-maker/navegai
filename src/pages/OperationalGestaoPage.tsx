@@ -37,7 +37,7 @@ export default function OperationalGestaoPage() {
     queryKey: ["gestao_assignments", periodoInicio, periodoFim],
     queryFn: async () => {
       const { data, error } = await (supabase as any).from("operational_assignments")
-        .select("*, operational_templates(nome, tipo_execucao, setor_id, requer_aprovacao_gestor, bloquear_fechamento_com_contingencia, modo_pontuacao, destino_score, executor_setor_id, avaliador_setor_id, avaliado_setor_id, setores(nome), horario_limite_execucao), profiles!operational_assignments_responsavel_id_fkey(id, nome)")
+        .select("*, operational_templates(nome, tipo_execucao, setor_id, requer_aprovacao_gestor, bloquear_fechamento_com_contingencia, modo_pontuacao, destino_score, executor_setor_id, avaliador_setor_id, avaliado_setor_id, setores: setors!operational_templates_setor_id_fkey(nome), horario_limite_execucao), profiles!operational_assignments_responsavel_id_fkey(id, nome)")
         .gte("data_prevista", periodoInicio)
         .lte("data_prevista", periodoFim)
         .order("data_prevista", { ascending: false });
