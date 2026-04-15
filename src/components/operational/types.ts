@@ -168,6 +168,7 @@ export const defaultField = (sectionTempId: string, ordem: number): FieldForm =>
   exige_evidencia: false,
   tipo_evidencia: "foto",
   opcoes: [],
+  opcoes_regras: [],
   validacao: null,
   condicao_visibilidade: null,
   formula: null,
