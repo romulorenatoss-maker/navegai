@@ -23,6 +23,7 @@ interface TemplateForm {
   horario_inicio_previsto: string; horario_limite_execucao: string; tolerancia_minutos: number;
   exigir_foto: boolean; exigir_video: boolean; exigir_observacao: boolean;
   gerar_contingencia_automatica: boolean; prazo_sla_correcao_horas: number; responsavel_contingencia_id: string;
+  requer_aprovacao_gestor: boolean; bloquear_fechamento_com_contingencia: boolean;
 }
 
 const defaultForm: TemplateForm = {
@@ -32,6 +33,7 @@ const defaultForm: TemplateForm = {
   horario_inicio_previsto: "08:00", horario_limite_execucao: "18:00", tolerancia_minutos: 0,
   exigir_foto: false, exigir_video: false, exigir_observacao: false,
   gerar_contingencia_automatica: false, prazo_sla_correcao_horas: 24, responsavel_contingencia_id: "",
+  requer_aprovacao_gestor: false, bloquear_fechamento_com_contingencia: false,
 };
 
 // ---- Preview de recorrência ----
