@@ -430,6 +430,9 @@ export default function OperationalCadastroPage() {
                     <Input type="number" min={1} max={31} value={form.dia_fixo_mes || ""} onChange={e => set("dia_fixo_mes", +e.target.value || null)} />
                   </div>
                 )}
+
+                {/* PREVIEW DE DATAS */}
+                <RecurrencePreview form={form} />
               </TabsContent>
 
               {/* EVIDÊNCIAS */}
