@@ -290,6 +290,7 @@ export default function OperationalCadastroPage() {
       criticidade: f.criticidade, gera_contingencia: f.gera_contingencia || false,
       exige_evidencia: f.exige_evidencia || false, tipo_evidencia: f.tipo_evidencia || "foto",
       opcoes: f.opcoes || [], opcoes_regras: f.opcoes_regras || [],
+      validacao: f.validacao, condicao_visibilidade: f.condicao_visibilidade,
       formula: f.formula, visivel_para: f.visivel_para || ["executor", "avaliador"],
       editavel_por: f.editavel_por || ["executor"],
       aprovador_verificar: f.aprovador_verificar ?? !!f.aprovador_pergunta,
