@@ -286,8 +286,19 @@ export default function TaskExecucaoPage() {
           </div>
         )}
 
-        {a.status === "bloqueada" && (
-          <p className="text-caption text-orange-600">🚫 {a.motivo_bloqueio}</p>
+        {(a.status === "bloqueada" || a.status === "devolvida") && (
+          <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 space-y-1">
+            <p className="text-caption font-medium text-orange-700 dark:text-orange-400">
+              🔄 {a.status === "devolvida" ? "Devolvida — Pendência para resolver" : `Bloqueada — ${a.motivo_bloqueio || "Impedimento"}`}
+            </p>
+            {a.observacao && <p className="text-xs text-muted-foreground">{a.observacao}</p>}
+          </div>
+        )}
+
+        {a.status === "aguardando_avaliacao" && (
+          <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-2">
+            <p className="text-caption text-blue-700 dark:text-blue-400">⏳ Aguardando avaliação</p>
+          </div>
         )}
 
         {a.status === "nao_executada" && (
