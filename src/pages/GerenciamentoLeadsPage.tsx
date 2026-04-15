@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -69,6 +70,7 @@ function statusBadge(status: string) {
 export default function GerenciamentoLeadsPage() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // Filters
   const [filterStatus, setFilterStatus] = useState("importado");
@@ -654,7 +656,7 @@ export default function GerenciamentoLeadsPage() {
         onOpenChange={(open) => { if (!open) setViewLead(null); }}
         leadId={viewLead?.id || null}
         leadName={viewLead?.nome || ""}
-        onGoToLead={() => setViewLead(null)}
+        onGoToLead={() => { setViewLead(null); if (viewLead) navigate(`/leads?id=${viewLead.id}`); }}
       />
     </div>
   );
