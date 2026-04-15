@@ -237,6 +237,8 @@ export default function PermissoesPage() {
   });
 
   const filteredProfiles = profiles.filter((p: any) => filterCargo === "all" || p.cargo === filterCargo);
+
+  if (!isAdmin) {
     return <div className="p-6 text-muted-foreground">Acesso restrito a administradores.</div>;
   }
 
