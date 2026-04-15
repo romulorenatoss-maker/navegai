@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { fetchNotasPorSetor, calcularMediaColaborador, calcularNotaPorOS } from "@/hooks/useNotasPorSetor";
+import { calculateAverage } from "@/lib/calculate-average";
 import { getScoreColorClass, getScoreBgClass } from "@/lib/score-colors";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -177,9 +178,14 @@ export default function DesempenhoColaboradorPage() {
   });
 
   const avgScore = useMemo(() => {
-    if (!targetProfileId) return null;
-    return calcularMediaColaborador(notasPorSetorData, targetProfileId);
-  }, [notasPorSetorData, targetProfileId]);
+    if (!targetProfileId || evaluations.length === 0) return null;
+    // Compute average from OS visible in the filtered evaluations list
+    const osNotas = evaluations
+      .map(ev => calcularNotaPorOS(notasPorSetorData, targetProfileId, ev.os_id))
+      .filter((n): n is number => n !== null);
+    if (osNotas.length === 0) return null;
+    return calculateAverage(osNotas);
+  }, [notasPorSetorData, targetProfileId, evaluations]);
 
   // Most frequent errors
   const { data: frequentErrors = [] } = useQuery({
