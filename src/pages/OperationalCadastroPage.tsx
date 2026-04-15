@@ -28,7 +28,12 @@ interface TemplateForm {
   avaliador_profile_id: string; avaliador_setor_id: string;
   avaliado_profile_id: string; avaliado_setor_id: string;
   modo_pontuacao: string; destino_score: string;
+  peso_recorrencia: number;
 }
+
+const PESO_RECORRENCIA_MAP: Record<string, number> = {
+  unica: 2.0, diaria: 1.0, semanal: 1.5, quinzenal: 2.0, mensal: 3.0, personalizada: 2.0,
+};
 
 const defaultForm: TemplateForm = {
   nome: "", descricao: "", tipo_execucao: "simples", setor_id: "", responsavel_id: "",
@@ -42,6 +47,7 @@ const defaultForm: TemplateForm = {
   avaliador_profile_id: "", avaliador_setor_id: "",
   avaliado_profile_id: "", avaliado_setor_id: "",
   modo_pontuacao: "pontuar_avaliado", destino_score: "individual",
+  peso_recorrencia: 2.0,
 };
 
 // ---- Preview de recorrência ----
@@ -259,6 +265,7 @@ export default function OperationalCadastroPage() {
         avaliado_setor_id: form.avaliado_setor_id || null,
         modo_pontuacao: form.modo_pontuacao,
         destino_score: form.destino_score,
+        peso_recorrencia: form.peso_recorrencia,
       };
 
       let templateId: string;
@@ -347,6 +354,7 @@ export default function OperationalCadastroPage() {
       avaliado_setor_id: t.avaliado_setor_id || "",
       modo_pontuacao: t.modo_pontuacao || "pontuar_avaliado",
       destino_score: t.destino_score || "individual",
+      peso_recorrencia: t.peso_recorrencia ?? PESO_RECORRENCIA_MAP[t.recorrencia_tipo] ?? 1.0,
     });
 
     // Load steps
@@ -632,14 +640,26 @@ export default function OperationalCadastroPage() {
 
               {/* RECORRÊNCIA */}
               <TabsContent value="recorrencia" className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label>Tipo de Recorrência</Label>
-                  <Select value={form.recorrencia_tipo} onValueChange={v => set("recorrencia_tipo", v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(RECORRENCIA_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label>Tipo de Recorrência</Label>
+                    <Select value={form.recorrencia_tipo} onValueChange={v => {
+                      set("recorrencia_tipo", v);
+                      set("peso_recorrencia", PESO_RECORRENCIA_MAP[v] ?? 1.0);
+                    }}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(RECORRENCIA_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Multiplicador (Peso na Média)</Label>
+                    <Input type="number" min={0.1} max={10} step={0.1} value={form.peso_recorrencia} onChange={e => set("peso_recorrencia", +e.target.value || 1)} />
+                    <p className="text-caption text-muted-foreground">
+                      Auto: Diária=1.0, Semanal=1.5, Quinzenal=2.0, Mensal=3.0. Editável.
+                    </p>
+                  </div>
                 </div>
 
                 {form.recorrencia_tipo !== "unica" && (
