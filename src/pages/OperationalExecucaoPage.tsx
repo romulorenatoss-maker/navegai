@@ -205,19 +205,19 @@ export default function OperationalExecucaoPage() {
             {snapshotSections.length > 1 && (
               <div className="flex gap-1.5 mt-3 overflow-x-auto pb-1">
                 {snapshotSections.map((s: any) => {
-                  const sFields = fieldsBySection[s.id] || [];
-                  const filled = sFields.filter(f => {
+                  const sFieldsVisible = sFields.filter(f => evaluateVisibility(f.condicao_visibilidade, exec.answers));
+                  const filled = sFieldsVisible.filter(f => {
                     const a = exec.answers[f.id];
                     return a && (a.valor_texto != null && a.valor_texto !== "" || a.valor_numero != null || a.valor_booleano != null || a.valor_data != null || a.valor_json != null);
                   }).length;
-                  const allFilled = filled === sFields.length && sFields.length > 0;
+                  const allFilled = filled === sFieldsVisible.length && sFieldsVisible.length > 0;
                   return (
                     <button key={s.id} type="button" onClick={() => setActiveSection(s.id)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border whitespace-nowrap transition-colors ${activeSection === s.id ? "bg-primary/10 border-primary text-primary" : "bg-card border-border text-muted-foreground hover:bg-muted"}`}>
                       <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.cor || "#3b82f6" }} />
                       {s.nome || "Seção"}
                       {allFilled && <CheckCircle2 className="w-3 h-3 text-green-600" />}
-                      <span className="text-[10px] opacity-70">{filled}/{sFields.length}</span>
+                      <span className="text-[10px] opacity-70">{filled}/{sFieldsVisible.length}</span>
                     </button>
                   );
                 })}
