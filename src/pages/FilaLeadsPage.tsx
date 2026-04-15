@@ -639,8 +639,10 @@ export default function FilaLeadsPage() {
   const totalTarefasAtrasadas = sortedTarefas.filter((t: any) => t.status === "atrasado" || isTarefaExpirada(t)).length;
 
   // ─── Pagination helper ─────
-  const paginate = <T,>(arr: T[], page: number) => arr.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const totalPages = (total: number) => Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const paginateWithSize = <T,>(arr: T[], page: number, size: number) => arr.slice((page - 1) * size, page * size);
+  const paginate = <T,>(arr: T[], page: number) => paginateWithSize(arr, page, PAGE_SIZE);
+  const totalPagesWithSize = (total: number, size: number) => Math.max(1, Math.ceil(total / size));
+  const totalPages = (total: number) => totalPagesWithSize(total, PAGE_SIZE);
 
   const PaginationBar = ({ page, setPage, total }: { page: number; setPage: (p: number) => void; total: number }) => {
     const tp = totalPages(total);
