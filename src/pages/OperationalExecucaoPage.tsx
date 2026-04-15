@@ -54,11 +54,17 @@ export default function OperationalExecucaoPage() {
     staleTime: 15000,
   });
 
+  // Apply collaborator filter for admin
+  const filteredAssignments = useMemo(() => {
+    if (!isAdmin || filterResponsavel === "__all") return assignments;
+    return assignments.filter((a: any) => a.responsavel_id === filterResponsavel);
+  }, [assignments, isAdmin, filterResponsavel]);
+
   // Tabs filtering
-  const pendentes = assignments.filter((a: any) => ["pendente"].includes(a.status));
-  const emAndamento = assignments.filter((a: any) => ["em_andamento"].includes(a.status));
-  const devolvidas = assignments.filter((a: any) => ["devolvida"].includes(a.status));
-  const concluidas = assignments.filter((a: any) => ["concluida", "aprovada", "aguardando_avaliacao", "aguardando_aprovacao"].includes(a.status)).slice(0, 50);
+  const pendentes = filteredAssignments.filter((a: any) => ["pendente"].includes(a.status));
+  const emAndamento = filteredAssignments.filter((a: any) => ["em_andamento"].includes(a.status));
+  const devolvidas = filteredAssignments.filter((a: any) => ["devolvida"].includes(a.status));
+  const concluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada", "aguardando_avaliacao", "aguardando_aprovacao"].includes(a.status)).slice(0, 50);
 
   const exec = useAssignmentExecution(selectedAssignment?.id || null);
 
