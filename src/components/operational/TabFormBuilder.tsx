@@ -309,26 +309,22 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
                 <Switch checked={local.gera_contingencia} onCheckedChange={v => upd("gera_contingencia", v)} />
                 <div>
                   <Label className="cursor-pointer text-sm font-medium">Gera Contingência</Label>
-                  <p className="text-caption text-muted-foreground">Se marcado "Não Conforme", cria contingência automaticamente.</p>
+                  <p className="text-caption text-muted-foreground">Se marcado "Não Conforme", cria contingência automaticamente para o executor resolver.</p>
                 </div>
               </div>
 
               {local.gera_contingencia && (
                 <div className="pl-4 border-l-2 border-orange-300 space-y-2">
-                  <div className="space-y-1.5">
-                    <Label>Criticidade</Label>
-                    <div className="flex gap-2">
-                      {CRITICIDADE_OPTIONS.map(c => (
-                        <button key={c.value} type="button" onClick={() => upd("criticidade", c.value)}
-                          className={`px-3 py-1.5 rounded text-xs font-medium border transition-colors ${
-                            local.criticidade === c.value ? c.color : "bg-card border-border text-muted-foreground hover:bg-muted"
-                          }`}>{c.label}</button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Penalidade por reprovação (pontos)</Label>
-                    <Input type="number" min={0} max={100} value={local.penalidade_reprovacao} onChange={e => upd("penalidade_reprovacao", +e.target.value)} className="max-w-[180px]" />
+                  <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-lg p-3 text-caption space-y-1.5">
+                    <p className="font-medium text-orange-700 dark:text-orange-400 flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5" /> O que acontece ao reprovar:
+                    </p>
+                    <ul className="text-orange-600 dark:text-orange-400/80 space-y-0.5 pl-5 list-disc">
+                      <li>Uma contingência é criada automaticamente para o executor</li>
+                      <li>O executor recebe uma pendência com prazo SLA para solucionar</li>
+                      <li>Um cronômetro de tempo decorrido é iniciado</li>
+                      <li>Penalidades de gamificação são aplicadas conforme configurado em Workflow</li>
+                    </ul>
                   </div>
                 </div>
               )}
