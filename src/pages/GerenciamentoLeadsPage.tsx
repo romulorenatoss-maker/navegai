@@ -86,6 +86,7 @@ export default function GerenciamentoLeadsPage() {
   // Sending / deleting state
   const [sending, setSending] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [archiving, setArchiving] = useState(false);
   const [sendProgress, setSendProgress] = useState<{ current: number; total: number } | null>(null);
 
   // ─── Server-side paginated query ─────────────────
