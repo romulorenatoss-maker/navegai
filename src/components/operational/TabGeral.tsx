@@ -19,14 +19,6 @@ interface Props {
   colaboradores: any[];
 }
 
-interface Props {
-  form: TemplateForm;
-  set: <K extends keyof TemplateForm>(k: K, v: TemplateForm[K]) => void;
-  setores: any[];
-  colaboradores: any[];
-  steps?: StepForm[];
-  setSteps?: (steps: StepForm[]) => void;
-}
 
 type RoleConfig = {
   label: string;
