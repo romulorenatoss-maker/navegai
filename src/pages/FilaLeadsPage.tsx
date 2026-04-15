@@ -1113,6 +1113,22 @@ export default function FilaLeadsPage() {
             </CardContent>
           </Card>
 
+          {/* Bulk action bar */}
+          {selectedFilaIds.size > 0 && (
+            <Card>
+              <CardContent className="p-3 flex items-center gap-3">
+                <Badge variant="secondary" className="text-xs">{selectedFilaIds.size} selecionado(s)</Badge>
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setSelectedFilaIds(new Set())}>
+                  <XCircle className="w-3.5 h-3.5" /> Limpar Seleção
+                </Button>
+                <Button size="sm" className="h-7 text-xs gap-1" onClick={() => bulkSendToCapturaMutation.mutate([...selectedFilaIds])} disabled={bulkSendToCapturaMutation.isPending}>
+                  {bulkSendToCapturaMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                  Enviar para Fila de Captura
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Queue Table */}
           <Card>
             <CardContent className="p-0 overflow-auto max-h-[calc(100vh-360px)]">
@@ -1125,6 +1141,22 @@ export default function FilaLeadsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-10">
+                          <Checkbox
+                            checked={(() => {
+                              const pageIds = paginateWithSize(filteredQueue, filaPage, FILA_PAGE_SIZE).map(i => i.lead.id);
+                              return pageIds.length > 0 && pageIds.every(id => selectedFilaIds.has(id));
+                            })()}
+                            onCheckedChange={(checked) => {
+                              const pageIds = paginateWithSize(filteredQueue, filaPage, FILA_PAGE_SIZE).map(i => i.lead.id);
+                              setSelectedFilaIds(prev => {
+                                const next = new Set(prev);
+                                pageIds.forEach(id => checked ? next.add(id) : next.delete(id));
+                                return next;
+                              });
+                            }}
+                          />
+                        </TableHead>
                         <TableHead className="w-8">#</TableHead>
                         <TableHead className="cursor-pointer select-none" onClick={() => toggleFilaSort("nome")}><span className="flex items-center">Lead<SortIcon col="nome" /></span></TableHead>
                         <TableHead>Telefone(s)</TableHead>
@@ -1152,9 +1184,9 @@ export default function FilaLeadsPage() {
                             return filaSortDir === "asc" ? cmp : -cmp;
                           });
                         }
-                        const paged = paginate(sorted, filaPage);
+                        const paged = paginateWithSize(sorted, filaPage, FILA_PAGE_SIZE);
                         return paged.map((item, idx) => {
-                        const globalIdx = (filaPage - 1) * PAGE_SIZE + idx;
+                        const globalIdx = (filaPage - 1) * FILA_PAGE_SIZE + idx;
                         const phones = item.contatos.filter(c => c.tipo_contato === "telefone");
                         const campanha = getCampanhaNome(item.lead);
                         const cidade = getCidadeNome(item.lead);
