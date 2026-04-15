@@ -656,7 +656,7 @@ export default function GerenciamentoLeadsPage() {
         onOpenChange={(open) => { if (!open) setViewLead(null); }}
         leadId={viewLead?.id || null}
         leadName={viewLead?.nome || ""}
-        onGoToLead={() => setViewLead(null)}
+        onGoToLead={() => { setViewLead(null); if (viewLead) navigate(`/leads?id=${viewLead.id}`); }}
       />
     </div>
   );
