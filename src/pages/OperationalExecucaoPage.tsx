@@ -315,6 +315,11 @@ export default function OperationalExecucaoPage() {
       assignmentId: selectedAssignment.id,
       horarioInicioPrevisto: selectedAssignment.horario_inicio_previsto || null,
       dataPrevista: selectedAssignment.data_prevista || null,
+    }, {
+      onSuccess: () => {
+        closeExecution();
+        toast.success("Tarefa iniciada com sucesso!");
+      },
     });
   };
 
