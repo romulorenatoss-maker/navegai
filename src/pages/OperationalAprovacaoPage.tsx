@@ -841,8 +841,98 @@ export default function OperationalAprovacaoPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Tarefa Executada — atalho/dialog separado */}
+      <Dialog open={tarefaExecutadaOpen} onOpenChange={setTarefaExecutadaOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="p-4 border-b border-border">
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <CheckCircle2 className="w-4 h-4 text-primary" />
+              Tarefa Executada
+            </DialogTitle>
+            <DialogDescription>
+              {snapshot?.nome} • Tarefa #{selectedAssignment?.numero_tarefa} • {allVisibleFields.length} {allVisibleFields.length === 1 ? "campo" : "campos"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto">
+            <div className="divide-y divide-border">
+              {snapshotSections.length > 0 ? snapshotSections.map((section: any) => {
+                const sFields = allVisibleFields.filter(f => f.section_id === section.id);
+                if (sFields.length === 0) return null;
+                return (
+                  <div key={section.id}>
+                    <div className="px-4 py-2 bg-muted/30 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{section.nome}</div>
+                    {sFields.map((f, idx) => {
+                      const answer = answersMap[f.id];
+                      const rev = reviewsMap[f.id];
+                      return (
+                        <div key={f.id} className="px-4 py-3 border-t border-border">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-foreground">{idx + 1}. {f.label}</p>
+                              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Executor:</span>
+                                {renderAnswerValue(f, answer)}
+                                {answer?.evidencia_url && f.tipo !== "foto" && (
+                                  <a href={answer.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline inline-flex items-center gap-1">
+                                    <ExternalLink className="w-3 h-3" /> Evidência
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                            {rev && (
+                              <div className="text-right shrink-0">
+                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-0.5">Avaliador</p>
+                                <span className={cn(
+                                  "inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border",
+                                  rev.conforme === true ? "border-success/40 bg-success/10 text-success" : "border-destructive/40 bg-destructive/10 text-destructive"
+                                )}>
+                                  {rev.conforme === true ? "✓ Conforme" : "✗ Não Conforme"}
+                                </span>
+                                {rev.observacao && <p className="text-xs text-muted-foreground mt-0.5 max-w-[180px] italic">"{rev.observacao}"</p>}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              }) : allVisibleFields.map((f, idx) => {
+                const answer = answersMap[f.id];
+                const rev = reviewsMap[f.id];
+                return (
+                  <div key={f.id} className="px-4 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground">{idx + 1}. {f.label}</p>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Executor:</span>
+                          {renderAnswerValue(f, answer)}
+                        </div>
+                      </div>
+                      {rev && (
+                        <div className="text-right shrink-0">
+                          <span className={cn(
+                            "inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border",
+                            rev.conforme === true ? "border-success/40 bg-success/10 text-success" : "border-destructive/40 bg-destructive/10 text-destructive"
+                          )}>
+                            {rev.conforme === true ? "✓ Conforme" : "✗ Não Conforme"}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <DialogFooter className="p-3 border-t border-border">
+            <Button variant="outline" size="sm" onClick={() => setTarefaExecutadaOpen(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Decision Dialog */}
-      <Dialog open={decisionDialog.open} onOpenChange={v => { if (!v) setDecisionDialog({ open: false, action: null }); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
