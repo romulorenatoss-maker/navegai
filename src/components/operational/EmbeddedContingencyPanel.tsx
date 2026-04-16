@@ -320,24 +320,26 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
 
                 {userCanManage && isPending && (
                   <div className="flex flex-wrap gap-2 pt-1">
-                    {c.status === "aberta" && (
+                    {c.status === "aberta" && canInitiateTreatment(c) && (
                       <Button size="sm" variant="outline" className="text-blue-700 border-blue-300 hover:bg-blue-50 flex-1"
                         disabled={cm.isSaving || uploading}
                         onClick={() => initSlaDialog(c.id)}>
                         <Play className="w-3 h-3 mr-1" /> Iniciar
                       </Button>
                     )}
-                    {c.status === "em_andamento" && (
+                    {c.status === "em_andamento" && canResolve(c) && (
                       <Button size="sm" className="flex-1" disabled={cm.isSaving || uploading}
                         onClick={() => { setResolveTargetId(c.id); setResolveObs(""); setResolveFile(null); setResolveOpen(true); }}>
                         <CheckCircle2 className="w-3 h-3 mr-1" /> Resolver
                       </Button>
                     )}
-                    <Button size="sm" variant="outline" className="text-muted-foreground"
-                      disabled={cm.isSaving || uploading}
-                      onClick={() => { setDiscardTargetId(c.id); setDiscardObs(""); setDiscardOpen(true); }}>
-                      <Trash2 className="w-3 h-3 mr-1" /> Descartar
-                    </Button>
+                    {canDiscard(c) && (
+                      <Button size="sm" variant="outline" className="text-muted-foreground"
+                        disabled={cm.isSaving || uploading}
+                        onClick={() => { setDiscardTargetId(c.id); setDiscardObs(""); setDiscardOpen(true); }}>
+                        <Trash2 className="w-3 h-3 mr-1" /> Descartar
+                      </Button>
+                    )}
                   </div>
                 )}
 
