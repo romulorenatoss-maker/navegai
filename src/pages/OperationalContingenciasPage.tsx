@@ -458,14 +458,18 @@ export default function OperationalContingenciasPage() {
                 <span className="text-muted-foreground">Criado em</span>
                 <p className="font-medium">{selected?.created_at ? new Date(selected.created_at).toLocaleString("pt-BR") : "—"}</p>
               </div>
-              <div className="p-2 border rounded bg-muted/30">
-                <span className="text-muted-foreground">Resolvido em</span>
-                <p className="font-medium">{selected?.resolvida_em ? new Date(selected.resolvida_em).toLocaleString("pt-BR") : "—"}</p>
-              </div>
-              <div className="p-2 border rounded bg-muted/30">
-                <span className="text-muted-foreground">Dentro do prazo</span>
-                <p className="font-medium">{selected?.dentro_prazo === true ? "Sim ✅" : selected?.dentro_prazo === false ? "Não ❌" : "—"}</p>
-              </div>
+              {["resolvida", "validada", "descartada"].includes(selected?.status) && (
+                <>
+                  <div className="p-2 border rounded bg-muted/30">
+                    <span className="text-muted-foreground">Resolvido em</span>
+                    <p className="font-medium">{selected?.resolvida_em ? new Date(selected.resolvida_em).toLocaleString("pt-BR") : "—"}</p>
+                  </div>
+                  <div className="p-2 border rounded bg-muted/30">
+                    <span className="text-muted-foreground">Dentro do prazo</span>
+                    <p className="font-medium">{selected?.dentro_prazo === true ? "Sim ✅" : selected?.dentro_prazo === false ? "Não ❌" : "—"}</p>
+                  </div>
+                </>
+              )}
               {selected?.validada_em && (
                 <>
                   <div className="p-2 border rounded bg-muted/30">

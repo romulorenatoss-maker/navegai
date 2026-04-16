@@ -362,10 +362,12 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
                     <span className="text-muted-foreground">Criado</span>
                     <p className="font-medium">{new Date(c.created_at).toLocaleString("pt-BR")}</p>
                   </div>
-                  <div className="p-1.5 border rounded bg-muted/30">
-                    <span className="text-muted-foreground">Resolvido</span>
-                    <p className="font-medium">{c.resolvida_em ? new Date(c.resolvida_em).toLocaleString("pt-BR") : "—"}</p>
-                  </div>
+                  {["resolvida", "validada", "descartada"].includes(c.status) && (
+                    <div className="p-1.5 border rounded bg-muted/30">
+                      <span className="text-muted-foreground">Resolvido</span>
+                      <p className="font-medium">{c.resolvida_em ? new Date(c.resolvida_em).toLocaleString("pt-BR") : "—"}</p>
+                    </div>
+                  )}
                 </div>
 
                 <ContingencyTimeline contingencyId={c.id} />
