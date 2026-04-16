@@ -163,7 +163,7 @@ export function useApprovalFlow(assignmentId: string | null) {
 
     // Block if approval questions are unanswered — only check aprovador_verificar fields
     const snapshotFields: SnapshotField[] = snapshot?.fields || [];
-    const approvalFields = snapshotFields.filter(f => f.aprovador_verificar && f.aprovador_pergunta?.trim());
+    const approvalFields = snapshotFields.filter(f => f.aprovador_verificar);
     const unanswered = approvalFields.filter(f => {
       const existing = existingApprovalAnswers.find((a: any) => a.field_id === f.id);
       const draft = approverAnswers[f.id];
