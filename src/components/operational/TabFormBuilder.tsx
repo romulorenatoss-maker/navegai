@@ -411,13 +411,16 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
 
                       {isExpanded && (
                         <div className="px-3 pb-3 pt-1 border-t border-border space-y-3">
-                          <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-3 gap-3">
                             <div className="flex items-center gap-2">
                               <Switch checked={opcao.requer_descricao} onCheckedChange={v => updateOpcaoRegra(opcao.valor, { requer_descricao: v })} />
                               <Label className="cursor-pointer text-caption">Descrição obrigatória</Label>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Switch checked={opcao.requer_evidencia} onCheckedChange={v => updateOpcaoRegra(opcao.valor, { requer_evidencia: v })} />
+                              <Switch checked={opcao.requer_evidencia} onCheckedChange={v => {
+                                updateOpcaoRegra(opcao.valor, { requer_evidencia: v });
+                                if (!v) updateOpcaoRegra(opcao.valor, { tipos_evidencia: ["qualquer"] });
+                              }} />
                               <Label className="cursor-pointer text-caption">Exigir evidência</Label>
                             </div>
                             <div className="flex items-center gap-2">
@@ -425,6 +428,48 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
                               <Label className="cursor-pointer text-caption">Gera contingência</Label>
                             </div>
                           </div>
+
+                          {opcao.requer_evidencia && (
+                            <div className="space-y-2 pl-1">
+                              <Label className="text-caption text-muted-foreground">Tipos de mídia aceitos:</Label>
+                              <div className="flex flex-wrap gap-2">
+                                {[
+                                  { key: "foto", label: "Foto", icon: <Camera className="w-3 h-3" /> },
+                                  { key: "video", label: "Vídeo", icon: <FileVideo className="w-3 h-3" /> },
+                                  { key: "audio", label: "Áudio", icon: <Mic className="w-3 h-3" /> },
+                                  { key: "qualquer", label: "Qualquer tipo", icon: <FileText className="w-3 h-3" /> },
+                                ].map(t => {
+                                  const tipos = opcao.tipos_evidencia || ["qualquer"];
+                                  const selected = tipos.includes(t.key);
+                                  return (
+                                    <button key={t.key} type="button"
+                                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-caption font-medium border transition-colors ${
+                                        selected
+                                          ? "bg-primary/10 border-primary/30 text-primary"
+                                          : "bg-card border-border text-muted-foreground hover:bg-muted/50"
+                                      }`}
+                                      onClick={() => {
+                                        if (t.key === "qualquer") {
+                                          updateOpcaoRegra(opcao.valor, { tipos_evidencia: ["qualquer"] });
+                                        } else {
+                                          let next = tipos.filter((x: string) => x !== "qualquer");
+                                          if (selected) {
+                                            next = next.filter((x: string) => x !== t.key);
+                                            if (next.length === 0) next = ["qualquer"];
+                                          } else {
+                                            next = [...next, t.key];
+                                          }
+                                          updateOpcaoRegra(opcao.valor, { tipos_evidencia: next });
+                                        }
+                                      }}>
+                                      {t.icon} {t.label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
                           {opcao.gera_contingencia && (
                             <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded p-2 text-caption text-orange-700 dark:text-orange-400 flex items-center gap-1.5">
                               <AlertTriangle className="w-3.5 h-3.5" />
