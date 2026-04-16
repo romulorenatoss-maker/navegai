@@ -427,7 +427,7 @@ export default function OperationalAprovacaoPage() {
             {orderedItems.length === 0 && (
               <div className="bg-card border border-border rounded-lg p-8 text-center">
                 <p className="text-sm text-muted-foreground">Nenhuma pergunta de aprovação configurada neste template.</p>
-                <p className="text-xs mt-1 text-muted-foreground">Configure campos com "Pergunta do Aprovador" na aba Formulário do template.</p>
+                <p className="text-xs mt-1 text-muted-foreground">Habilite perguntas automáticas ou configure campos com "Pergunta do Aprovador" no template.</p>
               </div>
             )}
 
