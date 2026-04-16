@@ -157,7 +157,7 @@ export default function OperationalExecucaoPage() {
 
   const profilesWithTasks = useMemo(() => {
     if (!isAdmin) return [];
-    const openStatuses = ["pendente", "em_andamento", "devolvida", "aguardando_avaliacao", "aguardando_aprovacao", "contingencia"];
+    const openStatuses = ["pendente", "em_andamento", "devolvida", "aguardando_avaliacao", "aguardando_aprovacao", "contingenciado", "contingencia"];
     const idsWithTasks = new Set(
       assignments
         .filter((a: any) => openStatuses.includes(a.status))
