@@ -100,7 +100,14 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
         .select(`
           *,
           responsavel:profiles!operational_contingencies_responsavel_id_fkey(id, nome),
-          validador:profiles!operational_contingencies_validada_por_fkey(id, nome)
+          validador:profiles!operational_contingencies_validada_por_fkey(id, nome),
+          origin_field:operational_template_fields!operational_contingencies_origin_field_id_fkey(id, label, tipo, peso),
+          origin_review:operational_field_reviews!operational_contingencies_origin_review_id_fkey(id, conforme, devolvido, motivo_devolucao, observacao, rodada,
+            avaliador:profiles!operational_field_reviews_avaliador_id_fkey(nome)
+          ),
+          check_answer:operational_execution_check_answers!operational_contingencies_check_answer_id_fkey(id, conforme, observacao, resposta,
+            check_item:operational_template_check_items!operational_execution_check_answers_check_item_id_fkey(descricao)
+          )
         `)
         .eq("assignment_id", assignmentId)
         .order("created_at", { ascending: false });
