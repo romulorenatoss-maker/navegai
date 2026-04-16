@@ -431,36 +431,49 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
 
       {/* SLA Dialog */}
       <Dialog open={slaDialogOpen} onOpenChange={(v) => { if (!v) setSlaDialogOpen(false); }}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-sm">
               <Timer className="w-4 h-4" /> Iniciar Tratamento — SLA
             </DialogTitle>
-            <DialogDescription>Defina prazo, justificativa e anexo opcional.</DialogDescription>
+            <DialogDescription>Defina prazo, plano de ação e evidências requeridas.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label className="text-sm">Prazo SLA (data e hora) <span className="text-destructive">*</span></Label>
-              <Input
-                type="datetime-local"
-                value={slaDatetime}
-                min={formatDatetimeLocal(new Date())}
-                onChange={(e) => setSlaDatetime(e.target.value)}
-              />
-              {slaDatetime && (
-                <p className="text-xs text-muted-foreground">
-                  Expira: {new Date(slaDatetime).toLocaleString("pt-BR")}
-                </p>
-              )}
+              <Label className="text-sm">Prazo SLA <span className="text-destructive">*</span></Label>
+              <Input type="datetime-local" value={slaDatetime} min={formatDatetimeLocal(new Date())}
+                onChange={(e) => setSlaDatetime(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-sm">Justificativa <span className="text-destructive">*</span></Label>
-              <Textarea
-                value={slaJustificativa}
-                onChange={(e) => setSlaJustificativa(e.target.value)}
-                placeholder="Justifique o início do tratamento..."
-                className="min-h-[60px] text-sm"
-              />
+              <Label className="text-sm">Justificativa / Instrução <span className="text-destructive">*</span></Label>
+              <Textarea value={slaJustificativa} onChange={(e) => setSlaJustificativa(e.target.value)}
+                placeholder="Instrução para o avaliado..." className="min-h-[60px] text-sm" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm">Plano de Ação <span className="text-destructive">*</span></Label>
+              <Textarea value={slaPlanoAcao} onChange={(e) => setSlaPlanoAcao(e.target.value)}
+                placeholder="Plano de ação..." className="min-h-[50px] text-sm" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm">Evidências requeridas <span className="text-destructive">*</span></Label>
+              <div className="flex flex-col gap-1.5">
+                {[
+                  { value: "foto", label: "Foto", icon: <Camera className="w-3.5 h-3.5" /> },
+                  { value: "video", label: "Vídeo", icon: <Video className="w-3.5 h-3.5" /> },
+                  { value: "documento", label: "Documento", icon: <File className="w-3.5 h-3.5" /> },
+                ].map((opt) => (
+                  <label key={opt.value} className="flex items-center gap-2 cursor-pointer p-1.5 rounded border hover:bg-muted/50 text-sm">
+                    <Checkbox checked={slaTiposEvidencia.includes(opt.value)}
+                      onCheckedChange={() => toggleEvidenceType(opt.value)} />
+                    {opt.icon} {opt.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm">Observação <span className="text-muted-foreground text-xs">— opcional</span></Label>
+              <Textarea value={slaObservacao} onChange={(e) => setSlaObservacao(e.target.value)}
+                placeholder="Observações..." className="min-h-[40px] text-sm" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-sm">Anexo <span className="text-muted-foreground text-xs">— opcional</span></Label>
@@ -470,13 +483,13 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
                 </Button>
                 {slaFile && <span className="text-xs text-muted-foreground truncate max-w-[140px]">{slaFile.name}</span>}
               </div>
-              <input ref={slaFileRef} type="file" accept="image/*,video/*" className="hidden"
+              <input ref={slaFileRef} type="file" accept="image/*,video/*,.pdf,.doc,.docx" className="hidden"
                 onChange={(e) => setSlaFile(e.target.files?.[0] || null)} />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setSlaDialogOpen(false)}>Cancelar</Button>
-            <Button size="sm" disabled={cm.isSaving || uploading || !slaDatetime || !slaJustificativa.trim()}
+            <Button size="sm" disabled={cm.isSaving || uploading || !slaDatetime || !slaJustificativa.trim() || !slaPlanoAcao.trim() || slaTiposEvidencia.length === 0}
               onClick={handleStartTreatment}>
               {cm.isSaving || uploading ? "Salvando..." : "Iniciar"}
             </Button>
@@ -498,14 +511,14 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
                 placeholder="Descreva o que foi feito..." className="mt-1 min-h-[60px] text-sm" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Anexo <span className="text-muted-foreground text-[10px]">— opcional</span></Label>
+              <Label className="text-xs">Anexo (evidência) <span className="text-destructive">*</span></Label>
               <div className="flex items-center gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={() => resolveFileRef.current?.click()}>
                   <Paperclip className="w-3 h-3 mr-1" /> {resolveFile ? "Trocar" : "Anexar"}
                 </Button>
                 {resolveFile && <span className="text-xs text-muted-foreground truncate max-w-[140px]">{resolveFile.name}</span>}
               </div>
-              <input ref={resolveFileRef} type="file" accept="image/*,video/*" className="hidden"
+              <input ref={resolveFileRef} type="file" accept="image/*,video/*,.pdf,.doc,.docx" className="hidden"
                 onChange={(e) => setResolveFile(e.target.files?.[0] || null)} />
             </div>
           </div>
@@ -524,17 +537,21 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
           <DialogHeader>
             <DialogTitle className="text-sm">{validateApproved ? "Validar" : "Reprovar"} Resolução</DialogTitle>
             <DialogDescription>
-              {validateApproved ? "A contingência será validada." : "A contingência será reaberta."}
+              {validateApproved ? "A contingência será validada." : "Será devolvida com justificativa para nova resolução."}
             </DialogDescription>
           </DialogHeader>
           <div>
-            <Label className="text-xs">Observação</Label>
+            <Label className="text-xs">
+              {validateApproved ? "Observação" : "Justificativa"} {!validateApproved && <span className="text-destructive">*</span>}
+            </Label>
             <Textarea value={validateObs} onChange={(e) => setValidateObs(e.target.value)}
-              placeholder="Observações..." className="mt-1 min-h-[50px] text-sm" />
+              placeholder={validateApproved ? "Observações..." : "Justifique a reprovação..."}
+              className="mt-1 min-h-[50px] text-sm" />
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setValidateOpen(false)}>Cancelar</Button>
-            <Button size="sm" variant={validateApproved ? "default" : "destructive"} disabled={cm.isSaving}
+            <Button size="sm" variant={validateApproved ? "default" : "destructive"}
+              disabled={cm.isSaving || (!validateApproved && !validateObs.trim())}
               onClick={() => {
                 if (!validateTargetId) return;
                 cm.validateResolution.mutate(
@@ -542,7 +559,7 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
                   { onSuccess: () => setValidateOpen(false) }
                 );
               }}>
-              {cm.isSaving ? "Salvando..." : validateApproved ? "Validar" : "Reprovar"}
+              {cm.isSaving ? "Salvando..." : validateApproved ? "Validar" : "Reprovar e Devolver"}
             </Button>
           </DialogFooter>
         </DialogContent>
