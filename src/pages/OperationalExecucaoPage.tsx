@@ -157,7 +157,7 @@ export default function OperationalExecucaoPage() {
 
   const profilesWithTasks = useMemo(() => {
     if (!isAdmin) return [];
-    const openStatuses = ["pendente", "em_andamento", "devolvida", "aguardando_avaliacao", "aguardando_aprovacao", "contingencia"];
+    const openStatuses = ["pendente", "em_andamento", "devolvida", "aguardando_avaliacao", "aguardando_aprovacao", "contingenciado", "contingencia"];
     const idsWithTasks = new Set(
       assignments
         .filter((a: any) => openStatuses.includes(a.status))
@@ -181,7 +181,7 @@ export default function OperationalExecucaoPage() {
     }
     if (filterDate) {
       list = list.filter((a: any) => {
-        if (["concluida", "aprovada", "aguardando_avaliacao", "aguardando_aprovacao", "nao_executada", "contingencia"].includes(a.status)) return true;
+        if (["concluida", "aprovada", "aguardando_avaliacao", "aguardando_aprovacao", "nao_executada", "contingenciado", "contingencia"].includes(a.status)) return true;
         if (a.status === "devolvida") return true;
         return a.data_prevista === filterDate || (a.data_prevista < filterDate && !["concluida", "aprovada"].includes(a.status));
       });
@@ -190,14 +190,15 @@ export default function OperationalExecucaoPage() {
   }, [assignments, isAdmin, filterResponsavel, searchTerm, filterDate]);
 
   // "Tarefas de Hoje" includes: today's tasks + em_andamento (any date) + atrasadas (past dates still open)
-  const hoje = filteredAssignments.filter((a: any) => {
-    if (["em_andamento", "contingencia"].includes(a.status)) return true;
+   const hoje = filteredAssignments.filter((a: any) => {
+    if (["em_andamento"].includes(a.status)) return true;
     if (["pendente", "devolvida"].includes(a.status) && a.data_prevista <= filterDate) return true;
     return false;
   });
   const aFazer = filteredAssignments.filter((a: any) => ["pendente"].includes(a.status) && a.data_prevista > filterDate);
   const devolvidas = filteredAssignments.filter((a: any) => ["devolvida"].includes(a.status));
-  const aguardandoAvaliacao = filteredAssignments.filter((a: any) => ["aguardando_avaliacao", "aguardando_aprovacao", "contingencia"].includes(a.status));
+  const contingenciados = filteredAssignments.filter((a: any) => ["contingenciado", "contingencia"].includes(a.status));
+  const aguardandoAvaliacao = filteredAssignments.filter((a: any) => ["aguardando_avaliacao", "aguardando_aprovacao"].includes(a.status));
   const concluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 50);
 
   const exec = useAssignmentExecution(selectedAssignment?.id || null);
@@ -302,11 +303,12 @@ export default function OperationalExecucaoPage() {
   const isOwner = selectedAssignment?.responsavel_id === profile?.id;
   const isAdminEditing = isAdmin && selectedAssignment && !["nao_executada"].includes(selectedAssignment.status);
   const isEditable = selectedAssignment && (
-    (["pendente", "em_andamento", "devolvida", "contingencia"].includes(selectedAssignment.status) && (isOwner || isAdmin)) ||
+    (["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status) && (isOwner || isAdmin)) ||
     isAdminEditing
   );
   const isDevolvida = selectedAssignment?.status === "devolvida";
-  const needsAdminReopen = isAdmin && selectedAssignment && ["aguardando_avaliacao", "aguardando_aprovacao", "concluida", "aprovada", "contingencia"].includes(selectedAssignment.status);
+  const isContingenciado = selectedAssignment && ["contingenciado", "contingencia"].includes(selectedAssignment.status);
+  const needsAdminReopen = isAdmin && selectedAssignment && ["aguardando_avaliacao", "aguardando_aprovacao", "concluida", "aprovada", "contingenciado", "contingencia"].includes(selectedAssignment.status);
 
   const handleStart = () => {
     if (selectedAssignment) exec.startTask.mutate({
@@ -410,6 +412,13 @@ export default function OperationalExecucaoPage() {
             borderColor="#ef4444" badgeBg="bg-red-500/15" badgeText="text-red-700 dark:text-red-400"
             isOpen={openAccordion === "devolvidas"} onToggle={() => setOpenAccordion(openAccordion === "devolvidas" ? null : "devolvidas")}>
             {devolvidas.length === 0 ? renderEmptyState("Nenhuma rotina devolvida.") : devolvidas.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+          </AccordionSection>
+
+          <AccordionSection title="Contingenciados" count={contingenciados.length}
+            icon={<AlertTriangle className="w-4 h-4" style={{ color: "#f97316" }} />}
+            borderColor="#f97316" badgeBg="bg-orange-500/15" badgeText="text-orange-700 dark:text-orange-400"
+            isOpen={openAccordion === "contingenciados"} onToggle={() => setOpenAccordion(openAccordion === "contingenciados" ? null : "contingenciados")}>
+            {contingenciados.length === 0 ? renderEmptyState("Nenhuma rotina contingenciada.") : contingenciados.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
           </AccordionSection>
 
           <AccordionSection title="Aguardando Avaliação" count={aguardandoAvaliacao.length}

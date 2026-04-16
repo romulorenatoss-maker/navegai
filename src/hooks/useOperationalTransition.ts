@@ -18,10 +18,10 @@ import { toast } from "sonner";
 // Valid status transitions
 const VALID_TRANSITIONS: Record<string, string[]> = {
   pendente: ["em_andamento"],
-  em_andamento: ["aguardando_avaliacao"],
+  em_andamento: ["aguardando_avaliacao", "contingenciado"],
   aguardando_avaliacao: ["em_avaliacao"],
-  em_avaliacao: ["aguardando_aprovacao", "concluida", "devolvida", "contingencia", "reprovada"],
-  contingencia: ["aguardando_avaliacao"], // auto-return after all contingencies resolved
+  em_avaliacao: ["aguardando_aprovacao", "concluida", "devolvida", "contingenciado", "reprovada"],
+  contingenciado: ["aguardando_aprovacao"], // auto-return after all contingencies resolved
   aguardando_aprovacao: ["aprovada", "devolvida", "concluida"],
   devolvida: ["em_andamento"],
   // Terminal
@@ -99,7 +99,7 @@ function resolveTargetStatus(action: TransitionAction, currentStatus: string, ex
     case "avaliar_aprovar": return extraData?.requerAprovacao ? "aguardando_aprovacao" : "concluida";
     case "avaliar_devolver": return "devolvida";
     case "avaliar_reprovar": return "reprovada";
-    case "enviar_contingencia": return "contingencia";
+    case "enviar_contingencia": return "contingenciado";
     case "retornar_avaliacao": return "aguardando_avaliacao";
     case "aprovar_final": return "aprovada";
     case "reprovar_devolver_final": return "devolvida";
