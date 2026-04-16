@@ -207,6 +207,7 @@ export default function OperationalContingenciasPage() {
         {
           onSuccess: () => {
             setSlaDialogOpen(false);
+            setActiveTab("devolvidas");
             setSelected((prev: any) => prev ? {
               ...prev,
               status: "em_andamento",
