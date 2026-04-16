@@ -218,7 +218,7 @@ export function useAssignmentReview(assignmentId: string | null) {
               const prazoResolucao = pendingData?.prazoResolucao || new Date(Date.now() + slaHours * 3600000).toISOString();
               const motivoInstrucao = pendingData?.motivoInstrucao || `Não conformidade: ${field.label}${r.observacao ? ` — ${r.observacao}` : ""}`;
 
-              await (supabase as any).from("operational_contingencies").insert({
+              const { error: contingencyError } = await (supabase as any).from("operational_contingencies").insert({
                 assignment_id: assignmentId,
                 origin_field_id: r.field_id,
                 origin_review_id: persistedReviewIds[r.field_id] || null,
@@ -229,11 +229,12 @@ export function useAssignmentReview(assignmentId: string | null) {
                 motivo_instrucao: motivoInstrucao,
                 status: "aberta",
               });
+              if (contingencyError) throw contingencyError;
 
               // Log to history
               await (supabase as any).from("operational_assignment_history").insert({
                 assignment_id: assignmentId,
-                tipo_evento: "contingencia_criada",
+                tipo_evento: "CONTINGENCIA_CRIADA",
                 usuario_id: profile.id,
                 etapa: "avaliacao",
                 detalhes_json: {
@@ -340,6 +341,19 @@ export function useAssignmentReview(assignmentId: string | null) {
           contingencias_criadas: newContingenciesCreated,
         },
       });
+
+      if (newStatus === "contingencia") {
+        await (supabase as any).from("operational_assignment_history").insert({
+          assignment_id: assignmentId,
+          tipo_evento: "STATUS_ALTERADO_PARA_CONTINGENCIA",
+          usuario_id: profile.id,
+          etapa: "avaliacao",
+          detalhes_json: {
+            status: newStatus,
+            contingencias_criadas: newContingenciesCreated,
+          },
+        });
+      }
 
       await (supabase as any).from("operational_execution_logs").insert({
         assignment_id: assignmentId,

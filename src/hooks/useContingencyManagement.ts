@@ -194,6 +194,14 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
           dados_novos: { contingency_id: contingencyId },
         });
 
+        await (supabase as any).from("operational_assignment_history").insert({
+          assignment_id: cont.assignment_id,
+          tipo_evento: "CONTINGENCIA_RESOLVIDA",
+          usuario_id: profile.id,
+          etapa: "contingencia",
+          detalhes_json: { contingency_id: contingencyId, observacao },
+        });
+
         // Check if ALL contingencies for this assignment are now resolved/validated/discarded
         const { data: remaining } = await (supabase as any)
           .from("operational_contingencies")
