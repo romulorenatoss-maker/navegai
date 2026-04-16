@@ -557,15 +557,23 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
   };
 
   const abertas = contingencies.filter((c: any) => c.status === "aberta");
-  const emTratamento = contingencies.filter((c: any) => c.status === "em_andamento");
-  const resolvidas = contingencies.filter((c: any) => c.status === "resolvida");
-  const validadas = contingencies.filter((c: any) => ["validada", "descartada"].includes(c.status));
+
+  // Em Tratamento: em_andamento or resolvida, within SLA (or no SLA yet)
+  const emTratamento = contingencies.filter((c: any) => {
+    if (!["em_andamento", "resolvida"].includes(c.status)) return false;
+    if (c.prazo_sla && new Date(c.prazo_sla).getTime() < Date.now()) return false; // SLA expired → goes to vencidas
+    return true;
+  });
+
+  // Vencidas: em_andamento or resolvida, with expired SLA
   const vencidas = contingencies.filter((c: any) => {
-    if (["validada", "descartada", "resolvida"].includes(c.status)) return false;
+    if (!["em_andamento", "resolvida"].includes(c.status)) return false;
     if (!c.prazo_sla) return false;
-    if (c.status !== "em_andamento") return false;
     return new Date(c.prazo_sla).getTime() < Date.now();
   });
+
+  const validadas = contingencies.filter((c: any) => ["validada", "descartada"].includes(c.status));
+
   // Devolvidas: em_andamento contingencies where current user is the avaliado or executor of the assignment
   const devolvidas = contingencies.filter((c: any) => {
     if (c.status !== "em_andamento") return false;
