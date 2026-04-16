@@ -102,6 +102,12 @@ export default function OperationalContingenciasPage() {
   const isPending = selected && ["aberta", "em_andamento"].includes(selected.status);
   const isResolved = selected?.status === "resolvida";
   const isMyContingency = selected?.responsavel_id === profile?.id;
+  const isValidador = isAdmin || selected?.assignment?.validador_contingencia_id === profile?.id;
+  const isAvaliado = selected?.assignment?.avaliado_id === profile?.id;
+  const isAvaliador = selected?.assignment?.avaliador_id === profile?.id;
+  const canInitiate = isAdmin || isValidador || isAvaliador;
+  const canResolveAction = isAdmin || isMyContingency || isValidador || isAvaliado;
+  const canDiscardAction = isAdmin || isValidador || isAvaliador;
 
   const tabData: Record<string, { list: any[]; empty: string }> = {
     abertas: { list: cm.abertas, empty: "Nenhuma contingência aberta." },
