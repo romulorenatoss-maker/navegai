@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Play, Send, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock, RotateCcw, CheckCheck, CalendarClock, ListTodo, Hourglass, Filter, History } from "lucide-react";
+import { EmbeddedContingencyPanel } from "@/components/operational/EmbeddedContingencyPanel";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
@@ -573,6 +574,13 @@ export default function OperationalExecucaoPage() {
                   <span className="font-medium">Modo Administrador:</span>
                   <span>Esta tarefa está em <strong>{STATUS_CONFIG[selectedAssignment.status]?.label}</strong>. Você pode editar os campos diretamente.</span>
                 </div>
+              </div>
+            )}
+
+            {/* Embedded contingency panel for contingenciado tasks */}
+            {isContingenciado && selectedAssignment && (
+              <div className="bg-muted/30 border border-border rounded-lg p-3">
+                <EmbeddedContingencyPanel assignmentId={selectedAssignment.id} />
               </div>
             )}
 
