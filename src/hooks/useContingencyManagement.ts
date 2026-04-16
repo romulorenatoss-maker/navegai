@@ -102,7 +102,10 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        console.error("[ContingencyManagement] Query error:", error);
+        throw error;
+      }
       return data || [];
     },
     staleTime: 15000,
