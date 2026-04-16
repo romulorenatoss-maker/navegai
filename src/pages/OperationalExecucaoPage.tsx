@@ -646,18 +646,15 @@ export default function OperationalExecucaoPage() {
               {needsAdminReopen ? (
                 <Button type="button" size="sm" variant="outline" onClick={async () => {
                   try {
-                    const prevStatus = selectedAssignment.status;
-                    await (supabase as any).from("operational_assignments").update({
-                      status: "em_andamento", fim_em: null, avaliador_inicio_em: null, avaliador_fim_em: null,
-                    }).eq("id", selectedAssignment.id);
-                    await (supabase as any).from("operational_audit_trail").insert({
-                      assignment_id: selectedAssignment.id, tipo_evento: "admin_reabriu_para_edicao",
-                      executado_por: profile?.id, motivo: "Edição administrativa",
-                      dados_anteriores: { status: prevStatus }, dados_novos: { status: "em_andamento" },
+                    await centralTransition.mutateAsync({
+                      assignmentId: selectedAssignment.id,
+                      action: "admin_reabrir_edicao",
+                      motivo: "Edição administrativa",
+                      origem: "execucao",
                     });
                     await (supabase as any).from("operational_execution_logs").insert({
                       assignment_id: selectedAssignment.id, acao: "admin_reabriu_para_edicao",
-                      executado_por: profile?.id, detalhes: { status_anterior: prevStatus },
+                      executado_por: profile?.id, detalhes: { status_anterior: selectedAssignment.status },
                     });
                     toast.success("Tarefa reaberta para edição");
                     setSelectedAssignment({ ...selectedAssignment, status: "em_andamento" });
