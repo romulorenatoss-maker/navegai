@@ -42,12 +42,12 @@ const allNavSections = [
   {
     title: "Tarefas",
     items: [
+      { to: "/checklists/dashboard", icon: PieChart, label: "Dashboard Operacional" },
       { to: "/checklists/execucao", icon: PlayCircle, label: "Execução" },
       { to: "/checklists/contingencias", icon: AlertTriangle, label: "Contingências" },
       { to: "/checklists/aprovacao", icon: Shield, label: "Aprovação Final" },
       { to: "/checklists/gestao", icon: FolderKanban, label: "Gestão" },
       { to: "/checklists/cadastro", icon: ListChecks, label: "Templates" },
-      { to: "/checklists/dashboard", icon: PieChart, label: "Dashboard Operacional" },
     ],
   },
   {
