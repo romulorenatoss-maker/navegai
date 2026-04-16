@@ -437,7 +437,7 @@ export default function OperationalCadastroPage() {
           <h1 className="text-section font-semibold text-foreground">Rotinas Operacionais</h1>
           <p className="text-body text-muted-foreground">Cadastre templates com seções, campos dinâmicos, workflow e recorrência.</p>
         </div>
-        <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Novo Template</Button>
+        <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Nova Tarefa</Button>
       </div>
 
       {/* Filters */}
@@ -545,7 +545,7 @@ export default function OperationalCadastroPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingId ? "Editar Template" : "Novo Template"}</DialogTitle>
+            <DialogTitle>{editingId ? "Editar Tarefa" : "Nova Tarefa"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={e => { e.preventDefault(); upsert.mutate(); }}>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
