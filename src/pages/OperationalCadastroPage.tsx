@@ -421,59 +421,77 @@ export default function OperationalCadastroPage() {
         </Select>
       </div>
 
-      {/* Templates table */}
-      <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Nome</th>
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Tipo</th>
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Setor</th>
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Recorrência</th>
-                
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Status</th>
-                <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {isLoading ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Carregando...</td></tr>
-              ) : filteredTemplates.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhum template encontrado.</td></tr>
-              ) : filteredTemplates.map((t: any) => (
-                <tr key={t.id} className="hover:bg-muted/50 transition-colors">
-                  <td className="px-4 py-3">
-                    <span className="text-body font-medium text-foreground">{t.nome}</span>
-                    {t.descricao && <p className="text-caption text-muted-foreground mt-0.5 truncate max-w-[250px]">{t.descricao}</p>}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border badge-active">
-                      {TIPO_EXECUCAO_LABELS[t.tipo_execucao] || t.tipo_execucao}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-body text-muted-foreground">{t.setores?.nome || "—"}</td>
-                  <td className="px-4 py-3 text-body text-muted-foreground">{RECORRENCIA_LABELS[t.recorrencia_tipo] || t.recorrencia_tipo}</td>
-                  
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${t.ativo ? "badge-complete" : "badge-expired"}`}>
-                      {t.ativo ? "Ativo" : "Inativo"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => toggleAtivo.mutate(t)} className="press-effect">
-                        {t.ativo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(t)} className="press-effect"><Pencil className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="sm" onClick={() => { if (window.confirm(`Excluir template "${t.nome}"? Esta ação é irreversível e removerá todas as seções e campos associados.`)) remove.mutate(t.id); }} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* Templates grouped by setor with drag-and-drop */}
+      <div className="space-y-4">
+        {isLoading ? (
+          <div className="bg-card border border-border rounded-lg p-8 text-center text-body text-muted-foreground">Carregando...</div>
+        ) : groupedTemplates.length === 0 ? (
+          <div className="bg-card border border-border rounded-lg p-8 text-center text-body text-muted-foreground">Nenhum template encontrado.</div>
+        ) : groupedTemplates.map((group) => {
+          const setorKey = group.setorId || "__sem_setor";
+          return (
+            <div key={setorKey} className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
+              <div className="px-4 py-2.5 bg-muted/50 border-b border-border">
+                <h3 className="text-sm font-semibold text-foreground">{group.setor}</h3>
+                <span className="text-caption text-muted-foreground">{group.items.length} template{group.items.length !== 1 ? "s" : ""}</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="w-8"></th>
+                      <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Nome</th>
+                      <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Tipo</th>
+                      <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Recorrência</th>
+                      <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Status</th>
+                      <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {group.items.map((t: any) => (
+                      <tr
+                        key={t.id}
+                        draggable
+                        onDragStart={() => handleDragStart(t.id, setorKey)}
+                        onDragOver={(e) => handleDragOver(e, t.id, setorKey)}
+                        onDrop={handleDrop}
+                        className="hover:bg-muted/50 transition-colors cursor-grab active:cursor-grabbing"
+                      >
+                        <td className="pl-2 pr-0 py-3 text-muted-foreground/40">
+                          <GripVertical className="w-4 h-4" />
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-body font-medium text-foreground">{t.nome}</span>
+                          {t.descricao && <p className="text-caption text-muted-foreground mt-0.5 truncate max-w-[250px]">{t.descricao}</p>}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border badge-active">
+                            {TIPO_EXECUCAO_LABELS[t.tipo_execucao] || t.tipo_execucao}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-body text-muted-foreground">{RECORRENCIA_LABELS[t.recorrencia_tipo] || t.recorrencia_tipo}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${t.ativo ? "badge-complete" : "badge-expired"}`}>
+                            {t.ativo ? "Ativo" : "Inativo"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => toggleAtivo.mutate(t)} className="press-effect">
+                              {t.ativo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => openEdit(t)} className="press-effect"><Pencil className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="sm" onClick={() => { if (window.confirm(`Excluir template "${t.nome}"?`)) remove.mutate(t.id); }} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Builder Dialog */}
