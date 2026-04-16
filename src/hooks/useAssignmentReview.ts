@@ -38,7 +38,6 @@ export function useAssignmentReview(assignmentId: string | null) {
   const [contingencyPrazos, setContingencyPrazos] = useState<Record<string, number>>({});
   const [pendingContingencyData, setPendingContingencyData] = useState<Record<string, { prazoResolucao: string; motivoInstrucao: string }>>({});
 
-  // Load existing answers for this assignment
   const { data: fieldAnswers = [] } = useQuery({
     queryKey: ["review_field_answers", assignmentId],
     queryFn: async () => {
@@ -51,7 +50,6 @@ export function useAssignmentReview(assignmentId: string | null) {
     enabled: !!assignmentId,
   });
 
-  // Load existing reviews for this assignment
   const { data: existingReviews = [] } = useQuery({
     queryKey: ["review_field_reviews", assignmentId],
     queryFn: async () => {
@@ -64,7 +62,6 @@ export function useAssignmentReview(assignmentId: string | null) {
     enabled: !!assignmentId,
   });
 
-  // Load contingencies
   const { data: contingencies = [] } = useQuery({
     queryKey: ["review_contingencies", assignmentId],
     queryFn: async () => {
@@ -77,7 +74,7 @@ export function useAssignmentReview(assignmentId: string | null) {
     enabled: !!assignmentId,
   });
 
-  // Hydrate drafts from existing reviews for current round
+  // Hydrate drafts from existing reviews
   useEffect(() => {
     if (!existingReviews.length) return;
     const map: Record<string, FieldReviewDraft> = {};
@@ -95,12 +92,10 @@ export function useAssignmentReview(assignmentId: string | null) {
     setReviewDrafts(map);
   }, [existingReviews]);
 
-  // Get latest answer for a field
   const getFieldAnswer = useCallback((fieldId: string) => {
     return fieldAnswers.find((a: any) => a.field_id === fieldId);
   }, [fieldAnswers]);
 
-  // Update review draft
   const updateReview = useCallback((fieldId: string, patch: Partial<FieldReviewDraft>) => {
     setReviewDrafts(prev => ({
       ...prev,
@@ -108,22 +103,18 @@ export function useAssignmentReview(assignmentId: string | null) {
     }));
   }, []);
 
-  // Update contingency prazo for a specific field
   const updateContingencyPrazo = useCallback((fieldId: string, horas: number) => {
     setContingencyPrazos(prev => ({ ...prev, [fieldId]: horas }));
   }, []);
 
-  // Register contingency data from modal (prazo + motivo)
   const registerContingencyData = useCallback((fieldId: string, prazoResolucao: string, motivoInstrucao: string) => {
     setPendingContingencyData(prev => ({ ...prev, [fieldId]: { prazoResolucao, motivoInstrucao } }));
   }, []);
 
-  // FIX #3: Batch mark section conforme — SKIP fields already reviewed
   const markSectionConforme = useCallback((fields: SnapshotField[]) => {
     setReviewDrafts(prev => {
       const next = { ...prev };
       for (const f of fields) {
-        // Skip fields that already have a review decision
         if (next[f.id]?.conforme !== null && next[f.id]?.conforme !== undefined) continue;
         next[f.id] = { field_id: f.id, conforme: true, observacao: "", devolvido: false, motivo_devolucao: "" };
       }
@@ -131,49 +122,7 @@ export function useAssignmentReview(assignmentId: string | null) {
     });
   }, []);
 
-  // FIX #1: Weighted score preview using peso and nota_maxima from snapshot fields
-  const scorePreview = useMemo(() => {
-    const reviewed = Object.values(reviewDrafts).filter(r => r.conforme !== null);
-    if (reviewed.length === 0) return null;
-    const conformes = reviewed.filter(r => r.conforme === true).length;
-    const naoConformes = reviewed.filter(r => r.conforme === false).length;
-    const devolvidos = reviewed.filter(r => r.devolvido).length;
-
-    // Simple percentage kept as fallback display
-    const scoreSimples = reviewed.length > 0 ? Math.round((conformes / reviewed.length) * 100) : 0;
-
-    return { total: reviewed.length, conformes, naoConformes, devolvidos, scoreEstimado: scoreSimples };
-  }, [reviewDrafts]);
-
-  // FIX #1: Weighted score that matches the DB trigger formula
-  const weightedScorePreview = useCallback((snapshotFields: SnapshotField[]) => {
-    const reviewed = Object.values(reviewDrafts).filter(r => r.conforme !== null);
-    if (reviewed.length === 0) return null;
-
-    let pesoTotal = 0;
-    let pesoAcertado = 0;
-
-    for (const r of reviewed) {
-      const field = snapshotFields.find(f => f.id === r.field_id);
-      const peso = field?.peso ?? 1;
-      const notaMax = field?.nota_maxima ?? 10;
-      pesoTotal += peso * notaMax;
-      if (r.conforme === true) {
-        pesoAcertado += peso * notaMax;
-      }
-      // Non-conforme = 0 points (penalty is immediate and permanent)
-    }
-
-    const scorePonderado = pesoTotal > 0 ? Math.round((pesoAcertado / pesoTotal) * 100) : 0;
-
-    const conformes = reviewed.filter(r => r.conforme === true).length;
-    const naoConformes = reviewed.filter(r => r.conforme === false).length;
-    const devolvidos = reviewed.filter(r => r.devolvido).length;
-
-    return { total: reviewed.length, conformes, naoConformes, devolvidos, scoreEstimado: scorePonderado };
-  }, [reviewDrafts]);
-
-  // FIX #5: Check if all required visible fields are reviewed
+  // Check if all required reviewable fields are reviewed (only aprovador_verificar)
   const isReviewComplete = useCallback((visibleFields: SnapshotField[]) => {
     const requiredFields = visibleFields.filter(f => f.obrigatorio !== false);
     return requiredFields.every(f => {
@@ -190,7 +139,6 @@ export function useAssignmentReview(assignmentId: string | null) {
       const rodada = assignment.rodada_atual || 1;
       const now = new Date().toISOString();
 
-      // Persist field reviews and collect IDs for contingency linking
       const reviewEntries = Object.values(reviewDrafts).filter(r => r.conforme !== null);
       const persistedReviewIds: Record<string, string> = {};
 
@@ -212,63 +160,51 @@ export function useAssignmentReview(assignmentId: string | null) {
         };
 
         if (existing) {
-          await (supabase as any).from("operational_field_reviews")
-            .update(reviewData).eq("id", existing.id);
+          await (supabase as any).from("operational_field_reviews").update(reviewData).eq("id", existing.id);
           persistedReviewIds[r.field_id] = existing.id;
         } else {
-          const { data: inserted } = await (supabase as any).from("operational_field_reviews")
-            .insert(reviewData).select("id").single();
+          const { data: inserted } = await (supabase as any).from("operational_field_reviews").insert(reviewData).select("id").single();
           if (inserted) persistedReviewIds[r.field_id] = inserted.id;
         }
 
-        // FIX #4: Create contingency AFTER review is persisted, with origin_review_id
         if (r.conforme === false) {
           const field = fields.find(f => f.id === r.field_id);
           const answer = fieldAnswers.find((a: any) => a.field_id === r.field_id);
           if (fieldGeneratesContingency(field, answer)) {
             const existingContingency = contingencies.find((c: any) => c.origin_field_id === r.field_id && !["validada", "descartada"].includes(c.status));
             if (!existingContingency) {
-              // Use pending contingency data if available (from modal), otherwise fallback
               const pendingData = pendingContingencyData[r.field_id];
               const customPrazoHoras = contingencyPrazos[r.field_id];
               const templateSnapshot = assignment.template_snapshot;
               const slaHours = customPrazoHoras || templateSnapshot?.prazo_sla_correcao_horas || 24;
-              
-              const prazoResolucao = pendingData?.prazoResolucao || new Date(Date.now() + slaHours * 3600000).toISOString();
-              const motivoInstrucao = pendingData?.motivoInstrucao || `Não conformidade: ${field.label}${r.observacao ? ` — ${r.observacao}` : ""}`;
 
-              const { error: contingencyError } = await (supabase as any).from("operational_contingencies").insert({
+              const prazoResolucao = pendingData?.prazoResolucao || new Date(Date.now() + slaHours * 3600000).toISOString();
+              const motivoInstrucao = pendingData?.motivoInstrucao || `Não conformidade: ${field?.label}${r.observacao ? ` — ${r.observacao}` : ""}`;
+
+              await (supabase as any).from("operational_contingencies").insert({
                 assignment_id: assignmentId,
                 origin_field_id: r.field_id,
                 origin_review_id: persistedReviewIds[r.field_id] || null,
-                descricao: `Não conformidade: ${field.label}${r.observacao ? ` — ${r.observacao}` : ""}`,
+                descricao: `Não conformidade: ${field?.label}${r.observacao ? ` — ${r.observacao}` : ""}`,
                 responsavel_id: assignment.responsavel_id,
                 prazo_sla: prazoResolucao,
                 prazo_resolucao: prazoResolucao,
                 motivo_instrucao: motivoInstrucao,
                 status: "aberta",
               });
-              if (contingencyError) throw contingencyError;
 
-              // Log to history
               await (supabase as any).from("operational_assignment_history").insert({
                 assignment_id: assignmentId,
                 tipo_evento: "CONTINGENCIA_CRIADA",
                 usuario_id: profile.id,
                 etapa: "avaliacao",
-                detalhes_json: {
-                  field_id: r.field_id,
-                  field_label: field.label,
-                  prazo: prazoResolucao,
-                  motivo: motivoInstrucao,
-                },
+                detalhes_json: { field_id: r.field_id, field_label: field?.label, prazo: prazoResolucao, motivo: motivoInstrucao },
               });
             }
           }
         }
       }
 
-      // Check if any contingencies were created in this round
       const naoConformesComContingencia = reviewEntries.filter(r => {
         if (r.conforme !== false) return false;
         const field = fields.find(f => f.id === r.field_id);
@@ -282,7 +218,6 @@ export function useAssignmentReview(assignmentId: string | null) {
         if (!existingContingency) newContingenciesCreated++;
       }
 
-      // Check for any already-open contingencies on this assignment
       const { data: openContingencies } = await (supabase as any)
         .from("operational_contingencies")
         .select("id")
@@ -292,17 +227,14 @@ export function useAssignmentReview(assignmentId: string | null) {
 
       const hasOpenContingencies = (openContingencies?.length > 0) || newContingenciesCreated > 0;
 
-      // Block approval if there are open contingencies
       if (action === "aprovar" && hasOpenContingencies) {
-        throw new Error("Não é possível aprovar enquanto houver contingências abertas. Resolva as contingências primeiro.");
+        throw new Error("Não é possível aprovar enquanto houver contingências abertas.");
       }
 
-      // Determine transition action — read roles from live template, not snapshot
       let transitionAction: string;
       const { data: liveTemplate } = await (supabase as any).from("operational_templates")
         .select("requer_aprovacao_gestor, aprovador_profile_id, aprovador_setor_id")
-        .eq("id", assignment.template_id)
-        .single();
+        .eq("id", assignment.template_id).single();
       const requerAprovacao = !!liveTemplate?.requer_aprovacao_gestor;
       const aprovadorProfileId = liveTemplate?.aprovador_profile_id || null;
 
@@ -310,22 +242,14 @@ export function useAssignmentReview(assignmentId: string | null) {
         transitionAction = "enviar_contingencia";
       } else {
         switch (action) {
-          case "aprovar":
-            transitionAction = "avaliar_aprovar";
-            break;
+          case "aprovar": transitionAction = "avaliar_aprovar"; break;
           case "devolver_parcial":
-          case "devolver_total":
-            transitionAction = "avaliar_devolver";
-            break;
-          case "reprovar":
-            transitionAction = "avaliar_reprovar";
-            break;
-          default:
-            transitionAction = "avaliar_aprovar";
+          case "devolver_total": transitionAction = "avaliar_devolver"; break;
+          case "reprovar": transitionAction = "avaliar_reprovar"; break;
+          default: transitionAction = "avaliar_aprovar";
         }
       }
 
-      // Use centralized transition
       await transition.mutateAsync({
         assignmentId,
         action: transitionAction as any,
@@ -357,7 +281,6 @@ export function useAssignmentReview(assignmentId: string | null) {
     onError: (e: any) => toast.error(e.message),
   });
 
-  // Start evaluation — uses centralized transition
   const startEvaluation = useMutation({
     mutationFn: async (aId: string) => {
       if (!profile?.id) throw new Error("Não autenticado");
@@ -383,8 +306,6 @@ export function useAssignmentReview(assignmentId: string | null) {
     contingencies,
     reviewDrafts,
     contingencyPrazos,
-    scorePreview,
-    weightedScorePreview,
     isReviewComplete,
     getFieldAnswer,
     updateReview,

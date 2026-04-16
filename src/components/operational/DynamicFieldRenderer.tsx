@@ -39,7 +39,8 @@ export interface SnapshotField {
   visivel_para: string[];
   editavel_por: string[];
   section_id?: string;
-  // Approver question fields
+  // Approver review fields
+  aprovador_verificar?: boolean;
   aprovador_pergunta?: string;
   aprovador_tipo_resposta?: string;
   aprovador_peso?: number;
