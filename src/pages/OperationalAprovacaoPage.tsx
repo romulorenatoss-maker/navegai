@@ -524,86 +524,24 @@ export default function OperationalAprovacaoPage() {
               </div>
             )}
 
-            {/* TAREFA EXECUTADA — read-only summary of executor answers + evaluator review */}
+            {/* TAREFA EXECUTADA — atalho para abrir em dialog separado */}
             {allVisibleFields.length > 0 && (
-              <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
-                <div className="p-4 border-b border-border flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-primary" />
-                  <h3 className="text-sm font-semibold text-foreground">TAREFA EXECUTADA</h3>
-                  <span className="text-xs text-muted-foreground ml-auto">{allVisibleFields.length} {allVisibleFields.length === 1 ? "campo" : "campos"}</span>
+              <button
+                type="button"
+                onClick={() => setTarefaExecutadaOpen(true)}
+                className="w-full bg-card border border-border rounded-lg shadow-card p-4 flex items-center gap-3 hover:bg-muted/40 transition-colors text-left"
+              >
+                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-5 h-5 text-primary" />
                 </div>
-                <div className="divide-y divide-border">
-                  {snapshotSections.length > 0 ? snapshotSections.map((section: any) => {
-                    const sFields = allVisibleFields.filter(f => f.section_id === section.id);
-                    if (sFields.length === 0) return null;
-                    return (
-                      <div key={section.id}>
-                        <div className="px-4 py-2 bg-muted/30 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{section.nome}</div>
-                        {sFields.map((f, idx) => {
-                          const answer = answersMap[f.id];
-                          const rev = reviewsMap[f.id];
-                          return (
-                            <div key={f.id} className="px-4 py-3 border-t border-border">
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-medium text-foreground">{idx + 1}. {f.label}</p>
-                                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Executor:</span>
-                                    {renderAnswerValue(f, answer)}
-                                    {answer?.evidencia_url && f.tipo !== "foto" && (
-                                      <a href={answer.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline inline-flex items-center gap-1">
-                                        <ExternalLink className="w-3 h-3" /> Evidência
-                                      </a>
-                                    )}
-                                  </div>
-                                </div>
-                                {rev && (
-                                  <div className="text-right shrink-0">
-                                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-0.5">Avaliador</p>
-                                    <span className={cn(
-                                      "inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border",
-                                      rev.conforme === true ? "border-success/40 bg-success/10 text-success" : "border-destructive/40 bg-destructive/10 text-destructive"
-                                    )}>
-                                      {rev.conforme === true ? "✓ Conforme" : "✗ Não Conforme"}
-                                    </span>
-                                    {rev.observacao && <p className="text-xs text-muted-foreground mt-0.5 max-w-[180px] italic">"{rev.observacao}"</p>}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  }) : allVisibleFields.map((f, idx) => {
-                    const answer = answersMap[f.id];
-                    const rev = reviewsMap[f.id];
-                    return (
-                      <div key={f.id} className="px-4 py-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-foreground">{idx + 1}. {f.label}</p>
-                            <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                              <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Executor:</span>
-                              {renderAnswerValue(f, answer)}
-                            </div>
-                          </div>
-                          {rev && (
-                            <div className="text-right shrink-0">
-                              <span className={cn(
-                                "inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border",
-                                rev.conforme === true ? "border-success/40 bg-success/10 text-success" : "border-destructive/40 bg-destructive/10 text-destructive"
-                              )}>
-                                {rev.conforme === true ? "✓ Conforme" : "✗ Não Conforme"}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground">Tarefa Executada</p>
+                  <p className="text-xs text-muted-foreground">
+                    {allVisibleFields.length} {allVisibleFields.length === 1 ? "campo respondido" : "campos respondidos"} • clique para ver detalhes
+                  </p>
                 </div>
-              </div>
+                <ExternalLink className="w-4 h-4 text-muted-foreground shrink-0" />
+              </button>
             )}
 
             {/* Resumo de Pontuação do Template — table format */}
