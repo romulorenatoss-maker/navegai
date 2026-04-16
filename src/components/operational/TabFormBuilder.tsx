@@ -325,16 +325,6 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
             </div>
           </div>
 
-          {/* ── Regras Gerais ── */}
-          <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Regras Gerais</p>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-              <div className="flex items-center gap-2">
-                <Switch checked={local.obrigatorio} onCheckedChange={v => upd("obrigatorio", v)} />
-                <Label className="cursor-pointer text-sm">Obrigatório</Label>
-              </div>
-            </div>
-          </div>
 
           {/* ── Opções e Regras por Botão ── */}
           {temOpcoes && (
