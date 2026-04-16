@@ -340,7 +340,7 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
         throw new Error("Justificativa obrigatória para rejeição.");
       }
 
-      const targetStatus = approved ? "validada" : "aberta";
+      const targetStatus = approved ? "validada" : "em_andamento";
       await assertStatusTransition(contingencyId, ["resolvida"], targetStatus);
 
       const now = new Date().toISOString();
@@ -354,6 +354,8 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
       } else {
         updatePayload.resolvida_em = null;
         updatePayload.justificativa_rejeicao = observacao || null;
+        // Rejection justification becomes the new plano_acao for the executor
+        updatePayload.plano_acao = observacao || null;
       }
 
       const { error } = await (supabase as any)
