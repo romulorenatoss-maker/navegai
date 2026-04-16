@@ -325,6 +325,35 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
               <Label>Descrição / Instrução</Label>
               <Textarea value={local.descricao} onChange={e => upd("descricao", e.target.value)} placeholder="Instruções para o executor..." maxLength={1000} />
             </div>
+
+            {/* Anexo de instrução */}
+            <div className="space-y-1.5">
+              <Label>Anexo de Instrução (Documento, Foto ou Vídeo)</Label>
+              <p className="text-caption text-muted-foreground">Anexe um modelo ou referência visual de como o procedimento deve ser executado.</p>
+              {local.instrucao_url ? (
+                <div className="flex items-center gap-2 bg-muted/50 border border-border rounded-lg p-2">
+                  {local.instrucao_tipo === "foto" && (
+                    <img src={local.instrucao_url} alt="Instrução" className="w-20 h-20 object-cover rounded" />
+                  )}
+                  {local.instrucao_tipo === "video" && (
+                    <video src={local.instrucao_url} className="w-20 h-20 object-cover rounded" />
+                  )}
+                  {local.instrucao_tipo === "documento" && (
+                    <div className="flex items-center gap-1.5 text-sm"><FileText className="w-4 h-4" /> Documento anexado</div>
+                  )}
+                  <span className="flex-1 text-xs text-muted-foreground truncate">{local.instrucao_url.split("/").pop()}</span>
+                  <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => { upd("instrucao_url", ""); upd("instrucao_tipo", "foto"); }}>
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <InstrucaoUploadButton label="Foto" icon={<Camera className="w-3.5 h-3.5 mr-1.5" />} accept="image/*" tipo="foto" onUpload={(url) => { upd("instrucao_url", url); upd("instrucao_tipo", "foto"); }} />
+                  <InstrucaoUploadButton label="Vídeo" icon={<FileVideo className="w-3.5 h-3.5 mr-1.5" />} accept="video/*" tipo="video" onUpload={(url) => { upd("instrucao_url", url); upd("instrucao_tipo", "video"); }} />
+                  <InstrucaoUploadButton label="Documento" icon={<FileText className="w-3.5 h-3.5 mr-1.5" />} accept=".pdf,.doc,.docx,.xls,.xlsx" tipo="documento" onUpload={(url) => { upd("instrucao_url", url); upd("instrucao_tipo", "documento"); }} />
+                </div>
+              )}
+            </div>
           </div>
 
 
