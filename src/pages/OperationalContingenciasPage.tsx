@@ -421,6 +421,43 @@ export default function OperationalContingenciasPage() {
               </div>
             </div>
 
+            {/* Plano de Ação e Tipos de Evidência (visível quando em_andamento ou posterior) */}
+            {selected?.plano_acao && selected?.status !== "aberta" && (
+              <div className="border rounded-lg p-3 bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 space-y-2">
+                <h4 className="text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider">
+                  Plano de Ação
+                </h4>
+                <p className="text-sm">{selected.plano_acao}</p>
+                {selected.observacao_tratamento && (
+                  <div className="text-xs">
+                    <span className="text-muted-foreground">Observação:</span>
+                    <p className="mt-0.5">{selected.observacao_tratamento}</p>
+                  </div>
+                )}
+                {Array.isArray(selected.tipos_evidencia_requeridos) && selected.tipos_evidencia_requeridos.length > 0 && (
+                  <div className="text-xs">
+                    <span className="text-muted-foreground">Evidências requeridas:</span>
+                    <div className="flex gap-2 mt-1 flex-wrap">
+                      {selected.tipos_evidencia_requeridos.map((t: string) => (
+                        <span key={t} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[10px] font-medium border border-blue-200 dark:border-blue-700">
+                          {t === "foto" && <Camera className="w-3 h-3" />}
+                          {t === "video" && <Video className="w-3 h-3" />}
+                          {t === "documento" && <File className="w-3 h-3" />}
+                          {t === "foto" ? "Foto" : t === "video" ? "Vídeo" : "Documento"}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {selected.justificativa_rejeicao && (
+                  <div className="text-xs border-t border-blue-200 dark:border-blue-700 pt-2 mt-2">
+                    <span className="text-destructive font-semibold">Justificativa da última rejeição:</span>
+                    <p className="mt-0.5 text-destructive">"{selected.justificativa_rejeicao}"</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="p-2 border rounded bg-muted/30">
                 <span className="text-muted-foreground">Responsável</span>
