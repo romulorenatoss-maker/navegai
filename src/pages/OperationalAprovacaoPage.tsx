@@ -737,10 +737,11 @@ export default function OperationalAprovacaoPage() {
                     const fieldPeso = f.aprovador_peso || f.peso || 1;
                     const answer = answersMap[f.id];
                     const rev = reviewsMap[f.id];
-                    const existing = approval.existingApprovalAnswers.find((a: any) => a.field_id === f.id);
+                    // Pergunta do aprovador deve sempre vir em branco para ser respondida nesta etapa.
+                    // Só preserva uma resposta se o próprio aprovador já tiver respondido (draft local).
                     const draft = approval.approverAnswers[f.id];
-                    const currentResposta: ApprovalAnswer = (draft?.resposta ?? existing?.resposta ?? "") as ApprovalAnswer;
-                    const currentObs = draft?.observacao ?? existing?.observacao ?? "";
+                    const currentResposta: ApprovalAnswer = (draft?.resposta ?? "") as ApprovalAnswer;
+                    const currentObs = draft?.observacao ?? "";
                     const isConforme = currentResposta === "conforme";
                     const isNaoConforme = currentResposta === "nao_conforme";
 
