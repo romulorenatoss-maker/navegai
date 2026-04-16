@@ -103,16 +103,19 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
       enabled: !!contingencyId,
     });
 
-  // Start treatment — only from "aberta"
+  // Start treatment — only from "aberta", now requires SLA hours
   const startTreatment = useMutation({
-    mutationFn: async (contingencyId: string) => {
+    mutationFn: async ({ contingencyId, slaHoras }: { contingencyId: string; slaHoras: number }) => {
       if (!profile?.id) throw new Error("Não autenticado");
+      if (!slaHoras || slaHoras < 1) throw new Error("Prazo SLA obrigatório.");
       await assertStatusTransition(contingencyId, ["aberta"], "em_andamento");
 
-      const now = new Date().toISOString();
+      const now = new Date();
+      const prazoSla = new Date(now.getTime() + slaHoras * 3600000).toISOString();
+
       const { error } = await (supabase as any)
         .from("operational_contingencies")
-        .update({ status: "em_andamento", updated_at: now })
+        .update({ status: "em_andamento", prazo_sla: prazoSla, updated_at: now.toISOString() })
         .eq("id", contingencyId);
       if (error) throw error;
 
@@ -120,7 +123,7 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
         contingency_id: contingencyId,
         acao: "inicio_tratamento",
         executado_por: profile.id,
-        observacao: "Tratamento iniciado",
+        observacao: `Tratamento iniciado com SLA de ${slaHoras}h`,
       });
 
       // Audit trail on assignment
@@ -134,13 +137,13 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
           assignment_id: cont.assignment_id,
           tipo_evento: "contingencia_inicio_tratamento",
           executado_por: profile.id,
-          dados_novos: { contingency_id: contingencyId },
+          dados_novos: { contingency_id: contingencyId, sla_horas: slaHoras, prazo_sla: prazoSla },
         });
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["contingency_management"] });
-      toast.success("Tratamento iniciado.");
+      toast.success("Tratamento iniciado com SLA definido.");
     },
     onError: (e: any) => toast.error(e.message),
   });
