@@ -267,7 +267,7 @@ export default function OperationalAprovacaoPage() {
 
     // Auto questions section
     if (autoQuestions.length > 0) {
-      result.push({ type: "section", data: { id: "__auto_section", nome: "Perguntas Automáticas", cor: null } });
+      result.push({ type: "section", data: { id: "__auto_section", nome: "Perguntas do Avaliador", cor: null } });
       for (const aq of autoQuestions) result.push({ type: "auto", data: aq });
     }
 
