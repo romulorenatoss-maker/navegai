@@ -588,7 +588,7 @@ function ContingencyTimeline({ contingencyId }: { contingencyId: string }) {
         .from("operational_contingency_resolution_logs")
         .select("*, executor:profiles!operational_contingency_resolution_logs_executado_por_fkey(nome)")
         .eq("contingency_id", contingencyId)
-        .order("created_at", { ascending: false })
+        .order("created_at", { ascending: true })
         .limit(10);
       if (error) throw error;
       return data || [];
