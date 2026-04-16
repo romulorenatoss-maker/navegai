@@ -81,6 +81,9 @@ export default function OperationalContingenciasPage() {
   const [slaDialogOpen, setSlaDialogOpen] = useState(false);
   const [slaDatetime, setSlaDatetime] = useState("");
   const [slaJustificativa, setSlaJustificativa] = useState("");
+  const [slaPlanoAcao, setSlaPlanoAcao] = useState("");
+  const [slaObservacao, setSlaObservacao] = useState("");
+  const [slaTiposEvidencia, setSlaTiposEvidencia] = useState<string[]>([]);
   const [slaFile, setSlaFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const slaFileRef = useRef<HTMLInputElement>(null);
@@ -119,13 +122,18 @@ export default function OperationalContingenciasPage() {
   const renderCard = (c: any) => {
     const statusCfg = CONTINGENCY_STATUS[c.status] || { label: c.status, class: "bg-muted text-muted-foreground border-border" };
     const sla = cm.getSlaInfo(c);
+    const isResolvedCard = c.status === "resolvida";
 
     return (
       <div
         key={c.id}
         onClick={() => openDetail(c)}
         className={`p-3 border rounded-lg cursor-pointer hover:shadow-sm transition-shadow ${
-          sla?.isExpired ? "border-destructive/50 bg-destructive/5" : "border-border bg-card"
+          isResolvedCard
+            ? "border-green-300 bg-green-50/50 dark:bg-green-950/20 dark:border-green-700"
+            : sla?.isExpired
+            ? "border-destructive/50 bg-destructive/5"
+            : "border-border bg-card"
         }`}
       >
         <div className="flex items-start justify-between gap-2">
@@ -142,10 +150,17 @@ export default function OperationalContingenciasPage() {
                 </>
               )}
             </div>
+            {c.justificativa_rejeicao && c.status === "aberta" && (
+              <p className="text-xs text-destructive mt-1 truncate">
+                ⚠ Reprovada: {c.justificativa_rejeicao}
+              </p>
+            )}
           </div>
           <div className="flex flex-col items-end gap-1 shrink-0">
-            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${statusCfg.class}`}>
-              {statusCfg.label}
+            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+              isResolvedCard ? "bg-green-100 text-green-700 border-green-300" : statusCfg.class
+            }`}>
+              {isResolvedCard ? "Aguardando Validação" : statusCfg.label}
             </span>
             {sla && (
               <span className={`text-[10px] font-mono ${sla.isExpired ? "text-destructive font-bold" : "text-muted-foreground"}`}>
@@ -162,12 +177,25 @@ export default function OperationalContingenciasPage() {
     const defaultDate = new Date(Date.now() + 24 * 3600000);
     setSlaDatetime(formatDatetimeLocal(defaultDate));
     setSlaJustificativa("");
+    setSlaPlanoAcao("");
+    setSlaObservacao("");
+    setSlaTiposEvidencia([]);
     setSlaFile(null);
     setSlaDialogOpen(true);
   };
 
+  const toggleEvidenceType = (tipo: string) => {
+    setSlaTiposEvidencia(prev =>
+      prev.includes(tipo) ? prev.filter(t => t !== tipo) : [...prev, tipo]
+    );
+  };
+
   const handleStartTreatment = async () => {
     if (!selected || !slaJustificativa.trim()) return;
+    if (slaTiposEvidencia.length === 0) {
+      toast.error("Selecione pelo menos um tipo de evidência requerida.");
+      return;
+    }
     setUploading(true);
     try {
       let evidenciaUrl: string | undefined;
@@ -180,6 +208,9 @@ export default function OperationalContingenciasPage() {
           prazoSlaDatetime: slaDatetime,
           justificativa: slaJustificativa,
           evidenciaUrl,
+          planoAcao: slaPlanoAcao,
+          tiposEvidenciaRequeridos: slaTiposEvidencia,
+          observacaoTratamento: slaObservacao,
         },
         {
           onSuccess: () => {
@@ -188,6 +219,9 @@ export default function OperationalContingenciasPage() {
               ...prev,
               status: "em_andamento",
               prazo_sla: new Date(slaDatetime).toISOString(),
+              plano_acao: slaPlanoAcao,
+              tipos_evidencia_requeridos: slaTiposEvidencia,
+              observacao_tratamento: slaObservacao,
             } : prev);
           },
           onSettled: () => setUploading(false),
