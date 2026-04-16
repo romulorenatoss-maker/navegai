@@ -222,7 +222,8 @@ export function useAssignmentReview(assignmentId: string | null) {
         // FIX #4: Create contingency AFTER review is persisted, with origin_review_id
         if (r.conforme === false) {
           const field = fields.find(f => f.id === r.field_id);
-          if (field?.gera_contingencia) {
+          const answer = fieldAnswers.find((a: any) => a.field_id === r.field_id);
+          if (fieldGeneratesContingency(field, answer)) {
             const existingContingency = contingencies.find((c: any) => c.origin_field_id === r.field_id && !["validada", "descartada"].includes(c.status));
             if (!existingContingency) {
               // Use pending contingency data if available (from modal), otherwise fallback
@@ -269,7 +270,8 @@ export function useAssignmentReview(assignmentId: string | null) {
       const naoConformesComContingencia = reviewEntries.filter(r => {
         if (r.conforme !== false) return false;
         const field = fields.find(f => f.id === r.field_id);
-        return field?.gera_contingencia;
+        const answer = fieldAnswers.find((a: any) => a.field_id === r.field_id);
+        return fieldGeneratesContingency(field, answer);
       });
 
       let newContingenciesCreated = 0;

@@ -57,6 +57,16 @@ export function ReviewFieldCard({ field, answer, review, previousReview, onChang
   const draft: FieldReviewDraft = review || { field_id: field.id, conforme: null, observacao: "", devolvido: false, motivo_devolucao: "" };
   const isReincidente = previousReview?.conforme === false;
   const executorNaoConforme = (field.tipo === "conforme" || field.tipo === "sim_nao") && answer?.valor_booleano === false;
+  const optionRules = Array.isArray((field as any).opcoes_regras) ? (field as any).opcoes_regras : [];
+  const answerTriggersContingency = field.gera_contingencia || (
+    field.tipo === "conforme"
+      ? answer?.valor_booleano === false && optionRules.some((rule: any) => rule?.valor === "nao_conforme" && rule?.gera_contingencia)
+      : field.tipo === "sim_nao"
+        ? answer?.valor_booleano === false && optionRules.some((rule: any) => rule?.valor === "nao" && rule?.gera_contingencia)
+        : field.tipo === "select"
+          ? optionRules.some((rule: any) => rule?.label === answer?.valor_texto && rule?.gera_contingencia)
+          : false
+  );
 
   const [contingencyModalOpen, setContingencyModalOpen] = useState(false);
   const [contingencyPrazo, setContingencyPrazo] = useState("");
@@ -64,7 +74,7 @@ export function ReviewFieldCard({ field, answer, review, previousReview, onChang
 
   const handleNaoConformeClick = () => {
     onChange(field.id, { conforme: false });
-    if (field.gera_contingencia && onContingencyConfirm && !disabled) {
+    if (answerTriggersContingency && onContingencyConfirm && !disabled) {
       const defaultPrazo = new Date(Date.now() + 24 * 3600000);
       setContingencyPrazo(defaultPrazo.toISOString().slice(0, 16));
       setContingencyMotivo("");
@@ -92,7 +102,7 @@ export function ReviewFieldCard({ field, answer, review, previousReview, onChang
             <Label className="text-sm font-medium">{field.label}</Label>
             {field.obrigatorio && <span className="text-destructive text-xs">*</span>}
             {field.criticidade === "critica" && <span className="text-[10px] bg-red-100 text-red-700 border border-red-200 px-1.5 py-0.5 rounded">Crítico</span>}
-            {field.gera_contingencia && <span className="text-[10px] bg-orange-100 text-orange-700 border border-orange-200 px-1.5 py-0.5 rounded">Gera Contingência</span>}
+            {answerTriggersContingency && <span className="text-[10px] bg-orange-100 text-orange-700 border border-orange-200 px-1.5 py-0.5 rounded">Gera Contingência</span>}
             {isReincidente && <span className="text-[10px] bg-red-200 text-red-800 border border-red-300 px-1.5 py-0.5 rounded flex items-center gap-0.5"><AlertTriangle className="w-2.5 h-2.5" />Reincidente</span>}
           </div>
           <div className="text-xs text-muted-foreground">Peso: {field.peso} | Máx: {field.nota_maxima}</div>
@@ -151,7 +161,7 @@ export function ReviewFieldCard({ field, answer, review, previousReview, onChang
               </div>
             )}
 
-            {draft.conforme === false && field.gera_contingencia && onContingencyPrazoChange && (
+            {draft.conforme === false && answerTriggersContingency && onContingencyPrazoChange && (
               <div className="p-2 bg-orange-50 border border-orange-200 rounded space-y-1">
                 <Label className="text-xs text-orange-800 flex items-center gap-1">
                   <Clock className="w-3 h-3" /> Prazo para resolução (horas)
