@@ -264,7 +264,11 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
         const userCanValidate = canValidateContingency(c);
 
         return (
-          <div key={c.id} className="border rounded-lg overflow-hidden bg-card">
+          <div key={c.id} className={`border rounded-lg overflow-hidden ${
+            isResolved
+              ? "bg-green-50/50 dark:bg-green-950/20 border-green-300 dark:border-green-700"
+              : "bg-card border-border"
+          }`}>
             <button
               type="button"
               onClick={() => setExpandedId(isExpanded ? null : c.id)}
@@ -275,9 +279,14 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
                 <p className="text-[10px] text-muted-foreground mt-0.5">
                   Resp: {c.responsavel?.nome || "—"}
                 </p>
+                {c.justificativa_rejeicao && c.status === "aberta" && (
+                  <p className="text-[10px] text-destructive mt-0.5 truncate">⚠ {c.justificativa_rejeicao}</p>
+                )}
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
-                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${statusCfg.class}`}>
+                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+                  isResolved ? "bg-green-100 text-green-700 border-green-300" : statusCfg.class
+                }`}>
                   {statusCfg.label}
                 </span>
                 <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`} />
