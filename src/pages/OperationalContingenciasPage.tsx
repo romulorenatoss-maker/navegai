@@ -178,9 +178,7 @@ export default function OperationalContingenciasPage() {
     setSlaDatetime(formatDatetimeLocal(defaultDate));
     setSlaJustificativa("");
     setSlaPlanoAcao("");
-    setSlaObservacao("");
     setSlaTiposEvidencia([]);
-    setSlaFile(null);
     setSlaDialogOpen(true);
   };
 
