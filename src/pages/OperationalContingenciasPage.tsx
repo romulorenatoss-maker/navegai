@@ -222,6 +222,14 @@ export default function OperationalContingenciasPage() {
             )}
           </div>
         )}
+
+        {/* Tempo total for concluídas */}
+        {isConcluida && tempoTotal && (
+          <div className="mt-2 pt-2 border-t border-green-200 dark:border-green-800 flex items-center gap-1.5 text-xs text-green-700 dark:text-green-400">
+            <Clock className="w-3.5 h-3.5" />
+            <span className="font-medium">Tempo total: {tempoTotal}</span>
+          </div>
+        )}
       </div>
     );
   };
