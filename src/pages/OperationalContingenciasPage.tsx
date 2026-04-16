@@ -116,6 +116,7 @@ export default function OperationalContingenciasPage() {
     devolvidas: { list: cm.devolvidas, empty: "Nenhuma contingência devolvida para você." },
     em_tratamento: { list: cm.emTratamento, empty: "Nenhuma em tratamento." },
     vencidas: { list: cm.vencidas, empty: "Nenhuma contingência vencida." },
+    concluidas: { list: cm.validadas, empty: "Nenhuma contingência concluída." },
   };
 
   const renderCard = (c: any) => {
@@ -299,6 +300,7 @@ export default function OperationalContingenciasPage() {
             { key: "devolvidas", label: "Devolvidas", count: cm.devolvidas.length, accent: "bg-orange-500/20 text-orange-700" },
             { key: "em_tratamento", label: "Em Tratamento", count: cm.emTratamento.length, accent: "bg-blue-500/20 text-blue-700" },
             { key: "vencidas", label: "Vencidas", count: cm.vencidas.length, accent: "bg-red-600/20 text-red-800" },
+            { key: "concluidas", label: "Concluídas", count: cm.validadas.length, accent: "bg-green-500/20 text-green-700" },
           ].map((t) => (
             <TabsTrigger key={t.key} value={t.key} className="flex-1 min-w-[60px] text-xs">
               {t.label}
