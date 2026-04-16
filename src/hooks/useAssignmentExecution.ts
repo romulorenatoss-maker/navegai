@@ -339,10 +339,18 @@ export function useAssignmentExecution(assignmentId: string | null) {
       const dataPrevista = typeof args === "string" ? null : args.dataPrevista;
 
       const now = new Date().toISOString();
-      const { error } = await (supabase as any).from("operational_assignments")
-        .update({ status: "em_andamento", inicio_em: now })
+
+      // Use centralized transition
+      await transition.mutateAsync({
+        assignmentId: aId,
+        action: "iniciar",
+        origem: "execucao",
+      });
+
+      // Set inicio_em separately (transition handles status)
+      await (supabase as any).from("operational_assignments")
+        .update({ inicio_em: now })
         .eq("id", aId);
-      if (error) throw error;
 
       await (supabase as any).from("operational_execution_logs").insert({
         assignment_id: aId,
