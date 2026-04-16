@@ -193,6 +193,37 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
           motivo: observacao,
           dados_novos: { contingency_id: contingencyId },
         });
+
+        // Check if ALL contingencies for this assignment are now resolved/validated/discarded
+        const { data: remaining } = await (supabase as any)
+          .from("operational_contingencies")
+          .select("id")
+          .eq("assignment_id", cont.assignment_id)
+          .neq("id", contingencyId)
+          .in("status", ["aberta", "em_andamento"]);
+
+        // If no more open contingencies, return assignment to aguardando_avaliacao
+        if (!remaining || remaining.length === 0) {
+          const { data: assignment } = await (supabase as any)
+            .from("operational_assignments")
+            .select("status")
+            .eq("id", cont.assignment_id)
+            .single();
+
+          if (assignment?.status === "contingencia") {
+            await (supabase as any).from("operational_assignments")
+              .update({ status: "aguardando_avaliacao", updated_at: now })
+              .eq("id", cont.assignment_id);
+
+            await (supabase as any).from("operational_assignment_history").insert({
+              assignment_id: cont.assignment_id,
+              tipo_evento: "STATUS_RETORNO_AVALIACAO",
+              usuario_id: profile.id,
+              etapa: "contingencia",
+              detalhes_json: { motivo: "Todas as contingências resolvidas", contingency_id: contingencyId },
+            });
+          }
+        }
       }
     },
     onSuccess: () => {
