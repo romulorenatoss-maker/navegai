@@ -297,10 +297,14 @@ export function useAssignmentReview(assignmentId: string | null) {
         throw new Error("Não é possível aprovar enquanto houver contingências abertas. Resolva as contingências primeiro.");
       }
 
-      // Determine transition action
+      // Determine transition action — read roles from live template, not snapshot
       let transitionAction: string;
-      const requerAprovacao = !!assignment.template_snapshot?.requer_aprovacao_gestor;
-      const aprovadorProfileId = assignment.template_snapshot?.aprovador_profile_id || null;
+      const { data: liveTemplate } = await (supabase as any).from("operational_templates")
+        .select("requer_aprovacao_gestor, aprovador_profile_id, aprovador_setor_id")
+        .eq("id", assignment.template_id)
+        .single();
+      const requerAprovacao = !!liveTemplate?.requer_aprovacao_gestor;
+      const aprovadorProfileId = liveTemplate?.aprovador_profile_id || null;
 
       if (hasOpenContingencies && action !== "reprovar") {
         transitionAction = "enviar_contingencia";
