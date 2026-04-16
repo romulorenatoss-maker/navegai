@@ -150,7 +150,7 @@ export default function OperationalExecucaoPage() {
       return data;
     },
     enabled: !!profile?.id,
-    staleTime: 15000,
+    staleTime: 300000, // 5min fallback — realtime handles instant updates
   });
 
   const profilesWithTasks = useMemo(() => {
