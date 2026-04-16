@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft, CheckCircle2, RotateCcw, AlertTriangle, Shield,
-  Lock, History, ExternalLink, Check, Users, User, MessageSquare,
+  Lock, History, ExternalLink, Check, Users, User, MessageSquare, Pencil, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -86,6 +86,11 @@ export default function OperationalAprovacaoPage() {
   const [filterStart, setFilterStart] = useState(() => new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10));
   const [filterEnd, setFilterEnd] = useState(() => new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10));
 
+  // Editable auto answers state: overrides + justifications
+  const [autoOverrides, setAutoOverrides] = useState<Record<string, { resposta: ApprovalAnswer; justificativa: string }>>({});
+  const [editingAutoId, setEditingAutoId] = useState<string | null>(null);
+  const [editAutoJustificativa, setEditAutoJustificativa] = useState("");
+
   const { data: assignments = [], isLoading } = useQuery({
     queryKey: ["aprovacao_assignments", profile?.id, isAdmin],
     queryFn: async () => {
@@ -158,54 +163,84 @@ export default function OperationalAprovacaoPage() {
   }, [habilitarAuto, snapshot]);
 
   // Auto-question pre-filled answers based on actual task data
-  const autoAnswers = useMemo(() => {
-    const answers: Record<string, { resposta: ApprovalAnswer; autoFilled: boolean; detail: string }> = {};
+  const autoComputedAnswers = useMemo(() => {
+    const answers: Record<string, { resposta: ApprovalAnswer; detail: string }> = {};
     if (!selectedAssignment || !habilitarAuto) return answers;
 
-    // Fora do prazo: check if task exceeded horario_limite
     const foraDoP = selectedAssignment.fim_em && selectedAssignment.horario_limite
       ? new Date(selectedAssignment.fim_em).toTimeString().slice(0, 5) > selectedAssignment.horario_limite
       : false;
     answers["__auto_fora_prazo"] = {
       resposta: foraDoP ? "nao_conforme" : "conforme",
-      autoFilled: true,
       detail: foraDoP ? "Tarefa finalizada após o horário limite" : "Tarefa finalizada dentro do prazo",
     };
 
-    // Contingência: check if any contingencies exist
     const hasContingency = approval.contingencies.length > 0;
     answers["__auto_contingencia"] = {
       resposta: hasContingency ? "nao_conforme" : "conforme",
-      autoFilled: true,
       detail: hasContingency ? `${approval.contingencies.length} contingência(s) registrada(s)` : "Nenhuma contingência",
     };
 
-    // SLA contingência: check if resolved within deadline
     const openOrLate = approval.contingencies.filter((c: any) =>
       !["validada", "descartada"].includes(c.status) || c.dentro_prazo === false
     );
     answers["__auto_sla_contingencia"] = {
       resposta: !hasContingency ? "na" : openOrLate.length > 0 ? "nao_conforme" : "conforme",
-      autoFilled: true,
       detail: !hasContingency ? "Sem contingências para avaliar" : openOrLate.length > 0 ? "Contingência(s) fora do prazo ou pendente(s)" : "Todas resolvidas dentro do SLA",
     };
 
     return answers;
   }, [selectedAssignment, habilitarAuto, approval.contingencies]);
 
+  // Effective auto answers = computed merged with overrides
+  const autoAnswers = useMemo(() => {
+    const result: Record<string, { resposta: ApprovalAnswer; detail: string; overridden: boolean; justificativa?: string }> = {};
+    for (const [key, val] of Object.entries(autoComputedAnswers)) {
+      const override = autoOverrides[key];
+      if (override) {
+        result[key] = { resposta: override.resposta, detail: `Alterado manualmente`, overridden: true, justificativa: override.justificativa };
+      } else {
+        result[key] = { ...val, overridden: false };
+      }
+    }
+    return result;
+  }, [autoComputedAnswers, autoOverrides]);
+
   // Total items = auto questions + approval fields
   const totalQuestions = autoQuestions.length + approvalFields.length;
 
-  // Progress — counts auto-questions as always answered + manual approval fields
+  // Score calculation: sum points from auto + manual
+  const scoreCalc = useMemo(() => {
+    let totalPontos = 0;
+    let perdidos = 0;
+
+    for (const aq of autoQuestions) {
+      totalPontos += aq.pontos;
+      const resp = autoAnswers[aq.id]?.resposta || "";
+      if (resp === "nao_conforme") perdidos += aq.pontos;
+    }
+
+    for (const f of approvalFields) {
+      const peso = f.aprovador_peso || f.peso || 1;
+      totalPontos += peso;
+      const existing = approval.existingApprovalAnswers.find((a: any) => a.field_id === f.id);
+      const draft = approval.approverAnswers[f.id];
+      const resp = draft?.resposta || existing?.resposta || "";
+      if (resp === "nao_conforme") perdidos += peso;
+    }
+
+    const score = totalPontos > 0 ? Math.max(0, Math.round(((totalPontos - perdidos) / totalPontos) * 100)) : 100;
+    return { totalPontos, perdidos, score };
+  }, [autoQuestions, autoAnswers, approvalFields, approval.approverAnswers, approval.existingApprovalAnswers]);
+
+  // Progress
   const progress = useMemo(() => {
     let respondidas = autoQuestions.length, total = totalQuestions, conformes = 0, naoConformes = 0;
-    // Auto questions
     for (const aq of autoQuestions) {
       const resp = autoAnswers[aq.id]?.resposta || "";
       if (resp === "conforme") conformes++;
       if (resp === "nao_conforme") naoConformes++;
     }
-    // Manual approval fields
     for (const f of approvalFields) {
       const existing = approval.existingApprovalAnswers.find((a: any) => a.field_id === f.id);
       const draft = approval.approverAnswers[f.id];
@@ -275,11 +310,15 @@ export default function OperationalAprovacaoPage() {
   const openApproval = useCallback((a: any) => {
     setSelectedAssignment(a);
     setApprovalDialogOpen(true);
+    setAutoOverrides({});
+    setEditingAutoId(null);
   }, []);
 
   const closeApproval = () => {
     setApprovalDialogOpen(false);
     setSelectedAssignment(null);
+    setAutoOverrides({});
+    setEditingAutoId(null);
   };
 
   const handleDecision = (action: "aprovar" | "reprovar_devolver" | "encerrar") => {
@@ -295,13 +334,32 @@ export default function OperationalAprovacaoPage() {
     );
   };
 
+  const startEditAuto = (aqId: string) => {
+    setEditingAutoId(aqId);
+    setEditAutoJustificativa(autoOverrides[aqId]?.justificativa || "");
+  };
+
+  const confirmEditAuto = (aqId: string, newResposta: ApprovalAnswer) => {
+    if (!editAutoJustificativa.trim()) return;
+    setAutoOverrides(prev => ({
+      ...prev,
+      [aqId]: { resposta: newResposta, justificativa: editAutoJustificativa.trim() },
+    }));
+    setEditingAutoId(null);
+    setEditAutoJustificativa("");
+  };
+
+  const cancelEditAuto = () => {
+    setEditingAutoId(null);
+    setEditAutoJustificativa("");
+  };
+
   const isPendente = selectedAssignment?.status === "aguardando_aprovacao";
 
   const renderEmptyState = (msg: string) => (
     <div className="text-center py-12 text-muted-foreground"><p className="text-sm">{msg}</p></div>
   );
 
-  // Global question index counter
   let globalQuestionIdx = 0;
 
   return (
@@ -345,7 +403,7 @@ export default function OperationalAprovacaoPage() {
       {/* ── Detail Dialog ── */}
       <Dialog open={approvalDialogOpen} onOpenChange={v => { if (!v) closeApproval(); }}>
         <DialogContent className="max-w-3xl max-h-[95vh] overflow-hidden flex flex-col p-0">
-          {/* Header - same pattern as AvaliacaoOSPage */}
+          {/* Header */}
           <div className="bg-card border-b border-border p-4">
             <div className="flex items-start justify-between">
               <div className="flex items-start gap-2">
@@ -366,7 +424,7 @@ export default function OperationalAprovacaoPage() {
               )}
             </div>
 
-            {/* Avaliador + Avaliado info - same grid pattern */}
+            {/* Avaliador + Avaliado info */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3 pt-3 border-t border-border text-sm">
               <div>
                 <span className="text-muted-foreground">Executor:</span>
@@ -395,6 +453,16 @@ export default function OperationalAprovacaoPage() {
                     Nota: {Number(selectedAssignment.score_avaliado).toFixed(1)}%
                   </span>
                 )}
+                {/* Score da aprovação (soma dos pontos) */}
+                <div className="mt-1">
+                  <span className={cn("inline-flex items-center px-2 py-1 rounded text-xs font-bold border",
+                    scoreCalc.score >= 85 ? "border-success/40 bg-success/10 text-success" :
+                    scoreCalc.score >= 75 ? "border-warning/40 bg-warning/10 text-warning" :
+                    "border-destructive/40 bg-destructive/10 text-destructive"
+                  )}>
+                    Aprovação: {scoreCalc.score}% ({scoreCalc.totalPontos - scoreCalc.perdidos}/{scoreCalc.totalPontos} pts)
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -411,7 +479,7 @@ export default function OperationalAprovacaoPage() {
 
           {/* Scrollable content */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-            {/* Progress Bar - same pattern */}
+            {/* Progress Bar */}
             <div className="bg-card border border-border rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-foreground">Progresso da Aprovação</span>
@@ -481,9 +549,12 @@ export default function OperationalAprovacaoPage() {
                         if (item.type === "auto") {
                           const aq = item.data;
                           const autoAns = autoAnswers[aq.id];
-                          const isConf = autoAns?.resposta === "conforme";
-                          const isNaoConf = autoAns?.resposta === "nao_conforme";
-                          const isNA = autoAns?.resposta === "na";
+                          const effectiveResp = autoAns?.resposta || "";
+                          const isConf = effectiveResp === "conforme";
+                          const isNaoConf = effectiveResp === "nao_conforme";
+                          const isNA = effectiveResp === "na";
+                          const isEditing = editingAutoId === aq.id;
+
                           return (
                             <div key={aq.id} className={cn("transition-colors",
                               isConf ? "bg-success/5" : isNaoConf ? "bg-destructive/5" : ""
@@ -500,7 +571,7 @@ export default function OperationalAprovacaoPage() {
                                   <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium text-foreground leading-relaxed">{aq.label}</p>
                                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                      <span className="text-caption text-muted-foreground">Penalidade: -{aq.pontos} pts</span>
+                                      <span className="text-caption text-muted-foreground">Peso: {aq.pontos} pts</span>
                                       <span className="text-caption text-muted-foreground">•</span>
                                       <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold",
                                         isConf ? "bg-success/10 text-success" :
@@ -509,13 +580,65 @@ export default function OperationalAprovacaoPage() {
                                       )}>
                                         {isConf ? "CONFORME" : isNaoConf ? "NÃO CONFORME" : "N/A"}
                                       </span>
-                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-destructive/10 text-destructive border border-destructive/20">Automática</span>
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary border border-primary/20">Automática</span>
+                                      {autoAns?.overridden && (
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-warning/10 text-warning border border-warning/20">Editada</span>
+                                      )}
                                     </div>
-                                    {autoAns?.detail && (
+                                    {autoAns?.detail && !isEditing && (
                                       <p className="text-xs text-muted-foreground mt-1 italic">{autoAns.detail}</p>
                                     )}
+                                    {autoAns?.overridden && autoAns.justificativa && !isEditing && (
+                                      <p className="text-xs text-warning mt-0.5">Justificativa: "{autoAns.justificativa}"</p>
+                                    )}
                                   </div>
+                                  {/* Pencil to edit */}
+                                  {isPendente && !isEditing && (
+                                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" onClick={() => startEditAuto(aq.id)}>
+                                      <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                                    </Button>
+                                  )}
                                 </div>
+
+                                {/* Edit mode */}
+                                <AnimatePresence>
+                                  {isEditing && (
+                                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                                      <div className="ml-11 mt-3 bg-muted/30 border border-border rounded-lg p-3 space-y-3">
+                                        <div>
+                                          <Label className="text-xs text-muted-foreground mb-1 block">Alterar resposta:</Label>
+                                          <ApprovalSegmentedControl
+                                            value={autoOverrides[aq.id]?.resposta || autoComputedAnswers[aq.id]?.resposta || ""}
+                                            onChange={(v) => {
+                                              setAutoOverrides(prev => ({
+                                                ...prev,
+                                                [aq.id]: { resposta: v, justificativa: prev[aq.id]?.justificativa || editAutoJustificativa },
+                                              }));
+                                            }}
+                                          />
+                                        </div>
+                                        <div>
+                                          <Label className="text-xs text-muted-foreground mb-1 block">Justificativa <span className="text-destructive">*</span></Label>
+                                          <Textarea
+                                            placeholder="Informe o motivo da alteração..."
+                                            value={editAutoJustificativa}
+                                            onChange={e => setEditAutoJustificativa(e.target.value)}
+                                            className="bg-card min-h-[50px] text-sm"
+                                          />
+                                        </div>
+                                        <div className="flex items-center gap-2 justify-end">
+                                          <Button variant="ghost" size="sm" onClick={cancelEditAuto}>
+                                            <X className="w-3.5 h-3.5 mr-1" /> Cancelar
+                                          </Button>
+                                          <Button size="sm" disabled={!editAutoJustificativa.trim()}
+                                            onClick={() => confirmEditAuto(aq.id, autoOverrides[aq.id]?.resposta || autoComputedAnswers[aq.id]?.resposta || "conforme")}>
+                                            <Check className="w-3.5 h-3.5 mr-1" /> Confirmar
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
                               </div>
                             </div>
                           );
@@ -531,6 +654,7 @@ export default function OperationalAprovacaoPage() {
                         const currentObs = draft?.observacao ?? existing?.observacao ?? "";
                         const isConforme = currentResposta === "conforme";
                         const isNaoConforme = currentResposta === "nao_conforme";
+                        const fieldPeso = f.aprovador_peso || f.peso || 1;
 
                         return (
                           <motion.div key={f.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(idx * 0.03, 0.5) }}
@@ -550,7 +674,7 @@ export default function OperationalAprovacaoPage() {
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium text-foreground leading-relaxed">{f.aprovador_pergunta || f.label}</p>
                                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                    <span className="text-caption text-muted-foreground">Peso: {f.aprovador_peso || f.peso}</span>
+                                    <span className="text-caption text-muted-foreground">Peso: {fieldPeso} pts</span>
                                     {currentResposta ? (
                                       <>
                                         <span className="text-caption text-muted-foreground">•</span>
@@ -568,6 +692,7 @@ export default function OperationalAprovacaoPage() {
                                         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground">Pendente</span>
                                       </>
                                     )}
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent/50 text-accent-foreground border border-accent">Aprovador</span>
                                   </div>
                                 </div>
                               </div>
@@ -689,7 +814,6 @@ export default function OperationalAprovacaoPage() {
               </div>
             )}
 
-
             {/* Audit trail */}
             <div className="bg-card border border-border rounded-lg shadow-card">
               <div className="p-4 border-b border-border flex items-center gap-2">
@@ -717,7 +841,7 @@ export default function OperationalAprovacaoPage() {
             </div>
           </div>
 
-          {/* ── Action Bar - same sticky pattern ── */}
+          {/* ── Action Bar ── */}
           {isPendente && (
             <div className="border-t border-border p-3 bg-card safe-area-bottom">
               {blockingReasons.length > 0 && (
@@ -770,6 +894,13 @@ export default function OperationalAprovacaoPage() {
               <div><p className="text-green-600 font-semibold text-lg">{progress.conformes}</p><p className="text-muted-foreground">Conformes</p></div>
               <div><p className="text-red-600 font-semibold text-lg">{progress.naoConformes}</p><p className="text-muted-foreground">Não Conformes</p></div>
               <div><p className="text-muted-foreground font-semibold text-lg">{progress.total - progress.respondidas}</p><p className="text-muted-foreground">Pendentes</p></div>
+            </div>
+            <div className="mt-2 pt-2 border-t border-border text-center">
+              <span className={cn("text-sm font-bold",
+                scoreCalc.score >= 85 ? "text-success" : scoreCalc.score >= 75 ? "text-warning" : "text-destructive"
+              )}>
+                Nota Aprovação: {scoreCalc.score}%
+              </span>
             </div>
           </div>
 
