@@ -17,7 +17,7 @@ import { ReviewFieldCard } from "@/components/operational/ReviewFieldCard";
 import { useAssignmentReview } from "@/hooks/useAssignmentReview";
 
 export default function OperationalAvaliacaoPage() {
-  const { profile } = useAuth();
+  const { profile, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState("aguardando");
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
@@ -27,13 +27,16 @@ export default function OperationalAvaliacaoPage() {
 
   // Load assignments where user is avaliador
   const { data: assignments = [], isLoading } = useQuery({
-    queryKey: ["avaliador_assignments", profile?.id],
+    queryKey: ["avaliador_assignments", profile?.id, isAdmin],
     queryFn: async () => {
       if (!profile?.id) return [];
-      const { data, error } = await (supabase as any).from("operational_assignments")
+      let query = (supabase as any).from("operational_assignments")
         .select("*, operational_templates(nome, tipo_execucao), executor:profiles!operational_assignments_responsavel_id_fkey(nome)")
-        .or(`avaliador_id.eq.${profile.id}`)
         .order("data_prevista", { ascending: true });
+      if (!isAdmin) {
+        query = query.or(`avaliador_id.eq.${profile.id}`);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
