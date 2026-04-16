@@ -679,6 +679,75 @@ export default function OperationalContingenciasPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Resolve Dialog */}
+      <Dialog open={resolveOpen} onOpenChange={(v) => { if (!v) setResolveOpen(false); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Resolver Contingência</DialogTitle>
+            <DialogDescription>Descreva a ação corretiva aplicada.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Show plano de ação and required evidence types for context */}
+            {selected?.plano_acao && (
+              <div className="border rounded p-2 bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 text-xs space-y-1">
+                <p className="font-semibold text-blue-700 dark:text-blue-400">Plano de Ação:</p>
+                <p>{selected.plano_acao}</p>
+                {selected.justificativa_rejeicao && (
+                  <div className="border-t border-blue-200 dark:border-blue-700 pt-1 mt-1">
+                    <p className="text-destructive font-semibold">Motivo da rejeição anterior:</p>
+                    <p className="text-destructive">"{selected.justificativa_rejeicao}"</p>
+                  </div>
+                )}
+              </div>
+            )}
+            {Array.isArray(selected?.tipos_evidencia_requeridos) && selected.tipos_evidencia_requeridos.length > 0 && (
+              <div className="text-xs">
+                <span className="text-muted-foreground font-medium">Evidências requeridas:</span>
+                <div className="flex gap-2 mt-1 flex-wrap">
+                  {selected.tipos_evidencia_requeridos.map((t: string) => (
+                    <span key={t} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[10px] font-medium border border-blue-200 dark:border-blue-700">
+                      {t === "foto" && <Camera className="w-3 h-3" />}
+                      {t === "video" && <Video className="w-3 h-3" />}
+                      {t === "documento" && <File className="w-3 h-3" />}
+                      {t === "foto" ? "Foto" : t === "video" ? "Vídeo" : "Documento"}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div>
+              <Label className="text-sm">Ação corretiva <span className="text-destructive">*</span></Label>
+              <Textarea value={resolveObs} onChange={(e) => setResolveObs(e.target.value)}
+                placeholder="Descreva o que foi feito..." className="mt-1 min-h-[80px]" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Anexo (evidência) <span className="text-destructive">*</span></Label>
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => resolveFileRef.current?.click()}>
+                  <Paperclip className="w-3.5 h-3.5 mr-1" /> {resolveFile ? "Trocar" : "Anexar"}
+                </Button>
+                {resolveFile && (
+                  <span className="text-xs text-muted-foreground truncate max-w-[200px]">{resolveFile.name}</span>
+                )}
+              </div>
+              <input
+                ref={resolveFileRef}
+                type="file"
+                accept="image/*,video/*,.pdf,.doc,.docx"
+                className="hidden"
+                onChange={(e) => setResolveFile(e.target.files?.[0] || null)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResolveOpen(false)}>Cancelar</Button>
+            <Button disabled={cm.isSaving || uploading || !resolveObs.trim()} onClick={handleResolve}>
+              {cm.isSaving || uploading ? "Salvando..." : "Confirmar Resolução"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Validate Dialog */}
       <Dialog open={validateOpen} onOpenChange={(v) => { if (!v) setValidateOpen(false); }}>
         <DialogContent className="max-w-md">
@@ -687,19 +756,27 @@ export default function OperationalContingenciasPage() {
             <DialogDescription>
               {validateApproved
                 ? "A contingência será marcada como validada."
-                : "A contingência será reaberta para novo tratamento."}
+                : "A contingência será reaberta e devolvida com sua justificativa para nova resolução."}
             </DialogDescription>
           </DialogHeader>
           <div>
-            <Label className="text-sm">Observação</Label>
+            <Label className="text-sm">
+              {validateApproved ? "Observação" : "Justificativa da reprovação"} {!validateApproved && <span className="text-destructive">*</span>}
+            </Label>
             <Textarea value={validateObs} onChange={(e) => setValidateObs(e.target.value)}
-              placeholder="Observações opcionais..." className="mt-1 min-h-[60px]" />
+              placeholder={validateApproved ? "Observações opcionais..." : "Justifique por que a resolução foi reprovada..."}
+              className="mt-1 min-h-[60px]" />
+            {!validateApproved && (
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Esta justificativa será enviada ao avaliado junto com os mesmos campos para nova resolução.
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setValidateOpen(false)}>Cancelar</Button>
             <Button
               variant={validateApproved ? "default" : "destructive"}
-              disabled={cm.isSaving}
+              disabled={cm.isSaving || (!validateApproved && !validateObs.trim())}
               onClick={() => {
                 if (!selected) return;
                 cm.validateResolution.mutate(
@@ -707,7 +784,7 @@ export default function OperationalContingenciasPage() {
                   { onSuccess: () => { setValidateOpen(false); closeDetail(); } }
                 );
               }}>
-              {cm.isSaving ? "Salvando..." : validateApproved ? "Validar" : "Reprovar e Reabrir"}
+              {cm.isSaving ? "Salvando..." : validateApproved ? "Validar" : "Reprovar e Devolver"}
             </Button>
           </DialogFooter>
         </DialogContent>
