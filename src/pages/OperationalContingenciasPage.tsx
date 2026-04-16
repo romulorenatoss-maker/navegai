@@ -58,6 +58,38 @@ function SlaCountdown({ prazoSla }: { prazoSla: string }) {
   );
 }
 
+function SlaElapsed({ prazoSla, resolvidaEm, createdAt }: { prazoSla: string; resolvidaEm?: string; createdAt?: string }) {
+  const endTime = resolvidaEm ? new Date(resolvidaEm).getTime() : Date.now();
+  const slaMs = new Date(prazoSla).getTime();
+  const startTime = createdAt ? new Date(createdAt).getTime() : endTime;
+  const elapsed = endTime - startTime;
+  const dentroPrazo = endTime <= slaMs;
+
+  const hours = Math.floor(elapsed / 3600000);
+  const mins = Math.floor((elapsed % 3600000) / 60000);
+  const timeStr = hours > 24
+    ? `${Math.floor(hours / 24)}d ${hours % 24}h ${mins}min`
+    : `${hours}h ${mins}min`;
+
+  return (
+    <div className={`rounded-lg border p-3 ${dentroPrazo ? "border-green-300 bg-green-50/50 dark:bg-green-950/20 dark:border-green-700" : "border-destructive/50 bg-destructive/5"}`}>
+      <div className="flex items-center justify-between text-sm">
+        <span className="flex items-center gap-1.5">
+          <Timer className="w-4 h-4" />
+          SLA — {dentroPrazo ? "Dentro do prazo ✅" : "Fora do prazo ❌"}
+        </span>
+        <span className={`font-mono font-bold text-lg ${dentroPrazo ? "text-green-700 dark:text-green-400" : "text-destructive"}`}>
+          {timeStr}
+        </span>
+      </div>
+      <p className="text-xs text-muted-foreground mt-1">
+        Prazo: {new Date(prazoSla).toLocaleString("pt-BR")}
+        {resolvidaEm && ` • Resolvido: ${new Date(resolvidaEm).toLocaleString("pt-BR")}`}
+      </p>
+    </div>
+  );
+}
+
 function formatDatetimeLocal(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
@@ -371,7 +403,9 @@ export default function OperationalContingenciasPage() {
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {selected?.prazo_sla && selected?.status !== "aberta" && (
-              <SlaCountdown prazoSla={selected.prazo_sla} />
+              ["resolvida", "validada", "descartada"].includes(selected.status)
+                ? <SlaElapsed prazoSla={selected.prazo_sla} resolvidaEm={selected.resolvida_em} createdAt={selected.created_at} />
+                : <SlaCountdown prazoSla={selected.prazo_sla} />
             )}
 
             {/* Origem da Contingência */}
