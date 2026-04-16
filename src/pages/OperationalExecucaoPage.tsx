@@ -307,6 +307,7 @@ export default function OperationalExecucaoPage() {
   };
 
   const isOwner = selectedAssignment?.responsavel_id === profile?.id;
+  const isAvaliado = selectedAssignment?.avaliado_id === profile?.id;
   const isAdminEditing = isAdmin && selectedAssignment && !["nao_executada"].includes(selectedAssignment.status);
   const isEditable = selectedAssignment && (
     (["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status) && (isOwner || isAdmin)) ||
@@ -315,6 +316,12 @@ export default function OperationalExecucaoPage() {
   const isDevolvida = selectedAssignment?.status === "devolvida";
   const isContingenciado = selectedAssignment && ["contingenciado", "contingencia"].includes(selectedAssignment.status);
   const needsAdminReopen = isAdmin && selectedAssignment && ["aguardando_avaliacao", "aguardando_aprovacao", "concluida", "aprovada", "contingenciado", "contingencia"].includes(selectedAssignment.status);
+  // Show contingency panel for avaliado, validador, responsavel, or admin
+  const showContingencyPanel = isContingenciado && selectedAssignment && (
+    isAdmin || isOwner || isAvaliado ||
+    selectedAssignment.validador_contingencia_id === profile?.id ||
+    selectedAssignment.avaliador_id === profile?.id
+  );
 
   const handleStart = () => {
     if (selectedAssignment) exec.startTask.mutate({
