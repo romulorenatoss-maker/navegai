@@ -731,130 +731,119 @@ export default function OperationalAprovacaoPage() {
 
                   {/* Approver questions only (fields marked as aprovador_verificar) */}
                   {approvalFields.map((f) => {
-                    const isApproverField = true;
                     globalQuestionIdx++;
                     const idx = globalQuestionIdx;
                     const fieldPeso = f.aprovador_peso || f.peso || 1;
-                    const answer = answersMap[f.id];
-                    const rev = reviewsMap[f.id];
-                    // Pergunta do aprovador deve sempre vir em branco para ser respondida nesta etapa.
-                    // Só preserva uma resposta se o próprio aprovador já tiver respondido (draft local).
+                    // Pergunta exclusiva do aprovador: começa em branco, mas se já houver auto-save
+                    // mantemos a resposta + identificação de quem respondeu.
+                    const existing = approval.existingApprovalAnswers.find((a: any) => a.field_id === f.id);
                     const draft = approval.approverAnswers[f.id];
-                    const currentResposta: ApprovalAnswer = (draft?.resposta ?? "") as ApprovalAnswer;
-                    const currentObs = draft?.observacao ?? "";
+                    const currentResposta: ApprovalAnswer = (draft?.resposta ?? existing?.resposta ?? "") as ApprovalAnswer;
+                    const currentObs = draft?.observacao ?? existing?.observacao ?? "";
                     const isConforme = currentResposta === "conforme";
                     const isNaoConforme = currentResposta === "nao_conforme";
+                    const respondedByName = (existing as any)?.responder?.nome;
+                    const respondedAt = existing?.respondido_em;
+
+                    const handleChange = (resposta: ApprovalAnswer, obs?: string) => {
+                      approval.updateApproverAnswer(f.id, { resposta, ...(obs !== undefined ? { observacao: obs } : {}) });
+                      if (resposta) {
+                        approval.autoSaveApproverAnswer.mutate({
+                          fieldId: f.id,
+                          resposta,
+                          observacao: obs ?? currentObs,
+                          peso: fieldPeso,
+                        });
+                      }
+                    };
 
                     return (
                       <div key={f.id} className={cn("border-b border-border transition-colors",
-                        isApproverField && isConforme ? "bg-success/5" : isApproverField && isNaoConforme ? "bg-destructive/5" :
-                        !isApproverField && rev?.conforme === true ? "bg-success/5" : !isApproverField && rev?.conforme === false ? "bg-destructive/5" : ""
+                        isConforme ? "bg-success/5" : isNaoConforme ? "bg-destructive/5" : "bg-accent/5"
                       )}>
                         <div className="grid grid-cols-[40px_1fr_120px_80px] items-center px-4 py-3">
                           <span className="text-sm text-muted-foreground font-medium">{idx}</span>
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-foreground">{isApproverField ? (f.aprovador_pergunta || f.label) : f.label}</p>
-                            {isApproverField && f.aprovador_pergunta && f.aprovador_pergunta !== f.label && (
-                              <p className="text-xs text-muted-foreground mt-0.5">Campo: {f.label}</p>
-                            )}
+                            <p className="text-sm font-semibold text-foreground">{f.aprovador_pergunta || f.label}</p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">Pergunta exclusiva do aprovador final</p>
                           </div>
                           <div className="flex items-center justify-center">
-                            {isApproverField ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-accent text-accent-foreground border border-accent">Aprovador</span>
-                            ) : (
-                              <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold",
-                                rev?.conforme === true ? "bg-success/10 text-success" :
-                                rev?.conforme === false ? "bg-destructive/10 text-destructive" :
-                                "bg-muted text-muted-foreground"
-                              )}>
-                                {rev?.conforme === true ? "Conforme" : rev?.conforme === false ? "Não Conforme" : "—"}
-                              </span>
-                            )}
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-accent text-accent-foreground border border-accent">Aprovador</span>
                           </div>
                           <span className="text-sm font-bold text-foreground text-right font-tabular">{fieldPeso}</span>
                         </div>
 
-                        {/* Context: Executor answer + Avaliador review */}
-                        <div className="px-4 pb-2">
-                          <div className="ml-10 bg-muted/30 border border-border rounded-lg p-3">
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Resposta do Executor</p>
-                                {renderAnswerValue(f, answer)}
-                                {answer?.evidencia_url && f.tipo !== "foto" && (
-                                  <a href={answer.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline flex items-center gap-1 mt-1">
-                                    <ExternalLink className="w-3 h-3" /> Ver evidência
-                                  </a>
-                                )}
-                              </div>
-                              {rev && (
-                                <div className="text-right shrink-0">
-                                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Avaliador</p>
-                                  <span className={cn(
-                                    "inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border",
-                                    rev.conforme === true ? "border-success/40 bg-success/10 text-success" : "border-destructive/40 bg-destructive/10 text-destructive"
-                                  )}>
-                                    {rev.conforme === true ? "✓ Conforme" : "✗ Não Conforme"}
-                                  </span>
-                                  {rev.observacao && <p className="text-xs text-muted-foreground mt-0.5 max-w-[200px]">"{rev.observacao}"</p>}
-                                </div>
+                        {/* Highlighted answer area */}
+                        <div className="px-4 pb-3">
+                          <div className="ml-10 bg-card border-2 border-accent/40 rounded-lg p-4 space-y-3 shadow-sm">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <Label className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                                Sua resposta como aprovador
+                              </Label>
+                              {respondedByName && currentResposta && (
+                                <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                                  <Check className="w-3 h-3 text-success" />
+                                  Respondido por <span className="font-medium text-foreground">{respondedByName}</span>
+                                  {respondedAt && (
+                                    <span className="text-muted-foreground/70">
+                                      em {new Date(respondedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+                                    </span>
+                                  )}
+                                </span>
                               )}
                             </div>
+                            <div className="flex justify-center sm:justify-start">
+                              <ApprovalSegmentedControl
+                                value={currentResposta}
+                                onChange={v => handleChange(v)}
+                                disabled={!isPendente}
+                              />
+                            </div>
+                            {!currentResposta && isPendente && (
+                              <p className="text-xs text-muted-foreground italic">Selecione uma opção acima para registrar sua avaliação.</p>
+                            )}
                           </div>
                         </div>
 
-                        {/* Approver response controls — only for aprovador_verificar fields */}
-                        {isApproverField && (
-                          <>
-                            <div className="px-4 pb-3">
-                              <div className="ml-10">
-                                <ApprovalSegmentedControl
-                                  value={currentResposta}
-                                  onChange={v => approval.updateApproverAnswer(f.id, { resposta: v })}
+                        <AnimatePresence>
+                          {isNaoConforme && (
+                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                              <div className="mx-4 ml-14 mb-3 bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-2">
+                                <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
+                                  <AlertTriangle className="w-3.5 h-3.5" /> Observação do aprovador
+                                </div>
+                                <Textarea
+                                  placeholder="Descreva o motivo da não conformidade..."
+                                  value={currentObs}
+                                  onChange={e => approval.updateApproverAnswer(f.id, { observacao: e.target.value })}
+                                  onBlur={e => currentResposta && approval.autoSaveApproverAnswer.mutate({ fieldId: f.id, resposta: currentResposta, observacao: e.target.value, peso: fieldPeso })}
                                   disabled={!isPendente}
+                                  className="bg-card min-h-[60px] text-sm"
                                 />
                               </div>
-                            </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
 
-                            <AnimatePresence>
-                              {isNaoConforme && (
-                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                                  <div className="mx-4 ml-14 mb-3 bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-2">
-                                    <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
-                                      <AlertTriangle className="w-3.5 h-3.5" /> Observação do aprovador
-                                    </div>
-                                    <Textarea
-                                      placeholder="Descreva o motivo da não conformidade..."
-                                      value={currentObs}
-                                      onChange={e => approval.updateApproverAnswer(f.id, { observacao: e.target.value })}
-                                      disabled={!isPendente}
-                                      className="bg-card min-h-[60px] text-sm"
-                                    />
-                                  </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-
-                            <AnimatePresence>
-                              {isConforme && (
-                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                                  <div className="mx-4 ml-14 mb-3 bg-success/5 border border-success/20 rounded-lg p-3 space-y-2">
-                                    <div className="flex items-center gap-1.5 text-caption text-success font-medium">
-                                      <MessageSquare className="w-3.5 h-3.5" /> Observação (opcional)
-                                    </div>
-                                    <Textarea
-                                      placeholder="Adicione uma observação se necessário..."
-                                      value={currentObs}
-                                      onChange={e => approval.updateApproverAnswer(f.id, { observacao: e.target.value })}
-                                      disabled={!isPendente}
-                                      className="bg-card min-h-[60px] text-sm"
-                                    />
-                                  </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </>
-                        )}
+                        <AnimatePresence>
+                          {isConforme && (
+                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                              <div className="mx-4 ml-14 mb-3 bg-success/5 border border-success/20 rounded-lg p-3 space-y-2">
+                                <div className="flex items-center gap-1.5 text-caption text-success font-medium">
+                                  <MessageSquare className="w-3.5 h-3.5" /> Observação (opcional)
+                                </div>
+                                <Textarea
+                                  placeholder="Adicione uma observação se necessário..."
+                                  value={currentObs}
+                                  onChange={e => approval.updateApproverAnswer(f.id, { observacao: e.target.value })}
+                                  onBlur={e => currentResposta && approval.autoSaveApproverAnswer.mutate({ fieldId: f.id, resposta: currentResposta, observacao: e.target.value, peso: fieldPeso })}
+                                  disabled={!isPendente}
+                                  className="bg-card min-h-[60px] text-sm"
+                                />
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     );
                   })}

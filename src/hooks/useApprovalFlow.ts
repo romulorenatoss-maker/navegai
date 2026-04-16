@@ -78,11 +78,38 @@ export function useApprovalFlow(assignmentId: string | null) {
     queryFn: async () => {
       if (!assignmentId) return [];
       const { data, error } = await (supabase as any).from("operational_approval_answers")
-        .select("*").eq("assignment_id", assignmentId);
+        .select("*, responder:profiles!operational_approval_answers_respondido_por_fkey(id, nome)")
+        .eq("assignment_id", assignmentId);
       if (error) throw error;
       return data;
     },
     enabled: !!assignmentId,
+  });
+
+  // Auto-save a single approver answer (upsert)
+  const autoSaveApproverAnswer = useMutation({
+    mutationFn: async ({ fieldId, resposta, observacao, peso }: { fieldId: string; resposta: string; observacao?: string; peso?: number }) => {
+      if (!profile?.id || !assignmentId) throw new Error("Não autenticado");
+      const payload: any = {
+        assignment_id: assignmentId,
+        field_id: fieldId,
+        resposta,
+        observacao: observacao || null,
+        peso: peso ?? 1,
+        respondido_por: profile.id,
+        respondido_em: new Date().toISOString(),
+      };
+      const existing = existingApprovalAnswers.find((a: any) => a.field_id === fieldId);
+      if (existing) {
+        await (supabase as any).from("operational_approval_answers").update(payload).eq("id", existing.id);
+      } else {
+        await (supabase as any).from("operational_approval_answers").insert(payload);
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["approval_answers", assignmentId] });
+    },
+    onError: (e: any) => toast.error(`Erro ao salvar: ${e.message}`),
   });
 
   // Check pending contingencies
@@ -237,6 +264,7 @@ export function useApprovalFlow(assignmentId: string | null) {
     approverAnswers,
     updateApproverAnswer,
     saveApproverAnswers,
+    autoSaveApproverAnswer,
     pendingContingencies,
     getBlockingReasons,
     finalDecision,
