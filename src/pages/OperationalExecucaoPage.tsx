@@ -197,7 +197,12 @@ export default function OperationalExecucaoPage() {
     return false;
   });
   const aFazer = filteredAssignments.filter((a: any) => ["pendente"].includes(a.status) && a.data_prevista > filterDate);
-  const devolvidas = filteredAssignments.filter((a: any) => ["devolvida"].includes(a.status));
+  // Devolvidas: status devolvida OR contingenciado tasks where the current user is the avaliado (they need to attach missing items)
+  const devolvidas = filteredAssignments.filter((a: any) => {
+    if (a.status === "devolvida") return true;
+    if (["contingenciado", "contingencia"].includes(a.status) && a.avaliado_id === profile?.id) return true;
+    return false;
+  });
   const contingenciados = filteredAssignments.filter((a: any) => ["contingenciado", "contingencia"].includes(a.status));
   const aguardandoAvaliacao = filteredAssignments.filter((a: any) => ["aguardando_avaliacao", "aguardando_aprovacao"].includes(a.status));
   const concluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 50);
