@@ -257,12 +257,18 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
       prazoSlaDatetime,
       justificativa,
       evidenciaUrl,
+      planoAcao,
+      tiposEvidenciaRequeridos,
+      observacaoTratamento,
     }: {
       contingencyId: string;
       slaHoras?: number;
       prazoSlaDatetime?: string;
       justificativa: string;
       evidenciaUrl?: string;
+      planoAcao?: string;
+      tiposEvidenciaRequeridos?: string[];
+      observacaoTratamento?: string;
     }) => {
       if (!profile?.id) throw new Error("Não autenticado");
       if (!justificativa?.trim()) throw new Error("Justificativa obrigatória.");
@@ -282,7 +288,14 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
 
       const { error } = await (supabase as any)
         .from("operational_contingencies")
-        .update({ status: "em_andamento", prazo_sla: prazoSla, updated_at: now })
+        .update({
+          status: "em_andamento",
+          prazo_sla: prazoSla,
+          updated_at: now,
+          plano_acao: planoAcao || null,
+          tipos_evidencia_requeridos: tiposEvidenciaRequeridos || [],
+          observacao_tratamento: observacaoTratamento || null,
+        })
         .eq("id", contingencyId);
       if (error) throw error;
 
@@ -304,7 +317,13 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
           assignment_id: cont.assignment_id,
           tipo_evento: "contingencia_inicio_tratamento",
           executado_por: profile.id,
-          dados_novos: { contingency_id: contingencyId, prazo_sla: prazoSla, justificativa },
+          dados_novos: {
+            contingency_id: contingencyId,
+            prazo_sla: prazoSla,
+            justificativa,
+            plano_acao: planoAcao,
+            tipos_evidencia_requeridos: tiposEvidenciaRequeridos,
+          },
         });
       }
     },
@@ -438,6 +457,11 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
       if (!profile?.id) throw new Error("Não autenticado");
       await assertIsValidador(contingencyId, profile.id, isAdmin);
 
+      // If rejecting, observacao is required
+      if (!approved && !observacao?.trim()) {
+        throw new Error("Justificativa obrigatória para rejeição.");
+      }
+
       const targetStatus = approved ? "validada" : "aberta";
       await assertStatusTransition(contingencyId, ["resolvida"], targetStatus);
 
@@ -451,6 +475,7 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
         updatePayload.validada_por = profile.id;
       } else {
         updatePayload.resolvida_em = null;
+        updatePayload.justificativa_rejeicao = observacao || null;
       }
 
       const { error } = await (supabase as any)
