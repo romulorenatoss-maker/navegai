@@ -200,7 +200,7 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                                           </Select>
                                           {field.gera_contingencia && <span className="text-[10px] px-1.5 py-0.5 rounded border border-orange-200 bg-orange-100 text-orange-700">Conting.</span>}
                                           {field.aprovador_verificar && <span className="text-[10px] px-1.5 py-0.5 rounded border border-primary/30 bg-primary/10 text-primary">Aprovador</span>}
-                                          {field.obrigatorio && <span className="text-[10px] text-primary font-medium">Obrig.</span>}
+                                          
                                           <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100" onClick={() => setEditingField(field)}>
                                             <Settings2 className="w-3.5 h-3.5" />
                                           </Button>
