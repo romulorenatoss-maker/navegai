@@ -30,6 +30,7 @@ export interface OpcaoRegra {
   cor: string;
   requer_descricao: boolean;
   requer_evidencia: boolean;
+  tipos_evidencia: string[]; // foto, video, audio, qualquer
   gera_contingencia: boolean;
 }
 
