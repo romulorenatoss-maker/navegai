@@ -213,8 +213,11 @@ export default function OperationalExecucaoPage() {
   const snapshotFields: SnapshotField[] = useMemo(() => {
     const raw = snapshot?.fields || [];
     const seen = new Set<string>();
-    return raw.filter((f: any) => { if (seen.has(f.id)) return false; seen.add(f.id); return true; })
+    const result = raw.filter((f: any) => { if (seen.has(f.id)) return false; seen.add(f.id); return true; })
       .sort((a: any, b: any) => a.ordem - b.ordem);
+    // Register field labels for detailed logging
+    if (result.length > 0) exec.setFieldLabels(result);
+    return result;
   }, [snapshot]);
 
   const sectionIds = useMemo(() => new Set(snapshotSections.map(s => s.id)), [snapshotSections]);
@@ -304,7 +307,11 @@ export default function OperationalExecucaoPage() {
   const needsAdminReopen = isAdmin && selectedAssignment && ["aguardando_avaliacao", "aguardando_aprovacao", "concluida", "aprovada", "contingencia"].includes(selectedAssignment.status);
 
   const handleStart = () => {
-    if (selectedAssignment) exec.startTask.mutate(selectedAssignment.id);
+    if (selectedAssignment) exec.startTask.mutate({
+      assignmentId: selectedAssignment.id,
+      horarioInicioPrevisto: selectedAssignment.horario_inicio_previsto || null,
+      dataPrevista: selectedAssignment.data_prevista || null,
+    });
   };
 
   const handleSubmit = () => {
