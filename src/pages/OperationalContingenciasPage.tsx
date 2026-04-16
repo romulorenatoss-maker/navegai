@@ -84,11 +84,9 @@ export default function OperationalContingenciasPage() {
   const [slaDatetime, setSlaDatetime] = useState("");
   const [slaJustificativa, setSlaJustificativa] = useState("");
   const [slaPlanoAcao, setSlaPlanoAcao] = useState("");
-  const [slaObservacao, setSlaObservacao] = useState("");
   const [slaTiposEvidencia, setSlaTiposEvidencia] = useState<string[]>([]);
-  const [slaFile, setSlaFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const slaFileRef = useRef<HTMLInputElement>(null);
+  const resolveFileRef = useRef<HTMLInputElement>(null);
   const resolveFileRef = useRef<HTMLInputElement>(null);
 
   const cm = useContingencyManagement();
@@ -200,19 +198,13 @@ export default function OperationalContingenciasPage() {
     }
     setUploading(true);
     try {
-      let evidenciaUrl: string | undefined;
-      if (slaFile) {
-        evidenciaUrl = await uploadContingencyAttachment(slaFile, selected.id);
-      }
       cm.startTreatment.mutate(
         {
           contingencyId: selected.id,
           prazoSlaDatetime: slaDatetime,
           justificativa: slaJustificativa,
-          evidenciaUrl,
           planoAcao: slaPlanoAcao,
           tiposEvidenciaRequeridos: slaTiposEvidencia,
-          observacaoTratamento: slaObservacao,
         },
         {
           onSuccess: () => {
@@ -223,7 +215,6 @@ export default function OperationalContingenciasPage() {
               prazo_sla: new Date(slaDatetime).toISOString(),
               plano_acao: slaPlanoAcao,
               tipos_evidencia_requeridos: slaTiposEvidencia,
-              observacao_tratamento: slaObservacao,
             } : prev);
           },
           onSettled: () => setUploading(false),
