@@ -504,7 +504,8 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
   });
 
   const getSlaInfo = (contingency: any) => {
-    if (!contingency.prazo_sla) return null;
+    // SLA only applies after treatment starts (em_andamento or later)
+    if (!contingency.prazo_sla || contingency.status === "aberta") return null;
     const now = new Date().getTime();
     const sla = new Date(contingency.prazo_sla).getTime();
     const diffMs = sla - now;
@@ -537,6 +538,8 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
   const vencidas = contingencies.filter((c: any) => {
     if (["validada", "descartada", "resolvida"].includes(c.status)) return false;
     if (!c.prazo_sla) return false;
+    // Only em_andamento can be vencida (aberta has no SLA yet)
+    if (c.status !== "em_andamento") return false;
     return new Date(c.prazo_sla).getTime() < Date.now();
   });
 
