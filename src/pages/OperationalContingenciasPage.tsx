@@ -3,8 +3,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   AlertTriangle, Play, CheckCircle2, XCircle, Clock, Shield, History,
   ChevronLeft, FileText, RotateCcw, Trash2, Timer, Paperclip, Image as ImageIcon,
+  Camera, Video, File,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
