@@ -84,11 +84,8 @@ export default function OperationalContingenciasPage() {
   const [slaDatetime, setSlaDatetime] = useState("");
   const [slaJustificativa, setSlaJustificativa] = useState("");
   const [slaPlanoAcao, setSlaPlanoAcao] = useState("");
-  const [slaObservacao, setSlaObservacao] = useState("");
   const [slaTiposEvidencia, setSlaTiposEvidencia] = useState<string[]>([]);
-  const [slaFile, setSlaFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const slaFileRef = useRef<HTMLInputElement>(null);
   const resolveFileRef = useRef<HTMLInputElement>(null);
 
   const cm = useContingencyManagement();
@@ -180,9 +177,7 @@ export default function OperationalContingenciasPage() {
     setSlaDatetime(formatDatetimeLocal(defaultDate));
     setSlaJustificativa("");
     setSlaPlanoAcao("");
-    setSlaObservacao("");
     setSlaTiposEvidencia([]);
-    setSlaFile(null);
     setSlaDialogOpen(true);
   };
 
@@ -200,19 +195,13 @@ export default function OperationalContingenciasPage() {
     }
     setUploading(true);
     try {
-      let evidenciaUrl: string | undefined;
-      if (slaFile) {
-        evidenciaUrl = await uploadContingencyAttachment(slaFile, selected.id);
-      }
       cm.startTreatment.mutate(
         {
           contingencyId: selected.id,
           prazoSlaDatetime: slaDatetime,
           justificativa: slaJustificativa,
-          evidenciaUrl,
           planoAcao: slaPlanoAcao,
           tiposEvidenciaRequeridos: slaTiposEvidencia,
-          observacaoTratamento: slaObservacao,
         },
         {
           onSuccess: () => {
@@ -223,7 +212,6 @@ export default function OperationalContingenciasPage() {
               prazo_sla: new Date(slaDatetime).toISOString(),
               plano_acao: slaPlanoAcao,
               tipos_evidencia_requeridos: slaTiposEvidencia,
-              observacao_tratamento: slaObservacao,
             } : prev);
           },
           onSettled: () => setUploading(false),
@@ -594,11 +582,15 @@ export default function OperationalContingenciasPage() {
                 min={formatDatetimeLocal(new Date())}
                 onChange={(e) => setSlaDatetime(e.target.value)}
               />
-              {slaDatetime && (
-                <p className="text-xs text-muted-foreground">
-                  Expira em: {new Date(slaDatetime).toLocaleString("pt-BR")}
-                </p>
-              )}
+              {slaDatetime && (() => {
+                const diffMs = new Date(slaDatetime).getTime() - Date.now();
+                const hoursRemaining = diffMs > 0 ? (diffMs / 3600000).toFixed(1) : "0";
+                return (
+                  <p className="text-xs text-muted-foreground">
+                    Expira em: {new Date(slaDatetime).toLocaleString("pt-BR")} ({hoursRemaining}h restantes)
+                  </p>
+                );
+              })()}
             </div>
             <div className="space-y-1.5">
               <Label>Justificativa / Instrução inicial <span className="text-destructive">*</span></Label>
@@ -638,33 +630,6 @@ export default function OperationalContingenciasPage() {
                   </label>
                 ))}
               </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Observação <span className="text-muted-foreground text-xs">— opcional</span></Label>
-              <Textarea
-                value={slaObservacao}
-                onChange={(e) => setSlaObservacao(e.target.value)}
-                placeholder="Observações adicionais..."
-                className="min-h-[50px]"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Anexo (evidência do avaliador) <span className="text-muted-foreground text-xs">— opcional</span></Label>
-              <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => slaFileRef.current?.click()}>
-                  <Paperclip className="w-3.5 h-3.5 mr-1" /> {slaFile ? "Trocar" : "Anexar"}
-                </Button>
-                {slaFile && (
-                  <span className="text-xs text-muted-foreground truncate max-w-[200px]">{slaFile.name}</span>
-                )}
-              </div>
-              <input
-                ref={slaFileRef}
-                type="file"
-                accept="image/*,video/*,.pdf,.doc,.docx"
-                className="hidden"
-                onChange={(e) => setSlaFile(e.target.files?.[0] || null)}
-              />
             </div>
           </div>
           <DialogFooter>

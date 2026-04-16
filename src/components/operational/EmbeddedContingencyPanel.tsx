@@ -68,11 +68,8 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
   const [slaDatetime, setSlaDatetime] = useState("");
   const [slaJustificativa, setSlaJustificativa] = useState("");
   const [slaPlanoAcao, setSlaPlanoAcao] = useState("");
-  const [slaObservacao, setSlaObservacao] = useState("");
   const [slaTiposEvidencia, setSlaTiposEvidencia] = useState<string[]>([]);
-  const [slaFile, setSlaFile] = useState<File | null>(null);
   const [slaTargetId, setSlaTargetId] = useState<string | null>(null);
-  const slaFileRef = useRef<HTMLInputElement>(null);
 
   // Resolve dialog
   const [resolveOpen, setResolveOpen] = useState(false);
@@ -184,9 +181,7 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
     setSlaDatetime(formatDatetimeLocal(defaultDate));
     setSlaJustificativa("");
     setSlaPlanoAcao("");
-    setSlaObservacao("");
     setSlaTiposEvidencia([]);
-    setSlaFile(null);
     setSlaTargetId(cId);
     setSlaDialogOpen(true);
   };
@@ -205,19 +200,13 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
     }
     setUploading(true);
     try {
-      let evidenciaUrl: string | undefined;
-      if (slaFile) {
-        evidenciaUrl = await uploadContingencyAttachment(slaFile, slaTargetId);
-      }
       cm.startTreatment.mutate(
         {
           contingencyId: slaTargetId,
           prazoSlaDatetime: slaDatetime,
           justificativa: slaJustificativa,
-          evidenciaUrl,
           planoAcao: slaPlanoAcao,
           tiposEvidenciaRequeridos: slaTiposEvidencia,
-          observacaoTratamento: slaObservacao,
         },
         { onSuccess: () => setSlaDialogOpen(false), onSettled: () => setUploading(false) }
       );
@@ -443,6 +432,15 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
               <Label className="text-sm">Prazo SLA <span className="text-destructive">*</span></Label>
               <Input type="datetime-local" value={slaDatetime} min={formatDatetimeLocal(new Date())}
                 onChange={(e) => setSlaDatetime(e.target.value)} />
+              {slaDatetime && (() => {
+                const diffMs = new Date(slaDatetime).getTime() - Date.now();
+                const hoursRemaining = diffMs > 0 ? (diffMs / 3600000).toFixed(1) : "0";
+                return (
+                  <p className="text-[10px] text-muted-foreground">
+                    Expira em: {new Date(slaDatetime).toLocaleString("pt-BR")} ({hoursRemaining}h restantes)
+                  </p>
+                );
+              })()}
             </div>
             <div className="space-y-1.5">
               <Label className="text-sm">Justificativa / Instrução <span className="text-destructive">*</span></Label>
@@ -469,22 +467,6 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
                   </label>
                 ))}
               </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Observação <span className="text-muted-foreground text-xs">— opcional</span></Label>
-              <Textarea value={slaObservacao} onChange={(e) => setSlaObservacao(e.target.value)}
-                placeholder="Observações..." className="min-h-[40px] text-sm" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Anexo <span className="text-muted-foreground text-xs">— opcional</span></Label>
-              <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => slaFileRef.current?.click()}>
-                  <Paperclip className="w-3 h-3 mr-1" /> {slaFile ? "Trocar" : "Anexar"}
-                </Button>
-                {slaFile && <span className="text-xs text-muted-foreground truncate max-w-[140px]">{slaFile.name}</span>}
-              </div>
-              <input ref={slaFileRef} type="file" accept="image/*,video/*,.pdf,.doc,.docx" className="hidden"
-                onChange={(e) => setSlaFile(e.target.files?.[0] || null)} />
             </div>
           </div>
           <DialogFooter>

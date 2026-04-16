@@ -259,7 +259,6 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
       evidenciaUrl,
       planoAcao,
       tiposEvidenciaRequeridos,
-      observacaoTratamento,
     }: {
       contingencyId: string;
       slaHoras?: number;
@@ -268,7 +267,6 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
       evidenciaUrl?: string;
       planoAcao?: string;
       tiposEvidenciaRequeridos?: string[];
-      observacaoTratamento?: string;
     }) => {
       if (!profile?.id) throw new Error("Não autenticado");
       if (!justificativa?.trim()) throw new Error("Justificativa obrigatória.");
@@ -294,7 +292,6 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
           updated_at: now,
           plano_acao: planoAcao || null,
           tipos_evidencia_requeridos: tiposEvidenciaRequeridos || [],
-          observacao_tratamento: observacaoTratamento || null,
         })
         .eq("id", contingencyId);
       if (error) throw error;
