@@ -13,6 +13,22 @@ export interface FieldReviewDraft {
   motivo_devolucao: string;
 }
 
+const fieldGeneratesContingency = (field: SnapshotField | undefined, answer: any) => {
+  if (!field) return false;
+  if (field.gera_contingencia) return true;
+  const rules = Array.isArray(field.opcoes_regras) ? field.opcoes_regras : [];
+  if (field.tipo === "conforme") {
+    return answer?.valor_booleano === false && rules.some((rule: any) => rule?.valor === "nao_conforme" && rule?.gera_contingencia);
+  }
+  if (field.tipo === "sim_nao") {
+    return answer?.valor_booleano === false && rules.some((rule: any) => rule?.valor === "nao" && rule?.gera_contingencia);
+  }
+  if (field.tipo === "select") {
+    return rules.some((rule: any) => rule?.label === answer?.valor_texto && rule?.gera_contingencia);
+  }
+  return false;
+};
+
 export function useAssignmentReview(assignmentId: string | null) {
   const { profile } = useAuth();
   const qc = useQueryClient();
