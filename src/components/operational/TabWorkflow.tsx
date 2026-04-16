@@ -12,7 +12,6 @@ interface Props {
 }
 
 export function TabWorkflow({ form, set, fields = [] }: Props) {
-  // Only fields with aprovador_verificar enabled and a question filled
   const uniqueFields = fields
     .filter((f, i, arr) => arr.findIndex(x => x.tempId === f.tempId) === i)
     .filter(f => f.aprovador_verificar && f.aprovador_pergunta?.trim());
@@ -39,56 +38,10 @@ export function TabWorkflow({ form, set, fields = [] }: Props) {
           </p>
         </div>
       )}
-      {/* Aprovação */}
-      <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-4">
-        <p className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Aprovação</p>
-        <div className="flex items-center gap-3">
-          <Switch checked={form.requer_aprovacao_gestor} onCheckedChange={v => set("requer_aprovacao_gestor", v)} />
-          <div>
-            <Label className="cursor-pointer">Requer aprovação do gestor</Label>
-            <p className="text-caption text-muted-foreground">Após avaliação, o assignment aguarda aprovação final.</p>
-          </div>
-        </div>
-      </div>
 
-      {/* Devolução */}
+      {/* Perguntas de Aprovação Final */}
       <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-4">
-        <p className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Devolução</p>
-        <div className="flex items-center gap-3">
-          <Switch checked={form.permite_devolucao_parcial} onCheckedChange={v => set("permite_devolucao_parcial", v)} />
-          <div>
-            <Label className="cursor-pointer">Permitir devolução parcial por campo</Label>
-            <p className="text-caption text-muted-foreground">Avaliador pode devolver campos específicos em vez do assignment inteiro.</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Contingência */}
-      <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-4">
-        <p className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Contingência</p>
-        <div className="flex items-center gap-3">
-          <Switch checked={form.gerar_contingencia_automatica} onCheckedChange={v => set("gerar_contingencia_automatica", v)} />
-          <div>
-            <Label className="cursor-pointer">Gerar contingência automática</Label>
-            <p className="text-caption text-muted-foreground">Campos marcados como "gera contingência" criam registro automaticamente quando reprovados.</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <Switch checked={form.bloquear_fechamento_com_contingencia} onCheckedChange={v => set("bloquear_fechamento_com_contingencia", v)} />
-          <div>
-            <Label className="cursor-pointer">Bloquear fechamento com contingências abertas</Label>
-            <p className="text-caption text-muted-foreground">Impede conclusão enquanto houver contingências pendentes.</p>
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Prazo SLA Correção (horas)</Label>
-          <Input type="number" min={1} value={form.prazo_sla_correcao_horas} onChange={e => set("prazo_sla_correcao_horas", +e.target.value)} className="max-w-[200px]" />
-        </div>
-      </div>
-
-      {/* Penalidades de Gamificação */}
-      <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-4">
-        <p className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Penalidades de Gamificação</p>
+        <p className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Perguntas de Aprovação Final</p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-1.5">
@@ -129,7 +82,6 @@ export function TabWorkflow({ form, set, fields = [] }: Props) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {/* 1) Perguntas automáticas primeiro */}
               {form.habilitar_perguntas_automaticas && autoQuestions.map((q, i) => (
                 <TableRow key={`auto-${i}`} className="bg-destructive/5">
                   <TableCell className="text-center text-sm text-muted-foreground">{i + 1}</TableCell>
@@ -148,7 +100,6 @@ export function TabWorkflow({ form, set, fields = [] }: Props) {
                 </TableRow>
               )}
 
-              {/* 2) Campos do formulário na ordem original */}
               {uniqueFields.map((f, i) => {
                 const idx = (form.habilitar_perguntas_automaticas ? autoQuestions.length : 0) + i + 1;
                 return (
