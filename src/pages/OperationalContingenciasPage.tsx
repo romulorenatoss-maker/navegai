@@ -765,8 +765,8 @@ export default function OperationalContingenciasPage() {
             <DialogTitle>{validateApproved ? "Validar Resolução" : "Reprovar Resolução"}</DialogTitle>
             <DialogDescription>
               {validateApproved
-                ? "A contingência será marcada como validada."
-                : "A contingência será reaberta e devolvida com sua justificativa para nova resolução."}
+                ? "A contingência será marcada como validada e concluída."
+                : "A contingência será devolvida ao executor com sua justificativa como novo plano de ação."}
             </DialogDescription>
           </DialogHeader>
           <div>
