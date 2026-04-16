@@ -414,6 +414,13 @@ export default function OperationalExecucaoPage() {
             {devolvidas.length === 0 ? renderEmptyState("Nenhuma rotina devolvida.") : devolvidas.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
           </AccordionSection>
 
+          <AccordionSection title="Contingenciados" count={contingenciados.length}
+            icon={<AlertTriangle className="w-4 h-4" style={{ color: "#f97316" }} />}
+            borderColor="#f97316" badgeBg="bg-orange-500/15" badgeText="text-orange-700 dark:text-orange-400"
+            isOpen={openAccordion === "contingenciados"} onToggle={() => setOpenAccordion(openAccordion === "contingenciados" ? null : "contingenciados")}>
+            {contingenciados.length === 0 ? renderEmptyState("Nenhuma rotina contingenciada.") : contingenciados.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+          </AccordionSection>
+
           <AccordionSection title="Aguardando Avaliação" count={aguardandoAvaliacao.length}
             icon={<Hourglass className="w-4 h-4" style={{ color: "#8b5cf6" }} />}
             borderColor="#8b5cf6" badgeBg="bg-violet-500/15" badgeText="text-violet-700 dark:text-violet-400"
