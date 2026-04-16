@@ -140,21 +140,72 @@ export default function OperationalAprovacaoPage() {
     return map;
   }, [approval.fieldReviews]);
 
-  // ALL visible fields shown in the checklist (main questions)
-  const allVisibleFields = useMemo(() =>
-    snapshotFields.filter(f => evaluateVisibility(f.condicao_visibilidade, answersMap)),
+  // Fields with aprovador_verificar (manual approval questions)
+  const approvalFields = useMemo(() =>
+    snapshotFields.filter(f => f.aprovador_verificar && f.aprovador_pergunta?.trim() && evaluateVisibility(f.condicao_visibilidade, answersMap)),
     [snapshotFields, answersMap]
   );
 
-  // Only fields with aprovador_verificar are interactive approval questions
-  const approvalFields = useMemo(() =>
-    allVisibleFields.filter(f => f.aprovador_verificar && f.aprovador_pergunta?.trim()),
-    [allVisibleFields]
-  );
+  // Auto-questions from template (when habilitar_perguntas_automaticas is enabled)
+  const habilitarAuto = snapshot?.habilitar_perguntas_automaticas !== false;
+  const autoQuestions = useMemo(() => {
+    if (!habilitarAuto) return [];
+    return [
+      { id: "__auto_fora_prazo", label: "Tarefa executada fora do prazo?", pontos: snapshot?.penalidade_fora_prazo ?? 20, key: "fora_prazo" },
+      { id: "__auto_contingencia", label: "Houve contingência nesta tarefa?", pontos: snapshot?.penalidade_contingencia ?? 10, key: "contingencia" },
+      { id: "__auto_sla_contingencia", label: "Contingência resolvida dentro do prazo?", pontos: snapshot?.penalidade_sla_contingencia ?? 15, key: "sla_contingencia" },
+    ];
+  }, [habilitarAuto, snapshot]);
 
-  // Progress
+  // Auto-question pre-filled answers based on actual task data
+  const autoAnswers = useMemo(() => {
+    const answers: Record<string, { resposta: ApprovalAnswer; autoFilled: boolean; detail: string }> = {};
+    if (!selectedAssignment || !habilitarAuto) return answers;
+
+    // Fora do prazo: check if task exceeded horario_limite
+    const foraDoP = selectedAssignment.fim_em && selectedAssignment.horario_limite
+      ? new Date(selectedAssignment.fim_em).toTimeString().slice(0, 5) > selectedAssignment.horario_limite
+      : false;
+    answers["__auto_fora_prazo"] = {
+      resposta: foraDoP ? "nao_conforme" : "conforme",
+      autoFilled: true,
+      detail: foraDoP ? "Tarefa finalizada após o horário limite" : "Tarefa finalizada dentro do prazo",
+    };
+
+    // Contingência: check if any contingencies exist
+    const hasContingency = approval.contingencies.length > 0;
+    answers["__auto_contingencia"] = {
+      resposta: hasContingency ? "nao_conforme" : "conforme",
+      autoFilled: true,
+      detail: hasContingency ? `${approval.contingencies.length} contingência(s) registrada(s)` : "Nenhuma contingência",
+    };
+
+    // SLA contingência: check if resolved within deadline
+    const openOrLate = approval.contingencies.filter((c: any) =>
+      !["validada", "descartada"].includes(c.status) || c.dentro_prazo === false
+    );
+    answers["__auto_sla_contingencia"] = {
+      resposta: !hasContingency ? "na" : openOrLate.length > 0 ? "nao_conforme" : "conforme",
+      autoFilled: true,
+      detail: !hasContingency ? "Sem contingências para avaliar" : openOrLate.length > 0 ? "Contingência(s) fora do prazo ou pendente(s)" : "Todas resolvidas dentro do SLA",
+    };
+
+    return answers;
+  }, [selectedAssignment, habilitarAuto, approval.contingencies]);
+
+  // Total items = auto questions + approval fields
+  const totalQuestions = autoQuestions.length + approvalFields.length;
+
+  // Progress — counts auto-questions as always answered + manual approval fields
   const progress = useMemo(() => {
-    let respondidas = 0, total = approvalFields.length, conformes = 0, naoConformes = 0;
+    let respondidas = autoQuestions.length, total = totalQuestions, conformes = 0, naoConformes = 0;
+    // Auto questions
+    for (const aq of autoQuestions) {
+      const resp = autoAnswers[aq.id]?.resposta || "";
+      if (resp === "conforme") conformes++;
+      if (resp === "nao_conforme") naoConformes++;
+    }
+    // Manual approval fields
     for (const f of approvalFields) {
       const existing = approval.existingApprovalAnswers.find((a: any) => a.field_id === f.id);
       const draft = approval.approverAnswers[f.id];
@@ -166,7 +217,7 @@ export default function OperationalAprovacaoPage() {
       }
     }
     return { respondidas, total, conformes, naoConformes };
-  }, [approvalFields, approval.approverAnswers, approval.existingApprovalAnswers]);
+  }, [autoQuestions, autoAnswers, approvalFields, approval.approverAnswers, approval.existingApprovalAnswers, totalQuestions]);
 
   const progressPercent = progress.total > 0 ? Math.round((progress.respondidas / progress.total) * 100) : 0;
 
@@ -175,27 +226,35 @@ export default function OperationalAprovacaoPage() {
     [selectedAssignment, approval.getBlockingReasons]
   );
 
-  // ── Build ordered items by section — ALL visible fields ──
+  // ── Build ordered items: auto questions first, then approval fields by section ──
   const orderedItems = useMemo(() => {
-    const result: ({ type: "section"; data: any } | { type: "field"; data: SnapshotField })[] = [];
+    const result: ({ type: "section"; data: any } | { type: "field"; data: SnapshotField } | { type: "auto"; data: any })[] = [];
+
+    // Auto questions section
+    if (autoQuestions.length > 0) {
+      result.push({ type: "section", data: { id: "__auto_section", nome: "Perguntas Automáticas", cor: null } });
+      for (const aq of autoQuestions) result.push({ type: "auto", data: aq });
+    }
+
+    // Manual approval fields by section
     if (snapshotSections.length > 0) {
       for (const section of snapshotSections) {
-        const sFields = allVisibleFields.filter(f => f.section_id === section.id);
+        const sFields = approvalFields.filter(f => f.section_id === section.id);
         if (sFields.length === 0) continue;
         result.push({ type: "section", data: section });
         for (const f of sFields) result.push({ type: "field", data: f });
       }
-      // Fields without section
-      const orphans = allVisibleFields.filter(f => !f.section_id || !snapshotSections.find((s: any) => s.id === f.section_id));
+      const orphans = approvalFields.filter(f => !f.section_id || !snapshotSections.find((s: any) => s.id === f.section_id));
       if (orphans.length > 0) {
-        result.push({ type: "section", data: { id: "__orphan", nome: "Geral", cor: null } });
+        result.push({ type: "section", data: { id: "__orphan", nome: "Perguntas do Aprovador", cor: null } });
         for (const f of orphans) result.push({ type: "field", data: f });
       }
-    } else {
-      for (const f of allVisibleFields) result.push({ type: "field", data: f });
+    } else if (approvalFields.length > 0) {
+      result.push({ type: "section", data: { id: "__manual", nome: "Perguntas do Aprovador", cor: null } });
+      for (const f of approvalFields) result.push({ type: "field", data: f });
     }
     return result;
-  }, [snapshotSections, allVisibleFields]);
+  }, [autoQuestions, snapshotSections, approvalFields]);
 
   // Section scores
   const sectionScores = useMemo(() => {
