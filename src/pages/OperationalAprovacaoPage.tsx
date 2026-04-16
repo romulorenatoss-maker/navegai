@@ -145,10 +145,16 @@ export default function OperationalAprovacaoPage() {
     return map;
   }, [approval.fieldReviews]);
 
-  // Fields with aprovador_verificar (manual approval questions) — fallback to label if aprovador_pergunta is empty
-  const approvalFields = useMemo(() =>
-    snapshotFields.filter(f => f.aprovador_verificar && evaluateVisibility(f.condicao_visibilidade, answersMap)),
+  // All visible fields (for full scoring summary display)
+  const allVisibleFields = useMemo(() =>
+    snapshotFields.filter(f => evaluateVisibility(f.condicao_visibilidade, answersMap)),
     [snapshotFields, answersMap]
+  );
+
+  // Fields with aprovador_verificar (interactive approval questions)
+  const approvalFields = useMemo(() =>
+    allVisibleFields.filter(f => f.aprovador_verificar),
+    [allVisibleFields]
   );
 
   // Auto-questions from template (when habilitar_perguntas_automaticas is enabled)
