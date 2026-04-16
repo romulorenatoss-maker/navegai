@@ -415,7 +415,7 @@ export default function OperationalCadastroPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingId ? `Editar Template (v${editingVersion})` : "Novo Template"}</DialogTitle>
+            <DialogTitle>{editingId ? "Editar Template" : "Novo Template"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={e => { e.preventDefault(); upsert.mutate(); }}>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
