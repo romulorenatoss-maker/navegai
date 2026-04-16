@@ -324,12 +324,22 @@ export default function OperationalCadastroPage() {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
+      // Check if there are any assignments linked to this template
+      const { count } = await supabase
+        .from("operational_assignments")
+        .select("id", { count: "exact", head: true })
+        .eq("template_id", id);
+      if (count && count > 0) {
+        throw new Error(`Não é possível excluir: existem ${count} tarefa(s) executada(s) vinculada(s). Remova todas as tarefas executadas primeiro na tela de Gestão.`);
+      }
+      await (supabase as any).from("operational_template_check_items").delete().eq("template_id", id);
+      await (supabase as any).from("operational_template_steps").delete().eq("template_id", id);
       await (supabase as any).from("operational_template_fields").delete().eq("template_id", id);
       await (supabase as any).from("operational_template_sections").delete().eq("template_id", id);
       const { error } = await (supabase as any).from("operational_templates").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["operational_templates"] }); toast.success("Template excluído."); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["operational_templates"] }); toast.success("Tarefa excluída."); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -528,7 +538,7 @@ export default function OperationalCadastroPage() {
                               {t.ativo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
                             </Button>
                             <Button variant="ghost" size="sm" onClick={() => openEdit(t)} className="press-effect"><Pencil className="w-4 h-4" /></Button>
-                            <Button variant="ghost" size="sm" onClick={() => { if (window.confirm(`Excluir template "${t.nome}"?`)) remove.mutate(t.id); }} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="sm" onClick={() => { if (window.confirm(`Excluir tarefa "${t.nome}"? Só é possível se não houver tarefas executadas vinculadas.`)) remove.mutate(t.id); }} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
                           </div>
                         </td>
                       </tr>
