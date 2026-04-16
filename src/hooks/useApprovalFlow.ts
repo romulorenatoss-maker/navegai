@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { SnapshotField } from "@/components/operational/DynamicFieldRenderer";
+import { useOperationalTransition } from "@/hooks/useOperationalTransition";
 
 export interface ScoreBreakdown {
   executor: { pontualidade: number; conformidade: number; evidencia: number; sla: number; final: number } | null;
@@ -29,6 +30,7 @@ export interface ApproverAnswerDraft {
 export function useApprovalFlow(assignmentId: string | null) {
   const { profile } = useAuth();
   const qc = useQueryClient();
+  const { transition } = useOperationalTransition();
   const [overrideDraft, setOverrideDraft] = useState<OverrideDraft | null>(null);
   const [approverAnswers, setApproverAnswers] = useState<Record<string, ApproverAnswerDraft>>({});
 
