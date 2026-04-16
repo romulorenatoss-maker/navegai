@@ -427,21 +427,69 @@ export default function OperationalAprovacaoPage() {
                         globalQuestionIdx++;
                         const answer = answersMap[f.id];
                         const rev = reviewsMap[f.id];
+                        const isApprovalField = !!(f.aprovador_verificar && f.aprovador_pergunta?.trim());
                         const existing = approval.existingApprovalAnswers.find((a: any) => a.field_id === f.id);
                         const draft = approval.approverAnswers[f.id];
-                        const currentResposta: ApprovalAnswer = (draft?.resposta ?? existing?.resposta ?? "") as ApprovalAnswer;
-                        const currentObs = draft?.observacao ?? existing?.observacao ?? "";
+                        const currentResposta: ApprovalAnswer = isApprovalField ? (draft?.resposta ?? existing?.resposta ?? "") as ApprovalAnswer : "";
+                        const currentObs = isApprovalField ? (draft?.observacao ?? existing?.observacao ?? "") : "";
                         const isConforme = currentResposta === "conforme";
                         const isNaoConforme = currentResposta === "nao_conforme";
                         const idx = globalQuestionIdx;
 
+                        // For non-approval fields: show read-only with executor answer
+                        if (!isApprovalField) {
+                          const ansConforme = answer?.valor_booleano === true;
+                          const ansNaoConf = answer?.valor_booleano === false;
+                          return (
+                            <div key={f.id} className={cn("transition-colors",
+                              ansConforme ? "bg-success/5" : ansNaoConf ? "bg-destructive/5" : ""
+                            )}>
+                              <div className="p-4">
+                                <div className="flex items-start gap-3">
+                                  <div className={cn("flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0",
+                                    ansConforme ? "bg-success text-success-foreground" :
+                                    ansNaoConf ? "bg-destructive text-destructive-foreground" :
+                                    answer ? "bg-muted text-foreground" : "bg-muted text-muted-foreground"
+                                  )}>
+                                    {answer ? <Check className="w-4 h-4" /> : String(idx).padStart(2, "0")}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-foreground leading-relaxed">{f.label}</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      {renderAnswerValue(f, answer)}
+                                    </div>
+                                    {answer?.evidencia_url && f.tipo !== "foto" && (
+                                      <a href={answer.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline flex items-center gap-1 mt-1">
+                                        <ExternalLink className="w-3 h-3" /> Ver evidência
+                                      </a>
+                                    )}
+                                    {rev && (
+                                      <div className="mt-2 flex items-center gap-2">
+                                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Avaliador:</span>
+                                        <span className={cn(
+                                          "inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border",
+                                          rev.conforme === true ? "border-success/40 bg-success/10 text-success" : "border-destructive/40 bg-destructive/10 text-destructive"
+                                        )}>
+                                          {rev.conforme === true ? "✓ Conforme" : "✗ Não Conforme"}
+                                        </span>
+                                        {rev.observacao && <span className="text-xs text-muted-foreground">"{rev.observacao}"</span>}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // Approval field: interactive
                         return (
                           <motion.div key={f.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(idx * 0.03, 0.5) }}
                             className={cn("transition-colors",
                               isConforme ? "bg-success/5" : isNaoConforme ? "bg-destructive/5" : ""
                             )}>
                             <div className="p-4">
-                              {/* Question header with number circle - same pattern */}
+                              {/* Question header with number circle */}
                               <div className="flex items-start gap-3 mb-3">
                                 <div className={cn("flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0",
                                   isConforme ? "bg-success text-success-foreground" :
@@ -514,7 +562,7 @@ export default function OperationalAprovacaoPage() {
                                 />
                               </div>
 
-                              {/* Observation on Não Conforme - expandable, same pattern */}
+                              {/* Observation on Não Conforme */}
                               <AnimatePresence>
                                 {isNaoConforme && (
                                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
