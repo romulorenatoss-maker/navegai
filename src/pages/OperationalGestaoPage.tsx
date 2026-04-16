@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { STATUS_CONFIG, CONTINGENCY_STATUS, AUDIT_EVENT_LABELS } from "@/hooks/useOperationalScoring";
 import { BarChart3, AlertTriangle, CheckCircle2, Clock, Users, Shield, RotateCcw, History, ThumbsUp, ThumbsDown, Pencil } from "lucide-react";
+import { useApprovalFlow } from "@/hooks/useApprovalFlow";
+import { useContingencyManagement } from "@/hooks/useContingencyManagement";
 
 export default function OperationalGestaoPage() {
   const { profile } = useAuth();
@@ -91,36 +93,12 @@ export default function OperationalGestaoPage() {
     },
   });
 
-  // Approve/Reject mutation
-  const approveReject = useMutation({
-    mutationFn: async ({ assignmentId, action, motivo: m }: { assignmentId: string; action: "aprovar" | "reprovar"; motivo: string }) => {
-      const newStatus = action === "aprovar" ? "aprovada" : "reprovada";
-      const { error } = await (supabase as any).from("operational_assignments")
-        .update({ status: newStatus })
-        .eq("id", assignmentId);
-      if (error) throw error;
-      await (supabase as any).from("operational_audit_trail").insert({
-        assignment_id: assignmentId,
-        tipo_evento: action === "aprovar" ? "aprovacao" : "reprovacao",
-        executado_por: profile?.id,
-        motivo: m || null,
-        dados_novos: { status: newStatus },
-      });
-      await (supabase as any).from("operational_execution_logs").insert({
-        assignment_id: assignmentId,
-        acao: action === "aprovar" ? "aprovou" : "reprovou",
-        executado_por: profile?.id,
-        detalhes: { motivo: m },
-      });
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["gestao_assignments"] });
-      toast.success(approvalDialog.action === "aprovar" ? "Rotina aprovada!" : "Rotina reprovada!");
-      setApprovalDialog({ open: false, assignment: null, action: "aprovar" });
-      setMotivo("");
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
+  // Use official approval flow for selected assignment
+  const [approvalAssignmentId, setApprovalAssignmentId] = useState<string | null>(null);
+  const approvalFlow = useApprovalFlow(approvalAssignmentId);
+
+  // Use official contingency management
+  const contingencyMgmt = useContingencyManagement();
 
   // Reopen mutation
   const reopenAssignment = useMutation({
