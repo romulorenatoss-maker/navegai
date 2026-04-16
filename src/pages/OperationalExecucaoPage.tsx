@@ -13,6 +13,7 @@ import { STATUS_CONFIG } from "@/hooks/useOperationalScoring";
 import { AssignmentCard } from "@/components/operational/AssignmentCard";
 import { DynamicFieldRenderer, SnapshotField, FieldAnswer, evaluateVisibility } from "@/components/operational/DynamicFieldRenderer";
 import { useAssignmentExecution } from "@/hooks/useAssignmentExecution";
+import { useOperationalTransition } from "@/hooks/useOperationalTransition";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -114,6 +115,7 @@ function AuditTimelinePanel({ logs, assignment }: { logs: any[]; assignment: any
 export default function OperationalExecucaoPage() {
   const { profile, isAdmin } = useAuth();
   const qc = useQueryClient();
+  const { transition: centralTransition } = useOperationalTransition();
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
   const [execDialogOpen, setExecDialogOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
