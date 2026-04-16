@@ -282,14 +282,107 @@ export default function OperationalContingenciasPage() {
               <SlaCountdown prazoSla={selected.prazo_sla} />
             )}
 
+            {/* Origem da Contingência */}
+            <div className="border rounded-lg p-3 bg-destructive/5 border-destructive/20 space-y-2">
+              <h4 className="text-xs font-semibold text-destructive uppercase tracking-wider flex items-center gap-1">
+                <AlertTriangle className="w-3.5 h-3.5" /> Origem da Contingência
+              </h4>
+              <p className="text-sm font-medium">{selected?.descricao}</p>
+
+              {selected?.motivo_instrucao && (
+                <div className="text-xs">
+                  <span className="text-muted-foreground">Instrução/Motivo:</span>
+                  <p className="font-medium mt-0.5">{selected.motivo_instrucao}</p>
+                </div>
+              )}
+
+              {/* Campo de origem (template field) */}
+              {selected?.origin_field && (
+                <div className="p-2 border rounded bg-card text-xs space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">Pergunta: {selected.origin_field.label}</span>
+                    <span className="text-muted-foreground">Peso: {selected.origin_field.peso || 1}</span>
+                  </div>
+                  <span className="text-muted-foreground">Tipo: {selected.origin_field.tipo}</span>
+                </div>
+              )}
+
+              {/* Review de origem (não conformidade) */}
+              {selected?.origin_review && (
+                <div className="p-2 border rounded bg-card text-xs space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+                      selected.origin_review.conforme === false
+                        ? "bg-destructive/10 text-destructive border-destructive/30"
+                        : "bg-green-100 text-green-700 border-green-300"
+                    }`}>
+                      {selected.origin_review.conforme === false ? "Não Conforme" : "Conforme"}
+                    </span>
+                    {selected.origin_review.devolvido && (
+                      <span className="text-amber-600 text-[10px] font-medium">Devolvido</span>
+                    )}
+                    <span className="text-muted-foreground">Rodada {selected.origin_review.rodada}</span>
+                  </div>
+                  {selected.origin_review.motivo_devolucao && (
+                    <div>
+                      <span className="text-muted-foreground">Motivo da não conformidade:</span>
+                      <p className="font-medium text-destructive mt-0.5">"{selected.origin_review.motivo_devolucao}"</p>
+                    </div>
+                  )}
+                  {selected.origin_review.observacao && (
+                    <div>
+                      <span className="text-muted-foreground">Observação:</span>
+                      <p className="font-medium mt-0.5">"{selected.origin_review.observacao}"</p>
+                    </div>
+                  )}
+                  {selected.origin_review.avaliador?.nome && (
+                    <p className="text-muted-foreground">Avaliador: {selected.origin_review.avaliador.nome}</p>
+                  )}
+                </div>
+              )}
+
+              {/* Check answer de origem */}
+              {selected?.check_answer && (
+                <div className="p-2 border rounded bg-card text-xs space-y-1">
+                  <p className="font-medium">
+                    Checklist: {selected.check_answer.check_item?.descricao || "Item"}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+                      selected.check_answer.conforme === false
+                        ? "bg-destructive/10 text-destructive border-destructive/30"
+                        : "bg-green-100 text-green-700 border-green-300"
+                    }`}>
+                      {selected.check_answer.conforme === false ? "Não Conforme" : "Conforme"}
+                    </span>
+                  </div>
+                  {selected.check_answer.observacao && (
+                    <p className="text-muted-foreground">"{selected.check_answer.observacao}"</p>
+                  )}
+                  {selected.check_answer.resposta && (
+                    <p className="text-muted-foreground">Resposta: {selected.check_answer.resposta}</p>
+                  )}
+                </div>
+              )}
+
+              {/* Tarefa info */}
+              <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-1 pt-1 border-t border-border">
+                {selected?.assignment?.numero_tarefa && (
+                  <span>Tarefa #{selected.assignment.numero_tarefa}</span>
+                )}
+                <span>Template: {selected?.assignment?.template?.nome || "—"}</span>
+                <span>Executor: {selected?.assignment?.executor?.nome || "—"}</span>
+                {selected?.assignment?.avaliado?.nome && (
+                  <span>Avaliado: {selected.assignment.avaliado.nome}</span>
+                )}
+                <span>Rodada: {selected?.assignment?.rodada_atual || 1}</span>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="p-2 border rounded bg-muted/30">
-                <span className="text-muted-foreground">Executor</span>
-                <p className="font-medium">{selected?.assignment?.executor?.nome || "—"}</p>
-              </div>
-              <div className="p-2 border rounded bg-muted/30">
-                <span className="text-muted-foreground">Avaliado</span>
-                <p className="font-medium">{selected?.assignment?.avaliado?.nome || "—"}</p>
+                <span className="text-muted-foreground">Responsável</span>
+                <p className="font-medium">{selected?.responsavel?.nome || "—"}</p>
               </div>
               <div className="p-2 border rounded bg-muted/30">
                 <span className="text-muted-foreground">Criado em</span>
@@ -298,6 +391,10 @@ export default function OperationalContingenciasPage() {
               <div className="p-2 border rounded bg-muted/30">
                 <span className="text-muted-foreground">Resolvido em</span>
                 <p className="font-medium">{selected?.resolvida_em ? new Date(selected.resolvida_em).toLocaleString("pt-BR") : "—"}</p>
+              </div>
+              <div className="p-2 border rounded bg-muted/30">
+                <span className="text-muted-foreground">Dentro do prazo</span>
+                <p className="font-medium">{selected?.dentro_prazo === true ? "Sim ✅" : selected?.dentro_prazo === false ? "Não ❌" : "—"}</p>
               </div>
               {selected?.validada_em && (
                 <>
