@@ -41,7 +41,7 @@ export default function OperationalAvaliacaoPage() {
     staleTime: 15000,
   });
 
-  const aguardando = assignments.filter((a: any) => ["aguardando_avaliacao", "contingencia"].includes(a.status));
+  const aguardando = assignments.filter((a: any) => a.status === "aguardando_avaliacao");
   const emAvaliacao = assignments.filter((a: any) => a.status === "em_avaliacao");
   const devolvidos = assignments.filter((a: any) => a.status === "devolvida");
   const historico = assignments.filter((a: any) => ["concluida", "aprovada", "aguardando_aprovacao", "reprovada"].includes(a.status)).slice(0, 50);
@@ -159,7 +159,7 @@ export default function OperationalAvaliacaoPage() {
     <div className="text-center py-12 text-muted-foreground"><p className="text-sm">{msg}</p></div>
   );
 
-  const isReviewable = selectedAssignment && ["aguardando_avaliacao", "em_avaliacao", "contingencia"].includes(selectedAssignment.status);
+  const isReviewable = selectedAssignment && ["aguardando_avaliacao", "em_avaliacao"].includes(selectedAssignment.status);
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto">

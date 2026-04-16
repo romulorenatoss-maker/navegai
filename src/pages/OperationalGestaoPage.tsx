@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { STATUS_CONFIG, CONTINGENCY_STATUS, AUDIT_EVENT_LABELS } from "@/hooks/useOperationalScoring";
 import { BarChart3, AlertTriangle, CheckCircle2, Clock, Users, Shield, RotateCcw, History, ThumbsUp, ThumbsDown, Pencil } from "lucide-react";
+import { useApprovalFlow } from "@/hooks/useApprovalFlow";
+import { useContingencyManagement } from "@/hooks/useContingencyManagement";
 
 export default function OperationalGestaoPage() {
   const { profile } = useAuth();
@@ -91,44 +93,30 @@ export default function OperationalGestaoPage() {
     },
   });
 
-  // Approve/Reject mutation
-  const approveReject = useMutation({
-    mutationFn: async ({ assignmentId, action, motivo: m }: { assignmentId: string; action: "aprovar" | "reprovar"; motivo: string }) => {
-      const newStatus = action === "aprovar" ? "aprovada" : "reprovada";
-      const { error } = await (supabase as any).from("operational_assignments")
-        .update({ status: newStatus })
-        .eq("id", assignmentId);
-      if (error) throw error;
-      await (supabase as any).from("operational_audit_trail").insert({
-        assignment_id: assignmentId,
-        tipo_evento: action === "aprovar" ? "aprovacao" : "reprovacao",
-        executado_por: profile?.id,
-        motivo: m || null,
-        dados_novos: { status: newStatus },
-      });
-      await (supabase as any).from("operational_execution_logs").insert({
-        assignment_id: assignmentId,
-        acao: action === "aprovar" ? "aprovou" : "reprovou",
-        executado_por: profile?.id,
-        detalhes: { motivo: m },
-      });
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["gestao_assignments"] });
-      toast.success(approvalDialog.action === "aprovar" ? "Rotina aprovada!" : "Rotina reprovada!");
-      setApprovalDialog({ open: false, assignment: null, action: "aprovar" });
-      setMotivo("");
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
+  // Use official approval flow for selected assignment
+  const [approvalAssignmentId, setApprovalAssignmentId] = useState<string | null>(null);
+  const approvalFlow = useApprovalFlow(approvalAssignmentId);
 
-  // Reopen mutation
+  // Use official contingency management
+  const contingencyMgmt = useContingencyManagement();
+
+  // Reopen mutation — clears ALL evaluation/score residuals
   const reopenAssignment = useMutation({
     mutationFn: async ({ assignmentId, motivo: m }: { assignmentId: string; motivo: string }) => {
       if (!m.trim()) throw new Error("Motivo é obrigatório para reabertura.");
       const assignment = assignments.find((a: any) => a.id === assignmentId);
       const { error } = await (supabase as any).from("operational_assignments")
-        .update({ status: "em_andamento", fim_em: null, pontuacao_obtida: null })
+        .update({
+          status: "em_andamento",
+          fim_em: null,
+          pontuacao_obtida: null,
+          avaliador_inicio_em: null,
+          avaliador_fim_em: null,
+          score_executor: null,
+          score_avaliado: null,
+          score_avaliador: null,
+          score_final_ajustado: null,
+        })
         .eq("id", assignmentId);
       if (error) throw error;
       await (supabase as any).from("operational_audit_trail").insert({
@@ -153,20 +141,6 @@ export default function OperationalGestaoPage() {
       setMotivo("");
     },
     onError: (e: any) => toast.error(e.message),
-  });
-
-  // Validate contingency
-  const validateContingency = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await (supabase as any).from("operational_contingencies")
-        .update({ status: "validada", validada_por: profile?.id, validada_em: new Date().toISOString() })
-        .eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["gestao_contingencies"] });
-      toast.success("Contingência validada!");
-    },
   });
 
   // Score adjustment mutation
@@ -324,7 +298,7 @@ export default function OperationalGestaoPage() {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos</SelectItem>
-                {Object.entries(STATUS_CONFIG).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+                {Object.entries(STATUS_CONFIG).filter(([k]) => !["reaberta", "atrasada", "bloqueada"].includes(k)).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -381,10 +355,10 @@ export default function OperationalGestaoPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <Button size="sm" variant="outline" className="text-green-700" onClick={() => { setApprovalDialog({ open: true, assignment: a, action: "aprovar" }); setMotivo(""); }}>
+                        <Button size="sm" variant="outline" className="text-green-700" onClick={() => { setApprovalAssignmentId(a.id); setApprovalDialog({ open: true, assignment: a, action: "aprovar" }); setMotivo(""); }}>
                           <ThumbsUp className="w-3 h-3 mr-1" />Aprovar
                         </Button>
-                        <Button size="sm" variant="outline" className="text-destructive" onClick={() => { setApprovalDialog({ open: true, assignment: a, action: "reprovar" }); setMotivo(""); }}>
+                        <Button size="sm" variant="outline" className="text-destructive" onClick={() => { setApprovalAssignmentId(a.id); setApprovalDialog({ open: true, assignment: a, action: "reprovar" }); setMotivo(""); }}>
                           <ThumbsDown className="w-3 h-3 mr-1" />Reprovar
                         </Button>
                         <Button size="sm" variant="ghost" onClick={() => { setAuditDialog({ open: true, assignmentId: a.id }); }}>
@@ -540,7 +514,7 @@ export default function OperationalGestaoPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         {c.status === "resolvida" && (
-                          <Button size="sm" variant="outline" onClick={() => validateContingency.mutate(c.id)}>
+                          <Button size="sm" variant="outline" onClick={() => contingencyMgmt.validateResolution.mutate({ contingencyId: c.id, approved: true, observacao: "Validado via gestão" })}>
                             <CheckCircle2 className="w-3 h-3 mr-1" />Validar
                           </Button>
                         )}
@@ -576,11 +550,26 @@ export default function OperationalGestaoPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setApprovalDialog({ open: false, assignment: null, action: "aprovar" })}>Cancelar</Button>
             <Button
-              disabled={approveReject.isPending || (approvalDialog.action === "reprovar" && !motivo.trim())}
-              onClick={() => approveReject.mutate({ assignmentId: approvalDialog.assignment?.id, action: approvalDialog.action, motivo })}
+              disabled={approvalFlow.finalDecision.isPending || (approvalDialog.action === "reprovar" && !motivo.trim())}
+              onClick={() => {
+                setApprovalAssignmentId(approvalDialog.assignment?.id);
+                approvalFlow.finalDecision.mutate({
+                  assignment: approvalDialog.assignment,
+                  action: approvalDialog.action === "aprovar" ? "aprovar" : "reprovar_devolver",
+                  motivo: motivo || undefined,
+                }, {
+                  onSuccess: () => {
+                    qc.invalidateQueries({ queryKey: ["gestao_assignments"] });
+                    toast.success(approvalDialog.action === "aprovar" ? "Rotina aprovada!" : "Rotina reprovada!");
+                    setApprovalDialog({ open: false, assignment: null, action: "aprovar" });
+                    setMotivo("");
+                    setApprovalAssignmentId(null);
+                  },
+                });
+              }}
               className={approvalDialog.action === "aprovar" ? "" : "bg-destructive text-destructive-foreground hover:bg-destructive/90"}
             >
-              {approveReject.isPending ? "Processando..." : approvalDialog.action === "aprovar" ? "Confirmar Aprovação" : "Confirmar Reprovação"}
+              {approvalFlow.finalDecision.isPending ? "Processando..." : approvalDialog.action === "aprovar" ? "Confirmar Aprovação" : "Confirmar Reprovação"}
             </Button>
           </DialogFooter>
         </DialogContent>
