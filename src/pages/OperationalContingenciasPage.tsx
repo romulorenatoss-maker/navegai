@@ -116,7 +116,6 @@ export default function OperationalContingenciasPage() {
     devolvidas: { list: cm.devolvidas, empty: "Nenhuma contingência devolvida para você." },
     em_tratamento: { list: cm.emTratamento, empty: "Nenhuma em tratamento." },
     vencidas: { list: cm.vencidas, empty: "Nenhuma contingência vencida." },
-    resolvidas: { list: cm.resolvidas, empty: "Nenhuma aguardando validação." },
   };
 
   const renderCard = (c: any) => {
