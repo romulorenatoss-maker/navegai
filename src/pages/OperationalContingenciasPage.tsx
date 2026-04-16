@@ -371,7 +371,9 @@ export default function OperationalContingenciasPage() {
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {selected?.prazo_sla && selected?.status !== "aberta" && (
-              <SlaCountdown prazoSla={selected.prazo_sla} />
+              ["resolvida", "validada", "descartada"].includes(selected.status)
+                ? <SlaElapsed prazoSla={selected.prazo_sla} resolvidaEm={selected.resolvida_em} createdAt={selected.created_at} />
+                : <SlaCountdown prazoSla={selected.prazo_sla} />
             )}
 
             {/* Origem da Contingência */}
