@@ -24,14 +24,13 @@ export const ALL_SCREENS: ScreenDef[] = [
   { path: "/leads/gerenciamento", label: "Gerenciamento de Leads", group: "Leads" },
   { path: "/leads/campanhas", label: "Campanhas", group: "Leads" },
   // Tarefas
-  { path: "/checklists/cadastro", label: "Templates", group: "Tarefas" },
   { path: "/checklists/execucao", label: "Execução", group: "Tarefas" },
-  { path: "/checklists/avaliacao", label: "Avaliação", group: "Tarefas" },
-  { path: "/checklists/aprovacao", label: "Aprovação Final", group: "Tarefas" },
   { path: "/checklists/contingencias", label: "Contingências", group: "Tarefas" },
-  { path: "/checklists/dashboard", label: "Dashboard Operacional", group: "Tarefas" },
-  
+  { path: "/checklists/aprovacao", label: "Aprovação Final", group: "Tarefas" },
+  { path: "/checklists/avaliacao", label: "Avaliação", group: "Tarefas" },
   { path: "/checklists/gestao", label: "Gestão", group: "Tarefas" },
+  { path: "/checklists/cadastro", label: "Templates", group: "Tarefas" },
+  { path: "/checklists/dashboard", label: "Dashboard Operacional", group: "Tarefas" },
   // Cadastros
   { path: "/cadastros/setores", label: "Setores", group: "Cadastros" },
   { path: "/cadastros/servicos", label: "Tipos de Serviço", group: "Cadastros" },

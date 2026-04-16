@@ -41,14 +41,12 @@ const allNavSections = [
   {
     title: "Tarefas",
     items: [
-      { to: "/checklists/cadastro", icon: ListChecks, label: "Templates" },
       { to: "/checklists/execucao", icon: PlayCircle, label: "Execução" },
-      // Avaliação removida do menu — lógica mantida internamente
-      { to: "/checklists/aprovacao", icon: Shield, label: "Aprovação Final" },
       { to: "/checklists/contingencias", icon: AlertTriangle, label: "Contingências" },
-      { to: "/checklists/dashboard", icon: PieChart, label: "Dashboard Operacional" },
-      
+      { to: "/checklists/aprovacao", icon: Shield, label: "Aprovação Final" },
       { to: "/checklists/gestao", icon: FolderKanban, label: "Gestão" },
+      { to: "/checklists/cadastro", icon: ListChecks, label: "Templates" },
+      { to: "/checklists/dashboard", icon: PieChart, label: "Dashboard Operacional" },
     ],
   },
   {
