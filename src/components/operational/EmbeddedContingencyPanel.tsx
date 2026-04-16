@@ -339,6 +339,35 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
                   )}
                 </div>
 
+                {/* Plano de ação + tipos de evidência */}
+                {c.plano_acao && c.status !== "aberta" && (
+                  <div className="border rounded p-2 bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 text-[11px] space-y-1.5">
+                    <p className="font-semibold text-blue-700 dark:text-blue-400 text-[10px] uppercase tracking-wider">Plano de Ação</p>
+                    <p>{c.plano_acao}</p>
+                    {c.observacao_tratamento && (
+                      <p className="text-muted-foreground">Obs: {c.observacao_tratamento}</p>
+                    )}
+                    {Array.isArray(c.tipos_evidencia_requeridos) && c.tipos_evidencia_requeridos.length > 0 && (
+                      <div className="flex gap-1.5 flex-wrap">
+                        {c.tipos_evidencia_requeridos.map((t: string) => (
+                          <span key={t} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[9px] font-medium border border-blue-200 dark:border-blue-700">
+                            {t === "foto" && <Camera className="w-2.5 h-2.5" />}
+                            {t === "video" && <Video className="w-2.5 h-2.5" />}
+                            {t === "documento" && <File className="w-2.5 h-2.5" />}
+                            {t === "foto" ? "Foto" : t === "video" ? "Vídeo" : "Documento"}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {c.justificativa_rejeicao && (
+                      <div className="border-t border-blue-200 dark:border-blue-700 pt-1">
+                        <p className="text-destructive font-semibold text-[10px]">Rejeição anterior:</p>
+                        <p className="text-destructive">"{c.justificativa_rejeicao}"</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-2 text-[11px]">
                   <div className="p-1.5 border rounded bg-muted/30">
                     <span className="text-muted-foreground">Criado</span>
