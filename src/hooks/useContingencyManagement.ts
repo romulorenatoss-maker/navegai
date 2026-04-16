@@ -682,9 +682,15 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
   const vencidas = contingencies.filter((c: any) => {
     if (["validada", "descartada", "resolvida"].includes(c.status)) return false;
     if (!c.prazo_sla) return false;
-    // Only em_andamento can be vencida (aberta has no SLA yet)
     if (c.status !== "em_andamento") return false;
     return new Date(c.prazo_sla).getTime() < Date.now();
+  });
+  // Devolvidas: em_andamento contingencies where current user is the avaliado or executor of the assignment
+  const devolvidas = contingencies.filter((c: any) => {
+    if (c.status !== "em_andamento") return false;
+    const avaliadoId = c.assignment?.avaliado_id || c.assignment?.avaliado?.id;
+    const responsavelId = c.assignment?.responsavel_id || c.assignment?.executor?.id;
+    return avaliadoId === profile?.id || responsavelId === profile?.id;
   });
 
   return {
@@ -695,6 +701,7 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
     resolvidas,
     validadas,
     vencidas,
+    devolvidas,
     startTreatment,
     resolveContingency,
     validateResolution,
