@@ -1,3 +1,4 @@
+import { useEffect, useRef, useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -110,6 +111,127 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
     },
     staleTime: 15000,
   });
+
+  // Auto-expire: mark SLA-expired em_andamento contingencies and create automatic answers
+  const processedExpired = useRef<Set<string>>(new Set());
+
+  const autoExpireContingencies = useCallback(async () => {
+    if (!profile?.id) return;
+    const expired = contingencies.filter(
+      (c: any) =>
+        c.status === "em_andamento" &&
+        c.prazo_sla &&
+        new Date(c.prazo_sla).getTime() < Date.now() &&
+        !processedExpired.current.has(c.id)
+    );
+    if (expired.length === 0) return;
+
+    for (const c of expired) {
+      processedExpired.current.add(c.id);
+      try {
+        const now = new Date().toISOString();
+
+        // Mark contingency as resolved but outside SLA
+        await (supabase as any)
+          .from("operational_contingencies")
+          .update({
+            status: "resolvida",
+            resolvida_em: now,
+            dentro_prazo: false,
+            updated_at: now,
+          })
+          .eq("id", c.id)
+          .eq("status", "em_andamento"); // optimistic lock
+
+        // Log the automatic resolution
+        await (supabase as any).from("operational_contingency_resolution_logs").insert({
+          contingency_id: c.id,
+          acao: "resolucao_automatica_sla_vencido",
+          executado_por: profile.id,
+          observacao: "SLA expirado — resolução automática. Contingência resolvida fora do prazo.",
+        });
+
+        // Auto-answer workflow fields: find fields with label matching contingency keywords
+        if (c.assignment_id) {
+          const { data: assignment } = await (supabase as any)
+            .from("operational_assignments")
+            .select("template_id")
+            .eq("id", c.assignment_id)
+            .single();
+
+          if (assignment?.template_id) {
+            // Find workflow fields that should be auto-answered
+            const { data: fields } = await (supabase as any)
+              .from("operational_template_fields")
+              .select("id, label, tipo")
+              .eq("template_id", assignment.template_id)
+              .or("label.ilike.%houve contingencia%,label.ilike.%houve contingência%,label.ilike.%contingencia resolvida%,label.ilike.%contingência resolvida%,label.ilike.%dentro do prazo%");
+
+            if (fields && fields.length > 0) {
+              for (const field of fields) {
+                const labelLower = field.label.toLowerCase();
+                let valorBooleano: boolean;
+
+                if (labelLower.includes("houve contingencia") || labelLower.includes("houve contingência")) {
+                  valorBooleano = true; // sim, houve contingência
+                } else if (labelLower.includes("resolvida") && labelLower.includes("prazo")) {
+                  valorBooleano = false; // não foi resolvida dentro do prazo
+                } else if (labelLower.includes("dentro do prazo")) {
+                  valorBooleano = false; // não dentro do prazo
+                } else {
+                  valorBooleano = true; // default: houve contingência
+                }
+
+                // Upsert: delete existing then insert
+                await (supabase as any)
+                  .from("operational_field_answers")
+                  .delete()
+                  .eq("assignment_id", c.assignment_id)
+                  .eq("field_id", field.id);
+
+                await (supabase as any)
+                  .from("operational_field_answers")
+                  .insert({
+                    assignment_id: c.assignment_id,
+                    field_id: field.id,
+                    respondido_por: profile.id,
+                    respondido_em: now,
+                    valor_booleano: valorBooleano,
+                    valor_texto: `Resposta automática — SLA contingência #${c.numero_contingencia} expirado`,
+                    versao: 1,
+                  });
+              }
+            }
+          }
+
+          // Log in audit trail
+          await (supabase as any).from("operational_audit_trail").insert({
+            assignment_id: c.assignment_id,
+            tipo_evento: "contingencia_sla_expirado",
+            executado_por: profile.id,
+            dados_novos: {
+              contingency_id: c.id,
+              prazo_sla: c.prazo_sla,
+              resolvida_em: now,
+              dentro_prazo: false,
+            },
+          });
+        }
+      } catch (err) {
+        console.error("[ContingencyManagement] Auto-expire error:", err);
+        processedExpired.current.delete(c.id);
+      }
+    }
+
+    // Refresh data after processing
+    qc.invalidateQueries({ queryKey: ["contingency_management"] });
+    qc.invalidateQueries({ queryKey: ["embedded_contingencies"] });
+    qc.invalidateQueries({ queryKey: ["field_answers"] });
+  }, [contingencies, profile?.id, qc]);
+
+  useEffect(() => {
+    autoExpireContingencies();
+  }, [autoExpireContingencies]);
 
   const useResolutionLogs = (contingencyId: string | null) =>
     useQuery({
@@ -504,7 +626,8 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
   });
 
   const getSlaInfo = (contingency: any) => {
-    if (!contingency.prazo_sla) return null;
+    // SLA only applies after treatment starts (em_andamento or later)
+    if (!contingency.prazo_sla || contingency.status === "aberta") return null;
     const now = new Date().getTime();
     const sla = new Date(contingency.prazo_sla).getTime();
     const diffMs = sla - now;
@@ -537,6 +660,8 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
   const vencidas = contingencies.filter((c: any) => {
     if (["validada", "descartada", "resolvida"].includes(c.status)) return false;
     if (!c.prazo_sla) return false;
+    // Only em_andamento can be vencida (aberta has no SLA yet)
+    if (c.status !== "em_andamento") return false;
     return new Date(c.prazo_sla).getTime() < Date.now();
   });
 
