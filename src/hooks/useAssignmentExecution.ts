@@ -158,7 +158,13 @@ export function useAssignmentExecution(assignmentId: string | null) {
           const oldVersao = existing[0].versao || 1;
           const newVersao = oldVersao + 1;
           const oldHistory = existing[0].historico_alteracoes || [];
-          const newHistory = [...oldHistory, { nome: profile.nome || "Usuário", data: now, versao: newVersao }];
+          const newHistory = [...oldHistory, {
+            nome: profile.nome || "Usuário",
+            data: now,
+            versao: newVersao,
+            campo: fieldLabel,
+            resposta: displayValue,
+          }];
 
           await (supabase as any).from("operational_field_answers")
             .update({
@@ -174,7 +180,13 @@ export function useAssignmentExecution(assignmentId: string | null) {
             })
             .eq("id", existing[0].id);
         } else {
-          const initialHistory = [{ nome: profile.nome || "Usuário", data: now, versao: 1 }];
+          const initialHistory = [{
+            nome: profile.nome || "Usuário",
+            data: now,
+            versao: 1,
+            campo: fieldLabel,
+            resposta: displayValue,
+          }];
           await (supabase as any).from("operational_field_answers")
             .insert({
               assignment_id: assignmentId,
@@ -200,26 +212,30 @@ export function useAssignmentExecution(assignmentId: string | null) {
             versao: (prev[fieldId]?.versao || 0) + 1,
             historico_alteracoes: [
               ...(prev[fieldId]?.historico_alteracoes || []),
-              { nome: profile.nome || "Usuário", data: now, versao: (prev[fieldId]?.versao || 0) + 1 },
+              {
+                nome: profile.nome || "Usuário",
+                data: now,
+                versao: (prev[fieldId]?.versao || 0) + 1,
+                campo: fieldLabel,
+                resposta: displayValue,
+              },
             ],
           },
         }));
 
-        // Detailed execution log per field (first time only to avoid spam)
-        if (!loggedFieldsRef.current.has(fieldId)) {
-          loggedFieldsRef.current.add(fieldId);
-          (supabase as any).from("operational_execution_logs").insert({
-            assignment_id: assignmentId,
-            acao: "preencheu_campo",
-            executado_por: profile.id,
-            detalhes: {
-              field_id: fieldId,
-              field_label: fieldLabel,
-              valor: displayValue,
-              respondido_em: now,
-            },
-          }).then(() => refetchLogs());
-        }
+        // Log every field interaction to execution logs (not just first time)
+        (supabase as any).from("operational_execution_logs").insert({
+          assignment_id: assignmentId,
+          acao: "preencheu_campo",
+          executado_por: profile.id,
+          detalhes: {
+            field_id: fieldId,
+            field_label: fieldLabel,
+            resposta: displayValue,
+            respondido_em: now,
+            versao: (currentAnswers[fieldId]?.versao || 0) + 1,
+          },
+        }).then(() => refetchLogs());
       }
       setDirty(false);
     } catch (e: any) {
