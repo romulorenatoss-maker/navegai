@@ -197,9 +197,47 @@ export default function OperationalCadastroPage() {
 
       let templateId: string;
       if (editingId) {
+        // Fetch current data for audit trail before updating
+        const { data: currentTemplate } = await (supabase as any).from("operational_templates")
+          .select("*").eq("id", editingId).single();
+        
         const { error } = await (supabase as any).from("operational_templates").update(payload).eq("id", editingId);
         if (error) throw error;
         templateId = editingId;
+
+        // Audit: log role changes
+        if (currentTemplate) {
+          const trackedFields = [
+            "executor_profile_id", "executor_setor_id",
+            "avaliador_profile_id", "avaliador_setor_id",
+            "aprovador_profile_id", "aprovador_setor_id",
+            "validador_contingencia_profile_id", "validador_contingencia_setor_id",
+            "nome", "setor_id", "recorrencia_tipo", "tipo_execucao",
+          ];
+          const changes: Record<string, { de: any; para: any }> = {};
+          for (const field of trackedFields) {
+            const oldVal = currentTemplate[field] ?? null;
+            const newVal = payload[field] ?? null;
+            if (oldVal !== newVal) {
+              changes[field] = { de: oldVal, para: newVal };
+            }
+          }
+          if (Object.keys(changes).length > 0) {
+            const { data: profile } = await supabase.from("profiles")
+              .select("id").eq("user_id", (await supabase.auth.getUser()).data.user?.id || "").single();
+            if (profile) {
+              await (supabase as any).from("audit_logs").insert({
+                tabela: "operational_templates",
+                acao: "update_template",
+                registro_id: editingId,
+                user_id: profile.id,
+                dados_anteriores: changes,
+                dados_novos: payload,
+              });
+            }
+          }
+        }
+
         // Clean old sections/fields
         await (supabase as any).from("operational_template_fields").delete().eq("template_id", templateId);
         await (supabase as any).from("operational_template_sections").delete().eq("template_id", templateId);

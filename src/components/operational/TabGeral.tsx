@@ -84,7 +84,8 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
 
   const roles: RoleConfig[] = [
     { label: "Quem recebe a nota", profileKey: "executor_profile_id", setorKey: "executor_setor_id", hint: "Pessoa/setor que será pontuado pelas perguntas da aprovação final", showSetorMembers: true },
-    { label: "Avaliador", profileKey: "avaliador_profile_id", setorKey: "avaliador_setor_id", hint: "Quem responde o checklist (se setor, qualquer membro pode)", showSetorMembers: true },
+    { label: "Avaliador (Checklist)", profileKey: "avaliador_profile_id", setorKey: "avaliador_setor_id", hint: "Quem responde o checklist (se setor, qualquer membro pode)", showSetorMembers: true },
+    { label: "Aprovador Final", profileKey: "aprovador_profile_id", setorKey: "aprovador_setor_id", hint: "Quem responde as perguntas de aprovação final para concluir a tarefa", showSetorMembers: true },
   ];
 
   const validadorMode = getAssignmentMode("validador_contingencia_profile_id", "validador_contingencia_setor_id");
