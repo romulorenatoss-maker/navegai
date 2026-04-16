@@ -174,7 +174,7 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
         {/* Validador Contingência — Individual OU Setorial */}
         <div className="bg-muted/50 rounded-lg border border-border p-3">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-medium text-muted-foreground">Validador Contingência — <span className="font-normal">Quem valida e ajusta contingências</span></p>
+            <p className="text-xs font-medium text-muted-foreground">Validador Contingência — <span className="font-normal">Quem valida e ajusta contingências. Administradores podem assumir este papel.</span></p>
             <RadioGroup
               value={validadorMode}
               onValueChange={v => handleModeChange("validador_contingencia_profile_id", "validador_contingencia_setor_id", v)}
@@ -216,6 +216,57 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
             </div>
           )}
         </div>
+
+        {/* Aprovador Final — Individual OU Setorial */}
+        {(() => {
+          const aprovadorMode = getAssignmentMode("aprovador_profile_id", "aprovador_setor_id");
+          return (
+            <div className="bg-muted/50 rounded-lg border border-border p-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-muted-foreground">Aprovador Final — <span className="font-normal">Quem responde as perguntas de aprovação final para concluir a tarefa. Administradores podem assumir este papel.</span></p>
+                <RadioGroup
+                  value={aprovadorMode}
+                  onValueChange={v => handleModeChange("aprovador_profile_id", "aprovador_setor_id", v)}
+                  className="flex gap-3"
+                >
+                  <div className="flex items-center gap-1">
+                    <RadioGroupItem value="nome" id="aprovador-individual" className="h-3 w-3" />
+                    <Label htmlFor="aprovador-individual" className="text-xs cursor-pointer">Individual</Label>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <RadioGroupItem value="setor" id="aprovador-setorial" className="h-3 w-3" />
+                    <Label htmlFor="aprovador-setorial" className="text-xs cursor-pointer">Setorial</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+              {aprovadorMode === "nome" ? (
+                <Select value={form.aprovador_profile_id as string} onValueChange={v => set("aprovador_profile_id" as any, v)}>
+                  <SelectTrigger className="h-8"><SelectValue placeholder="Selecione colaborador" /></SelectTrigger>
+                  <SelectContent>{colaboradores.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
+                </Select>
+              ) : (
+                <div className="space-y-2">
+                  <Select value={form.aprovador_setor_id as string} onValueChange={v => set("aprovador_setor_id" as any, v)}>
+                    <SelectTrigger className="h-8"><SelectValue placeholder="Selecione setor" /></SelectTrigger>
+                    <SelectContent>{setores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
+                  </Select>
+                  {form.aprovador_setor_id && (() => {
+                    const membros = getMembrosDoSetor(form.aprovador_setor_id as string);
+                    const setorNome = setores.find((s: any) => s.id === form.aprovador_setor_id)?.nome || "Setor";
+                    return membros.length > 0 ? (
+                      <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1.5"
+                        onClick={() => openMembrosDialog(`Membros — ${setorNome} (Aprovador Final)`, membros)}>
+                        <Users className="w-3 h-3" /> {membros.length} membro{membros.length !== 1 ? "s" : ""}
+                      </Button>
+                    ) : (
+                      <p className="text-[10px] text-destructive">Nenhum colaborador associado</p>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
 
