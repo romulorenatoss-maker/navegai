@@ -933,6 +933,7 @@ export default function OperationalAprovacaoPage() {
       </Dialog>
 
       {/* Decision Dialog */}
+      <Dialog open={decisionDialog.open} onOpenChange={v => { if (!v) setDecisionDialog({ open: false, action: null }); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
