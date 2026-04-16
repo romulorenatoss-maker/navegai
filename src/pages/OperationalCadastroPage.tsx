@@ -427,13 +427,22 @@ export default function OperationalCadastroPage() {
           <div className="bg-card border border-border rounded-lg p-8 text-center text-body text-muted-foreground">Carregando...</div>
         ) : groupedTemplates.length === 0 ? (
           <div className="bg-card border border-border rounded-lg p-8 text-center text-body text-muted-foreground">Nenhum template encontrado.</div>
-        ) : groupedTemplates.map((group) => {
+        ) : groupedTemplates.map((group, groupIdx) => {
           const setorKey = group.setorId || "__sem_setor";
+          const colors = [
+            "bg-blue-500/15 border-blue-500/30 text-blue-700 dark:text-blue-300",
+            "bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-300",
+            "bg-amber-500/15 border-amber-500/30 text-amber-700 dark:text-amber-300",
+            "bg-purple-500/15 border-purple-500/30 text-purple-700 dark:text-purple-300",
+            "bg-rose-500/15 border-rose-500/30 text-rose-700 dark:text-rose-300",
+            "bg-cyan-500/15 border-cyan-500/30 text-cyan-700 dark:text-cyan-300",
+            "bg-orange-500/15 border-orange-500/30 text-orange-700 dark:text-orange-300",
+          ];
+          const colorClass = colors[groupIdx % colors.length];
           return (
             <div key={setorKey} className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
-              <div className="px-4 py-2.5 bg-muted/50 border-b border-border">
-                <h3 className="text-sm font-semibold text-foreground">{group.setor}</h3>
-                <span className="text-caption text-muted-foreground">{group.items.length} template{group.items.length !== 1 ? "s" : ""}</span>
+              <div className={`px-4 py-1.5 border-b ${colorClass}`}>
+                <h3 className="text-xs font-semibold">{group.setor}</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
