@@ -186,21 +186,39 @@ export function TabTarefasExecutadas({ templateId }: Props) {
 
   const deleteAssignment = useMutation({
     mutationFn: async (id: string) => {
-      await (supabase as any).from("operational_field_answers").delete().eq("assignment_id", id);
+      // Delete all related data — order matters for FK constraints without cascade
+      // Contingency resolution logs (FK to contingencies)
+      const { data: contIds } = await (supabase as any)
+        .from("operational_contingencies")
+        .select("id")
+        .eq("assignment_id", id);
+      if (contIds?.length) {
+        const ids = contIds.map((c: any) => c.id);
+        await (supabase as any).from("operational_contingency_resolution_logs").delete().in("contingency_id", ids);
+      }
+      // Score logs and overrides
+      await (supabase as any).from("operational_score_logs").delete().eq("assignment_id", id);
+      await (supabase as any).from("operational_score_overrides").delete().eq("assignment_id", id);
+      // Field reviews and answers
       await (supabase as any).from("operational_field_reviews").delete().eq("assignment_id", id);
+      await (supabase as any).from("operational_field_answers").delete().eq("assignment_id", id);
+      // Execution data
       await (supabase as any).from("operational_execution_check_answers").delete().eq("assignment_id", id);
       await (supabase as any).from("operational_execution_step_logs").delete().eq("assignment_id", id);
       await (supabase as any).from("operational_execution_logs").delete().eq("assignment_id", id);
+      // Contingencies (after resolution logs)
       await (supabase as any).from("operational_contingencies").delete().eq("assignment_id", id);
+      // Approval and history
       await (supabase as any).from("operational_approval_answers").delete().eq("assignment_id", id);
       await (supabase as any).from("operational_assignment_history").delete().eq("assignment_id", id);
       await (supabase as any).from("operational_audit_trail").delete().eq("assignment_id", id);
+      // Finally, the assignment itself
       const { error } = await (supabase as any).from("operational_assignments").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["template_assignments", templateId] });
-      toast.success("Tarefa excluída.");
+      toast.success("Tarefa e todos os registros vinculados excluídos.");
     },
     onError: (e: any) => toast.error(e.message),
   });
