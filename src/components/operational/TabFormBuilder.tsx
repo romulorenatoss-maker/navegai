@@ -530,10 +530,19 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
                         {selectedOpcao.requer_evidencia && (
                           <div>
                             <Label className="text-caption mb-1.5 block">Evidência obrigatória</Label>
-                            <div className="flex gap-2">
-                              <Button type="button" variant="outline" size="sm" className="text-caption" disabled><Camera className="w-3.5 h-3.5 mr-1.5" /> Foto</Button>
-                              <Button type="button" variant="outline" size="sm" className="text-caption" disabled><FileVideo className="w-3.5 h-3.5 mr-1.5" /> Vídeo</Button>
-                              <Button type="button" variant="outline" size="sm" className="text-caption" disabled><FileText className="w-3.5 h-3.5 mr-1.5" /> Doc</Button>
+                            <div className="flex flex-wrap gap-2">
+                              {(selectedOpcao.tipos_evidencia?.includes("qualquer") || selectedOpcao.tipos_evidencia?.includes("foto")) && (
+                                <Button type="button" variant="outline" size="sm" className="text-caption" disabled><Camera className="w-3.5 h-3.5 mr-1.5" /> Foto</Button>
+                              )}
+                              {(selectedOpcao.tipos_evidencia?.includes("qualquer") || selectedOpcao.tipos_evidencia?.includes("video")) && (
+                                <Button type="button" variant="outline" size="sm" className="text-caption" disabled><FileVideo className="w-3.5 h-3.5 mr-1.5" /> Vídeo</Button>
+                              )}
+                              {(selectedOpcao.tipos_evidencia?.includes("qualquer") || selectedOpcao.tipos_evidencia?.includes("audio")) && (
+                                <Button type="button" variant="outline" size="sm" className="text-caption" disabled><Mic className="w-3.5 h-3.5 mr-1.5" /> Áudio</Button>
+                              )}
+                              {selectedOpcao.tipos_evidencia?.includes("qualquer") && (
+                                <Button type="button" variant="outline" size="sm" className="text-caption" disabled><FileText className="w-3.5 h-3.5 mr-1.5" /> Doc</Button>
+                              )}
                             </div>
                           </div>
                         )}
