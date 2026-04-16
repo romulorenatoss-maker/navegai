@@ -538,7 +538,7 @@ export default function OperationalCadastroPage() {
                               {t.ativo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
                             </Button>
                             <Button variant="ghost" size="sm" onClick={() => openEdit(t)} className="press-effect"><Pencil className="w-4 h-4" /></Button>
-                            <Button variant="ghost" size="sm" onClick={() => { if (window.confirm(`Excluir template "${t.nome}"?`)) remove.mutate(t.id); }} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="sm" onClick={() => { if (window.confirm(`Excluir tarefa "${t.nome}"? Só é possível se não houver tarefas executadas vinculadas.`)) remove.mutate(t.id); }} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
                           </div>
                         </td>
                       </tr>
