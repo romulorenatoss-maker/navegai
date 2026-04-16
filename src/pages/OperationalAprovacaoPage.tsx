@@ -140,17 +140,16 @@ export default function OperationalAprovacaoPage() {
     return map;
   }, [approval.fieldReviews]);
 
-  // Only fields with aprovador_verificar + aprovador_pergunta are approval questions
-  const approvalFields = useMemo(() =>
-    snapshotFields
-      .filter(f => f.aprovador_verificar && f.aprovador_pergunta?.trim() && evaluateVisibility(f.condicao_visibilidade, answersMap)),
-    [snapshotFields, answersMap]
-  );
-
-  // All visible fields for details
+  // ALL visible fields shown in the checklist (main questions)
   const allVisibleFields = useMemo(() =>
     snapshotFields.filter(f => evaluateVisibility(f.condicao_visibilidade, answersMap)),
     [snapshotFields, answersMap]
+  );
+
+  // Only fields with aprovador_verificar are interactive approval questions
+  const approvalFields = useMemo(() =>
+    allVisibleFields.filter(f => f.aprovador_verificar && f.aprovador_pergunta?.trim()),
+    [allVisibleFields]
   );
 
   // Progress
