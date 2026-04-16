@@ -187,11 +187,13 @@ export default function OperationalExecucaoPage() {
     return list;
   }, [assignments, isAdmin, filterResponsavel, searchTerm, filterDate]);
 
-  const hoje = filteredAssignments.filter((a: any) =>
-    ["pendente", "em_andamento", "devolvida"].includes(a.status) && a.data_prevista === filterDate
-  );
-  const aFazer = filteredAssignments.filter((a: any) => ["pendente"].includes(a.status) && a.data_prevista !== filterDate);
-  const emAndamento = filteredAssignments.filter((a: any) => ["em_andamento"].includes(a.status));
+  // "Tarefas de Hoje" includes: today's tasks + em_andamento (any date) + atrasadas (past dates still open)
+  const hoje = filteredAssignments.filter((a: any) => {
+    if (["em_andamento"].includes(a.status)) return true; // always show em_andamento here
+    if (["pendente", "devolvida"].includes(a.status) && a.data_prevista <= filterDate) return true;
+    return false;
+  });
+  const aFazer = filteredAssignments.filter((a: any) => ["pendente"].includes(a.status) && a.data_prevista > filterDate);
   const devolvidas = filteredAssignments.filter((a: any) => ["devolvida"].includes(a.status));
   const aguardandoAvaliacao = filteredAssignments.filter((a: any) => ["aguardando_avaliacao", "aguardando_aprovacao"].includes(a.status));
   const concluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 50);
@@ -393,12 +395,6 @@ export default function OperationalExecucaoPage() {
             {aFazer.length === 0 ? renderEmptyState("Nenhuma rotina a fazer.") : aFazer.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
           </AccordionSection>
 
-          <AccordionSection title="Em Andamento" count={emAndamento.length}
-            icon={<CircleDot className="w-4 h-4" style={{ color: "#3b82f6" }} />}
-            borderColor="#3b82f6" badgeBg="bg-blue-500/15" badgeText="text-blue-700 dark:text-blue-400"
-            isOpen={openAccordion === "andamento"} onToggle={() => setOpenAccordion(openAccordion === "andamento" ? null : "andamento")}>
-            {emAndamento.length === 0 ? renderEmptyState("Nenhuma rotina em andamento.") : emAndamento.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
-          </AccordionSection>
 
           <AccordionSection title="Devolvidas" count={devolvidas.length}
             icon={<RotateCcw className="w-4 h-4" style={{ color: "#ef4444" }} />}
