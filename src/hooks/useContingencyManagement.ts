@@ -164,11 +164,24 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
       await assertStatusTransition(contingencyId, ["em_andamento"], "resolvida");
 
       const now = new Date().toISOString();
+
+      // Check if resolved within SLA
+      const { data: contData } = await (supabase as any)
+        .from("operational_contingencies")
+        .select("prazo_sla, assignment_id")
+        .eq("id", contingencyId)
+        .single();
+
+      const dentroPrazo = contData?.prazo_sla
+        ? new Date(now).getTime() <= new Date(contData.prazo_sla).getTime()
+        : true;
+
       const { error } = await (supabase as any)
         .from("operational_contingencies")
         .update({
           status: "resolvida",
           resolvida_em: now,
+          dentro_prazo: dentroPrazo,
           updated_at: now,
         })
         .eq("id", contingencyId);
