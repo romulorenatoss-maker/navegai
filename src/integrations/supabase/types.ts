@@ -2411,6 +2411,7 @@ export type Database = {
           intervalo_dias: number | null
           modo_pontuacao: string
           nome: string
+          ordem: number
           penalidade_contingencia: number
           penalidade_fora_prazo: number
           penalidade_sla_contingencia: number
@@ -2461,6 +2462,7 @@ export type Database = {
           intervalo_dias?: number | null
           modo_pontuacao?: string
           nome: string
+          ordem?: number
           penalidade_contingencia?: number
           penalidade_fora_prazo?: number
           penalidade_sla_contingencia?: number
@@ -2511,6 +2513,7 @@ export type Database = {
           intervalo_dias?: number | null
           modo_pontuacao?: string
           nome?: string
+          ordem?: number
           penalidade_contingencia?: number
           penalidade_fora_prazo?: number
           penalidade_sla_contingencia?: number
