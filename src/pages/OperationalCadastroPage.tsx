@@ -83,6 +83,70 @@ export default function OperationalCadastroPage() {
     return list;
   }, [templates, filterExecutor, filterAvaliador]);
 
+  // Group templates by setor
+  const groupedTemplates = useMemo(() => {
+    const groups: { setor: string; setorId: string | null; items: any[] }[] = [];
+    const map = new Map<string, any[]>();
+    const order: string[] = [];
+    for (const t of filteredTemplates) {
+      const key = t.setor_id || "__sem_setor";
+      if (!map.has(key)) { map.set(key, []); order.push(key); }
+      map.get(key)!.push(t);
+    }
+    for (const key of order) {
+      const items = map.get(key)!;
+      const setor = key === "__sem_setor" ? "Sem Setor" : (items[0]?.setores?.nome || "Sem Setor");
+      groups.push({ setor, setorId: key === "__sem_setor" ? null : key, items });
+    }
+    return groups;
+  }, [filteredTemplates]);
+
+  // Drag-and-drop state
+  const dragItem = useRef<{ id: string; setorKey: string } | null>(null);
+  const dragOverItem = useRef<{ id: string; setorKey: string } | null>(null);
+
+  const reorderMutation = useMutation({
+    mutationFn: async (updates: { id: string; ordem: number }[]) => {
+      for (const u of updates) {
+        await (supabase as any).from("operational_templates").update({ ordem: u.ordem }).eq("id", u.id);
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["operational_templates"] }),
+  });
+
+  const handleDragStart = useCallback((id: string, setorKey: string) => {
+    dragItem.current = { id, setorKey };
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, id: string, setorKey: string) => {
+    e.preventDefault();
+    dragOverItem.current = { id, setorKey };
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    if (!dragItem.current || !dragOverItem.current) return;
+    if (dragItem.current.setorKey !== dragOverItem.current.setorKey) return; // only within same setor
+    if (dragItem.current.id === dragOverItem.current.id) return;
+
+    const setorKey = dragItem.current.setorKey;
+    const group = groupedTemplates.find(g => (g.setorId || "__sem_setor") === setorKey);
+    if (!group) return;
+
+    const items = [...group.items];
+    const fromIdx = items.findIndex(i => i.id === dragItem.current!.id);
+    const toIdx = items.findIndex(i => i.id === dragOverItem.current!.id);
+    if (fromIdx < 0 || toIdx < 0) return;
+
+    const [moved] = items.splice(fromIdx, 1);
+    items.splice(toIdx, 0, moved);
+
+    const updates = items.map((item, idx) => ({ id: item.id, ordem: idx }));
+    reorderMutation.mutate(updates);
+    dragItem.current = null;
+    dragOverItem.current = null;
+  }, [templates, filterExecutor, filterAvaliador]);
+
   const set = <K extends keyof TemplateForm>(k: K, v: TemplateForm[K]) => setForm(f => ({ ...f, [k]: v }));
 
   const upsert = useMutation({
