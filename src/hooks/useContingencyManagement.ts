@@ -560,10 +560,10 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
 
   const abertas = contingencies.filter((c: any) => c.status === "aberta");
 
-  // Em Tratamento: em_andamento or resolvida, within SLA (or no SLA yet)
+  // Em Tratamento: em_andamento or resolvida, within SLA (or no SLA yet) — excludes devolvidas
   const emTratamento = contingencies.filter((c: any) => {
     if (!["em_andamento", "resolvida"].includes(c.status)) return false;
-    if (c.prazo_sla && new Date(c.prazo_sla).getTime() < Date.now()) return false; // SLA expired → goes to vencidas
+    if (c.prazo_sla && new Date(c.prazo_sla).getTime() < Date.now()) return false;
     return true;
   });
 
@@ -576,11 +576,13 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
 
   const validadas = contingencies.filter((c: any) => ["validada", "descartada"].includes(c.status));
 
-  // Devolvidas: em_andamento contingencies where current user is the avaliado or executor of the assignment
+  // Devolvidas: em_andamento contingencies where current user is the avaliado or executor
+  // Also appears in vencidas if SLA expired, but devolvidas tab shows all regardless
   const devolvidas = contingencies.filter((c: any) => {
     if (c.status !== "em_andamento") return false;
     const avaliadoId = c.assignment?.avaliado_id || c.assignment?.avaliado?.id;
     const responsavelId = c.assignment?.responsavel_id || c.assignment?.executor?.id;
+    return avaliadoId === profile?.id || responsavelId === profile?.id;
     return avaliadoId === profile?.id || responsavelId === profile?.id;
   });
 
