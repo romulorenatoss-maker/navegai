@@ -594,11 +594,15 @@ export default function OperationalContingenciasPage() {
                 min={formatDatetimeLocal(new Date())}
                 onChange={(e) => setSlaDatetime(e.target.value)}
               />
-              {slaDatetime && (
-                <p className="text-xs text-muted-foreground">
-                  Expira em: {new Date(slaDatetime).toLocaleString("pt-BR")}
-                </p>
-              )}
+              {slaDatetime && (() => {
+                const diffMs = new Date(slaDatetime).getTime() - Date.now();
+                const hoursRemaining = diffMs > 0 ? (diffMs / 3600000).toFixed(1) : "0";
+                return (
+                  <p className="text-xs text-muted-foreground">
+                    Expira em: {new Date(slaDatetime).toLocaleString("pt-BR")} ({hoursRemaining}h restantes)
+                  </p>
+                );
+              })()}
             </div>
             <div className="space-y-1.5">
               <Label>Justificativa / Instrução inicial <span className="text-destructive">*</span></Label>
