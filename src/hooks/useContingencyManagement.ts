@@ -210,7 +210,7 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
           .neq("id", contingencyId)
           .in("status", ["aberta", "em_andamento"]);
 
-        // If no more open contingencies, return assignment to aguardando_avaliacao
+        // If no more open contingencies, return assignment to aguardando_aprovacao
         if (!remaining || remaining.length === 0) {
           const { data: assignment } = await (supabase as any)
             .from("operational_assignments")
@@ -218,14 +218,14 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
             .eq("id", cont.assignment_id)
             .single();
 
-          if (assignment?.status === "contingencia") {
+          if (assignment?.status === "contingenciado" || assignment?.status === "contingencia") {
             await (supabase as any).from("operational_assignments")
-              .update({ status: "aguardando_avaliacao", updated_at: now })
+              .update({ status: "aguardando_aprovacao", updated_at: now })
               .eq("id", cont.assignment_id);
 
             await (supabase as any).from("operational_assignment_history").insert({
               assignment_id: cont.assignment_id,
-              tipo_evento: "STATUS_RETORNO_AVALIACAO",
+              tipo_evento: "STATUS_APROVACAO_FINAL",
               usuario_id: profile.id,
               etapa: "contingencia",
               detalhes_json: { motivo: "Todas as contingências resolvidas", contingency_id: contingencyId },
