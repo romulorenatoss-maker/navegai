@@ -181,7 +181,7 @@ export default function OperationalExecucaoPage() {
     }
     if (filterDate) {
       list = list.filter((a: any) => {
-        if (["concluida", "aprovada", "aguardando_avaliacao", "aguardando_aprovacao", "nao_executada", "contingencia"].includes(a.status)) return true;
+        if (["concluida", "aprovada", "aguardando_avaliacao", "aguardando_aprovacao", "nao_executada", "contingenciado", "contingencia"].includes(a.status)) return true;
         if (a.status === "devolvida") return true;
         return a.data_prevista === filterDate || (a.data_prevista < filterDate && !["concluida", "aprovada"].includes(a.status));
       });
@@ -303,11 +303,12 @@ export default function OperationalExecucaoPage() {
   const isOwner = selectedAssignment?.responsavel_id === profile?.id;
   const isAdminEditing = isAdmin && selectedAssignment && !["nao_executada"].includes(selectedAssignment.status);
   const isEditable = selectedAssignment && (
-    (["pendente", "em_andamento", "devolvida", "contingencia"].includes(selectedAssignment.status) && (isOwner || isAdmin)) ||
+    (["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status) && (isOwner || isAdmin)) ||
     isAdminEditing
   );
   const isDevolvida = selectedAssignment?.status === "devolvida";
-  const needsAdminReopen = isAdmin && selectedAssignment && ["aguardando_avaliacao", "aguardando_aprovacao", "concluida", "aprovada", "contingencia"].includes(selectedAssignment.status);
+  const isContingenciado = selectedAssignment && ["contingenciado", "contingencia"].includes(selectedAssignment.status);
+  const needsAdminReopen = isAdmin && selectedAssignment && ["aguardando_avaliacao", "aguardando_aprovacao", "concluida", "aprovada", "contingenciado", "contingencia"].includes(selectedAssignment.status);
 
   const handleStart = () => {
     if (selectedAssignment) exec.startTask.mutate({
