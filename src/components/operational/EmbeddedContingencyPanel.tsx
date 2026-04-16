@@ -68,11 +68,8 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
   const [slaDatetime, setSlaDatetime] = useState("");
   const [slaJustificativa, setSlaJustificativa] = useState("");
   const [slaPlanoAcao, setSlaPlanoAcao] = useState("");
-  const [slaObservacao, setSlaObservacao] = useState("");
   const [slaTiposEvidencia, setSlaTiposEvidencia] = useState<string[]>([]);
-  const [slaFile, setSlaFile] = useState<File | null>(null);
   const [slaTargetId, setSlaTargetId] = useState<string | null>(null);
-  const slaFileRef = useRef<HTMLInputElement>(null);
 
   // Resolve dialog
   const [resolveOpen, setResolveOpen] = useState(false);
@@ -184,9 +181,7 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
     setSlaDatetime(formatDatetimeLocal(defaultDate));
     setSlaJustificativa("");
     setSlaPlanoAcao("");
-    setSlaObservacao("");
     setSlaTiposEvidencia([]);
-    setSlaFile(null);
     setSlaTargetId(cId);
     setSlaDialogOpen(true);
   };
@@ -205,19 +200,13 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
     }
     setUploading(true);
     try {
-      let evidenciaUrl: string | undefined;
-      if (slaFile) {
-        evidenciaUrl = await uploadContingencyAttachment(slaFile, slaTargetId);
-      }
       cm.startTreatment.mutate(
         {
           contingencyId: slaTargetId,
           prazoSlaDatetime: slaDatetime,
           justificativa: slaJustificativa,
-          evidenciaUrl,
           planoAcao: slaPlanoAcao,
           tiposEvidenciaRequeridos: slaTiposEvidencia,
-          observacaoTratamento: slaObservacao,
         },
         { onSuccess: () => setSlaDialogOpen(false), onSettled: () => setUploading(false) }
       );
