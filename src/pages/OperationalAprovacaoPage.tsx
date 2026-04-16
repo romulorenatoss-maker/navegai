@@ -535,7 +535,7 @@ export default function OperationalAprovacaoPage() {
                 const resp = autoAnswers[aq.id]?.resposta || "";
                 return sum + (resp === "nao_conforme" ? -aq.pontos : 0);
               }, 0);
-              const subtotalCampos = approvalFields.reduce((sum, f) => sum + (f.aprovador_peso || f.peso || 1), 0);
+              const subtotalCampos = allVisibleFields.reduce((sum, f) => sum + (f.aprovador_peso || f.peso || 1), 0);
               const pontosTotais = autoQuestions.reduce((s, aq) => s + aq.pontos, 0) + subtotalCampos;
 
               return (
@@ -647,8 +647,9 @@ export default function OperationalAprovacaoPage() {
                     </div>
                   )}
 
-                  {/* Approval fields (aprovador_verificar) rows */}
-                  {approvalFields.map((f) => {
+                  {/* All template fields rows */}
+                  {allVisibleFields.map((f) => {
+                    const isApproverField = f.aprovador_verificar;
                     globalQuestionIdx++;
                     const idx = globalQuestionIdx;
                     const fieldPeso = f.aprovador_peso || f.peso || 1;
@@ -663,21 +664,34 @@ export default function OperationalAprovacaoPage() {
 
                     return (
                       <div key={f.id} className={cn("border-b border-border transition-colors",
-                        isConforme ? "bg-success/5" : isNaoConforme ? "bg-destructive/5" : ""
+                        isApproverField && isConforme ? "bg-success/5" : isApproverField && isNaoConforme ? "bg-destructive/5" :
+                        !isApproverField && rev?.conforme === true ? "bg-success/5" : !isApproverField && rev?.conforme === false ? "bg-destructive/5" : ""
                       )}>
                         <div className="grid grid-cols-[40px_1fr_120px_80px] items-center px-4 py-3">
                           <span className="text-sm text-muted-foreground font-medium">{idx}</span>
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-foreground">{f.aprovador_pergunta || f.label}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">Campo: {f.label}</p>
+                            <p className="text-sm font-medium text-foreground">{isApproverField ? (f.aprovador_pergunta || f.label) : f.label}</p>
+                            {isApproverField && f.aprovador_pergunta && f.aprovador_pergunta !== f.label && (
+                              <p className="text-xs text-muted-foreground mt-0.5">Campo: {f.label}</p>
+                            )}
                           </div>
                           <div className="flex items-center justify-center">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-accent text-accent-foreground border border-accent">Aprovador</span>
+                            {isApproverField ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-accent text-accent-foreground border border-accent">Aprovador</span>
+                            ) : (
+                              <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold",
+                                rev?.conforme === true ? "bg-success/10 text-success" :
+                                rev?.conforme === false ? "bg-destructive/10 text-destructive" :
+                                "bg-muted text-muted-foreground"
+                              )}>
+                                {rev?.conforme === true ? "Conforme" : rev?.conforme === false ? "Não Conforme" : "—"}
+                              </span>
+                            )}
                           </div>
                           <span className="text-sm font-bold text-foreground text-right font-tabular">{fieldPeso}</span>
                         </div>
 
-                        {/* Executor answer + Avaliador review context */}
+                        {/* Context: Executor answer + Avaliador review */}
                         <div className="px-4 pb-2">
                           <div className="ml-10 bg-muted/30 border border-border rounded-lg p-3">
                             <div className="flex items-start justify-between gap-3">
@@ -706,60 +720,64 @@ export default function OperationalAprovacaoPage() {
                           </div>
                         </div>
 
-                        {/* Approver response controls */}
-                        <div className="px-4 pb-3">
-                          <div className="ml-10">
-                            <ApprovalSegmentedControl
-                              value={currentResposta}
-                              onChange={v => approval.updateApproverAnswer(f.id, { resposta: v })}
-                              disabled={!isPendente}
-                            />
-                          </div>
-                        </div>
-
-                        <AnimatePresence>
-                          {isNaoConforme && (
-                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                              <div className="mx-4 ml-14 mb-3 bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-2">
-                                <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
-                                  <AlertTriangle className="w-3.5 h-3.5" /> Observação do aprovador
-                                </div>
-                                <Textarea
-                                  placeholder="Descreva o motivo da não conformidade..."
-                                  value={currentObs}
-                                  onChange={e => approval.updateApproverAnswer(f.id, { observacao: e.target.value })}
+                        {/* Approver response controls — only for aprovador_verificar fields */}
+                        {isApproverField && (
+                          <>
+                            <div className="px-4 pb-3">
+                              <div className="ml-10">
+                                <ApprovalSegmentedControl
+                                  value={currentResposta}
+                                  onChange={v => approval.updateApproverAnswer(f.id, { resposta: v })}
                                   disabled={!isPendente}
-                                  className="bg-card min-h-[60px] text-sm"
                                 />
                               </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
+                            </div>
 
-                        <AnimatePresence>
-                          {isConforme && (
-                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                              <div className="mx-4 ml-14 mb-3 bg-success/5 border border-success/20 rounded-lg p-3 space-y-2">
-                                <div className="flex items-center gap-1.5 text-caption text-success font-medium">
-                                  <MessageSquare className="w-3.5 h-3.5" /> Observação (opcional)
-                                </div>
-                                <Textarea
-                                  placeholder="Adicione uma observação se necessário..."
-                                  value={currentObs}
-                                  onChange={e => approval.updateApproverAnswer(f.id, { observacao: e.target.value })}
-                                  disabled={!isPendente}
-                                  className="bg-card min-h-[60px] text-sm"
-                                />
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
+                            <AnimatePresence>
+                              {isNaoConforme && (
+                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                                  <div className="mx-4 ml-14 mb-3 bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-2">
+                                    <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
+                                      <AlertTriangle className="w-3.5 h-3.5" /> Observação do aprovador
+                                    </div>
+                                    <Textarea
+                                      placeholder="Descreva o motivo da não conformidade..."
+                                      value={currentObs}
+                                      onChange={e => approval.updateApproverAnswer(f.id, { observacao: e.target.value })}
+                                      disabled={!isPendente}
+                                      className="bg-card min-h-[60px] text-sm"
+                                    />
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+
+                            <AnimatePresence>
+                              {isConforme && (
+                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                                  <div className="mx-4 ml-14 mb-3 bg-success/5 border border-success/20 rounded-lg p-3 space-y-2">
+                                    <div className="flex items-center gap-1.5 text-caption text-success font-medium">
+                                      <MessageSquare className="w-3.5 h-3.5" /> Observação (opcional)
+                                    </div>
+                                    <Textarea
+                                      placeholder="Adicione uma observação se necessário..."
+                                      value={currentObs}
+                                      onChange={e => approval.updateApproverAnswer(f.id, { observacao: e.target.value })}
+                                      disabled={!isPendente}
+                                      className="bg-card min-h-[60px] text-sm"
+                                    />
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </>
+                        )}
                       </div>
                     );
                   })}
 
                   {/* Subtotal Campos */}
-                  {approvalFields.length > 0 && (
+                  {allVisibleFields.length > 0 && (
                     <div className="grid grid-cols-[40px_1fr_120px_80px] items-center px-4 py-2 border-b border-border bg-muted/20">
                       <span />
                       <span />
