@@ -180,19 +180,53 @@ export default function OperationalExecucaoPage() {
     setSubmitAttempted(false);
   };
 
+  // When sections exist, only count fields that belong to a valid section
+  const sectionIds = useMemo(() => new Set(snapshotSections.map(s => s.id)), [snapshotSections]);
+
+  const effectiveFields = useMemo(() => {
+    if (snapshotSections.length === 0) return snapshotFields;
+    // Exclude orphan fields (section_id null or not matching any snapshot section)
+    return snapshotFields.filter(f => f.section_id && sectionIds.has(f.section_id));
+  }, [snapshotFields, snapshotSections, sectionIds]);
+
   const visibleFields = useMemo(() =>
-    snapshotFields.filter(f => evaluateVisibility(f.condicao_visibilidade, exec.answers)),
-    [snapshotFields, exec.answers]
+    effectiveFields.filter(f => evaluateVisibility(f.condicao_visibilidade, exec.answers)),
+    [effectiveFields, exec.answers]
   );
+
+  const isFilled = useCallback((f: SnapshotField) => {
+    const a = exec.answers[f.id];
+    return a && (a.valor_texto != null && a.valor_texto !== "" || a.valor_numero != null || a.valor_booleano != null || a.valor_data != null || a.valor_json != null);
+  }, [exec.answers]);
 
   const progress = useMemo(() => {
     if (!visibleFields.length) return 0;
-    const filled = visibleFields.filter(f => {
-      const a = exec.answers[f.id];
-      return a && (a.valor_texto != null && a.valor_texto !== "" || a.valor_numero != null || a.valor_booleano != null || a.valor_data != null || a.valor_json != null);
-    }).length;
+    const filled = visibleFields.filter(isFilled).length;
     return Math.round((filled / visibleFields.length) * 100);
-  }, [visibleFields, exec.answers]);
+  }, [visibleFields, isFilled]);
+
+  // Step navigation for sectioned tasks
+  const hasSections = snapshotSections.length > 1;
+  const currentSectionIndex = useMemo(() => {
+    if (!hasSections || !activeSection) return 0;
+    return snapshotSections.findIndex(s => s.id === activeSection);
+  }, [hasSections, activeSection, snapshotSections]);
+  const isLastSection = currentSectionIndex >= snapshotSections.length - 1;
+  const allFieldsFilled = progress === 100;
+
+  const goToNextSection = () => {
+    if (!isLastSection && snapshotSections[currentSectionIndex + 1]) {
+      // Auto-save before switching
+      if (exec.dirty) exec.saveDraft();
+      setActiveSection(snapshotSections[currentSectionIndex + 1].id);
+    }
+  };
+
+  const goToPrevSection = () => {
+    if (currentSectionIndex > 0 && snapshotSections[currentSectionIndex - 1]) {
+      setActiveSection(snapshotSections[currentSectionIndex - 1].id);
+    }
+  };
 
   const isOwner = selectedAssignment?.responsavel_id === profile?.id;
   const isAdminEditing = isAdmin && selectedAssignment && !["nao_executada"].includes(selectedAssignment.status);
@@ -209,16 +243,16 @@ export default function OperationalExecucaoPage() {
 
   const handleSubmit = () => {
     setSubmitAttempted(true);
-    const visibleFields = snapshotFields.filter(f =>
+    const fieldsToValidate = effectiveFields.filter(f =>
       evaluateVisibility(f.condicao_visibilidade, exec.answers)
     );
-    const errors = exec.validateAll(visibleFields, selectedAssignment?.status);
+    const errors = exec.validateAll(fieldsToValidate, selectedAssignment?.status);
     if (errors.length > 0) {
       toast.error(`Corrija ${errors.length} erro(s) antes de enviar`, { description: errors.slice(0, 3).join("; ") });
       return;
     }
     exec.submit.mutate(
-      { assignment: selectedAssignment, fields: visibleFields },
+      { assignment: selectedAssignment, fields: fieldsToValidate },
       {
         onSuccess: () => {
           setExecDialogOpen(false);
