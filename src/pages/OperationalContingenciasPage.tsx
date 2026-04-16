@@ -51,9 +51,8 @@ export default function OperationalContingenciasPage() {
   const tabData: Record<string, { list: any[]; empty: string }> = {
     abertas: { list: cm.abertas, empty: "Nenhuma contingência aberta." },
     em_tratamento: { list: cm.emTratamento, empty: "Nenhuma em tratamento." },
-    resolvidas: { list: cm.resolvidas, empty: "Nenhuma aguardando validação." },
-    validadas: { list: cm.validadas, empty: "Nenhuma validada/descartada." },
     vencidas: { list: cm.vencidas, empty: "Nenhuma contingência vencida." },
+    resolvidas: { list: cm.resolvidas, empty: "Nenhuma aguardando validação." },
   };
 
   const renderCard = (c: any) => {
