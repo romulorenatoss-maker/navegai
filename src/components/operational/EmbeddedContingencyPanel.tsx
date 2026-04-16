@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   AlertTriangle, Play, CheckCircle2, XCircle, Clock, Shield, History,
-  FileText, Trash2, Timer, ChevronDown,
+  FileText, Trash2, Timer, ChevronDown, Paperclip,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -12,7 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { CONTINGENCY_STATUS } from "@/hooks/useOperationalScoring";
-import { useContingencyManagement } from "@/hooks/useContingencyManagement";
+import { useContingencyManagement, uploadContingencyAttachment } from "@/hooks/useContingencyManagement";
+import { toast } from "sonner";
 
 function SlaCountdown({ prazoSla }: { prazoSla: string }) {
   const [now, setNow] = useState(Date.now());
@@ -48,6 +49,11 @@ function SlaCountdown({ prazoSla }: { prazoSla: string }) {
   );
 }
 
+function formatDatetimeLocal(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 interface Props {
   assignmentId: string;
 }
@@ -56,24 +62,36 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
   const { profile, isAdmin } = useAuth();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Dialogs
+  // SLA dialog
   const [slaDialogOpen, setSlaDialogOpen] = useState(false);
-  const [slaHoras, setSlaHoras] = useState(24);
+  const [slaDatetime, setSlaDatetime] = useState("");
+  const [slaJustificativa, setSlaJustificativa] = useState("");
+  const [slaFile, setSlaFile] = useState<File | null>(null);
   const [slaTargetId, setSlaTargetId] = useState<string | null>(null);
+  const slaFileRef = useRef<HTMLInputElement>(null);
+
+  // Resolve dialog
   const [resolveOpen, setResolveOpen] = useState(false);
   const [resolveObs, setResolveObs] = useState("");
+  const [resolveFile, setResolveFile] = useState<File | null>(null);
   const [resolveTargetId, setResolveTargetId] = useState<string | null>(null);
+  const resolveFileRef = useRef<HTMLInputElement>(null);
+
+  // Validate dialog
   const [validateOpen, setValidateOpen] = useState(false);
   const [validateApproved, setValidateApproved] = useState(true);
   const [validateObs, setValidateObs] = useState("");
   const [validateTargetId, setValidateTargetId] = useState<string | null>(null);
+
+  // Discard dialog
   const [discardOpen, setDiscardOpen] = useState(false);
   const [discardObs, setDiscardObs] = useState("");
   const [discardTargetId, setDiscardTargetId] = useState<string | null>(null);
 
+  const [uploading, setUploading] = useState(false);
+
   const cm = useContingencyManagement();
 
-  // Load contingencies for this assignment
   const { data: contingencies = [], isLoading } = useQuery({
     queryKey: ["embedded_contingencies", assignmentId],
     queryFn: async () => {
@@ -92,7 +110,6 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
     staleTime: 10000,
   });
 
-  // Load assignment to check validador_contingencia_id
   const { data: assignment } = useQuery({
     queryKey: ["embedded_cont_assignment", assignmentId],
     queryFn: async () => {
@@ -120,6 +137,51 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
     return false;
   };
 
+  const initSlaDialog = (cId: string) => {
+    const defaultDate = new Date(Date.now() + 24 * 3600000);
+    setSlaDatetime(formatDatetimeLocal(defaultDate));
+    setSlaJustificativa("");
+    setSlaFile(null);
+    setSlaTargetId(cId);
+    setSlaDialogOpen(true);
+  };
+
+  const handleStartTreatment = async () => {
+    if (!slaTargetId || !slaJustificativa.trim()) return;
+    setUploading(true);
+    try {
+      let evidenciaUrl: string | undefined;
+      if (slaFile) {
+        evidenciaUrl = await uploadContingencyAttachment(slaFile, slaTargetId);
+      }
+      cm.startTreatment.mutate(
+        { contingencyId: slaTargetId, prazoSlaDatetime: slaDatetime, justificativa: slaJustificativa, evidenciaUrl },
+        { onSuccess: () => setSlaDialogOpen(false), onSettled: () => setUploading(false) }
+      );
+    } catch (err: any) {
+      toast.error(err.message);
+      setUploading(false);
+    }
+  };
+
+  const handleResolve = async () => {
+    if (!resolveTargetId || !resolveObs.trim()) return;
+    setUploading(true);
+    try {
+      let evidenciaUrl: string | undefined;
+      if (resolveFile) {
+        evidenciaUrl = await uploadContingencyAttachment(resolveFile, resolveTargetId);
+      }
+      cm.resolveContingency.mutate(
+        { contingencyId: resolveTargetId, observacao: resolveObs, evidenciaUrl },
+        { onSuccess: () => setResolveOpen(false), onSettled: () => setUploading(false) }
+      );
+    } catch (err: any) {
+      toast.error(err.message);
+      setUploading(false);
+    }
+  };
+
   if (isLoading) return <p className="text-xs text-muted-foreground text-center py-3">Carregando contingências...</p>;
   if (contingencies.length === 0) return <p className="text-xs text-muted-foreground text-center py-3">Nenhuma contingência registrada.</p>;
 
@@ -140,7 +202,6 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
 
         return (
           <div key={c.id} className="border rounded-lg overflow-hidden bg-card">
-            {/* Header - always visible */}
             <button
               type="button"
               onClick={() => setExpandedId(isExpanded ? null : c.id)}
@@ -160,13 +221,10 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
               </div>
             </button>
 
-            {/* Expanded content */}
             {isExpanded && (
               <div className="border-t border-border p-3 space-y-3">
-                {/* SLA countdown */}
                 {c.prazo_sla && <SlaCountdown prazoSla={c.prazo_sla} />}
 
-                {/* Info */}
                 <div className="grid grid-cols-2 gap-2 text-[11px]">
                   <div className="p-1.5 border rounded bg-muted/30">
                     <span className="text-muted-foreground">Criado</span>
@@ -178,27 +236,25 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
                   </div>
                 </div>
 
-                {/* Resolution logs inline */}
                 <ContingencyTimeline contingencyId={c.id} />
 
-                {/* Action buttons */}
                 {userCanManage && isPending && (
                   <div className="flex flex-wrap gap-2 pt-1">
                     {c.status === "aberta" && (
                       <Button size="sm" variant="outline" className="text-blue-700 border-blue-300 hover:bg-blue-50 flex-1"
-                        disabled={cm.isSaving}
-                        onClick={() => { setSlaTargetId(c.id); setSlaHoras(24); setSlaDialogOpen(true); }}>
+                        disabled={cm.isSaving || uploading}
+                        onClick={() => initSlaDialog(c.id)}>
                         <Play className="w-3 h-3 mr-1" /> Iniciar
                       </Button>
                     )}
                     {c.status === "em_andamento" && (
-                      <Button size="sm" className="flex-1" disabled={cm.isSaving}
-                        onClick={() => { setResolveTargetId(c.id); setResolveObs(""); setResolveOpen(true); }}>
+                      <Button size="sm" className="flex-1" disabled={cm.isSaving || uploading}
+                        onClick={() => { setResolveTargetId(c.id); setResolveObs(""); setResolveFile(null); setResolveOpen(true); }}>
                         <CheckCircle2 className="w-3 h-3 mr-1" /> Resolver
                       </Button>
                     )}
                     <Button size="sm" variant="outline" className="text-muted-foreground"
-                      disabled={cm.isSaving}
+                      disabled={cm.isSaving || uploading}
                       onClick={() => { setDiscardTargetId(c.id); setDiscardObs(""); setDiscardOpen(true); }}>
                       <Trash2 className="w-3 h-3 mr-1" /> Descartar
                     </Button>
@@ -233,27 +289,51 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-sm">
-              <Timer className="w-4 h-4" /> Definir Prazo de SLA
+              <Timer className="w-4 h-4" /> Iniciar Tratamento — SLA
             </DialogTitle>
-            <DialogDescription>Informe o prazo em horas para resolver.</DialogDescription>
+            <DialogDescription>Defina prazo, justificativa e anexo opcional.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-1.5">
-            <Label className="text-sm">Prazo SLA (horas)</Label>
-            <Input type="number" min={1} max={720} value={slaHoras} onChange={(e) => setSlaHoras(Math.max(1, +e.target.value))} />
-            <p className="text-xs text-muted-foreground">
-              Expira em {new Date(Date.now() + slaHoras * 3600000).toLocaleString("pt-BR")}
-            </p>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-sm">Prazo SLA (data e hora) <span className="text-destructive">*</span></Label>
+              <Input
+                type="datetime-local"
+                value={slaDatetime}
+                min={formatDatetimeLocal(new Date())}
+                onChange={(e) => setSlaDatetime(e.target.value)}
+              />
+              {slaDatetime && (
+                <p className="text-xs text-muted-foreground">
+                  Expira: {new Date(slaDatetime).toLocaleString("pt-BR")}
+                </p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm">Justificativa <span className="text-destructive">*</span></Label>
+              <Textarea
+                value={slaJustificativa}
+                onChange={(e) => setSlaJustificativa(e.target.value)}
+                placeholder="Justifique o início do tratamento..."
+                className="min-h-[60px] text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm">Anexo <span className="text-muted-foreground text-xs">— opcional</span></Label>
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => slaFileRef.current?.click()}>
+                  <Paperclip className="w-3 h-3 mr-1" /> {slaFile ? "Trocar" : "Anexar"}
+                </Button>
+                {slaFile && <span className="text-xs text-muted-foreground truncate max-w-[140px]">{slaFile.name}</span>}
+              </div>
+              <input ref={slaFileRef} type="file" accept="image/*,video/*" className="hidden"
+                onChange={(e) => setSlaFile(e.target.files?.[0] || null)} />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setSlaDialogOpen(false)}>Cancelar</Button>
-            <Button size="sm" disabled={cm.isSaving || slaHoras < 1}
-              onClick={() => {
-                if (!slaTargetId) return;
-                cm.startTreatment.mutate({ contingencyId: slaTargetId, slaHoras }, {
-                  onSuccess: () => setSlaDialogOpen(false),
-                });
-              }}>
-              {cm.isSaving ? "Salvando..." : "Iniciar"}
+            <Button size="sm" disabled={cm.isSaving || uploading || !slaDatetime || !slaJustificativa.trim()}
+              onClick={handleStartTreatment}>
+              {cm.isSaving || uploading ? "Salvando..." : "Iniciar"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -266,21 +346,28 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
             <DialogTitle className="text-sm">Resolver Contingência</DialogTitle>
             <DialogDescription>Descreva a ação corretiva.</DialogDescription>
           </DialogHeader>
-          <div>
-            <Label className="text-xs">Ação corretiva <span className="text-destructive">*</span></Label>
-            <Textarea value={resolveObs} onChange={(e) => setResolveObs(e.target.value)}
-              placeholder="Descreva o que foi feito..." className="mt-1 min-h-[60px] text-sm" />
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs">Ação corretiva <span className="text-destructive">*</span></Label>
+              <Textarea value={resolveObs} onChange={(e) => setResolveObs(e.target.value)}
+                placeholder="Descreva o que foi feito..." className="mt-1 min-h-[60px] text-sm" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Anexo <span className="text-muted-foreground text-[10px]">— opcional</span></Label>
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => resolveFileRef.current?.click()}>
+                  <Paperclip className="w-3 h-3 mr-1" /> {resolveFile ? "Trocar" : "Anexar"}
+                </Button>
+                {resolveFile && <span className="text-xs text-muted-foreground truncate max-w-[140px]">{resolveFile.name}</span>}
+              </div>
+              <input ref={resolveFileRef} type="file" accept="image/*,video/*" className="hidden"
+                onChange={(e) => setResolveFile(e.target.files?.[0] || null)} />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setResolveOpen(false)}>Cancelar</Button>
-            <Button size="sm" disabled={cm.isSaving || !resolveObs.trim()}
-              onClick={() => {
-                if (!resolveTargetId) return;
-                cm.resolveContingency.mutate({ contingencyId: resolveTargetId, observacao: resolveObs }, {
-                  onSuccess: () => setResolveOpen(false),
-                });
-              }}>
-              {cm.isSaving ? "Salvando..." : "Confirmar"}
+            <Button size="sm" disabled={cm.isSaving || uploading || !resolveObs.trim()} onClick={handleResolve}>
+              {cm.isSaving || uploading ? "Salvando..." : "Confirmar"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -377,6 +464,12 @@ function ContingencyTimeline({ contingencyId }: { contingencyId: string }) {
             <div className="flex-1 min-w-0">
               <span className="font-medium capitalize">{log.acao.replace(/_/g, " ")}</span>
               {log.observacao && <span className="text-muted-foreground ml-1">— {log.observacao}</span>}
+              {log.evidencia_url && (
+                <a href={log.evidencia_url} target="_blank" rel="noopener noreferrer"
+                  className="text-primary underline flex items-center gap-0.5 mt-0.5">
+                  <FileText className="w-2.5 h-2.5" /> Evidência
+                </a>
+              )}
               <p className="text-muted-foreground">
                 {log.executor?.nome || "Sistema"} • {new Date(log.created_at).toLocaleString("pt-BR")}
               </p>

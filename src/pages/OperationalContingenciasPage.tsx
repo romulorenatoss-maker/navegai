@@ -1,8 +1,8 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   AlertTriangle, Play, CheckCircle2, XCircle, Clock, Shield, History,
-  ChevronLeft, FileText, RotateCcw, Trash2, Timer,
+  ChevronLeft, FileText, RotateCcw, Trash2, Timer, Paperclip, Image as ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,7 +14,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { CONTINGENCY_STATUS } from "@/hooks/useOperationalScoring";
-import { useContingencyManagement } from "@/hooks/useContingencyManagement";
+import { useContingencyManagement, uploadContingencyAttachment } from "@/hooks/useContingencyManagement";
+import { toast } from "sonner";
 
 function SlaCountdown({ prazoSla }: { prazoSla: string }) {
   const [now, setNow] = useState(Date.now());
@@ -55,6 +56,11 @@ function SlaCountdown({ prazoSla }: { prazoSla: string }) {
   );
 }
 
+function formatDatetimeLocal(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export default function OperationalContingenciasPage() {
   const { profile, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState("abertas");
@@ -64,15 +70,21 @@ export default function OperationalContingenciasPage() {
   // Action dialogs
   const [resolveOpen, setResolveOpen] = useState(false);
   const [resolveObs, setResolveObs] = useState("");
+  const [resolveFile, setResolveFile] = useState<File | null>(null);
   const [validateOpen, setValidateOpen] = useState(false);
   const [validateApproved, setValidateApproved] = useState(true);
   const [validateObs, setValidateObs] = useState("");
   const [discardOpen, setDiscardOpen] = useState(false);
   const [discardObs, setDiscardObs] = useState("");
 
-  // SLA dialog for start treatment
+  // SLA dialog
   const [slaDialogOpen, setSlaDialogOpen] = useState(false);
-  const [slaHoras, setSlaHoras] = useState(24);
+  const [slaDatetime, setSlaDatetime] = useState("");
+  const [slaJustificativa, setSlaJustificativa] = useState("");
+  const [slaFile, setSlaFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const slaFileRef = useRef<HTMLInputElement>(null);
+  const resolveFileRef = useRef<HTMLInputElement>(null);
 
   const cm = useContingencyManagement();
   const resolutionLogs = cm.useResolutionLogs(selected?.id || null);
@@ -140,6 +152,68 @@ export default function OperationalContingenciasPage() {
     );
   };
 
+  const initSlaDialog = () => {
+    const defaultDate = new Date(Date.now() + 24 * 3600000);
+    setSlaDatetime(formatDatetimeLocal(defaultDate));
+    setSlaJustificativa("");
+    setSlaFile(null);
+    setSlaDialogOpen(true);
+  };
+
+  const handleStartTreatment = async () => {
+    if (!selected || !slaJustificativa.trim()) return;
+    setUploading(true);
+    try {
+      let evidenciaUrl: string | undefined;
+      if (slaFile) {
+        evidenciaUrl = await uploadContingencyAttachment(slaFile, selected.id);
+      }
+      cm.startTreatment.mutate(
+        {
+          contingencyId: selected.id,
+          prazoSlaDatetime: slaDatetime,
+          justificativa: slaJustificativa,
+          evidenciaUrl,
+        },
+        {
+          onSuccess: () => {
+            setSlaDialogOpen(false);
+            setSelected((prev: any) => prev ? {
+              ...prev,
+              status: "em_andamento",
+              prazo_sla: new Date(slaDatetime).toISOString(),
+            } : prev);
+          },
+          onSettled: () => setUploading(false),
+        }
+      );
+    } catch (err: any) {
+      toast.error(err.message);
+      setUploading(false);
+    }
+  };
+
+  const handleResolve = async () => {
+    if (!selected || !resolveObs.trim()) return;
+    setUploading(true);
+    try {
+      let evidenciaUrl: string | undefined;
+      if (resolveFile) {
+        evidenciaUrl = await uploadContingencyAttachment(resolveFile, selected.id);
+      }
+      cm.resolveContingency.mutate(
+        { contingencyId: selected.id, observacao: resolveObs, evidenciaUrl },
+        {
+          onSuccess: () => { setResolveOpen(false); closeDetail(); },
+          onSettled: () => setUploading(false),
+        }
+      );
+    } catch (err: any) {
+      toast.error(err.message);
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
       <div className="mb-6">
@@ -204,12 +278,10 @@ export default function OperationalContingenciasPage() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {/* SLA countdown - only show when prazo_sla is set */}
             {selected?.prazo_sla && (
               <SlaCountdown prazoSla={selected.prazo_sla} />
             )}
 
-            {/* Info grid */}
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="p-2 border rounded bg-muted/30">
                 <span className="text-muted-foreground">Executor</span>
@@ -277,17 +349,16 @@ export default function OperationalContingenciasPage() {
           {(isPending || isResolved) && (
             <div className="border-t border-border p-3 bg-card safe-area-bottom">
               <div className="flex items-center gap-2 flex-wrap">
-                {/* Responsible actions */}
                 {isPending && (isMyContingency || isAdmin) && (
                   <>
                     {selected?.status === "aberta" && (
-                      <Button size="sm" variant="outline" onClick={() => { setSlaHoras(24); setSlaDialogOpen(true); }}
+                      <Button size="sm" variant="outline" onClick={initSlaDialog}
                         disabled={cm.isSaving} className="text-blue-700 border-blue-300 hover:bg-blue-50">
                         <Play className="w-3.5 h-3.5 mr-1" /> Iniciar Tratamento
                       </Button>
                     )}
                     {selected?.status === "em_andamento" && (
-                      <Button size="sm" onClick={() => { setResolveObs(""); setResolveOpen(true); }}
+                      <Button size="sm" onClick={() => { setResolveObs(""); setResolveFile(null); setResolveOpen(true); }}
                         disabled={cm.isSaving}>
                         <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Resolver
                       </Button>
@@ -300,7 +371,6 @@ export default function OperationalContingenciasPage() {
                   </>
                 )}
 
-                {/* Validator actions */}
                 {isResolved && selected && cm.canValidate(selected) && (
                   <>
                     <div className="flex-1" />
@@ -322,53 +392,67 @@ export default function OperationalContingenciasPage() {
         </DialogContent>
       </Dialog>
 
-      {/* SLA Dialog - shown before starting treatment */}
+      {/* SLA Dialog */}
       <Dialog open={slaDialogOpen} onOpenChange={(v) => { if (!v) setSlaDialogOpen(false); }}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Timer className="w-4 h-4" /> Definir Prazo de SLA
+              <Timer className="w-4 h-4" /> Iniciar Tratamento — Definir SLA
             </DialogTitle>
             <DialogDescription>
-              Informe o prazo em horas para resolver esta contingência. O cronômetro iniciará imediatamente.
+              Defina a data e hora limite para resolução e justifique o início do tratamento.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-1.5">
-            <Label>Prazo SLA (horas)</Label>
-            <Input
-              type="number"
-              min={1}
-              max={720}
-              value={slaHoras}
-              onChange={(e) => setSlaHoras(Math.max(1, +e.target.value))}
-            />
-            <p className="text-xs text-muted-foreground">
-              O SLA expirará em {new Date(Date.now() + slaHoras * 3600000).toLocaleString("pt-BR")}
-            </p>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Prazo SLA (data e hora) <span className="text-destructive">*</span></Label>
+              <Input
+                type="datetime-local"
+                value={slaDatetime}
+                min={formatDatetimeLocal(new Date())}
+                onChange={(e) => setSlaDatetime(e.target.value)}
+              />
+              {slaDatetime && (
+                <p className="text-xs text-muted-foreground">
+                  Expira em: {new Date(slaDatetime).toLocaleString("pt-BR")}
+                </p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label>Justificativa <span className="text-destructive">*</span></Label>
+              <Textarea
+                value={slaJustificativa}
+                onChange={(e) => setSlaJustificativa(e.target.value)}
+                placeholder="Descreva a justificativa para iniciar o tratamento..."
+                className="min-h-[80px]"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Anexo (foto/vídeo) <span className="text-muted-foreground text-xs">— opcional</span></Label>
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => slaFileRef.current?.click()}>
+                  <Paperclip className="w-3.5 h-3.5 mr-1" /> {slaFile ? "Trocar" : "Anexar"}
+                </Button>
+                {slaFile && (
+                  <span className="text-xs text-muted-foreground truncate max-w-[200px]">{slaFile.name}</span>
+                )}
+              </div>
+              <input
+                ref={slaFileRef}
+                type="file"
+                accept="image/*,video/*"
+                className="hidden"
+                onChange={(e) => setSlaFile(e.target.files?.[0] || null)}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSlaDialogOpen(false)}>Cancelar</Button>
             <Button
-              disabled={cm.isSaving || slaHoras < 1}
-              onClick={() => {
-                if (!selected) return;
-                cm.startTreatment.mutate(
-                  { contingencyId: selected.id, slaHoras },
-                  {
-                    onSuccess: () => {
-                      setSlaDialogOpen(false);
-                      // Refresh selected to show SLA
-                      setSelected((prev: any) => prev ? {
-                        ...prev,
-                        status: "em_andamento",
-                        prazo_sla: new Date(Date.now() + slaHoras * 3600000).toISOString(),
-                      } : prev);
-                    },
-                  }
-                );
-              }}
+              disabled={cm.isSaving || uploading || !slaDatetime || !slaJustificativa.trim()}
+              onClick={handleStartTreatment}
             >
-              {cm.isSaving ? "Salvando..." : "Iniciar com SLA"}
+              {cm.isSaving || uploading ? "Salvando..." : "Iniciar com SLA"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -381,22 +465,35 @@ export default function OperationalContingenciasPage() {
             <DialogTitle>Resolver Contingência</DialogTitle>
             <DialogDescription>Descreva a ação corretiva aplicada.</DialogDescription>
           </DialogHeader>
-          <div>
-            <Label className="text-sm">Ação corretiva <span className="text-destructive">*</span></Label>
-            <Textarea value={resolveObs} onChange={(e) => setResolveObs(e.target.value)}
-              placeholder="Descreva o que foi feito..." className="mt-1 min-h-[80px]" />
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm">Ação corretiva <span className="text-destructive">*</span></Label>
+              <Textarea value={resolveObs} onChange={(e) => setResolveObs(e.target.value)}
+                placeholder="Descreva o que foi feito..." className="mt-1 min-h-[80px]" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Anexo (foto/vídeo) <span className="text-muted-foreground text-xs">— opcional</span></Label>
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => resolveFileRef.current?.click()}>
+                  <Paperclip className="w-3.5 h-3.5 mr-1" /> {resolveFile ? "Trocar" : "Anexar"}
+                </Button>
+                {resolveFile && (
+                  <span className="text-xs text-muted-foreground truncate max-w-[200px]">{resolveFile.name}</span>
+                )}
+              </div>
+              <input
+                ref={resolveFileRef}
+                type="file"
+                accept="image/*,video/*"
+                className="hidden"
+                onChange={(e) => setResolveFile(e.target.files?.[0] || null)}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setResolveOpen(false)}>Cancelar</Button>
-            <Button disabled={cm.isSaving || !resolveObs.trim()}
-              onClick={() => {
-                if (!selected) return;
-                cm.resolveContingency.mutate(
-                  { contingencyId: selected.id, observacao: resolveObs },
-                  { onSuccess: () => { setResolveOpen(false); closeDetail(); } }
-                );
-              }}>
-              {cm.isSaving ? "Salvando..." : "Confirmar Resolução"}
+            <Button disabled={cm.isSaving || uploading || !resolveObs.trim()} onClick={handleResolve}>
+              {cm.isSaving || uploading ? "Salvando..." : "Confirmar Resolução"}
             </Button>
           </DialogFooter>
         </DialogContent>
