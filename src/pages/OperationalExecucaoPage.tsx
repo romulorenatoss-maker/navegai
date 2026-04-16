@@ -577,6 +577,13 @@ export default function OperationalExecucaoPage() {
               </div>
             )}
 
+            {/* Embedded contingency panel for contingenciado tasks */}
+            {isContingenciado && selectedAssignment && (
+              <div className="bg-muted/30 border border-border rounded-lg p-3">
+                <EmbeddedContingencyPanel assignmentId={selectedAssignment.id} />
+              </div>
+            )}
+
             {isEditable && selectedAssignment?.status !== "pendente" && (
               <>
                 {snapshotSections.length === 0 ? (
