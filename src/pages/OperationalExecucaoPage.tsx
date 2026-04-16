@@ -607,9 +607,11 @@ export default function OperationalExecucaoPage() {
 
           {isEditable && selectedAssignment?.status !== "pendente" && (
             <div className="border-t border-border p-3 flex items-center gap-2 bg-card safe-area-bottom flex-wrap">
-              <Button type="button" variant="outline" size="sm" onClick={handleSaveDraft} disabled={!exec.dirty}>
-                <Save className="w-3.5 h-3.5 mr-1" /> Rascunho
-              </Button>
+              {hasSections && currentSectionIndex > 0 && (
+                <Button type="button" variant="outline" size="sm" onClick={goToPrevSection}>
+                  <ChevronLeft className="w-3.5 h-3.5 mr-1" /> Etapa Anterior
+                </Button>
+              )}
               <div className="flex-1" />
               {needsAdminReopen ? (
                 <Button type="button" size="sm" variant="outline" onClick={async () => {
@@ -638,10 +640,15 @@ export default function OperationalExecucaoPage() {
                 }}>
                   <RotateCcw className="w-3.5 h-3.5 mr-1" /> Reabrir para Edição
                 </Button>
-              ) : null}
-              <Button type="button" size="sm" onClick={handleSubmit} disabled={exec.isSubmitting}>
-                <Send className="w-3.5 h-3.5 mr-1" /> {exec.isSubmitting ? "Enviando..." : "Enviar para Avaliação"}
-              </Button>
+              ) : hasSections && !isLastSection ? (
+                <Button type="button" size="sm" onClick={goToNextSection}>
+                  Próxima Etapa <ChevronDown className="w-3.5 h-3.5 ml-1 -rotate-90" />
+                </Button>
+              ) : (
+                <Button type="button" size="sm" onClick={handleSubmit} disabled={exec.isSubmitting || !allFieldsFilled}>
+                  <Send className="w-3.5 h-3.5 mr-1" /> {exec.isSubmitting ? "Enviando..." : "Enviar para Avaliação"}
+                </Button>
+              )}
             </div>
           )}
         </DialogContent>
