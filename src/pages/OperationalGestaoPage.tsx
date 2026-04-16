@@ -355,10 +355,10 @@ export default function OperationalGestaoPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <Button size="sm" variant="outline" className="text-green-700" onClick={() => { setApprovalDialog({ open: true, assignment: a, action: "aprovar" }); setMotivo(""); }}>
+                        <Button size="sm" variant="outline" className="text-green-700" onClick={() => { setApprovalAssignmentId(a.id); setApprovalDialog({ open: true, assignment: a, action: "aprovar" }); setMotivo(""); }}>
                           <ThumbsUp className="w-3 h-3 mr-1" />Aprovar
                         </Button>
-                        <Button size="sm" variant="outline" className="text-destructive" onClick={() => { setApprovalDialog({ open: true, assignment: a, action: "reprovar" }); setMotivo(""); }}>
+                        <Button size="sm" variant="outline" className="text-destructive" onClick={() => { setApprovalAssignmentId(a.id); setApprovalDialog({ open: true, assignment: a, action: "reprovar" }); setMotivo(""); }}>
                           <ThumbsDown className="w-3 h-3 mr-1" />Reprovar
                         </Button>
                         <Button size="sm" variant="ghost" onClick={() => { setAuditDialog({ open: true, assignmentId: a.id }); }}>
