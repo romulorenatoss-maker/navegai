@@ -70,6 +70,7 @@ export function useOperationalRealtime() {
             "exec_assignments",
             "field_answers",
             "execution_logs",
+            "contingency_management",
           ]);
         }
       )
