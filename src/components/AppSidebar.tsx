@@ -43,7 +43,7 @@ const allNavSections = [
     title: "Tarefas",
     items: [
       { to: "/checklists/dashboard", icon: PieChart, label: "Dashboard Operacional" },
-      { to: "/checklists/execucao", icon: PlayCircle, label: "Execução" },
+      { to: "/checklists/execucao", icon: PlayCircle, label: "Minhas Tarefas" },
       { to: "/checklists/contingencias", icon: AlertTriangle, label: "Contingências" },
       { to: "/checklists/aprovacao", icon: Shield, label: "Aprovação Final" },
       { to: "/checklists/gestao", icon: FolderKanban, label: "Gestão" },
