@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   AlertTriangle, Play, CheckCircle2, XCircle, Clock, Shield, History,
-  FileText, Trash2, Timer, ChevronDown, Paperclip,
+  FileText, Trash2, Timer, ChevronDown, Paperclip, Camera, Video, File,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
