@@ -175,27 +175,27 @@ export default function OperationalAprovacaoPage() {
     [selectedAssignment, approval.getBlockingReasons]
   );
 
-  // ── Build ordered items by section ──
+  // ── Build ordered items by section — ALL visible fields ──
   const orderedItems = useMemo(() => {
     const result: ({ type: "section"; data: any } | { type: "field"; data: SnapshotField })[] = [];
     if (snapshotSections.length > 0) {
       for (const section of snapshotSections) {
-        const sFields = approvalFields.filter(f => f.section_id === section.id);
+        const sFields = allVisibleFields.filter(f => f.section_id === section.id);
         if (sFields.length === 0) continue;
         result.push({ type: "section", data: section });
         for (const f of sFields) result.push({ type: "field", data: f });
       }
       // Fields without section
-      const orphans = approvalFields.filter(f => !f.section_id || !snapshotSections.find((s: any) => s.id === f.section_id));
+      const orphans = allVisibleFields.filter(f => !f.section_id || !snapshotSections.find((s: any) => s.id === f.section_id));
       if (orphans.length > 0) {
         result.push({ type: "section", data: { id: "__orphan", nome: "Geral", cor: null } });
         for (const f of orphans) result.push({ type: "field", data: f });
       }
     } else {
-      for (const f of approvalFields) result.push({ type: "field", data: f });
+      for (const f of allVisibleFields) result.push({ type: "field", data: f });
     }
     return result;
-  }, [snapshotSections, approvalFields]);
+  }, [snapshotSections, allVisibleFields]);
 
   // Section scores
   const sectionScores = useMemo(() => {
