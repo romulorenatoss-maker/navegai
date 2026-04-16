@@ -321,10 +321,14 @@ export function useAssignmentReview(assignmentId: string | null) {
         .update(updateData).eq("id", assignmentId);
       if (error) throw error;
 
-      // FIX #6: Persist motivo in audit trail
+      // Audit trail
+      const auditTipo = newStatus === "contingencia"
+        ? "STATUS_ALTERADO_PARA_CONTINGENCIA"
+        : action === "aprovar" ? "avaliacao_aprovada" : action === "reprovar" ? "avaliacao_reprovada" : "avaliacao_devolvida";
+
       await (supabase as any).from("operational_audit_trail").insert({
         assignment_id: assignmentId,
-        tipo_evento: action === "aprovar" ? "avaliacao_aprovada" : action === "reprovar" ? "avaliacao_reprovada" : "avaliacao_devolvida",
+        tipo_evento: auditTipo,
         executado_por: profile.id,
         motivo: motivo || null,
         dados_novos: {
@@ -333,6 +337,7 @@ export function useAssignmentReview(assignmentId: string | null) {
           total_reviews: reviewEntries.length,
           conformes: reviewEntries.filter(r => r.conforme).length,
           devolvidos: reviewEntries.filter(r => r.devolvido).length,
+          contingencias_criadas: newContingenciesCreated,
         },
       });
 
