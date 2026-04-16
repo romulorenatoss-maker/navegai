@@ -529,9 +529,9 @@ export default function OperationalAprovacaoPage() {
             {/* Questions by section */}
             {(() => {
               globalQuestionIdx = 0;
-              const sections: { section: any; items: Array<{ type: "field" | "auto"; data: any }> }[] = [];
+              const sections: { section: any; items: Array<{ type: "field" | "field_readonly" | "auto"; data: any }> }[] = [];
               let currentSection: any = null;
-              let currentItems: Array<{ type: "field" | "auto"; data: any }> = [];
+              let currentItems: Array<{ type: "field" | "field_readonly" | "auto"; data: any }> = [];
 
               for (const item of orderedItems) {
                 if (item.type === "section") {
