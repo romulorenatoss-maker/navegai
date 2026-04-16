@@ -201,21 +201,24 @@ export default function OperationalAprovacaoPage() {
   const sectionScores = useMemo(() => {
     const scores: Record<string, { answered: number; total: number; conformes: number; naoConformes: number }> = {};
     for (const section of snapshotSections) {
-      const sFields = approvalFields.filter(f => f.section_id === section.id);
+      const sFields = allVisibleFields.filter(f => f.section_id === section.id);
       if (sFields.length === 0) continue;
       let answered = 0, conformes = 0, naoConformes = 0;
       for (const f of sFields) {
-        const resp = approval.approverAnswers[f.id]?.resposta || approval.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.resposta || "";
-        if (resp) {
-          answered++;
-          if (resp === "conforme") conformes++;
-          if (resp === "nao_conforme") naoConformes++;
+        const isApprovalField = f.aprovador_verificar && f.aprovador_pergunta?.trim();
+        if (isApprovalField) {
+          const resp = approval.approverAnswers[f.id]?.resposta || approval.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.resposta || "";
+          if (resp) { answered++; if (resp === "conforme") conformes++; if (resp === "nao_conforme") naoConformes++; }
+        } else {
+          // Non-approval fields: count executor answer as answered
+          const ans = answersMap[f.id];
+          if (ans) { answered++; if (ans.valor_booleano === true) conformes++; if (ans.valor_booleano === false) naoConformes++; }
         }
       }
       scores[section.id] = { answered, total: sFields.length, conformes, naoConformes };
     }
     return scores;
-  }, [snapshotSections, approvalFields, approval.approverAnswers, approval.existingApprovalAnswers]);
+  }, [snapshotSections, allVisibleFields, approval.approverAnswers, approval.existingApprovalAnswers, answersMap]);
 
   const openApproval = useCallback((a: any) => {
     setSelectedAssignment(a);
