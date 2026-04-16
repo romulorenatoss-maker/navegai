@@ -18,10 +18,10 @@ import { toast } from "sonner";
 // Valid status transitions
 const VALID_TRANSITIONS: Record<string, string[]> = {
   pendente: ["em_andamento"],
-  em_andamento: ["aguardando_avaliacao"],
+  em_andamento: ["aguardando_avaliacao", "contingenciado"],
   aguardando_avaliacao: ["em_avaliacao"],
-  em_avaliacao: ["aguardando_aprovacao", "concluida", "devolvida", "contingencia", "reprovada"],
-  contingencia: ["aguardando_avaliacao"], // auto-return after all contingencies resolved
+  em_avaliacao: ["aguardando_aprovacao", "concluida", "devolvida", "contingenciado", "reprovada"],
+  contingenciado: ["aguardando_aprovacao"], // auto-return after all contingencies resolved
   aguardando_aprovacao: ["aprovada", "devolvida", "concluida"],
   devolvida: ["em_andamento"],
   // Terminal
