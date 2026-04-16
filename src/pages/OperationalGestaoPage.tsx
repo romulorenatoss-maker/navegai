@@ -100,13 +100,23 @@ export default function OperationalGestaoPage() {
   // Use official contingency management
   const contingencyMgmt = useContingencyManagement();
 
-  // Reopen mutation
+  // Reopen mutation — clears ALL evaluation/score residuals
   const reopenAssignment = useMutation({
     mutationFn: async ({ assignmentId, motivo: m }: { assignmentId: string; motivo: string }) => {
       if (!m.trim()) throw new Error("Motivo é obrigatório para reabertura.");
       const assignment = assignments.find((a: any) => a.id === assignmentId);
       const { error } = await (supabase as any).from("operational_assignments")
-        .update({ status: "em_andamento", fim_em: null, pontuacao_obtida: null })
+        .update({
+          status: "em_andamento",
+          fim_em: null,
+          pontuacao_obtida: null,
+          avaliador_inicio_em: null,
+          avaliador_fim_em: null,
+          score_executor: null,
+          score_avaliado: null,
+          score_avaliador: null,
+          score_final_ajustado: null,
+        })
         .eq("id", assignmentId);
       if (error) throw error;
       await (supabase as any).from("operational_audit_trail").insert({
@@ -131,20 +141,6 @@ export default function OperationalGestaoPage() {
       setMotivo("");
     },
     onError: (e: any) => toast.error(e.message),
-  });
-
-  // Validate contingency
-  const validateContingency = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await (supabase as any).from("operational_contingencies")
-        .update({ status: "validada", validada_por: profile?.id, validada_em: new Date().toISOString() })
-        .eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["gestao_contingencies"] });
-      toast.success("Contingência validada!");
-    },
   });
 
   // Score adjustment mutation
