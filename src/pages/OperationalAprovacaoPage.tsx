@@ -90,6 +90,7 @@ export default function OperationalAprovacaoPage() {
   const [autoOverrides, setAutoOverrides] = useState<Record<string, { resposta: ApprovalAnswer; justificativa: string }>>({});
   const [editingAutoId, setEditingAutoId] = useState<string | null>(null);
   const [editAutoJustificativa, setEditAutoJustificativa] = useState("");
+  const [tarefaExecutadaOpen, setTarefaExecutadaOpen] = useState(false);
 
   const { data: assignments = [], isLoading } = useQuery({
     queryKey: ["aprovacao_assignments", profile?.id, isAdmin],
