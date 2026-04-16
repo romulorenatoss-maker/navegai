@@ -123,6 +123,7 @@ export default function OperationalContingenciasPage() {
     const statusCfg = CONTINGENCY_STATUS[c.status] || { label: c.status, class: "bg-muted text-muted-foreground border-border" };
     const sla = cm.getSlaInfo(c);
     const isResolvedCard = c.status === "resolvida";
+    const isDevolvida = activeTab === "devolvidas";
 
     return (
       <div
@@ -133,6 +134,8 @@ export default function OperationalContingenciasPage() {
             ? "border-green-300 bg-green-50/50 dark:bg-green-950/20 dark:border-green-700"
             : sla?.isExpired
             ? "border-destructive/50 bg-destructive/5"
+            : isDevolvida
+            ? "border-orange-300 bg-orange-50/50 dark:bg-orange-950/20 dark:border-orange-700"
             : "border-border bg-card"
         }`}
       >
@@ -169,6 +172,41 @@ export default function OperationalContingenciasPage() {
             )}
           </div>
         </div>
+
+        {/* Extra info for devolvidas tab */}
+        {isDevolvida && (
+          <div className="mt-2 pt-2 border-t border-orange-200 dark:border-orange-800 space-y-1.5">
+            {c.plano_acao && (
+              <div className="text-xs">
+                <span className="text-muted-foreground font-medium">Plano de Ação:</span>
+                <p className="text-foreground mt-0.5">{c.plano_acao}</p>
+              </div>
+            )}
+            {c.justificativa_rejeicao && (
+              <div className="text-xs">
+                <span className="text-destructive font-medium">Rejeição:</span>
+                <p className="text-destructive mt-0.5">"{c.justificativa_rejeicao}"</p>
+              </div>
+            )}
+            {Array.isArray(c.tipos_evidencia_requeridos) && c.tipos_evidencia_requeridos.length > 0 && (
+              <div className="flex gap-1.5 flex-wrap">
+                {c.tipos_evidencia_requeridos.map((t: string) => (
+                  <span key={t} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 text-[9px] font-medium border border-orange-200 dark:border-orange-700">
+                    {t === "foto" && <Camera className="w-2.5 h-2.5" />}
+                    {t === "video" && <Video className="w-2.5 h-2.5" />}
+                    {t === "documento" && <File className="w-2.5 h-2.5" />}
+                    {t === "foto" ? "Foto" : t === "video" ? "Vídeo" : "Documento"}
+                  </span>
+                ))}
+              </div>
+            )}
+            {sla && (
+              <div className={`text-xs font-mono ${sla.isExpired ? "text-destructive font-bold" : "text-amber-700 dark:text-amber-400"}`}>
+                ⏱ {sla.label}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   };
