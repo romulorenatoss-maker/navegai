@@ -33,6 +33,7 @@ export default function OperationalCadastroPage() {
     queryFn: async () => {
       const { data, error } = await (supabase as any).from("operational_templates")
         .select("*, setores!operational_templates_setor_id_fkey(nome)")
+        .order("ordem", { ascending: true })
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
