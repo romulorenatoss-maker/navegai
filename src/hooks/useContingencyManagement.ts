@@ -13,7 +13,7 @@ export interface ContingencyFilters {
 const VALID_TRANSITIONS: Record<string, string[]> = {
   aberta: ["em_andamento", "descartada"],
   em_andamento: ["resolvida", "descartada"],
-  resolvida: ["validada", "aberta"], // aberta = rejection reopens
+  resolvida: ["validada", "em_andamento"], // em_andamento = rejection sends back to devolvidas
   validada: [],
   descartada: [],
 };
