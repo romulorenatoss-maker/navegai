@@ -248,23 +248,56 @@ export function useAssignmentReview(assignmentId: string | null) {
         }
       }
 
+      // Check if any contingencies were created in this round
+      const naoConformesComContingencia = reviewEntries.filter(r => {
+        if (r.conforme !== false) return false;
+        const field = fields.find(f => f.id === r.field_id);
+        return field?.gera_contingencia;
+      });
+
+      let newContingenciesCreated = 0;
+      for (const r of naoConformesComContingencia) {
+        const existingContingency = contingencies.find((c: any) => c.origin_field_id === r.field_id && !["validada", "descartada"].includes(c.status));
+        if (!existingContingency) newContingenciesCreated++;
+      }
+
+      // Check for any already-open contingencies on this assignment
+      const { data: openContingencies } = await (supabase as any)
+        .from("operational_contingencies")
+        .select("id")
+        .eq("assignment_id", assignmentId)
+        .in("status", ["aberta", "em_andamento"])
+        .limit(1);
+
+      const hasOpenContingencies = (openContingencies?.length > 0) || newContingenciesCreated > 0;
+
+      // Block approval if there are open contingencies
+      if (action === "aprovar" && hasOpenContingencies) {
+        throw new Error("Não é possível aprovar enquanto houver contingências abertas. Resolva as contingências primeiro.");
+      }
+
       // Determine new status based on action
       let newStatus: string;
       let newRodada = rodada;
-      switch (action) {
-        case "aprovar":
-          newStatus = assignment.template_snapshot?.requer_aprovacao_gestor ? "aguardando_aprovacao" : "concluida";
-          break;
-        case "devolver_parcial":
-        case "devolver_total":
-          newStatus = "devolvida";
-          newRodada = rodada + 1;
-          break;
-        case "reprovar":
-          newStatus = "reprovada";
-          break;
-        default:
-          newStatus = "concluida";
+
+      if (hasOpenContingencies && action !== "reprovar") {
+        newStatus = "contingencia";
+      } else {
+        switch (action) {
+          case "aprovar":
+            newStatus = assignment.template_snapshot?.requer_aprovacao_gestor ? "aguardando_aprovacao" : "concluida";
+            break;
+          case "devolver_parcial":
+          case "devolver_total":
+            newStatus = "devolvida";
+            newRodada = rodada + 1;
+            break;
+          case "reprovar":
+            newStatus = "reprovada";
+            break;
+          default:
+            newStatus = "concluida";
+        }
       }
 
       // Update assignment
