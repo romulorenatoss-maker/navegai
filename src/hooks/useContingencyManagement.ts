@@ -443,7 +443,7 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
 
       const { data: cont } = await (supabase as any)
         .from("operational_contingencies")
-        .select("assignment_id")
+        .select("assignment_id, origin_field_id, origin_review_id")
         .eq("id", contingencyId)
         .single();
       if (cont?.assignment_id) {
@@ -455,40 +455,50 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
           dados_novos: { contingency_id: contingencyId },
         });
 
-        const { data: remaining } = await (supabase as any)
-          .from("operational_contingencies")
-          .select("id")
-          .eq("assignment_id", cont.assignment_id)
-          .neq("id", contingencyId)
-          .in("status", ["aberta", "em_andamento", "resolvida"]);
-
-        if (!remaining || remaining.length === 0) {
-          const { data: assignment } = await (supabase as any)
-            .from("operational_assignments")
-            .select("status")
-            .eq("id", cont.assignment_id)
-            .single();
-
-          if (assignment?.status === "contingenciado" || assignment?.status === "contingencia") {
-            await (supabase as any).from("operational_assignments")
-              .update({ status: "aguardando_aprovacao", updated_at: now })
-              .eq("id", cont.assignment_id);
-
-            await (supabase as any).from("operational_assignment_history").insert({
-              assignment_id: cont.assignment_id,
-              tipo_evento: "STATUS_APROVACAO_FINAL",
-              usuario_id: profile.id,
-              etapa: "contingencia",
-              detalhes_json: { motivo: "Todas as contingências descartadas/resolvidas", contingency_id: contingencyId },
-            });
-          }
+        // Clear the origin review so the question can be answered again
+        if (cont.origin_review_id) {
+          await (supabase as any)
+            .from("operational_field_reviews")
+            .delete()
+            .eq("id", cont.origin_review_id);
         }
-      }
+
+        // Clear the field answer so it goes back to unanswered
+        if (cont.origin_field_id) {
+          await (supabase as any)
+            .from("operational_field_answers")
+            .delete()
+            .eq("assignment_id", cont.assignment_id)
+            .eq("field_id", cont.origin_field_id);
+        }
+
+        // Return the assignment to em_andamento so the evaluator can re-answer
+        await (supabase as any).from("operational_assignments")
+          .update({ status: "em_andamento", updated_at: now })
+          .eq("id", cont.assignment_id);
+
+        await (supabase as any).from("operational_assignment_history").insert({
+          assignment_id: cont.assignment_id,
+          tipo_evento: "CONTINGENCIA_DESCARTADA_RETORNO",
+          usuario_id: profile.id,
+          etapa: "contingencia",
+          detalhes_json: {
+            motivo: "Contingência descartada — pergunta liberada para nova resposta",
+            contingency_id: contingencyId,
+            origin_field_id: cont.origin_field_id,
+            origin_review_id: cont.origin_review_id,
+          },
+        });
+        }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["contingency_management"] });
       qc.invalidateQueries({ queryKey: ["embedded_contingencies"] });
-      toast.success("Contingência descartada.");
+      qc.invalidateQueries({ queryKey: ["field_reviews"] });
+      qc.invalidateQueries({ queryKey: ["field_answers"] });
+      qc.invalidateQueries({ queryKey: ["my_operational_assignments"] });
+      qc.invalidateQueries({ queryKey: ["exec_assignments"] });
+      toast.success("Contingência descartada — pergunta liberada para nova resposta.");
     },
     onError: (e: any) => toast.error(e.message),
   });
