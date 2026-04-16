@@ -200,7 +200,7 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                                           </Select>
                                           {field.gera_contingencia && <span className="text-[10px] px-1.5 py-0.5 rounded border border-orange-200 bg-orange-100 text-orange-700">Conting.</span>}
                                           {field.aprovador_verificar && <span className="text-[10px] px-1.5 py-0.5 rounded border border-primary/30 bg-primary/10 text-primary">Aprovador</span>}
-                                          {field.obrigatorio && <span className="text-[10px] text-primary font-medium">Obrig.</span>}
+                                          
                                           <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100" onClick={() => setEditingField(field)}>
                                             <Settings2 className="w-3.5 h-3.5" />
                                           </Button>
@@ -325,16 +325,6 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
             </div>
           </div>
 
-          {/* ── Regras Gerais ── */}
-          <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Regras Gerais</p>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-              <div className="flex items-center gap-2">
-                <Switch checked={local.obrigatorio} onCheckedChange={v => upd("obrigatorio", v)} />
-                <Label className="cursor-pointer text-sm">Obrigatório</Label>
-              </div>
-            </div>
-          </div>
 
           {/* ── Opções e Regras por Botão ── */}
           {temOpcoes && (
