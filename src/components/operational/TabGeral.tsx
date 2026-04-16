@@ -66,7 +66,7 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
   }, [setorMembros, colaboradores]);
 
   // Get members for avaliado sector
-  const avaliadoSetorMembers = useMemo(() => getMembrosDoSetor(form.avaliado_setor_id), [form.avaliado_setor_id, getMembrosDoSetor]);
+  
 
   const getAssignmentMode = (profileKey: keyof TemplateForm, setorKey: keyof TemplateForm): "nome" | "setor" => {
     if (form[profileKey]) return "nome";
