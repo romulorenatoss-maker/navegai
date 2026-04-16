@@ -124,6 +124,21 @@ export default function OperationalContingenciasPage() {
     const sla = cm.getSlaInfo(c);
     const isResolvedCard = c.status === "resolvida";
     const isDevolvida = activeTab === "devolvidas";
+    const isConcluida = activeTab === "concluidas";
+
+    // Calculate total execution time for concluded contingencies
+    const tempoTotal = (() => {
+      if (!isConcluida || !c.validada_em || !c.created_at) return null;
+      const diffMs = new Date(c.validada_em).getTime() - new Date(c.created_at).getTime();
+      const totalHours = Math.floor(diffMs / 3600000);
+      const totalMins = Math.floor((diffMs % 3600000) / 60000);
+      if (totalHours > 24) {
+        const days = Math.floor(totalHours / 24);
+        const remainHours = totalHours % 24;
+        return `${days}d ${remainHours}h ${totalMins}min`;
+      }
+      return `${totalHours}h ${totalMins}min`;
+    })();
 
     return (
       <div
