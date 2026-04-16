@@ -124,13 +124,28 @@ export default function OperationalContingenciasPage() {
     const sla = cm.getSlaInfo(c);
     const isResolvedCard = c.status === "resolvida";
     const isDevolvida = activeTab === "devolvidas";
+    const isConcluida = activeTab === "concluidas";
+
+    // Calculate total execution time for concluded contingencies
+    const tempoTotal = (() => {
+      if (!isConcluida || !c.validada_em || !c.created_at) return null;
+      const diffMs = new Date(c.validada_em).getTime() - new Date(c.created_at).getTime();
+      const totalHours = Math.floor(diffMs / 3600000);
+      const totalMins = Math.floor((diffMs % 3600000) / 60000);
+      if (totalHours > 24) {
+        const days = Math.floor(totalHours / 24);
+        const remainHours = totalHours % 24;
+        return `${days}d ${remainHours}h ${totalMins}min`;
+      }
+      return `${totalHours}h ${totalMins}min`;
+    })();
 
     return (
       <div
         key={c.id}
         onClick={() => openDetail(c)}
         className={`p-3 border rounded-lg cursor-pointer hover:shadow-sm transition-shadow ${
-          isResolvedCard
+          isResolvedCard || isConcluida
             ? "border-green-300 bg-green-50/50 dark:bg-green-950/20 dark:border-green-700"
             : sla?.isExpired
             ? "border-destructive/50 bg-destructive/5"
@@ -205,6 +220,14 @@ export default function OperationalContingenciasPage() {
                 ⏱ {sla.label}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Tempo total for concluídas */}
+        {isConcluida && tempoTotal && (
+          <div className="mt-2 pt-2 border-t border-green-200 dark:border-green-800 flex items-center gap-1.5 text-xs text-green-700 dark:text-green-400">
+            <Clock className="w-3.5 h-3.5" />
+            <span className="font-medium">Tempo total: {tempoTotal}</span>
           </div>
         )}
       </div>

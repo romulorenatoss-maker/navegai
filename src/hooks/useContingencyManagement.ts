@@ -574,7 +574,7 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
     return new Date(c.prazo_sla).getTime() < Date.now();
   });
 
-  const validadas = contingencies.filter((c: any) => ["validada", "descartada"].includes(c.status));
+  const validadas = contingencies.filter((c: any) => c.status === "validada");
 
   // Devolvidas: em_andamento contingencies where current user is the avaliado or executor
   // Also appears in vencidas if SLA expired, but devolvidas tab shows all regardless
