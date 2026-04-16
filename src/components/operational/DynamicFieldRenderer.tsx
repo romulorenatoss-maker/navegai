@@ -25,6 +25,14 @@ export interface SnapshotField {
   exige_evidencia: boolean;
   tipo_evidencia?: string;
   opcoes?: string[];
+  opcoes_regras?: Array<{
+    valor: string;
+    label: string;
+    cor: string;
+    requer_descricao: boolean;
+    requer_evidencia: boolean;
+    gera_contingencia: boolean;
+  }>;
   validacao?: any;
   condicao_visibilidade?: any;
   formula?: any;
