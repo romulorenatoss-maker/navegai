@@ -264,6 +264,7 @@ export function useApprovalFlow(assignmentId: string | null) {
     approverAnswers,
     updateApproverAnswer,
     saveApproverAnswers,
+    autoSaveApproverAnswer,
     pendingContingencies,
     getBlockingReasons,
     finalDecision,
