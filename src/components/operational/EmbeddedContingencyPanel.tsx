@@ -122,7 +122,7 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("operational_assignments")
-        .select("validador_contingencia_id, responsavel_id")
+        .select("validador_contingencia_id, responsavel_id, avaliado_id, avaliador_id")
         .eq("id", assignmentId)
         .single();
       if (error) throw error;
@@ -131,16 +131,47 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
     staleTime: 30000,
   });
 
+  // Avaliado can manage contingencies (attach evidence, resolve)
+  const isAvaliado = assignment?.avaliado_id === profile?.id;
+  const isResponsavel = assignment?.responsavel_id === profile?.id;
+  const isValidador = assignment?.validador_contingencia_id === profile?.id;
+  const isAvaliador = assignment?.avaliador_id === profile?.id;
+
   const canManage = (c: any): boolean => {
     if (isAdmin) return true;
     if (c.responsavel_id === profile?.id) return true;
-    if (assignment?.validador_contingencia_id === profile?.id) return true;
+    if (isValidador) return true;
+    if (isAvaliado) return true;
+    if (isAvaliador) return true;
     return false;
   };
 
-  const canValidateContingency = (c: any): boolean => {
+  const canValidateContingency = (_c: any): boolean => {
     if (isAdmin) return true;
-    if (assignment?.validador_contingencia_id === profile?.id) return true;
+    if (isValidador) return true;
+    return false;
+  };
+
+  // Avaliado can only attach evidence and resolve, not initiate treatment or discard
+  const canInitiateTreatment = (_c: any): boolean => {
+    if (isAdmin) return true;
+    if (isValidador) return true;
+    if (isAvaliador) return true;
+    return false;
+  };
+
+  const canResolve = (_c: any): boolean => {
+    if (isAdmin) return true;
+    if (isValidador) return true;
+    if (isAvaliado) return true;
+    if (isResponsavel) return true;
+    return false;
+  };
+
+  const canDiscard = (_c: any): boolean => {
+    if (isAdmin) return true;
+    if (isValidador) return true;
+    if (isAvaliador) return true;
     return false;
   };
 
