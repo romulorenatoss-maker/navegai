@@ -333,10 +333,6 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
                 <Switch checked={local.obrigatorio} onCheckedChange={v => upd("obrigatorio", v)} />
                 <Label className="cursor-pointer text-sm">Obrigatório</Label>
               </div>
-              <div className="flex items-center gap-2">
-                <Switch checked={local.impacta_score} onCheckedChange={v => upd("impacta_score", v)} />
-                <Label className="cursor-pointer text-sm">Impacta Score</Label>
-              </div>
             </div>
           </div>
 
