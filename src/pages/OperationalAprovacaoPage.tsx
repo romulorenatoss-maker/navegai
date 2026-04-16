@@ -647,8 +647,9 @@ export default function OperationalAprovacaoPage() {
                     </div>
                   )}
 
-                  {/* Approval fields (aprovador_verificar) rows */}
-                  {approvalFields.map((f) => {
+                  {/* All template fields rows */}
+                  {allVisibleFields.map((f) => {
+                    const isApproverField = f.aprovador_verificar;
                     globalQuestionIdx++;
                     const idx = globalQuestionIdx;
                     const fieldPeso = f.aprovador_peso || f.peso || 1;
