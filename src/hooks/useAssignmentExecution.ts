@@ -279,13 +279,62 @@ export function useAssignmentExecution(assignmentId: string | null) {
         return referencia > limite;
       })();
 
-      // Use centralized transition
-      await transition.mutateAsync({
-        assignmentId: assignment.id,
-        action: "enviar_avaliacao",
-        origem: "execucao",
-        extraData: { tempoGasto, atrasado },
-      });
+      // Check if any field answer triggers contingency
+      const contingencyFields: { field: SnapshotField; answer: FieldAnswer }[] = [];
+      for (const f of fields) {
+        if (!evaluateVisibility(f.condicao_visibilidade, currentAnswers)) continue;
+        const ans = currentAnswers[f.id];
+        if (!ans) continue;
+        const rules = Array.isArray(f.opcoes_regras) ? f.opcoes_regras : [];
+        let triggers = false;
+        if (f.tipo === "conforme") {
+          triggers = ans.valor_booleano === false && rules.some((r: any) => r?.valor === "nao_conforme" && r?.gera_contingencia);
+        } else if (f.tipo === "sim_nao") {
+          triggers = ans.valor_booleano === false && rules.some((r: any) => r?.valor === "nao" && r?.gera_contingencia);
+        } else if (f.tipo === "select") {
+          triggers = rules.some((r: any) => r?.label === ans.valor_texto && r?.gera_contingencia);
+        }
+        if (triggers) contingencyFields.push({ field: f, answer: ans });
+      }
+
+      if (contingencyFields.length > 0) {
+        // Create contingencies and set status to contingenciado
+        await transition.mutateAsync({
+          assignmentId: assignment.id,
+          action: "enviar_contingencia",
+          origem: "execucao",
+          extraData: { tempoGasto, atrasado },
+        });
+
+        // Set fim_em and tempo_gasto
+        await (supabase as any).from("operational_assignments")
+          .update({ fim_em: now, tempo_gasto_minutos: tempoGasto })
+          .eq("id", assignment.id);
+
+        // Create contingency records
+        for (const { field } of contingencyFields) {
+          const prazoSla = assignment.template_snapshot?.sla_horas
+            ? new Date(Date.now() + (assignment.template_snapshot.sla_horas || 24) * 3600000).toISOString()
+            : new Date(Date.now() + 24 * 3600000).toISOString();
+
+          await (supabase as any).from("operational_contingencies").insert({
+            assignment_id: assignment.id,
+            descricao: `Campo "${field.label}" gerou contingência automaticamente`,
+            responsavel_id: assignment.responsavel_id,
+            origin_field_id: field.id,
+            prazo_sla: prazoSla,
+            status: "aberta",
+          });
+        }
+      } else {
+        // Normal flow: send to evaluation
+        await transition.mutateAsync({
+          assignmentId: assignment.id,
+          action: "enviar_avaliacao",
+          origem: "execucao",
+          extraData: { tempoGasto, atrasado },
+        });
+      }
 
       // Detailed submit log
       await (supabase as any).from("operational_execution_logs").insert({
