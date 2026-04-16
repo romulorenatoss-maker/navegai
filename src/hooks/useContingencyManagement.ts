@@ -37,7 +37,7 @@ async function assertStatusTransition(contingencyId: string, expectedFrom: strin
 }
 
 async function assertIsValidador(contingencyId: string, profileId: string, isAdmin: boolean) {
-  if (isAdmin) return; // admins bypass
+  if (isAdmin) return;
   const { data, error } = await (supabase as any)
     .from("operational_contingencies")
     .select("assignment:operational_assignments!operational_contingencies_assignment_id_fkey(validador_contingencia_id)")
@@ -48,6 +48,19 @@ async function assertIsValidador(contingencyId: string, profileId: string, isAdm
   if (validadorId && validadorId !== profileId) {
     throw new Error("Somente o validador designado ou um administrador pode validar esta contingência.");
   }
+}
+
+export async function uploadContingencyAttachment(file: File, contingencyId: string): Promise<string> {
+  const ext = file.name.split(".").pop() || "bin";
+  const path = `${contingencyId}/${Date.now()}.${ext}`;
+  const { error } = await supabase.storage
+    .from("contingency-attachments")
+    .upload(path, file, { upsert: true });
+  if (error) throw new Error("Erro ao enviar anexo: " + error.message);
+  const { data: urlData } = supabase.storage
+    .from("contingency-attachments")
+    .getPublicUrl(path);
+  return urlData.publicUrl;
 }
 
 export function useContingencyManagement(filters: ContingencyFilters = {}) {
@@ -86,7 +99,6 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
     staleTime: 15000,
   });
 
-  // Load resolution logs for a specific contingency
   const useResolutionLogs = (contingencyId: string | null) =>
     useQuery({
       queryKey: ["contingency_resolution_logs", contingencyId],
@@ -103,19 +115,40 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
       enabled: !!contingencyId,
     });
 
-  // Start treatment — only from "aberta", now requires SLA hours
+  // Start treatment — accepts ISO datetime string for SLA deadline
   const startTreatment = useMutation({
-    mutationFn: async ({ contingencyId, slaHoras }: { contingencyId: string; slaHoras: number }) => {
+    mutationFn: async ({
+      contingencyId,
+      slaHoras,
+      prazoSlaDatetime,
+      justificativa,
+      evidenciaUrl,
+    }: {
+      contingencyId: string;
+      slaHoras?: number;
+      prazoSlaDatetime?: string;
+      justificativa: string;
+      evidenciaUrl?: string;
+    }) => {
       if (!profile?.id) throw new Error("Não autenticado");
-      if (!slaHoras || slaHoras < 1) throw new Error("Prazo SLA obrigatório.");
+      if (!justificativa?.trim()) throw new Error("Justificativa obrigatória.");
+
+      let prazoSla: string;
+      if (prazoSlaDatetime) {
+        prazoSla = new Date(prazoSlaDatetime).toISOString();
+      } else if (slaHoras && slaHoras >= 1) {
+        prazoSla = new Date(Date.now() + slaHoras * 3600000).toISOString();
+      } else {
+        throw new Error("Prazo SLA obrigatório.");
+      }
+
       await assertStatusTransition(contingencyId, ["aberta"], "em_andamento");
 
-      const now = new Date();
-      const prazoSla = new Date(now.getTime() + slaHoras * 3600000).toISOString();
+      const now = new Date().toISOString();
 
       const { error } = await (supabase as any)
         .from("operational_contingencies")
-        .update({ status: "em_andamento", prazo_sla: prazoSla, updated_at: now.toISOString() })
+        .update({ status: "em_andamento", prazo_sla: prazoSla, updated_at: now })
         .eq("id", contingencyId);
       if (error) throw error;
 
@@ -123,10 +156,10 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
         contingency_id: contingencyId,
         acao: "inicio_tratamento",
         executado_por: profile.id,
-        observacao: `Tratamento iniciado com SLA de ${slaHoras}h`,
+        observacao: justificativa,
+        evidencia_url: evidenciaUrl || null,
       });
 
-      // Audit trail on assignment
       const { data: cont } = await (supabase as any)
         .from("operational_contingencies")
         .select("assignment_id")
@@ -137,18 +170,19 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
           assignment_id: cont.assignment_id,
           tipo_evento: "contingencia_inicio_tratamento",
           executado_por: profile.id,
-          dados_novos: { contingency_id: contingencyId, sla_horas: slaHoras, prazo_sla: prazoSla },
+          dados_novos: { contingency_id: contingencyId, prazo_sla: prazoSla, justificativa },
         });
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["contingency_management"] });
+      qc.invalidateQueries({ queryKey: ["embedded_contingencies"] });
       toast.success("Tratamento iniciado com SLA definido.");
     },
     onError: (e: any) => toast.error(e.message),
   });
 
-  // Resolve contingency — only from "em_andamento"
+  // Resolve contingency
   const resolveContingency = useMutation({
     mutationFn: async ({
       contingencyId,
@@ -165,7 +199,6 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
 
       const now = new Date().toISOString();
 
-      // Check if resolved within SLA
       const { data: contData } = await (supabase as any)
         .from("operational_contingencies")
         .select("prazo_sla, assignment_id")
@@ -218,7 +251,6 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
           detalhes_json: { contingency_id: contingencyId, observacao },
         });
 
-        // Check if ALL contingencies for this assignment are now resolved/validated/discarded
         const { data: remaining } = await (supabase as any)
           .from("operational_contingencies")
           .select("id")
@@ -226,7 +258,6 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
           .neq("id", contingencyId)
           .in("status", ["aberta", "em_andamento"]);
 
-        // If no more open contingencies, return assignment to aguardando_aprovacao
         if (!remaining || remaining.length === 0) {
           const { data: assignment } = await (supabase as any)
             .from("operational_assignments")
@@ -253,12 +284,13 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["contingency_management"] });
       qc.invalidateQueries({ queryKey: ["contingency_resolution_logs"] });
+      qc.invalidateQueries({ queryKey: ["embedded_contingencies"] });
       toast.success("Contingência marcada como resolvida.");
     },
     onError: (e: any) => toast.error(e.message),
   });
 
-  // Validate resolution — only from "resolvida", restricted to validador/admin
+  // Validate resolution
   const validateResolution = useMutation({
     mutationFn: async ({
       contingencyId,
@@ -270,8 +302,6 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
       observacao?: string;
     }) => {
       if (!profile?.id) throw new Error("Não autenticado");
-
-      // Check validador permission
       await assertIsValidador(contingencyId, profile.id, isAdmin);
 
       const targetStatus = approved ? "validada" : "aberta";
@@ -286,7 +316,6 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
         updatePayload.validada_em = now;
         updatePayload.validada_por = profile.id;
       } else {
-        // Clear residual data on rejection
         updatePayload.resolvida_em = null;
       }
 
@@ -318,7 +347,6 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
           dados_novos: { contingency_id: contingencyId, status: targetStatus },
         });
 
-        // When approved (validated), check if all contingencies are now closed
         if (approved) {
           const { data: remaining } = await (supabase as any)
             .from("operational_contingencies")
@@ -350,7 +378,6 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
           }
         }
 
-        // When rejected (reopened), ensure assignment stays in contingenciado
         if (!approved) {
           const { data: assignment } = await (supabase as any)
             .from("operational_assignments")
@@ -369,12 +396,13 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["contingency_management"] });
       qc.invalidateQueries({ queryKey: ["contingency_resolution_logs"] });
+      qc.invalidateQueries({ queryKey: ["embedded_contingencies"] });
       toast.success("Validação registrada.");
     },
     onError: (e: any) => toast.error(e.message),
   });
 
-  // Discard contingency — only from "aberta" or "em_andamento"
+  // Discard contingency
   const discardContingency = useMutation({
     mutationFn: async ({
       contingencyId,
@@ -401,7 +429,6 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
         observacao,
       });
 
-      // Audit trail on assignment
       const { data: cont } = await (supabase as any)
         .from("operational_contingencies")
         .select("assignment_id")
@@ -416,7 +443,6 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
           dados_novos: { contingency_id: contingencyId },
         });
 
-        // Check if ALL contingencies for this assignment are now resolved/validated/discarded
         const { data: remaining } = await (supabase as any)
           .from("operational_contingencies")
           .select("id")
@@ -432,7 +458,6 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
             .single();
 
           if (assignment?.status === "contingenciado" || assignment?.status === "contingencia") {
-            const now = new Date().toISOString();
             await (supabase as any).from("operational_assignments")
               .update({ status: "aguardando_aprovacao", updated_at: now })
               .eq("id", cont.assignment_id);
@@ -450,12 +475,12 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["contingency_management"] });
+      qc.invalidateQueries({ queryKey: ["embedded_contingencies"] });
       toast.success("Contingência descartada.");
     },
     onError: (e: any) => toast.error(e.message),
   });
 
-  // SLA helpers
   const getSlaInfo = (contingency: any) => {
     if (!contingency.prazo_sla) return null;
     const now = new Date().getTime();
@@ -477,14 +502,12 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
     };
   };
 
-  // Check if current user can validate a contingency
   const canValidate = (contingency: any): boolean => {
     if (isAdmin) return true;
     const validadorId = contingency?.assignment?.validador_contingencia_id;
     return !!validadorId && validadorId === profile?.id;
   };
 
-  // Categorize
   const abertas = contingencies.filter((c: any) => c.status === "aberta");
   const emTratamento = contingencies.filter((c: any) => c.status === "em_andamento");
   const resolvidas = contingencies.filter((c: any) => c.status === "resolvida");
