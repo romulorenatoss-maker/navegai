@@ -643,33 +643,6 @@ export default function OperationalContingenciasPage() {
                 ))}
               </div>
             </div>
-            <div className="space-y-1.5">
-              <Label>Observação <span className="text-muted-foreground text-xs">— opcional</span></Label>
-              <Textarea
-                value={slaObservacao}
-                onChange={(e) => setSlaObservacao(e.target.value)}
-                placeholder="Observações adicionais..."
-                className="min-h-[50px]"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Anexo (evidência do avaliador) <span className="text-muted-foreground text-xs">— opcional</span></Label>
-              <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => slaFileRef.current?.click()}>
-                  <Paperclip className="w-3.5 h-3.5 mr-1" /> {slaFile ? "Trocar" : "Anexar"}
-                </Button>
-                {slaFile && (
-                  <span className="text-xs text-muted-foreground truncate max-w-[200px]">{slaFile.name}</span>
-                )}
-              </div>
-              <input
-                ref={slaFileRef}
-                type="file"
-                accept="image/*,video/*,.pdf,.doc,.docx"
-                className="hidden"
-                onChange={(e) => setSlaFile(e.target.files?.[0] || null)}
-              />
-            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSlaDialogOpen(false)}>Cancelar</Button>

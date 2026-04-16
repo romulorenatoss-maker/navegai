@@ -470,22 +470,6 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
                 ))}
               </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Observação <span className="text-muted-foreground text-xs">— opcional</span></Label>
-              <Textarea value={slaObservacao} onChange={(e) => setSlaObservacao(e.target.value)}
-                placeholder="Observações..." className="min-h-[40px] text-sm" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Anexo <span className="text-muted-foreground text-xs">— opcional</span></Label>
-              <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => slaFileRef.current?.click()}>
-                  <Paperclip className="w-3 h-3 mr-1" /> {slaFile ? "Trocar" : "Anexar"}
-                </Button>
-                {slaFile && <span className="text-xs text-muted-foreground truncate max-w-[140px]">{slaFile.name}</span>}
-              </div>
-              <input ref={slaFileRef} type="file" accept="image/*,video/*,.pdf,.doc,.docx" className="hidden"
-                onChange={(e) => setSlaFile(e.target.files?.[0] || null)} />
-            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setSlaDialogOpen(false)}>Cancelar</Button>
