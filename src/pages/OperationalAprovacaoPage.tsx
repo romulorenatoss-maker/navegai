@@ -451,38 +451,21 @@ export default function OperationalAprovacaoPage() {
               )}
             </div>
 
-            {/* Avaliador + Avaliado info */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3 pt-3 border-t border-border text-sm">
-              <div>
-                <span className="text-muted-foreground">Executor:</span>
-                <p className="font-medium text-foreground">{selectedAssignment?.executor?.nome || "—"}</p>
+            {/* Executor + Avaliador + Avaliado info */}
+            <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border text-xs">
+              <div className="min-w-0">
+                <span className="text-muted-foreground">Executor</span>
+                <p className="font-medium text-foreground truncate">{selectedAssignment?.executor?.nome || "—"}</p>
               </div>
-              <div>
-                <span className="text-muted-foreground">Avaliador:</span>
-                <p className="font-medium text-foreground">{selectedAssignment?.avaliador?.nome || "—"}</p>
-                {selectedAssignment?.score_avaliador != null && (
-                  <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold mt-0.5",
-                    selectedAssignment.score_avaliador >= 85 ? "bg-success/10 text-success" :
-                    selectedAssignment.score_avaliador >= 75 ? "bg-warning/10 text-warning" : "bg-destructive/10 text-destructive"
-                  )}>
-                    Nota: {Number(selectedAssignment.score_avaliador).toFixed(1)}%
-                  </span>
-                )}
+              <div className="min-w-0">
+                <span className="text-muted-foreground">Avaliador</span>
+                <p className="font-medium text-foreground truncate">{selectedAssignment?.avaliador?.nome || "—"}</p>
               </div>
-              <div>
-                <span className="text-muted-foreground">Avaliado:</span>
-                <p className="font-medium text-foreground">{selectedAssignment?.avaliado?.nome || "—"}</p>
-                {selectedAssignment?.score_avaliado != null && (
-                  <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold mt-0.5",
-                    selectedAssignment.score_avaliado >= 85 ? "bg-success/10 text-success" :
-                    selectedAssignment.score_avaliado >= 75 ? "bg-warning/10 text-warning" : "bg-destructive/10 text-destructive"
-                  )}>
-                    Nota: {Number(selectedAssignment.score_avaliado).toFixed(1)}%
-                  </span>
-                )}
-                {/* Score da aprovação (soma dos pontos) */}
+              <div className="min-w-0">
+                <span className="text-muted-foreground">Avaliado</span>
+                <p className="font-medium text-foreground truncate">{selectedAssignment?.avaliado?.nome || "—"}</p>
                 <div className="mt-1">
-                  <span className={cn("inline-flex items-center px-2 py-1 rounded text-xs font-bold border",
+                  <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold border",
                     scoreCalc.score >= 85 ? "border-success/40 bg-success/10 text-success" :
                     scoreCalc.score >= 75 ? "border-warning/40 bg-warning/10 text-warning" :
                     "border-destructive/40 bg-destructive/10 text-destructive"
@@ -493,13 +476,27 @@ export default function OperationalAprovacaoPage() {
               </div>
             </div>
 
-            {/* Task info */}
-            <div className="flex flex-col gap-1.5 mt-3 pt-3 border-t border-border">
-              <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
-                <span>Data Prevista:</span><span className="text-foreground">{selectedAssignment?.data_prevista || "—"}</span>
-                <span>Início:</span><span className="text-foreground">{selectedAssignment?.inicio_em ? new Date(selectedAssignment.inicio_em).toLocaleString("pt-BR") : "—"}</span>
-                <span>Fim:</span><span className="text-foreground">{selectedAssignment?.fim_em ? new Date(selectedAssignment.fim_em).toLocaleString("pt-BR") : "—"}</span>
-                <span>Tempo Gasto:</span><span className="text-foreground">{selectedAssignment?.tempo_gasto_minutos ? `${selectedAssignment.tempo_gasto_minutos} min` : "—"}</span>
+            {/* Task info — compact responsive grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-1.5 mt-3 pt-3 border-t border-border text-xs">
+              <div className="flex flex-col">
+                <span className="text-muted-foreground">Data Prevista</span>
+                <span className="text-foreground font-medium">
+                  {selectedAssignment?.data_prevista
+                    ? new Date(selectedAssignment.data_prevista + "T12:00:00").toLocaleDateString("pt-BR")
+                    : "—"}
+                </span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-muted-foreground">Início</span>
+                <span className="text-foreground font-medium">{selectedAssignment?.inicio_em ? new Date(selectedAssignment.inicio_em).toLocaleString("pt-BR") : "—"}</span>
+              </div>
+              <div className="flex flex-col sm:text-right">
+                <span className="text-muted-foreground">Fim</span>
+                <span className="text-foreground font-medium">{selectedAssignment?.fim_em ? new Date(selectedAssignment.fim_em).toLocaleString("pt-BR") : "—"}</span>
+              </div>
+              <div className="flex flex-col sm:text-right">
+                <span className="text-muted-foreground">Tempo Gasto</span>
+                <span className="text-foreground font-medium">{selectedAssignment?.tempo_gasto_minutos ? `${selectedAssignment.tempo_gasto_minutos} min` : "—"}</span>
               </div>
             </div>
           </div>
