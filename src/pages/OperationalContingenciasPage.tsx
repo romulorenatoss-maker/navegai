@@ -576,13 +576,13 @@ export default function OperationalContingenciasPage() {
 
       {/* SLA Dialog */}
       <Dialog open={slaDialogOpen} onOpenChange={(v) => { if (!v) setSlaDialogOpen(false); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Timer className="w-4 h-4" /> Iniciar Tratamento — Definir SLA
             </DialogTitle>
             <DialogDescription>
-              Defina a data e hora limite para resolução e justifique o início do tratamento.
+              Defina prazo, plano de ação e tipos de evidência requeridos do avaliado.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -601,16 +601,55 @@ export default function OperationalContingenciasPage() {
               )}
             </div>
             <div className="space-y-1.5">
-              <Label>Justificativa <span className="text-destructive">*</span></Label>
+              <Label>Justificativa / Instrução inicial <span className="text-destructive">*</span></Label>
               <Textarea
                 value={slaJustificativa}
                 onChange={(e) => setSlaJustificativa(e.target.value)}
-                placeholder="Descreva a justificativa para iniciar o tratamento..."
+                placeholder="Descreva a justificativa e instrução para o avaliado resolver..."
                 className="min-h-[80px]"
+              />
+              <p className="text-[10px] text-muted-foreground">Esta justificativa será enviada ao avaliado junto com a devolução.</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Plano de Ação <span className="text-destructive">*</span></Label>
+              <Textarea
+                value={slaPlanoAcao}
+                onChange={(e) => setSlaPlanoAcao(e.target.value)}
+                placeholder="Descreva qual plano de ação será tomado para resolver..."
+                className="min-h-[60px]"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Tipos de evidência requeridos <span className="text-destructive">*</span></Label>
+              <p className="text-[10px] text-muted-foreground">Selecione quais tipos de evidência o avaliado deve anexar para resolver.</p>
+              <div className="flex flex-col gap-2">
+                {[
+                  { value: "foto", label: "Foto", icon: <Camera className="w-4 h-4" /> },
+                  { value: "video", label: "Vídeo", icon: <Video className="w-4 h-4" /> },
+                  { value: "documento", label: "Documento", icon: <File className="w-4 h-4" /> },
+                ].map((opt) => (
+                  <label key={opt.value} className="flex items-center gap-2 cursor-pointer p-2 rounded border hover:bg-muted/50 transition-colors">
+                    <Checkbox
+                      checked={slaTiposEvidencia.includes(opt.value)}
+                      onCheckedChange={() => toggleEvidenceType(opt.value)}
+                    />
+                    {opt.icon}
+                    <span className="text-sm">{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Observação <span className="text-muted-foreground text-xs">— opcional</span></Label>
+              <Textarea
+                value={slaObservacao}
+                onChange={(e) => setSlaObservacao(e.target.value)}
+                placeholder="Observações adicionais..."
+                className="min-h-[50px]"
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Anexo (foto/vídeo) <span className="text-muted-foreground text-xs">— opcional</span></Label>
+              <Label>Anexo (evidência do avaliador) <span className="text-muted-foreground text-xs">— opcional</span></Label>
               <div className="flex items-center gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={() => slaFileRef.current?.click()}>
                   <Paperclip className="w-3.5 h-3.5 mr-1" /> {slaFile ? "Trocar" : "Anexar"}
@@ -622,7 +661,7 @@ export default function OperationalContingenciasPage() {
               <input
                 ref={slaFileRef}
                 type="file"
-                accept="image/*,video/*"
+                accept="image/*,video/*,.pdf,.doc,.docx"
                 className="hidden"
                 onChange={(e) => setSlaFile(e.target.files?.[0] || null)}
               />
@@ -631,51 +670,10 @@ export default function OperationalContingenciasPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setSlaDialogOpen(false)}>Cancelar</Button>
             <Button
-              disabled={cm.isSaving || uploading || !slaDatetime || !slaJustificativa.trim()}
+              disabled={cm.isSaving || uploading || !slaDatetime || !slaJustificativa.trim() || !slaPlanoAcao.trim() || slaTiposEvidencia.length === 0}
               onClick={handleStartTreatment}
             >
               {cm.isSaving || uploading ? "Salvando..." : "Iniciar com SLA"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Resolve Dialog */}
-      <Dialog open={resolveOpen} onOpenChange={(v) => { if (!v) setResolveOpen(false); }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Resolver Contingência</DialogTitle>
-            <DialogDescription>Descreva a ação corretiva aplicada.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label className="text-sm">Ação corretiva <span className="text-destructive">*</span></Label>
-              <Textarea value={resolveObs} onChange={(e) => setResolveObs(e.target.value)}
-                placeholder="Descreva o que foi feito..." className="mt-1 min-h-[80px]" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Anexo (foto/vídeo) <span className="text-muted-foreground text-xs">— opcional</span></Label>
-              <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => resolveFileRef.current?.click()}>
-                  <Paperclip className="w-3.5 h-3.5 mr-1" /> {resolveFile ? "Trocar" : "Anexar"}
-                </Button>
-                {resolveFile && (
-                  <span className="text-xs text-muted-foreground truncate max-w-[200px]">{resolveFile.name}</span>
-                )}
-              </div>
-              <input
-                ref={resolveFileRef}
-                type="file"
-                accept="image/*,video/*"
-                className="hidden"
-                onChange={(e) => setResolveFile(e.target.files?.[0] || null)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setResolveOpen(false)}>Cancelar</Button>
-            <Button disabled={cm.isSaving || uploading || !resolveObs.trim()} onClick={handleResolve}>
-              {cm.isSaving || uploading ? "Salvando..." : "Confirmar Resolução"}
             </Button>
           </DialogFooter>
         </DialogContent>
