@@ -896,10 +896,12 @@ export default function OperationalAprovacaoPage() {
                   disabled={blockingReasons.length > 0 || progressPercent < 100} className="press-effect">
                   <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Aprovar Final
                 </Button>
+              </div>
+              {progressPercent < 100 && (
+                <p className="mt-2 text-[10px] text-muted-foreground text-right">Responda todas as perguntas (100%) para habilitar a aprovação final.</p>
               )}
             </div>
-          </div>
-        )}
+          )}
         </DialogContent>
       </Dialog>
 
