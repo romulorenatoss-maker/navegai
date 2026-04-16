@@ -868,51 +868,6 @@ export default function OperationalAprovacaoPage() {
                 </div>
               );
             })()}
-            {/* Contingencies summary */}
-            {approval.contingencies.length > 0 && (
-              <div className="bg-card border border-border rounded-lg shadow-card">
-                <div className="p-4 border-b border-border flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-warning" />
-                  <h3 className="text-sm font-semibold text-foreground">Contingências ({approval.contingencies.length})</h3>
-                </div>
-                <div className="divide-y divide-border">
-                  {approval.contingencies.map((c: any) => (
-                    <div key={c.id} className="flex items-center justify-between gap-2 px-4 py-3 text-xs">
-                      <span className="truncate">{c.descricao}</span>
-                      <span className={cn("shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium border", CONTINGENCY_STATUS[c.status]?.class || "")}>
-                        {CONTINGENCY_STATUS[c.status]?.label || c.status}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Audit trail */}
-            <div className="bg-card border border-border rounded-lg shadow-card">
-              <div className="p-4 border-b border-border flex items-center gap-2">
-                <History className="w-4 h-4 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground">Histórico</h3>
-              </div>
-              <div className="p-4">
-                {approval.auditTrail.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-2">Nenhum registro.</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {approval.auditTrail.map((evt: any) => (
-                      <div key={evt.id} className="flex items-start gap-2 text-xs">
-                        <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                        <div>
-                          <span className="font-medium">{AUDIT_EVENT_LABELS[evt.tipo_evento] || evt.tipo_evento}</span>
-                          {evt.motivo && <span className="text-muted-foreground ml-1">— "{evt.motivo}"</span>}
-                          <p className="text-muted-foreground">{evt.executor?.nome || "Sistema"} • {new Date(evt.created_at).toLocaleString("pt-BR")}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
 
           {/* ── Action Bar ── */}
