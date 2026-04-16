@@ -6,20 +6,6 @@ import { toast } from "sonner";
 import { SnapshotField } from "@/components/operational/DynamicFieldRenderer";
 import { useOperationalTransition } from "@/hooks/useOperationalTransition";
 
-export interface ScoreBreakdown {
-  executor: { pontualidade: number; conformidade: number; evidencia: number; sla: number; final: number } | null;
-  avaliado: { pesoTotal: number; pesoAcertado: number; final: number } | null;
-  avaliador: { prazo: number; completude: number; final: number } | null;
-  finalConsolidado: number;
-}
-
-export interface OverrideDraft {
-  tipo: string;
-  score_original: number;
-  score_ajustado: number;
-  justificativa: string;
-}
-
 export interface ApproverAnswerDraft {
   field_id: string;
   resposta: string; // conforme | nao_conforme | na
@@ -31,7 +17,6 @@ export function useApprovalFlow(assignmentId: string | null) {
   const { profile } = useAuth();
   const qc = useQueryClient();
   const { transition } = useOperationalTransition();
-  const [overrideDraft, setOverrideDraft] = useState<OverrideDraft | null>(null);
   const [approverAnswers, setApproverAnswers] = useState<Record<string, ApproverAnswerDraft>>({});
 
   // Load field answers
@@ -73,20 +58,6 @@ export function useApprovalFlow(assignmentId: string | null) {
     enabled: !!assignmentId,
   });
 
-  // Load existing overrides
-  const { data: existingOverrides = [] } = useQuery({
-    queryKey: ["approval_overrides", assignmentId],
-    queryFn: async () => {
-      if (!assignmentId) return [];
-      const { data, error } = await (supabase as any).from("operational_score_overrides")
-        .select("*, aprovador:profiles!operational_score_overrides_aprovador_id_fkey(nome)")
-        .eq("assignment_id", assignmentId).order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!assignmentId,
-  });
-
   // Load audit trail
   const { data: auditTrail = [] } = useQuery({
     queryKey: ["approval_audit_trail", assignmentId],
@@ -114,35 +85,11 @@ export function useApprovalFlow(assignmentId: string | null) {
     enabled: !!assignmentId,
   });
 
-  // Load contingency resolution logs for timeline
-  const { data: contingencyLogs = [] } = useQuery({
-    queryKey: ["approval_contingency_logs", assignmentId],
-    queryFn: async () => {
-      if (!assignmentId) return [];
-      // Get contingency IDs for this assignment
-      const contIds = contingencies.map((c: any) => c.id);
-      if (contIds.length === 0) return [];
-      const { data, error } = await (supabase as any).from("operational_contingency_resolution_logs")
-        .select("*, executor:profiles!operational_contingency_resolution_logs_executado_por_fkey(nome)")
-        .in("contingency_id", contIds).order("created_at", { ascending: true });
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!assignmentId && contingencies.length > 0,
-  });
-
-  // Hydrate approver answers from existing
-  useState(() => {
-    // This will be handled via useEffect below
-  });
-
   // Check pending contingencies
   const pendingContingencies = useMemo(() =>
     contingencies.filter((c: any) => !["validada", "descartada"].includes(c.status)),
     [contingencies]
   );
-
-  const canAnswerApproverQuestions = pendingContingencies.length === 0;
 
   // Update approver answer draft
   const updateApproverAnswer = useCallback((fieldId: string, patch: Partial<ApproverAnswerDraft>) => {
@@ -163,9 +110,8 @@ export function useApprovalFlow(assignmentId: string | null) {
   const saveApproverAnswers = useMutation({
     mutationFn: async (fields: SnapshotField[]) => {
       if (!profile?.id || !assignmentId) throw new Error("Não autenticado");
-      if (!canAnswerApproverQuestions) throw new Error("Existem contingências pendentes. Resolva-as antes de responder.");
 
-      const approverFields = fields.filter(f => f.aprovador_pergunta);
+      const approverFields = fields.filter(f => f.aprovador_verificar && f.aprovador_pergunta);
       for (const f of approverFields) {
         const draft = approverAnswers[f.id];
         if (!draft) continue;
@@ -202,87 +148,7 @@ export function useApprovalFlow(assignmentId: string | null) {
     onError: (e: any) => toast.error(e.message),
   });
 
-  // Calculate score breakdown from snapshot + reviews
-  const calculateBreakdown = useCallback((assignment: any, snapshotFields: SnapshotField[]): ScoreBreakdown => {
-    // Executor score from assignment columns
-    const executor = {
-      pontualidade: Number(assignment.score_executor) || 0,
-      conformidade: 0,
-      evidencia: 0,
-      sla: 0,
-      final: Number(assignment.score_executor) || 0,
-    };
-
-    // Avaliado score: weighted from reviews
-    const latestReviews: Record<string, any> = {};
-    for (const r of fieldReviews) {
-      if (!latestReviews[r.field_id]) latestReviews[r.field_id] = r;
-    }
-
-    let pesoTotal = 0;
-    let pesoAcertado = 0;
-    for (const field of snapshotFields) {
-      const rev = latestReviews[field.id];
-      const peso = field.peso ?? 1;
-      const notaMax = field.nota_maxima ?? 10;
-      pesoTotal += peso * notaMax;
-      if (rev?.conforme === true) {
-        pesoAcertado += peso * notaMax;
-      }
-    }
-
-    const avaliadoFinal = pesoTotal > 0 ? Math.round((pesoAcertado / pesoTotal) * 100) : 0;
-    const avaliado = { pesoTotal, pesoAcertado, final: avaliadoFinal };
-
-    // Avaliador score from assignment columns
-    const avaliador = {
-      prazo: 0,
-      completude: 0,
-      final: Number(assignment.score_avaliador) || 0,
-    };
-
-    // Final consolidated: use score_final_ajustado if exists (nullish check to respect 0), else average
-    const calculado = Math.round((executor.final + avaliado.final + avaliador.final) / 3);
-    const finalConsolidado = assignment.score_final_ajustado != null
-      ? Number(assignment.score_final_ajustado)
-      : calculado;
-
-    return { executor, avaliado, avaliador, finalConsolidado };
-  }, [fieldReviews]);
-
-  // Per-section score breakdown
-  const sectionScores = useCallback((snapshotFields: SnapshotField[], sections: any[]) => {
-    const latestReviews: Record<string, any> = {};
-    for (const r of fieldReviews) {
-      if (!latestReviews[r.field_id]) latestReviews[r.field_id] = r;
-    }
-
-    return sections.map((s: any) => {
-      const sFields = snapshotFields.filter(f => f.section_id === s.id);
-      let pesoTotal = 0;
-      let pesoAcertado = 0;
-      let conformes = 0;
-      let naoConformes = 0;
-
-      for (const f of sFields) {
-        const rev = latestReviews[f.id];
-        const peso = f.peso ?? 1;
-        const notaMax = f.nota_maxima ?? 10;
-        pesoTotal += peso * notaMax;
-        if (rev?.conforme === true) {
-          pesoAcertado += peso * notaMax;
-          conformes++;
-        } else if (rev?.conforme === false) {
-          naoConformes++;
-        }
-      }
-
-      const score = pesoTotal > 0 ? Math.round((pesoAcertado / pesoTotal) * 100) : 0;
-      return { ...s, score, conformes, naoConformes, totalFields: sFields.length };
-    });
-  }, [fieldReviews]);
-
-  // Check blocking conditions
+  // Check blocking conditions — only count aprovador_verificar fields
   const getBlockingReasons = useCallback((assignment: any): string[] => {
     const reasons: string[] = [];
     const snapshot = assignment?.template_snapshot;
@@ -295,66 +161,26 @@ export function useApprovalFlow(assignmentId: string | null) {
       }
     }
 
-    // Block if review is incomplete
+    // Block if approval questions are unanswered — only check aprovador_verificar fields
     const snapshotFields: SnapshotField[] = snapshot?.fields || [];
-    const latestReviews: Record<string, any> = {};
-    for (const r of fieldReviews) {
-      if (!latestReviews[r.field_id]) latestReviews[r.field_id] = r;
-    }
-    const unreviewedRequired = snapshotFields.filter(f => f.obrigatorio !== false && !latestReviews[f.id]);
-    if (unreviewedRequired.length > 0) {
-      reasons.push(`${unreviewedRequired.length} campo(s) obrigatório(s) sem avaliação.`);
+    const approvalFields = snapshotFields.filter(f => f.aprovador_verificar && f.aprovador_pergunta?.trim());
+    const unanswered = approvalFields.filter(f => {
+      const existing = existingApprovalAnswers.find((a: any) => a.field_id === f.id);
+      const draft = approverAnswers[f.id];
+      return !draft?.resposta && !existing?.resposta;
+    });
+    if (unanswered.length > 0) {
+      reasons.push(`${unanswered.length} pergunta(s) de aprovação sem resposta.`);
     }
 
     return reasons;
-  }, [contingencies, fieldReviews]);
-
-  // Save override
-  const saveOverride = useMutation({
-    mutationFn: async (draft: OverrideDraft) => {
-      if (!profile?.id || !assignmentId) throw new Error("Não autenticado");
-
-      const { error } = await (supabase as any).from("operational_score_overrides").insert({
-        assignment_id: assignmentId,
-        tipo: draft.tipo,
-        score_original: draft.score_original,
-        score_ajustado: draft.score_ajustado,
-        diferenca: draft.score_ajustado - draft.score_original,
-        justificativa: draft.justificativa,
-        aprovador_id: profile.id,
-      });
-      if (error) throw error;
-
-      // Update assignment with adjusted score
-      await (supabase as any).from("operational_assignments")
-        .update({ score_final_ajustado: draft.score_ajustado })
-        .eq("id", assignmentId);
-
-      // Audit trail
-      await (supabase as any).from("operational_audit_trail").insert({
-        assignment_id: assignmentId,
-        tipo_evento: "ajuste_score",
-        executado_por: profile.id,
-        motivo: draft.justificativa,
-        dados_anteriores: { score: draft.score_original },
-        dados_novos: { score: draft.score_ajustado, tipo: draft.tipo },
-      });
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["approval_overrides"] });
-      qc.invalidateQueries({ queryKey: ["aprovacao_assignments"] });
-      toast.success("Override de score aplicado!");
-      setOverrideDraft(null);
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
+  }, [contingencies, existingApprovalAnswers, approverAnswers]);
 
   // Final decision
   const finalDecision = useMutation({
-    mutationFn: async ({ assignment, action, motivo, scoreFinal }: { assignment: any; action: "aprovar" | "reprovar_devolver" | "encerrar"; motivo?: string; scoreFinal?: number }) => {
+    mutationFn: async ({ assignment, action, motivo }: { assignment: any; action: "aprovar" | "reprovar_devolver" | "encerrar"; motivo?: string }) => {
       if (!profile?.id || !assignmentId) throw new Error("Não autenticado");
 
-      // Backend-side blocking enforcement
       const blockReasons = getBlockingReasons(assignment);
       if (action === "aprovar" && blockReasons.length > 0) {
         throw new Error(`Bloqueado: ${blockReasons.join(" ")}`);
@@ -363,7 +189,13 @@ export function useApprovalFlow(assignmentId: string | null) {
         throw new Error("Justificativa obrigatória para esta ação.");
       }
 
-      // Map to centralized transition action
+      // Save any pending approver answers before final decision
+      const snapshotFields: SnapshotField[] = assignment.template_snapshot?.fields || [];
+      const approverFields = snapshotFields.filter(f => f.aprovador_verificar && f.aprovador_pergunta);
+      if (approverFields.length > 0 && Object.keys(approverAnswers).length > 0) {
+        await saveApproverAnswers.mutateAsync(snapshotFields);
+      }
+
       let transitionAction: "aprovar_final" | "reprovar_devolver_final" | "encerrar_final";
       switch (action) {
         case "aprovar": transitionAction = "aprovar_final"; break;
@@ -371,55 +203,6 @@ export function useApprovalFlow(assignmentId: string | null) {
         case "encerrar": transitionAction = "encerrar_final"; break;
       }
 
-      // Calculate score if not provided, applying auto-question penalties
-      let finalScore = scoreFinal;
-      if ((action === "aprovar" || action === "encerrar") && finalScore == null) {
-        const existingOverride = assignment.score_final_ajustado;
-        if (existingOverride == null) {
-          let baseScore = Math.round(
-            ((Number(assignment.score_executor) || 0) +
-             (Number(assignment.score_avaliado) || 0) +
-             (Number(assignment.score_avaliador) || 0)) / 3
-          );
-
-          // Apply auto-question penalties from template snapshot
-          const snapshot = assignment.template_snapshot;
-          if (snapshot?.habilitar_perguntas_automaticas !== false && contingencies.length > 0) {
-            // Penalty: "Houve contingência nesta tarefa?" = SIM → deduct penalidade_contingencia
-            const penContingencia = Number(snapshot?.penalidade_contingencia) || 0;
-            if (penContingencia > 0) {
-              baseScore -= penContingencia;
-            }
-
-            // Penalty: "Contingência resolvida dentro do prazo?" 
-            const resolved = contingencies.filter((c: any) => c.resolvida_em);
-            const allInTime = resolved.length > 0 && resolved.every((c: any) =>
-              c.dentro_prazo === true || (c.prazo_sla && new Date(c.resolvida_em) <= new Date(c.prazo_sla))
-            );
-            if (!allInTime) {
-              const penSla = Number(snapshot?.penalidade_sla_contingencia) || 0;
-              if (penSla > 0) {
-                baseScore -= penSla;
-              }
-            }
-
-            // Penalty: "Tarefa executada fora do prazo?"
-            const foraDoPrazo = assignment.fim_em && assignment.horario_limite && assignment.data_prevista
-              ? new Date(assignment.fim_em) > new Date(assignment.data_prevista + "T" + assignment.horario_limite)
-              : false;
-            if (foraDoPrazo) {
-              const penPrazo = Number(snapshot?.penalidade_fora_prazo) || 0;
-              if (penPrazo > 0) {
-                baseScore -= penPrazo;
-              }
-            }
-          }
-
-          finalScore = Math.max(0, baseScore);
-        }
-      }
-
-      // Use centralized transition
       await transition.mutateAsync({
         assignmentId,
         action: transitionAction,
@@ -427,7 +210,6 @@ export function useApprovalFlow(assignmentId: string | null) {
         origem: "aprovacao_final",
         extraData: {
           aprovadorId: profile.id,
-          scoreFinal: finalScore,
           rodadaAtual: assignment.rodada_atual,
         },
       });
@@ -450,22 +232,14 @@ export function useApprovalFlow(assignmentId: string | null) {
     fieldAnswers,
     fieldReviews,
     contingencies,
-    contingencyLogs,
-    existingOverrides,
     existingApprovalAnswers,
     auditTrail,
-    overrideDraft,
-    setOverrideDraft,
     approverAnswers,
     updateApproverAnswer,
     saveApproverAnswers,
     pendingContingencies,
-    canAnswerApproverQuestions,
-    calculateBreakdown,
-    sectionScores,
     getBlockingReasons,
-    saveOverride,
     finalDecision,
-    isSaving: saveOverride.isPending || finalDecision.isPending || saveApproverAnswers.isPending,
+    isSaving: finalDecision.isPending || saveApproverAnswers.isPending,
   };
 }

@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   ChevronLeft, Play, CheckCircle2, XCircle, RotateCcw, AlertTriangle,
-  Clock, ExternalLink, History, User, Users,
+  ExternalLink, History, User, Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,58 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { STATUS_CONFIG, CONTINGENCY_STATUS, AUDIT_EVENT_LABELS } from "@/hooks/useOperationalScoring";
 import { AssignmentCard } from "@/components/operational/AssignmentCard";
 import { SnapshotField, evaluateVisibility } from "@/components/operational/DynamicFieldRenderer";
-import { useAssignmentReview, FieldReviewDraft } from "@/hooks/useAssignmentReview";
-
-// ── Auto-question definitions (same as Aprovação) ──
-interface AutoQuestion {
-  id: string;
-  label: string;
-  autoValue: boolean;
-  penalty: number;
-  detail?: string;
-}
-
-function buildAutoQuestions(assignment: any, snapshot: any, contingencies: any[]): AutoQuestion[] {
-  if (snapshot?.habilitar_perguntas_automaticas === false) return [];
-  const questions: AutoQuestion[] = [];
-
-  const foraDoPrazo = assignment?.fim_em && assignment?.horario_limite && assignment?.data_prevista
-    ? new Date(assignment.fim_em) > new Date(assignment.data_prevista + "T" + assignment.horario_limite)
-    : false;
-  questions.push({
-    id: "auto_fora_prazo",
-    label: "Tarefa executada fora do prazo?",
-    autoValue: foraDoPrazo,
-    penalty: Number(snapshot?.penalidade_fora_prazo) || 0,
-    detail: foraDoPrazo
-      ? `Concluída: ${new Date(assignment.fim_em).toLocaleString("pt-BR")} | Limite: ${assignment.data_prevista} ${assignment.horario_limite}`
-      : undefined,
-  });
-
-  if (contingencies.length > 0) {
-    questions.push({
-      id: "auto_contingencia",
-      label: "Houve contingência nesta tarefa?",
-      autoValue: true,
-      penalty: Number(snapshot?.penalidade_contingencia) || 0,
-      detail: `${contingencies.length} contingência(s)`,
-    });
-
-    const resolved = contingencies.filter((c: any) => c.resolvida_em);
-    const allInTime = resolved.length > 0 && resolved.every((c: any) =>
-      c.dentro_prazo === true || (c.prazo_sla && new Date(c.resolvida_em) <= new Date(c.prazo_sla))
-    );
-    questions.push({
-      id: "auto_sla_contingencia",
-      label: "Contingência resolvida dentro do prazo?",
-      autoValue: allInTime,
-      penalty: Number(snapshot?.penalidade_sla_contingencia) || 0,
-      detail: allInTime ? "Todas dentro do SLA" : "Alguma fora do SLA",
-    });
-  }
-
-  return questions;
-}
+import { useAssignmentReview } from "@/hooks/useAssignmentReview";
 
 // ── Answer value renderer ──
 function renderAnswerValue(field: SnapshotField, answer: any) {
@@ -144,8 +93,7 @@ export default function OperationalAvaliacaoPage() {
 
   const aguardando = filteredByDate.filter((a: any) => a.status === "aguardando_avaliacao");
   const emAvaliacao = filteredByDate.filter((a: any) => a.status === "em_avaliacao");
-  const devolvidos = filteredByDate.filter((a: any) => a.status === "devolvida");
-  const historico = filteredByDate.filter((a: any) => ["concluida", "aprovada", "aguardando_aprovacao", "reprovada"].includes(a.status)).slice(0, 50);
+  const historico = filteredByDate.filter((a: any) => ["concluida", "aprovada", "aguardando_aprovacao", "reprovada", "devolvida"].includes(a.status)).slice(0, 50);
 
   const review = useAssignmentReview(selectedAssignment?.id || null);
 
@@ -161,87 +109,50 @@ export default function OperationalAvaliacaoPage() {
     return map;
   }, [review.fieldAnswers]);
 
-  const visibleFields = useMemo(() =>
+  // Only fields with aprovador_verificar are reviewable questions
+  const reviewableFields = useMemo(() =>
+    snapshotFields
+      .filter(f => f.aprovador_verificar && evaluateVisibility(f.condicao_visibilidade, answersMap)),
+    [snapshotFields, answersMap]
+  );
+
+  // All visible fields (for evidence/details display)
+  const allVisibleFields = useMemo(() =>
     snapshotFields.filter(f => evaluateVisibility(f.condicao_visibilidade, answersMap)),
     [snapshotFields, answersMap]
   );
 
-  const autoQuestions = useMemo(() =>
-    buildAutoQuestions(selectedAssignment, snapshot, review.contingencies),
-    [selectedAssignment, snapshot, review.contingencies]
-  );
-
-  // ── Live score ──
-  const liveScore = useMemo(() => {
-    let totalPeso = 0, conquistado = 0, respondidas = 0, total = 0;
-    let conformes = 0, naoConformes = 0, devolvidosCount = 0;
-
-    for (const f of visibleFields) {
-      const peso = f.peso ?? 1;
-      const notaMax = f.nota_maxima ?? 10;
-      totalPeso += peso * notaMax;
-      total++;
-
+  // Progress tracking
+  const progress = useMemo(() => {
+    let respondidas = 0, total = reviewableFields.length, conformes = 0, naoConformes = 0, devolvidosCount = 0;
+    for (const f of reviewableFields) {
       const draft = review.reviewDrafts[f.id];
-      if (draft?.conforme === true) { conquistado += peso * notaMax; respondidas++; conformes++; }
+      if (draft?.conforme === true) { respondidas++; conformes++; }
       else if (draft?.conforme === false) { respondidas++; naoConformes++; if (draft?.devolvido) devolvidosCount++; }
     }
-
-    let penaltyTotal = 0;
-    for (const aq of autoQuestions) {
-      if (aq.id === "auto_sla_contingencia") {
-        if (!aq.autoValue) penaltyTotal += aq.penalty;
-      } else {
-        if (aq.autoValue) penaltyTotal += aq.penalty;
-      }
-    }
-
-    const rawScore = totalPeso > 0 ? Math.round((conquistado / totalPeso) * 100) : 0;
-    const finalScore = Math.max(0, rawScore - penaltyTotal);
-
-    return { rawScore, finalScore, penaltyTotal, respondidas, total, conformes, naoConformes, devolvidosCount };
-  }, [visibleFields, review.reviewDrafts, autoQuestions]);
-
-  // Section scores
-  const sectionScores = useMemo(() => {
-    return snapshotSections.map((s: any) => {
-      const sFields = visibleFields.filter(f => f.section_id === s.id);
-      let peso = 0, acerto = 0, conformes = 0, naoConformes = 0;
-      for (const f of sFields) {
-        const p = f.peso ?? 1;
-        const m = f.nota_maxima ?? 10;
-        peso += p * m;
-        const draft = review.reviewDrafts[f.id];
-        if (draft?.conforme === true) { acerto += p * m; conformes++; }
-        else if (draft?.conforme === false) naoConformes++;
-      }
-      return { ...s, score: peso > 0 ? Math.round((acerto / peso) * 100) : 0, conformes, naoConformes, total: sFields.length };
-    });
-  }, [snapshotSections, visibleFields, review.reviewDrafts]);
+    return { respondidas, total, conformes, naoConformes, devolvidosCount };
+  }, [reviewableFields, review.reviewDrafts]);
 
   const reviewComplete = useMemo(() =>
-    review.isReviewComplete(visibleFields),
-    [review.isReviewComplete, visibleFields]
+    review.isReviewComplete(reviewableFields),
+    [review.isReviewComplete, reviewableFields]
   );
 
-  // ── Build ordered items ──
+  // ── Build ordered items (only reviewable fields) ──
   const orderedItems = useMemo(() => {
-    const result: ({ type: "section"; data: any } | { type: "field"; data: SnapshotField } | { type: "auto"; data: AutoQuestion })[] = [];
-
+    const result: ({ type: "section"; data: any } | { type: "field"; data: SnapshotField })[] = [];
     if (snapshotSections.length > 0) {
       for (const section of snapshotSections) {
-        const sFields = visibleFields.filter(f => f.section_id === section.id);
+        const sFields = reviewableFields.filter(f => f.section_id === section.id);
         if (sFields.length === 0) continue;
         result.push({ type: "section", data: section });
         for (const f of sFields) result.push({ type: "field", data: f });
       }
     } else {
-      for (const f of visibleFields) result.push({ type: "field", data: f });
+      for (const f of reviewableFields) result.push({ type: "field", data: f });
     }
-
-    for (const aq of autoQuestions) result.push({ type: "auto", data: aq });
     return result;
-  }, [snapshotSections, visibleFields, autoQuestions]);
+  }, [snapshotSections, reviewableFields]);
 
   const openReview = useCallback((a: any) => {
     setSelectedAssignment(a);
@@ -259,7 +170,7 @@ export default function OperationalAvaliacaoPage() {
 
   const handleDecision = (action: "aprovar" | "devolver_parcial" | "devolver_total" | "reprovar") => {
     if (action === "devolver_total") {
-      for (const f of visibleFields) {
+      for (const f of reviewableFields) {
         const draft = review.reviewDrafts[f.id];
         if (draft?.conforme === false) review.updateReview(f.id, { devolvido: true });
       }
@@ -314,7 +225,7 @@ export default function OperationalAvaliacaoPage() {
         <h1 className="text-lg md:text-xl font-semibold text-foreground flex items-center gap-2">
           <Users className="w-5 h-5 text-primary" /> Avaliação Operacional
         </h1>
-        <p className="text-sm text-muted-foreground">Revise formulários e atribua conformidade por campo.</p>
+        <p className="text-sm text-muted-foreground">Revise os campos do checklist e atribua conformidade.</p>
       </div>
 
       <div className="flex items-center gap-2 mb-4 flex-wrap">
@@ -332,9 +243,6 @@ export default function OperationalAvaliacaoPage() {
           <TabsTrigger value="em_avaliacao" className="flex-1 min-w-[70px]">
             Em Avaliação {emAvaliacao.length > 0 && <span className="ml-1 bg-violet-500/20 text-violet-700 px-1.5 rounded-full text-[10px]">{emAvaliacao.length}</span>}
           </TabsTrigger>
-          <TabsTrigger value="devolvidos" className="flex-1 min-w-[70px]">
-            Devolvidos {devolvidos.length > 0 && <span className="ml-1 bg-amber-500/20 text-amber-700 px-1.5 rounded-full text-[10px]">{devolvidos.length}</span>}
-          </TabsTrigger>
           <TabsTrigger value="historico" className="flex-1 min-w-[70px]">Histórico</TabsTrigger>
         </TabsList>
 
@@ -344,9 +252,6 @@ export default function OperationalAvaliacaoPage() {
         <TabsContent value="em_avaliacao" className="space-y-3">
           {emAvaliacao.length === 0 ? renderEmptyState("Nenhuma avaliação em andamento.") : emAvaliacao.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openReview} />)}
         </TabsContent>
-        <TabsContent value="devolvidos" className="space-y-3">
-          {devolvidos.length === 0 ? renderEmptyState("Nenhum devolvido.") : devolvidos.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openReview} />)}
-        </TabsContent>
         <TabsContent value="historico" className="space-y-3">
           {historico.length === 0 ? renderEmptyState("Nenhum histórico.") : historico.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openReview} />)}
         </TabsContent>
@@ -355,7 +260,7 @@ export default function OperationalAvaliacaoPage() {
       {/* ── Detail Dialog ── */}
       <Dialog open={reviewDialogOpen} onOpenChange={v => { if (!v) closeReview(); }}>
         <DialogContent className="max-w-3xl max-h-[95vh] overflow-hidden flex flex-col p-0">
-          {/* Header with Avaliador / Avaliado */}
+          {/* Header */}
           <div className="p-4 border-b border-border">
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={closeReview}>
@@ -396,68 +301,39 @@ export default function OperationalAvaliacaoPage() {
               </div>
             )}
 
-            {/* Active review: score cards + questions + evidence */}
+            {/* Active review */}
             {(isActive || !isReviewable) && (
               <>
-                {/* ── Live Score Summary ── */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-center col-span-2 md:col-span-1">
-                    <p className={`text-3xl font-bold ${liveScore.finalScore >= 80 ? "text-green-600" : liveScore.finalScore >= 50 ? "text-amber-600" : "text-destructive"}`}>
-                      {liveScore.finalScore}
-                    </p>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Score Final</p>
-                  </div>
-                  <div className="rounded-lg border p-3 text-center bg-muted/30">
-                    <p className="text-xl font-bold text-foreground">{liveScore.rawScore}%</p>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Conformidade</p>
-                  </div>
-                  <div className="rounded-lg border p-3 text-center bg-muted/30">
-                    <p className="text-xl font-bold text-destructive">-{liveScore.penaltyTotal}</p>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Penalidades</p>
-                  </div>
-                  <div className="rounded-lg border p-3 text-center bg-muted/30">
-                    <p className="text-xl font-bold text-foreground">{liveScore.respondidas}/{liveScore.total}</p>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Avaliadas</p>
-                  </div>
-                </div>
-
-                {/* Section scores */}
-                {sectionScores.length > 1 && (
-                  <div className="flex gap-2 flex-wrap">
-                    {sectionScores.map((s: any) => (
-                      <div key={s.id} className="flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs">
-                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.cor || "#3b82f6" }} />
-                        <span className="font-medium">{s.nome}</span>
-                        <span className={`font-bold ${s.score >= 80 ? "text-green-600" : s.score >= 50 ? "text-amber-600" : "text-destructive"}`}>{s.score}%</span>
-                        <span className="text-muted-foreground">✓{s.conformes} ✗{s.naoConformes}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
                 {/* Progress */}
                 <div className="space-y-1">
                   <div className="flex justify-between text-[10px] text-muted-foreground">
                     <span>Progresso da avaliação</span>
-                    <span>{liveScore.respondidas}/{liveScore.total} perguntas</span>
+                    <span>{progress.respondidas}/{progress.total} perguntas</span>
                   </div>
-                  <Progress value={liveScore.total > 0 ? (liveScore.respondidas / liveScore.total) * 100 : 0} className="h-2" />
+                  <Progress value={progress.total > 0 ? (progress.respondidas / progress.total) * 100 : 0} className="h-2" />
                 </div>
 
-                {/* ── Checklist Questions Flow ── */}
+                {/* ── Checklist Questions Flow (only aprovador_verificar fields) ── */}
+                {orderedItems.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p className="text-sm">Nenhuma pergunta de avaliação configurada neste template.</p>
+                    <p className="text-xs mt-1">Configure campos com "Pergunta do Aprovador" na aba Formulário do template.</p>
+                  </div>
+                )}
+
                 <div className="space-y-3">
                   {orderedItems.map((item) => {
                     if (item.type === "section") {
                       return (
                         <div key={item.data.id} className="flex items-center justify-between pt-3 pb-1">
                           <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.data.cor || "#3b82f6" }} />
+                            <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.data.cor || "hsl(var(--primary))" }} />
                             <h3 className="text-sm font-semibold text-foreground">{item.data.nome}</h3>
                           </div>
                           {isActive && (
                             <Button type="button" variant="outline" size="sm"
                               onClick={() => {
-                                const sFields = visibleFields.filter(f => f.section_id === item.data.id);
+                                const sFields = reviewableFields.filter(f => f.section_id === item.data.id);
                                 review.markSectionConforme(sFields);
                               }}
                               className="text-[10px] h-7 px-2">
@@ -468,33 +344,6 @@ export default function OperationalAvaliacaoPage() {
                       );
                     }
 
-                    if (item.type === "auto") {
-                      const aq = item.data as AutoQuestion;
-                      const isGood = aq.id === "auto_sla_contingencia" ? aq.autoValue : !aq.autoValue;
-                      const penaltyApplied = !isGood && aq.penalty > 0;
-                      return (
-                        <div key={aq.id} className={`border rounded-lg p-3 ${penaltyApplied ? "border-destructive/30 bg-destructive/5" : "border-green-300 bg-green-50/30 dark:bg-green-950/20 dark:border-green-700"}`}>
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                                <p className="text-sm font-medium">{aq.label}</p>
-                                <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded border">Automática</span>
-                              </div>
-                              {aq.detail && <p className="text-xs text-muted-foreground mt-0.5 ml-5">{aq.detail}</p>}
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              {penaltyApplied && <span className="text-xs font-mono text-destructive font-bold">-{aq.penalty}pts</span>}
-                              <span className={`px-2 py-0.5 rounded text-xs font-medium border ${isGood ? "bg-green-100 text-green-700 border-green-200" : "bg-red-100 text-red-700 border-red-200"}`}>
-                                {aq.autoValue ? "SIM" : "NÃO"}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-
-                    // Field question
                     const f = item.data as SnapshotField;
                     const answer = answersMap[f.id];
                     const draft = review.reviewDrafts[f.id] || { field_id: f.id, conforme: null, observacao: "", devolvido: false, motivo_devolucao: "" };
@@ -505,7 +354,6 @@ export default function OperationalAvaliacaoPage() {
 
                     return (
                       <div key={f.id} className={`border rounded-lg overflow-hidden transition-colors ${isConforme ? "border-green-300 bg-green-50/30 dark:bg-green-950/20 dark:border-green-700" : isNaoConforme ? "border-destructive/30 bg-destructive/5" : executorNaoConforme ? "border-orange-300 bg-orange-50/20" : "border-border bg-card"}`}>
-                        {/* Alert for executor não conforme */}
                         {executorNaoConforme && draft.conforme === null && (
                           <div className="bg-orange-100 border-b border-orange-200 px-3 py-1.5 flex items-center gap-2">
                             <AlertTriangle className="w-3.5 h-3.5 text-orange-700" />
@@ -513,23 +361,14 @@ export default function OperationalAvaliacaoPage() {
                           </div>
                         )}
 
-                        {/* Header */}
                         <div className="flex items-center justify-between px-3 py-2 border-b border-border/50">
                           <div className="flex items-center gap-2 min-w-0">
                             <span className={`w-2 h-2 rounded-full shrink-0 ${isConforme ? "bg-green-500" : isNaoConforme ? "bg-red-500" : "bg-muted-foreground/30"}`} />
-                            <Label className="text-sm font-medium truncate">{f.label}</Label>
+                            <Label className="text-sm font-medium truncate">{f.aprovador_pergunta || f.label}</Label>
                             {f.obrigatorio && <span className="text-destructive text-xs">*</span>}
-                            {f.criticidade === "critica" && <span className="text-[10px] bg-red-100 text-red-700 border border-red-200 px-1.5 py-0.5 rounded">Crítico</span>}
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
-                            <span>Peso: {f.peso ?? 1}</span>
-                            <span>Máx: {f.nota_maxima ?? 10}</span>
-                            {isConforme && <span className="text-green-600 font-bold">+{(f.peso ?? 1) * (f.nota_maxima ?? 10)}</span>}
-                            {isNaoConforme && <span className="text-destructive font-bold">0</span>}
                           </div>
                         </div>
 
-                        {/* Content */}
                         <div className="p-3 space-y-3">
                           {/* Executor answer */}
                           <div>
@@ -542,7 +381,7 @@ export default function OperationalAvaliacaoPage() {
                             )}
                           </div>
 
-                          {/* Avaliação buttons */}
+                          {/* Review buttons */}
                           <div className="space-y-2">
                             <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Avaliação</p>
                             <div className="flex gap-2">
@@ -583,17 +422,16 @@ export default function OperationalAvaliacaoPage() {
                   })}
                 </div>
 
-                {/* ── Detalhes da Tarefa (evidence, contingencies, history) ── */}
+                {/* ── Detalhes da Tarefa ── */}
                 <div className="border-t border-border pt-4 mt-4 space-y-4">
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                     <History className="w-4 h-4" /> Detalhes da Tarefa
                   </h3>
 
-                  {/* All field answers summary */}
                   <div className="border rounded-lg p-3 space-y-2">
                     <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Respostas do Executor</h4>
                     <div className="space-y-2">
-                      {visibleFields.map(f => {
+                      {allVisibleFields.map(f => {
                         const ans = answersMap[f.id];
                         return (
                           <div key={f.id} className="flex items-start justify-between gap-2 py-1.5 border-b border-border/30 last:border-0">
@@ -612,7 +450,6 @@ export default function OperationalAvaliacaoPage() {
                     </div>
                   </div>
 
-                  {/* Contingencies */}
                   {review.contingencies.length > 0 && (
                     <div className="border rounded-lg p-3 space-y-2">
                       <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
@@ -631,7 +468,6 @@ export default function OperationalAvaliacaoPage() {
                     </div>
                   )}
 
-                  {/* Assignment info */}
                   <div className="border rounded-lg p-3 space-y-1.5 text-xs">
                     <h4 className="font-semibold text-muted-foreground uppercase tracking-wider">Informações</h4>
                     <div className="grid grid-cols-2 gap-1 text-muted-foreground">
@@ -651,7 +487,7 @@ export default function OperationalAvaliacaoPage() {
             <div className="border-t border-border p-3 bg-card safe-area-bottom">
               {!reviewComplete && (
                 <p className="text-[10px] text-amber-600 mb-2 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" /> Revise todos os campos obrigatórios antes de tomar uma decisão.
+                  <AlertTriangle className="w-3 h-3" /> Revise todas as perguntas antes de tomar uma decisão.
                 </p>
               )}
               <div className="flex items-center gap-2 flex-wrap">
@@ -664,9 +500,6 @@ export default function OperationalAvaliacaoPage() {
                   <RotateCcw className="w-3.5 h-3.5 mr-1" /> Devolver Total
                 </Button>
                 <div className="flex-1" />
-                <div className="text-sm font-bold mr-2">
-                  Score: <span className={liveScore.finalScore >= 80 ? "text-green-600" : liveScore.finalScore >= 50 ? "text-amber-600" : "text-destructive"}>{liveScore.finalScore}</span>
-                </div>
                 <Button variant="outline" size="sm" onClick={() => handleDecision("reprovar")}
                   disabled={!reviewComplete} className="text-red-700 border-red-300 hover:bg-red-50">
                   <XCircle className="w-3.5 h-3.5 mr-1" /> Reprovar
@@ -688,7 +521,7 @@ export default function OperationalAvaliacaoPage() {
               {decisionDialog.action === "aprovar" && "Aprovar Avaliação"}
               {decisionDialog.action === "devolver_parcial" && "Devolver Parcialmente"}
               {decisionDialog.action === "devolver_total" && "Devolver Totalmente"}
-              {decisionDialog.action === "reprovar" && "Reprovar Assignment"}
+              {decisionDialog.action === "reprovar" && "Reprovar Tarefa"}
             </DialogTitle>
             <DialogDescription>
               {decisionDialog.action === "aprovar" && "Confirma que todos os campos estão conformes?"}
@@ -708,11 +541,10 @@ export default function OperationalAvaliacaoPage() {
 
           <div className="bg-muted/50 rounded-lg p-3 text-sm text-center">
             <div className="grid grid-cols-3 gap-2 text-center text-xs mb-2">
-              <div><p className="text-green-600 font-semibold text-lg">{liveScore.conformes}</p><p className="text-muted-foreground">Conformes</p></div>
-              <div><p className="text-red-600 font-semibold text-lg">{liveScore.naoConformes}</p><p className="text-muted-foreground">Não Conformes</p></div>
-              <div><p className="text-amber-600 font-semibold text-lg">{liveScore.devolvidosCount}</p><p className="text-muted-foreground">Devolvidos</p></div>
+              <div><p className="text-green-600 font-semibold text-lg">{progress.conformes}</p><p className="text-muted-foreground">Conformes</p></div>
+              <div><p className="text-red-600 font-semibold text-lg">{progress.naoConformes}</p><p className="text-muted-foreground">Não Conformes</p></div>
+              <div><p className="text-amber-600 font-semibold text-lg">{progress.devolvidosCount}</p><p className="text-muted-foreground">Devolvidos</p></div>
             </div>
-            <p className="font-semibold">Score: {liveScore.finalScore}%</p>
           </div>
 
           <DialogFooter>
