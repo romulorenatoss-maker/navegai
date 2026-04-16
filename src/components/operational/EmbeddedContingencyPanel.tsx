@@ -232,6 +232,48 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
               <div className="border-t border-border p-3 space-y-3">
                 {c.prazo_sla && <SlaCountdown prazoSla={c.prazo_sla} />}
 
+                {/* Origem da contingência */}
+                <div className="border rounded p-2 bg-destructive/5 border-destructive/20 space-y-1.5 text-[11px]">
+                  <p className="font-semibold text-destructive text-[10px] uppercase tracking-wider flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" /> Origem
+                  </p>
+                  {c.motivo_instrucao && (
+                    <p className="text-xs"><span className="text-muted-foreground">Instrução:</span> {c.motivo_instrucao}</p>
+                  )}
+                  {c.origin_field && (
+                    <p><span className="text-muted-foreground">Pergunta:</span> <span className="font-medium">{c.origin_field.label}</span> (peso {c.origin_field.peso || 1})</p>
+                  )}
+                  {c.origin_review && (
+                    <div className="space-y-0.5">
+                      <span className={`inline-flex items-center px-1 py-0.5 rounded text-[9px] font-medium border ${
+                        c.origin_review.conforme === false ? "bg-destructive/10 text-destructive border-destructive/30" : "bg-green-100 text-green-700 border-green-300"
+                      }`}>
+                        {c.origin_review.conforme === false ? "Não Conforme" : "Conforme"}
+                      </span>
+                      {c.origin_review.motivo_devolucao && (
+                        <p className="text-destructive font-medium">"{c.origin_review.motivo_devolucao}"</p>
+                      )}
+                      {c.origin_review.observacao && (
+                        <p className="text-muted-foreground">"{c.origin_review.observacao}"</p>
+                      )}
+                      {c.origin_review.avaliador?.nome && (
+                        <p className="text-muted-foreground">Avaliador: {c.origin_review.avaliador.nome}</p>
+                      )}
+                    </div>
+                  )}
+                  {c.check_answer && (
+                    <div className="space-y-0.5">
+                      <p><span className="text-muted-foreground">Checklist:</span> {c.check_answer.check_item?.descricao || "Item"}</p>
+                      <span className={`inline-flex items-center px-1 py-0.5 rounded text-[9px] font-medium border ${
+                        c.check_answer.conforme === false ? "bg-destructive/10 text-destructive border-destructive/30" : "bg-green-100 text-green-700 border-green-300"
+                      }`}>
+                        {c.check_answer.conforme === false ? "Não Conforme" : "Conforme"}
+                      </span>
+                      {c.check_answer.observacao && <p className="text-muted-foreground">"{c.check_answer.observacao}"</p>}
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-2 gap-2 text-[11px]">
                   <div className="p-1.5 border rounded bg-muted/30">
                     <span className="text-muted-foreground">Criado</span>
