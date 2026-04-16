@@ -893,12 +893,13 @@ export default function OperationalAprovacaoPage() {
                 </Button>
                 <div className="flex-1" />
                 <Button size="sm" onClick={() => handleDecision("aprovar")}
-                  disabled={blockingReasons.length > 0} className="press-effect">
+                  disabled={blockingReasons.length > 0 || progressPercent < 100} className="press-effect">
                   <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Aprovar Final
                 </Button>
-              </div>
+              )}
             </div>
-          )}
+          </div>
+        )}
         </DialogContent>
       </Dialog>
 
