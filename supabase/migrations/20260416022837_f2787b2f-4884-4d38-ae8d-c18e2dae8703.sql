@@ -1,0 +1,1 @@
+ALTER TABLE public.operational_templates ADD COLUMN IF NOT EXISTS ordem integer NOT NULL DEFAULT 0;

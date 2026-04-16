@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Filter } from "lucide-react";
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Filter, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -33,6 +33,7 @@ export default function OperationalCadastroPage() {
     queryFn: async () => {
       const { data, error } = await (supabase as any).from("operational_templates")
         .select("*, setores!operational_templates_setor_id_fkey(nome)")
+        .order("ordem", { ascending: true })
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -80,6 +81,70 @@ export default function OperationalCadastroPage() {
     if (filterExecutor !== "__all") list = list.filter((t: any) => t.executor_profile_id === filterExecutor);
     if (filterAvaliador !== "__all") list = list.filter((t: any) => t.avaliador_profile_id === filterAvaliador);
     return list;
+  }, [templates, filterExecutor, filterAvaliador]);
+
+  // Group templates by setor
+  const groupedTemplates = useMemo(() => {
+    const groups: { setor: string; setorId: string | null; items: any[] }[] = [];
+    const map = new Map<string, any[]>();
+    const order: string[] = [];
+    for (const t of filteredTemplates) {
+      const key = t.setor_id || "__sem_setor";
+      if (!map.has(key)) { map.set(key, []); order.push(key); }
+      map.get(key)!.push(t);
+    }
+    for (const key of order) {
+      const items = map.get(key)!;
+      const setor = key === "__sem_setor" ? "Sem Setor" : (items[0]?.setores?.nome || "Sem Setor");
+      groups.push({ setor, setorId: key === "__sem_setor" ? null : key, items });
+    }
+    return groups;
+  }, [filteredTemplates]);
+
+  // Drag-and-drop state
+  const dragItem = useRef<{ id: string; setorKey: string } | null>(null);
+  const dragOverItem = useRef<{ id: string; setorKey: string } | null>(null);
+
+  const reorderMutation = useMutation({
+    mutationFn: async (updates: { id: string; ordem: number }[]) => {
+      for (const u of updates) {
+        await (supabase as any).from("operational_templates").update({ ordem: u.ordem }).eq("id", u.id);
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["operational_templates"] }),
+  });
+
+  const handleDragStart = useCallback((id: string, setorKey: string) => {
+    dragItem.current = { id, setorKey };
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, id: string, setorKey: string) => {
+    e.preventDefault();
+    dragOverItem.current = { id, setorKey };
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    if (!dragItem.current || !dragOverItem.current) return;
+    if (dragItem.current.setorKey !== dragOverItem.current.setorKey) return; // only within same setor
+    if (dragItem.current.id === dragOverItem.current.id) return;
+
+    const setorKey = dragItem.current.setorKey;
+    const group = groupedTemplates.find(g => (g.setorId || "__sem_setor") === setorKey);
+    if (!group) return;
+
+    const items = [...group.items];
+    const fromIdx = items.findIndex(i => i.id === dragItem.current!.id);
+    const toIdx = items.findIndex(i => i.id === dragOverItem.current!.id);
+    if (fromIdx < 0 || toIdx < 0) return;
+
+    const [moved] = items.splice(fromIdx, 1);
+    items.splice(toIdx, 0, moved);
+
+    const updates = items.map((item, idx) => ({ id: item.id, ordem: idx }));
+    reorderMutation.mutate(updates);
+    dragItem.current = null;
+    dragOverItem.current = null;
   }, [templates, filterExecutor, filterAvaliador]);
 
   const set = <K extends keyof TemplateForm>(k: K, v: TemplateForm[K]) => setForm(f => ({ ...f, [k]: v }));
@@ -356,59 +421,77 @@ export default function OperationalCadastroPage() {
         </Select>
       </div>
 
-      {/* Templates table */}
-      <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Nome</th>
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Tipo</th>
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Setor</th>
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Recorrência</th>
-                
-                <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Status</th>
-                <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {isLoading ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Carregando...</td></tr>
-              ) : filteredTemplates.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhum template encontrado.</td></tr>
-              ) : filteredTemplates.map((t: any) => (
-                <tr key={t.id} className="hover:bg-muted/50 transition-colors">
-                  <td className="px-4 py-3">
-                    <span className="text-body font-medium text-foreground">{t.nome}</span>
-                    {t.descricao && <p className="text-caption text-muted-foreground mt-0.5 truncate max-w-[250px]">{t.descricao}</p>}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border badge-active">
-                      {TIPO_EXECUCAO_LABELS[t.tipo_execucao] || t.tipo_execucao}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-body text-muted-foreground">{t.setores?.nome || "—"}</td>
-                  <td className="px-4 py-3 text-body text-muted-foreground">{RECORRENCIA_LABELS[t.recorrencia_tipo] || t.recorrencia_tipo}</td>
-                  
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${t.ativo ? "badge-complete" : "badge-expired"}`}>
-                      {t.ativo ? "Ativo" : "Inativo"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => toggleAtivo.mutate(t)} className="press-effect">
-                        {t.ativo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(t)} className="press-effect"><Pencil className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="sm" onClick={() => { if (window.confirm(`Excluir template "${t.nome}"? Esta ação é irreversível e removerá todas as seções e campos associados.`)) remove.mutate(t.id); }} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* Templates grouped by setor with drag-and-drop */}
+      <div className="space-y-4">
+        {isLoading ? (
+          <div className="bg-card border border-border rounded-lg p-8 text-center text-body text-muted-foreground">Carregando...</div>
+        ) : groupedTemplates.length === 0 ? (
+          <div className="bg-card border border-border rounded-lg p-8 text-center text-body text-muted-foreground">Nenhum template encontrado.</div>
+        ) : groupedTemplates.map((group) => {
+          const setorKey = group.setorId || "__sem_setor";
+          return (
+            <div key={setorKey} className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
+              <div className="px-4 py-2.5 bg-muted/50 border-b border-border">
+                <h3 className="text-sm font-semibold text-foreground">{group.setor}</h3>
+                <span className="text-caption text-muted-foreground">{group.items.length} template{group.items.length !== 1 ? "s" : ""}</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="w-8"></th>
+                      <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Nome</th>
+                      <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Tipo</th>
+                      <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Recorrência</th>
+                      <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Status</th>
+                      <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {group.items.map((t: any) => (
+                      <tr
+                        key={t.id}
+                        draggable
+                        onDragStart={() => handleDragStart(t.id, setorKey)}
+                        onDragOver={(e) => handleDragOver(e, t.id, setorKey)}
+                        onDrop={handleDrop}
+                        className="hover:bg-muted/50 transition-colors cursor-grab active:cursor-grabbing"
+                      >
+                        <td className="pl-2 pr-0 py-3 text-muted-foreground/40">
+                          <GripVertical className="w-4 h-4" />
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-body font-medium text-foreground">{t.nome}</span>
+                          {t.descricao && <p className="text-caption text-muted-foreground mt-0.5 truncate max-w-[250px]">{t.descricao}</p>}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border badge-active">
+                            {TIPO_EXECUCAO_LABELS[t.tipo_execucao] || t.tipo_execucao}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-body text-muted-foreground">{RECORRENCIA_LABELS[t.recorrencia_tipo] || t.recorrencia_tipo}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${t.ativo ? "badge-complete" : "badge-expired"}`}>
+                            {t.ativo ? "Ativo" : "Inativo"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => toggleAtivo.mutate(t)} className="press-effect">
+                              {t.ativo ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => openEdit(t)} className="press-effect"><Pencil className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="sm" onClick={() => { if (window.confirm(`Excluir template "${t.nome}"?`)) remove.mutate(t.id); }} className="press-effect text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Builder Dialog */}
