@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Play, Send, Save, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock, CircleDot, RotateCcw, CheckCheck, CalendarClock, ListTodo, Hourglass, Filter } from "lucide-react";
+import { Play, Send, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock, CircleDot, RotateCcw, CheckCheck, CalendarClock, ListTodo, Hourglass, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
@@ -180,19 +180,53 @@ export default function OperationalExecucaoPage() {
     setSubmitAttempted(false);
   };
 
+  // When sections exist, only count fields that belong to a valid section
+  const sectionIds = useMemo(() => new Set(snapshotSections.map(s => s.id)), [snapshotSections]);
+
+  const effectiveFields = useMemo(() => {
+    if (snapshotSections.length === 0) return snapshotFields;
+    // Exclude orphan fields (section_id null or not matching any snapshot section)
+    return snapshotFields.filter(f => f.section_id && sectionIds.has(f.section_id));
+  }, [snapshotFields, snapshotSections, sectionIds]);
+
   const visibleFields = useMemo(() =>
-    snapshotFields.filter(f => evaluateVisibility(f.condicao_visibilidade, exec.answers)),
-    [snapshotFields, exec.answers]
+    effectiveFields.filter(f => evaluateVisibility(f.condicao_visibilidade, exec.answers)),
+    [effectiveFields, exec.answers]
   );
+
+  const isFilled = useCallback((f: SnapshotField) => {
+    const a = exec.answers[f.id];
+    return a && (a.valor_texto != null && a.valor_texto !== "" || a.valor_numero != null || a.valor_booleano != null || a.valor_data != null || a.valor_json != null);
+  }, [exec.answers]);
 
   const progress = useMemo(() => {
     if (!visibleFields.length) return 0;
-    const filled = visibleFields.filter(f => {
-      const a = exec.answers[f.id];
-      return a && (a.valor_texto != null && a.valor_texto !== "" || a.valor_numero != null || a.valor_booleano != null || a.valor_data != null || a.valor_json != null);
-    }).length;
+    const filled = visibleFields.filter(isFilled).length;
     return Math.round((filled / visibleFields.length) * 100);
-  }, [visibleFields, exec.answers]);
+  }, [visibleFields, isFilled]);
+
+  // Step navigation for sectioned tasks
+  const hasSections = snapshotSections.length > 1;
+  const currentSectionIndex = useMemo(() => {
+    if (!hasSections || !activeSection) return 0;
+    return snapshotSections.findIndex(s => s.id === activeSection);
+  }, [hasSections, activeSection, snapshotSections]);
+  const isLastSection = currentSectionIndex >= snapshotSections.length - 1;
+  const allFieldsFilled = progress === 100;
+
+  const goToNextSection = () => {
+    if (!isLastSection && snapshotSections[currentSectionIndex + 1]) {
+      // Auto-save before switching
+      if (exec.dirty) exec.saveDraft();
+      setActiveSection(snapshotSections[currentSectionIndex + 1].id);
+    }
+  };
+
+  const goToPrevSection = () => {
+    if (currentSectionIndex > 0 && snapshotSections[currentSectionIndex - 1]) {
+      setActiveSection(snapshotSections[currentSectionIndex - 1].id);
+    }
+  };
 
   const isOwner = selectedAssignment?.responsavel_id === profile?.id;
   const isAdminEditing = isAdmin && selectedAssignment && !["nao_executada"].includes(selectedAssignment.status);
@@ -209,16 +243,16 @@ export default function OperationalExecucaoPage() {
 
   const handleSubmit = () => {
     setSubmitAttempted(true);
-    const visibleFields = snapshotFields.filter(f =>
+    const fieldsToValidate = effectiveFields.filter(f =>
       evaluateVisibility(f.condicao_visibilidade, exec.answers)
     );
-    const errors = exec.validateAll(visibleFields, selectedAssignment?.status);
+    const errors = exec.validateAll(fieldsToValidate, selectedAssignment?.status);
     if (errors.length > 0) {
       toast.error(`Corrija ${errors.length} erro(s) antes de enviar`, { description: errors.slice(0, 3).join("; ") });
       return;
     }
     exec.submit.mutate(
-      { assignment: selectedAssignment, fields: visibleFields },
+      { assignment: selectedAssignment, fields: fieldsToValidate },
       {
         onSuccess: () => {
           setExecDialogOpen(false);
@@ -229,10 +263,6 @@ export default function OperationalExecucaoPage() {
     );
   };
 
-  const handleSaveDraft = async () => {
-    await exec.saveDraft();
-    toast.success("Rascunho salvo!");
-  };
 
   const renderEmptyState = (msg: string) => (
     <div className="text-center py-6 text-muted-foreground">
@@ -573,9 +603,11 @@ export default function OperationalExecucaoPage() {
 
           {isEditable && selectedAssignment?.status !== "pendente" && (
             <div className="border-t border-border p-3 flex items-center gap-2 bg-card safe-area-bottom flex-wrap">
-              <Button type="button" variant="outline" size="sm" onClick={handleSaveDraft} disabled={!exec.dirty}>
-                <Save className="w-3.5 h-3.5 mr-1" /> Rascunho
-              </Button>
+              {hasSections && currentSectionIndex > 0 && (
+                <Button type="button" variant="outline" size="sm" onClick={goToPrevSection}>
+                  <ChevronLeft className="w-3.5 h-3.5 mr-1" /> Etapa Anterior
+                </Button>
+              )}
               <div className="flex-1" />
               {needsAdminReopen ? (
                 <Button type="button" size="sm" variant="outline" onClick={async () => {
@@ -604,10 +636,15 @@ export default function OperationalExecucaoPage() {
                 }}>
                   <RotateCcw className="w-3.5 h-3.5 mr-1" /> Reabrir para Edição
                 </Button>
-              ) : null}
-              <Button type="button" size="sm" onClick={handleSubmit} disabled={exec.isSubmitting}>
-                <Send className="w-3.5 h-3.5 mr-1" /> {exec.isSubmitting ? "Enviando..." : "Enviar para Avaliação"}
-              </Button>
+              ) : hasSections && !isLastSection ? (
+                <Button type="button" size="sm" onClick={goToNextSection}>
+                  Próxima Etapa <ChevronDown className="w-3.5 h-3.5 ml-1 -rotate-90" />
+                </Button>
+              ) : (
+                <Button type="button" size="sm" onClick={handleSubmit} disabled={exec.isSubmitting || !allFieldsFilled}>
+                  <Send className="w-3.5 h-3.5 mr-1" /> {exec.isSubmitting ? "Enviando..." : "Enviar para Avaliação"}
+                </Button>
+              )}
             </div>
           )}
         </DialogContent>
