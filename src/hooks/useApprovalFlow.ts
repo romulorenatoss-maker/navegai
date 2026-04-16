@@ -363,68 +363,45 @@ export function useApprovalFlow(assignmentId: string | null) {
         throw new Error("Justificativa obrigatória para esta ação.");
       }
 
-      const now = new Date().toISOString();
-
-      let newStatus: string;
-      let newRodada = assignment.rodada_atual;
-
+      // Map to centralized transition action
+      let transitionAction: "aprovar_final" | "reprovar_devolver_final" | "encerrar_final";
       switch (action) {
-        case "aprovar":
-          newStatus = "aprovada";
-          break;
-        case "reprovar_devolver":
-          newStatus = "devolvida";
-          newRodada = assignment.rodada_atual + 1;
-          break;
-        case "encerrar":
-          newStatus = "concluida";
-          break;
-        default:
-          newStatus = "aprovada";
+        case "aprovar": transitionAction = "aprovar_final"; break;
+        case "reprovar_devolver": transitionAction = "reprovar_devolver_final"; break;
+        case "encerrar": transitionAction = "encerrar_final"; break;
       }
 
-      // Build update payload — always persist score on approval/encerrar
-      const updatePayload: any = {
-        status: newStatus,
-        rodada_atual: newRodada,
-        aprovador_id: profile.id,
-        updated_at: now,
-      };
-
-      if (action === "aprovar" || action === "encerrar") {
-        // Persist score: use provided scoreFinal, or existing override, or calculated average
+      // Calculate score if not provided
+      let finalScore = scoreFinal;
+      if ((action === "aprovar" || action === "encerrar") && finalScore == null) {
         const existingOverride = assignment.score_final_ajustado;
-        if (scoreFinal != null) {
-          updatePayload.score_final_ajustado = scoreFinal;
-        } else if (existingOverride == null) {
-          // Calculate and persist
-          const calcScore = Math.round(
+        if (existingOverride == null) {
+          finalScore = Math.round(
             ((Number(assignment.score_executor) || 0) +
              (Number(assignment.score_avaliado) || 0) +
              (Number(assignment.score_avaliador) || 0)) / 3
           );
-          updatePayload.score_final_ajustado = calcScore;
         }
-        // If existingOverride != null and no new scoreFinal, keep existing value
       }
 
-      const { error } = await (supabase as any).from("operational_assignments")
-        .update(updatePayload).eq("id", assignmentId);
-      if (error) throw error;
-
-      await (supabase as any).from("operational_audit_trail").insert({
-        assignment_id: assignmentId,
-        tipo_evento: action === "aprovar" ? "aprovacao" : action === "reprovar_devolver" ? "reprovacao" : "encerramento_manual",
-        executado_por: profile.id,
-        motivo: motivo || null,
-        dados_novos: { status: newStatus, rodada: newRodada },
+      // Use centralized transition
+      await transition.mutateAsync({
+        assignmentId,
+        action: transitionAction,
+        motivo,
+        origem: "aprovacao_final",
+        extraData: {
+          aprovadorId: profile.id,
+          scoreFinal: finalScore,
+          rodadaAtual: assignment.rodada_atual,
+        },
       });
 
       await (supabase as any).from("operational_execution_logs").insert({
         assignment_id: assignmentId,
         acao: `aprovador_${action}`,
         executado_por: profile.id,
-        detalhes: { action, motivo: motivo || null, rodada: newRodada },
+        detalhes: { action, motivo: motivo || null, rodada: assignment.rodada_atual },
       });
     },
     onSuccess: () => {
