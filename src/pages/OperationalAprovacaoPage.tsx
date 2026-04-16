@@ -671,7 +671,73 @@ export default function OperationalAprovacaoPage() {
                           );
                         }
 
-                        // ── MANUAL APPROVAL FIELD ──
+                        // ── READ-ONLY FIELD (evaluator question, not for approver) ──
+                        if (item.type === "field_readonly") {
+                          const f = item.data as SnapshotField;
+                          const answer = answersMap[f.id];
+                          const rev = reviewsMap[f.id];
+                          const isRevConf = rev?.conforme === true;
+                          const isRevNaoConf = rev?.conforme === false;
+                          const hasReview = !!rev;
+
+                          return (
+                            <div key={f.id} className={cn("transition-colors",
+                              isRevConf ? "bg-success/5" : isRevNaoConf ? "bg-destructive/5" : ""
+                            )}>
+                              <div className="p-4">
+                                <div className="flex items-start gap-3">
+                                  <div className={cn("flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0",
+                                    isRevConf ? "bg-success text-success-foreground" :
+                                    isRevNaoConf ? "bg-destructive text-destructive-foreground" :
+                                    "bg-muted text-muted-foreground"
+                                  )}>
+                                    {hasReview ? <Check className="w-4 h-4" /> : String(idx).padStart(2, "0")}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-foreground leading-relaxed">{f.label}</p>
+                                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                      <span className="text-caption text-muted-foreground">Peso: {f.peso || 1} pts</span>
+                                      {hasReview && (
+                                        <>
+                                          <span className="text-caption text-muted-foreground">•</span>
+                                          <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold",
+                                            isRevConf ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+                                          )}>
+                                            {isRevConf ? "CONFORME" : "NÃO CONFORME"}
+                                          </span>
+                                        </>
+                                      )}
+                                    </div>
+
+                                    {/* Show executor answer and evaluator review inline */}
+                                    <div className="mt-2 bg-muted/30 border border-border rounded-lg p-3 space-y-2">
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Resposta do Executor</p>
+                                          {renderAnswerValue(f, answer)}
+                                        </div>
+                                        {rev && (
+                                          <div className="text-right shrink-0">
+                                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Avaliador</p>
+                                            <span className={cn(
+                                              "inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border",
+                                              rev.conforme === true ? "border-success/40 bg-success/10 text-success" : "border-destructive/40 bg-destructive/10 text-destructive"
+                                            )}>
+                                              {rev.conforme === true ? "✓ Conforme" : "✗ Não Conforme"}
+                                            </span>
+                                            {rev.observacao && <p className="text-xs text-muted-foreground mt-0.5 max-w-[200px]">"{rev.observacao}"</p>}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // ── MANUAL APPROVAL FIELD (aprovador_verificar) ──
                         const f = item.data as SnapshotField;
                         const answer = answersMap[f.id];
                         const rev = reviewsMap[f.id];
