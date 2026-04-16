@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   AlertTriangle, Play, CheckCircle2, XCircle, Clock, Shield, History,
-  ChevronLeft, FileText, RotateCcw, Trash2,
+  ChevronLeft, FileText, RotateCcw, Trash2, Timer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,9 +11,49 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { CONTINGENCY_STATUS } from "@/hooks/useOperationalScoring";
 import { useContingencyManagement } from "@/hooks/useContingencyManagement";
+
+function SlaCountdown({ prazoSla }: { prazoSla: string }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const slaMs = new Date(prazoSla).getTime();
+  const diffMs = slaMs - now;
+  const isExpired = diffMs < 0;
+  const absDiff = Math.abs(diffMs);
+  const hours = Math.floor(absDiff / 3600000);
+  const mins = Math.floor((absDiff % 3600000) / 60000);
+  const secs = Math.floor((absDiff % 60000) / 1000);
+  const timeStr = `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+
+  return (
+    <div className={`rounded-lg border p-3 ${isExpired ? "border-destructive/50 bg-destructive/5" : "border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-700"}`}>
+      <div className="flex items-center justify-between text-sm">
+        <span className="flex items-center gap-1.5">
+          <Timer className="w-4 h-4" />
+          SLA
+        </span>
+        <span className={`font-mono font-bold text-lg ${isExpired ? "text-destructive" : "text-amber-700 dark:text-amber-400"}`}>
+          {isExpired ? `-${timeStr}` : timeStr}
+        </span>
+      </div>
+      <div className="flex items-center justify-between mt-1">
+        <p className="text-xs text-muted-foreground">
+          Prazo: {new Date(prazoSla).toLocaleString("pt-BR")}
+        </p>
+        {isExpired && (
+          <span className="text-[10px] font-bold text-destructive uppercase">Vencido</span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function OperationalContingenciasPage() {
   const { profile, isAdmin } = useAuth();
@@ -30,6 +70,10 @@ export default function OperationalContingenciasPage() {
   const [discardOpen, setDiscardOpen] = useState(false);
   const [discardObs, setDiscardObs] = useState("");
 
+  // SLA dialog for start treatment
+  const [slaDialogOpen, setSlaDialogOpen] = useState(false);
+  const [slaHoras, setSlaHoras] = useState(24);
+
   const cm = useContingencyManagement();
   const resolutionLogs = cm.useResolutionLogs(selected?.id || null);
 
@@ -43,7 +87,6 @@ export default function OperationalContingenciasPage() {
     setSelected(null);
   };
 
-  const slaInfo = selected ? cm.getSlaInfo(selected) : null;
   const isPending = selected && ["aberta", "em_andamento"].includes(selected.status);
   const isResolved = selected?.status === "resolvida";
   const isMyContingency = selected?.responsavel_id === profile?.id;
@@ -161,24 +204,9 @@ export default function OperationalContingenciasPage() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {/* SLA bar */}
-            {slaInfo && (
-              <div className={`rounded-lg border p-3 ${slaInfo.isExpired ? "border-destructive/50 bg-destructive/5" : "border-amber-200 bg-amber-50/50"}`}>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-1.5">
-                    <Clock className="w-4 h-4" />
-                    SLA
-                  </span>
-                  <span className={`font-mono font-bold ${slaInfo.isExpired ? "text-destructive" : "text-amber-700"}`}>
-                    {slaInfo.label}
-                  </span>
-                </div>
-                {selected?.prazo_sla && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Prazo: {new Date(selected.prazo_sla).toLocaleString("pt-BR")}
-                  </p>
-                )}
-              </div>
+            {/* SLA countdown - only show when prazo_sla is set */}
+            {selected?.prazo_sla && (
+              <SlaCountdown prazoSla={selected.prazo_sla} />
             )}
 
             {/* Info grid */}
@@ -253,7 +281,7 @@ export default function OperationalContingenciasPage() {
                 {isPending && (isMyContingency || isAdmin) && (
                   <>
                     {selected?.status === "aberta" && (
-                      <Button size="sm" variant="outline" onClick={() => cm.startTreatment.mutate(selected.id)}
+                      <Button size="sm" variant="outline" onClick={() => { setSlaHoras(24); setSlaDialogOpen(true); }}
                         disabled={cm.isSaving} className="text-blue-700 border-blue-300 hover:bg-blue-50">
                         <Play className="w-3.5 h-3.5 mr-1" /> Iniciar Tratamento
                       </Button>
@@ -291,6 +319,58 @@ export default function OperationalContingenciasPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* SLA Dialog - shown before starting treatment */}
+      <Dialog open={slaDialogOpen} onOpenChange={(v) => { if (!v) setSlaDialogOpen(false); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Timer className="w-4 h-4" /> Definir Prazo de SLA
+            </DialogTitle>
+            <DialogDescription>
+              Informe o prazo em horas para resolver esta contingência. O cronômetro iniciará imediatamente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label>Prazo SLA (horas)</Label>
+            <Input
+              type="number"
+              min={1}
+              max={720}
+              value={slaHoras}
+              onChange={(e) => setSlaHoras(Math.max(1, +e.target.value))}
+            />
+            <p className="text-xs text-muted-foreground">
+              O SLA expirará em {new Date(Date.now() + slaHoras * 3600000).toLocaleString("pt-BR")}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSlaDialogOpen(false)}>Cancelar</Button>
+            <Button
+              disabled={cm.isSaving || slaHoras < 1}
+              onClick={() => {
+                if (!selected) return;
+                cm.startTreatment.mutate(
+                  { contingencyId: selected.id, slaHoras },
+                  {
+                    onSuccess: () => {
+                      setSlaDialogOpen(false);
+                      // Refresh selected to show SLA
+                      setSelected((prev: any) => prev ? {
+                        ...prev,
+                        status: "em_andamento",
+                        prazo_sla: new Date(Date.now() + slaHoras * 3600000).toISOString(),
+                      } : prev);
+                    },
+                  }
+                );
+              }}
+            >
+              {cm.isSaving ? "Salvando..." : "Iniciar com SLA"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
