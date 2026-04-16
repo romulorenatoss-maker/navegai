@@ -106,7 +106,7 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
             avaliador:profiles!operational_field_reviews_avaliador_id_fkey(nome)
           ),
           check_answer:operational_execution_check_answers!operational_contingencies_check_answer_id_fkey(id, conforme, observacao, resposta,
-            check_item:operational_template_check_items!operational_execution_check_answers_check_item_id_fkey(descricao)
+            check_item:operational_template_check_items!operational_execution_check_answers_check_item_id_fkey(pergunta)
           )
         `)
         .eq("assignment_id", assignmentId)
@@ -294,7 +294,7 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
                   )}
                   {c.check_answer && (
                     <div className="space-y-0.5">
-                      <p><span className="text-muted-foreground">Checklist:</span> {c.check_answer.check_item?.descricao || "Item"}</p>
+                      <p><span className="text-muted-foreground">Checklist:</span> {c.check_answer.check_item?.pergunta || "Item"}</p>
                       <span className={`inline-flex items-center px-1 py-0.5 rounded text-[9px] font-medium border ${
                         c.check_answer.conforme === false ? "bg-destructive/10 text-destructive border-destructive/30" : "bg-green-100 text-green-700 border-green-300"
                       }`}>
