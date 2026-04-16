@@ -146,14 +146,14 @@ export default function OperationalExecucaoPage() {
         .select("*, operational_templates(nome, tipo_execucao), profiles:responsavel_id(id, nome, foto_url)")
         .order("data_prevista", { ascending: true });
       if (!isAdmin) {
-        q = q.or(`responsavel_id.eq.${profile.id},avaliador_id.eq.${profile.id}`);
+        q = q.or(`responsavel_id.eq.${profile.id},avaliador_id.eq.${profile.id},avaliado_id.eq.${profile.id},validador_contingencia_id.eq.${profile.id}`);
       }
       const { data, error } = await q.limit(500);
       if (error) throw error;
       return data;
     },
     enabled: !!profile?.id,
-    staleTime: 300000, // 5min fallback — realtime handles instant updates
+    staleTime: 300000,
   });
 
   const profilesWithTasks = useMemo(() => {
