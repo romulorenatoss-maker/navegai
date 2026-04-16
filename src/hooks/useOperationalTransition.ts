@@ -99,7 +99,7 @@ function resolveTargetStatus(action: TransitionAction, currentStatus: string, ex
     case "avaliar_aprovar": return extraData?.requerAprovacao ? "aguardando_aprovacao" : "concluida";
     case "avaliar_devolver": return "devolvida";
     case "avaliar_reprovar": return "reprovada";
-    case "enviar_contingencia": return "contingencia";
+    case "enviar_contingencia": return "contingenciado";
     case "retornar_avaliacao": return "aguardando_avaliacao";
     case "aprovar_final": return "aprovada";
     case "reprovar_devolver_final": return "devolvida";

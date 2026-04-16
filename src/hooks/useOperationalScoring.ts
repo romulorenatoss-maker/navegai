@@ -91,6 +91,7 @@ export const RECORRENCIA_LABELS: Record<string, string> = {
 export const STATUS_CONFIG: Record<string, { label: string; class: string }> = {
   pendente: { label: "Pendente", class: "bg-yellow-100 text-yellow-800 border-yellow-200" },
   em_andamento: { label: "Em Andamento", class: "bg-blue-100 text-blue-800 border-blue-200" },
+  contingenciado: { label: "Contingenciado", class: "bg-orange-100 text-orange-800 border-orange-200" },
   contingencia: { label: "Contingência", class: "bg-orange-100 text-orange-800 border-orange-200" },
   devolvida: { label: "Devolvida", class: "bg-amber-100 text-amber-800 border-amber-200" },
   concluida: { label: "Concluída", class: "badge-complete" },
