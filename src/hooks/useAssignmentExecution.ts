@@ -59,9 +59,21 @@ export function useAssignmentExecution(assignmentId: string | null) {
     enabled: !!assignmentId,
   });
 
+  // Reset state when assignmentId changes
+  useEffect(() => {
+    setAnswers({});
+    setDirty(false);
+    pendingFieldsRef.current.clear();
+    loggedFieldsRef.current.clear();
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+  }, [assignmentId]);
+
   // Hydrate answers from DB
   useEffect(() => {
-    if (!savedAnswers.length) return;
+    if (!savedAnswers.length) {
+      setAnswers({});
+      return;
+    }
     const map: Record<string, FieldAnswer> = {};
     for (const a of savedAnswers) {
       if (!map[a.field_id]) {
