@@ -342,6 +342,19 @@ export function useAssignmentReview(assignmentId: string | null) {
         },
       });
 
+      if (newStatus === "contingencia") {
+        await (supabase as any).from("operational_assignment_history").insert({
+          assignment_id: assignmentId,
+          tipo_evento: "STATUS_ALTERADO_PARA_CONTINGENCIA",
+          usuario_id: profile.id,
+          etapa: "avaliacao",
+          detalhes_json: {
+            status: newStatus,
+            contingencias_criadas: newContingenciesCreated,
+          },
+        });
+      }
+
       await (supabase as any).from("operational_execution_logs").insert({
         assignment_id: assignmentId,
         acao: `avaliador_${action}`,
