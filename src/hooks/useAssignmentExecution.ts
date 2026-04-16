@@ -251,7 +251,6 @@ export function useAssignmentExecution(assignmentId: string | null) {
 
       await saveDraft();
 
-      const nextStatus = "aguardando_avaliacao";
       const now = new Date().toISOString();
       const tempoGasto = assignment.inicio_em
         ? Math.round((Date.now() - new Date(assignment.inicio_em).getTime()) / 60000)
@@ -280,13 +279,13 @@ export function useAssignmentExecution(assignmentId: string | null) {
         return referencia > limite;
       })();
 
-      const { error } = await (supabase as any).from("operational_assignments")
-        .update({
-          status: nextStatus,
-          fim_em: now,
-          tempo_gasto_minutos: tempoGasto,
-        }).eq("id", assignment.id);
-      if (error) throw error;
+      // Use centralized transition
+      await transition.mutateAsync({
+        assignmentId: assignment.id,
+        action: "enviar_avaliacao",
+        origem: "execucao",
+        extraData: { tempoGasto, atrasado },
+      });
 
       // Detailed submit log
       await (supabase as any).from("operational_execution_logs").insert({
@@ -321,13 +320,6 @@ export function useAssignmentExecution(assignmentId: string | null) {
           },
         });
       }
-
-      await (supabase as any).from("operational_audit_trail").insert({
-        assignment_id: assignment.id,
-        tipo_evento: "conclusao",
-        executado_por: profile.id,
-        dados_novos: { status: nextStatus, tempo_gasto_minutos: tempoGasto, atrasado },
-      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["my_operational_assignments"] });
