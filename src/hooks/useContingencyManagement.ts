@@ -587,7 +587,6 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
     isLoading,
     abertas,
     emTratamento,
-    resolvidas,
     validadas,
     vencidas,
     devolvidas,
