@@ -4,10 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { FieldAnswer, SnapshotField, evaluateVisibility, validateField } from "@/components/operational/DynamicFieldRenderer";
+import { useOperationalTransition } from "@/hooks/useOperationalTransition";
 
 export function useAssignmentExecution(assignmentId: string | null) {
   const { profile } = useAuth();
   const qc = useQueryClient();
+  const { transition } = useOperationalTransition();
   const [answers, setAnswers] = useState<Record<string, FieldAnswer>>({});
   const [dirty, setDirty] = useState(false);
   const pendingFieldsRef = useRef<Set<string>>(new Set());
@@ -249,7 +251,6 @@ export function useAssignmentExecution(assignmentId: string | null) {
 
       await saveDraft();
 
-      const nextStatus = "aguardando_avaliacao";
       const now = new Date().toISOString();
       const tempoGasto = assignment.inicio_em
         ? Math.round((Date.now() - new Date(assignment.inicio_em).getTime()) / 60000)
@@ -278,13 +279,13 @@ export function useAssignmentExecution(assignmentId: string | null) {
         return referencia > limite;
       })();
 
-      const { error } = await (supabase as any).from("operational_assignments")
-        .update({
-          status: nextStatus,
-          fim_em: now,
-          tempo_gasto_minutos: tempoGasto,
-        }).eq("id", assignment.id);
-      if (error) throw error;
+      // Use centralized transition
+      await transition.mutateAsync({
+        assignmentId: assignment.id,
+        action: "enviar_avaliacao",
+        origem: "execucao",
+        extraData: { tempoGasto, atrasado },
+      });
 
       // Detailed submit log
       await (supabase as any).from("operational_execution_logs").insert({
@@ -319,13 +320,6 @@ export function useAssignmentExecution(assignmentId: string | null) {
           },
         });
       }
-
-      await (supabase as any).from("operational_audit_trail").insert({
-        assignment_id: assignment.id,
-        tipo_evento: "conclusao",
-        executado_por: profile.id,
-        dados_novos: { status: nextStatus, tempo_gasto_minutos: tempoGasto, atrasado },
-      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["my_operational_assignments"] });
@@ -345,10 +339,18 @@ export function useAssignmentExecution(assignmentId: string | null) {
       const dataPrevista = typeof args === "string" ? null : args.dataPrevista;
 
       const now = new Date().toISOString();
-      const { error } = await (supabase as any).from("operational_assignments")
-        .update({ status: "em_andamento", inicio_em: now })
+
+      // Use centralized transition
+      await transition.mutateAsync({
+        assignmentId: aId,
+        action: "iniciar",
+        origem: "execucao",
+      });
+
+      // Set inicio_em separately (transition handles status)
+      await (supabase as any).from("operational_assignments")
+        .update({ inicio_em: now })
         .eq("id", aId);
-      if (error) throw error;
 
       await (supabase as any).from("operational_execution_logs").insert({
         assignment_id: aId,

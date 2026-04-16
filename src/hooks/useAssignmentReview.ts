@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { SnapshotField } from "@/components/operational/DynamicFieldRenderer";
+import { useOperationalTransition } from "@/hooks/useOperationalTransition";
 
 export interface FieldReviewDraft {
   field_id: string;
@@ -32,6 +33,7 @@ const fieldGeneratesContingency = (field: SnapshotField | undefined, answer: any
 export function useAssignmentReview(assignmentId: string | null) {
   const { profile } = useAuth();
   const qc = useQueryClient();
+  const { transition } = useOperationalTransition();
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, FieldReviewDraft>>({});
   const [contingencyPrazos, setContingencyPrazos] = useState<Record<string, number>>({});
   const [pendingContingencyData, setPendingContingencyData] = useState<Record<string, { prazoResolucao: string; motivoInstrucao: string }>>({});
@@ -295,89 +297,51 @@ export function useAssignmentReview(assignmentId: string | null) {
         throw new Error("Não é possível aprovar enquanto houver contingências abertas. Resolva as contingências primeiro.");
       }
 
-      // Determine new status based on action
-      let newStatus: string;
-      let newRodada = rodada;
+      // Determine transition action
+      let transitionAction: string;
+      const requerAprovacao = !!assignment.template_snapshot?.requer_aprovacao_gestor;
+      const aprovadorProfileId = assignment.template_snapshot?.aprovador_profile_id || null;
 
       if (hasOpenContingencies && action !== "reprovar") {
-        newStatus = "contingencia";
+        transitionAction = "enviar_contingencia";
       } else {
         switch (action) {
           case "aprovar":
-            newStatus = assignment.template_snapshot?.requer_aprovacao_gestor ? "aguardando_aprovacao" : "concluida";
+            transitionAction = "avaliar_aprovar";
             break;
           case "devolver_parcial":
           case "devolver_total":
-            newStatus = "devolvida";
-            newRodada = rodada + 1;
+            transitionAction = "avaliar_devolver";
             break;
           case "reprovar":
-            newStatus = "reprovada";
+            transitionAction = "avaliar_reprovar";
             break;
           default:
-            newStatus = "concluida";
+            transitionAction = "avaliar_aprovar";
         }
       }
 
-      // Update assignment
-      const updateData: any = {
-        status: newStatus,
-        avaliador_fim_em: now,
-        rodada_atual: newRodada,
-      };
-      if (!assignment.avaliador_inicio_em) {
-        updateData.avaliador_inicio_em = now;
-      }
-      // Set aprovador_id from template snapshot when sending to approval
-      if (newStatus === "aguardando_aprovacao") {
-        const snap = assignment.template_snapshot;
-        if (snap?.aprovador_profile_id) {
-          updateData.aprovador_id = snap.aprovador_profile_id;
-        }
-      }
-
-      const { error } = await (supabase as any).from("operational_assignments")
-        .update(updateData).eq("id", assignmentId);
-      if (error) throw error;
-
-      // Audit trail
-      const auditTipo = newStatus === "contingencia"
-        ? "STATUS_ALTERADO_PARA_CONTINGENCIA"
-        : action === "aprovar" ? "avaliacao_aprovada" : action === "reprovar" ? "avaliacao_reprovada" : "avaliacao_devolvida";
-
-      await (supabase as any).from("operational_audit_trail").insert({
-        assignment_id: assignmentId,
-        tipo_evento: auditTipo,
-        executado_por: profile.id,
-        motivo: motivo || null,
-        dados_novos: {
-          status: newStatus,
-          rodada: newRodada,
+      // Use centralized transition
+      await transition.mutateAsync({
+        assignmentId,
+        action: transitionAction as any,
+        motivo: motivo || undefined,
+        origem: "avaliacao",
+        extraData: {
+          rodadaAtual: rodada,
+          requerAprovacao,
+          aprovadorProfileId,
+          contingencias_criadas: newContingenciesCreated,
           total_reviews: reviewEntries.length,
           conformes: reviewEntries.filter(r => r.conforme).length,
-          devolvidos: reviewEntries.filter(r => r.devolvido).length,
-          contingencias_criadas: newContingenciesCreated,
         },
       });
-
-      if (newStatus === "contingencia") {
-        await (supabase as any).from("operational_assignment_history").insert({
-          assignment_id: assignmentId,
-          tipo_evento: "STATUS_ALTERADO_PARA_CONTINGENCIA",
-          usuario_id: profile.id,
-          etapa: "avaliacao",
-          detalhes_json: {
-            status: newStatus,
-            contingencias_criadas: newContingenciesCreated,
-          },
-        });
-      }
 
       await (supabase as any).from("operational_execution_logs").insert({
         assignment_id: assignmentId,
         acao: `avaliador_${action}`,
         executado_por: profile.id,
-        detalhes: { action, rodada: newRodada, motivo: motivo || null },
+        detalhes: { action, rodada, motivo: motivo || null },
       });
     },
     onSuccess: () => {
@@ -389,14 +353,15 @@ export function useAssignmentReview(assignmentId: string | null) {
     onError: (e: any) => toast.error(e.message),
   });
 
-  // Start evaluation (set avaliador_inicio_em)
+  // Start evaluation — uses centralized transition
   const startEvaluation = useMutation({
     mutationFn: async (aId: string) => {
       if (!profile?.id) throw new Error("Não autenticado");
-      const { error } = await (supabase as any).from("operational_assignments")
-        .update({ status: "em_avaliacao", avaliador_inicio_em: new Date().toISOString(), avaliador_id: profile.id })
-        .eq("id", aId);
-      if (error) throw error;
+      await transition.mutateAsync({
+        assignmentId: aId,
+        action: "iniciar_avaliacao",
+        origem: "avaliacao",
+      });
       await (supabase as any).from("operational_execution_logs").insert({
         assignment_id: aId, acao: "avaliador_iniciou", executado_por: profile.id,
       });

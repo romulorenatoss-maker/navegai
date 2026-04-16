@@ -14,6 +14,7 @@ import { STATUS_CONFIG, CONTINGENCY_STATUS, AUDIT_EVENT_LABELS } from "@/hooks/u
 import { BarChart3, AlertTriangle, CheckCircle2, Clock, Users, Shield, RotateCcw, History, ThumbsUp, ThumbsDown, Pencil } from "lucide-react";
 import { useApprovalFlow } from "@/hooks/useApprovalFlow";
 import { useContingencyManagement } from "@/hooks/useContingencyManagement";
+import { useOperationalTransition } from "@/hooks/useOperationalTransition";
 
 export default function OperationalGestaoPage() {
   const { profile } = useAuth();
@@ -99,39 +100,17 @@ export default function OperationalGestaoPage() {
 
   // Use official contingency management
   const contingencyMgmt = useContingencyManagement();
+  const { transition: centralTransition } = useOperationalTransition();
 
-  // Reopen mutation — clears ALL evaluation/score residuals
+  // Reopen mutation — uses centralized transition
   const reopenAssignment = useMutation({
     mutationFn: async ({ assignmentId, motivo: m }: { assignmentId: string; motivo: string }) => {
       if (!m.trim()) throw new Error("Motivo é obrigatório para reabertura.");
-      const assignment = assignments.find((a: any) => a.id === assignmentId);
-      const { error } = await (supabase as any).from("operational_assignments")
-        .update({
-          status: "em_andamento",
-          fim_em: null,
-          pontuacao_obtida: null,
-          avaliador_inicio_em: null,
-          avaliador_fim_em: null,
-          score_executor: null,
-          score_avaliado: null,
-          score_avaliador: null,
-          score_final_ajustado: null,
-        })
-        .eq("id", assignmentId);
-      if (error) throw error;
-      await (supabase as any).from("operational_audit_trail").insert({
-        assignment_id: assignmentId,
-        tipo_evento: "reabertura",
-        executado_por: profile?.id,
+      await centralTransition.mutateAsync({
+        assignmentId,
+        action: "reabrir",
         motivo: m,
-        dados_anteriores: { status: assignment?.status, pontuacao_obtida: assignment?.pontuacao_obtida },
-        dados_novos: { status: "em_andamento" },
-      });
-      await (supabase as any).from("operational_execution_logs").insert({
-        assignment_id: assignmentId,
-        acao: "reabriu",
-        executado_por: profile?.id,
-        detalhes: { motivo: m },
+        origem: "gestao",
       });
     },
     onSuccess: () => {

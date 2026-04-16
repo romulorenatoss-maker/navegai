@@ -13,6 +13,7 @@ import { STATUS_CONFIG } from "@/hooks/useOperationalScoring";
 import { AssignmentCard } from "@/components/operational/AssignmentCard";
 import { DynamicFieldRenderer, SnapshotField, FieldAnswer, evaluateVisibility } from "@/components/operational/DynamicFieldRenderer";
 import { useAssignmentExecution } from "@/hooks/useAssignmentExecution";
+import { useOperationalTransition } from "@/hooks/useOperationalTransition";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -114,6 +115,7 @@ function AuditTimelinePanel({ logs, assignment }: { logs: any[]; assignment: any
 export default function OperationalExecucaoPage() {
   const { profile, isAdmin } = useAuth();
   const qc = useQueryClient();
+  const { transition: centralTransition } = useOperationalTransition();
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
   const [execDialogOpen, setExecDialogOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
@@ -644,18 +646,15 @@ export default function OperationalExecucaoPage() {
               {needsAdminReopen ? (
                 <Button type="button" size="sm" variant="outline" onClick={async () => {
                   try {
-                    const prevStatus = selectedAssignment.status;
-                    await (supabase as any).from("operational_assignments").update({
-                      status: "em_andamento", fim_em: null, avaliador_inicio_em: null, avaliador_fim_em: null,
-                    }).eq("id", selectedAssignment.id);
-                    await (supabase as any).from("operational_audit_trail").insert({
-                      assignment_id: selectedAssignment.id, tipo_evento: "admin_reabriu_para_edicao",
-                      executado_por: profile?.id, motivo: "Edição administrativa",
-                      dados_anteriores: { status: prevStatus }, dados_novos: { status: "em_andamento" },
+                    await centralTransition.mutateAsync({
+                      assignmentId: selectedAssignment.id,
+                      action: "admin_reabrir_edicao",
+                      motivo: "Edição administrativa",
+                      origem: "execucao",
                     });
                     await (supabase as any).from("operational_execution_logs").insert({
                       assignment_id: selectedAssignment.id, acao: "admin_reabriu_para_edicao",
-                      executado_por: profile?.id, detalhes: { status_anterior: prevStatus },
+                      executado_por: profile?.id, detalhes: { status_anterior: selectedAssignment.status },
                     });
                     toast.success("Tarefa reaberta para edição");
                     setSelectedAssignment({ ...selectedAssignment, status: "em_andamento" });
