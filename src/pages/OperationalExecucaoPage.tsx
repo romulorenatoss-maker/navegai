@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Play, Send, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock, CircleDot, RotateCcw, CheckCheck, CalendarClock, ListTodo, Hourglass, Filter } from "lucide-react";
+import { Play, Send, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock, CircleDot, RotateCcw, CheckCheck, CalendarClock, ListTodo, Hourglass, Filter, History, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
@@ -14,6 +14,7 @@ import { AssignmentCard } from "@/components/operational/AssignmentCard";
 import { DynamicFieldRenderer, SnapshotField, FieldAnswer, evaluateVisibility } from "@/components/operational/DynamicFieldRenderer";
 import { useAssignmentExecution } from "@/hooks/useAssignmentExecution";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface AccordionSectionProps {
   title: string;
@@ -53,6 +54,63 @@ function AccordionSection({ title, count, icon, borderColor, badgeBg, badgeText,
   );
 }
 
+const ACAO_LABELS: Record<string, string> = {
+  visualizou: "Visualizou a tarefa",
+  iniciou: "Iniciou a execução",
+  preencheu_campo: "Preencheu campo",
+  enviou_para_avaliacao: "Enviou para avaliação",
+  admin_reabriu_para_edicao: "Admin reabriu para edição",
+  salvou_rascunho: "Salvou rascunho",
+};
+
+function AuditTimelinePanel({ logs, assignment }: { logs: any[]; assignment: any }) {
+  const isLate = (() => {
+    if (!assignment?.horario_limite || !assignment?.data_prevista) return false;
+    const limite = new Date(`${assignment.data_prevista}T${assignment.horario_limite}`);
+    return new Date() > limite;
+  })();
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between mb-2">
+        <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+          <History className="w-3.5 h-3.5" /> Histórico de Ações
+        </h4>
+        {isLate && assignment?.status !== "concluida" && assignment?.status !== "aprovada" && (
+          <span className="text-[10px] font-bold text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">⚠ ATRASADO</span>
+        )}
+      </div>
+      {logs.length === 0 ? (
+        <p className="text-xs text-muted-foreground text-center py-3">Nenhuma ação registrada.</p>
+      ) : (
+        <div className="relative pl-4 border-l-2 border-border space-y-2">
+          {logs.map((log: any, i: number) => {
+            const dt = new Date(log.created_at);
+            const timeStr = dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+            const dateStr = dt.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+            const isEnvio = log.acao === "enviou_para_avaliacao";
+            const logAtrasado = log.detalhes?.atrasado;
+            return (
+              <div key={log.id || i} className="relative">
+                <div className={`absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full border-2 ${isEnvio ? "bg-green-500 border-green-300" : "bg-primary border-primary/50"}`} />
+                <div className="text-[11px]">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-semibold text-foreground">{log.profiles?.nome || "Sistema"}</span>
+                    <span className="text-muted-foreground">•</span>
+                    <span className="text-muted-foreground">{dateStr} {timeStr}</span>
+                    {logAtrasado && <span className="text-[9px] font-bold text-destructive bg-destructive/10 px-1 py-0.5 rounded">ATRASADO</span>}
+                  </div>
+                  <p className="text-muted-foreground">{ACAO_LABELS[log.acao] || log.acao}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function OperationalExecucaoPage() {
   const { profile, isAdmin } = useAuth();
   const qc = useQueryClient();
@@ -65,6 +123,7 @@ export default function OperationalExecucaoPage() {
   const today = new Date().toISOString().slice(0, 10);
   const [filterDate, setFilterDate] = useState<string>(today);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const { data: allProfilesRaw = [] } = useQuery({
     queryKey: ["profiles_for_exec_filter"],
@@ -94,7 +153,6 @@ export default function OperationalExecucaoPage() {
     staleTime: 15000,
   });
 
-  // Profiles filtrados: só quem tem tarefas em aberto
   const profilesWithTasks = useMemo(() => {
     if (!isAdmin) return [];
     const openStatuses = ["pendente", "em_andamento", "devolvida", "aguardando_avaliacao", "aguardando_aprovacao"];
@@ -119,12 +177,9 @@ export default function OperationalExecucaoPage() {
         return nome.toLowerCase().includes(term);
       });
     }
-    // Filtro de data: mostra apenas a data selecionada para hoje/a fazer
     if (filterDate) {
       list = list.filter((a: any) => {
-        // Tarefas finalizadas/aguardando mostram sempre, o resto filtra por data
         if (["concluida", "aprovada", "aguardando_avaliacao", "aguardando_aprovacao", "nao_executada"].includes(a.status)) return true;
-        // Devolvidas sempre visíveis
         if (a.status === "devolvida") return true;
         return a.data_prevista === filterDate || (a.data_prevista < filterDate && !["concluida", "aprovada"].includes(a.status));
       });
@@ -132,7 +187,7 @@ export default function OperationalExecucaoPage() {
     return list;
   }, [assignments, isAdmin, filterResponsavel, searchTerm, filterDate]);
 
-  const hoje = filteredAssignments.filter((a: any) => 
+  const hoje = filteredAssignments.filter((a: any) =>
     ["pendente", "em_andamento", "devolvida"].includes(a.status) && a.data_prevista === filterDate
   );
   const aFazer = filteredAssignments.filter((a: any) => ["pendente"].includes(a.status) && a.data_prevista !== filterDate);
@@ -144,25 +199,45 @@ export default function OperationalExecucaoPage() {
   const exec = useAssignmentExecution(selectedAssignment?.id || null);
 
   const snapshot = selectedAssignment?.template_snapshot;
-  const snapshotSections: any[] = useMemo(() => snapshot?.sections?.sort((a: any, b: any) => a.ordem - b.ordem) || [], [snapshot]);
-  const snapshotFields: SnapshotField[] = useMemo(() => snapshot?.fields?.sort((a: any, b: any) => a.ordem - b.ordem) || [], [snapshot]);
+
+  // Deduplicate sections and fields by id
+  const snapshotSections: any[] = useMemo(() => {
+    const raw = snapshot?.sections || [];
+    const seen = new Set<string>();
+    return raw.filter((s: any) => { if (seen.has(s.id)) return false; seen.add(s.id); return true; })
+      .sort((a: any, b: any) => a.ordem - b.ordem);
+  }, [snapshot]);
+
+  const snapshotFields: SnapshotField[] = useMemo(() => {
+    const raw = snapshot?.fields || [];
+    const seen = new Set<string>();
+    return raw.filter((f: any) => { if (seen.has(f.id)) return false; seen.add(f.id); return true; })
+      .sort((a: any, b: any) => a.ordem - b.ordem);
+  }, [snapshot]);
+
+  const sectionIds = useMemo(() => new Set(snapshotSections.map(s => s.id)), [snapshotSections]);
+
+  const effectiveFields = useMemo(() => {
+    if (snapshotSections.length === 0) return snapshotFields;
+    return snapshotFields.filter(f => f.section_id && sectionIds.has(f.section_id));
+  }, [snapshotFields, snapshotSections, sectionIds]);
 
   const fieldsBySection = useMemo(() => {
     const map: Record<string, SnapshotField[]> = {};
-    for (const f of snapshotFields) {
+    for (const f of effectiveFields) {
       const key = f.section_id || "__nosection";
       (map[key] ??= []).push(f);
     }
     return map;
-  }, [snapshotFields]);
+  }, [effectiveFields]);
 
   const openExecution = useCallback((a: any) => {
     setSelectedAssignment(a);
     setExecDialogOpen(true);
+    setShowHistory(false);
     const sections = a.template_snapshot?.sections?.sort((x: any, y: any) => x.ordem - y.ordem);
     setActiveSection(sections?.[0]?.id || null);
 
-    // Log view event
     if (profile?.id) {
       (supabase as any).from("operational_execution_logs").insert({
         assignment_id: a.id,
@@ -178,16 +253,8 @@ export default function OperationalExecucaoPage() {
     setExecDialogOpen(false);
     setSelectedAssignment(null);
     setSubmitAttempted(false);
+    setShowHistory(false);
   };
-
-  // When sections exist, only count fields that belong to a valid section
-  const sectionIds = useMemo(() => new Set(snapshotSections.map(s => s.id)), [snapshotSections]);
-
-  const effectiveFields = useMemo(() => {
-    if (snapshotSections.length === 0) return snapshotFields;
-    // Exclude orphan fields (section_id null or not matching any snapshot section)
-    return snapshotFields.filter(f => f.section_id && sectionIds.has(f.section_id));
-  }, [snapshotFields, snapshotSections, sectionIds]);
 
   const visibleFields = useMemo(() =>
     effectiveFields.filter(f => evaluateVisibility(f.condicao_visibilidade, exec.answers)),
@@ -205,7 +272,6 @@ export default function OperationalExecucaoPage() {
     return Math.round((filled / visibleFields.length) * 100);
   }, [visibleFields, isFilled]);
 
-  // Step navigation for sectioned tasks
   const hasSections = snapshotSections.length > 1;
   const currentSectionIndex = useMemo(() => {
     if (!hasSections || !activeSection) return 0;
@@ -216,8 +282,6 @@ export default function OperationalExecucaoPage() {
 
   const goToNextSection = () => {
     if (!isLastSection && snapshotSections[currentSectionIndex + 1]) {
-      // Auto-save before switching
-      if (exec.dirty) exec.saveDraft();
       setActiveSection(snapshotSections[currentSectionIndex + 1].id);
     }
   };
@@ -263,7 +327,6 @@ export default function OperationalExecucaoPage() {
     );
   };
 
-
   const renderEmptyState = (msg: string) => (
     <div className="text-center py-6 text-muted-foreground">
       <p className="text-xs">{msg}</p>
@@ -272,7 +335,6 @@ export default function OperationalExecucaoPage() {
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto">
-      {/* Header */}
       <div className="mb-4">
         <h1 className="text-lg font-semibold text-foreground">Execução Operacional</h1>
         <p className="text-xs text-muted-foreground">
@@ -280,23 +342,12 @@ export default function OperationalExecucaoPage() {
         </p>
       </div>
 
-      {/* Search + Filter bar */}
       <div className="flex items-center gap-2 mb-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Pesquisar"
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="pl-9 h-9 text-sm"
-          />
+          <Input placeholder="Pesquisar" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9 h-9 text-sm" />
         </div>
-        <Input
-          type="date"
-          value={filterDate}
-          onChange={e => setFilterDate(e.target.value || today)}
-          className="w-[160px] h-9 text-sm"
-        />
+        <Input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value || today)} className="w-[160px] h-9 text-sm" />
         {isAdmin && (
           <Select value={filterResponsavel} onValueChange={setFilterResponsavel}>
             <SelectTrigger className="w-[200px] h-9">
@@ -313,7 +364,6 @@ export default function OperationalExecucaoPage() {
         )}
       </div>
 
-      {/* Admin vision mode banner */}
       {isAdmin && filterResponsavel !== "__all" && (
         <div className="mb-4 flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-lg px-3 py-2">
           <span className="text-sm font-medium text-primary">
@@ -325,86 +375,49 @@ export default function OperationalExecucaoPage() {
         </div>
       )}
 
-      {/* Accordion sections */}
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground text-sm">Carregando...</div>
       ) : (
         <div className="space-y-3">
-          <AccordionSection
-            title="Tarefas de Hoje"
-            count={hoje.length}
+          <AccordionSection title="Tarefas de Hoje" count={hoje.length}
             icon={<CalendarClock className="w-4 h-4" style={{ color: "#f97316" }} />}
-            borderColor="#f97316"
-            badgeBg="bg-orange-500/15"
-            badgeText="text-orange-700 dark:text-orange-400"
-            isOpen={openAccordion === "hoje"}
-            onToggle={() => setOpenAccordion(openAccordion === "hoje" ? null : "hoje")}
-          >
+            borderColor="#f97316" badgeBg="bg-orange-500/15" badgeText="text-orange-700 dark:text-orange-400"
+            isOpen={openAccordion === "hoje"} onToggle={() => setOpenAccordion(openAccordion === "hoje" ? null : "hoje")}>
             {hoje.length === 0 ? renderEmptyState("Nenhuma tarefa para hoje.") : hoje.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
           </AccordionSection>
 
-          <AccordionSection
-            title="A Fazer"
-            count={aFazer.length}
+          <AccordionSection title="A Fazer" count={aFazer.length}
             icon={<ListTodo className="w-4 h-4" style={{ color: "#eab308" }} />}
-            borderColor="#eab308"
-            badgeBg="bg-yellow-500/15"
-            badgeText="text-yellow-700 dark:text-yellow-400"
-            isOpen={openAccordion === "afazer"}
-            onToggle={() => setOpenAccordion(openAccordion === "afazer" ? null : "afazer")}
-          >
+            borderColor="#eab308" badgeBg="bg-yellow-500/15" badgeText="text-yellow-700 dark:text-yellow-400"
+            isOpen={openAccordion === "afazer"} onToggle={() => setOpenAccordion(openAccordion === "afazer" ? null : "afazer")}>
             {aFazer.length === 0 ? renderEmptyState("Nenhuma rotina a fazer.") : aFazer.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
           </AccordionSection>
 
-          <AccordionSection
-            title="Em Andamento"
-            count={emAndamento.length}
+          <AccordionSection title="Em Andamento" count={emAndamento.length}
             icon={<CircleDot className="w-4 h-4" style={{ color: "#3b82f6" }} />}
-            borderColor="#3b82f6"
-            badgeBg="bg-blue-500/15"
-            badgeText="text-blue-700 dark:text-blue-400"
-            isOpen={openAccordion === "andamento"}
-            onToggle={() => setOpenAccordion(openAccordion === "andamento" ? null : "andamento")}
-          >
+            borderColor="#3b82f6" badgeBg="bg-blue-500/15" badgeText="text-blue-700 dark:text-blue-400"
+            isOpen={openAccordion === "andamento"} onToggle={() => setOpenAccordion(openAccordion === "andamento" ? null : "andamento")}>
             {emAndamento.length === 0 ? renderEmptyState("Nenhuma rotina em andamento.") : emAndamento.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
           </AccordionSection>
 
-          <AccordionSection
-            title="Devolvidas"
-            count={devolvidas.length}
+          <AccordionSection title="Devolvidas" count={devolvidas.length}
             icon={<RotateCcw className="w-4 h-4" style={{ color: "#ef4444" }} />}
-            borderColor="#ef4444"
-            badgeBg="bg-red-500/15"
-            badgeText="text-red-700 dark:text-red-400"
-            isOpen={openAccordion === "devolvidas"}
-            onToggle={() => setOpenAccordion(openAccordion === "devolvidas" ? null : "devolvidas")}
-          >
+            borderColor="#ef4444" badgeBg="bg-red-500/15" badgeText="text-red-700 dark:text-red-400"
+            isOpen={openAccordion === "devolvidas"} onToggle={() => setOpenAccordion(openAccordion === "devolvidas" ? null : "devolvidas")}>
             {devolvidas.length === 0 ? renderEmptyState("Nenhuma rotina devolvida.") : devolvidas.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
           </AccordionSection>
 
-          <AccordionSection
-            title="Aguardando Avaliação"
-            count={aguardandoAvaliacao.length}
+          <AccordionSection title="Aguardando Avaliação" count={aguardandoAvaliacao.length}
             icon={<Hourglass className="w-4 h-4" style={{ color: "#8b5cf6" }} />}
-            borderColor="#8b5cf6"
-            badgeBg="bg-violet-500/15"
-            badgeText="text-violet-700 dark:text-violet-400"
-            isOpen={openAccordion === "aguardando"}
-            onToggle={() => setOpenAccordion(openAccordion === "aguardando" ? null : "aguardando")}
-          >
+            borderColor="#8b5cf6" badgeBg="bg-violet-500/15" badgeText="text-violet-700 dark:text-violet-400"
+            isOpen={openAccordion === "aguardando"} onToggle={() => setOpenAccordion(openAccordion === "aguardando" ? null : "aguardando")}>
             {aguardandoAvaliacao.length === 0 ? renderEmptyState("Nenhuma rotina aguardando avaliação.") : aguardandoAvaliacao.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
           </AccordionSection>
 
-          <AccordionSection
-            title="Finalizadas"
-            count={concluidas.length}
+          <AccordionSection title="Finalizadas" count={concluidas.length}
             icon={<CheckCheck className="w-4 h-4" style={{ color: "#22c55e" }} />}
-            borderColor="#22c55e"
-            badgeBg="bg-green-500/15"
-            badgeText="text-green-700 dark:text-green-400"
-            isOpen={openAccordion === "finalizadas"}
-            onToggle={() => setOpenAccordion(openAccordion === "finalizadas" ? null : "finalizadas")}
-          >
+            borderColor="#22c55e" badgeBg="bg-green-500/15" badgeText="text-green-700 dark:text-green-400"
+            isOpen={openAccordion === "finalizadas"} onToggle={() => setOpenAccordion(openAccordion === "finalizadas" ? null : "finalizadas")}>
             {concluidas.length === 0 ? renderEmptyState("Nenhuma rotina finalizada.") : concluidas.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
           </AccordionSection>
         </div>
@@ -448,7 +461,19 @@ export default function OperationalExecucaoPage() {
                   )}
                 </div>
               </div>
-              {exec.dirty && <span className="text-[10px] text-muted-foreground">Não salvo</span>}
+              {/* History icon replacing "Não salvo" / rascunho */}
+              <Button
+                variant={showHistory ? "default" : "ghost"}
+                size="sm"
+                className="h-8 w-8 p-0 shrink-0"
+                onClick={() => { setShowHistory(!showHistory); if (!showHistory) exec.refetchLogs(); }}
+                title="Histórico de ações"
+              >
+                <History className="w-4 h-4" />
+              </Button>
+              {exec.dirty && (
+                <span className="text-[10px] text-muted-foreground animate-pulse">Salvando...</span>
+              )}
             </div>
 
             <div className="mt-3">
@@ -497,6 +522,13 @@ export default function OperationalExecucaoPage() {
 
           {/* Body */}
           <div className="flex-1 overflow-y-auto p-4 space-y-6">
+            {/* History Panel */}
+            {showHistory && (
+              <div className="bg-muted/40 border border-border rounded-lg p-3 mb-2">
+                <AuditTimelinePanel logs={exec.executionLogs} assignment={selectedAssignment} />
+              </div>
+            )}
+
             {selectedAssignment?.status === "pendente" && !isAdmin && (
               <div className="text-center py-6">
                 <p className="text-sm text-muted-foreground mb-3">Inicie a tarefa para começar o preenchimento.</p>
@@ -529,7 +561,7 @@ export default function OperationalExecucaoPage() {
               <>
                 {snapshotSections.length === 0 ? (
                   <div className="space-y-3">
-                    {snapshotFields.map(f => (
+                    {effectiveFields.map(f => (
                       <DynamicFieldRenderer key={f.id} field={f} answer={exec.answers[f.id]}
                         review={exec.getLatestReview(f.id)} userRole="executor"
                         disabled={isDevolvida && exec.getLatestReview(f.id)?.devolvido !== true}
@@ -540,16 +572,13 @@ export default function OperationalExecucaoPage() {
                 ) : (
                   snapshotSections.filter(s => !activeSection || s.id === activeSection).map((section: any) => {
                     const sFields = fieldsBySection[section.id] || [];
-                    // Calculate section deadline status
                     const sectionLate = (() => {
                       if (!section.horario_fim || !selectedAssignment?.data_prevista) return false;
-                      const deadlineStr = `${selectedAssignment.data_prevista}T${section.horario_fim}`;
-                      return new Date(deadlineStr) < new Date();
+                      return new Date(`${selectedAssignment.data_prevista}T${section.horario_fim}`) < new Date();
                     })();
                     const sectionTimeRemaining = (() => {
                       if (!section.horario_fim || !selectedAssignment?.data_prevista) return null;
-                      const deadlineStr = `${selectedAssignment.data_prevista}T${section.horario_fim}`;
-                      const diff = new Date(deadlineStr).getTime() - Date.now();
+                      const diff = new Date(`${selectedAssignment.data_prevista}T${section.horario_fim}`).getTime() - Date.now();
                       if (diff <= 0) return "Atrasado";
                       const h = Math.floor(diff / 3600000);
                       const m = Math.floor((diff % 3600000) / 60000);
@@ -592,7 +621,7 @@ export default function OperationalExecucaoPage() {
 
             {!isEditable && selectedAssignment && (
               <div className="space-y-3">
-                {snapshotFields.map(f => (
+                {effectiveFields.map(f => (
                   <DynamicFieldRenderer key={f.id} field={f} answer={exec.answers[f.id]}
                     review={exec.getLatestReview(f.id)} userRole="executor"
                     disabled={true} allAnswers={exec.answers} onChange={() => {}} assignmentId={selectedAssignment?.id || ""} />
@@ -614,22 +643,21 @@ export default function OperationalExecucaoPage() {
                   try {
                     const prevStatus = selectedAssignment.status;
                     await (supabase as any).from("operational_assignments").update({
-                      status: "em_andamento",
-                      fim_em: null,
-                      avaliador_inicio_em: null,
-                      avaliador_fim_em: null,
+                      status: "em_andamento", fim_em: null, avaliador_inicio_em: null, avaliador_fim_em: null,
                     }).eq("id", selectedAssignment.id);
                     await (supabase as any).from("operational_audit_trail").insert({
-                      assignment_id: selectedAssignment.id,
-                      tipo_evento: "admin_reabriu_para_edicao",
-                      executado_por: profile?.id,
-                      motivo: "Edição administrativa",
-                      dados_anteriores: { status: prevStatus },
-                      dados_novos: { status: "em_andamento" },
+                      assignment_id: selectedAssignment.id, tipo_evento: "admin_reabriu_para_edicao",
+                      executado_por: profile?.id, motivo: "Edição administrativa",
+                      dados_anteriores: { status: prevStatus }, dados_novos: { status: "em_andamento" },
+                    });
+                    await (supabase as any).from("operational_execution_logs").insert({
+                      assignment_id: selectedAssignment.id, acao: "admin_reabriu_para_edicao",
+                      executado_por: profile?.id, detalhes: { status_anterior: prevStatus },
                     });
                     toast.success("Tarefa reaberta para edição");
                     setSelectedAssignment({ ...selectedAssignment, status: "em_andamento" });
-                    qc.invalidateQueries({ queryKey: ["exec_assignments"] });
+                    qc.invalidateQueries({ queryKey: ["my_operational_assignments"] });
+                    exec.refetchLogs();
                   } catch (e: any) {
                     toast.error("Erro ao reabrir: " + e.message);
                   }
