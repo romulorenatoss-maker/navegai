@@ -236,6 +236,10 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
               <div className="relative inline-block">
                 {field.tipo === "foto" ? (
                   <img src={val.evidencia_url} alt="Evidência" className="max-h-32 rounded border border-border" />
+                ) : /\.(mp4|webm|mov)$/i.test(val.evidencia_url) ? (
+                  <video src={val.evidencia_url} controls className="max-h-40 rounded border border-border" />
+                ) : /\.(mp3|wav|ogg|m4a|webm)$/i.test(val.evidencia_url) ? (
+                  <audio src={val.evidencia_url} controls className="w-full max-w-xs" />
                 ) : (
                   <a href={val.evidencia_url} target="_blank" rel="noreferrer" className="text-sm text-primary underline">Ver arquivo</a>
                 )}
