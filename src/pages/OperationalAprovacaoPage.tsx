@@ -140,21 +140,72 @@ export default function OperationalAprovacaoPage() {
     return map;
   }, [approval.fieldReviews]);
 
-  // ALL visible fields shown in the checklist (main questions)
-  const allVisibleFields = useMemo(() =>
-    snapshotFields.filter(f => evaluateVisibility(f.condicao_visibilidade, answersMap)),
+  // Fields with aprovador_verificar (manual approval questions)
+  const approvalFields = useMemo(() =>
+    snapshotFields.filter(f => f.aprovador_verificar && f.aprovador_pergunta?.trim() && evaluateVisibility(f.condicao_visibilidade, answersMap)),
     [snapshotFields, answersMap]
   );
 
-  // Only fields with aprovador_verificar are interactive approval questions
-  const approvalFields = useMemo(() =>
-    allVisibleFields.filter(f => f.aprovador_verificar && f.aprovador_pergunta?.trim()),
-    [allVisibleFields]
-  );
+  // Auto-questions from template (when habilitar_perguntas_automaticas is enabled)
+  const habilitarAuto = snapshot?.habilitar_perguntas_automaticas !== false;
+  const autoQuestions = useMemo(() => {
+    if (!habilitarAuto) return [];
+    return [
+      { id: "__auto_fora_prazo", label: "Tarefa executada fora do prazo?", pontos: snapshot?.penalidade_fora_prazo ?? 20, key: "fora_prazo" },
+      { id: "__auto_contingencia", label: "Houve contingência nesta tarefa?", pontos: snapshot?.penalidade_contingencia ?? 10, key: "contingencia" },
+      { id: "__auto_sla_contingencia", label: "Contingência resolvida dentro do prazo?", pontos: snapshot?.penalidade_sla_contingencia ?? 15, key: "sla_contingencia" },
+    ];
+  }, [habilitarAuto, snapshot]);
 
-  // Progress
+  // Auto-question pre-filled answers based on actual task data
+  const autoAnswers = useMemo(() => {
+    const answers: Record<string, { resposta: ApprovalAnswer; autoFilled: boolean; detail: string }> = {};
+    if (!selectedAssignment || !habilitarAuto) return answers;
+
+    // Fora do prazo: check if task exceeded horario_limite
+    const foraDoP = selectedAssignment.fim_em && selectedAssignment.horario_limite
+      ? new Date(selectedAssignment.fim_em).toTimeString().slice(0, 5) > selectedAssignment.horario_limite
+      : false;
+    answers["__auto_fora_prazo"] = {
+      resposta: foraDoP ? "nao_conforme" : "conforme",
+      autoFilled: true,
+      detail: foraDoP ? "Tarefa finalizada após o horário limite" : "Tarefa finalizada dentro do prazo",
+    };
+
+    // Contingência: check if any contingencies exist
+    const hasContingency = approval.contingencies.length > 0;
+    answers["__auto_contingencia"] = {
+      resposta: hasContingency ? "nao_conforme" : "conforme",
+      autoFilled: true,
+      detail: hasContingency ? `${approval.contingencies.length} contingência(s) registrada(s)` : "Nenhuma contingência",
+    };
+
+    // SLA contingência: check if resolved within deadline
+    const openOrLate = approval.contingencies.filter((c: any) =>
+      !["validada", "descartada"].includes(c.status) || c.dentro_prazo === false
+    );
+    answers["__auto_sla_contingencia"] = {
+      resposta: !hasContingency ? "na" : openOrLate.length > 0 ? "nao_conforme" : "conforme",
+      autoFilled: true,
+      detail: !hasContingency ? "Sem contingências para avaliar" : openOrLate.length > 0 ? "Contingência(s) fora do prazo ou pendente(s)" : "Todas resolvidas dentro do SLA",
+    };
+
+    return answers;
+  }, [selectedAssignment, habilitarAuto, approval.contingencies]);
+
+  // Total items = auto questions + approval fields
+  const totalQuestions = autoQuestions.length + approvalFields.length;
+
+  // Progress — counts auto-questions as always answered + manual approval fields
   const progress = useMemo(() => {
-    let respondidas = 0, total = approvalFields.length, conformes = 0, naoConformes = 0;
+    let respondidas = autoQuestions.length, total = totalQuestions, conformes = 0, naoConformes = 0;
+    // Auto questions
+    for (const aq of autoQuestions) {
+      const resp = autoAnswers[aq.id]?.resposta || "";
+      if (resp === "conforme") conformes++;
+      if (resp === "nao_conforme") naoConformes++;
+    }
+    // Manual approval fields
     for (const f of approvalFields) {
       const existing = approval.existingApprovalAnswers.find((a: any) => a.field_id === f.id);
       const draft = approval.approverAnswers[f.id];
@@ -166,7 +217,7 @@ export default function OperationalAprovacaoPage() {
       }
     }
     return { respondidas, total, conformes, naoConformes };
-  }, [approvalFields, approval.approverAnswers, approval.existingApprovalAnswers]);
+  }, [autoQuestions, autoAnswers, approvalFields, approval.approverAnswers, approval.existingApprovalAnswers, totalQuestions]);
 
   const progressPercent = progress.total > 0 ? Math.round((progress.respondidas / progress.total) * 100) : 0;
 
@@ -175,50 +226,51 @@ export default function OperationalAprovacaoPage() {
     [selectedAssignment, approval.getBlockingReasons]
   );
 
-  // ── Build ordered items by section — ALL visible fields ──
+  // ── Build ordered items: auto questions first, then approval fields by section ──
   const orderedItems = useMemo(() => {
-    const result: ({ type: "section"; data: any } | { type: "field"; data: SnapshotField })[] = [];
+    const result: ({ type: "section"; data: any } | { type: "field"; data: SnapshotField } | { type: "auto"; data: any })[] = [];
+
+    // Auto questions section
+    if (autoQuestions.length > 0) {
+      result.push({ type: "section", data: { id: "__auto_section", nome: "Perguntas Automáticas", cor: null } });
+      for (const aq of autoQuestions) result.push({ type: "auto", data: aq });
+    }
+
+    // Manual approval fields by section
     if (snapshotSections.length > 0) {
       for (const section of snapshotSections) {
-        const sFields = allVisibleFields.filter(f => f.section_id === section.id);
+        const sFields = approvalFields.filter(f => f.section_id === section.id);
         if (sFields.length === 0) continue;
         result.push({ type: "section", data: section });
         for (const f of sFields) result.push({ type: "field", data: f });
       }
-      // Fields without section
-      const orphans = allVisibleFields.filter(f => !f.section_id || !snapshotSections.find((s: any) => s.id === f.section_id));
+      const orphans = approvalFields.filter(f => !f.section_id || !snapshotSections.find((s: any) => s.id === f.section_id));
       if (orphans.length > 0) {
-        result.push({ type: "section", data: { id: "__orphan", nome: "Geral", cor: null } });
+        result.push({ type: "section", data: { id: "__orphan", nome: "Perguntas do Aprovador", cor: null } });
         for (const f of orphans) result.push({ type: "field", data: f });
       }
-    } else {
-      for (const f of allVisibleFields) result.push({ type: "field", data: f });
+    } else if (approvalFields.length > 0) {
+      result.push({ type: "section", data: { id: "__manual", nome: "Perguntas do Aprovador", cor: null } });
+      for (const f of approvalFields) result.push({ type: "field", data: f });
     }
     return result;
-  }, [snapshotSections, allVisibleFields]);
+  }, [autoQuestions, snapshotSections, approvalFields]);
 
   // Section scores
   const sectionScores = useMemo(() => {
     const scores: Record<string, { answered: number; total: number; conformes: number; naoConformes: number }> = {};
     for (const section of snapshotSections) {
-      const sFields = allVisibleFields.filter(f => f.section_id === section.id);
+      const sFields = approvalFields.filter(f => f.section_id === section.id);
       if (sFields.length === 0) continue;
       let answered = 0, conformes = 0, naoConformes = 0;
       for (const f of sFields) {
-        const isApprovalField = f.aprovador_verificar && f.aprovador_pergunta?.trim();
-        if (isApprovalField) {
-          const resp = approval.approverAnswers[f.id]?.resposta || approval.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.resposta || "";
-          if (resp) { answered++; if (resp === "conforme") conformes++; if (resp === "nao_conforme") naoConformes++; }
-        } else {
-          // Non-approval fields: count executor answer as answered
-          const ans = answersMap[f.id];
-          if (ans) { answered++; if (ans.valor_booleano === true) conformes++; if (ans.valor_booleano === false) naoConformes++; }
-        }
+        const resp = approval.approverAnswers[f.id]?.resposta || approval.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.resposta || "";
+        if (resp) { answered++; if (resp === "conforme") conformes++; if (resp === "nao_conforme") naoConformes++; }
       }
       scores[section.id] = { answered, total: sFields.length, conformes, naoConformes };
     }
     return scores;
-  }, [snapshotSections, allVisibleFields, approval.approverAnswers, approval.existingApprovalAnswers, answersMap]);
+  }, [snapshotSections, approvalFields, approval.approverAnswers, approval.existingApprovalAnswers]);
 
   const openApproval = useCallback((a: any) => {
     setSelectedAssignment(a);
@@ -375,36 +427,35 @@ export default function OperationalAprovacaoPage() {
             {orderedItems.length === 0 && (
               <div className="bg-card border border-border rounded-lg p-8 text-center">
                 <p className="text-sm text-muted-foreground">Nenhuma pergunta de aprovação configurada neste template.</p>
-                <p className="text-xs mt-1 text-muted-foreground">Configure campos com "Pergunta do Aprovador" na aba Formulário do template.</p>
+                <p className="text-xs mt-1 text-muted-foreground">Habilite perguntas automáticas ou configure campos com "Pergunta do Aprovador" no template.</p>
               </div>
             )}
 
-            {/* Questions by section - same pattern as AvaliacaoOSPage */}
+            {/* Questions by section */}
             {(() => {
               globalQuestionIdx = 0;
-              const sections: { section: any; fields: SnapshotField[] }[] = [];
+              const sections: { section: any; items: Array<{ type: "field" | "auto"; data: any }> }[] = [];
               let currentSection: any = null;
-              let currentFields: SnapshotField[] = [];
+              let currentItems: Array<{ type: "field" | "auto"; data: any }> = [];
 
               for (const item of orderedItems) {
                 if (item.type === "section") {
-                  if (currentSection) sections.push({ section: currentSection, fields: currentFields });
+                  if (currentSection) sections.push({ section: currentSection, items: currentItems });
                   currentSection = item.data;
-                  currentFields = [];
+                  currentItems = [];
                 } else {
-                  currentFields.push(item.data as SnapshotField);
+                  currentItems.push(item as any);
                 }
               }
-              if (currentSection) sections.push({ section: currentSection, fields: currentFields });
-              if (!currentSection && currentFields.length > 0) sections.push({ section: null, fields: currentFields });
+              if (currentSection) sections.push({ section: currentSection, items: currentItems });
+              if (!currentSection && currentItems.length > 0) sections.push({ section: null, items: currentItems });
 
-              return sections.map(({ section, fields }) => {
+              return sections.map(({ section, items }) => {
                 const sScore = section ? sectionScores[section.id] : null;
                 const sConformePct = sScore && sScore.total > 0 ? Math.round((sScore.conformes / sScore.total) * 100) : 0;
 
                 return (
                   <div key={section?.id || "__no_section"} className="bg-card border border-border rounded-lg shadow-card">
-                    {/* Section Header - same pattern */}
                     {section && (
                       <div className="p-4 border-b border-border flex items-center gap-2 flex-wrap">
                         <Users className="w-4 h-4 text-primary" />
@@ -419,61 +470,49 @@ export default function OperationalAprovacaoPage() {
                       </div>
                     )}
 
-                    {/* Questions list - same divide pattern */}
                     <div className="divide-y divide-border">
-                      {fields.length === 0 ? (
+                      {items.length === 0 ? (
                         <p className="px-4 py-4 text-caption text-muted-foreground text-center">Nenhuma pergunta nesta seção.</p>
-                      ) : fields.map((f) => {
+                      ) : items.map((item) => {
                         globalQuestionIdx++;
-                        const answer = answersMap[f.id];
-                        const rev = reviewsMap[f.id];
-                        const isApprovalField = !!(f.aprovador_verificar && f.aprovador_pergunta?.trim());
-                        const existing = approval.existingApprovalAnswers.find((a: any) => a.field_id === f.id);
-                        const draft = approval.approverAnswers[f.id];
-                        const currentResposta: ApprovalAnswer = isApprovalField ? (draft?.resposta ?? existing?.resposta ?? "") as ApprovalAnswer : "";
-                        const currentObs = isApprovalField ? (draft?.observacao ?? existing?.observacao ?? "") : "";
-                        const isConforme = currentResposta === "conforme";
-                        const isNaoConforme = currentResposta === "nao_conforme";
                         const idx = globalQuestionIdx;
 
-                        // For non-approval fields: show read-only with executor answer
-                        if (!isApprovalField) {
-                          const ansConforme = answer?.valor_booleano === true;
-                          const ansNaoConf = answer?.valor_booleano === false;
+                        // ── AUTO QUESTION ──
+                        if (item.type === "auto") {
+                          const aq = item.data;
+                          const autoAns = autoAnswers[aq.id];
+                          const isConf = autoAns?.resposta === "conforme";
+                          const isNaoConf = autoAns?.resposta === "nao_conforme";
+                          const isNA = autoAns?.resposta === "na";
                           return (
-                            <div key={f.id} className={cn("transition-colors",
-                              ansConforme ? "bg-success/5" : ansNaoConf ? "bg-destructive/5" : ""
+                            <div key={aq.id} className={cn("transition-colors",
+                              isConf ? "bg-success/5" : isNaoConf ? "bg-destructive/5" : ""
                             )}>
                               <div className="p-4">
                                 <div className="flex items-start gap-3">
                                   <div className={cn("flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0",
-                                    ansConforme ? "bg-success text-success-foreground" :
-                                    ansNaoConf ? "bg-destructive text-destructive-foreground" :
-                                    answer ? "bg-muted text-foreground" : "bg-muted text-muted-foreground"
+                                    isConf ? "bg-success text-success-foreground" :
+                                    isNaoConf ? "bg-destructive text-destructive-foreground" :
+                                    isNA ? "bg-warning text-warning-foreground" : "bg-muted text-muted-foreground"
                                   )}>
-                                    {answer ? <Check className="w-4 h-4" /> : String(idx).padStart(2, "0")}
+                                    <Check className="w-4 h-4" />
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-foreground leading-relaxed">{f.label}</p>
-                                    <div className="flex items-center gap-2 mt-1">
-                                      {renderAnswerValue(f, answer)}
+                                    <p className="text-sm font-medium text-foreground leading-relaxed">{aq.label}</p>
+                                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                      <span className="text-caption text-muted-foreground">Penalidade: -{aq.pontos} pts</span>
+                                      <span className="text-caption text-muted-foreground">•</span>
+                                      <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold",
+                                        isConf ? "bg-success/10 text-success" :
+                                        isNaoConf ? "bg-destructive/10 text-destructive" :
+                                        "bg-warning/10 text-warning"
+                                      )}>
+                                        {isConf ? "CONFORME" : isNaoConf ? "NÃO CONFORME" : "N/A"}
+                                      </span>
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-destructive/10 text-destructive border border-destructive/20">Automática</span>
                                     </div>
-                                    {answer?.evidencia_url && f.tipo !== "foto" && (
-                                      <a href={answer.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline flex items-center gap-1 mt-1">
-                                        <ExternalLink className="w-3 h-3" /> Ver evidência
-                                      </a>
-                                    )}
-                                    {rev && (
-                                      <div className="mt-2 flex items-center gap-2">
-                                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Avaliador:</span>
-                                        <span className={cn(
-                                          "inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border",
-                                          rev.conforme === true ? "border-success/40 bg-success/10 text-success" : "border-destructive/40 bg-destructive/10 text-destructive"
-                                        )}>
-                                          {rev.conforme === true ? "✓ Conforme" : "✗ Não Conforme"}
-                                        </span>
-                                        {rev.observacao && <span className="text-xs text-muted-foreground">"{rev.observacao}"</span>}
-                                      </div>
+                                    {autoAns?.detail && (
+                                      <p className="text-xs text-muted-foreground mt-1 italic">{autoAns.detail}</p>
                                     )}
                                   </div>
                                 </div>
@@ -482,14 +521,23 @@ export default function OperationalAprovacaoPage() {
                           );
                         }
 
-                        // Approval field: interactive
+                        // ── MANUAL APPROVAL FIELD ──
+                        const f = item.data as SnapshotField;
+                        const answer = answersMap[f.id];
+                        const rev = reviewsMap[f.id];
+                        const existing = approval.existingApprovalAnswers.find((a: any) => a.field_id === f.id);
+                        const draft = approval.approverAnswers[f.id];
+                        const currentResposta: ApprovalAnswer = (draft?.resposta ?? existing?.resposta ?? "") as ApprovalAnswer;
+                        const currentObs = draft?.observacao ?? existing?.observacao ?? "";
+                        const isConforme = currentResposta === "conforme";
+                        const isNaoConforme = currentResposta === "nao_conforme";
+
                         return (
                           <motion.div key={f.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(idx * 0.03, 0.5) }}
                             className={cn("transition-colors",
                               isConforme ? "bg-success/5" : isNaoConforme ? "bg-destructive/5" : ""
                             )}>
                             <div className="p-4">
-                              {/* Question header with number circle */}
                               <div className="flex items-start gap-3 mb-3">
                                 <div className={cn("flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0",
                                   isConforme ? "bg-success text-success-foreground" :
@@ -553,7 +601,6 @@ export default function OperationalAprovacaoPage() {
                                 </div>
                               </div>
 
-                              {/* Approval segmented control */}
                               <div className="ml-0 sm:ml-11">
                                 <ApprovalSegmentedControl
                                   value={currentResposta}
@@ -562,7 +609,6 @@ export default function OperationalAprovacaoPage() {
                                 />
                               </div>
 
-                              {/* Observation on Não Conforme */}
                               <AnimatePresence>
                                 {isNaoConforme && (
                                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
@@ -582,7 +628,6 @@ export default function OperationalAprovacaoPage() {
                                 )}
                               </AnimatePresence>
 
-                              {/* Observation on Conforme (optional) */}
                               <AnimatePresence>
                                 {isConforme && (
                                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
@@ -607,7 +652,6 @@ export default function OperationalAprovacaoPage() {
                       })}
                     </div>
 
-                    {/* Section score badge at bottom - same pattern */}
                     {sScore && sScore.total > 0 && (
                       <div className="px-4 py-3 bg-muted/30 border-t border-border flex items-center justify-between">
                         <span className="text-caption text-muted-foreground">
