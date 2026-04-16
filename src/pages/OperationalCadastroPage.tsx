@@ -27,7 +27,6 @@ export default function OperationalCadastroPage() {
   const [activeTab, setActiveTab] = useState("geral");
   const [filterExecutor, setFilterExecutor] = useState("__all");
   const [filterAvaliador, setFilterAvaliador] = useState("__all");
-  const [filterAvaliado, setFilterAvaliado] = useState("__all");
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ["operational_templates"],
@@ -60,23 +59,19 @@ export default function OperationalCadastroPage() {
   });
 
   // Build profile maps for filters — only show names that have templates associated
-  const { executorProfiles, avaliadorProfiles, avaliadoProfiles } = useMemo(() => {
+  const { executorProfiles, avaliadorProfiles } = useMemo(() => {
     const execMap = new Map<string, string>();
     const avalMap = new Map<string, string>();
-    const avdoMap = new Map<string, string>();
     const profileMap = new Map(colaboradores.map((c: any) => [c.id, c.nome]));
     for (const t of templates) {
       if (t.executor_profile_id && profileMap.has(t.executor_profile_id))
         execMap.set(t.executor_profile_id, profileMap.get(t.executor_profile_id)!);
       if (t.avaliador_profile_id && profileMap.has(t.avaliador_profile_id))
         avalMap.set(t.avaliador_profile_id, profileMap.get(t.avaliador_profile_id)!);
-      if (t.avaliado_profile_id && profileMap.has(t.avaliado_profile_id))
-        avdoMap.set(t.avaliado_profile_id, profileMap.get(t.avaliado_profile_id)!);
     }
     return {
       executorProfiles: Array.from(execMap, ([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome)),
       avaliadorProfiles: Array.from(avalMap, ([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome)),
-      avaliadoProfiles: Array.from(avdoMap, ([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome)),
     };
   }, [templates, colaboradores]);
 
@@ -84,9 +79,8 @@ export default function OperationalCadastroPage() {
     let list = templates;
     if (filterExecutor !== "__all") list = list.filter((t: any) => t.executor_profile_id === filterExecutor);
     if (filterAvaliador !== "__all") list = list.filter((t: any) => t.avaliador_profile_id === filterAvaliador);
-    if (filterAvaliado !== "__all") list = list.filter((t: any) => t.avaliado_profile_id === filterAvaliado);
     return list;
-  }, [templates, filterExecutor, filterAvaliador, filterAvaliado]);
+  }, [templates, filterExecutor, filterAvaliador]);
 
   const set = <K extends keyof TemplateForm>(k: K, v: TemplateForm[K]) => setForm(f => ({ ...f, [k]: v }));
 
@@ -352,9 +346,9 @@ export default function OperationalCadastroPage() {
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
         <Select value={filterExecutor} onValueChange={setFilterExecutor}>
-          <SelectTrigger className="w-[170px] h-8 text-xs"><SelectValue placeholder="Executor" /></SelectTrigger>
+          <SelectTrigger className="w-[170px] h-8 text-xs"><SelectValue placeholder="Quem recebe nota" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="__all">Executor: Todos</SelectItem>
+            <SelectItem value="__all">Nota: Todos</SelectItem>
             {executorProfiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -363,13 +357,6 @@ export default function OperationalCadastroPage() {
           <SelectContent>
             <SelectItem value="__all">Avaliador: Todos</SelectItem>
             {avaliadorProfiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={filterAvaliado} onValueChange={setFilterAvaliado}>
-          <SelectTrigger className="w-[170px] h-8 text-xs"><SelectValue placeholder="Avaliado" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all">Avaliado: Todos</SelectItem>
-            {avaliadoProfiles.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
