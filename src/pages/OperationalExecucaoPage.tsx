@@ -590,7 +590,7 @@ export default function OperationalExecucaoPage() {
             )}
 
             {/* Embedded contingency panel for contingenciado tasks */}
-            {isContingenciado && selectedAssignment && (
+            {showContingencyPanel && selectedAssignment && (
               <div className="bg-muted/30 border border-border rounded-lg p-3">
                 <EmbeddedContingencyPanel assignmentId={selectedAssignment.id} />
               </div>
