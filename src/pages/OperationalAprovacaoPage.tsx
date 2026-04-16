@@ -145,10 +145,16 @@ export default function OperationalAprovacaoPage() {
     return map;
   }, [approval.fieldReviews]);
 
-  // Fields with aprovador_verificar (manual approval questions) — fallback to label if aprovador_pergunta is empty
-  const approvalFields = useMemo(() =>
-    snapshotFields.filter(f => f.aprovador_verificar && evaluateVisibility(f.condicao_visibilidade, answersMap)),
+  // All visible fields (for full scoring summary display)
+  const allVisibleFields = useMemo(() =>
+    snapshotFields.filter(f => evaluateVisibility(f.condicao_visibilidade, answersMap)),
     [snapshotFields, answersMap]
+  );
+
+  // Fields with aprovador_verificar (interactive approval questions)
+  const approvalFields = useMemo(() =>
+    allVisibleFields.filter(f => f.aprovador_verificar),
+    [allVisibleFields]
   );
 
   // Auto-questions from template (when habilitar_perguntas_automaticas is enabled)
@@ -263,7 +269,7 @@ export default function OperationalAprovacaoPage() {
 
   // ── Build ordered items: auto questions first, then approval fields by section ──
   const orderedItems = useMemo(() => {
-    const result: ({ type: "section"; data: any } | { type: "field"; data: SnapshotField } | { type: "auto"; data: any })[] = [];
+    const result: ({ type: "section"; data: any } | { type: "field"; data: SnapshotField } | { type: "auto"; data: any } | { type: "field_readonly"; data: SnapshotField })[] = [];
 
     // Auto questions section
     if (autoQuestions.length > 0) {
@@ -271,41 +277,62 @@ export default function OperationalAprovacaoPage() {
       for (const aq of autoQuestions) result.push({ type: "auto", data: aq });
     }
 
-    // Manual approval fields by section
+    // ALL template fields by section (like scoring summary)
     if (snapshotSections.length > 0) {
       for (const section of snapshotSections) {
-        const sFields = approvalFields.filter(f => f.section_id === section.id);
+        const sFields = allVisibleFields.filter(f => f.section_id === section.id);
         if (sFields.length === 0) continue;
         result.push({ type: "section", data: section });
-        for (const f of sFields) result.push({ type: "field", data: f });
+        for (const f of sFields) {
+          result.push(f.aprovador_verificar ? { type: "field", data: f } : { type: "field_readonly", data: f });
+        }
       }
-      const orphans = approvalFields.filter(f => !f.section_id || !snapshotSections.find((s: any) => s.id === f.section_id));
+      const orphans = allVisibleFields.filter(f => !f.section_id || !snapshotSections.find((s: any) => s.id === f.section_id));
       if (orphans.length > 0) {
-        result.push({ type: "section", data: { id: "__orphan", nome: "Perguntas do Aprovador", cor: null } });
-        for (const f of orphans) result.push({ type: "field", data: f });
+        result.push({ type: "section", data: { id: "__orphan", nome: "Perguntas do Template", cor: null } });
+        for (const f of orphans) {
+          result.push(f.aprovador_verificar ? { type: "field", data: f } : { type: "field_readonly", data: f });
+        }
       }
-    } else if (approvalFields.length > 0) {
-      result.push({ type: "section", data: { id: "__manual", nome: "Perguntas do Aprovador", cor: null } });
-      for (const f of approvalFields) result.push({ type: "field", data: f });
+    } else if (allVisibleFields.length > 0) {
+      result.push({ type: "section", data: { id: "__all", nome: "Perguntas do Template", cor: null } });
+      for (const f of allVisibleFields) {
+        result.push(f.aprovador_verificar ? { type: "field", data: f } : { type: "field_readonly", data: f });
+      }
     }
     return result;
-  }, [autoQuestions, snapshotSections, approvalFields]);
+  }, [autoQuestions, snapshotSections, allVisibleFields]);
 
-  // Section scores
+  // Section scores (count all fields per section now)
   const sectionScores = useMemo(() => {
     const scores: Record<string, { answered: number; total: number; conformes: number; naoConformes: number }> = {};
     for (const section of snapshotSections) {
-      const sFields = approvalFields.filter(f => f.section_id === section.id);
+      const sFields = allVisibleFields.filter(f => f.section_id === section.id);
       if (sFields.length === 0) continue;
       let answered = 0, conformes = 0, naoConformes = 0;
       for (const f of sFields) {
-        const resp = approval.approverAnswers[f.id]?.resposta || approval.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.resposta || "";
-        if (resp) { answered++; if (resp === "conforme") conformes++; if (resp === "nao_conforme") naoConformes++; }
+        const answer = answersMap[f.id];
+        const rev = reviewsMap[f.id];
+        if (f.aprovador_verificar) {
+          const resp = approval.approverAnswers[f.id]?.resposta || approval.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.resposta || "";
+          if (resp) { answered++; if (resp === "conforme") conformes++; if (resp === "nao_conforme") naoConformes++; }
+        } else {
+          // For read-only fields, use evaluator review
+          if (rev) {
+            answered++;
+            if (rev.conforme === true) conformes++;
+            if (rev.conforme === false) naoConformes++;
+          } else if (answer) {
+            answered++;
+            if (answer.valor_booleano === true) conformes++;
+            if (answer.valor_booleano === false) naoConformes++;
+          }
+        }
       }
       scores[section.id] = { answered, total: sFields.length, conformes, naoConformes };
     }
     return scores;
-  }, [snapshotSections, approvalFields, approval.approverAnswers, approval.existingApprovalAnswers]);
+  }, [snapshotSections, allVisibleFields, answersMap, reviewsMap, approval.approverAnswers, approval.existingApprovalAnswers]);
 
   const openApproval = useCallback((a: any) => {
     setSelectedAssignment(a);
@@ -502,9 +529,9 @@ export default function OperationalAprovacaoPage() {
             {/* Questions by section */}
             {(() => {
               globalQuestionIdx = 0;
-              const sections: { section: any; items: Array<{ type: "field" | "auto"; data: any }> }[] = [];
+              const sections: { section: any; items: Array<{ type: "field" | "field_readonly" | "auto"; data: any }> }[] = [];
               let currentSection: any = null;
-              let currentItems: Array<{ type: "field" | "auto"; data: any }> = [];
+              let currentItems: Array<{ type: "field" | "field_readonly" | "auto"; data: any }> = [];
 
               for (const item of orderedItems) {
                 if (item.type === "section") {
@@ -644,7 +671,73 @@ export default function OperationalAprovacaoPage() {
                           );
                         }
 
-                        // ── MANUAL APPROVAL FIELD ──
+                        // ── READ-ONLY FIELD (evaluator question, not for approver) ──
+                        if (item.type === "field_readonly") {
+                          const f = item.data as SnapshotField;
+                          const answer = answersMap[f.id];
+                          const rev = reviewsMap[f.id];
+                          const isRevConf = rev?.conforme === true;
+                          const isRevNaoConf = rev?.conforme === false;
+                          const hasReview = !!rev;
+
+                          return (
+                            <div key={f.id} className={cn("transition-colors",
+                              isRevConf ? "bg-success/5" : isRevNaoConf ? "bg-destructive/5" : ""
+                            )}>
+                              <div className="p-4">
+                                <div className="flex items-start gap-3">
+                                  <div className={cn("flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0",
+                                    isRevConf ? "bg-success text-success-foreground" :
+                                    isRevNaoConf ? "bg-destructive text-destructive-foreground" :
+                                    "bg-muted text-muted-foreground"
+                                  )}>
+                                    {hasReview ? <Check className="w-4 h-4" /> : String(idx).padStart(2, "0")}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-foreground leading-relaxed">{f.label}</p>
+                                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                      <span className="text-caption text-muted-foreground">Peso: {f.peso || 1} pts</span>
+                                      {hasReview && (
+                                        <>
+                                          <span className="text-caption text-muted-foreground">•</span>
+                                          <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold",
+                                            isRevConf ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+                                          )}>
+                                            {isRevConf ? "CONFORME" : "NÃO CONFORME"}
+                                          </span>
+                                        </>
+                                      )}
+                                    </div>
+
+                                    {/* Show executor answer and evaluator review inline */}
+                                    <div className="mt-2 bg-muted/30 border border-border rounded-lg p-3 space-y-2">
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Resposta do Executor</p>
+                                          {renderAnswerValue(f, answer)}
+                                        </div>
+                                        {rev && (
+                                          <div className="text-right shrink-0">
+                                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Avaliador</p>
+                                            <span className={cn(
+                                              "inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border",
+                                              rev.conforme === true ? "border-success/40 bg-success/10 text-success" : "border-destructive/40 bg-destructive/10 text-destructive"
+                                            )}>
+                                              {rev.conforme === true ? "✓ Conforme" : "✗ Não Conforme"}
+                                            </span>
+                                            {rev.observacao && <p className="text-xs text-muted-foreground mt-0.5 max-w-[200px]">"{rev.observacao}"</p>}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // ── MANUAL APPROVAL FIELD (aprovador_verificar) ──
                         const f = item.data as SnapshotField;
                         const answer = answersMap[f.id];
                         const rev = reviewsMap[f.id];
