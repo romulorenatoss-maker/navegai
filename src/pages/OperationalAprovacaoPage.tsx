@@ -145,9 +145,9 @@ export default function OperationalAprovacaoPage() {
     return map;
   }, [approval.fieldReviews]);
 
-  // Fields with aprovador_verificar (manual approval questions)
+  // Fields with aprovador_verificar (manual approval questions) — fallback to label if aprovador_pergunta is empty
   const approvalFields = useMemo(() =>
-    snapshotFields.filter(f => f.aprovador_verificar && f.aprovador_pergunta?.trim() && evaluateVisibility(f.condicao_visibilidade, answersMap)),
+    snapshotFields.filter(f => f.aprovador_verificar && evaluateVisibility(f.condicao_visibilidade, answersMap)),
     [snapshotFields, answersMap]
   );
 
