@@ -150,6 +150,7 @@ export function TabTarefasExecutadas({ templateId }: Props) {
           exige_evidencia: f.exige_evidencia,
           tipo_evidencia: f.tipo_evidencia,
           opcoes: f.opcoes,
+          opcoes_regras: f.opcoes_regras,
           condicao_visibilidade: f.condicao_visibilidade,
           validacao: f.validacao,
           formula: f.formula,
