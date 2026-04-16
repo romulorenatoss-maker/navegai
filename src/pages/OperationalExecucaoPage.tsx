@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Play, Send, Save, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock, CircleDot, RotateCcw, CheckCheck, CalendarClock, ListTodo, Hourglass, Filter } from "lucide-react";
+import { Play, Send, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock, CircleDot, RotateCcw, CheckCheck, CalendarClock, ListTodo, Hourglass, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
@@ -263,10 +263,6 @@ export default function OperationalExecucaoPage() {
     );
   };
 
-  const handleSaveDraft = async () => {
-    await exec.saveDraft();
-    toast.success("Rascunho salvo!");
-  };
 
   const renderEmptyState = (msg: string) => (
     <div className="text-center py-6 text-muted-foreground">
