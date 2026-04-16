@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { SnapshotField } from "@/components/operational/DynamicFieldRenderer";
+import { useOperationalTransition } from "@/hooks/useOperationalTransition";
 
 export interface FieldReviewDraft {
   field_id: string;
@@ -32,6 +33,7 @@ const fieldGeneratesContingency = (field: SnapshotField | undefined, answer: any
 export function useAssignmentReview(assignmentId: string | null) {
   const { profile } = useAuth();
   const qc = useQueryClient();
+  const { transition } = useOperationalTransition();
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, FieldReviewDraft>>({});
   const [contingencyPrazos, setContingencyPrazos] = useState<Record<string, number>>({});
   const [pendingContingencyData, setPendingContingencyData] = useState<Record<string, { prazoResolucao: string; motivoInstrucao: string }>>({});
