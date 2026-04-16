@@ -4,10 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { FieldAnswer, SnapshotField, evaluateVisibility, validateField } from "@/components/operational/DynamicFieldRenderer";
+import { useOperationalTransition } from "@/hooks/useOperationalTransition";
 
 export function useAssignmentExecution(assignmentId: string | null) {
   const { profile } = useAuth();
   const qc = useQueryClient();
+  const { transition } = useOperationalTransition();
   const [answers, setAnswers] = useState<Record<string, FieldAnswer>>({});
   const [dirty, setDirty] = useState(false);
   const pendingFieldsRef = useRef<Set<string>>(new Set());
