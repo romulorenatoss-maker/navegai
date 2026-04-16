@@ -36,18 +36,18 @@ export interface OpcaoRegra {
 
 export const getDefaultOpcoesRegras = (tipo: string): OpcaoRegra[] => {
   if (tipo === "conforme") return [
-    { valor: "conforme", label: "Conforme", cor: "success", requer_descricao: false, requer_evidencia: false, gera_contingencia: false },
-    { valor: "nao_conforme", label: "Não Conforme", cor: "destructive", requer_descricao: true, requer_evidencia: false, gera_contingencia: false },
-    { valor: "na", label: "N/A", cor: "muted", requer_descricao: false, requer_evidencia: false, gera_contingencia: false },
+    { valor: "conforme", label: "Conforme", cor: "success", requer_descricao: false, requer_evidencia: false, tipos_evidencia: ["qualquer"], gera_contingencia: false },
+    { valor: "nao_conforme", label: "Não Conforme", cor: "destructive", requer_descricao: true, requer_evidencia: false, tipos_evidencia: ["qualquer"], gera_contingencia: false },
+    { valor: "na", label: "N/A", cor: "muted", requer_descricao: false, requer_evidencia: false, tipos_evidencia: ["qualquer"], gera_contingencia: false },
   ];
   if (tipo === "sim_nao") return [
-    { valor: "sim", label: "Sim", cor: "success", requer_descricao: false, requer_evidencia: false, gera_contingencia: false },
-    { valor: "nao", label: "Não", cor: "destructive", requer_descricao: true, requer_evidencia: false, gera_contingencia: false },
-    { valor: "na", label: "N/A", cor: "muted", requer_descricao: false, requer_evidencia: false, gera_contingencia: false },
+    { valor: "sim", label: "Sim", cor: "success", requer_descricao: false, requer_evidencia: false, tipos_evidencia: ["qualquer"], gera_contingencia: false },
+    { valor: "nao", label: "Não", cor: "destructive", requer_descricao: true, requer_evidencia: false, tipos_evidencia: ["qualquer"], gera_contingencia: false },
+    { valor: "na", label: "N/A", cor: "muted", requer_descricao: false, requer_evidencia: false, tipos_evidencia: ["qualquer"], gera_contingencia: false },
   ];
   if (tipo === "nota_avaliacao") return [
-    { valor: "aprovado", label: "Aprovado (≥ mínimo)", cor: "success", requer_descricao: false, requer_evidencia: false, gera_contingencia: false },
-    { valor: "reprovado", label: "Reprovado (< mínimo)", cor: "destructive", requer_descricao: true, requer_evidencia: false, gera_contingencia: false },
+    { valor: "aprovado", label: "Aprovado (≥ mínimo)", cor: "success", requer_descricao: false, requer_evidencia: false, tipos_evidencia: ["qualquer"], gera_contingencia: false },
+    { valor: "reprovado", label: "Reprovado (< mínimo)", cor: "destructive", requer_descricao: true, requer_evidencia: false, tipos_evidencia: ["qualquer"], gera_contingencia: false },
   ];
   return [];
 };
