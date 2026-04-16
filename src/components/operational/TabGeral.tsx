@@ -83,9 +83,11 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
   };
 
   const roles: RoleConfig[] = [
-    { label: "Executor", profileKey: "executor_profile_id", setorKey: "executor_setor_id", hint: "Quem executa a tarefa" },
-    { label: "Avaliador", profileKey: "avaliador_profile_id", setorKey: "avaliador_setor_id", hint: "Quem audita/inspeciona" },
+    { label: "Quem recebe a nota", profileKey: "executor_profile_id", setorKey: "executor_setor_id", hint: "Pessoa/setor que será pontuado pelas perguntas da aprovação final", showSetorMembers: true },
+    { label: "Avaliador", profileKey: "avaliador_profile_id", setorKey: "avaliador_setor_id", hint: "Quem responde o checklist (se setor, qualquer membro pode)", showSetorMembers: true },
   ];
+
+  const validadorMode = getAssignmentMode("validador_contingencia_profile_id", "validador_contingencia_setor_id");
 
   return (
     <div className="space-y-4">
@@ -116,7 +118,7 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
         </div>
       </div>
 
-      {/* Executor e Avaliador — Nome OU Setor */}
+      {/* Responsáveis */}
       <div className="space-y-3">
         <p className="text-sm font-medium text-foreground">Responsáveis</p>
         {roles.map(r => {
@@ -132,11 +134,11 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
                 >
                   <div className="flex items-center gap-1">
                     <RadioGroupItem value="nome" id={`${r.label}-nome`} className="h-3 w-3" />
-                    <Label htmlFor={`${r.label}-nome`} className="text-xs cursor-pointer">Por Nome</Label>
+                    <Label htmlFor={`${r.label}-nome`} className="text-xs cursor-pointer">Individual</Label>
                   </div>
                   <div className="flex items-center gap-1">
                     <RadioGroupItem value="setor" id={`${r.label}-setor`} className="h-3 w-3" />
-                    <Label htmlFor={`${r.label}-setor`} className="text-xs cursor-pointer">Por Setor</Label>
+                    <Label htmlFor={`${r.label}-setor`} className="text-xs cursor-pointer">Setorial</Label>
                   </div>
                 </RadioGroup>
               </div>
@@ -169,70 +171,50 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
           );
         })}
 
-        {/* Avaliado — Setor + membros */}
+        {/* Validador Contingência — Individual OU Setorial */}
         <div className="bg-muted/50 rounded-lg border border-border p-3">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-medium text-muted-foreground">Avaliado — <span className="font-normal">Quem recebe a nota</span></p>
+            <p className="text-xs font-medium text-muted-foreground">Validador Contingência — <span className="font-normal">Quem valida e ajusta contingências</span></p>
             <RadioGroup
-              value={form.tipo_atribuicao_avaliado}
-              onValueChange={v => set("tipo_atribuicao_avaliado", v)}
+              value={validadorMode}
+              onValueChange={v => handleModeChange("validador_contingencia_profile_id", "validador_contingencia_setor_id", v)}
               className="flex gap-3"
             >
               <div className="flex items-center gap-1">
-                <RadioGroupItem value="individual" id="avaliado-individual" className="h-3 w-3" />
-                <Label htmlFor="avaliado-individual" className="text-xs cursor-pointer">Individual</Label>
+                <RadioGroupItem value="nome" id="validador-individual" className="h-3 w-3" />
+                <Label htmlFor="validador-individual" className="text-xs cursor-pointer">Individual</Label>
               </div>
               <div className="flex items-center gap-1">
-                <RadioGroupItem value="setorial" id="avaliado-setorial" className="h-3 w-3" />
-                <Label htmlFor="avaliado-setorial" className="text-xs cursor-pointer">Setorial</Label>
+                <RadioGroupItem value="setor" id="validador-setorial" className="h-3 w-3" />
+                <Label htmlFor="validador-setorial" className="text-xs cursor-pointer">Setorial</Label>
               </div>
             </RadioGroup>
           </div>
-          <div className="space-y-2">
-            <Select value={form.avaliado_setor_id} onValueChange={v => { set("avaliado_setor_id", v); set("avaliado_profile_id", ""); }}>
-              <SelectTrigger className="h-8"><SelectValue placeholder="Selecione o setor avaliado" /></SelectTrigger>
-              <SelectContent>{setores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
-            </Select>
-            {form.avaliado_setor_id && form.tipo_atribuicao_avaliado === "individual" && (
-              <div>
-                {avaliadoSetorMembers.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">Nenhum membro associado a este setor</p>
-                ) : (
-                  <Select value={form.avaliado_profile_id} onValueChange={v => set("avaliado_profile_id", v)}>
-                    <SelectTrigger className="h-8"><SelectValue placeholder="Selecione pessoa (opcional)" /></SelectTrigger>
-                    <SelectContent>
-                      {avaliadoSetorMembers.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                )}
-                {avaliadoSetorMembers.length > 0 && (
-                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1.5 mt-1"
-                    onClick={() => openMembrosDialog("Membros do Setor Avaliado", avaliadoSetorMembers)}>
-                    <Users className="w-3 h-3" /> {avaliadoSetorMembers.length} membro{avaliadoSetorMembers.length !== 1 ? "s" : ""}
-                  </Button>
-                )}
-              </div>
-            )}
-            {form.avaliado_setor_id && form.tipo_atribuicao_avaliado === "setorial" && (
-              <p className="text-xs text-muted-foreground">Nota será atribuída ao setor inteiro ({avaliadoSetorMembers.length} membro{avaliadoSetorMembers.length !== 1 ? "s" : ""})</p>
-            )}
-          </div>
-      </div>
-
-
-        {/* Validador Contingência */}
-        <div className="bg-muted/50 rounded-lg border border-border p-3">
-          <p className="text-xs font-medium text-muted-foreground mb-2">Validador Contingência — <span className="font-normal">Valida contingências (opcional)</span></p>
-          <div className="grid grid-cols-2 gap-3">
+          {validadorMode === "nome" ? (
             <Select value={form.validador_contingencia_profile_id} onValueChange={v => set("validador_contingencia_profile_id", v)}>
-              <SelectTrigger className="h-8"><SelectValue placeholder="Colaborador" /></SelectTrigger>
+              <SelectTrigger className="h-8"><SelectValue placeholder="Selecione colaborador" /></SelectTrigger>
               <SelectContent>{colaboradores.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
             </Select>
-            <Select value={form.validador_contingencia_setor_id} onValueChange={v => set("validador_contingencia_setor_id", v)}>
-              <SelectTrigger className="h-8"><SelectValue placeholder="Setor" /></SelectTrigger>
-              <SelectContent>{setores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
+          ) : (
+            <div className="space-y-2">
+              <Select value={form.validador_contingencia_setor_id} onValueChange={v => set("validador_contingencia_setor_id", v)}>
+                <SelectTrigger className="h-8"><SelectValue placeholder="Selecione setor" /></SelectTrigger>
+                <SelectContent>{setores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
+              </Select>
+              {form.validador_contingencia_setor_id && (() => {
+                const membros = getMembrosDoSetor(form.validador_contingencia_setor_id);
+                const setorNome = setores.find((s: any) => s.id === form.validador_contingencia_setor_id)?.nome || "Setor";
+                return membros.length > 0 ? (
+                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1.5"
+                    onClick={() => openMembrosDialog(`Membros — ${setorNome} (Validador)`, membros)}>
+                    <Users className="w-3 h-3" /> {membros.length} membro{membros.length !== 1 ? "s" : ""}
+                  </Button>
+                ) : (
+                  <p className="text-[10px] text-destructive">Nenhum colaborador associado</p>
+                );
+              })()}
+            </div>
+          )}
         </div>
       </div>
 
