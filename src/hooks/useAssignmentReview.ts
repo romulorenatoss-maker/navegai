@@ -353,14 +353,15 @@ export function useAssignmentReview(assignmentId: string | null) {
     onError: (e: any) => toast.error(e.message),
   });
 
-  // Start evaluation (set avaliador_inicio_em)
+  // Start evaluation — uses centralized transition
   const startEvaluation = useMutation({
     mutationFn: async (aId: string) => {
       if (!profile?.id) throw new Error("Não autenticado");
-      const { error } = await (supabase as any).from("operational_assignments")
-        .update({ status: "em_avaliacao", avaliador_inicio_em: new Date().toISOString(), avaliador_id: profile.id })
-        .eq("id", aId);
-      if (error) throw error;
+      await transition.mutateAsync({
+        assignmentId: aId,
+        action: "iniciar_avaliacao",
+        origem: "avaliacao",
+      });
       await (supabase as any).from("operational_execution_logs").insert({
         assignment_id: aId, acao: "avaliador_iniciou", executado_por: profile.id,
       });
