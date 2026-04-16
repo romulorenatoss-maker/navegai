@@ -312,8 +312,16 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
       {field.exige_evidencia && !["foto", "arquivo", "assinatura"].includes(field.tipo) && (
         <div className="mt-2">
           {val.evidencia_url ? (
-            <div className="flex items-center gap-2">
-              <a href={val.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Evidência anexada</a>
+            <div className="space-y-1.5">
+              {/\.(mp3|wav|ogg|m4a|webm)$/i.test(val.evidencia_url) ? (
+                <audio src={val.evidencia_url} controls className="w-full max-w-xs" />
+              ) : /\.(mp4|webm|mov)$/i.test(val.evidencia_url) ? (
+                <video src={val.evidencia_url} controls className="max-h-32 rounded border border-border" />
+              ) : /\.(jpg|jpeg|png|gif|webp)$/i.test(val.evidencia_url) ? (
+                <img src={val.evidencia_url} alt="Evidência" className="max-h-24 rounded border border-border" />
+              ) : (
+                <a href={val.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Evidência anexada</a>
+              )}
               {isEditable && <Button type="button" variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => update({ evidencia_url: null })}><X className="w-3 h-3" /></Button>}
             </div>
           ) : isEditable ? (
