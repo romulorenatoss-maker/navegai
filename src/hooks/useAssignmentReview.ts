@@ -297,89 +297,51 @@ export function useAssignmentReview(assignmentId: string | null) {
         throw new Error("Não é possível aprovar enquanto houver contingências abertas. Resolva as contingências primeiro.");
       }
 
-      // Determine new status based on action
-      let newStatus: string;
-      let newRodada = rodada;
+      // Determine transition action
+      let transitionAction: string;
+      const requerAprovacao = !!assignment.template_snapshot?.requer_aprovacao_gestor;
+      const aprovadorProfileId = assignment.template_snapshot?.aprovador_profile_id || null;
 
       if (hasOpenContingencies && action !== "reprovar") {
-        newStatus = "contingencia";
+        transitionAction = "enviar_contingencia";
       } else {
         switch (action) {
           case "aprovar":
-            newStatus = assignment.template_snapshot?.requer_aprovacao_gestor ? "aguardando_aprovacao" : "concluida";
+            transitionAction = "avaliar_aprovar";
             break;
           case "devolver_parcial":
           case "devolver_total":
-            newStatus = "devolvida";
-            newRodada = rodada + 1;
+            transitionAction = "avaliar_devolver";
             break;
           case "reprovar":
-            newStatus = "reprovada";
+            transitionAction = "avaliar_reprovar";
             break;
           default:
-            newStatus = "concluida";
+            transitionAction = "avaliar_aprovar";
         }
       }
 
-      // Update assignment
-      const updateData: any = {
-        status: newStatus,
-        avaliador_fim_em: now,
-        rodada_atual: newRodada,
-      };
-      if (!assignment.avaliador_inicio_em) {
-        updateData.avaliador_inicio_em = now;
-      }
-      // Set aprovador_id from template snapshot when sending to approval
-      if (newStatus === "aguardando_aprovacao") {
-        const snap = assignment.template_snapshot;
-        if (snap?.aprovador_profile_id) {
-          updateData.aprovador_id = snap.aprovador_profile_id;
-        }
-      }
-
-      const { error } = await (supabase as any).from("operational_assignments")
-        .update(updateData).eq("id", assignmentId);
-      if (error) throw error;
-
-      // Audit trail
-      const auditTipo = newStatus === "contingencia"
-        ? "STATUS_ALTERADO_PARA_CONTINGENCIA"
-        : action === "aprovar" ? "avaliacao_aprovada" : action === "reprovar" ? "avaliacao_reprovada" : "avaliacao_devolvida";
-
-      await (supabase as any).from("operational_audit_trail").insert({
-        assignment_id: assignmentId,
-        tipo_evento: auditTipo,
-        executado_por: profile.id,
-        motivo: motivo || null,
-        dados_novos: {
-          status: newStatus,
-          rodada: newRodada,
+      // Use centralized transition
+      await transition.mutateAsync({
+        assignmentId,
+        action: transitionAction as any,
+        motivo: motivo || undefined,
+        origem: "avaliacao",
+        extraData: {
+          rodadaAtual: rodada,
+          requerAprovacao,
+          aprovadorProfileId,
+          contingencias_criadas: newContingenciesCreated,
           total_reviews: reviewEntries.length,
           conformes: reviewEntries.filter(r => r.conforme).length,
-          devolvidos: reviewEntries.filter(r => r.devolvido).length,
-          contingencias_criadas: newContingenciesCreated,
         },
       });
-
-      if (newStatus === "contingencia") {
-        await (supabase as any).from("operational_assignment_history").insert({
-          assignment_id: assignmentId,
-          tipo_evento: "STATUS_ALTERADO_PARA_CONTINGENCIA",
-          usuario_id: profile.id,
-          etapa: "avaliacao",
-          detalhes_json: {
-            status: newStatus,
-            contingencias_criadas: newContingenciesCreated,
-          },
-        });
-      }
 
       await (supabase as any).from("operational_execution_logs").insert({
         assignment_id: assignmentId,
         acao: `avaliador_${action}`,
         executado_por: profile.id,
-        detalhes: { action, rodada: newRodada, motivo: motivo || null },
+        detalhes: { action, rodada, motivo: motivo || null },
       });
     },
     onSuccess: () => {
