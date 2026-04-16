@@ -514,7 +514,7 @@ export default function OperationalGestaoPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         {c.status === "resolvida" && (
-                          <Button size="sm" variant="outline" onClick={() => validateContingency.mutate(c.id)}>
+                          <Button size="sm" variant="outline" onClick={() => contingencyMgmt.validateResolution.mutate({ contingencyId: c.id, approved: true, observacao: "Validado via gestão" })}>
                             <CheckCircle2 className="w-3 h-3 mr-1" />Validar
                           </Button>
                         )}
@@ -550,11 +550,26 @@ export default function OperationalGestaoPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setApprovalDialog({ open: false, assignment: null, action: "aprovar" })}>Cancelar</Button>
             <Button
-              disabled={approveReject.isPending || (approvalDialog.action === "reprovar" && !motivo.trim())}
-              onClick={() => approveReject.mutate({ assignmentId: approvalDialog.assignment?.id, action: approvalDialog.action, motivo })}
+              disabled={approvalFlow.finalDecision.isPending || (approvalDialog.action === "reprovar" && !motivo.trim())}
+              onClick={() => {
+                setApprovalAssignmentId(approvalDialog.assignment?.id);
+                approvalFlow.finalDecision.mutate({
+                  assignment: approvalDialog.assignment,
+                  action: approvalDialog.action === "aprovar" ? "aprovar" : "reprovar_devolver",
+                  motivo: motivo || undefined,
+                }, {
+                  onSuccess: () => {
+                    qc.invalidateQueries({ queryKey: ["gestao_assignments"] });
+                    toast.success(approvalDialog.action === "aprovar" ? "Rotina aprovada!" : "Rotina reprovada!");
+                    setApprovalDialog({ open: false, assignment: null, action: "aprovar" });
+                    setMotivo("");
+                    setApprovalAssignmentId(null);
+                  },
+                });
+              }}
               className={approvalDialog.action === "aprovar" ? "" : "bg-destructive text-destructive-foreground hover:bg-destructive/90"}
             >
-              {approveReject.isPending ? "Processando..." : approvalDialog.action === "aprovar" ? "Confirmar Aprovação" : "Confirmar Reprovação"}
+              {approvalFlow.finalDecision.isPending ? "Processando..." : approvalDialog.action === "aprovar" ? "Confirmar Aprovação" : "Confirmar Reprovação"}
             </Button>
           </DialogFooter>
         </DialogContent>
