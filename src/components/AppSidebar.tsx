@@ -1,10 +1,11 @@
+import { useState, useMemo } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ClipboardCheck, FileSearch, ListChecks, PlayCircle, FolderKanban,
   BarChart3, Building2, Users, HelpCircle, Wrench, LogOut, Star,
   PanelLeftClose, PanelLeft, UserPlus, ListOrdered, LayoutGrid, Settings, UserCheck, ClipboardList,
   FileUp, MessageSquare, FileBarChart, Archive, MapPin, Megaphone, Bot, Trophy, CheckSquare,
-  AlertTriangle, PieChart,
+  AlertTriangle, PieChart, ChevronDown,
 } from "lucide-react";
 import { Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -95,21 +96,44 @@ interface AppSidebarProps {
 export function AppSidebar({ userName = "Usuário", onSignOut, onNavigate, isAdmin = false, allowedScreens = [], canViewPath, collapsed = false, onToggleCollapse, badgeCounts = {} }: AppSidebarProps) {
   const location = useLocation();
 
-  const navSections = allNavSections
-    .map((section) => ({
-      ...section,
-      items: section.items.filter((item) => {
-        if (isAdmin) return true;
-        if (canViewPath) return canViewPath(item.to);
-        return allowedScreens.includes(item.to);
-      }),
-    }))
-    .filter((section) => section.items.length > 0);
+  const navSections = useMemo(() =>
+    allNavSections
+      .map((section) => ({
+        ...section,
+        items: section.items.filter((item) => {
+          if (isAdmin) return true;
+          if (canViewPath) return canViewPath(item.to);
+          return allowedScreens.includes(item.to);
+        }),
+      }))
+      .filter((section) => section.items.length > 0),
+    [isAdmin, canViewPath, allowedScreens]
+  );
+
+  // Find which section contains the active route
+  const activeSectionTitle = useMemo(() => {
+    for (const section of navSections) {
+      if (section.items.some(item => item.to === location.pathname)) {
+        return section.title;
+      }
+    }
+    return navSections[0]?.title ?? null;
+  }, [navSections, location.pathname]);
+
+  // Accordion: only one section open at a time
+  const [openSection, setOpenSection] = useState<string | null>(activeSectionTitle);
+
+  // When route changes, auto-open the section that contains it
+  const effectiveOpen = openSection ?? activeSectionTitle;
+
+  const toggleSection = (title: string) => {
+    setOpenSection(prev => prev === title ? null : title);
+  };
 
   return (
     <TooltipProvider delayDuration={0}>
       <div className="h-full bg-sidebar text-sidebar-foreground flex flex-col">
-        {/* Header: Logo + Collapse toggle */}
+        {/* Header */}
         <div className="h-14 flex items-center justify-between px-3 border-b border-sidebar-border shrink-0">
           <div className="flex items-center gap-2 overflow-hidden">
             <div className="w-7 h-7 rounded-md bg-sidebar-primary flex items-center justify-center shrink-0">
@@ -128,69 +152,113 @@ export function AppSidebar({ userName = "Usuário", onSignOut, onNavigate, isAdm
           )}
         </div>
 
-        {/* Navigation - all sections expanded */}
-        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
-          {navSections.map((section) => (
-            <div key={section.title}>
-              {!collapsed && (
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40 px-3 mb-1">
-                  {section.title}
-                </p>
-              )}
-              {collapsed && section.title !== "Principal" && (
-                <div className="mx-2 my-1 border-t border-sidebar-border" />
-              )}
-              <div className="space-y-0.5">
-                {section.items.map((item) => {
-                  const isActive = location.pathname === item.to;
-                  const badgeCount = badgeCounts[item.to] || 0;
-                  const linkContent = (
-                    <NavLink
-                      key={item.to}
-                      to={item.to}
-                      onClick={onNavigate}
+        {/* Navigation - accordion groups */}
+        <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-1">
+          {navSections.map((section) => {
+            const isOpen = effectiveOpen === section.title;
+            const sectionHasActive = section.items.some(item => item.to === location.pathname);
+
+            return (
+              <div key={section.title}>
+                {/* Collapsed sidebar: separator between groups */}
+                {collapsed ? (
+                  <>
+                    {section.title !== navSections[0]?.title && (
+                      <div className="mx-2 my-1 border-t border-sidebar-border" />
+                    )}
+                    <div className="space-y-0.5">
+                      {section.items.map((item) => {
+                        const isActive = location.pathname === item.to;
+                        const badgeCount = badgeCounts[item.to] || 0;
+                        return (
+                          <Tooltip key={item.to}>
+                            <TooltipTrigger asChild>
+                              <NavLink
+                                to={item.to}
+                                onClick={onNavigate}
+                                className={cn(
+                                  "flex items-center justify-center rounded-md text-sm transition-colors relative px-2 py-2.5",
+                                  isActive
+                                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                                )}
+                              >
+                                <span className="relative shrink-0">
+                                  <item.icon className="w-4 h-4" />
+                                  {badgeCount > 0 && (
+                                    <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1 animate-pulse">
+                                      {badgeCount}
+                                    </span>
+                                  )}
+                                </span>
+                              </NavLink>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" sideOffset={8}>
+                              {item.label}
+                              {badgeCount > 0 && <span className="ml-1 text-destructive font-bold">({badgeCount})</span>}
+                            </TooltipContent>
+                          </Tooltip>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Group header - clickable to toggle */}
+                    <button
+                      onClick={() => toggleSection(section.title)}
                       className={cn(
-                        "flex items-center gap-3 rounded-md text-sm transition-colors relative",
-                        collapsed ? "justify-center px-2 py-2.5" : "px-3 py-2",
-                        isActive
-                          ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                        "w-full flex items-center justify-between px-3 py-1.5 rounded-md text-[10px] font-semibold uppercase tracking-wider transition-colors",
+                        sectionHasActive
+                          ? "text-sidebar-foreground/70"
+                          : "text-sidebar-foreground/40 hover:text-sidebar-foreground/60"
                       )}
                     >
-                      <span className="relative shrink-0">
-                        <item.icon className="w-4 h-4" />
-                        {badgeCount > 0 && collapsed && (
-                          <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1 animate-pulse">
-                            {badgeCount}
-                          </span>
-                        )}
-                      </span>
-                      {!collapsed && <span className="flex-1">{item.label}</span>}
-                      {!collapsed && badgeCount > 0 && (
-                        <span className="min-w-[20px] h-5 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 animate-pulse">
-                          {badgeCount}
-                        </span>
-                      )}
-                    </NavLink>
-                  );
+                      <span>{section.title}</span>
+                      <ChevronDown className={cn(
+                        "w-3 h-3 transition-transform duration-200",
+                        isOpen ? "rotate-0" : "-rotate-90"
+                      )} />
+                    </button>
 
-                  if (collapsed) {
-                    return (
-                      <Tooltip key={item.to}>
-                        <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
-                        <TooltipContent side="right" sideOffset={8}>
-                          {item.label}
-                          {badgeCount > 0 && <span className="ml-1 text-destructive font-bold">({badgeCount})</span>}
-                        </TooltipContent>
-                      </Tooltip>
-                    );
-                  }
-
-                  return linkContent;
-                })}
+                    {/* Items - collapsible */}
+                    <div className={cn(
+                      "overflow-hidden transition-all duration-200",
+                      isOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+                    )}>
+                      <div className="space-y-0.5 pb-1">
+                        {section.items.map((item) => {
+                          const isActive = location.pathname === item.to;
+                          const badgeCount = badgeCounts[item.to] || 0;
+                          return (
+                            <NavLink
+                              key={item.to}
+                              to={item.to}
+                              onClick={onNavigate}
+                              className={cn(
+                                "flex items-center gap-3 rounded-md text-sm transition-colors relative px-3 py-2",
+                                isActive
+                                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                              )}
+                            >
+                              <item.icon className="w-4 h-4 shrink-0" />
+                              <span className="flex-1">{item.label}</span>
+                              {badgeCount > 0 && (
+                                <span className="min-w-[20px] h-5 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 animate-pulse">
+                                  {badgeCount}
+                                </span>
+                              )}
+                            </NavLink>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </nav>
 
         {/* User + Logout */}
