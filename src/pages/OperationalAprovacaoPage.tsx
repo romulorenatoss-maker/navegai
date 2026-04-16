@@ -535,7 +535,7 @@ export default function OperationalAprovacaoPage() {
                 const resp = autoAnswers[aq.id]?.resposta || "";
                 return sum + (resp === "nao_conforme" ? -aq.pontos : 0);
               }, 0);
-              const subtotalCampos = allVisibleFields.reduce((sum, f) => sum + (f.aprovador_peso || f.peso || 1), 0);
+              const subtotalCampos = approvalFields.reduce((sum, f) => sum + (f.aprovador_peso || f.peso || 1), 0);
               const pontosTotais = autoQuestions.reduce((s, aq) => s + aq.pontos, 0) + subtotalCampos;
 
               return (
