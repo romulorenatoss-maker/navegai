@@ -111,7 +111,7 @@ export function useApprovalFlow(assignmentId: string | null) {
     mutationFn: async (fields: SnapshotField[]) => {
       if (!profile?.id || !assignmentId) throw new Error("Não autenticado");
 
-      const approverFields = fields.filter(f => f.aprovador_verificar && f.aprovador_pergunta);
+      const approverFields = fields.filter(f => f.aprovador_verificar);
       for (const f of approverFields) {
         const draft = approverAnswers[f.id];
         if (!draft) continue;
