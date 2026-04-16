@@ -280,12 +280,28 @@ export function useAssignmentExecution(assignmentId: string | null) {
       })();
 
       // Check if any field answer triggers contingency
+      // Fallback: if snapshot fields lack opcoes_regras, fetch from template_fields
+      let liveFieldRulesMap: Record<string, any[]> | null = null;
+      const needsLiveFetch = fields.some(f => !f.opcoes_regras && ["conforme", "sim_nao", "select"].includes(f.tipo));
+      if (needsLiveFetch && assignment.template_id) {
+        const { data: liveFields } = await (supabase as any)
+          .from("operational_template_fields")
+          .select("id, opcoes_regras")
+          .eq("template_id", assignment.template_id);
+        if (liveFields) {
+          liveFieldRulesMap = {};
+          for (const lf of liveFields) {
+            if (lf.opcoes_regras) liveFieldRulesMap[lf.id] = lf.opcoes_regras;
+          }
+        }
+      }
+
       const contingencyFields: { field: SnapshotField; answer: FieldAnswer }[] = [];
       for (const f of fields) {
         if (!evaluateVisibility(f.condicao_visibilidade, currentAnswers)) continue;
         const ans = currentAnswers[f.id];
         if (!ans) continue;
-        const rules = Array.isArray(f.opcoes_regras) ? f.opcoes_regras : [];
+        const rules = Array.isArray(f.opcoes_regras) ? f.opcoes_regras : (liveFieldRulesMap?.[f.id] || []);
         let triggers = false;
         if (f.tipo === "conforme") {
           triggers = ans.valor_booleano === false && rules.some((r: any) => r?.valor === "nao_conforme" && r?.gera_contingencia);
