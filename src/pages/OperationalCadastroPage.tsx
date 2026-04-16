@@ -324,12 +324,22 @@ export default function OperationalCadastroPage() {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
+      // Check if there are any assignments linked to this template
+      const { count } = await supabase
+        .from("operational_assignments")
+        .select("id", { count: "exact", head: true })
+        .eq("template_id", id);
+      if (count && count > 0) {
+        throw new Error(`Não é possível excluir: existem ${count} tarefa(s) executada(s) vinculada(s). Remova todas as tarefas executadas primeiro na tela de Gestão.`);
+      }
+      await (supabase as any).from("operational_template_check_items").delete().eq("template_id", id);
+      await (supabase as any).from("operational_template_steps").delete().eq("template_id", id);
       await (supabase as any).from("operational_template_fields").delete().eq("template_id", id);
       await (supabase as any).from("operational_template_sections").delete().eq("template_id", id);
       const { error } = await (supabase as any).from("operational_templates").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["operational_templates"] }); toast.success("Template excluído."); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["operational_templates"] }); toast.success("Tarefa excluída."); },
     onError: (e: any) => toast.error(e.message),
   });
 
