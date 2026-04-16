@@ -279,7 +279,7 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
   const addCustomOption = () => {
     if (!newOptionLabel.trim()) return;
     const valor = newOptionLabel.trim().toLowerCase().replace(/\s+/g, "_");
-    const nova: OpcaoRegra = { valor, label: newOptionLabel.trim(), cor: "muted", requer_descricao: false, requer_evidencia: false, gera_contingencia: false };
+    const nova: OpcaoRegra = { valor, label: newOptionLabel.trim(), cor: "muted", requer_descricao: false, requer_evidencia: false, tipos_evidencia: ["qualquer"], gera_contingencia: false };
     upd("opcoes_regras", [...opcoesRegras, nova]);
     upd("opcoes", [...(local.opcoes || []), newOptionLabel.trim()]);
     setNewOptionLabel("");
