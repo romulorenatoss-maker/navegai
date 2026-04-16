@@ -190,14 +190,15 @@ export default function OperationalExecucaoPage() {
   }, [assignments, isAdmin, filterResponsavel, searchTerm, filterDate]);
 
   // "Tarefas de Hoje" includes: today's tasks + em_andamento (any date) + atrasadas (past dates still open)
-  const hoje = filteredAssignments.filter((a: any) => {
-    if (["em_andamento", "contingencia"].includes(a.status)) return true;
+   const hoje = filteredAssignments.filter((a: any) => {
+    if (["em_andamento"].includes(a.status)) return true;
     if (["pendente", "devolvida"].includes(a.status) && a.data_prevista <= filterDate) return true;
     return false;
   });
   const aFazer = filteredAssignments.filter((a: any) => ["pendente"].includes(a.status) && a.data_prevista > filterDate);
   const devolvidas = filteredAssignments.filter((a: any) => ["devolvida"].includes(a.status));
-  const aguardandoAvaliacao = filteredAssignments.filter((a: any) => ["aguardando_avaliacao", "aguardando_aprovacao", "contingencia"].includes(a.status));
+  const contingenciados = filteredAssignments.filter((a: any) => ["contingenciado", "contingencia"].includes(a.status));
+  const aguardandoAvaliacao = filteredAssignments.filter((a: any) => ["aguardando_avaliacao", "aguardando_aprovacao"].includes(a.status));
   const concluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 50);
 
   const exec = useAssignmentExecution(selectedAssignment?.id || null);
