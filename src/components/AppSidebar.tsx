@@ -47,7 +47,7 @@ const allNavSections = [
       { to: "/checklists/contingencias", icon: AlertTriangle, label: "Contingências" },
       { to: "/checklists/aprovacao", icon: Shield, label: "Aprovação Final" },
       { to: "/checklists/gestao", icon: FolderKanban, label: "Gestão" },
-      { to: "/checklists/cadastro", icon: ListChecks, label: "Templates" },
+      { to: "/checklists/cadastro", icon: ListChecks, label: "Rotinas Operacionais" },
     ],
   },
   {

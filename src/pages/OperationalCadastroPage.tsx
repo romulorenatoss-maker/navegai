@@ -396,7 +396,7 @@ export default function OperationalCadastroPage() {
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-section font-semibold text-foreground">Template Builder — Rotinas Operacionais</h1>
+          <h1 className="text-section font-semibold text-foreground">Rotinas Operacionais</h1>
           <p className="text-body text-muted-foreground">Cadastre templates com seções, campos dinâmicos, workflow e recorrência.</p>
         </div>
         <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Novo Template</Button>
