@@ -47,7 +47,7 @@ const allNavSections = [
       { to: "/checklists/aprovacao", icon: Shield, label: "Aprovação Final" },
       { to: "/checklists/contingencias", icon: AlertTriangle, label: "Contingências" },
       { to: "/checklists/dashboard", icon: PieChart, label: "Dashboard Operacional" },
-      { to: "/checklists/rankings", icon: Trophy, label: "Rankings" },
+      
       { to: "/checklists/gestao", icon: FolderKanban, label: "Gestão" },
     ],
   },
