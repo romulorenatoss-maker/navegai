@@ -1465,16 +1465,20 @@ export type Database = {
           descricao: string
           id: string
           impacto_score: number | null
+          justificativa_rejeicao: string | null
           motivo_instrucao: string | null
           numero_contingencia: number
+          observacao_tratamento: string | null
           origin_field_id: string | null
           origin_review_id: string | null
+          plano_acao: string | null
           prazo_resolucao: string | null
           prazo_sla: string | null
           resolvida_em: string | null
           responsavel_id: string | null
           status: string
           step_log_id: string | null
+          tipos_evidencia_requeridos: Json | null
           updated_at: string
           validada_em: string | null
           validada_por: string | null
@@ -1487,16 +1491,20 @@ export type Database = {
           descricao: string
           id?: string
           impacto_score?: number | null
+          justificativa_rejeicao?: string | null
           motivo_instrucao?: string | null
           numero_contingencia?: number
+          observacao_tratamento?: string | null
           origin_field_id?: string | null
           origin_review_id?: string | null
+          plano_acao?: string | null
           prazo_resolucao?: string | null
           prazo_sla?: string | null
           resolvida_em?: string | null
           responsavel_id?: string | null
           status?: string
           step_log_id?: string | null
+          tipos_evidencia_requeridos?: Json | null
           updated_at?: string
           validada_em?: string | null
           validada_por?: string | null
@@ -1509,16 +1517,20 @@ export type Database = {
           descricao?: string
           id?: string
           impacto_score?: number | null
+          justificativa_rejeicao?: string | null
           motivo_instrucao?: string | null
           numero_contingencia?: number
+          observacao_tratamento?: string | null
           origin_field_id?: string | null
           origin_review_id?: string | null
+          plano_acao?: string | null
           prazo_resolucao?: string | null
           prazo_sla?: string | null
           resolvida_em?: string | null
           responsavel_id?: string | null
           status?: string
           step_log_id?: string | null
+          tipos_evidencia_requeridos?: Json | null
           updated_at?: string
           validada_em?: string | null
           validada_por?: string | null

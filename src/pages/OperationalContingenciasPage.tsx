@@ -3,8 +3,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   AlertTriangle, Play, CheckCircle2, XCircle, Clock, Shield, History,
   ChevronLeft, FileText, RotateCcw, Trash2, Timer, Paperclip, Image as ImageIcon,
+  Camera, Video, File,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
@@ -81,6 +83,9 @@ export default function OperationalContingenciasPage() {
   const [slaDialogOpen, setSlaDialogOpen] = useState(false);
   const [slaDatetime, setSlaDatetime] = useState("");
   const [slaJustificativa, setSlaJustificativa] = useState("");
+  const [slaPlanoAcao, setSlaPlanoAcao] = useState("");
+  const [slaObservacao, setSlaObservacao] = useState("");
+  const [slaTiposEvidencia, setSlaTiposEvidencia] = useState<string[]>([]);
   const [slaFile, setSlaFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const slaFileRef = useRef<HTMLInputElement>(null);
@@ -119,13 +124,18 @@ export default function OperationalContingenciasPage() {
   const renderCard = (c: any) => {
     const statusCfg = CONTINGENCY_STATUS[c.status] || { label: c.status, class: "bg-muted text-muted-foreground border-border" };
     const sla = cm.getSlaInfo(c);
+    const isResolvedCard = c.status === "resolvida";
 
     return (
       <div
         key={c.id}
         onClick={() => openDetail(c)}
         className={`p-3 border rounded-lg cursor-pointer hover:shadow-sm transition-shadow ${
-          sla?.isExpired ? "border-destructive/50 bg-destructive/5" : "border-border bg-card"
+          isResolvedCard
+            ? "border-green-300 bg-green-50/50 dark:bg-green-950/20 dark:border-green-700"
+            : sla?.isExpired
+            ? "border-destructive/50 bg-destructive/5"
+            : "border-border bg-card"
         }`}
       >
         <div className="flex items-start justify-between gap-2">
@@ -142,10 +152,17 @@ export default function OperationalContingenciasPage() {
                 </>
               )}
             </div>
+            {c.justificativa_rejeicao && c.status === "aberta" && (
+              <p className="text-xs text-destructive mt-1 truncate">
+                ⚠ Reprovada: {c.justificativa_rejeicao}
+              </p>
+            )}
           </div>
           <div className="flex flex-col items-end gap-1 shrink-0">
-            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${statusCfg.class}`}>
-              {statusCfg.label}
+            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+              isResolvedCard ? "bg-green-100 text-green-700 border-green-300" : statusCfg.class
+            }`}>
+              {isResolvedCard ? "Aguardando Validação" : statusCfg.label}
             </span>
             {sla && (
               <span className={`text-[10px] font-mono ${sla.isExpired ? "text-destructive font-bold" : "text-muted-foreground"}`}>
@@ -162,12 +179,25 @@ export default function OperationalContingenciasPage() {
     const defaultDate = new Date(Date.now() + 24 * 3600000);
     setSlaDatetime(formatDatetimeLocal(defaultDate));
     setSlaJustificativa("");
+    setSlaPlanoAcao("");
+    setSlaObservacao("");
+    setSlaTiposEvidencia([]);
     setSlaFile(null);
     setSlaDialogOpen(true);
   };
 
+  const toggleEvidenceType = (tipo: string) => {
+    setSlaTiposEvidencia(prev =>
+      prev.includes(tipo) ? prev.filter(t => t !== tipo) : [...prev, tipo]
+    );
+  };
+
   const handleStartTreatment = async () => {
     if (!selected || !slaJustificativa.trim()) return;
+    if (slaTiposEvidencia.length === 0) {
+      toast.error("Selecione pelo menos um tipo de evidência requerida.");
+      return;
+    }
     setUploading(true);
     try {
       let evidenciaUrl: string | undefined;
@@ -180,6 +210,9 @@ export default function OperationalContingenciasPage() {
           prazoSlaDatetime: slaDatetime,
           justificativa: slaJustificativa,
           evidenciaUrl,
+          planoAcao: slaPlanoAcao,
+          tiposEvidenciaRequeridos: slaTiposEvidencia,
+          observacaoTratamento: slaObservacao,
         },
         {
           onSuccess: () => {
@@ -188,6 +221,9 @@ export default function OperationalContingenciasPage() {
               ...prev,
               status: "em_andamento",
               prazo_sla: new Date(slaDatetime).toISOString(),
+              plano_acao: slaPlanoAcao,
+              tipos_evidencia_requeridos: slaTiposEvidencia,
+              observacao_tratamento: slaObservacao,
             } : prev);
           },
           onSettled: () => setUploading(false),
@@ -385,6 +421,43 @@ export default function OperationalContingenciasPage() {
               </div>
             </div>
 
+            {/* Plano de Ação e Tipos de Evidência (visível quando em_andamento ou posterior) */}
+            {selected?.plano_acao && selected?.status !== "aberta" && (
+              <div className="border rounded-lg p-3 bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 space-y-2">
+                <h4 className="text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider">
+                  Plano de Ação
+                </h4>
+                <p className="text-sm">{selected.plano_acao}</p>
+                {selected.observacao_tratamento && (
+                  <div className="text-xs">
+                    <span className="text-muted-foreground">Observação:</span>
+                    <p className="mt-0.5">{selected.observacao_tratamento}</p>
+                  </div>
+                )}
+                {Array.isArray(selected.tipos_evidencia_requeridos) && selected.tipos_evidencia_requeridos.length > 0 && (
+                  <div className="text-xs">
+                    <span className="text-muted-foreground">Evidências requeridas:</span>
+                    <div className="flex gap-2 mt-1 flex-wrap">
+                      {selected.tipos_evidencia_requeridos.map((t: string) => (
+                        <span key={t} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[10px] font-medium border border-blue-200 dark:border-blue-700">
+                          {t === "foto" && <Camera className="w-3 h-3" />}
+                          {t === "video" && <Video className="w-3 h-3" />}
+                          {t === "documento" && <File className="w-3 h-3" />}
+                          {t === "foto" ? "Foto" : t === "video" ? "Vídeo" : "Documento"}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {selected.justificativa_rejeicao && (
+                  <div className="text-xs border-t border-blue-200 dark:border-blue-700 pt-2 mt-2">
+                    <span className="text-destructive font-semibold">Justificativa da última rejeição:</span>
+                    <p className="mt-0.5 text-destructive">"{selected.justificativa_rejeicao}"</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="p-2 border rounded bg-muted/30">
                 <span className="text-muted-foreground">Responsável</span>
@@ -503,13 +576,13 @@ export default function OperationalContingenciasPage() {
 
       {/* SLA Dialog */}
       <Dialog open={slaDialogOpen} onOpenChange={(v) => { if (!v) setSlaDialogOpen(false); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Timer className="w-4 h-4" /> Iniciar Tratamento — Definir SLA
             </DialogTitle>
             <DialogDescription>
-              Defina a data e hora limite para resolução e justifique o início do tratamento.
+              Defina prazo, plano de ação e tipos de evidência requeridos do avaliado.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -528,16 +601,55 @@ export default function OperationalContingenciasPage() {
               )}
             </div>
             <div className="space-y-1.5">
-              <Label>Justificativa <span className="text-destructive">*</span></Label>
+              <Label>Justificativa / Instrução inicial <span className="text-destructive">*</span></Label>
               <Textarea
                 value={slaJustificativa}
                 onChange={(e) => setSlaJustificativa(e.target.value)}
-                placeholder="Descreva a justificativa para iniciar o tratamento..."
+                placeholder="Descreva a justificativa e instrução para o avaliado resolver..."
                 className="min-h-[80px]"
+              />
+              <p className="text-[10px] text-muted-foreground">Esta justificativa será enviada ao avaliado junto com a devolução.</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Plano de Ação <span className="text-destructive">*</span></Label>
+              <Textarea
+                value={slaPlanoAcao}
+                onChange={(e) => setSlaPlanoAcao(e.target.value)}
+                placeholder="Descreva qual plano de ação será tomado para resolver..."
+                className="min-h-[60px]"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Tipos de evidência requeridos <span className="text-destructive">*</span></Label>
+              <p className="text-[10px] text-muted-foreground">Selecione quais tipos de evidência o avaliado deve anexar para resolver.</p>
+              <div className="flex flex-col gap-2">
+                {[
+                  { value: "foto", label: "Foto", icon: <Camera className="w-4 h-4" /> },
+                  { value: "video", label: "Vídeo", icon: <Video className="w-4 h-4" /> },
+                  { value: "documento", label: "Documento", icon: <File className="w-4 h-4" /> },
+                ].map((opt) => (
+                  <label key={opt.value} className="flex items-center gap-2 cursor-pointer p-2 rounded border hover:bg-muted/50 transition-colors">
+                    <Checkbox
+                      checked={slaTiposEvidencia.includes(opt.value)}
+                      onCheckedChange={() => toggleEvidenceType(opt.value)}
+                    />
+                    {opt.icon}
+                    <span className="text-sm">{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Observação <span className="text-muted-foreground text-xs">— opcional</span></Label>
+              <Textarea
+                value={slaObservacao}
+                onChange={(e) => setSlaObservacao(e.target.value)}
+                placeholder="Observações adicionais..."
+                className="min-h-[50px]"
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Anexo (foto/vídeo) <span className="text-muted-foreground text-xs">— opcional</span></Label>
+              <Label>Anexo (evidência do avaliador) <span className="text-muted-foreground text-xs">— opcional</span></Label>
               <div className="flex items-center gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={() => slaFileRef.current?.click()}>
                   <Paperclip className="w-3.5 h-3.5 mr-1" /> {slaFile ? "Trocar" : "Anexar"}
@@ -549,7 +661,7 @@ export default function OperationalContingenciasPage() {
               <input
                 ref={slaFileRef}
                 type="file"
-                accept="image/*,video/*"
+                accept="image/*,video/*,.pdf,.doc,.docx"
                 className="hidden"
                 onChange={(e) => setSlaFile(e.target.files?.[0] || null)}
               />
@@ -558,7 +670,7 @@ export default function OperationalContingenciasPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setSlaDialogOpen(false)}>Cancelar</Button>
             <Button
-              disabled={cm.isSaving || uploading || !slaDatetime || !slaJustificativa.trim()}
+              disabled={cm.isSaving || uploading || !slaDatetime || !slaJustificativa.trim() || !slaPlanoAcao.trim() || slaTiposEvidencia.length === 0}
               onClick={handleStartTreatment}
             >
               {cm.isSaving || uploading ? "Salvando..." : "Iniciar com SLA"}
@@ -575,13 +687,41 @@ export default function OperationalContingenciasPage() {
             <DialogDescription>Descreva a ação corretiva aplicada.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Show plano de ação and required evidence types for context */}
+            {selected?.plano_acao && (
+              <div className="border rounded p-2 bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 text-xs space-y-1">
+                <p className="font-semibold text-blue-700 dark:text-blue-400">Plano de Ação:</p>
+                <p>{selected.plano_acao}</p>
+                {selected.justificativa_rejeicao && (
+                  <div className="border-t border-blue-200 dark:border-blue-700 pt-1 mt-1">
+                    <p className="text-destructive font-semibold">Motivo da rejeição anterior:</p>
+                    <p className="text-destructive">"{selected.justificativa_rejeicao}"</p>
+                  </div>
+                )}
+              </div>
+            )}
+            {Array.isArray(selected?.tipos_evidencia_requeridos) && selected.tipos_evidencia_requeridos.length > 0 && (
+              <div className="text-xs">
+                <span className="text-muted-foreground font-medium">Evidências requeridas:</span>
+                <div className="flex gap-2 mt-1 flex-wrap">
+                  {selected.tipos_evidencia_requeridos.map((t: string) => (
+                    <span key={t} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[10px] font-medium border border-blue-200 dark:border-blue-700">
+                      {t === "foto" && <Camera className="w-3 h-3" />}
+                      {t === "video" && <Video className="w-3 h-3" />}
+                      {t === "documento" && <File className="w-3 h-3" />}
+                      {t === "foto" ? "Foto" : t === "video" ? "Vídeo" : "Documento"}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
             <div>
               <Label className="text-sm">Ação corretiva <span className="text-destructive">*</span></Label>
               <Textarea value={resolveObs} onChange={(e) => setResolveObs(e.target.value)}
                 placeholder="Descreva o que foi feito..." className="mt-1 min-h-[80px]" />
             </div>
             <div className="space-y-1.5">
-              <Label>Anexo (foto/vídeo) <span className="text-muted-foreground text-xs">— opcional</span></Label>
+              <Label>Anexo (evidência) <span className="text-destructive">*</span></Label>
               <div className="flex items-center gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={() => resolveFileRef.current?.click()}>
                   <Paperclip className="w-3.5 h-3.5 mr-1" /> {resolveFile ? "Trocar" : "Anexar"}
@@ -593,7 +733,7 @@ export default function OperationalContingenciasPage() {
               <input
                 ref={resolveFileRef}
                 type="file"
-                accept="image/*,video/*"
+                accept="image/*,video/*,.pdf,.doc,.docx"
                 className="hidden"
                 onChange={(e) => setResolveFile(e.target.files?.[0] || null)}
               />
@@ -616,19 +756,27 @@ export default function OperationalContingenciasPage() {
             <DialogDescription>
               {validateApproved
                 ? "A contingência será marcada como validada."
-                : "A contingência será reaberta para novo tratamento."}
+                : "A contingência será reaberta e devolvida com sua justificativa para nova resolução."}
             </DialogDescription>
           </DialogHeader>
           <div>
-            <Label className="text-sm">Observação</Label>
+            <Label className="text-sm">
+              {validateApproved ? "Observação" : "Justificativa da reprovação"} {!validateApproved && <span className="text-destructive">*</span>}
+            </Label>
             <Textarea value={validateObs} onChange={(e) => setValidateObs(e.target.value)}
-              placeholder="Observações opcionais..." className="mt-1 min-h-[60px]" />
+              placeholder={validateApproved ? "Observações opcionais..." : "Justifique por que a resolução foi reprovada..."}
+              className="mt-1 min-h-[60px]" />
+            {!validateApproved && (
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Esta justificativa será enviada ao avaliado junto com os mesmos campos para nova resolução.
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setValidateOpen(false)}>Cancelar</Button>
             <Button
               variant={validateApproved ? "default" : "destructive"}
-              disabled={cm.isSaving}
+              disabled={cm.isSaving || (!validateApproved && !validateObs.trim())}
               onClick={() => {
                 if (!selected) return;
                 cm.validateResolution.mutate(
@@ -636,7 +784,7 @@ export default function OperationalContingenciasPage() {
                   { onSuccess: () => { setValidateOpen(false); closeDetail(); } }
                 );
               }}>
-              {cm.isSaving ? "Salvando..." : validateApproved ? "Validar" : "Reprovar e Reabrir"}
+              {cm.isSaving ? "Salvando..." : validateApproved ? "Validar" : "Reprovar e Devolver"}
             </Button>
           </DialogFooter>
         </DialogContent>
