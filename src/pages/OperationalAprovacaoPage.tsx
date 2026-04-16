@@ -526,367 +526,258 @@ export default function OperationalAprovacaoPage() {
               </div>
             )}
 
-            {/* Questions by section */}
-            {(() => {
+            {/* Resumo de Pontuação do Template — table format */}
+            {orderedItems.length > 0 && (() => {
               globalQuestionIdx = 0;
-              const sections: { section: any; items: Array<{ type: "field" | "field_readonly" | "auto"; data: any }> }[] = [];
-              let currentSection: any = null;
-              let currentItems: Array<{ type: "field" | "field_readonly" | "auto"; data: any }> = [];
 
-              for (const item of orderedItems) {
-                if (item.type === "section") {
-                  if (currentSection) sections.push({ section: currentSection, items: currentItems });
-                  currentSection = item.data;
-                  currentItems = [];
-                } else {
-                  currentItems.push(item as any);
-                }
-              }
-              if (currentSection) sections.push({ section: currentSection, items: currentItems });
-              if (!currentSection && currentItems.length > 0) sections.push({ section: null, items: currentItems });
+              // Compute subtotals
+              const subtotalPenalidades = autoQuestions.reduce((sum, aq) => {
+                const resp = autoAnswers[aq.id]?.resposta || "";
+                return sum + (resp === "nao_conforme" ? -aq.pontos : 0);
+              }, 0);
+              const subtotalCampos = approvalFields.reduce((sum, f) => sum + (f.aprovador_peso || f.peso || 1), 0);
+              const pontosTotais = autoQuestions.reduce((s, aq) => s + aq.pontos, 0) + subtotalCampos;
 
-              return sections.map(({ section, items }) => {
-                const sScore = section ? sectionScores[section.id] : null;
-                const sConformePct = sScore && sScore.total > 0 ? Math.round((sScore.conformes / sScore.total) * 100) : 0;
+              return (
+                <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
+                  <div className="p-4 border-b border-border">
+                    <h3 className="text-sm font-semibold text-foreground">Resumo de Pontuação do Template</h3>
+                  </div>
 
-                return (
-                  <div key={section?.id || "__no_section"} className="bg-card border border-border rounded-lg shadow-card">
-                    {section && (
-                      <div className="p-4 border-b border-border flex items-center gap-2 flex-wrap">
-                        <Users className="w-4 h-4 text-primary" />
-                        <h3 className="text-sm font-semibold text-foreground">{section.nome}</h3>
-                        {sScore && sScore.total > 0 && (
-                          <span className={cn("ml-auto text-sm font-bold font-tabular",
-                            sConformePct >= 85 ? "text-success" : sConformePct >= 75 ? "text-warning" : "text-destructive"
-                          )}>
-                            {sScore.conformes}/{sScore.total} conformes
-                          </span>
-                        )}
+                  {/* Table header */}
+                  <div className="grid grid-cols-[40px_1fr_120px_80px] items-center px-4 py-2 border-b border-border bg-muted/30 text-xs font-medium text-muted-foreground">
+                    <span>#</span>
+                    <span>Pergunta / Campo</span>
+                    <span className="text-center">Tipo</span>
+                    <span className="text-right">Pontos</span>
+                  </div>
+
+                  {/* Auto questions rows */}
+                  {autoQuestions.map((aq) => {
+                    globalQuestionIdx++;
+                    const idx = globalQuestionIdx;
+                    const autoAns = autoAnswers[aq.id];
+                    const effectiveResp = autoAns?.resposta || "";
+                    const isConf = effectiveResp === "conforme";
+                    const isNaoConf = effectiveResp === "nao_conforme";
+                    const isEditing = editingAutoId === aq.id;
+                    const penaltyApplied = isNaoConf;
+
+                    return (
+                      <div key={aq.id} className={cn("border-b border-border transition-colors", isNaoConf ? "bg-destructive/5" : "")}>
+                        <div className="grid grid-cols-[40px_1fr_120px_80px] items-center px-4 py-3">
+                          <span className="text-sm text-muted-foreground font-medium">{idx}</span>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground">{aq.label}</p>
+                            {autoAns?.detail && !isEditing && (
+                              <p className="text-xs text-muted-foreground mt-0.5 italic">{autoAns.detail}</p>
+                            )}
+                            {autoAns?.overridden && autoAns.justificativa && !isEditing && (
+                              <p className="text-xs text-warning mt-0.5">Justificativa: "{autoAns.justificativa}"</p>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-center gap-1">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-destructive text-destructive-foreground">Automática</span>
+                            {autoAns?.overridden && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-warning/10 text-warning border border-warning/20">Editada</span>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-end gap-1">
+                            <span className={cn("text-sm font-bold font-tabular", penaltyApplied ? "text-destructive" : "text-muted-foreground")}>
+                              -{aq.pontos}
+                            </span>
+                            {isPendente && !isEditing && (
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0" onClick={() => startEditAuto(aq.id)}>
+                                <Pencil className="w-3 h-3 text-muted-foreground" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Edit mode */}
+                        <AnimatePresence>
+                          {isEditing && (
+                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                              <div className="mx-4 mb-3 bg-muted/30 border border-border rounded-lg p-3 space-y-3">
+                                <div>
+                                  <Label className="text-xs text-muted-foreground mb-1 block">Alterar resposta:</Label>
+                                  <ApprovalSegmentedControl
+                                    value={autoOverrides[aq.id]?.resposta || autoComputedAnswers[aq.id]?.resposta || ""}
+                                    onChange={(v) => {
+                                      setAutoOverrides(prev => ({
+                                        ...prev,
+                                        [aq.id]: { resposta: v, justificativa: prev[aq.id]?.justificativa || editAutoJustificativa },
+                                      }));
+                                    }}
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs text-muted-foreground mb-1 block">Justificativa <span className="text-destructive">*</span></Label>
+                                  <Textarea
+                                    placeholder="Informe o motivo da alteração..."
+                                    value={editAutoJustificativa}
+                                    onChange={e => setEditAutoJustificativa(e.target.value)}
+                                    className="bg-card min-h-[50px] text-sm"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2 justify-end">
+                                  <Button variant="ghost" size="sm" onClick={cancelEditAuto}>
+                                    <X className="w-3.5 h-3.5 mr-1" /> Cancelar
+                                  </Button>
+                                  <Button size="sm" disabled={!editAutoJustificativa.trim()}
+                                    onClick={() => confirmEditAuto(aq.id, autoOverrides[aq.id]?.resposta || autoComputedAnswers[aq.id]?.resposta || "conforme")}>
+                                    <Check className="w-3.5 h-3.5 mr-1" /> Confirmar
+                                  </Button>
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
-                    )}
+                    );
+                  })}
 
-                    <div className="divide-y divide-border">
-                      {items.length === 0 ? (
-                        <p className="px-4 py-4 text-caption text-muted-foreground text-center">Nenhuma pergunta nesta seção.</p>
-                      ) : items.map((item) => {
-                        globalQuestionIdx++;
-                        const idx = globalQuestionIdx;
+                  {/* Subtotal Penalidades */}
+                  {autoQuestions.length > 0 && (
+                    <div className="grid grid-cols-[40px_1fr_120px_80px] items-center px-4 py-2 border-b border-border bg-muted/20">
+                      <span />
+                      <span />
+                      <span className="text-xs font-medium text-muted-foreground text-right">Subtotal Penalidades</span>
+                      <span className="text-sm font-bold text-destructive text-right font-tabular">{subtotalPenalidades}</span>
+                    </div>
+                  )}
 
-                        // ── AUTO QUESTION ──
-                        if (item.type === "auto") {
-                          const aq = item.data;
-                          const autoAns = autoAnswers[aq.id];
-                          const effectiveResp = autoAns?.resposta || "";
-                          const isConf = effectiveResp === "conforme";
-                          const isNaoConf = effectiveResp === "nao_conforme";
-                          const isNA = effectiveResp === "na";
-                          const isEditing = editingAutoId === aq.id;
+                  {/* Approval fields (aprovador_verificar) rows */}
+                  {approvalFields.map((f) => {
+                    globalQuestionIdx++;
+                    const idx = globalQuestionIdx;
+                    const fieldPeso = f.aprovador_peso || f.peso || 1;
+                    const answer = answersMap[f.id];
+                    const rev = reviewsMap[f.id];
+                    const existing = approval.existingApprovalAnswers.find((a: any) => a.field_id === f.id);
+                    const draft = approval.approverAnswers[f.id];
+                    const currentResposta: ApprovalAnswer = (draft?.resposta ?? existing?.resposta ?? "") as ApprovalAnswer;
+                    const currentObs = draft?.observacao ?? existing?.observacao ?? "";
+                    const isConforme = currentResposta === "conforme";
+                    const isNaoConforme = currentResposta === "nao_conforme";
 
-                          return (
-                            <div key={aq.id} className={cn("transition-colors",
-                              isConf ? "bg-success/5" : isNaoConf ? "bg-destructive/5" : ""
-                            )}>
-                              <div className="p-4">
-                                <div className="flex items-start gap-3">
-                                  <div className={cn("flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0",
-                                    isConf ? "bg-success text-success-foreground" :
-                                    isNaoConf ? "bg-destructive text-destructive-foreground" :
-                                    isNA ? "bg-warning text-warning-foreground" : "bg-muted text-muted-foreground"
+                    return (
+                      <div key={f.id} className={cn("border-b border-border transition-colors",
+                        isConforme ? "bg-success/5" : isNaoConforme ? "bg-destructive/5" : ""
+                      )}>
+                        <div className="grid grid-cols-[40px_1fr_120px_80px] items-center px-4 py-3">
+                          <span className="text-sm text-muted-foreground font-medium">{idx}</span>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground">{f.aprovador_pergunta || f.label}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">Campo: {f.label}</p>
+                          </div>
+                          <div className="flex items-center justify-center">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-accent text-accent-foreground border border-accent">Aprovador</span>
+                          </div>
+                          <span className="text-sm font-bold text-foreground text-right font-tabular">{fieldPeso}</span>
+                        </div>
+
+                        {/* Executor answer + Avaliador review context */}
+                        <div className="px-4 pb-2">
+                          <div className="ml-10 bg-muted/30 border border-border rounded-lg p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Resposta do Executor</p>
+                                {renderAnswerValue(f, answer)}
+                                {answer?.evidencia_url && f.tipo !== "foto" && (
+                                  <a href={answer.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline flex items-center gap-1 mt-1">
+                                    <ExternalLink className="w-3 h-3" /> Ver evidência
+                                  </a>
+                                )}
+                              </div>
+                              {rev && (
+                                <div className="text-right shrink-0">
+                                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Avaliador</p>
+                                  <span className={cn(
+                                    "inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border",
+                                    rev.conforme === true ? "border-success/40 bg-success/10 text-success" : "border-destructive/40 bg-destructive/10 text-destructive"
                                   )}>
-                                    <Check className="w-4 h-4" />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-foreground leading-relaxed">{aq.label}</p>
-                                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                      <span className="text-caption text-muted-foreground">Peso: {aq.pontos} pts</span>
-                                      <span className="text-caption text-muted-foreground">•</span>
-                                      <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold",
-                                        isConf ? "bg-success/10 text-success" :
-                                        isNaoConf ? "bg-destructive/10 text-destructive" :
-                                        "bg-warning/10 text-warning"
-                                      )}>
-                                        {isConf ? "CONFORME" : isNaoConf ? "NÃO CONFORME" : "N/A"}
-                                      </span>
-                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary border border-primary/20">Automática</span>
-                                      {autoAns?.overridden && (
-                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-warning/10 text-warning border border-warning/20">Editada</span>
-                                      )}
-                                    </div>
-                                    {autoAns?.detail && !isEditing && (
-                                      <p className="text-xs text-muted-foreground mt-1 italic">{autoAns.detail}</p>
-                                    )}
-                                    {autoAns?.overridden && autoAns.justificativa && !isEditing && (
-                                      <p className="text-xs text-warning mt-0.5">Justificativa: "{autoAns.justificativa}"</p>
-                                    )}
-                                  </div>
-                                  {/* Pencil to edit */}
-                                  {isPendente && !isEditing && (
-                                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" onClick={() => startEditAuto(aq.id)}>
-                                      <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
-                                    </Button>
-                                  )}
+                                    {rev.conforme === true ? "✓ Conforme" : "✗ Não Conforme"}
+                                  </span>
+                                  {rev.observacao && <p className="text-xs text-muted-foreground mt-0.5 max-w-[200px]">"{rev.observacao}"</p>}
                                 </div>
-
-                                {/* Edit mode */}
-                                <AnimatePresence>
-                                  {isEditing && (
-                                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                                      <div className="ml-11 mt-3 bg-muted/30 border border-border rounded-lg p-3 space-y-3">
-                                        <div>
-                                          <Label className="text-xs text-muted-foreground mb-1 block">Alterar resposta:</Label>
-                                          <ApprovalSegmentedControl
-                                            value={autoOverrides[aq.id]?.resposta || autoComputedAnswers[aq.id]?.resposta || ""}
-                                            onChange={(v) => {
-                                              setAutoOverrides(prev => ({
-                                                ...prev,
-                                                [aq.id]: { resposta: v, justificativa: prev[aq.id]?.justificativa || editAutoJustificativa },
-                                              }));
-                                            }}
-                                          />
-                                        </div>
-                                        <div>
-                                          <Label className="text-xs text-muted-foreground mb-1 block">Justificativa <span className="text-destructive">*</span></Label>
-                                          <Textarea
-                                            placeholder="Informe o motivo da alteração..."
-                                            value={editAutoJustificativa}
-                                            onChange={e => setEditAutoJustificativa(e.target.value)}
-                                            className="bg-card min-h-[50px] text-sm"
-                                          />
-                                        </div>
-                                        <div className="flex items-center gap-2 justify-end">
-                                          <Button variant="ghost" size="sm" onClick={cancelEditAuto}>
-                                            <X className="w-3.5 h-3.5 mr-1" /> Cancelar
-                                          </Button>
-                                          <Button size="sm" disabled={!editAutoJustificativa.trim()}
-                                            onClick={() => confirmEditAuto(aq.id, autoOverrides[aq.id]?.resposta || autoComputedAnswers[aq.id]?.resposta || "conforme")}>
-                                            <Check className="w-3.5 h-3.5 mr-1" /> Confirmar
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    </motion.div>
-                                  )}
-                                </AnimatePresence>
-                              </div>
+                              )}
                             </div>
-                          );
-                        }
+                          </div>
+                        </div>
 
-                        // ── READ-ONLY FIELD (evaluator question, not for approver) ──
-                        if (item.type === "field_readonly") {
-                          const f = item.data as SnapshotField;
-                          const answer = answersMap[f.id];
-                          const rev = reviewsMap[f.id];
-                          const isRevConf = rev?.conforme === true;
-                          const isRevNaoConf = rev?.conforme === false;
-                          const hasReview = !!rev;
+                        {/* Approver response controls */}
+                        <div className="px-4 pb-3">
+                          <div className="ml-10">
+                            <ApprovalSegmentedControl
+                              value={currentResposta}
+                              onChange={v => approval.updateApproverAnswer(f.id, { resposta: v })}
+                              disabled={!isPendente}
+                            />
+                          </div>
+                        </div>
 
-                          return (
-                            <div key={f.id} className={cn("transition-colors",
-                              isRevConf ? "bg-success/5" : isRevNaoConf ? "bg-destructive/5" : ""
-                            )}>
-                              <div className="p-4">
-                                <div className="flex items-start gap-3">
-                                  <div className={cn("flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0",
-                                    isRevConf ? "bg-success text-success-foreground" :
-                                    isRevNaoConf ? "bg-destructive text-destructive-foreground" :
-                                    "bg-muted text-muted-foreground"
-                                  )}>
-                                    {hasReview ? <Check className="w-4 h-4" /> : String(idx).padStart(2, "0")}
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-foreground leading-relaxed">{f.label}</p>
-                                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                      <span className="text-caption text-muted-foreground">Peso: {f.peso || 1} pts</span>
-                                      {hasReview && (
-                                        <>
-                                          <span className="text-caption text-muted-foreground">•</span>
-                                          <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold",
-                                            isRevConf ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
-                                          )}>
-                                            {isRevConf ? "CONFORME" : "NÃO CONFORME"}
-                                          </span>
-                                        </>
-                                      )}
-                                    </div>
-
-                                    {/* Show executor answer and evaluator review inline */}
-                                    <div className="mt-2 bg-muted/30 border border-border rounded-lg p-3 space-y-2">
-                                      <div className="flex items-start justify-between gap-3">
-                                        <div>
-                                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Resposta do Executor</p>
-                                          {renderAnswerValue(f, answer)}
-                                        </div>
-                                        {rev && (
-                                          <div className="text-right shrink-0">
-                                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Avaliador</p>
-                                            <span className={cn(
-                                              "inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border",
-                                              rev.conforme === true ? "border-success/40 bg-success/10 text-success" : "border-destructive/40 bg-destructive/10 text-destructive"
-                                            )}>
-                                              {rev.conforme === true ? "✓ Conforme" : "✗ Não Conforme"}
-                                            </span>
-                                            {rev.observacao && <p className="text-xs text-muted-foreground mt-0.5 max-w-[200px]">"{rev.observacao}"</p>}
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
+                        <AnimatePresence>
+                          {isNaoConforme && (
+                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                              <div className="mx-4 ml-14 mb-3 bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-2">
+                                <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
+                                  <AlertTriangle className="w-3.5 h-3.5" /> Observação do aprovador
                                 </div>
-                              </div>
-                            </div>
-                          );
-                        }
-
-                        // ── MANUAL APPROVAL FIELD (aprovador_verificar) ──
-                        const f = item.data as SnapshotField;
-                        const answer = answersMap[f.id];
-                        const rev = reviewsMap[f.id];
-                        const existing = approval.existingApprovalAnswers.find((a: any) => a.field_id === f.id);
-                        const draft = approval.approverAnswers[f.id];
-                        const currentResposta: ApprovalAnswer = (draft?.resposta ?? existing?.resposta ?? "") as ApprovalAnswer;
-                        const currentObs = draft?.observacao ?? existing?.observacao ?? "";
-                        const isConforme = currentResposta === "conforme";
-                        const isNaoConforme = currentResposta === "nao_conforme";
-                        const fieldPeso = f.aprovador_peso || f.peso || 1;
-
-                        return (
-                          <motion.div key={f.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(idx * 0.03, 0.5) }}
-                            className={cn("transition-colors",
-                              isConforme ? "bg-success/5" : isNaoConforme ? "bg-destructive/5" : ""
-                            )}>
-                            <div className="p-4">
-                              <div className="flex items-start gap-3 mb-3">
-                                <div className={cn("flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0",
-                                  isConforme ? "bg-success text-success-foreground" :
-                                  isNaoConforme ? "bg-destructive text-destructive-foreground" :
-                                  currentResposta === "na" ? "bg-warning text-warning-foreground" :
-                                  "bg-muted text-muted-foreground"
-                                )}>
-                                  {currentResposta ? <Check className="w-4 h-4" /> : String(idx).padStart(2, "0")}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-foreground leading-relaxed">{f.aprovador_pergunta || f.label}</p>
-                                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                    <span className="text-caption text-muted-foreground">Peso: {fieldPeso} pts</span>
-                                    {currentResposta ? (
-                                      <>
-                                        <span className="text-caption text-muted-foreground">•</span>
-                                        <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold",
-                                          isConforme ? "bg-success/10 text-success" :
-                                          isNaoConforme ? "bg-destructive/10 text-destructive" :
-                                          "bg-warning/10 text-warning"
-                                        )}>
-                                          {isConforme ? "CONFORME" : isNaoConforme ? "NÃO CONFORME" : "N/A"}
-                                        </span>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <span className="text-caption text-muted-foreground">•</span>
-                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground">Pendente</span>
-                                      </>
-                                    )}
-                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent/50 text-accent-foreground border border-accent">Aprovador</span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Executor answer + Avaliador review */}
-                              <div className="ml-0 sm:ml-11 mb-3 space-y-2">
-                                <div className="bg-muted/30 border border-border rounded-lg p-3 space-y-2">
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Resposta do Executor</p>
-                                      {renderAnswerValue(f, answer)}
-                                      {answer?.evidencia_url && f.tipo !== "foto" && (
-                                        <a href={answer.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline flex items-center gap-1 mt-1">
-                                          <ExternalLink className="w-3 h-3" /> Ver evidência
-                                        </a>
-                                      )}
-                                    </div>
-                                    {rev && (
-                                      <div className="text-right shrink-0">
-                                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Avaliador</p>
-                                        <span className={cn(
-                                          "inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border",
-                                          rev.conforme === true ? "border-success/40 bg-success/10 text-success" : "border-destructive/40 bg-destructive/10 text-destructive"
-                                        )}>
-                                          {rev.conforme === true ? "✓ Conforme" : "✗ Não Conforme"}
-                                        </span>
-                                        {rev.observacao && <p className="text-xs text-muted-foreground mt-0.5 max-w-[200px]">"{rev.observacao}"</p>}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="ml-0 sm:ml-11">
-                                <ApprovalSegmentedControl
-                                  value={currentResposta}
-                                  onChange={v => approval.updateApproverAnswer(f.id, { resposta: v })}
+                                <Textarea
+                                  placeholder="Descreva o motivo da não conformidade..."
+                                  value={currentObs}
+                                  onChange={e => approval.updateApproverAnswer(f.id, { observacao: e.target.value })}
                                   disabled={!isPendente}
+                                  className="bg-card min-h-[60px] text-sm"
                                 />
                               </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
 
-                              <AnimatePresence>
-                                {isNaoConforme && (
-                                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                                    <div className="ml-0 sm:ml-11 mt-3 bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-2">
-                                      <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
-                                        <AlertTriangle className="w-3.5 h-3.5" /> Observação do aprovador
-                                      </div>
-                                      <Textarea
-                                        placeholder="Descreva o motivo da não conformidade..."
-                                        value={currentObs}
-                                        onChange={e => approval.updateApproverAnswer(f.id, { observacao: e.target.value })}
-                                        disabled={!isPendente}
-                                        className="bg-card min-h-[60px] text-sm"
-                                      />
-                                    </div>
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-
-                              <AnimatePresence>
-                                {isConforme && (
-                                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                                    <div className="ml-0 sm:ml-11 mt-3 bg-success/5 border border-success/20 rounded-lg p-3 space-y-2">
-                                      <div className="flex items-center gap-1.5 text-caption text-success font-medium">
-                                        <MessageSquare className="w-3.5 h-3.5" /> Observação (opcional)
-                                      </div>
-                                      <Textarea
-                                        placeholder="Adicione uma observação se necessário..."
-                                        value={currentObs}
-                                        onChange={e => approval.updateApproverAnswer(f.id, { observacao: e.target.value })}
-                                        disabled={!isPendente}
-                                        className="bg-card min-h-[60px] text-sm"
-                                      />
-                                    </div>
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-                            </div>
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-
-                    {sScore && sScore.total > 0 && (
-                      <div className="px-4 py-3 bg-muted/30 border-t border-border flex items-center justify-between">
-                        <span className="text-caption text-muted-foreground">
-                          {sScore.answered}/{sScore.total} respondidas
-                        </span>
-                        <span className={cn("text-sm font-bold font-tabular",
-                          sConformePct >= 85 ? "text-success" : sConformePct >= 75 ? "text-warning" : "text-destructive"
-                        )}>
-                          {sConformePct}% conforme
-                        </span>
+                        <AnimatePresence>
+                          {isConforme && (
+                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                              <div className="mx-4 ml-14 mb-3 bg-success/5 border border-success/20 rounded-lg p-3 space-y-2">
+                                <div className="flex items-center gap-1.5 text-caption text-success font-medium">
+                                  <MessageSquare className="w-3.5 h-3.5" /> Observação (opcional)
+                                </div>
+                                <Textarea
+                                  placeholder="Adicione uma observação se necessário..."
+                                  value={currentObs}
+                                  onChange={e => approval.updateApproverAnswer(f.id, { observacao: e.target.value })}
+                                  disabled={!isPendente}
+                                  className="bg-card min-h-[60px] text-sm"
+                                />
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
-                    )}
-                  </div>
-                );
-              });
-            })()}
+                    );
+                  })}
 
+                  {/* Subtotal Campos */}
+                  {approvalFields.length > 0 && (
+                    <div className="grid grid-cols-[40px_1fr_120px_80px] items-center px-4 py-2 border-b border-border bg-muted/20">
+                      <span />
+                      <span />
+                      <span className="text-xs font-medium text-muted-foreground text-right">Subtotal Campos</span>
+                      <span className="text-sm font-bold text-foreground text-right font-tabular">{subtotalCampos}</span>
+                    </div>
+                  )}
+
+                  {/* Pontos Totais */}
+                  <div className="grid grid-cols-[40px_1fr_120px_80px] items-center px-4 py-3 bg-muted/40">
+                    <span />
+                    <span />
+                    <span className="text-sm font-semibold text-foreground text-right">Pontos Totais</span>
+                    <span className="text-sm font-bold text-foreground text-right font-tabular">{pontosTotais}</span>
+                  </div>
+                </div>
+              );
+            })()}
             {/* Contingencies summary */}
             {approval.contingencies.length > 0 && (
               <div className="bg-card border border-border rounded-lg shadow-card">
