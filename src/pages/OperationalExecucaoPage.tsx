@@ -143,7 +143,7 @@ export default function OperationalExecucaoPage() {
         .select("*, operational_templates(nome, tipo_execucao), profiles:responsavel_id(id, nome, foto_url)")
         .order("data_prevista", { ascending: true });
       if (!isAdmin) {
-        q = q.or(`responsavel_id.eq.${profile.id}`);
+        q = q.or(`responsavel_id.eq.${profile.id},avaliador_id.eq.${profile.id}`);
       }
       const { data, error } = await q.limit(500);
       if (error) throw error;
@@ -155,7 +155,7 @@ export default function OperationalExecucaoPage() {
 
   const profilesWithTasks = useMemo(() => {
     if (!isAdmin) return [];
-    const openStatuses = ["pendente", "em_andamento", "devolvida", "aguardando_avaliacao", "aguardando_aprovacao"];
+    const openStatuses = ["pendente", "em_andamento", "devolvida", "aguardando_avaliacao", "aguardando_aprovacao", "contingencia"];
     const idsWithTasks = new Set(
       assignments
         .filter((a: any) => openStatuses.includes(a.status))
@@ -179,7 +179,7 @@ export default function OperationalExecucaoPage() {
     }
     if (filterDate) {
       list = list.filter((a: any) => {
-        if (["concluida", "aprovada", "aguardando_avaliacao", "aguardando_aprovacao", "nao_executada"].includes(a.status)) return true;
+        if (["concluida", "aprovada", "aguardando_avaliacao", "aguardando_aprovacao", "nao_executada", "contingencia"].includes(a.status)) return true;
         if (a.status === "devolvida") return true;
         return a.data_prevista === filterDate || (a.data_prevista < filterDate && !["concluida", "aprovada"].includes(a.status));
       });
@@ -189,13 +189,13 @@ export default function OperationalExecucaoPage() {
 
   // "Tarefas de Hoje" includes: today's tasks + em_andamento (any date) + atrasadas (past dates still open)
   const hoje = filteredAssignments.filter((a: any) => {
-    if (["em_andamento"].includes(a.status)) return true; // always show em_andamento here
+    if (["em_andamento", "contingencia"].includes(a.status)) return true;
     if (["pendente", "devolvida"].includes(a.status) && a.data_prevista <= filterDate) return true;
     return false;
   });
   const aFazer = filteredAssignments.filter((a: any) => ["pendente"].includes(a.status) && a.data_prevista > filterDate);
   const devolvidas = filteredAssignments.filter((a: any) => ["devolvida"].includes(a.status));
-  const aguardandoAvaliacao = filteredAssignments.filter((a: any) => ["aguardando_avaliacao", "aguardando_aprovacao"].includes(a.status));
+  const aguardandoAvaliacao = filteredAssignments.filter((a: any) => ["aguardando_avaliacao", "aguardando_aprovacao", "contingencia"].includes(a.status));
   const concluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 50);
 
   const exec = useAssignmentExecution(selectedAssignment?.id || null);
@@ -297,11 +297,11 @@ export default function OperationalExecucaoPage() {
   const isOwner = selectedAssignment?.responsavel_id === profile?.id;
   const isAdminEditing = isAdmin && selectedAssignment && !["nao_executada"].includes(selectedAssignment.status);
   const isEditable = selectedAssignment && (
-    (["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status) && (isOwner || isAdmin)) ||
+    (["pendente", "em_andamento", "devolvida", "contingencia"].includes(selectedAssignment.status) && (isOwner || isAdmin)) ||
     isAdminEditing
   );
   const isDevolvida = selectedAssignment?.status === "devolvida";
-  const needsAdminReopen = isAdmin && selectedAssignment && ["aguardando_avaliacao", "aguardando_aprovacao", "concluida", "aprovada"].includes(selectedAssignment.status);
+  const needsAdminReopen = isAdmin && selectedAssignment && ["aguardando_avaliacao", "aguardando_aprovacao", "concluida", "aprovada", "contingencia"].includes(selectedAssignment.status);
 
   const handleStart = () => {
     if (selectedAssignment) exec.startTask.mutate(selectedAssignment.id);
