@@ -84,10 +84,12 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
             check_item:operational_template_check_items!operational_execution_check_answers_check_item_id_fkey(descricao)
           ),
           assignment:operational_assignments!operational_contingencies_assignment_id_fkey(
-            id, data_prevista, rodada_atual, status, validador_contingencia_id, numero_tarefa, avaliado_id, avaliador_id,
+            id, data_prevista, rodada_atual, status, validador_contingencia_id, numero_tarefa,
+            avaliado_id, avaliador_id, responsavel_id,
             template:operational_templates!operational_assignments_template_id_fkey(nome),
             executor:profiles!operational_assignments_responsavel_id_fkey(nome),
-            avaliado:profiles!operational_assignments_avaliado_id_fkey(nome)
+            avaliado:profiles!operational_assignments_avaliado_id_fkey(id, nome),
+            avaliador_profile:profiles!operational_assignments_avaliador_id_fkey(id, nome)
           )
         `)
         .order("created_at", { ascending: false });
@@ -100,7 +102,10 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        console.error("[ContingencyManagement] Query error:", error);
+        throw error;
+      }
       return data || [];
     },
     staleTime: 15000,
