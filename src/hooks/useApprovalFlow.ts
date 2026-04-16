@@ -124,7 +124,7 @@ export function useApprovalFlow(assignmentId: string | null) {
       if (contIds.length === 0) return [];
       const { data, error } = await (supabase as any).from("operational_contingency_resolution_logs")
         .select("*, executor:profiles!operational_contingency_resolution_logs_executado_por_fkey(nome)")
-        .in("contingency_id", contIds).order("created_at", { ascending: false });
+        .in("contingency_id", contIds).order("created_at", { ascending: true });
       if (error) throw error;
       return data;
     },
