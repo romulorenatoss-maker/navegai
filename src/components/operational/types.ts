@@ -75,6 +75,9 @@ export interface FieldForm {
   formula: any;
   visivel_para: string[];
   editavel_por: string[];
+  // Instrução visual (doc/foto/vídeo)
+  instrucao_url: string;
+  instrucao_tipo: string; // foto, video, documento
   // Pergunta do aprovador
   aprovador_verificar: boolean;
   aprovador_pergunta: string;
@@ -208,6 +211,8 @@ export const defaultField = (sectionTempId: string, ordem: number): FieldForm =>
   formula: null,
   visivel_para: ["executor", "avaliador"],
   editavel_por: ["executor"],
+  instrucao_url: "",
+  instrucao_tipo: "foto",
   aprovador_verificar: false,
   aprovador_pergunta: "",
   aprovador_tipo_resposta: "conforme",

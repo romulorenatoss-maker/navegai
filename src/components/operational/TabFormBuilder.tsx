@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Settings2, Copy, AlertTriangle, Camera, FileVideo, FileText, Clock } from "lucide-react";
+import { useState, useRef } from "react";
+import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Settings2, Copy, AlertTriangle, Camera, FileVideo, FileText, Clock, Upload, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SectionForm, FieldForm, OpcaoRegra, FIELD_TYPES, SECTION_COLORS, defaultField, defaultSection, getDefaultOpcoesRegras } from "./types";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface Props {
   sections: SectionForm[];
@@ -323,6 +325,35 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
               <Label>Descrição / Instrução</Label>
               <Textarea value={local.descricao} onChange={e => upd("descricao", e.target.value)} placeholder="Instruções para o executor..." maxLength={1000} />
             </div>
+
+            {/* Anexo de instrução */}
+            <div className="space-y-1.5">
+              <Label>Anexo de Instrução (Documento, Foto ou Vídeo)</Label>
+              <p className="text-caption text-muted-foreground">Anexe um modelo ou referência visual de como o procedimento deve ser executado.</p>
+              {local.instrucao_url ? (
+                <div className="flex items-center gap-2 bg-muted/50 border border-border rounded-lg p-2">
+                  {local.instrucao_tipo === "foto" && (
+                    <img src={local.instrucao_url} alt="Instrução" className="w-20 h-20 object-cover rounded" />
+                  )}
+                  {local.instrucao_tipo === "video" && (
+                    <video src={local.instrucao_url} className="w-20 h-20 object-cover rounded" />
+                  )}
+                  {local.instrucao_tipo === "documento" && (
+                    <div className="flex items-center gap-1.5 text-sm"><FileText className="w-4 h-4" /> Documento anexado</div>
+                  )}
+                  <span className="flex-1 text-xs text-muted-foreground truncate">{local.instrucao_url.split("/").pop()}</span>
+                  <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => { upd("instrucao_url", ""); upd("instrucao_tipo", "foto"); }}>
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <InstrucaoUploadButton label="Foto" icon={<Camera className="w-3.5 h-3.5 mr-1.5" />} accept="image/*" tipo="foto" onUpload={(url) => { upd("instrucao_url", url); upd("instrucao_tipo", "foto"); }} />
+                  <InstrucaoUploadButton label="Vídeo" icon={<FileVideo className="w-3.5 h-3.5 mr-1.5" />} accept="video/*" tipo="video" onUpload={(url) => { upd("instrucao_url", url); upd("instrucao_tipo", "video"); }} />
+                  <InstrucaoUploadButton label="Documento" icon={<FileText className="w-3.5 h-3.5 mr-1.5" />} accept=".pdf,.doc,.docx,.xls,.xlsx" tipo="documento" onUpload={(url) => { upd("instrucao_url", url); upd("instrucao_tipo", "documento"); }} />
+                </div>
+              )}
+            </div>
           </div>
 
 
@@ -413,38 +444,7 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
             </div>
           )}
 
-          {/* ── Verificação do Aprovador ── */}
-          <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-4">
-            <div className="flex items-center gap-3">
-              <Switch checked={local.aprovador_verificar ?? false} onCheckedChange={v => {
-                upd("aprovador_verificar", v);
-                if (!v) upd("aprovador_pergunta", "");
-              }} />
-              <div>
-                <Label className="cursor-pointer font-medium text-sm">Verificação do Aprovador</Label>
-                <p className="text-caption text-muted-foreground">Aprovador responderá uma pergunta ao revisar este campo na aprovação final.</p>
-              </div>
-            </div>
-
-            {local.aprovador_verificar && (
-              <div className="space-y-4 pt-2">
-                <div className="grid grid-cols-[1fr_100px] gap-3">
-                  <div className="space-y-1.5">
-                    <Label>Pergunta <span className="text-destructive">*</span></Label>
-                    <Input value={local.aprovador_pergunta || ""} onChange={e => upd("aprovador_pergunta", e.target.value)}
-                      placeholder="Ex: O campo foi preenchido corretamente?" maxLength={500} />
-                    {!local.aprovador_pergunta?.trim() && <p className="text-xs text-destructive">Obrigatório.</p>}
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Nota</Label>
-                    <Input type="number" min={1} max={100} value={local.aprovador_peso ?? 1} onChange={e => upd("aprovador_peso", +e.target.value)} />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ── Pré-visualização ── */}
+          {/* ── Pré-visualização (abaixo de opções) ── */}
           {local.label?.trim() && temOpcoes && opcoesRegras.length > 0 && (
             <div className="space-y-2">
               <p className="text-caption text-muted-foreground uppercase tracking-wider font-semibold">Pré-visualização</p>
@@ -515,6 +515,37 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
             </div>
           )}
 
+          {/* ── Pergunta final para aprovação final ── */}
+          <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-4">
+            <div className="flex items-center gap-3">
+              <Switch checked={local.aprovador_verificar ?? false} onCheckedChange={v => {
+                upd("aprovador_verificar", v);
+                if (!v) upd("aprovador_pergunta", "");
+              }} />
+              <div>
+                <Label className="cursor-pointer font-medium text-sm">Pergunta final para aprovação final</Label>
+                <p className="text-caption text-muted-foreground">O aprovador responderá uma pergunta ao revisar este campo na aprovação final.</p>
+              </div>
+            </div>
+
+            {local.aprovador_verificar && (
+              <div className="space-y-4 pt-2">
+                <div className="grid grid-cols-[1fr_100px] gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Pergunta <span className="text-destructive">*</span></Label>
+                    <Input value={local.aprovador_pergunta || ""} onChange={e => upd("aprovador_pergunta", e.target.value)}
+                      placeholder="Ex: O campo foi preenchido corretamente?" maxLength={500} />
+                    {!local.aprovador_pergunta?.trim() && <p className="text-xs text-destructive">Obrigatório.</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Nota</Label>
+                    <Input type="number" min={1} max={100} value={local.aprovador_peso ?? 1} onChange={e => upd("aprovador_peso", +e.target.value)} />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
             <Button type="button" onClick={() => onSave(local)}>Salvar Campo</Button>
@@ -522,5 +553,44 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function InstrucaoUploadButton({ label, icon, accept, tipo, onUpload }: {
+  label: string; icon: React.ReactNode; accept: string; tipo: string;
+  onUpload: (url: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "bin";
+      const path = `${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from("instrucoes-campos").upload(path, file);
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from("instrucoes-campos").getPublicUrl(path);
+      onUpload(urlData.publicUrl);
+      toast.success(`${label} enviado com sucesso`);
+    } catch (err: any) {
+      toast.error(`Erro ao enviar: ${err.message}`);
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  return (
+    <>
+      <input ref={inputRef} type="file" accept={accept} className="hidden" onChange={handleFile} />
+      <Button type="button" variant="outline" size="sm" className="text-caption" disabled={uploading}
+        onClick={() => inputRef.current?.click()}>
+        {uploading ? <Clock className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : icon}
+        {uploading ? "Enviando..." : label}
+      </Button>
+    </>
   );
 }
