@@ -140,17 +140,16 @@ export default function OperationalAprovacaoPage() {
     return map;
   }, [approval.fieldReviews]);
 
-  // Only fields with aprovador_verificar + aprovador_pergunta are approval questions
-  const approvalFields = useMemo(() =>
-    snapshotFields
-      .filter(f => f.aprovador_verificar && f.aprovador_pergunta?.trim() && evaluateVisibility(f.condicao_visibilidade, answersMap)),
-    [snapshotFields, answersMap]
-  );
-
-  // All visible fields for details
+  // ALL visible fields shown in the checklist (main questions)
   const allVisibleFields = useMemo(() =>
     snapshotFields.filter(f => evaluateVisibility(f.condicao_visibilidade, answersMap)),
     [snapshotFields, answersMap]
+  );
+
+  // Only fields with aprovador_verificar are interactive approval questions
+  const approvalFields = useMemo(() =>
+    allVisibleFields.filter(f => f.aprovador_verificar && f.aprovador_pergunta?.trim()),
+    [allVisibleFields]
   );
 
   // Progress
@@ -176,47 +175,50 @@ export default function OperationalAprovacaoPage() {
     [selectedAssignment, approval.getBlockingReasons]
   );
 
-  // ── Build ordered items by section ──
+  // ── Build ordered items by section — ALL visible fields ──
   const orderedItems = useMemo(() => {
     const result: ({ type: "section"; data: any } | { type: "field"; data: SnapshotField })[] = [];
     if (snapshotSections.length > 0) {
       for (const section of snapshotSections) {
-        const sFields = approvalFields.filter(f => f.section_id === section.id);
+        const sFields = allVisibleFields.filter(f => f.section_id === section.id);
         if (sFields.length === 0) continue;
         result.push({ type: "section", data: section });
         for (const f of sFields) result.push({ type: "field", data: f });
       }
       // Fields without section
-      const orphans = approvalFields.filter(f => !f.section_id || !snapshotSections.find((s: any) => s.id === f.section_id));
+      const orphans = allVisibleFields.filter(f => !f.section_id || !snapshotSections.find((s: any) => s.id === f.section_id));
       if (orphans.length > 0) {
         result.push({ type: "section", data: { id: "__orphan", nome: "Geral", cor: null } });
         for (const f of orphans) result.push({ type: "field", data: f });
       }
     } else {
-      for (const f of approvalFields) result.push({ type: "field", data: f });
+      for (const f of allVisibleFields) result.push({ type: "field", data: f });
     }
     return result;
-  }, [snapshotSections, approvalFields]);
+  }, [snapshotSections, allVisibleFields]);
 
   // Section scores
   const sectionScores = useMemo(() => {
     const scores: Record<string, { answered: number; total: number; conformes: number; naoConformes: number }> = {};
     for (const section of snapshotSections) {
-      const sFields = approvalFields.filter(f => f.section_id === section.id);
+      const sFields = allVisibleFields.filter(f => f.section_id === section.id);
       if (sFields.length === 0) continue;
       let answered = 0, conformes = 0, naoConformes = 0;
       for (const f of sFields) {
-        const resp = approval.approverAnswers[f.id]?.resposta || approval.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.resposta || "";
-        if (resp) {
-          answered++;
-          if (resp === "conforme") conformes++;
-          if (resp === "nao_conforme") naoConformes++;
+        const isApprovalField = f.aprovador_verificar && f.aprovador_pergunta?.trim();
+        if (isApprovalField) {
+          const resp = approval.approverAnswers[f.id]?.resposta || approval.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.resposta || "";
+          if (resp) { answered++; if (resp === "conforme") conformes++; if (resp === "nao_conforme") naoConformes++; }
+        } else {
+          // Non-approval fields: count executor answer as answered
+          const ans = answersMap[f.id];
+          if (ans) { answered++; if (ans.valor_booleano === true) conformes++; if (ans.valor_booleano === false) naoConformes++; }
         }
       }
       scores[section.id] = { answered, total: sFields.length, conformes, naoConformes };
     }
     return scores;
-  }, [snapshotSections, approvalFields, approval.approverAnswers, approval.existingApprovalAnswers]);
+  }, [snapshotSections, allVisibleFields, approval.approverAnswers, approval.existingApprovalAnswers, answersMap]);
 
   const openApproval = useCallback((a: any) => {
     setSelectedAssignment(a);
@@ -425,21 +427,69 @@ export default function OperationalAprovacaoPage() {
                         globalQuestionIdx++;
                         const answer = answersMap[f.id];
                         const rev = reviewsMap[f.id];
+                        const isApprovalField = !!(f.aprovador_verificar && f.aprovador_pergunta?.trim());
                         const existing = approval.existingApprovalAnswers.find((a: any) => a.field_id === f.id);
                         const draft = approval.approverAnswers[f.id];
-                        const currentResposta: ApprovalAnswer = (draft?.resposta ?? existing?.resposta ?? "") as ApprovalAnswer;
-                        const currentObs = draft?.observacao ?? existing?.observacao ?? "";
+                        const currentResposta: ApprovalAnswer = isApprovalField ? (draft?.resposta ?? existing?.resposta ?? "") as ApprovalAnswer : "";
+                        const currentObs = isApprovalField ? (draft?.observacao ?? existing?.observacao ?? "") : "";
                         const isConforme = currentResposta === "conforme";
                         const isNaoConforme = currentResposta === "nao_conforme";
                         const idx = globalQuestionIdx;
 
+                        // For non-approval fields: show read-only with executor answer
+                        if (!isApprovalField) {
+                          const ansConforme = answer?.valor_booleano === true;
+                          const ansNaoConf = answer?.valor_booleano === false;
+                          return (
+                            <div key={f.id} className={cn("transition-colors",
+                              ansConforme ? "bg-success/5" : ansNaoConf ? "bg-destructive/5" : ""
+                            )}>
+                              <div className="p-4">
+                                <div className="flex items-start gap-3">
+                                  <div className={cn("flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0",
+                                    ansConforme ? "bg-success text-success-foreground" :
+                                    ansNaoConf ? "bg-destructive text-destructive-foreground" :
+                                    answer ? "bg-muted text-foreground" : "bg-muted text-muted-foreground"
+                                  )}>
+                                    {answer ? <Check className="w-4 h-4" /> : String(idx).padStart(2, "0")}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-foreground leading-relaxed">{f.label}</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      {renderAnswerValue(f, answer)}
+                                    </div>
+                                    {answer?.evidencia_url && f.tipo !== "foto" && (
+                                      <a href={answer.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline flex items-center gap-1 mt-1">
+                                        <ExternalLink className="w-3 h-3" /> Ver evidência
+                                      </a>
+                                    )}
+                                    {rev && (
+                                      <div className="mt-2 flex items-center gap-2">
+                                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Avaliador:</span>
+                                        <span className={cn(
+                                          "inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border",
+                                          rev.conforme === true ? "border-success/40 bg-success/10 text-success" : "border-destructive/40 bg-destructive/10 text-destructive"
+                                        )}>
+                                          {rev.conforme === true ? "✓ Conforme" : "✗ Não Conforme"}
+                                        </span>
+                                        {rev.observacao && <span className="text-xs text-muted-foreground">"{rev.observacao}"</span>}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // Approval field: interactive
                         return (
                           <motion.div key={f.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(idx * 0.03, 0.5) }}
                             className={cn("transition-colors",
                               isConforme ? "bg-success/5" : isNaoConforme ? "bg-destructive/5" : ""
                             )}>
                             <div className="p-4">
-                              {/* Question header with number circle - same pattern */}
+                              {/* Question header with number circle */}
                               <div className="flex items-start gap-3 mb-3">
                                 <div className={cn("flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0",
                                   isConforme ? "bg-success text-success-foreground" :
@@ -512,7 +562,7 @@ export default function OperationalAprovacaoPage() {
                                 />
                               </div>
 
-                              {/* Observation on Não Conforme - expandable, same pattern */}
+                              {/* Observation on Não Conforme */}
                               <AnimatePresence>
                                 {isNaoConforme && (
                                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
@@ -595,41 +645,6 @@ export default function OperationalAprovacaoPage() {
               </div>
             )}
 
-            {/* Detalhes da Tarefa - Respostas do Executor */}
-            <div className="bg-card border border-border rounded-lg shadow-card">
-              <div className="p-4 border-b border-border flex items-center gap-2">
-                <History className="w-4 h-4 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground">Respostas do Executor</h3>
-              </div>
-              <div className="divide-y divide-border">
-                {allVisibleFields.map((f, idx) => {
-                  const ans = answersMap[f.id];
-                  return (
-                    <div key={f.id} className="px-4 py-3">
-                      <div className="flex items-start gap-3">
-                        <span className="text-caption font-medium text-muted-foreground font-tabular w-6 shrink-0 pt-0.5">
-                          {String(idx + 1).padStart(2, "0")}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground">{f.label}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            {renderAnswerValue(f, ans)}
-                          </div>
-                          {ans?.evidencia_url && (
-                            <a href={ans.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline flex items-center gap-1 mt-1">
-                              <ExternalLink className="w-3 h-3" /> Ver evidência
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                {allVisibleFields.length === 0 && (
-                  <p className="px-4 py-4 text-caption text-muted-foreground text-center">Nenhuma resposta registrada.</p>
-                )}
-              </div>
-            </div>
 
             {/* Audit trail */}
             <div className="bg-card border border-border rounded-lg shadow-card">
