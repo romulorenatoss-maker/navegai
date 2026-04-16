@@ -146,14 +146,14 @@ export default function OperationalExecucaoPage() {
         .select("*, operational_templates(nome, tipo_execucao), profiles:responsavel_id(id, nome, foto_url)")
         .order("data_prevista", { ascending: true });
       if (!isAdmin) {
-        q = q.or(`responsavel_id.eq.${profile.id},avaliador_id.eq.${profile.id}`);
+        q = q.or(`responsavel_id.eq.${profile.id},avaliador_id.eq.${profile.id},avaliado_id.eq.${profile.id},validador_contingencia_id.eq.${profile.id}`);
       }
       const { data, error } = await q.limit(500);
       if (error) throw error;
       return data;
     },
     enabled: !!profile?.id,
-    staleTime: 300000, // 5min fallback — realtime handles instant updates
+    staleTime: 300000,
   });
 
   const profilesWithTasks = useMemo(() => {
@@ -197,7 +197,12 @@ export default function OperationalExecucaoPage() {
     return false;
   });
   const aFazer = filteredAssignments.filter((a: any) => ["pendente"].includes(a.status) && a.data_prevista > filterDate);
-  const devolvidas = filteredAssignments.filter((a: any) => ["devolvida"].includes(a.status));
+  // Devolvidas: status devolvida OR contingenciado tasks where the current user is the avaliado (they need to attach missing items)
+  const devolvidas = filteredAssignments.filter((a: any) => {
+    if (a.status === "devolvida") return true;
+    if (["contingenciado", "contingencia"].includes(a.status) && a.avaliado_id === profile?.id) return true;
+    return false;
+  });
   const contingenciados = filteredAssignments.filter((a: any) => ["contingenciado", "contingencia"].includes(a.status));
   const aguardandoAvaliacao = filteredAssignments.filter((a: any) => ["aguardando_avaliacao", "aguardando_aprovacao"].includes(a.status));
   const concluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 50);
@@ -302,6 +307,7 @@ export default function OperationalExecucaoPage() {
   };
 
   const isOwner = selectedAssignment?.responsavel_id === profile?.id;
+  const isAvaliado = selectedAssignment?.avaliado_id === profile?.id;
   const isAdminEditing = isAdmin && selectedAssignment && !["nao_executada"].includes(selectedAssignment.status);
   const isEditable = selectedAssignment && (
     (["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status) && (isOwner || isAdmin)) ||
@@ -310,6 +316,12 @@ export default function OperationalExecucaoPage() {
   const isDevolvida = selectedAssignment?.status === "devolvida";
   const isContingenciado = selectedAssignment && ["contingenciado", "contingencia"].includes(selectedAssignment.status);
   const needsAdminReopen = isAdmin && selectedAssignment && ["aguardando_avaliacao", "aguardando_aprovacao", "concluida", "aprovada", "contingenciado", "contingencia"].includes(selectedAssignment.status);
+  // Show contingency panel for avaliado, validador, responsavel, or admin
+  const showContingencyPanel = isContingenciado && selectedAssignment && (
+    isAdmin || isOwner || isAvaliado ||
+    selectedAssignment.validador_contingencia_id === profile?.id ||
+    selectedAssignment.avaliador_id === profile?.id
+  );
 
   const handleStart = () => {
     if (selectedAssignment) exec.startTask.mutate({
@@ -578,7 +590,7 @@ export default function OperationalExecucaoPage() {
             )}
 
             {/* Embedded contingency panel for contingenciado tasks */}
-            {isContingenciado && selectedAssignment && (
+            {showContingencyPanel && selectedAssignment && (
               <div className="bg-muted/30 border border-border rounded-lg p-3">
                 <EmbeddedContingencyPanel assignmentId={selectedAssignment.id} />
               </div>

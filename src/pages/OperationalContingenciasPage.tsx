@@ -102,6 +102,12 @@ export default function OperationalContingenciasPage() {
   const isPending = selected && ["aberta", "em_andamento"].includes(selected.status);
   const isResolved = selected?.status === "resolvida";
   const isMyContingency = selected?.responsavel_id === profile?.id;
+  const isValidador = isAdmin || selected?.assignment?.validador_contingencia_id === profile?.id;
+  const isAvaliado = selected?.assignment?.avaliado_id === profile?.id;
+  const isAvaliador = selected?.assignment?.avaliador_id === profile?.id;
+  const canInitiate = isAdmin || isValidador || isAvaliador;
+  const canResolveAction = isAdmin || isMyContingency || isValidador || isAvaliado;
+  const canDiscardAction = isAdmin || isValidador || isAvaliador;
 
   const tabData: Record<string, { list: any[]; empty: string }> = {
     abertas: { list: cm.abertas, empty: "Nenhuma contingência aberta." },
@@ -446,25 +452,27 @@ export default function OperationalContingenciasPage() {
           {(isPending || isResolved) && (
             <div className="border-t border-border p-3 bg-card safe-area-bottom">
               <div className="flex items-center gap-2 flex-wrap">
-                {isPending && (isMyContingency || isAdmin) && (
+                {isPending && (
                   <>
-                    {selected?.status === "aberta" && (
+                    {selected?.status === "aberta" && canInitiate && (
                       <Button size="sm" variant="outline" onClick={initSlaDialog}
                         disabled={cm.isSaving} className="text-blue-700 border-blue-300 hover:bg-blue-50">
                         <Play className="w-3.5 h-3.5 mr-1" /> Iniciar Tratamento
                       </Button>
                     )}
-                    {selected?.status === "em_andamento" && (
+                    {selected?.status === "em_andamento" && canResolveAction && (
                       <Button size="sm" onClick={() => { setResolveObs(""); setResolveFile(null); setResolveOpen(true); }}
                         disabled={cm.isSaving}>
                         <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Resolver
                       </Button>
                     )}
-                    <Button size="sm" variant="outline"
-                      onClick={() => { setDiscardObs(""); setDiscardOpen(true); }}
-                      disabled={cm.isSaving} className="text-muted-foreground">
-                      <Trash2 className="w-3.5 h-3.5 mr-1" /> Descartar
-                    </Button>
+                    {canDiscardAction && (
+                      <Button size="sm" variant="outline"
+                        onClick={() => { setDiscardObs(""); setDiscardOpen(true); }}
+                        disabled={cm.isSaving} className="text-muted-foreground">
+                        <Trash2 className="w-3.5 h-3.5 mr-1" /> Descartar
+                      </Button>
+                    )}
                   </>
                 )}
 
@@ -482,6 +490,10 @@ export default function OperationalContingenciasPage() {
                       <Shield className="w-3.5 h-3.5 mr-1" /> Validar
                     </Button>
                   </>
+                )}
+
+                {isPending && !canInitiate && !canResolveAction && !canDiscardAction && (
+                  <p className="text-xs text-muted-foreground italic">Sem permissão para gerenciar esta contingência.</p>
                 )}
               </div>
             </div>
