@@ -25,7 +25,7 @@ export const ALL_SCREENS: ScreenDef[] = [
   { path: "/leads/campanhas", label: "Campanhas", group: "Leads" },
   // Tarefas
   { path: "/checklists/dashboard", label: "Dashboard Operacional", group: "Tarefas" },
-  { path: "/checklists/execucao", label: "Execução", group: "Tarefas" },
+  { path: "/checklists/execucao", label: "Minhas Tarefas", group: "Tarefas" },
   { path: "/checklists/contingencias", label: "Contingências", group: "Tarefas" },
   { path: "/checklists/aprovacao", label: "Aprovação Final", group: "Tarefas" },
   { path: "/checklists/avaliacao", label: "Avaliação", group: "Tarefas" },
