@@ -261,7 +261,7 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
 
             {isExpanded && (
               <div className="border-t border-border p-3 space-y-3">
-                {c.prazo_sla && <SlaCountdown prazoSla={c.prazo_sla} />}
+                {c.prazo_sla && c.status !== "aberta" && <SlaCountdown prazoSla={c.prazo_sla} />}
 
                 {/* Origem da contingência */}
                 <div className="border rounded p-2 bg-destructive/5 border-destructive/20 space-y-1.5 text-[11px]">
