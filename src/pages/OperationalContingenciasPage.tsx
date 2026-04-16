@@ -351,7 +351,7 @@ export default function OperationalContingenciasPage() {
               {selected?.check_answer && (
                 <div className="p-2 border rounded bg-card text-xs space-y-1">
                   <p className="font-medium">
-                    Checklist: {selected.check_answer.check_item?.descricao || "Item"}
+                    Checklist: {selected.check_answer.check_item?.pergunta || "Item"}
                   </p>
                   <div className="flex items-center gap-2">
                     <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${

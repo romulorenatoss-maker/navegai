@@ -81,7 +81,7 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
             avaliador:profiles!operational_field_reviews_avaliador_id_fkey(nome)
           ),
           check_answer:operational_execution_check_answers!operational_contingencies_check_answer_id_fkey(id, conforme, observacao, resposta,
-            check_item:operational_template_check_items!operational_execution_check_answers_check_item_id_fkey(descricao)
+            check_item:operational_template_check_items!operational_execution_check_answers_check_item_id_fkey(pergunta)
           ),
           assignment:operational_assignments!operational_contingencies_assignment_id_fkey(
             id, data_prevista, rodada_atual, status, validador_contingencia_id, numero_tarefa,
