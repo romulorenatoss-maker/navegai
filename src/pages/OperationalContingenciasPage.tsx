@@ -113,6 +113,7 @@ export default function OperationalContingenciasPage() {
 
   const tabData: Record<string, { list: any[]; empty: string }> = {
     abertas: { list: cm.abertas, empty: "Nenhuma contingência aberta." },
+    devolvidas: { list: cm.devolvidas, empty: "Nenhuma contingência devolvida para você." },
     em_tratamento: { list: cm.emTratamento, empty: "Nenhuma em tratamento." },
     vencidas: { list: cm.vencidas, empty: "Nenhuma contingência vencida." },
     resolvidas: { list: cm.resolvidas, empty: "Nenhuma aguardando validação." },
@@ -257,6 +258,7 @@ export default function OperationalContingenciasPage() {
         <TabsList className="w-full mb-4 flex-wrap h-auto gap-1">
           {[
             { key: "abertas", label: "Abertas", count: cm.abertas.length, accent: "bg-red-500/20 text-red-700" },
+            { key: "devolvidas", label: "Devolvidas", count: cm.devolvidas.length, accent: "bg-orange-500/20 text-orange-700" },
             { key: "em_tratamento", label: "Em Tratamento", count: cm.emTratamento.length, accent: "bg-blue-500/20 text-blue-700" },
             { key: "vencidas", label: "Vencidas", count: cm.vencidas.length, accent: "bg-red-600/20 text-red-800" },
             { key: "resolvidas", label: "Resolvidas", count: cm.resolvidas.length, accent: "bg-amber-500/20 text-amber-700" },
