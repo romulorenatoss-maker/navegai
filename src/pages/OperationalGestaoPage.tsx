@@ -14,6 +14,7 @@ import { STATUS_CONFIG, CONTINGENCY_STATUS, AUDIT_EVENT_LABELS } from "@/hooks/u
 import { BarChart3, AlertTriangle, CheckCircle2, Clock, Users, Shield, RotateCcw, History, ThumbsUp, ThumbsDown, Pencil } from "lucide-react";
 import { useApprovalFlow } from "@/hooks/useApprovalFlow";
 import { useContingencyManagement } from "@/hooks/useContingencyManagement";
+import { useOperationalTransition } from "@/hooks/useOperationalTransition";
 
 export default function OperationalGestaoPage() {
   const { profile } = useAuth();
