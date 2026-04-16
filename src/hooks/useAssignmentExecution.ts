@@ -370,10 +370,12 @@ export function useAssignmentExecution(assignmentId: string | null) {
         });
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ["my_operational_assignments"] });
       qc.invalidateQueries({ queryKey: ["field_answers"] });
-      toast.success("Formulário enviado para avaliação!");
+      qc.invalidateQueries({ queryKey: ["contingency_management"] });
+      // Check if contingencies were created by looking at the fields
+      toast.success("Formulário enviado!");
     },
     onError: (e: any) => toast.error(e.message),
   });
