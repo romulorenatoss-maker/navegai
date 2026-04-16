@@ -19,7 +19,7 @@ export default function OperationalCadastroPage() {
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingVersion, setEditingVersion] = useState<number>(1);
+  
   const [form, setForm] = useState<TemplateForm>(defaultTemplate);
   const [sections, setSections] = useState<SectionForm[]>([]);
   const [fields, setFields] = useState<FieldForm[]>([]);
@@ -132,9 +132,6 @@ export default function OperationalCadastroPage() {
 
       let templateId: string;
       if (editingId) {
-        // Increment version
-        const { data: current } = await (supabase as any).from("operational_templates").select("versao").eq("id", editingId).single();
-        payload.versao = (current?.versao || 1) + 1;
         const { error } = await (supabase as any).from("operational_templates").update(payload).eq("id", editingId);
         if (error) throw error;
         templateId = editingId;
@@ -143,7 +140,6 @@ export default function OperationalCadastroPage() {
         await (supabase as any).from("operational_template_sections").delete().eq("template_id", templateId);
         await (supabase as any).from("operational_template_steps").delete().eq("template_id", templateId);
       } else {
-        payload.versao = 1;
         const { data, error } = await (supabase as any).from("operational_templates").insert(payload).select().single();
         if (error) throw error;
         templateId = data.id;
@@ -246,7 +242,6 @@ export default function OperationalCadastroPage() {
 
   const openEdit = async (t: any) => {
     setEditingId(t.id);
-    setEditingVersion(t.versao || 1);
     setForm({
       nome: t.nome, descricao: t.descricao || "", tipo_execucao: t.tipo_execucao,
       setor_id: t.setor_id || "", responsavel_id: t.responsavel_id || "",
@@ -371,16 +366,16 @@ export default function OperationalCadastroPage() {
                 <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Tipo</th>
                 <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Setor</th>
                 <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Recorrência</th>
-                <th className="text-center text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Versão</th>
+                
                 <th className="text-left text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Status</th>
                 <th className="text-right text-caption font-medium text-muted-foreground uppercase tracking-wider px-4 py-2">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {isLoading ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">Carregando...</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Carregando...</td></tr>
               ) : filteredTemplates.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhum template encontrado.</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-body text-muted-foreground">Nenhum template encontrado.</td></tr>
               ) : filteredTemplates.map((t: any) => (
                 <tr key={t.id} className="hover:bg-muted/50 transition-colors">
                   <td className="px-4 py-3">
@@ -394,7 +389,7 @@ export default function OperationalCadastroPage() {
                   </td>
                   <td className="px-4 py-3 text-body text-muted-foreground">{t.setores?.nome || "—"}</td>
                   <td className="px-4 py-3 text-body text-muted-foreground">{RECORRENCIA_LABELS[t.recorrencia_tipo] || t.recorrencia_tipo}</td>
-                  <td className="px-4 py-3 text-center text-body font-tabular text-muted-foreground">v{t.versao || 1}</td>
+                  
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border ${t.ativo ? "badge-complete" : "badge-expired"}`}>
                       {t.ativo ? "Ativo" : "Inativo"}
@@ -420,7 +415,7 @@ export default function OperationalCadastroPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingId ? `Editar Template (v${editingVersion})` : "Novo Template"}</DialogTitle>
+            <DialogTitle>{editingId ? "Editar Template" : "Novo Template"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={e => { e.preventDefault(); upsert.mutate(); }}>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
