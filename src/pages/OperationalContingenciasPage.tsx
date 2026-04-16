@@ -153,7 +153,7 @@ export default function OperationalContingenciasPage() {
                 </>
               )}
             </div>
-            {c.justificativa_rejeicao && c.status === "aberta" && (
+            {c.justificativa_rejeicao && ["aberta", "em_andamento"].includes(c.status) && (
               <p className="text-xs text-destructive mt-1 truncate">
                 ⚠ Reprovada: {c.justificativa_rejeicao}
               </p>
