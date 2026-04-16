@@ -51,9 +51,8 @@ export default function OperationalContingenciasPage() {
   const tabData: Record<string, { list: any[]; empty: string }> = {
     abertas: { list: cm.abertas, empty: "Nenhuma contingência aberta." },
     em_tratamento: { list: cm.emTratamento, empty: "Nenhuma em tratamento." },
-    resolvidas: { list: cm.resolvidas, empty: "Nenhuma aguardando validação." },
-    validadas: { list: cm.validadas, empty: "Nenhuma validada/descartada." },
     vencidas: { list: cm.vencidas, empty: "Nenhuma contingência vencida." },
+    resolvidas: { list: cm.resolvidas, empty: "Nenhuma aguardando validação." },
   };
 
   const renderCard = (c: any) => {
@@ -112,9 +111,8 @@ export default function OperationalContingenciasPage() {
           {[
             { key: "abertas", label: "Abertas", count: cm.abertas.length, accent: "bg-red-500/20 text-red-700" },
             { key: "em_tratamento", label: "Em Tratamento", count: cm.emTratamento.length, accent: "bg-blue-500/20 text-blue-700" },
-            { key: "resolvidas", label: "Resolvidas", count: cm.resolvidas.length, accent: "bg-amber-500/20 text-amber-700" },
-            { key: "validadas", label: "Validadas", count: cm.validadas.length, accent: "bg-emerald-500/20 text-emerald-700" },
             { key: "vencidas", label: "Vencidas", count: cm.vencidas.length, accent: "bg-red-600/20 text-red-800" },
+            { key: "resolvidas", label: "Resolvidas", count: cm.resolvidas.length, accent: "bg-amber-500/20 text-amber-700" },
           ].map((t) => (
             <TabsTrigger key={t.key} value={t.key} className="flex-1 min-w-[60px] text-xs">
               {t.label}
