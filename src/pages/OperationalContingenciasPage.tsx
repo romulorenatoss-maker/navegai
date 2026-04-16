@@ -145,7 +145,7 @@ export default function OperationalContingenciasPage() {
         key={c.id}
         onClick={() => openDetail(c)}
         className={`p-3 border rounded-lg cursor-pointer hover:shadow-sm transition-shadow ${
-          isResolvedCard
+          isResolvedCard || isConcluida
             ? "border-green-300 bg-green-50/50 dark:bg-green-950/20 dark:border-green-700"
             : sla?.isExpired
             ? "border-destructive/50 bg-destructive/5"
