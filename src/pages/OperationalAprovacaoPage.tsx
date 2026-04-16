@@ -269,7 +269,7 @@ export default function OperationalAprovacaoPage() {
 
   // ── Build ordered items: auto questions first, then approval fields by section ──
   const orderedItems = useMemo(() => {
-    const result: ({ type: "section"; data: any } | { type: "field"; data: SnapshotField } | { type: "auto"; data: any })[] = [];
+    const result: ({ type: "section"; data: any } | { type: "field"; data: SnapshotField } | { type: "auto"; data: any } | { type: "field_readonly"; data: SnapshotField })[] = [];
 
     // Auto questions section
     if (autoQuestions.length > 0) {
@@ -277,41 +277,62 @@ export default function OperationalAprovacaoPage() {
       for (const aq of autoQuestions) result.push({ type: "auto", data: aq });
     }
 
-    // Manual approval fields by section
+    // ALL template fields by section (like scoring summary)
     if (snapshotSections.length > 0) {
       for (const section of snapshotSections) {
-        const sFields = approvalFields.filter(f => f.section_id === section.id);
+        const sFields = allVisibleFields.filter(f => f.section_id === section.id);
         if (sFields.length === 0) continue;
         result.push({ type: "section", data: section });
-        for (const f of sFields) result.push({ type: "field", data: f });
+        for (const f of sFields) {
+          result.push(f.aprovador_verificar ? { type: "field", data: f } : { type: "field_readonly", data: f });
+        }
       }
-      const orphans = approvalFields.filter(f => !f.section_id || !snapshotSections.find((s: any) => s.id === f.section_id));
+      const orphans = allVisibleFields.filter(f => !f.section_id || !snapshotSections.find((s: any) => s.id === f.section_id));
       if (orphans.length > 0) {
-        result.push({ type: "section", data: { id: "__orphan", nome: "Perguntas do Aprovador", cor: null } });
-        for (const f of orphans) result.push({ type: "field", data: f });
+        result.push({ type: "section", data: { id: "__orphan", nome: "Perguntas do Template", cor: null } });
+        for (const f of orphans) {
+          result.push(f.aprovador_verificar ? { type: "field", data: f } : { type: "field_readonly", data: f });
+        }
       }
-    } else if (approvalFields.length > 0) {
-      result.push({ type: "section", data: { id: "__manual", nome: "Perguntas do Aprovador", cor: null } });
-      for (const f of approvalFields) result.push({ type: "field", data: f });
+    } else if (allVisibleFields.length > 0) {
+      result.push({ type: "section", data: { id: "__all", nome: "Perguntas do Template", cor: null } });
+      for (const f of allVisibleFields) {
+        result.push(f.aprovador_verificar ? { type: "field", data: f } : { type: "field_readonly", data: f });
+      }
     }
     return result;
-  }, [autoQuestions, snapshotSections, approvalFields]);
+  }, [autoQuestions, snapshotSections, allVisibleFields]);
 
-  // Section scores
+  // Section scores (count all fields per section now)
   const sectionScores = useMemo(() => {
     const scores: Record<string, { answered: number; total: number; conformes: number; naoConformes: number }> = {};
     for (const section of snapshotSections) {
-      const sFields = approvalFields.filter(f => f.section_id === section.id);
+      const sFields = allVisibleFields.filter(f => f.section_id === section.id);
       if (sFields.length === 0) continue;
       let answered = 0, conformes = 0, naoConformes = 0;
       for (const f of sFields) {
-        const resp = approval.approverAnswers[f.id]?.resposta || approval.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.resposta || "";
-        if (resp) { answered++; if (resp === "conforme") conformes++; if (resp === "nao_conforme") naoConformes++; }
+        const answer = answersMap[f.id];
+        const rev = reviewsMap[f.id];
+        if (f.aprovador_verificar) {
+          const resp = approval.approverAnswers[f.id]?.resposta || approval.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.resposta || "";
+          if (resp) { answered++; if (resp === "conforme") conformes++; if (resp === "nao_conforme") naoConformes++; }
+        } else {
+          // For read-only fields, use evaluator review
+          if (rev) {
+            answered++;
+            if (rev.conforme === true) conformes++;
+            if (rev.conforme === false) naoConformes++;
+          } else if (answer) {
+            answered++;
+            if (answer.valor_booleano === true) conformes++;
+            if (answer.valor_booleano === false) naoConformes++;
+          }
+        }
       }
       scores[section.id] = { answered, total: sFields.length, conformes, naoConformes };
     }
     return scores;
-  }, [snapshotSections, approvalFields, approval.approverAnswers, approval.existingApprovalAnswers]);
+  }, [snapshotSections, allVisibleFields, answersMap, reviewsMap, approval.approverAnswers, approval.existingApprovalAnswers]);
 
   const openApproval = useCallback((a: any) => {
     setSelectedAssignment(a);
