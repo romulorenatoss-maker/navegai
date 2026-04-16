@@ -645,41 +645,6 @@ export default function OperationalAprovacaoPage() {
               </div>
             )}
 
-            {/* Detalhes da Tarefa - Respostas do Executor */}
-            <div className="bg-card border border-border rounded-lg shadow-card">
-              <div className="p-4 border-b border-border flex items-center gap-2">
-                <History className="w-4 h-4 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground">Respostas do Executor</h3>
-              </div>
-              <div className="divide-y divide-border">
-                {allVisibleFields.map((f, idx) => {
-                  const ans = answersMap[f.id];
-                  return (
-                    <div key={f.id} className="px-4 py-3">
-                      <div className="flex items-start gap-3">
-                        <span className="text-caption font-medium text-muted-foreground font-tabular w-6 shrink-0 pt-0.5">
-                          {String(idx + 1).padStart(2, "0")}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground">{f.label}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            {renderAnswerValue(f, ans)}
-                          </div>
-                          {ans?.evidencia_url && (
-                            <a href={ans.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline flex items-center gap-1 mt-1">
-                              <ExternalLink className="w-3 h-3" /> Ver evidência
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                {allVisibleFields.length === 0 && (
-                  <p className="px-4 py-4 text-caption text-muted-foreground text-center">Nenhuma resposta registrada.</p>
-                )}
-              </div>
-            </div>
 
             {/* Audit trail */}
             <div className="bg-card border border-border rounded-lg shadow-card">
