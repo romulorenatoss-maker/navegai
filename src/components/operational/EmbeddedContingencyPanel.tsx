@@ -67,6 +67,9 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
   const [slaDialogOpen, setSlaDialogOpen] = useState(false);
   const [slaDatetime, setSlaDatetime] = useState("");
   const [slaJustificativa, setSlaJustificativa] = useState("");
+  const [slaPlanoAcao, setSlaPlanoAcao] = useState("");
+  const [slaObservacao, setSlaObservacao] = useState("");
+  const [slaTiposEvidencia, setSlaTiposEvidencia] = useState<string[]>([]);
   const [slaFile, setSlaFile] = useState<File | null>(null);
   const [slaTargetId, setSlaTargetId] = useState<string | null>(null);
   const slaFileRef = useRef<HTMLInputElement>(null);
@@ -180,13 +183,26 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
     const defaultDate = new Date(Date.now() + 24 * 3600000);
     setSlaDatetime(formatDatetimeLocal(defaultDate));
     setSlaJustificativa("");
+    setSlaPlanoAcao("");
+    setSlaObservacao("");
+    setSlaTiposEvidencia([]);
     setSlaFile(null);
     setSlaTargetId(cId);
     setSlaDialogOpen(true);
   };
 
+  const toggleEvidenceType = (tipo: string) => {
+    setSlaTiposEvidencia(prev =>
+      prev.includes(tipo) ? prev.filter(t => t !== tipo) : [...prev, tipo]
+    );
+  };
+
   const handleStartTreatment = async () => {
     if (!slaTargetId || !slaJustificativa.trim()) return;
+    if (slaTiposEvidencia.length === 0) {
+      toast.error("Selecione pelo menos um tipo de evidência.");
+      return;
+    }
     setUploading(true);
     try {
       let evidenciaUrl: string | undefined;
@@ -194,7 +210,15 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
         evidenciaUrl = await uploadContingencyAttachment(slaFile, slaTargetId);
       }
       cm.startTreatment.mutate(
-        { contingencyId: slaTargetId, prazoSlaDatetime: slaDatetime, justificativa: slaJustificativa, evidenciaUrl },
+        {
+          contingencyId: slaTargetId,
+          prazoSlaDatetime: slaDatetime,
+          justificativa: slaJustificativa,
+          evidenciaUrl,
+          planoAcao: slaPlanoAcao,
+          tiposEvidenciaRequeridos: slaTiposEvidencia,
+          observacaoTratamento: slaObservacao,
+        },
         { onSuccess: () => setSlaDialogOpen(false), onSettled: () => setUploading(false) }
       );
     } catch (err: any) {
