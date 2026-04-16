@@ -444,38 +444,7 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
             </div>
           )}
 
-          {/* ── Verificação do Aprovador ── */}
-          <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-4">
-            <div className="flex items-center gap-3">
-              <Switch checked={local.aprovador_verificar ?? false} onCheckedChange={v => {
-                upd("aprovador_verificar", v);
-                if (!v) upd("aprovador_pergunta", "");
-              }} />
-              <div>
-                <Label className="cursor-pointer font-medium text-sm">Verificação do Aprovador</Label>
-                <p className="text-caption text-muted-foreground">Aprovador responderá uma pergunta ao revisar este campo na aprovação final.</p>
-              </div>
-            </div>
-
-            {local.aprovador_verificar && (
-              <div className="space-y-4 pt-2">
-                <div className="grid grid-cols-[1fr_100px] gap-3">
-                  <div className="space-y-1.5">
-                    <Label>Pergunta <span className="text-destructive">*</span></Label>
-                    <Input value={local.aprovador_pergunta || ""} onChange={e => upd("aprovador_pergunta", e.target.value)}
-                      placeholder="Ex: O campo foi preenchido corretamente?" maxLength={500} />
-                    {!local.aprovador_pergunta?.trim() && <p className="text-xs text-destructive">Obrigatório.</p>}
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Nota</Label>
-                    <Input type="number" min={1} max={100} value={local.aprovador_peso ?? 1} onChange={e => upd("aprovador_peso", +e.target.value)} />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ── Pré-visualização ── */}
+          {/* ── Pré-visualização (abaixo de opções) ── */}
           {local.label?.trim() && temOpcoes && opcoesRegras.length > 0 && (
             <div className="space-y-2">
               <p className="text-caption text-muted-foreground uppercase tracking-wider font-semibold">Pré-visualização</p>
@@ -546,6 +515,37 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
             </div>
           )}
 
+          {/* ── Pergunta final para aprovação final ── */}
+          <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-4">
+            <div className="flex items-center gap-3">
+              <Switch checked={local.aprovador_verificar ?? false} onCheckedChange={v => {
+                upd("aprovador_verificar", v);
+                if (!v) upd("aprovador_pergunta", "");
+              }} />
+              <div>
+                <Label className="cursor-pointer font-medium text-sm">Pergunta final para aprovação final</Label>
+                <p className="text-caption text-muted-foreground">O aprovador responderá uma pergunta ao revisar este campo na aprovação final.</p>
+              </div>
+            </div>
+
+            {local.aprovador_verificar && (
+              <div className="space-y-4 pt-2">
+                <div className="grid grid-cols-[1fr_100px] gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Pergunta <span className="text-destructive">*</span></Label>
+                    <Input value={local.aprovador_pergunta || ""} onChange={e => upd("aprovador_pergunta", e.target.value)}
+                      placeholder="Ex: O campo foi preenchido corretamente?" maxLength={500} />
+                    {!local.aprovador_pergunta?.trim() && <p className="text-xs text-destructive">Obrigatório.</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Nota</Label>
+                    <Input type="number" min={1} max={100} value={local.aprovador_peso ?? 1} onChange={e => upd("aprovador_peso", +e.target.value)} />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
             <Button type="button" onClick={() => onSave(local)}>Salvar Campo</Button>
@@ -553,5 +553,44 @@ function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldFo
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function InstrucaoUploadButton({ label, icon, accept, tipo, onUpload }: {
+  label: string; icon: React.ReactNode; accept: string; tipo: string;
+  onUpload: (url: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "bin";
+      const path = `${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from("instrucoes-campos").upload(path, file);
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from("instrucoes-campos").getPublicUrl(path);
+      onUpload(urlData.publicUrl);
+      toast.success(`${label} enviado com sucesso`);
+    } catch (err: any) {
+      toast.error(`Erro ao enviar: ${err.message}`);
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  return (
+    <>
+      <input ref={inputRef} type="file" accept={accept} className="hidden" onChange={handleFile} />
+      <Button type="button" variant="outline" size="sm" className="text-caption" disabled={uploading}
+        onClick={() => inputRef.current?.click()}>
+        {uploading ? <Clock className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : icon}
+        {uploading ? "Enviando..." : label}
+      </Button>
+    </>
   );
 }
