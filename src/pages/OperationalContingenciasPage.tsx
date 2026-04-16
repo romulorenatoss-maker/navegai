@@ -87,7 +87,6 @@ export default function OperationalContingenciasPage() {
   const [slaTiposEvidencia, setSlaTiposEvidencia] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const resolveFileRef = useRef<HTMLInputElement>(null);
-  const resolveFileRef = useRef<HTMLInputElement>(null);
 
   const cm = useContingencyManagement();
   const resolutionLogs = cm.useResolutionLogs(selected?.id || null);
