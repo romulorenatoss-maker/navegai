@@ -38,7 +38,7 @@ export default function OperationalAprovacaoPage() {
           executor:profiles!operational_assignments_responsavel_id_fkey(nome),
           avaliador:profiles!operational_assignments_avaliador_id_fkey(nome),
           avaliado:profiles!operational_assignments_avaliado_id_fkey(nome)`)
-        .in("status", ["aguardando_avaliacao", "aguardando_aprovacao", "aprovada", "reprovada", "concluida", "devolvida", "contingencia"])
+        .in("status", ["aguardando_aprovacao", "aprovada", "reprovada", "concluida", "devolvida"])
         .order("updated_at", { ascending: false });
 
       // Filter by aprovador unless admin
@@ -62,8 +62,8 @@ export default function OperationalAprovacaoPage() {
     });
   }, [assignments, filterStart, filterEnd]);
 
-  const pendentes = filteredByDate.filter((a: any) => ["aguardando_avaliacao", "aguardando_aprovacao", "contingencia"].includes(a.status));
-  const devolvidos = filteredByDate.filter((a: any) => a.status === "devolvida" || (["aguardando_avaliacao", "aguardando_aprovacao", "contingencia"].includes(a.status) && approval.contingencies.some((c: any) => !["validada", "descartada"].includes(c.status))));
+  const pendentes = filteredByDate.filter((a: any) => a.status === "aguardando_aprovacao");
+  const devolvidos = filteredByDate.filter((a: any) => a.status === "devolvida");
   const aprovados = filteredByDate.filter((a: any) => a.status === "aprovada");
   const historico = filteredByDate.filter((a: any) => ["concluida", "reprovada"].includes(a.status)).slice(0, 50);
 
