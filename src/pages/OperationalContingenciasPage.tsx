@@ -299,7 +299,6 @@ export default function OperationalContingenciasPage() {
             { key: "devolvidas", label: "Devolvidas", count: cm.devolvidas.length, accent: "bg-orange-500/20 text-orange-700" },
             { key: "em_tratamento", label: "Em Tratamento", count: cm.emTratamento.length, accent: "bg-blue-500/20 text-blue-700" },
             { key: "vencidas", label: "Vencidas", count: cm.vencidas.length, accent: "bg-red-600/20 text-red-800" },
-            { key: "resolvidas", label: "Resolvidas", count: cm.resolvidas.length, accent: "bg-amber-500/20 text-amber-700" },
           ].map((t) => (
             <TabsTrigger key={t.key} value={t.key} className="flex-1 min-w-[60px] text-xs">
               {t.label}
