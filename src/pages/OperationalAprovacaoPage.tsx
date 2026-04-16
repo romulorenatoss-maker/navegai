@@ -392,32 +392,75 @@ export default function OperationalAprovacaoPage() {
             {activeView === "perguntas" && (
               <div className="space-y-4">
                 {/* Automatic system questions */}
-                {snapshot?.habilitar_perguntas_automaticas !== false && approval.contingencies.length > 0 && (
+                {snapshot?.habilitar_perguntas_automaticas !== false && (
                   <div className="space-y-3">
                     <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Perguntas Automáticas do Sistema</h4>
-                    <div className="border rounded-lg p-3 space-y-2 bg-blue-50/30 border-blue-200">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium">Houve contingência nesta tarefa?</p>
-                        <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 border border-red-200">SIM</span>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground">Resposta automática — {approval.contingencies.length} contingência(s) registrada(s)</p>
-                    </div>
-                    <div className="border rounded-lg p-3 space-y-2 bg-blue-50/30 border-blue-200">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium">Contingência resolvida dentro do prazo?</p>
-                        {(() => {
-                          const resolved = approval.contingencies.filter((c: any) => c.resolvida_em);
-                          const dentroPrazo = resolved.filter((c: any) => c.prazo_sla && new Date(c.resolvida_em) <= new Date(c.prazo_sla));
-                          const allInTime = resolved.length > 0 && dentroPrazo.length === resolved.length;
-                          return (
-                            <span className={`px-2 py-0.5 rounded text-xs font-medium border ${allInTime ? "bg-green-100 text-green-700 border-green-200" : "bg-red-100 text-red-700 border-red-200"}`}>
-                              {allInTime ? "SIM" : "NÃO"}
+
+                    {/* Tarefa fora do prazo */}
+                    {(() => {
+                      const foraDoPrazo = selectedAssignment?.fim_em && selectedAssignment?.horario_limite && selectedAssignment?.data_prevista
+                        ? new Date(selectedAssignment.fim_em) > new Date(selectedAssignment.data_prevista + "T" + selectedAssignment.horario_limite)
+                        : false;
+                      return (
+                        <div className="border rounded-lg p-3 space-y-2 bg-blue-50/30 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium">Tarefa executada fora do prazo?</p>
+                              <p className="text-[10px] text-muted-foreground">Penalidade: -{snapshot?.penalidade_fora_prazo || 0} pts</p>
+                            </div>
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium border ${foraDoPrazo ? "bg-red-100 text-red-700 border-red-200" : "bg-green-100 text-green-700 border-green-200"}`}>
+                              {foraDoPrazo ? "SIM" : "NÃO"}
                             </span>
-                          );
-                        })()}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Houve contingência */}
+                    {approval.contingencies.length > 0 && (
+                      <div className="border rounded-lg p-3 space-y-2 bg-blue-50/30 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium">Houve contingência nesta tarefa?</p>
+                            <p className="text-[10px] text-muted-foreground">Penalidade: -{snapshot?.penalidade_contingencia || 0} pts — {approval.contingencies.length} contingência(s)</p>
+                          </div>
+                          <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 border border-red-200">SIM</span>
+                        </div>
                       </div>
-                      <p className="text-[10px] text-muted-foreground">Resposta automática — permite override manual com justificativa</p>
-                    </div>
+                    )}
+
+                    {/* SLA contingência */}
+                    {approval.contingencies.length > 0 && (
+                      <div className="border rounded-lg p-3 space-y-2 bg-blue-50/30 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium">Contingência resolvida dentro do prazo?</p>
+                            {(() => {
+                              const resolved = approval.contingencies.filter((c: any) => c.resolvida_em);
+                              const allInTime = resolved.length > 0 && resolved.every((c: any) =>
+                                c.dentro_prazo === true || (c.prazo_sla && new Date(c.resolvida_em) <= new Date(c.prazo_sla))
+                              );
+                              return (
+                                <p className="text-[10px] text-muted-foreground">
+                                  Penalidade: -{snapshot?.penalidade_sla_contingencia || 0} pts{!allInTime ? " (aplicada)" : " (não aplicada)"}
+                                </p>
+                              );
+                            })()}
+                          </div>
+                          {(() => {
+                            const resolved = approval.contingencies.filter((c: any) => c.resolvida_em);
+                            const allInTime = resolved.length > 0 && resolved.every((c: any) =>
+                              c.dentro_prazo === true || (c.prazo_sla && new Date(c.resolvida_em) <= new Date(c.prazo_sla))
+                            );
+                            return (
+                              <span className={`px-2 py-0.5 rounded text-xs font-medium border ${allInTime ? "bg-green-100 text-green-700 border-green-200" : "bg-red-100 text-red-700 border-red-200"}`}>
+                                {allInTime ? "SIM" : "NÃO"}
+                              </span>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

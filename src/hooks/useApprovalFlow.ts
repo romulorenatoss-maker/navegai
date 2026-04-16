@@ -371,16 +371,51 @@ export function useApprovalFlow(assignmentId: string | null) {
         case "encerrar": transitionAction = "encerrar_final"; break;
       }
 
-      // Calculate score if not provided
+      // Calculate score if not provided, applying auto-question penalties
       let finalScore = scoreFinal;
       if ((action === "aprovar" || action === "encerrar") && finalScore == null) {
         const existingOverride = assignment.score_final_ajustado;
         if (existingOverride == null) {
-          finalScore = Math.round(
+          let baseScore = Math.round(
             ((Number(assignment.score_executor) || 0) +
              (Number(assignment.score_avaliado) || 0) +
              (Number(assignment.score_avaliador) || 0)) / 3
           );
+
+          // Apply auto-question penalties from template snapshot
+          const snapshot = assignment.template_snapshot;
+          if (snapshot?.habilitar_perguntas_automaticas !== false && contingencies.length > 0) {
+            // Penalty: "Houve contingência nesta tarefa?" = SIM → deduct penalidade_contingencia
+            const penContingencia = Number(snapshot?.penalidade_contingencia) || 0;
+            if (penContingencia > 0) {
+              baseScore -= penContingencia;
+            }
+
+            // Penalty: "Contingência resolvida dentro do prazo?" 
+            const resolved = contingencies.filter((c: any) => c.resolvida_em);
+            const allInTime = resolved.length > 0 && resolved.every((c: any) =>
+              c.dentro_prazo === true || (c.prazo_sla && new Date(c.resolvida_em) <= new Date(c.prazo_sla))
+            );
+            if (!allInTime) {
+              const penSla = Number(snapshot?.penalidade_sla_contingencia) || 0;
+              if (penSla > 0) {
+                baseScore -= penSla;
+              }
+            }
+
+            // Penalty: "Tarefa executada fora do prazo?"
+            const foraDoPrazo = assignment.fim_em && assignment.horario_limite && assignment.data_prevista
+              ? new Date(assignment.fim_em) > new Date(assignment.data_prevista + "T" + assignment.horario_limite)
+              : false;
+            if (foraDoPrazo) {
+              const penPrazo = Number(snapshot?.penalidade_fora_prazo) || 0;
+              if (penPrazo > 0) {
+                baseScore -= penPrazo;
+              }
+            }
+          }
+
+          finalScore = Math.max(0, baseScore);
         }
       }
 
