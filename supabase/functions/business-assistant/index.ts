@@ -324,30 +324,6 @@ serve(async (req) => {
       origem: l.origem_lead || "-",
     }));
 
-    // Helpers de mascaramento de PII (CPF/RG/telefones/nome da mãe não são enviados em claro ao AI)
-    const maskCpf = (v?: string | null) => {
-      if (!v) return "-";
-      const d = String(v).replace(/\D/g, "");
-      if (d.length < 4) return "***";
-      return `***.***.***-${d.slice(-2)}`;
-    };
-    const maskDoc = (v?: string | null) => (v ? "***" : "-");
-    const maskPhone = (v?: string | null) => {
-      if (!v) return "-";
-      const d = String(v).replace(/\D/g, "");
-      return d.length >= 4 ? `****${d.slice(-4)}` : "****";
-    };
-    const maskContato = (raw: string) => {
-      // raw is "tipo: valor (WhatsApp)" — mask the valor portion
-      const m = raw.match(/^([^:]+):\s*(.*)$/);
-      if (!m) return "***";
-      const [, tipo, rest] = m;
-      const isPhoneish = /telefone|celular|whats|fone|tel/i.test(tipo);
-      const valuePart = rest.replace(/\s*\(WhatsApp\)$/i, "");
-      const masked = isPhoneish ? maskPhone(valuePart) : "***";
-      return `${tipo}: ${masked}${/\(WhatsApp\)$/i.test(rest) ? " (WhatsApp)" : ""}`;
-    };
-
     // ── Build enriched clientes (PII redacted before sending to AI) ──
     const clientesEnriquecidos = (clientesData || []).map((c: any) => ({
       nome: c.nome,
@@ -360,7 +336,7 @@ serve(async (req) => {
       cidade: c.cidade_ref?.nome || c.cidade || "-",
       bairro: c.bairro?.nome || "-",
       rua: c.rua?.nome || "-",
-      contatos: (contatosPorCliente[c.id] || []).map(maskContato).join("; ") || "-",
+      contatos: contatosPorCliente[c.id]?.join("; ") || "-",
     }));
 
     // ── Vendas (leads convertidos) ──
