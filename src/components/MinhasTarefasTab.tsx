@@ -22,9 +22,8 @@ const STATUS_LABELS: Record<string, { text: string; cls: string }> = {
 };
 
 export default function MinhasTarefasTab() {
-  const { profile, isAdmin, canViewPath } = useAuth();
+  const { profile } = useAuth();
   const navigate = useNavigate();
-  const canCreate = isAdmin || canViewPath("/operacional/cadastro");
 
   const now = new Date();
   const [startDate, setStartDate] = useState<Date | undefined>(startOfMonth(now));
@@ -93,13 +92,9 @@ export default function MinhasTarefasTab() {
             <div className="text-caption text-muted-foreground uppercase tracking-wider mb-1">Nova Tarefa</div>
             <div className="text-xs text-muted-foreground">Criar tarefa individual</div>
           </div>
-          {canCreate ? (
-            <Button onClick={() => navigate("/operacional/cadastro")} className="shrink-0">
-              <Plus className="w-4 h-4 mr-1.5" /> Nova
-            </Button>
-          ) : (
-            <Badge variant="outline" className="text-xs">Sem permissão</Badge>
-          )}
+          <Button onClick={() => navigate("/operacional/cadastro")} className="shrink-0">
+            <Plus className="w-4 h-4 mr-1.5" /> Nova
+          </Button>
         </div>
       </div>
 
