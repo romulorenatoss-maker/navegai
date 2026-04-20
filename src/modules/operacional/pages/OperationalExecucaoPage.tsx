@@ -194,16 +194,31 @@ export default function OperationalExecucaoPage() {
   // "Tarefas de Hoje" includes: today's tasks + em_andamento (any date) + atrasadas (past dates still open)
    const hoje = filteredAssignments.filter((a: any) => {
     if (["em_andamento"].includes(a.status)) return true;
-    if (["pendente", "devolvida"].includes(a.status) && a.data_prevista <= filterDate) return true;
+    if (["pendente", "devolvida"].includes(a.status) && a.data_prevista <= filterDate && a.responsavel_id === profile?.id) return true;
     return false;
   });
-  const aFazer = filteredAssignments.filter((a: any) => ["pendente"].includes(a.status) && a.data_prevista > filterDate);
-  // Devolvidas: status devolvida OR contingenciado tasks where the current user is the avaliado (they need to attach missing items)
-  const devolvidas = filteredAssignments.filter((a: any) => {
-    if (a.status === "devolvida") return true;
-    if (["contingenciado", "contingencia"].includes(a.status) && a.avaliado_id === profile?.id) return true;
-    return false;
-  });
+  // NOVO: "Tarefas Designadas" — tarefas que EU criei para outras pessoas (qualquer status ativo)
+  const tarefasDesignadas = filteredAssignments.filter((a: any) =>
+    a.created_by === profile?.id &&
+    a.responsavel_id !== profile?.id &&
+    !["concluida", "aprovada", "reprovada", "nao_executada"].includes(a.status)
+  );
+  // NOVO: "Aguardando Minha Validação" — tarefas designadas por mim que aguardam minha validação
+  const aguardandoMinhaValidacao = filteredAssignments.filter((a: any) =>
+    a.created_by === profile?.id &&
+    a.responsavel_id !== profile?.id &&
+    a.status === "aguardando_validacao"
+  );
+  // Devolvidas — separado em duas sub-listas
+  const minhasDevolucoes = filteredAssignments.filter((a: any) =>
+    a.status === "devolvida" && a.responsavel_id === profile?.id
+  );
+  const devolvidasParaOutros = filteredAssignments.filter((a: any) =>
+    a.status === "devolvida" && a.created_by === profile?.id && a.responsavel_id !== profile?.id
+  );
+  const devolvidas = [...minhasDevolucoes, ...filteredAssignments.filter((a: any) =>
+    ["contingenciado", "contingencia"].includes(a.status) && a.avaliado_id === profile?.id
+  )];
   const contingenciados = filteredAssignments.filter((a: any) => ["contingenciado", "contingencia"].includes(a.status));
   const aguardandoAvaliacao = filteredAssignments.filter((a: any) => ["aguardando_avaliacao", "aguardando_aprovacao"].includes(a.status));
   const concluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 50);
