@@ -262,25 +262,44 @@ serve(async (req) => {
       }
     }
 
-    // ── Contacts mapped by lead ──
+    // PII masking helpers (applied before sending data to the AI gateway)
+    const maskCpf = (v?: string | null) => {
+      if (!v) return "-";
+      const d = String(v).replace(/\D/g, "");
+      if (d.length < 4) return "***";
+      return `***.***.***-${d.slice(-2)}`;
+    };
+    const maskDoc = (v?: string | null) => (v ? "***" : "-");
+    const maskPhone = (v?: string | null) => {
+      if (!v) return "-";
+      const d = String(v).replace(/\D/g, "");
+      return d.length >= 4 ? `****${d.slice(-4)}` : "****";
+    };
+    const maskContatoLine = (tipo: string, valor: string, whats: boolean) => {
+      const isPhoneish = /telefone|celular|whats|fone|tel/i.test(tipo);
+      const masked = isPhoneish ? maskPhone(valor) : "***";
+      return `${tipo}: ${masked}${whats ? " (WhatsApp)" : ""}`;
+    };
+
+    // ── Contacts mapped by lead (masked) ──
     const contatosPorLead: Record<string, string[]> = {};
     if (leadContatos) {
       for (const c of leadContatos) {
         if (!contatosPorLead[c.lead_id]) contatosPorLead[c.lead_id] = [];
-        contatosPorLead[c.lead_id].push(`${c.tipo_contato}: ${c.valor}${c.tem_whatsapp ? " (WhatsApp)" : ""}`);
+        contatosPorLead[c.lead_id].push(maskContatoLine(c.tipo_contato, c.valor, !!c.tem_whatsapp));
       }
     }
 
-    // ── Client contacts mapped ──
+    // ── Client contacts mapped (masked) ──
     const contatosPorCliente: Record<string, string[]> = {};
     if (clienteContatos) {
       for (const c of clienteContatos) {
         if (!contatosPorCliente[c.cliente_id]) contatosPorCliente[c.cliente_id] = [];
-        contatosPorCliente[c.cliente_id].push(`${c.tipo}: ${c.valor}${c.tem_whatsapp ? " (WhatsApp)" : ""}`);
+        contatosPorCliente[c.cliente_id].push(maskContatoLine(c.tipo, c.valor, !!c.tem_whatsapp));
       }
     }
 
-    // ── Build enriched leads ──
+    // ── Build enriched leads (CPF masked) ──
     const leadsEnriquecidos = (leadsCompletos || []).map((l: any) => ({
       nome: l.nome,
       status: l.status_lead,
@@ -290,7 +309,7 @@ serve(async (req) => {
       registrado_por: l.convertido_registrado_por_profile?.nome || "-",
       plano: l.plano?.nome_plano || "-",
       cliente_vinculado: l.cliente?.nome || "-",
-      cliente_cpf: l.cliente?.cpf || "-",
+      cliente_cpf: maskCpf(l.cliente?.cpf),
       tentativas: tentativasPorLead[l.id] || 0,
       interacoes: interacoesPorLead[l.id] || 0,
       contatos: contatosPorLead[l.id]?.join("; ") || "-",
