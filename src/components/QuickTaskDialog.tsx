@@ -369,20 +369,6 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
 
           {step === 2 && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="bg-primary/5 border border-primary/20 rounded-md px-3 py-2 text-xs text-foreground flex-1 min-w-[200px]">
-                  Use <strong>+ Novo Formulário</strong> para criação rápida. Edição avançada continua disponível em cada campo.
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => setQuickFieldOpen(true)}
-                  disabled={sections.length === 0}
-                >
-                  <Plus className="w-4 h-4 mr-1.5" />
-                  Novo Formulário
-                </Button>
-              </div>
               <TabFormBuilder
                 sections={sections}
                 setSections={setSections}
@@ -390,13 +376,6 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                 setFields={setFields}
                 setores={setores as any[]}
                 tipoExecucao="checklist_inspecao"
-              />
-              <QuickFieldDialog
-                open={quickFieldOpen}
-                onOpenChange={setQuickFieldOpen}
-                sectionTempId={sections[0]?.tempId || ""}
-                nextOrdem={fields.length}
-                onAdd={(f) => setFields(prev => [...prev, f])}
               />
             </div>
           )}
