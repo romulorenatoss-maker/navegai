@@ -114,9 +114,6 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
     });
   }, [colaboradores, isSelfTask, profile?.id]);
 
-  const validadorOk = !requerValidacao
-    || (validadorMode === "individual" && !!validadorId && validadorId !== avaliadoId)
-    || (validadorMode === "setor" && !!validadorSetorId);
   const aprovadorOk = !requerAprovacao
     || (aprovadorMode === "individual" && !!aprovadorId && aprovadorId !== avaliadoId && (!isSelfTask || aprovadorId !== profile?.id))
     || (aprovadorMode === "setor" && !!aprovadorSetorId);
@@ -124,10 +121,9 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
   const canAdvanceStep1 = nome.trim().length > 0
     && !!avaliadoId
     && !!dataPrevista
-    && validadorOk
     && aprovadorOk;
 
-  const canAdvanceStep2 = fields.length > 0 && fields.every((f) => f.label.trim().length > 0);
+  const canAdvanceStep2 = fields.length > 0;
 
   const create = useMutation({
     mutationFn: async () => {
