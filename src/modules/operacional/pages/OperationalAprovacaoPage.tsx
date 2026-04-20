@@ -430,9 +430,9 @@ export default function OperationalAprovacaoPage() {
 
       {/* ── Detail Dialog ── */}
       <Dialog open={approvalDialogOpen} onOpenChange={v => { if (!v) closeApproval(); }}>
-        <DialogContent className="max-w-3xl max-h-[95vh] overflow-hidden flex flex-col p-0">
+        <DialogContent className="max-w-3xl w-[calc(100vw-1rem)] sm:w-full max-h-[95vh] overflow-hidden flex flex-col p-0">
           {/* Header */}
-          <div className="bg-card border-b border-border p-4">
+          <div className="bg-card border-b border-border p-3 sm:p-4">
             <div className="flex items-start justify-between">
               <div className="flex items-start gap-2">
                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0 mt-0.5" onClick={closeApproval}>
