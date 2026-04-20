@@ -36,9 +36,13 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
   // Responsáveis
   const [avaliadoId, setAvaliadoId] = useState(""); // quem responde + recebe nota
   const [requerValidacao, setRequerValidacao] = useState(false);
+  const [validadorMode, setValidadorMode] = useState<"individual" | "setor">("individual");
   const [validadorId, setValidadorId] = useState("");
+  const [validadorSetorId, setValidadorSetorId] = useState("");
   const [requerAprovacao, setRequerAprovacao] = useState(false);
+  const [aprovadorMode, setAprovadorMode] = useState<"individual" | "setor">("individual");
   const [aprovadorId, setAprovadorId] = useState("");
+  const [aprovadorSetorId, setAprovadorSetorId] = useState("");
 
   // Step 2 state
   const [sections, setSections] = useState<SectionForm[]>([]);
@@ -54,8 +58,8 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
     setNome(""); setDescricao(""); setSetorId("");
     setDataPrevista(getLocalToday()); setHorarioLimite("18:00");
     setAvaliadoId("");
-    setRequerValidacao(false); setValidadorId("");
-    setRequerAprovacao(false); setAprovadorId("");
+    setRequerValidacao(false); setValidadorMode("individual"); setValidadorId(""); setValidadorSetorId("");
+    setRequerAprovacao(false); setAprovadorMode("individual"); setAprovadorId(""); setAprovadorSetorId("");
     setSections([]); setFields([]);
     setSlaHoras(24); setPenalidadeForaPrazo(20); setPesoNotaMaxima(100);
   };
@@ -107,11 +111,18 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
     });
   }, [colaboradores, isSelfTask, profile?.id]);
 
+  const validadorOk = !requerValidacao
+    || (validadorMode === "individual" && !!validadorId && validadorId !== avaliadoId)
+    || (validadorMode === "setor" && !!validadorSetorId);
+  const aprovadorOk = !requerAprovacao
+    || (aprovadorMode === "individual" && !!aprovadorId && aprovadorId !== avaliadoId && (!isSelfTask || aprovadorId !== profile?.id))
+    || (aprovadorMode === "setor" && !!aprovadorSetorId);
+
   const canAdvanceStep1 = nome.trim().length > 0
     && !!avaliadoId
     && !!dataPrevista
-    && (!requerValidacao || (!!validadorId && validadorId !== avaliadoId))
-    && (!requerAprovacao || (!!aprovadorId && aprovadorId !== avaliadoId && (!isSelfTask || aprovadorId !== profile?.id)));
+    && validadorOk
+    && aprovadorOk;
 
   const canAdvanceStep2 = fields.length > 0 && fields.every((f) => f.label.trim().length > 0);
 
@@ -137,9 +148,11 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
         penalidade_fora_prazo: penalidadeForaPrazo,
         executor_profile_id: avaliadoId,
         executor_setor_id: setorId || null,
-        avaliador_profile_id: requerValidacao ? validadorId : null,
+        avaliador_profile_id: requerValidacao && validadorMode === "individual" ? validadorId : null,
+        avaliador_setor_id: requerValidacao && validadorMode === "setor" ? validadorSetorId : null,
         avaliado_profile_id: avaliadoId,
-        aprovador_profile_id: requerAprovacao ? aprovadorId : null,
+        aprovador_profile_id: requerAprovacao && aprovadorMode === "individual" ? aprovadorId : null,
+        aprovador_setor_id: requerAprovacao && aprovadorMode === "setor" ? aprovadorSetorId : null,
         requer_aprovacao_gestor: requerAprovacao,
         modo_pontuacao: "pontuar_avaliado",
         destino_score: "individual",
@@ -208,9 +221,10 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
         horario_limite: horarioLimite || null,
         status: "pendente",
         created_by: profile.id,
-        avaliador_id: requerValidacao ? validadorId : null,
+        avaliador_id: requerValidacao && validadorMode === "individual" ? validadorId : null,
         avaliado_id: avaliadoId,
-        aprovador_id: requerAprovacao ? aprovadorId : null,
+        aprovador_id: requerAprovacao && aprovadorMode === "individual" ? aprovadorId : null,
+        setor_avaliador_id: requerValidacao && validadorMode === "setor" ? validadorSetorId : null,
         setor_executor_id: setorId || null,
       };
       const { error: assignErr } = await (supabase as any)
@@ -296,22 +310,42 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                 <div className="border-t border-border/60 pt-3 space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <div>
-                      <Label className="text-sm">Validar execução antes?</Label>
-                      <p className="text-[11px] text-muted-foreground">Um validador revisa a execução antes da aprovação.</p>
+                      <Label className="text-sm">Avaliador</Label>
+                      <p className="text-[11px] text-muted-foreground">Revisa a execução antes da aprovação. Pode ser uma pessoa ou um setor inteiro.</p>
                     </div>
                     <Switch checked={requerValidacao} onCheckedChange={setRequerValidacao} />
                   </div>
                   {requerValidacao && (
-                    <div className="space-y-1.5">
-                      <Label>Validador *</Label>
-                      <Select value={validadorId} onValueChange={setValidadorId} disabled={!avaliadoId}>
-                        <SelectTrigger><SelectValue placeholder={avaliadoId ? "Selecionar..." : "Escolha o avaliado primeiro"} /></SelectTrigger>
-                        <SelectContent>
-                          {validadorOptions.map((c: any) => (
-                            <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 text-xs">
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input type="radio" checked={validadorMode === "individual"} onChange={() => setValidadorMode("individual")} />
+                          Individual
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input type="radio" checked={validadorMode === "setor"} onChange={() => setValidadorMode("setor")} />
+                          Setorial
+                        </label>
+                      </div>
+                      {validadorMode === "individual" ? (
+                        <Select value={validadorId} onValueChange={setValidadorId} disabled={!avaliadoId}>
+                          <SelectTrigger><SelectValue placeholder={avaliadoId ? "Selecionar colaborador..." : "Escolha o avaliado primeiro"} /></SelectTrigger>
+                          <SelectContent>
+                            {validadorOptions.map((c: any) => (
+                              <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Select value={validadorSetorId} onValueChange={setValidadorSetorId}>
+                          <SelectTrigger><SelectValue placeholder="Selecionar setor..." /></SelectTrigger>
+                          <SelectContent>
+                            {(setores as any[]).map((s) => (
+                              <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                       <p className="text-[10px] text-muted-foreground">Não pode ser o próprio avaliado.</p>
                     </div>
                   )}
@@ -320,24 +354,42 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                 <div className="border-t border-border/60 pt-3 space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <div>
-                      <Label className="text-sm">Requer aprovação?</Label>
-                      <p className="text-[11px] text-muted-foreground">Aprovador final valida a nota. Não pode ser o próprio avaliado.</p>
+                      <Label className="text-sm">Aprovador</Label>
+                      <p className="text-[11px] text-muted-foreground">Valida a nota final. Não pode ser o próprio avaliado. Pode ser uma pessoa ou um setor.</p>
                     </div>
                     <Switch checked={requerAprovacao} onCheckedChange={setRequerAprovacao} />
                   </div>
                   {requerAprovacao && (
-                    <div className="space-y-1.5">
-                      <Label>Aprovador *</Label>
-                      <Select value={aprovadorId} onValueChange={setAprovadorId} disabled={!avaliadoId}>
-                        <SelectTrigger><SelectValue placeholder={avaliadoId ? "Selecionar..." : "Escolha o avaliado primeiro"} /></SelectTrigger>
-                        <SelectContent>
-                          {aprovadorOptions.map((c: any) => (
-                            <SelectItem key={c.id} value={c.id}>
-                              {c.nome}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 text-xs">
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input type="radio" checked={aprovadorMode === "individual"} onChange={() => setAprovadorMode("individual")} />
+                          Individual
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input type="radio" checked={aprovadorMode === "setor"} onChange={() => setAprovadorMode("setor")} />
+                          Setorial
+                        </label>
+                      </div>
+                      {aprovadorMode === "individual" ? (
+                        <Select value={aprovadorId} onValueChange={setAprovadorId} disabled={!avaliadoId}>
+                          <SelectTrigger><SelectValue placeholder={avaliadoId ? "Selecionar colaborador..." : "Escolha o avaliado primeiro"} /></SelectTrigger>
+                          <SelectContent>
+                            {aprovadorOptions.map((c: any) => (
+                              <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Select value={aprovadorSetorId} onValueChange={setAprovadorSetorId}>
+                          <SelectTrigger><SelectValue placeholder="Selecionar setor..." /></SelectTrigger>
+                          <SelectContent>
+                            {(setores as any[]).map((s) => (
+                              <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                       {isSelfTask && (
                         <p className="text-[10px] text-amber-600 dark:text-amber-400">Tarefa criada para si mesmo: o aprovador não pode ser você.</p>
                       )}
@@ -346,19 +398,7 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Setor</Label>
-                  <Select value={setorId} onValueChange={setSetorId}>
-                    <SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger>
-                    <SelectContent>
-                      {(setores as any[]).map((s) => (
-                        <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Data prevista *</Label>
                   <Input type="date" value={dataPrevista} onChange={(e) => setDataPrevista(e.target.value)} />
