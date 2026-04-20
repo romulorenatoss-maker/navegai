@@ -68,7 +68,7 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
   const qc = useQueryClient();
 
   const { data: contingencies = [], isLoading } = useQuery({
-    queryKey: ["contingency_management", filters],
+    queryKey: ["operational_contingencies_management", filters],
     queryFn: async () => {
       let query = (supabase as any)
         .from("operational_contingencies")
@@ -116,7 +116,7 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
 
   const useResolutionLogs = (contingencyId: string | null) =>
     useQuery({
-      queryKey: ["contingency_resolution_logs", contingencyId],
+      queryKey: ["operational_contingency_resolution_logs", contingencyId],
       queryFn: async () => {
         if (!contingencyId) return [];
         const { data, error } = await (supabase as any)
@@ -206,8 +206,8 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
       }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["contingency_management"] });
-      qc.invalidateQueries({ queryKey: ["embedded_contingencies"] });
+      qc.invalidateQueries({ queryKey: ["operational_contingencies_management"] });
+      qc.invalidateQueries({ queryKey: ["operational_embedded_contingencies"] });
       toast.success("Tratamento iniciado com SLA definido.");
     },
     onError: (e: any) => toast.error(e.message),
@@ -313,9 +313,9 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
       }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["contingency_management"] });
-      qc.invalidateQueries({ queryKey: ["contingency_resolution_logs"] });
-      qc.invalidateQueries({ queryKey: ["embedded_contingencies"] });
+      qc.invalidateQueries({ queryKey: ["operational_contingencies_management"] });
+      qc.invalidateQueries({ queryKey: ["operational_contingency_resolution_logs"] });
+      qc.invalidateQueries({ queryKey: ["operational_embedded_contingencies"] });
       toast.success("Contingência marcada como resolvida.");
     },
     onError: (e: any) => toast.error(e.message),
@@ -433,9 +433,9 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
       }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["contingency_management"] });
-      qc.invalidateQueries({ queryKey: ["contingency_resolution_logs"] });
-      qc.invalidateQueries({ queryKey: ["embedded_contingencies"] });
+      qc.invalidateQueries({ queryKey: ["operational_contingencies_management"] });
+      qc.invalidateQueries({ queryKey: ["operational_contingency_resolution_logs"] });
+      qc.invalidateQueries({ queryKey: ["operational_embedded_contingencies"] });
       toast.success("Validação registrada.");
     },
     onError: (e: any) => toast.error(e.message),
@@ -519,12 +519,12 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
         }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["contingency_management"] });
-      qc.invalidateQueries({ queryKey: ["embedded_contingencies"] });
-      qc.invalidateQueries({ queryKey: ["field_reviews"] });
-      qc.invalidateQueries({ queryKey: ["field_answers"] });
-      qc.invalidateQueries({ queryKey: ["my_operational_assignments"] });
-      qc.invalidateQueries({ queryKey: ["exec_assignments"] });
+      qc.invalidateQueries({ queryKey: ["operational_contingencies_management"] });
+      qc.invalidateQueries({ queryKey: ["operational_embedded_contingencies"] });
+      qc.invalidateQueries({ queryKey: ["operational_field_reviews"] });
+      qc.invalidateQueries({ queryKey: ["operational_field_answers"] });
+      qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
+      qc.invalidateQueries({ queryKey: ["operational_exec_assignments"] });
       toast.success("Contingência descartada — pergunta liberada para nova resposta.");
     },
     onError: (e: any) => toast.error(e.message),

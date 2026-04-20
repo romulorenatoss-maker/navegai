@@ -37,7 +37,7 @@ export default function OperationalGestaoPage() {
   const [newScore, setNewScore] = useState("");
 
   const { data: assignments = [] } = useQuery({
-    queryKey: ["gestao_assignments", periodoInicio, periodoFim],
+    queryKey: ["operational_gestao_assignments", periodoInicio, periodoFim],
     queryFn: async () => {
       const { data, error } = await (supabase as any).from("operational_assignments")
         .select("*, operational_templates(nome, tipo_execucao, setor_id, requer_aprovacao_gestor, bloquear_fechamento_com_contingencia, modo_pontuacao, destino_score, executor_setor_id, avaliador_setor_id, avaliado_setor_id, setores:setores!operational_templates_setor_id_fkey(nome), horario_limite_execucao), profiles!operational_assignments_responsavel_id_fkey(id, nome)")
@@ -50,7 +50,7 @@ export default function OperationalGestaoPage() {
   });
 
   const { data: contingencies = [] } = useQuery({
-    queryKey: ["gestao_contingencies", periodoInicio, periodoFim],
+    queryKey: ["operational_gestao_contingencies", periodoInicio, periodoFim],
     queryFn: async () => {
       const { data, error } = await (supabase as any).from("operational_contingencies")
         .select("*, operational_assignments(data_prevista, operational_templates(nome)), profiles!operational_contingencies_responsavel_id_fkey(nome)")
@@ -63,7 +63,7 @@ export default function OperationalGestaoPage() {
   });
 
   const { data: auditLogs = [] } = useQuery({
-    queryKey: ["audit_trail", auditDialog.assignmentId],
+    queryKey: ["operational_audit_trail", auditDialog.assignmentId],
     queryFn: async () => {
       if (!auditDialog.assignmentId) return [];
       const { data, error } = await (supabase as any).from("operational_audit_trail")
@@ -114,7 +114,7 @@ export default function OperationalGestaoPage() {
       });
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["gestao_assignments"] });
+      qc.invalidateQueries({ queryKey: ["operational_gestao_assignments"] });
       toast.success("Rotina reaberta!");
       setReopenDialog({ open: false, assignment: null });
       setMotivo("");
@@ -147,7 +147,7 @@ export default function OperationalGestaoPage() {
       });
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["gestao_assignments"] });
+      qc.invalidateQueries({ queryKey: ["operational_gestao_assignments"] });
       toast.success("Score ajustado com sucesso!");
       setScoreDialog({ open: false, assignment: null });
       setMotivo("");
@@ -538,7 +538,7 @@ export default function OperationalGestaoPage() {
                   motivo: motivo || undefined,
                 }, {
                   onSuccess: () => {
-                    qc.invalidateQueries({ queryKey: ["gestao_assignments"] });
+                    qc.invalidateQueries({ queryKey: ["operational_gestao_assignments"] });
                     toast.success(approvalDialog.action === "aprovar" ? "Rotina aprovada!" : "Rotina reprovada!");
                     setApprovalDialog({ open: false, assignment: null, action: "aprovar" });
                     setMotivo("");

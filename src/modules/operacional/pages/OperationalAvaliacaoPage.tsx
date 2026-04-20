@@ -63,7 +63,7 @@ export default function OperationalAvaliacaoPage() {
   const [filterEnd, setFilterEnd] = useState(() => new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10));
 
   const { data: assignments = [], isLoading } = useQuery({
-    queryKey: ["avaliador_assignments", profile?.id, isAdmin],
+    queryKey: ["operational_avaliador_assignments", profile?.id, isAdmin],
     queryFn: async () => {
       if (!profile?.id) return [];
       let query = (supabase as any).from("operational_assignments")

@@ -21,7 +21,7 @@ export function useApprovalFlow(assignmentId: string | null) {
 
   // Load field answers
   const { data: fieldAnswers = [] } = useQuery({
-    queryKey: ["approval_field_answers", assignmentId],
+    queryKey: ["operational_approval_field_answers", assignmentId],
     queryFn: async () => {
       if (!assignmentId) return [];
       const { data, error } = await (supabase as any).from("operational_field_answers")
@@ -34,7 +34,7 @@ export function useApprovalFlow(assignmentId: string | null) {
 
   // Load field reviews
   const { data: fieldReviews = [] } = useQuery({
-    queryKey: ["approval_field_reviews", assignmentId],
+    queryKey: ["operational_approval_field_reviews", assignmentId],
     queryFn: async () => {
       if (!assignmentId) return [];
       const { data, error } = await (supabase as any).from("operational_field_reviews")
@@ -47,7 +47,7 @@ export function useApprovalFlow(assignmentId: string | null) {
 
   // Load contingencies
   const { data: contingencies = [] } = useQuery({
-    queryKey: ["approval_contingencies", assignmentId],
+    queryKey: ["operational_approval_contingencies", assignmentId],
     queryFn: async () => {
       if (!assignmentId) return [];
       const { data, error } = await (supabase as any).from("operational_contingencies")
@@ -60,7 +60,7 @@ export function useApprovalFlow(assignmentId: string | null) {
 
   // Load audit trail
   const { data: auditTrail = [] } = useQuery({
-    queryKey: ["approval_audit_trail", assignmentId],
+    queryKey: ["operational_approval_audit_trail", assignmentId],
     queryFn: async () => {
       if (!assignmentId) return [];
       const { data, error } = await (supabase as any).from("operational_audit_trail")
@@ -74,7 +74,7 @@ export function useApprovalFlow(assignmentId: string | null) {
 
   // Load existing approval answers
   const { data: existingApprovalAnswers = [] } = useQuery({
-    queryKey: ["approval_answers", assignmentId],
+    queryKey: ["operational_approval_answers", assignmentId],
     queryFn: async () => {
       if (!assignmentId) return [];
       const { data, error } = await (supabase as any).from("operational_approval_answers")
@@ -107,7 +107,7 @@ export function useApprovalFlow(assignmentId: string | null) {
       }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["approval_answers", assignmentId] });
+      qc.invalidateQueries({ queryKey: ["operational_approval_answers", assignmentId] });
     },
     onError: (e: any) => toast.error(`Erro ao salvar: ${e.message}`),
   });
@@ -169,7 +169,7 @@ export function useApprovalFlow(assignmentId: string | null) {
       });
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["approval_answers"] });
+      qc.invalidateQueries({ queryKey: ["operational_approval_answers"] });
       toast.success("Respostas do aprovador salvas!");
     },
     onError: (e: any) => toast.error(e.message),
@@ -249,7 +249,7 @@ export function useApprovalFlow(assignmentId: string | null) {
       });
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["aprovacao_assignments"] });
+      qc.invalidateQueries({ queryKey: ["operational_aprovacao_assignments"] });
       toast.success("Decisão registrada com sucesso!");
     },
     onError: (e: any) => toast.error(e.message),

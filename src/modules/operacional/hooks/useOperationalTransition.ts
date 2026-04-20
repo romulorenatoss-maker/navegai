@@ -232,13 +232,13 @@ export function useOperationalTransition() {
     },
     onSuccess: (_data, params) => {
       // Invalidate all relevant queries
-      qc.invalidateQueries({ queryKey: ["my_operational_assignments"] });
-      qc.invalidateQueries({ queryKey: ["avaliador_assignments"] });
-      qc.invalidateQueries({ queryKey: ["aprovacao_assignments"] });
-      qc.invalidateQueries({ queryKey: ["gestao_assignments"] });
-      qc.invalidateQueries({ queryKey: ["contingency_management"] });
-      qc.invalidateQueries({ queryKey: ["field_answers"] });
-      qc.invalidateQueries({ queryKey: ["review_field_reviews"] });
+      qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
+      qc.invalidateQueries({ queryKey: ["operational_avaliador_assignments"] });
+      qc.invalidateQueries({ queryKey: ["operational_aprovacao_assignments"] });
+      qc.invalidateQueries({ queryKey: ["operational_gestao_assignments"] });
+      qc.invalidateQueries({ queryKey: ["operational_contingencies_management"] });
+      qc.invalidateQueries({ queryKey: ["operational_field_answers"] });
+      qc.invalidateQueries({ queryKey: ["operational_review_field_reviews"] });
     },
     onError: (e: any) => toast.error(e.message),
   });

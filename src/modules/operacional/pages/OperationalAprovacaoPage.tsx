@@ -93,7 +93,7 @@ export default function OperationalAprovacaoPage() {
   const [tarefaExecutadaOpen, setTarefaExecutadaOpen] = useState(false);
 
   const { data: assignments = [], isLoading } = useQuery({
-    queryKey: ["aprovacao_assignments", profile?.id, isAdmin],
+    queryKey: ["operational_aprovacao_assignments", profile?.id, isAdmin],
     queryFn: async () => {
       if (!profile?.id) return [];
       let query = (supabase as any).from("operational_assignments")

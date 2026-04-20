@@ -40,7 +40,7 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
   };
   // Fetch colaborador_setores to know who belongs to which sector
   const { data: colaboradorSetores = [] } = useQuery({
-    queryKey: ["colaborador_setores_all"],
+    queryKey: ["operational_colaborador_setores_all"],
     queryFn: async () => {
       const { data, error } = await supabase.from("colaborador_setores").select("profile_id, setor_id");
       if (error) throw error;

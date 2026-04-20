@@ -20,7 +20,7 @@ export function useAssignmentExecution(assignmentId: string | null) {
 
   // Load existing answers
   const { data: savedAnswers = [] } = useQuery({
-    queryKey: ["field_answers", assignmentId],
+    queryKey: ["operational_field_answers", assignmentId],
     queryFn: async () => {
       if (!assignmentId) return [];
       const { data, error } = await (supabase as any).from("operational_field_answers")
@@ -33,7 +33,7 @@ export function useAssignmentExecution(assignmentId: string | null) {
 
   // Load reviews for this assignment
   const { data: reviews = [] } = useQuery({
-    queryKey: ["field_reviews", assignmentId],
+    queryKey: ["operational_field_reviews", assignmentId],
     queryFn: async () => {
       if (!assignmentId) return [];
       const { data, error } = await (supabase as any).from("operational_field_reviews")
@@ -46,7 +46,7 @@ export function useAssignmentExecution(assignmentId: string | null) {
 
   // Load execution logs (audit trail)
   const { data: executionLogs = [], refetch: refetchLogs } = useQuery({
-    queryKey: ["execution_logs", assignmentId],
+    queryKey: ["operational_execution_logs", assignmentId],
     queryFn: async () => {
       if (!assignmentId) return [];
       const { data, error } = await (supabase as any).from("operational_execution_logs")
@@ -415,9 +415,9 @@ export function useAssignmentExecution(assignmentId: string | null) {
       }
     },
     onSuccess: (_data, vars) => {
-      qc.invalidateQueries({ queryKey: ["my_operational_assignments"] });
-      qc.invalidateQueries({ queryKey: ["field_answers"] });
-      qc.invalidateQueries({ queryKey: ["contingency_management"] });
+      qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
+      qc.invalidateQueries({ queryKey: ["operational_field_answers"] });
+      qc.invalidateQueries({ queryKey: ["operational_contingencies_management"] });
       // Check if contingencies were created by looking at the fields
       toast.success("Formulário enviado!");
     },
@@ -474,7 +474,7 @@ export function useAssignmentExecution(assignmentId: string | null) {
       }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["my_operational_assignments"] });
+      qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
       refetchLogs();
       toast.success("Tarefa iniciada!");
     },

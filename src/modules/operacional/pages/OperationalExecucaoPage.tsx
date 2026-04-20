@@ -129,7 +129,7 @@ export default function OperationalExecucaoPage() {
   const [showHistory, setShowHistory] = useState(false);
 
   const { data: allProfilesRaw = [] } = useQuery({
-    queryKey: ["profiles_for_exec_filter"],
+    queryKey: ["operational_profiles_for_exec_filter"],
     queryFn: async () => {
       const { data } = await supabase.from("profiles").select("id, nome").eq("ativo", true).order("nome");
       return data || [];
@@ -139,7 +139,7 @@ export default function OperationalExecucaoPage() {
   });
 
   const { data: assignments = [], isLoading } = useQuery({
-    queryKey: ["my_operational_assignments", profile?.id, isAdmin],
+    queryKey: ["operational_my_assignments", profile?.id, isAdmin],
     queryFn: async () => {
       if (!profile?.id) return [];
       let q = (supabase as any).from("operational_assignments")
@@ -692,7 +692,7 @@ export default function OperationalExecucaoPage() {
                     });
                     toast.success("Tarefa reaberta para edição");
                     setSelectedAssignment({ ...selectedAssignment, status: "em_andamento" });
-                    qc.invalidateQueries({ queryKey: ["my_operational_assignments"] });
+                    qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
                     exec.refetchLogs();
                   } catch (e: any) {
                     toast.error("Erro ao reabrir: " + e.message);
