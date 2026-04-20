@@ -1,30 +1,37 @@
 /**
  * Camada de services do módulo operacional.
- * Centraliza leituras comuns de tabelas operational_*.
- * Mutations complexas permanecem nos hooks (camada de domínio).
+ * Centraliza leituras e mutations comuns de tabelas operational_*.
+ * Regra: UI e hooks devem preferir chamar estes métodos em vez de acessar supabase direto.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { logSystem } from "./systemLogger";
+
+function ensure<T>(label: string, error: any, data: T): T {
+  if (error) {
+    logSystem.error(`operationalService.${label} failed`, error);
+    throw error;
+  }
+  return data;
+}
 
 export const operationalService = {
-  // Templates
+  // ==================== TEMPLATES ====================
   async getTemplates() {
     const { data, error } = await supabase
       .from("operational_templates")
       .select("*, setores(id, nome), tipos_servico(id, nome)")
       .order("created_at", { ascending: false });
-    if (error) throw error;
-    return data;
+    return ensure("getTemplates", error, data);
   },
 
-  // Assignments
+  // ==================== ASSIGNMENTS ====================
   async getAssignmentById(id: string) {
     const { data, error } = await supabase
       .from("operational_assignments")
       .select("*")
       .eq("id", id)
       .maybeSingle();
-    if (error) throw error;
-    return data;
+    return ensure("getAssignmentById", error, data);
   },
 
   async getAssignmentsByResponsavel(responsavelId: string) {
@@ -33,8 +40,7 @@ export const operationalService = {
       .select("*")
       .eq("responsavel_id", responsavelId)
       .order("data_prevista", { ascending: true });
-    if (error) throw error;
-    return data;
+    return ensure("getAssignmentsByResponsavel", error, data);
   },
 
   async getAssignmentsByAvaliador(avaliadorId: string) {
@@ -43,18 +49,25 @@ export const operationalService = {
       .select("*")
       .eq("avaliador_id", avaliadorId)
       .order("data_prevista", { ascending: true });
-    if (error) throw error;
-    return data;
+    return ensure("getAssignmentsByAvaliador", error, data);
   },
 
-  // Field answers / reviews
+  async getAssignmentsByAprovador(aprovadorId: string) {
+    const { data, error } = await supabase
+      .from("operational_assignments")
+      .select("*")
+      .eq("aprovador_id", aprovadorId)
+      .order("data_prevista", { ascending: true });
+    return ensure("getAssignmentsByAprovador", error, data);
+  },
+
+  // ==================== FIELD ANSWERS ====================
   async getFieldAnswers(assignmentId: string) {
     const { data, error } = await supabase
       .from("operational_field_answers")
       .select("*")
       .eq("assignment_id", assignmentId);
-    if (error) throw error;
-    return data;
+    return ensure("getFieldAnswers", error, data);
   },
 
   async getFieldReviews(assignmentId: string) {
@@ -62,40 +75,58 @@ export const operationalService = {
       .from("operational_field_reviews")
       .select("*")
       .eq("assignment_id", assignmentId);
-    if (error) throw error;
-    return data;
+    return ensure("getFieldReviews", error, data);
   },
 
-  // Contingencies
+  // ==================== CONTINGENCIES ====================
   async getContingencies(assignmentId: string) {
     const { data, error } = await supabase
       .from("operational_contingencies")
       .select("*")
       .eq("assignment_id", assignmentId)
       .order("created_at", { ascending: false });
-    if (error) throw error;
-    return data;
+    return ensure("getContingencies", error, data);
   },
 
-  // Audit
+  async getOpenContingenciesCount(assignmentId: string): Promise<number> {
+    const { data, error } = await supabase
+      .from("operational_contingencies")
+      .select("id")
+      .eq("assignment_id", assignmentId)
+      .in("status", ["aberta", "em_andamento", "resolvida"]);
+    if (error) {
+      logSystem.error("getOpenContingenciesCount failed", error);
+      throw error;
+    }
+    return data?.length ?? 0;
+  },
+
+  // ==================== AUDIT ====================
   async getAuditTrail(assignmentId: string) {
     const { data, error } = await supabase
       .from("operational_audit_trail")
       .select("*")
       .eq("assignment_id", assignmentId)
       .order("created_at", { ascending: false });
-    if (error) throw error;
-    return data;
+    return ensure("getAuditTrail", error, data);
   },
 
-  // Approval answers
+  async getAssignmentHistory(assignmentId: string) {
+    const { data, error } = await supabase
+      .from("operational_assignment_history")
+      .select("*")
+      .eq("assignment_id", assignmentId)
+      .order("data_hora", { ascending: false });
+    return ensure("getAssignmentHistory", error, data);
+  },
+
+  // ==================== APPROVAL ANSWERS ====================
   async getApprovalAnswers(assignmentId: string) {
     const { data, error } = await supabase
       .from("operational_approval_answers")
       .select("*")
       .eq("assignment_id", assignmentId);
-    if (error) throw error;
-    return data;
+    return ensure("getApprovalAnswers", error, data);
   },
 };
 
