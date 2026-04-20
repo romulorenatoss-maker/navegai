@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FieldDetailDialog } from "@/modules/operacional/components/TabFormBuilder";
+import { DynamicFieldRenderer, SnapshotField } from "@/modules/operacional/components/DynamicFieldRenderer";
 import { FIELD_TYPES, SectionForm, FieldForm, defaultSection, getLocalToday } from "@/modules/operacional/types";
 import { cn } from "@/lib/utils";
 import QuickFieldDialog from "@/components/QuickFieldDialog";
@@ -49,6 +51,8 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
   const [sections, setSections] = useState<SectionForm[]>([]);
   const [fields, setFields] = useState<FieldForm[]>([]);
   const [quickFieldOpen, setQuickFieldOpen] = useState(false);
+  const [editingField, setEditingField] = useState<FieldForm | null>(null);
+  const [previewAnswers, setPreviewAnswers] = useState<Record<string, any>>({});
 
   // Step 3 state
   const [slaHoras, setSlaHoras] = useState(24);
