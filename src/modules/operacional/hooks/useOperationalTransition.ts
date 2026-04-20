@@ -182,8 +182,11 @@ export function useOperationalTransition() {
         }
       }
 
-      // Require motivo for certain actions
-      if (["reabrir", "avaliar_devolver", "avaliar_reprovar", "reprovar_devolver_final"].includes(action) && !motivo?.trim()) {
+      // Require motivo for certain actions (devoluções/reabertura/reprovação sempre exigem)
+      if (
+        ["reabrir", "avaliar_devolver", "avaliar_reprovar", "reprovar_devolver_final", "validar_designada_devolver"].includes(action) &&
+        !motivo?.trim()
+      ) {
         throw new Error("Justificativa/motivo é obrigatório para esta ação.");
       }
 
@@ -204,7 +207,7 @@ export function useOperationalTransition() {
         if (profile.id) updatePayload.avaliador_id = profile.id;
       }
 
-      if (action === "avaliar_devolver" || action === "reprovar_devolver_final") {
+      if (action === "avaliar_devolver" || action === "reprovar_devolver_final" || action === "validar_designada_devolver") {
         updatePayload.rodada_atual = (extraData?.rodadaAtual || 1) + 1;
       }
 
@@ -217,7 +220,8 @@ export function useOperationalTransition() {
         updatePayload.aprovador_id = extraData.aprovadorProfileId;
       }
 
-      if (["enviar_avaliacao"].includes(action)) {
+      // "enviar_validacao_designante" carrega fim_em e tempo gasto, igual ao enviar_avaliacao
+      if (action === "enviar_avaliacao" || action === "enviar_validacao_designante") {
         updatePayload.fim_em = now;
         if (extraData?.tempoGasto != null) updatePayload.tempo_gasto_minutos = extraData.tempoGasto;
       }
