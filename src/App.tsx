@@ -26,6 +26,7 @@ import ClientesPage from "./pages/ClientesPage";
 import MinhasAvaliacoesPage from "./pages/MinhasAvaliacoesPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import RelatoriosPage from "./pages/RelatoriosPage";
+import RelatorioTarefasPage from "./pages/RelatorioTarefasPage";
 import DesempenhoColaboradorPage from "./pages/DesempenhoColaboradorPage";
 import DesempenhoOperacionalPage from "./pages/DesempenhoOperacionalPage";
 
@@ -87,6 +88,7 @@ const App = () => (
               <Route path="/cadastros/enderecos" element={<CadastroEnderecosPage />} />
               
               <Route path="/relatorios" element={<RelatoriosPage />} />
+              <Route path="/relatorios/tarefas" element={<RelatorioTarefasPage />} />
               <Route path="/leads" element={<LeadsPage />} />
               <Route path="/leads/fila" element={<FilaLeadsPage />} />
               <Route path="/leads/fila-tarefas" element={<FilaLeadsPage />} />

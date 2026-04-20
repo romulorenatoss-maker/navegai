@@ -72,6 +72,7 @@ const allNavSections = [
     title: "Sistema",
     items: [
       { to: "/relatorios", icon: BarChart3, label: "Relatórios de OS" },
+      { to: "/relatorios/tarefas", icon: FileBarChart, label: "Relatório de Tarefas" },
       { to: "/leads/relatorios", icon: FileBarChart, label: "Relatórios de Leads" },
       { to: "/desempenho", icon: UserCheck, label: "Desempenho" },
       { to: "/desempenho/operacional", icon: BarChart3, label: "Desempenho Operacional" },
