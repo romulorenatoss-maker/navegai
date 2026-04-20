@@ -18,6 +18,9 @@ import { useAssignmentExecution } from "@/modules/operacional/hooks/useAssignmen
 import { useOperationalTransition } from "@/modules/operacional/hooks/useOperationalTransition";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import MinhasTarefasTab from "@/components/MinhasTarefasTab";
+import { ListChecks, Trophy } from "lucide-react";
 
 interface AccordionSectionProps {
   title: string;
@@ -385,11 +388,23 @@ export default function OperationalExecucaoPage() {
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto">
       <div className="mb-4">
-        <h1 className="text-lg font-semibold text-foreground">Execução Operacional</h1>
+        <h1 className="text-lg font-semibold text-foreground">Minhas Tarefas</h1>
         <p className="text-xs text-muted-foreground">
           {isAdmin ? "Visualização administrativa de todas as rotinas." : "Formulários e rotinas atribuídos a você."}
         </p>
       </div>
+
+      <Tabs defaultValue="operacionais" className="w-full">
+        <TabsList className="w-full sm:w-auto mb-4">
+          <TabsTrigger value="operacionais" className="flex items-center gap-1.5">
+            <ListChecks className="w-4 h-4" /> Tarefas Operacionais
+          </TabsTrigger>
+          <TabsTrigger value="avaliadas" className="flex items-center gap-1.5">
+            <Trophy className="w-4 h-4" /> Tarefas Avaliadas
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="operacionais" className="space-y-0 mt-0">
 
       <div className="flex items-center gap-2 mb-4">
         <div className="relative flex-1">
@@ -495,6 +510,12 @@ export default function OperationalExecucaoPage() {
           </AccordionSection>
         </div>
       )}
+        </TabsContent>
+
+        <TabsContent value="avaliadas" className="mt-0">
+          <MinhasTarefasTab />
+        </TabsContent>
+      </Tabs>
 
       {/* Execution Dialog */}
       <Dialog open={execDialogOpen} onOpenChange={v => { if (!v) closeExecution(); }}>
