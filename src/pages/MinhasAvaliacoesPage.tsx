@@ -579,6 +579,11 @@ export default function MinhasAvaliacoesPage() {
           </div>
         </TabsContent>
 
+        {/* Minhas Tarefas Tab */}
+        <TabsContent value="minhas_tarefas">
+          <MinhasTarefasTab />
+        </TabsContent>
+
         {/* Minhas Vendas Tab */}
         <TabsContent value="minhas_vendas" className="mt-4">
           <MinhasVendasTab />
