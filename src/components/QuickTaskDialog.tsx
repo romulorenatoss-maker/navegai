@@ -386,28 +386,77 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                   <p className="text-xs">Clique em "Novo Formulário" para adicionar uma pergunta.</p>
                 </div>
               ) : (
-                <div className="space-y-1.5">
-                  {fields.sort((a, b) => a.ordem - b.ordem).map((field, idx) => (
-                    <div
-                      key={field.tempId}
-                      className="flex items-center gap-2 bg-card border border-border rounded-md px-3 py-2 group hover:border-primary/40 transition-colors"
-                    >
-                      <span className="text-xs text-muted-foreground font-mono w-5 text-right">{idx + 1}.</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{field.label || "Sem título"}</p>
-                        <p className="text-[11px] text-muted-foreground">{FIELD_TYPES[field.tipo] || field.tipo}</p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 p-0 text-destructive opacity-0 group-hover:opacity-100"
-                        onClick={() => setFields(prev => prev.filter(f => f.tempId !== field.tempId))}
+                <div className="space-y-2">
+                  {fields.sort((a, b) => a.ordem - b.ordem).map((field, idx) => {
+                    const snapshot: SnapshotField = {
+                      id: field.tempId,
+                      label: field.label,
+                      descricao: field.descricao,
+                      tipo: field.tipo,
+                      ordem: field.ordem,
+                      obrigatorio: field.obrigatorio,
+                      peso: field.peso,
+                      nota_maxima: field.nota_maxima,
+                      penalidade_reprovacao: field.penalidade_reprovacao,
+                      impacta_score: field.impacta_score,
+                      criticidade: field.criticidade,
+                      gera_contingencia: field.gera_contingencia,
+                      exige_evidencia: field.exige_evidencia,
+                      tipo_evidencia: field.tipo_evidencia,
+                      opcoes: field.opcoes as string[],
+                      opcoes_regras: field.opcoes_regras as any,
+                      validacao: field.validacao,
+                      condicao_visibilidade: field.condicao_visibilidade,
+                      formula: field.formula,
+                      visivel_para: field.visivel_para,
+                      editavel_por: field.editavel_por,
+                    };
+                    return (
+                      <div
+                        key={field.tempId}
+                        className="bg-card border border-border rounded-lg p-3 group hover:border-primary/40 transition-colors space-y-2"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  ))}
+                        <div className="flex items-start gap-2">
+                          <span className="text-xs text-muted-foreground font-mono w-5 text-right pt-0.5">{idx + 1}.</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{FIELD_TYPES[field.tipo] || field.tipo}</p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 opacity-60 group-hover:opacity-100"
+                            onClick={() => setEditingField(field)}
+                            title="Editar campo (regras, plano de ação, evidências, etc.)"
+                          >
+                            <Settings2 className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 text-destructive opacity-60 group-hover:opacity-100"
+                            onClick={() => setFields(prev => prev.filter(f => f.tempId !== field.tempId))}
+                            title="Remover"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                        <div className="pl-7">
+                          <DynamicFieldRenderer
+                            field={snapshot}
+                            answer={previewAnswers[field.tempId]}
+                            userRole="executor"
+                            disabled={false}
+                            allAnswers={previewAnswers}
+                            onChange={(val) => setPreviewAnswers(prev => ({ ...prev, [field.tempId]: val }))}
+                            assignmentId="preview"
+                            showValidation={false}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
@@ -418,6 +467,18 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                 nextOrdem={fields.length}
                 onAdd={(f) => setFields(prev => [...prev, f])}
               />
+
+              {editingField && (
+                <FieldDetailDialog
+                  field={editingField}
+                  setores={setores as any[]}
+                  onSave={(updates) => {
+                    setFields(prev => prev.map(f => f.tempId === editingField.tempId ? { ...f, ...updates } : f));
+                    setEditingField(null);
+                  }}
+                  onClose={() => setEditingField(null)}
+                />
+              )}
             </div>
           )}
 
