@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Filter, ListChecks, Eye, Trophy } from "lucide-react";
+import { CalendarIcon, Filter, ListChecks, Eye, Trophy, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { getScoreColorClass } from "@/lib/score-colors";
 import { cn } from "@/lib/utils";
 import AssignmentQuickViewDialog from "@/components/AssignmentQuickViewDialog";
+import QuickTaskDialog from "@/components/QuickTaskDialog";
 
 const COMPLETED_STATUSES = ["concluida", "aprovada"];
 
@@ -29,6 +30,7 @@ export default function MinhasTarefasTab() {
   const [appliedStart, setAppliedStart] = useState<Date | undefined>(startOfMonth(now));
   const [appliedEnd, setAppliedEnd] = useState<Date | undefined>(endOfMonth(now));
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
+  const [quickTaskOpen, setQuickTaskOpen] = useState(false);
 
   const { data: assignments = [], isLoading } = useQuery({
     queryKey: ["minhas_tarefas_avaliado", profile?.id, appliedStart?.toISOString(), appliedEnd?.toISOString()],
@@ -89,9 +91,14 @@ export default function MinhasTarefasTab() {
 
       {/* Filtros */}
       <div className="bg-card border border-border rounded-lg p-4 shadow-card">
-        <div className="flex items-center gap-2 mb-3">
-          <Filter className="w-4 h-4 text-muted-foreground" />
-          <span className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Filtros</span>
+        <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-muted-foreground" />
+            <span className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Filtros</span>
+          </div>
+          <Button onClick={() => setQuickTaskOpen(true)} size="sm" className="h-9">
+            <Plus className="w-4 h-4 mr-1.5" /> Nova Tarefa
+          </Button>
         </div>
         <div className="flex flex-wrap gap-4 items-end">
           <div className="flex flex-col gap-1.5">
@@ -186,6 +193,8 @@ export default function MinhasTarefasTab() {
         open={!!selectedAssignmentId}
         onOpenChange={(o) => { if (!o) setSelectedAssignmentId(null); }}
       />
+
+      <QuickTaskDialog open={quickTaskOpen} onOpenChange={setQuickTaskOpen} />
     </div>
   );
 }
