@@ -820,20 +820,22 @@ export default function OperationalAprovacaoPage() {
                   ))}
                 </div>
               )}
-              <div className="flex items-center gap-2 flex-wrap">
-                <Button variant="outline" size="sm" onClick={() => handleDecision("reprovar_devolver")}
-                  className="text-amber-700 border-amber-300 hover:bg-amber-50">
-                  <RotateCcw className="w-3.5 h-3.5 mr-1" /> Devolver
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => handleDecision("encerrar")}
-                  className="text-muted-foreground">
-                  Encerrar Manual
-                </Button>
-                <div className="flex-1" />
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                 <Button size="sm" onClick={() => handleDecision("aprovar")}
-                  disabled={blockingReasons.length > 0 || progressPercent < 100} className="press-effect">
-                  <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Aprovar Final
+                  disabled={blockingReasons.length > 0 || progressPercent < 100}
+                  className="press-effect order-first sm:order-last sm:ml-auto w-full sm:w-auto h-10 sm:h-9">
+                  <CheckCircle2 className="w-4 h-4 mr-1.5" /> Aprovar Final
                 </Button>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <Button variant="outline" size="sm" onClick={() => handleDecision("reprovar_devolver")}
+                    className="text-warning border-warning/40 hover:bg-warning/10 flex-1 sm:flex-none">
+                    <RotateCcw className="w-3.5 h-3.5 mr-1" /> Devolver
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleDecision("encerrar")}
+                    className="text-muted-foreground flex-1 sm:flex-none">
+                    Encerrar
+                  </Button>
+                </div>
               </div>
               {progressPercent < 100 && (
                 <p className="mt-2 text-[10px] text-muted-foreground text-right">Responda todas as perguntas (100%) para habilitar a aprovação final.</p>
