@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -78,6 +78,12 @@ const App = () => (
               <Route path="/operacional/avaliacao" element={<OperationalAvaliacaoPage />} />
               <Route path="/operacional/aprovacao" element={<OperationalAprovacaoPage />} />
               <Route path="/operacional/contingencias" element={<OperationalContingenciasPage />} />
+              <Route path="/checklists/execucao" element={<Navigate to="/operacional/execucao" replace />} />
+              <Route path="/checklists/gestao" element={<Navigate to="/operacional/gestao" replace />} />
+              <Route path="/checklists/cadastro" element={<Navigate to="/operacional/cadastro" replace />} />
+              <Route path="/checklists/avaliacao" element={<Navigate to="/operacional/avaliacao" replace />} />
+              <Route path="/checklists/aprovacao" element={<Navigate to="/operacional/aprovacao" replace />} />
+              <Route path="/checklists/contingencias" element={<Navigate to="/operacional/contingencias" replace />} />
               
               
               <Route path="/cadastros/setores" element={<SetoresPage />} />
