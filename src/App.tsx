@@ -20,7 +20,7 @@ import OperationalGestaoPage from "./modules/operacional/pages/OperationalGestao
 import OperationalAvaliacaoPage from "./modules/operacional/pages/OperationalAvaliacaoPage";
 import OperationalAprovacaoPage from "./modules/operacional/pages/OperationalAprovacaoPage";
 import OperationalContingenciasPage from "./modules/operacional/pages/OperationalContingenciasPage";
-import DashboardOperacionalKPIPage from "./pages/DashboardOperacionalKPIPage";
+
 import CadastroEnderecosPage from "./pages/CadastroEnderecosPage";
 import ClientesPage from "./pages/ClientesPage";
 import MinhasAvaliacoesPage from "./pages/MinhasAvaliacoesPage";
@@ -78,7 +78,7 @@ const App = () => (
               <Route path="/operacional/avaliacao" element={<OperationalAvaliacaoPage />} />
               <Route path="/operacional/aprovacao" element={<OperationalAprovacaoPage />} />
               <Route path="/operacional/contingencias" element={<OperationalContingenciasPage />} />
-              <Route path="/operacional/dashboard" element={<DashboardOperacionalKPIPage />} />
+              
               
               <Route path="/cadastros/setores" element={<SetoresPage />} />
               <Route path="/cadastros/avaliadores" element={<ColaboradoresPage />} />
