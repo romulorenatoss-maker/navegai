@@ -12,12 +12,13 @@
  */
 import type { EffectivePermission } from "@/hooks/usePermissions";
 
-export type OperationalRole = "EXECUTOR" | "AVALIADOR" | "APROVADOR" | "GESTOR" | "ADMIN";
+export type OperationalRole = "EXECUTOR" | "AVALIADOR" | "APROVADOR" | "GESTOR" | "ADMIN" | "CRIADOR_DESIGNANTE";
 
 export type OperationalAction =
   | "executar_tarefa"
   | "avaliar_tarefa"
   | "aprovar_tarefa"
+  | "validar_designada"
   | "gerenciar_contingencia"
   | "ver_gestao_operacional"
   | "cadastrar_template_operacional";
@@ -27,6 +28,7 @@ export const ACTION_ROLES: Record<OperationalAction, OperationalRole[]> = {
   executar_tarefa:                ["EXECUTOR", "ADMIN"],
   avaliar_tarefa:                 ["AVALIADOR", "ADMIN"],
   aprovar_tarefa:                 ["APROVADOR", "ADMIN"],
+  validar_designada:              ["CRIADOR_DESIGNANTE", "ADMIN"],
   gerenciar_contingencia:         ["AVALIADOR", "APROVADOR", "GESTOR", "ADMIN"],
   ver_gestao_operacional:         ["GESTOR", "ADMIN"],
   cadastrar_template_operacional: ["GESTOR", "ADMIN"],
