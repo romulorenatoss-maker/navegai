@@ -143,10 +143,11 @@ export default function OperationalExecucaoPage() {
     queryFn: async () => {
       if (!profile?.id) return [];
       let q = (supabase as any).from("operational_assignments")
-        .select("*, operational_templates(nome, tipo_execucao), profiles:responsavel_id(id, nome, foto_url)")
+        .select("*, operational_templates(nome, tipo_execucao), profiles:responsavel_id(id, nome, foto_url), criador:created_by(id, nome)")
         .order("data_prevista", { ascending: true });
       if (!isAdmin) {
-        q = q.or(`responsavel_id.eq.${profile.id},avaliador_id.eq.${profile.id},avaliado_id.eq.${profile.id},validador_contingencia_id.eq.${profile.id}`);
+        // Inclui também tarefas onde sou o CRIADOR (created_by) — necessário para "Designadas" e "Validação"
+        q = q.or(`responsavel_id.eq.${profile.id},avaliador_id.eq.${profile.id},avaliado_id.eq.${profile.id},validador_contingencia_id.eq.${profile.id},created_by.eq.${profile.id}`);
       }
       const { data, error } = await q.limit(500);
       if (error) throw error;
