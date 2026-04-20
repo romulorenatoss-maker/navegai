@@ -41,19 +41,40 @@ export default function QuickFieldDialog({ open, onOpenChange, sectionTempId, ne
     }
   }, [open]);
 
+  // Sincroniza opcoes default ao mudar tipo
+  useEffect(() => {
+    if (tipo === "conforme") setOpcoes(["Conforme", "Não Conforme"]);
+    else if (tipo === "sim_nao") setOpcoes(["Sim", "Não"]);
+    else if (tipo === "select" || tipo === "multi_select") {
+      setOpcoes(prev => prev.length ? prev : ["Opção 1", "Opção 2"]);
+    }
+  }, [tipo]);
+
+  const tipoTemOpcoes = ["select", "multi_select", "conforme", "sim_nao"].includes(tipo);
+
   // Constroi um FieldForm completo usando defaultField (estrutura atual)
   const builtField: FieldForm = useMemo(() => {
     const base = defaultField(sectionTempId, nextOrdem);
     base.label = label.trim() || "Novo campo";
     base.tipo = tipo;
-    if (tipo === "select") {
-      base.opcoes = opcoes.filter(o => o.trim().length > 0);
+    if (tipoTemOpcoes) {
+      const ops = opcoes.filter(o => o.trim().length > 0);
+      base.opcoes = ops;
+      // Se for conforme/sim_nao/nota, monta opcoes_regras a partir das opções editadas
+      if (tipo === "conforme" || tipo === "sim_nao") {
+        const defaults = getDefaultOpcoesRegras(tipo);
+        base.opcoes_regras = ops.map((label, i) => ({
+          ...(defaults[i] || defaults[0]),
+          label,
+          valor: label.toLowerCase().replace(/\s+/g, "_"),
+        }));
+      }
     }
-    if (tipo === "conforme" || tipo === "sim_nao" || tipo === "nota_avaliacao") {
+    if (tipo === "nota_avaliacao") {
       base.opcoes_regras = getDefaultOpcoesRegras(tipo);
     }
     return base;
-  }, [label, tipo, opcoes, sectionTempId, nextOrdem]);
+  }, [label, tipo, opcoes, sectionTempId, nextOrdem, tipoTemOpcoes]);
 
   // Snapshot field para renderizar no preview com a engine atual
   const snapshotPreview: SnapshotField = useMemo(() => ({
@@ -80,13 +101,17 @@ export default function QuickFieldDialog({ open, onOpenChange, sectionTempId, ne
     editavel_por: builtField.editavel_por,
   }), [builtField]);
 
-  const canAdd = label.trim().length > 0 && (tipo !== "select" || opcoes.filter(o => o.trim()).length >= 1);
+  const canAdd = label.trim().length > 0 && (!tipoTemOpcoes || opcoes.filter(o => o.trim()).length >= 1);
 
   const handleAdicionarOpcao = () => {
     const v = novaOpcao.trim();
     if (!v) return;
     setOpcoes(prev => [...prev, v]);
     setNovaOpcao("");
+  };
+
+  const updateOpcao = (idx: number, valor: string) => {
+    setOpcoes(prev => prev.map((o, i) => i === idx ? valor : o));
   };
 
   const handleSubmit = () => {
@@ -134,22 +159,31 @@ export default function QuickFieldDialog({ open, onOpenChange, sectionTempId, ne
             </Select>
           </div>
 
-          {/* Opções para tipo select */}
-          {tipo === "select" && (
+          {/* Opções editáveis para tipos que possuem opções */}
+          {tipoTemOpcoes && (
             <div className="space-y-2 border border-border rounded-md p-3 bg-muted/30">
-              <Label className="text-xs">Opções de seleção</Label>
-              <div className="flex flex-wrap gap-1.5">
+              <Label className="text-xs">Opções (edite os textos)</Label>
+              <div className="space-y-1.5">
                 {opcoes.map((o, i) => (
-                  <span key={i} className="inline-flex items-center gap-1 bg-card border border-border rounded px-2 py-0.5 text-xs">
-                    {o}
-                    <button
+                  <div key={i} className="flex items-center gap-1.5">
+                    <Input
+                      value={o}
+                      onChange={e => updateOpcao(i, e.target.value)}
+                      placeholder={`Opção ${i + 1}`}
+                      className="h-8 text-sm flex-1"
+                      maxLength={80}
+                    />
+                    <Button
                       type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 text-destructive"
                       onClick={() => setOpcoes(prev => prev.filter((_, idx) => idx !== i))}
-                      className="text-muted-foreground hover:text-destructive"
+                      disabled={opcoes.length <= 1}
                     >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
                 ))}
               </div>
               <div className="flex gap-1.5">
