@@ -154,7 +154,7 @@ export default function DashboardOperacionalKPIPage() {
           <KPICard icon={<CheckCircle2 className="w-4 h-4" />} label="Taxa Conclusão" value={dash.kpis.taxaConclusao} suffix="%" color={dash.kpis.taxaConclusao >= 80 ? "emerald" : dash.kpis.taxaConclusao >= 60 ? "amber" : "red"} />
           <KPICard icon={<Target className="w-4 h-4" />} label="Taxa Conformidade" value={dash.kpis.taxaConformidade} suffix="%" color={dash.kpis.taxaConformidade != null && dash.kpis.taxaConformidade >= 90 ? "emerald" : "amber"} />
           <KPICard icon={<TrendingUp className="w-4 h-4" />} label="Score Médio" value={dash.kpis.scoreMedio} color={dash.kpis.scoreMedio != null && dash.kpis.scoreMedio >= 80 ? "emerald" : "amber"} />
-          <KPICard icon={<ShieldAlert className="w-4 h-4" />} label="Planos de Ação" value={dash.kpis.totalPlanos de Ação} />
+          <KPICard icon={<ShieldAlert className="w-4 h-4" />} label="Planos de Ação" value={dash.kpis.totalContingencias} />
           <KPICard icon={<AlertTriangle className="w-4 h-4" />} label="Vencidas" value={dash.kpis.vencidas} color={dash.kpis.vencidas > 0 ? "red" : "emerald"} />
           <KPICard icon={<Clock className="w-4 h-4" />} label="SLA Cumprido" value={dash.kpis.slaMedio} suffix="%" color={dash.kpis.slaMedio != null && dash.kpis.slaMedio >= 80 ? "emerald" : "red"} />
           <KPICard icon={<Clock className="w-4 h-4" />} label="MTTR" value={dash.kpis.mttrHours} suffix="h" />

@@ -166,7 +166,7 @@ export function useOperationalDashboard(filters: OperationalDashboardFilters) {
 
     // Contingencies – exclude descartada from metric counts
     const activeContingencies = contingencies.filter((c: any) => c.status !== "descartada");
-    const totalPlanos de Ação = activeContingencies.length;
+    const totalContingencias = activeContingencies.length;
     const vencidas = activeContingencies.filter((c: any) => {
       if (["validada", "resolvida"].includes(c.status)) return false;
       if (!c.prazo_sla) return false;
@@ -195,7 +195,7 @@ export function useOperationalDashboard(filters: OperationalDashboardFilters) {
     return {
       total, concluidos: concluidos.length, taxaConclusao,
       scoreMedio, taxaConformidade,
-      totalPlanos de Ação, vencidas,
+      totalContingencias, vencidas,
       mttrHours, slaMedio,
     };
   }, [assignments, contingencies, fieldReviews]);
