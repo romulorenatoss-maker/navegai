@@ -270,10 +270,16 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                 <Textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Detalhes (opcional)" rows={2} maxLength={500} />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Responsáveis */}
+              <div className="border border-border rounded-lg p-3 space-y-3 bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-primary" />
+                  <Label className="text-sm font-semibold">Responsáveis</Label>
+                </div>
+
                 <div className="space-y-1.5">
-                  <Label>Quem vai responder *</Label>
-                  <Select value={responsavelId} onValueChange={setResponsavelId}>
+                  <Label>Avaliado *</Label>
+                  <Select value={avaliadoId} onValueChange={setAvaliadoId}>
                     <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
                     <SelectContent>
                       {(colaboradores as any[]).map((c) => (
@@ -281,8 +287,63 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-[10px] text-muted-foreground">Pessoa que responde a tarefa e recebe a nota.</p>
                 </div>
 
+                <div className="border-t border-border/60 pt-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <Label className="text-sm">Validar execução antes?</Label>
+                      <p className="text-[11px] text-muted-foreground">Um validador revisa a execução antes da aprovação.</p>
+                    </div>
+                    <Switch checked={requerValidacao} onCheckedChange={setRequerValidacao} />
+                  </div>
+                  {requerValidacao && (
+                    <div className="space-y-1.5">
+                      <Label>Validador *</Label>
+                      <Select value={validadorId} onValueChange={setValidadorId} disabled={!avaliadoId}>
+                        <SelectTrigger><SelectValue placeholder={avaliadoId ? "Selecionar..." : "Escolha o avaliado primeiro"} /></SelectTrigger>
+                        <SelectContent>
+                          {validadorOptions.map((c: any) => (
+                            <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[10px] text-muted-foreground">Não pode ser o próprio avaliado.</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t border-border/60 pt-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <Label className="text-sm">Requer aprovação?</Label>
+                      <p className="text-[11px] text-muted-foreground">Aprovador final valida a nota. Pode ser o próprio avaliado, exceto quando a tarefa é criada para si mesmo.</p>
+                    </div>
+                    <Switch checked={requerAprovacao} onCheckedChange={setRequerAprovacao} />
+                  </div>
+                  {requerAprovacao && (
+                    <div className="space-y-1.5">
+                      <Label>Aprovador *</Label>
+                      <Select value={aprovadorId} onValueChange={setAprovadorId} disabled={!avaliadoId}>
+                        <SelectTrigger><SelectValue placeholder={avaliadoId ? "Selecionar..." : "Escolha o avaliado primeiro"} /></SelectTrigger>
+                        <SelectContent>
+                          {aprovadorOptions.map((c: any) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.nome}{c.id === avaliadoId ? " (próprio avaliado)" : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {isSelfTask && (
+                        <p className="text-[10px] text-amber-600 dark:text-amber-400">Tarefa criada para si mesmo: o aprovador não pode ser você.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                   <Label>Setor</Label>
                   <Select value={setorId} onValueChange={setSetorId}>
@@ -304,68 +365,6 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                   <Label>Horário limite</Label>
                   <Input type="time" value={horarioLimite} onChange={(e) => setHorarioLimite(e.target.value)} />
                 </div>
-              </div>
-
-              <div className="border border-border rounded-lg p-3 space-y-3 bg-muted/30">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-sm">Será avaliada?</Label>
-                    <p className="text-[11px] text-muted-foreground">Define quem recebe a nota e quem avalia.</p>
-                  </div>
-                  <Switch checked={serAvaliado} onCheckedChange={setSerAvaliado} />
-                </div>
-
-                {serAvaliado && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                    <div className="space-y-1.5">
-                      <Label>Quem recebe a nota *</Label>
-                      <Select value={avaliadoId} onValueChange={setAvaliadoId}>
-                        <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-                        <SelectContent>
-                          {(colaboradores as any[]).map((c) => (
-                            <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Quem vai avaliar *</Label>
-                      <Select value={avaliadorId} onValueChange={setAvaliadorId} disabled={!avaliadoId}>
-                        <SelectTrigger><SelectValue placeholder={avaliadoId ? "Selecionar..." : "Escolha o avaliado primeiro"} /></SelectTrigger>
-                        <SelectContent>
-                          {avaliadorOptions.map((c: any) => (
-                            <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-[10px] text-muted-foreground">Avaliador não pode ser o mesmo do avaliado.</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="border border-border rounded-lg p-3 space-y-3 bg-muted/30">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-sm">Requer aprovação?</Label>
-                    <p className="text-[11px] text-muted-foreground">Após avaliada, um aprovador valida.</p>
-                  </div>
-                  <Switch checked={requerAprovacao} onCheckedChange={setRequerAprovacao} />
-                </div>
-
-                {requerAprovacao && (
-                  <div className="space-y-1.5 pt-1">
-                    <Label>Aprovador (gestor) *</Label>
-                    <Select value={aprovadorId} onValueChange={setAprovadorId}>
-                      <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-                      <SelectContent>
-                        {(colaboradores as any[]).map((c) => (
-                          <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
               </div>
             </div>
           )}
