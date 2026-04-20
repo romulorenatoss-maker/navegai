@@ -165,7 +165,7 @@ export default function DashboardOperacionalKPIPage() {
       <Tabs defaultValue="evolucao" className="space-y-4">
         <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="evolucao" className="text-xs">Evolução Score</TabsTrigger>
-          <TabsTrigger value="planos de ação" className="text-xs">Planos de Ação</TabsTrigger>
+          <TabsTrigger value="contingencias" className="text-xs">Planos de Ação</TabsTrigger>
           <TabsTrigger value="templates" className="text-xs">Por Template</TabsTrigger>
           <TabsTrigger value="naoconformidades" className="text-xs">Não Conformidades</TabsTrigger>
         </TabsList>
@@ -200,7 +200,7 @@ export default function DashboardOperacionalKPIPage() {
         </TabsContent>
 
         {/* Contingencies by status */}
-        <TabsContent value="planos de ação">
+        <TabsContent value="contingencias">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-card border border-border rounded-lg p-4">
               <h3 className="text-sm font-semibold text-foreground mb-4">Planos de Ação por Status</h3>
@@ -265,7 +265,7 @@ export default function DashboardOperacionalKPIPage() {
                     <td className="px-4 py-2 text-foreground">{t.nome}</td>
                     <td className="px-4 py-2 text-center font-mono">{t.count}</td>
                     <td className="px-4 py-2 text-center">
-                      <span className={cn("font-mono", t.planos de ação > 0 ? "text-destructive font-bold" : "text-muted-foreground")}>{t.planos de ação}</span>
+                      <span className={cn("font-mono", t.contingencias > 0 ? "text-destructive font-bold" : "text-muted-foreground")}>{t.contingencias}</span>
                     </td>
                     <td className="px-4 py-2 text-center">
                       {t.media != null ? (

@@ -226,11 +226,11 @@ export function useOperationalDashboard(filters: OperationalDashboardFilters) {
 
   // ── Chart: Performance by template ──
   const performanceByTemplate = useMemo(() => {
-    const byTemplate: Record<string, { nome: string; sum: number; count: number; scored: number; planos de ação: number }> = {};
+    const byTemplate: Record<string, { nome: string; sum: number; count: number; scored: number; contingencias: number }> = {};
     assignments.forEach((a: any) => {
       const tid = a.template_id;
       const name = a.template?.nome || "—";
-      if (!byTemplate[tid]) byTemplate[tid] = { nome: name, sum: 0, count: 0, scored: 0, planos de ação: 0 };
+      if (!byTemplate[tid]) byTemplate[tid] = { nome: name, sum: 0, count: 0, scored: 0, contingencias: 0 };
       byTemplate[tid].count += 1;
       if (a.score_final_ajustado != null) {
         byTemplate[tid].sum += Number(a.score_final_ajustado);
@@ -239,7 +239,7 @@ export function useOperationalDashboard(filters: OperationalDashboardFilters) {
     });
     contingencies.forEach((c: any) => {
       const tid = c.assignment?.template_id;
-      if (tid && byTemplate[tid]) byTemplate[tid].planos de ação += 1;
+      if (tid && byTemplate[tid]) byTemplate[tid].contingencias += 1;
     });
     return Object.values(byTemplate)
       .map((v) => ({ ...v, media: v.scored > 0 ? Math.round(v.sum / v.scored) : null }))
