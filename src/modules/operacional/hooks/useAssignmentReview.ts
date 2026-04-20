@@ -3,8 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { SnapshotField } from "@/components/operational/DynamicFieldRenderer";
-import { useOperationalTransition } from "@/hooks/useOperationalTransition";
+import { SnapshotField } from "@/modules/operacional/components/DynamicFieldRenderer";
+import { useOperationalTransition } from "@/modules/operacional/hooks/useOperationalTransition";
 
 export interface FieldReviewDraft {
   field_id: string;
@@ -39,7 +39,7 @@ export function useAssignmentReview(assignmentId: string | null) {
   const [pendingContingencyData, setPendingContingencyData] = useState<Record<string, { prazoResolucao: string; motivoInstrucao: string }>>({});
 
   const { data: fieldAnswers = [] } = useQuery({
-    queryKey: ["review_field_answers", assignmentId],
+    queryKey: ["operational_review_field_answers", assignmentId],
     queryFn: async () => {
       if (!assignmentId) return [];
       const { data, error } = await (supabase as any).from("operational_field_answers")
@@ -51,7 +51,7 @@ export function useAssignmentReview(assignmentId: string | null) {
   });
 
   const { data: existingReviews = [] } = useQuery({
-    queryKey: ["review_field_reviews", assignmentId],
+    queryKey: ["operational_review_field_reviews", assignmentId],
     queryFn: async () => {
       if (!assignmentId) return [];
       const { data, error } = await (supabase as any).from("operational_field_reviews")
@@ -63,7 +63,7 @@ export function useAssignmentReview(assignmentId: string | null) {
   });
 
   const { data: contingencies = [] } = useQuery({
-    queryKey: ["review_contingencies", assignmentId],
+    queryKey: ["operational_review_contingencies", assignmentId],
     queryFn: async () => {
       if (!assignmentId) return [];
       const { data, error } = await (supabase as any).from("operational_contingencies")
@@ -273,9 +273,9 @@ export function useAssignmentReview(assignmentId: string | null) {
       });
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["avaliador_assignments"] });
-      qc.invalidateQueries({ queryKey: ["review_field_reviews"] });
-      qc.invalidateQueries({ queryKey: ["review_contingencies"] });
+      qc.invalidateQueries({ queryKey: ["operational_avaliador_assignments"] });
+      qc.invalidateQueries({ queryKey: ["operational_review_field_reviews"] });
+      qc.invalidateQueries({ queryKey: ["operational_review_contingencies"] });
       toast.success("Avaliação salva com sucesso!");
     },
     onError: (e: any) => toast.error(e.message),
@@ -294,7 +294,7 @@ export function useAssignmentReview(assignmentId: string | null) {
       });
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["avaliador_assignments"] });
+      qc.invalidateQueries({ queryKey: ["operational_avaliador_assignments"] });
       toast.success("Avaliação iniciada!");
     },
     onError: (e: any) => toast.error(e.message),

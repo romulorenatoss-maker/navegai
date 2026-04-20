@@ -9,8 +9,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Users } from "lucide-react";
-import { TemplateForm } from "./types";
-import { TIPO_EXECUCAO_LABELS } from "@/hooks/useOperationalScoring";
+import { TemplateForm } from "../types";
+import { TIPO_EXECUCAO_LABELS } from "@/modules/operacional/hooks/useOperationalScoring";
 
 interface Props {
   form: TemplateForm;
@@ -40,7 +40,7 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
   };
   // Fetch colaborador_setores to know who belongs to which sector
   const { data: colaboradorSetores = [] } = useQuery({
-    queryKey: ["colaborador_setores_all"],
+    queryKey: ["operational_colaborador_setores_all"],
     queryFn: async () => {
       const { data, error } = await supabase.from("colaborador_setores").select("profile_id, setor_id");
       if (error) throw error;

@@ -40,7 +40,7 @@ export function TabTarefasExecutadas({ templateId }: Props) {
   const qc = useQueryClient();
 
   const { data: assignments = [], isLoading } = useQuery({
-    queryKey: ["template_assignments", templateId],
+    queryKey: ["operational_template_assignments", templateId],
     queryFn: async () => {
       if (!templateId) return [];
       const { data, error } = await (supabase as any)
@@ -183,7 +183,7 @@ export function TabTarefasExecutadas({ templateId }: Props) {
       if (insErr) throw insErr;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["template_assignments", templateId] });
+      qc.invalidateQueries({ queryKey: ["operational_template_assignments", templateId] });
       toast.success("Tarefa gerada com sucesso para hoje!");
     },
     onError: (e: any) => toast.error(e.message),
@@ -222,7 +222,7 @@ export function TabTarefasExecutadas({ templateId }: Props) {
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["template_assignments", templateId] });
+      qc.invalidateQueries({ queryKey: ["operational_template_assignments", templateId] });
       toast.success("Tarefa e todos os registros vinculados excluídos.");
     },
     onError: (e: any) => toast.error(e.message),

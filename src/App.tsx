@@ -14,12 +14,12 @@ import ColaboradoresPage from "./pages/ColaboradoresPage";
 import TiposServicoPage from "./pages/TiposServicoPage";
 
 import PerguntasPage from "./pages/PerguntasPage";
-import OperationalCadastroPage from "./pages/OperationalCadastroPage";
-import OperationalExecucaoPage from "./pages/OperationalExecucaoPage";
-import OperationalGestaoPage from "./pages/OperationalGestaoPage";
-import OperationalAvaliacaoPage from "./pages/OperationalAvaliacaoPage";
-import OperationalAprovacaoPage from "./pages/OperationalAprovacaoPage";
-import OperationalContingenciasPage from "./pages/OperationalContingenciasPage";
+import OperationalCadastroPage from "./modules/operacional/pages/OperationalCadastroPage";
+import OperationalExecucaoPage from "./modules/operacional/pages/OperationalExecucaoPage";
+import OperationalGestaoPage from "./modules/operacional/pages/OperationalGestaoPage";
+import OperationalAvaliacaoPage from "./modules/operacional/pages/OperationalAvaliacaoPage";
+import OperationalAprovacaoPage from "./modules/operacional/pages/OperationalAprovacaoPage";
+import OperationalContingenciasPage from "./modules/operacional/pages/OperationalContingenciasPage";
 import DashboardOperacionalKPIPage from "./pages/DashboardOperacionalKPIPage";
 import CadastroEnderecosPage from "./pages/CadastroEnderecosPage";
 import ClientesPage from "./pages/ClientesPage";
@@ -71,13 +71,13 @@ const App = () => (
               <Route path="/avaliacoes/pesquisa" element={<AvaliacaoOSPage />} />
               <Route path="/avaliacoes/perguntas" element={<PerguntasPage />} />
               <Route path="/avaliacoes/minhas" element={<MinhasAvaliacoesPage />} />
-              <Route path="/checklists/cadastro" element={<OperationalCadastroPage />} />
-              <Route path="/checklists/execucao" element={<OperationalExecucaoPage />} />
-              <Route path="/checklists/gestao" element={<OperationalGestaoPage />} />
-              <Route path="/checklists/avaliacao" element={<OperationalAvaliacaoPage />} />
-              <Route path="/checklists/aprovacao" element={<OperationalAprovacaoPage />} />
-              <Route path="/checklists/contingencias" element={<OperationalContingenciasPage />} />
-              <Route path="/checklists/dashboard" element={<DashboardOperacionalKPIPage />} />
+              <Route path="/operacional/cadastro" element={<OperationalCadastroPage />} />
+              <Route path="/operacional/execucao" element={<OperationalExecucaoPage />} />
+              <Route path="/operacional/gestao" element={<OperationalGestaoPage />} />
+              <Route path="/operacional/avaliacao" element={<OperationalAvaliacaoPage />} />
+              <Route path="/operacional/aprovacao" element={<OperationalAprovacaoPage />} />
+              <Route path="/operacional/contingencias" element={<OperationalContingenciasPage />} />
+              <Route path="/operacional/dashboard" element={<DashboardOperacionalKPIPage />} />
               
               <Route path="/cadastros/setores" element={<SetoresPage />} />
               <Route path="/cadastros/avaliadores" element={<ColaboradoresPage />} />

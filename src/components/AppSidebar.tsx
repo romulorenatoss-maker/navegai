@@ -42,12 +42,12 @@ const allNavSections = [
   {
     title: "Tarefas",
     items: [
-      { to: "/checklists/dashboard", icon: PieChart, label: "Dashboard Operacional" },
-      { to: "/checklists/execucao", icon: PlayCircle, label: "Minhas Tarefas" },
-      { to: "/checklists/contingencias", icon: AlertTriangle, label: "Contingências" },
-      { to: "/checklists/aprovacao", icon: Shield, label: "Aprovação Final" },
-      { to: "/checklists/gestao", icon: FolderKanban, label: "Gestão" },
-      { to: "/checklists/cadastro", icon: ListChecks, label: "Rotinas Operacionais" },
+      { to: "/operacional/dashboard", icon: PieChart, label: "Dashboard Operacional" },
+      { to: "/operacional/execucao", icon: PlayCircle, label: "Minhas Tarefas" },
+      { to: "/operacional/contingencias", icon: AlertTriangle, label: "Contingências" },
+      { to: "/operacional/aprovacao", icon: Shield, label: "Aprovação Final" },
+      { to: "/operacional/gestao", icon: FolderKanban, label: "Gestão" },
+      { to: "/operacional/cadastro", icon: ListChecks, label: "Rotinas Operacionais" },
     ],
   },
   {

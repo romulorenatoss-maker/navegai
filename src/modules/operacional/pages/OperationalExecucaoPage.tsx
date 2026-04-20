@@ -5,16 +5,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Play, Send, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock, RotateCcw, CheckCheck, CalendarClock, ListTodo, Hourglass, Filter, History } from "lucide-react";
-import { EmbeddedContingencyPanel } from "@/components/operational/EmbeddedContingencyPanel";
+import { EmbeddedContingencyPanel } from "@/modules/operacional/components/EmbeddedContingencyPanel";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { STATUS_CONFIG } from "@/hooks/useOperationalScoring";
-import { AssignmentCard } from "@/components/operational/AssignmentCard";
-import { DynamicFieldRenderer, SnapshotField, FieldAnswer, evaluateVisibility } from "@/components/operational/DynamicFieldRenderer";
-import { useAssignmentExecution } from "@/hooks/useAssignmentExecution";
-import { useOperationalTransition } from "@/hooks/useOperationalTransition";
+import { STATUS_CONFIG } from "@/modules/operacional/hooks/useOperationalScoring";
+import { AssignmentCard } from "@/modules/operacional/components/AssignmentCard";
+import { DynamicFieldRenderer, SnapshotField, FieldAnswer, evaluateVisibility } from "@/modules/operacional/components/DynamicFieldRenderer";
+import { useAssignmentExecution } from "@/modules/operacional/hooks/useAssignmentExecution";
+import { useOperationalTransition } from "@/modules/operacional/hooks/useOperationalTransition";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -129,7 +129,7 @@ export default function OperationalExecucaoPage() {
   const [showHistory, setShowHistory] = useState(false);
 
   const { data: allProfilesRaw = [] } = useQuery({
-    queryKey: ["profiles_for_exec_filter"],
+    queryKey: ["operational_profiles_for_exec_filter"],
     queryFn: async () => {
       const { data } = await supabase.from("profiles").select("id, nome").eq("ativo", true).order("nome");
       return data || [];
@@ -139,7 +139,7 @@ export default function OperationalExecucaoPage() {
   });
 
   const { data: assignments = [], isLoading } = useQuery({
-    queryKey: ["my_operational_assignments", profile?.id, isAdmin],
+    queryKey: ["operational_my_assignments", profile?.id, isAdmin],
     queryFn: async () => {
       if (!profile?.id) return [];
       let q = (supabase as any).from("operational_assignments")
@@ -692,7 +692,7 @@ export default function OperationalExecucaoPage() {
                     });
                     toast.success("Tarefa reaberta para edição");
                     setSelectedAssignment({ ...selectedAssignment, status: "em_andamento" });
-                    qc.invalidateQueries({ queryKey: ["my_operational_assignments"] });
+                    qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
                     exec.refetchLogs();
                   } catch (e: any) {
                     toast.error("Erro ao reabrir: " + e.message);

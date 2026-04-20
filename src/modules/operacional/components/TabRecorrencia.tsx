@@ -4,8 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TemplateForm, getLocalToday } from "./types";
-import { RECORRENCIA_LABELS, DIAS_SEMANA } from "@/hooks/useOperationalScoring";
+import { TemplateForm, getLocalToday } from "../types";
+import { RECORRENCIA_LABELS, DIAS_SEMANA } from "@/modules/operacional/hooks/useOperationalScoring";
 
 const PESO_MAP: Record<string, number> = { unica: 2.0, diaria: 1.0, semanal: 1.5, quinzenal: 2.0, mensal: 3.0, personalizada: 2.0 };
 const DIAS_FULL = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];

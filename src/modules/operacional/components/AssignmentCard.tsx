@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Clock, ChevronRight, AlertTriangle, RotateCcw, CheckCircle2, Timer, TimerOff } from "lucide-react";
-import { STATUS_CONFIG, TIPO_EXECUCAO_LABELS } from "@/hooks/useOperationalScoring";
+import { STATUS_CONFIG, TIPO_EXECUCAO_LABELS } from "@/modules/operacional/hooks/useOperationalScoring";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface Props {

@@ -12,8 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { CONTINGENCY_STATUS } from "@/hooks/useOperationalScoring";
-import { useContingencyManagement, uploadContingencyAttachment } from "@/hooks/useContingencyManagement";
+import { CONTINGENCY_STATUS } from "@/modules/operacional/hooks/useOperationalScoring";
+import { useContingencyManagement, uploadContingencyAttachment } from "@/modules/operacional/hooks/useContingencyManagement";
 import { toast } from "sonner";
 
 function SlaCountdown({ prazoSla }: { prazoSla: string }) {
@@ -94,7 +94,7 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
   const cm = useContingencyManagement();
 
   const { data: contingencies = [], isLoading } = useQuery({
-    queryKey: ["embedded_contingencies", assignmentId],
+    queryKey: ["operational_embedded_contingencies", assignmentId],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("operational_contingencies")
@@ -119,7 +119,7 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
   });
 
   const { data: assignment } = useQuery({
-    queryKey: ["embedded_cont_assignment", assignmentId],
+    queryKey: ["operational_embedded_cont_assignment", assignmentId],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("operational_assignments")
@@ -582,7 +582,7 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
 
 function ContingencyTimeline({ contingencyId }: { contingencyId: string }) {
   const { data: logs = [] } = useQuery({
-    queryKey: ["embedded_cont_logs", contingencyId],
+    queryKey: ["operational_embedded_cont_logs", contingencyId],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("operational_contingency_resolution_logs")

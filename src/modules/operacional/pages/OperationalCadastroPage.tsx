@@ -7,13 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TIPO_EXECUCAO_LABELS, RECORRENCIA_LABELS } from "@/hooks/useOperationalScoring";
-import { TemplateForm, SectionForm, FieldForm, StepForm, defaultTemplate, defaultSection, defaultField, defaultStep } from "@/components/operational/types";
-import { TabGeral } from "@/components/operational/TabGeral";
-import { TabFormBuilder } from "@/components/operational/TabFormBuilder";
-import { TabWorkflow } from "@/components/operational/TabWorkflow";
-import { TabRecorrencia } from "@/components/operational/TabRecorrencia";
-import { TabTarefasExecutadas } from "@/components/operational/TabTarefasExecutadas";
+import { TIPO_EXECUCAO_LABELS, RECORRENCIA_LABELS } from "@/modules/operacional/hooks/useOperationalScoring";
+import { TemplateForm, SectionForm, FieldForm, StepForm, defaultTemplate, defaultSection, defaultField, defaultStep } from "@/modules/operacional/types";
+import { TabGeral } from "@/modules/operacional/components/TabGeral";
+import { TabFormBuilder } from "@/modules/operacional/components/TabFormBuilder";
+import { TabWorkflow } from "@/modules/operacional/components/TabWorkflow";
+import { TabRecorrencia } from "@/modules/operacional/components/TabRecorrencia";
+import { TabTarefasExecutadas } from "@/modules/operacional/components/TabTarefasExecutadas";
 
 export default function OperationalCadastroPage() {
   const qc = useQueryClient();

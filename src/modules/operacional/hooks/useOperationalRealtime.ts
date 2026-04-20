@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useTabLeader } from "./useTabLeader";
+import { useTabLeader } from "@/hooks/useTabLeader";
 
 /**
  * Centralized realtime subscription for operational assignments.
@@ -14,12 +14,12 @@ import { useTabLeader } from "./useTabLeader";
 const DEBOUNCE_MS = 2000;
 
 const OPERATIONAL_QUERY_KEYS = [
-  "my_operational_assignments",
+  "operational_my_assignments",
   "operational_templates",
-  "field_answers",
-  "field_reviews",
-  "execution_logs",
-  "exec_assignments",
+  "operational_field_answers",
+  "operational_field_reviews",
+  "operational_execution_logs",
+  "operational_exec_assignments",
 ];
 
 export function useOperationalRealtime() {
@@ -66,11 +66,11 @@ export function useOperationalRealtime() {
         { event: "*", schema: "public", table: "operational_assignments" },
         () => {
           scheduleInvalidation([
-            "my_operational_assignments",
-            "exec_assignments",
-            "field_answers",
-            "execution_logs",
-            "contingency_management",
+            "operational_my_assignments",
+            "operational_exec_assignments",
+            "operational_field_answers",
+            "operational_execution_logs",
+            "operational_contingencies_management",
           ]);
         }
       )
