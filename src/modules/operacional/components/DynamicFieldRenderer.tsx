@@ -161,29 +161,79 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
     }
   };
 
+  // Localiza a regra ativa baseada na opção selecionada (conforme/sim_nao/select)
+  const opcoesRegras = Array.isArray(field.opcoes_regras) ? field.opcoes_regras : [];
+  const activeRule = (() => {
+    if (!opcoesRegras.length) return null;
+    if (field.tipo === "conforme") {
+      if (val.valor_booleano === true) return opcoesRegras.find(r => r.valor === "conforme") || null;
+      if (val.valor_booleano === false) return opcoesRegras.find(r => r.valor === "nao_conforme") || null;
+    }
+    if (field.tipo === "sim_nao") {
+      if (val.valor_booleano === true) return opcoesRegras.find(r => r.valor === "sim") || null;
+      if (val.valor_booleano === false) return opcoesRegras.find(r => r.valor === "nao") || null;
+    }
+    if (field.tipo === "select" && val.valor_texto) {
+      const v = val.valor_texto.toLowerCase().replace(/\s+/g, "_");
+      return opcoesRegras.find(r => r.valor === v || r.label === val.valor_texto) || null;
+    }
+    return null;
+  })();
+
   const renderInput = () => {
     switch (field.tipo) {
-      case "conforme":
+      case "conforme": {
+        // Suporta opcoes_regras customizadas (Conforme/Não Conforme/N/A) ou padrão
+        const opts = opcoesRegras.length
+          ? opcoesRegras.map(r => ({
+              label: r.label,
+              val: r.valor === "conforme" ? true : r.valor === "nao_conforme" ? false : null,
+              cls: r.cor === "success" ? "bg-green-100 text-green-800 border-green-300"
+                : r.cor === "destructive" ? "bg-red-100 text-red-800 border-red-300"
+                : "bg-muted text-muted-foreground border-border",
+            }))
+          : [
+              { label: "Conforme", val: true, cls: "bg-green-100 text-green-800 border-green-300" },
+              { label: "Não Conforme", val: false, cls: "bg-red-100 text-red-800 border-red-300" },
+            ];
         return (
-          <div className="flex gap-2">
-            {[{ label: "Conforme", val: true, cls: "bg-green-100 text-green-800 border-green-300" },
-              { label: "Não Conforme", val: false, cls: "bg-red-100 text-red-800 border-red-300" }].map(opt => (
-              <button key={String(opt.val)} type="button" disabled={!isEditable}
+          <div className="flex gap-2 flex-wrap">
+            {opts.map(opt => (
+              <button key={String(opt.val) + opt.label} type="button" disabled={!isEditable}
                 onClick={() => update({ valor_booleano: opt.val })}
-                className={`flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${val.valor_booleano === opt.val ? opt.cls + " ring-2 ring-offset-1 ring-primary/30" : "bg-card border-border text-muted-foreground"} ${!isEditable ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
+                className={`flex-1 min-w-[100px] px-3 py-2 rounded-md border text-sm font-medium transition-colors ${val.valor_booleano === opt.val ? opt.cls + " ring-2 ring-offset-1 ring-primary/30" : "bg-card border-border text-muted-foreground"} ${!isEditable ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
                 {opt.label}
               </button>
             ))}
           </div>
         );
+      }
 
-      case "sim_nao":
+      case "sim_nao": {
+        const opts = opcoesRegras.length
+          ? opcoesRegras.map(r => ({
+              label: r.label,
+              val: r.valor === "sim" ? true : r.valor === "nao" ? false : null,
+              cls: r.cor === "success" ? "bg-green-100 text-green-800 border-green-300"
+                : r.cor === "destructive" ? "bg-red-100 text-red-800 border-red-300"
+                : "bg-muted text-muted-foreground border-border",
+            }))
+          : [
+              { label: "Sim", val: true, cls: "bg-green-100 text-green-800 border-green-300" },
+              { label: "Não", val: false, cls: "bg-red-100 text-red-800 border-red-300" },
+            ];
         return (
-          <div className="flex items-center gap-3">
-            <Switch checked={val.valor_booleano === true} onCheckedChange={v => update({ valor_booleano: v })} disabled={!isEditable} />
-            <span className="text-sm">{val.valor_booleano === true ? "Sim" : val.valor_booleano === false ? "Não" : "—"}</span>
+          <div className="flex gap-2 flex-wrap">
+            {opts.map(opt => (
+              <button key={String(opt.val) + opt.label} type="button" disabled={!isEditable}
+                onClick={() => update({ valor_booleano: opt.val })}
+                className={`flex-1 min-w-[100px] px-3 py-2 rounded-md border text-sm font-medium transition-colors ${val.valor_booleano === opt.val ? opt.cls + " ring-2 ring-offset-1 ring-primary/30" : "bg-card border-border text-muted-foreground"} ${!isEditable ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
+                {opt.label}
+              </button>
+            ))}
           </div>
         );
+      }
 
       case "nota_avaliacao":
       case "numero":
