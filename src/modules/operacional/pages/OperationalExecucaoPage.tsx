@@ -116,6 +116,7 @@ function AuditTimelinePanel({ logs, assignment }: { logs: any[]; assignment: any
 
 export default function OperationalExecucaoPage() {
   const { profile, isAdmin } = useAuth();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const { transition: centralTransition } = useOperationalTransition();
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
