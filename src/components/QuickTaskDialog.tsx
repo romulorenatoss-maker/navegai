@@ -98,11 +98,13 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
     [colaboradores, avaliadoId]
   );
 
-  // Aprovador: pode ser qualquer um, INCLUSIVE o avaliado.
-  // EXCEÇÃO: se a tarefa é "para si mesmo" (criador == avaliado), o aprovador NÃO pode ser o próprio.
+  // Aprovador: nunca pode ser o avaliado. Em tarefa "para si mesmo" também exclui o criador.
   const aprovadorOptions = useMemo(() => {
-    if (isSelfTask) return (colaboradores as any[]).filter((c) => c.id !== profile?.id);
-    return colaboradores as any[];
+    return (colaboradores as any[]).filter((c) => {
+      if (avaliadoId && c.id === avaliadoId) return false;
+      if (isSelfTask && c.id === profile?.id) return false;
+      return true;
+    });
   }, [colaboradores, isSelfTask, profile?.id]);
 
   const canAdvanceStep1 = nome.trim().length > 0
