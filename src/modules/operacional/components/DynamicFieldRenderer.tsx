@@ -338,6 +338,75 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
 
       {renderInput()}
 
+      {/* Follow-up dinâmico baseado na regra da opção selecionada */}
+      {activeRule && (activeRule.requer_descricao || activeRule.requer_evidencia || activeRule.gera_contingencia) && (
+        <div className="mt-2 p-2.5 rounded-md border border-amber-300/60 bg-amber-50/40 dark:bg-amber-950/20 dark:border-amber-800/50 space-y-2">
+          <div className="flex items-center gap-1.5 text-[11px] font-medium text-amber-800 dark:text-amber-300">
+            <AlertTriangle className="w-3 h-3" />
+            Ação requerida pela opção "{activeRule.label}"
+            {activeRule.gera_contingencia && (
+              <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 border border-orange-200 dark:bg-orange-950/40 dark:text-orange-400 dark:border-orange-800">
+                Gera contingência
+              </span>
+            )}
+          </div>
+          {activeRule.requer_descricao && (
+            <div className="space-y-1">
+              <Label className="text-[11px]">Justificativa / Plano de ação *</Label>
+              <Textarea
+                value={val.valor_texto ?? ""}
+                onChange={e => update({ valor_texto: e.target.value })}
+                disabled={!isEditable}
+                placeholder="Descreva o motivo / ação corretiva..."
+                rows={2}
+                className={!isEditable ? "opacity-60" : ""}
+                maxLength={2000}
+              />
+            </div>
+          )}
+          {activeRule.requer_evidencia && (
+            <div className="space-y-1">
+              <Label className="text-[11px]">Evidência obrigatória *</Label>
+              {val.evidencia_url ? (
+                <div className="flex items-center gap-2">
+                  {/\.(jpg|jpeg|png|gif|webp)$/i.test(val.evidencia_url) ? (
+                    <img src={val.evidencia_url} alt="Evidência" className="max-h-24 rounded border border-border" />
+                  ) : /\.(mp4|webm|mov)$/i.test(val.evidencia_url) ? (
+                    <video src={val.evidencia_url} controls className="max-h-24 rounded border border-border" />
+                  ) : (
+                    <a href={val.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver evidência</a>
+                  )}
+                  {isEditable && (
+                    <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => update({ evidencia_url: null })}>
+                      <X className="w-3 h-3" />
+                    </Button>
+                  )}
+                </div>
+              ) : isEditable ? (
+                <label className={`flex items-center justify-center gap-2 border border-dashed border-amber-400/60 rounded p-2 cursor-pointer hover:border-amber-500 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
+                  {uploading ? <span className="text-xs text-muted-foreground">Enviando...</span> : (
+                    <>
+                      <Upload className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+                      <span className="text-xs text-amber-800 dark:text-amber-300">
+                        Anexar {(activeRule.tipos_evidencia || []).includes("foto") ? "foto" : (activeRule.tipos_evidencia || []).join("/") || "arquivo"}
+                      </span>
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept={(activeRule.tipos_evidencia || []).includes("foto") && !(activeRule.tipos_evidencia || []).includes("qualquer") ? "image/*" : "*"}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); }}
+                  />
+                </label>
+              ) : (
+                <span className="text-xs text-muted-foreground">Sem evidência</span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Who answered and when */}
       {val.respondido_por_nome && val.respondido_em && (
         <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-1 flex-wrap">
