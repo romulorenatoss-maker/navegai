@@ -144,6 +144,7 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
         tipo_atribuicao_avaliado: "individual",
         habilitar_perguntas_automaticas: false,
         ativo: true,
+        origem: "ad_hoc",
       };
 
       const { data: tpl, error: tplErr } = await (supabase as any)
