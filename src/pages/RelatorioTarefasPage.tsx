@@ -2,7 +2,8 @@ import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Trash2, ChevronDown, ChevronRight, FileBarChart, Search } from "lucide-react";
+import { CalendarIcon, Trash2, ChevronDown, ChevronRight, FileBarChart, Search, Eye } from "lucide-react";
+import AssignmentQuickViewDialog from "@/components/AssignmentQuickViewDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -93,6 +94,7 @@ export default function RelatorioTarefasPage() {
   const [deleting, setDeleting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [viewId, setViewId] = useState<string | null>(null);
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ["relatorio-tarefas", filters],
@@ -433,10 +435,9 @@ export default function RelatorioTarefasPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => setToDelete(row)}
+                            onClick={() => setViewId(row.id)}
                           >
-                            <Trash2 className="w-4 h-4 mr-1" /> Excluir
+                            <Eye className="w-4 h-4 mr-1" /> Ver
                           </Button>
                         </div>
                       ))}
@@ -448,6 +449,12 @@ export default function RelatorioTarefasPage() {
           })}
         </div>
       )}
+
+      <AssignmentQuickViewDialog
+        assignmentId={viewId}
+        open={!!viewId}
+        onOpenChange={(o) => !o && setViewId(null)}
+      />
 
       {/* Single delete */}
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
