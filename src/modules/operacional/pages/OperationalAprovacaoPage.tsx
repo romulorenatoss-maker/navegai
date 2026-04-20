@@ -705,8 +705,8 @@ export default function OperationalAprovacaoPage() {
                             <p className="text-sm font-semibold text-foreground">{f.aprovador_pergunta || f.label}</p>
                             <p className="text-[11px] text-muted-foreground mt-0.5">Pergunta exclusiva do aprovador final</p>
                           </div>
-                          <div className="flex items-center justify-center">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-accent text-accent-foreground border border-accent">Aprovador</span>
+                          <div className="flex items-center justify-center min-w-0">
+                            <span className="inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-bold bg-accent text-accent-foreground border border-accent whitespace-nowrap">Aprov.</span>
                           </div>
                           <span className="text-sm font-bold text-foreground text-right font-tabular">{fieldPeso}</span>
                         </div>
