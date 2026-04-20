@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Play, Send, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock, RotateCcw, CheckCheck, CalendarClock, ListTodo, Hourglass, Filter, History } from "lucide-react";
+import { Play, Send, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock, RotateCcw, CheckCheck, CalendarClock, ListTodo, Hourglass, Filter, History, Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { EmbeddedContingencyPanel } from "@/modules/operacional/components/EmbeddedContingencyPanel";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -115,6 +116,7 @@ function AuditTimelinePanel({ logs, assignment }: { logs: any[]; assignment: any
 
 export default function OperationalExecucaoPage() {
   const { profile, isAdmin } = useAuth();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const { transition: centralTransition } = useOperationalTransition();
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
@@ -382,11 +384,16 @@ export default function OperationalExecucaoPage() {
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto">
-      <div className="mb-4">
-        <h1 className="text-lg font-semibold text-foreground">Execução Operacional</h1>
-        <p className="text-xs text-muted-foreground">
-          {isAdmin ? "Visualização administrativa de todas as rotinas." : "Formulários e rotinas atribuídos a você."}
-        </p>
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold text-foreground">Execução Operacional</h1>
+          <p className="text-xs text-muted-foreground">
+            {isAdmin ? "Visualização administrativa de todas as rotinas." : "Formulários e rotinas atribuídos a você."}
+          </p>
+        </div>
+        <Button onClick={() => navigate("/operacional/cadastro")} className="shrink-0">
+          <Plus className="w-4 h-4 mr-1.5" /> Nova Tarefa
+        </Button>
       </div>
 
       <div className="flex items-center gap-2 mb-4">
