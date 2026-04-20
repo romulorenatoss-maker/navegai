@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, X, Eye, Check } from "lucide-react";
-import { FieldForm, defaultField, getDefaultOpcoesRegras } from "@/modules/operacional/types";
+import { FieldForm, defaultField, getDefaultOpcoesRegras, FIELD_TYPES } from "@/modules/operacional/types";
 import { DynamicFieldRenderer, SnapshotField } from "@/modules/operacional/components/DynamicFieldRenderer";
 
 interface Props {
@@ -24,14 +24,7 @@ interface Props {
  * Apenas alimenta a estrutura `FieldForm` existente — não cria engine nova.
  * Após incluir, o campo aparece no TabFormBuilder com todos os botões/configs avançadas.
  */
-const TIPOS_SIMPLES = [
-  { value: "texto", label: "Texto" },
-  { value: "numero", label: "Número" },
-  { value: "select", label: "Seleção" },
-  { value: "foto", label: "Foto" },
-  { value: "conforme", label: "Checkbox (Conforme)" },
-  { value: "data", label: "Data" },
-];
+const TIPOS_SIMPLES = Object.entries(FIELD_TYPES).map(([value, label]) => ({ value, label }));
 
 export default function QuickFieldDialog({ open, onOpenChange, sectionTempId, nextOrdem, onAdd }: Props) {
   const [label, setLabel] = useState("");
