@@ -388,11 +388,23 @@ export default function OperationalExecucaoPage() {
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto">
       <div className="mb-4">
-        <h1 className="text-lg font-semibold text-foreground">Execução Operacional</h1>
+        <h1 className="text-lg font-semibold text-foreground">Minhas Tarefas</h1>
         <p className="text-xs text-muted-foreground">
           {isAdmin ? "Visualização administrativa de todas as rotinas." : "Formulários e rotinas atribuídos a você."}
         </p>
       </div>
+
+      <Tabs defaultValue="operacionais" className="w-full">
+        <TabsList className="w-full sm:w-auto mb-4">
+          <TabsTrigger value="operacionais" className="flex items-center gap-1.5">
+            <ListChecks className="w-4 h-4" /> Tarefas Operacionais
+          </TabsTrigger>
+          <TabsTrigger value="avaliadas" className="flex items-center gap-1.5">
+            <Trophy className="w-4 h-4" /> Tarefas Avaliadas
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="operacionais" className="space-y-0 mt-0">
 
       <div className="flex items-center gap-2 mb-4">
         <div className="relative flex-1">
