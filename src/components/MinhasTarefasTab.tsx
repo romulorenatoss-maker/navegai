@@ -22,10 +22,9 @@ const STATUS_LABELS: Record<string, { text: string; cls: string }> = {
 };
 
 export default function MinhasTarefasTab() {
-  const { profile } = useAuth();
+  const { profile, isAdmin, canViewPath } = useAuth();
   const navigate = useNavigate();
-  const { can } = usePermissions(profile?.id ?? null);
-  const canCreate = can("/operacional/execucao", "create");
+  const canCreate = isAdmin || canViewPath("/operacional/cadastro");
 
   const now = new Date();
   const [startDate, setStartDate] = useState<Date | undefined>(startOfMonth(now));
