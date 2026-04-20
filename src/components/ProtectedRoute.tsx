@@ -54,8 +54,10 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const searchParams = new URLSearchParams(location.search);
   const isEvalMode = currentPath === "/avaliacoes/pesquisa" && searchParams.get("mode") === "eval";
   const isDesempenhoView = currentPath === "/desempenho";
+  // Liberado a todos: criação de tarefa individual ad-hoc
+  const isOpenForAll = currentPath === "/operacional/cadastro";
 
-  if (!isEvalMode && !isDesempenhoView && !canViewPath(currentPath)) {
+  if (!isEvalMode && !isDesempenhoView && !isOpenForAll && !canViewPath(currentPath)) {
     return <Navigate to="/avaliacoes/minhas" replace />;
   }
 
