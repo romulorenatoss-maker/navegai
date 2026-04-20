@@ -430,9 +430,9 @@ export default function OperationalAprovacaoPage() {
 
       {/* ── Detail Dialog ── */}
       <Dialog open={approvalDialogOpen} onOpenChange={v => { if (!v) closeApproval(); }}>
-        <DialogContent className="max-w-3xl max-h-[95vh] overflow-hidden flex flex-col p-0">
+        <DialogContent className="max-w-3xl w-[calc(100vw-1rem)] sm:w-full max-h-[95vh] overflow-hidden flex flex-col p-0">
           {/* Header */}
-          <div className="bg-card border-b border-border p-4">
+          <div className="bg-card border-b border-border p-3 sm:p-4">
             <div className="flex items-start justify-between">
               <div className="flex items-start gap-2">
                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0 mt-0.5" onClick={closeApproval}>
@@ -453,19 +453,21 @@ export default function OperationalAprovacaoPage() {
             </div>
 
             {/* Executor + Avaliador + Avaliado info */}
-            <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border text-xs">
-              <div className="min-w-0">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3 pt-3 border-t border-border text-xs">
+              <div className="min-w-0 flex sm:block items-center justify-between gap-2">
                 <span className="text-muted-foreground">Executor</span>
-                <p className="font-medium text-foreground truncate">{selectedAssignment?.executor?.nome || "—"}</p>
+                <p className="font-medium text-foreground truncate sm:mt-0.5">{selectedAssignment?.executor?.nome || "—"}</p>
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex sm:block items-center justify-between gap-2">
                 <span className="text-muted-foreground">Avaliador</span>
-                <p className="font-medium text-foreground truncate">{selectedAssignment?.avaliador?.nome || "—"}</p>
+                <p className="font-medium text-foreground truncate sm:mt-0.5">{selectedAssignment?.avaliador?.nome || "—"}</p>
               </div>
               <div className="min-w-0">
-                <span className="text-muted-foreground">Avaliado</span>
-                <p className="font-medium text-foreground truncate">{selectedAssignment?.avaliado?.nome || "—"}</p>
-                <div className="mt-1">
+                <div className="flex sm:block items-center justify-between gap-2">
+                  <span className="text-muted-foreground">Avaliado</span>
+                  <p className="font-medium text-foreground truncate sm:mt-0.5">{selectedAssignment?.avaliado?.nome || "—"}</p>
+                </div>
+                <div className="mt-1.5">
                   <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold border",
                     scoreCalc.score >= 85 ? "border-success/40 bg-success/10 text-success" :
                     scoreCalc.score >= 75 ? "border-warning/40 bg-warning/10 text-warning" :
@@ -478,7 +480,7 @@ export default function OperationalAprovacaoPage() {
             </div>
 
             {/* Task info — compact responsive grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-1.5 mt-3 pt-3 border-t border-border text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-2 mt-3 pt-3 border-t border-border text-xs">
               <div className="flex flex-col">
                 <span className="text-muted-foreground">Data Prevista</span>
                 <span className="text-foreground font-medium">
@@ -489,13 +491,13 @@ export default function OperationalAprovacaoPage() {
               </div>
               <div className="flex flex-col">
                 <span className="text-muted-foreground">Início</span>
-                <span className="text-foreground font-medium">{selectedAssignment?.inicio_em ? new Date(selectedAssignment.inicio_em).toLocaleString("pt-BR") : "—"}</span>
+                <span className="text-foreground font-medium truncate">{selectedAssignment?.inicio_em ? new Date(selectedAssignment.inicio_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "—"}</span>
               </div>
-              <div className="flex flex-col sm:text-right">
+              <div className="flex flex-col">
                 <span className="text-muted-foreground">Fim</span>
-                <span className="text-foreground font-medium">{selectedAssignment?.fim_em ? new Date(selectedAssignment.fim_em).toLocaleString("pt-BR") : "—"}</span>
+                <span className="text-foreground font-medium truncate">{selectedAssignment?.fim_em ? new Date(selectedAssignment.fim_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "—"}</span>
               </div>
-              <div className="flex flex-col sm:text-right">
+              <div className="flex flex-col">
                 <span className="text-muted-foreground">Tempo Gasto</span>
                 <span className="text-foreground font-medium">{selectedAssignment?.tempo_gasto_minutos ? `${selectedAssignment.tempo_gasto_minutos} min` : "—"}</span>
               </div>
@@ -503,7 +505,7 @@ export default function OperationalAprovacaoPage() {
           </div>
 
           {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-3 sm:space-y-4">
             {/* Progress Bar */}
             <div className="bg-card border border-border rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
@@ -563,7 +565,7 @@ export default function OperationalAprovacaoPage() {
                   </div>
 
                   {/* Table header */}
-                  <div className="grid grid-cols-[40px_1fr_120px_80px] items-center px-4 py-2 border-b border-border bg-muted/30 text-xs font-medium text-muted-foreground">
+                  <div className="grid grid-cols-[28px_1fr_72px_56px] sm:grid-cols-[40px_1fr_120px_80px] items-center px-2 sm:px-4 py-2 border-b border-border bg-muted/30 text-[10px] sm:text-xs font-medium text-muted-foreground">
                     <span>#</span>
                     <span>Pergunta / Campo</span>
                     <span className="text-center">Tipo</span>
@@ -583,7 +585,7 @@ export default function OperationalAprovacaoPage() {
 
                     return (
                       <div key={aq.id} className={cn("border-b border-border transition-colors", isNaoConf ? "bg-destructive/5" : "")}>
-                        <div className="grid grid-cols-[40px_1fr_120px_80px] items-center px-4 py-3">
+                        <div className="grid grid-cols-[28px_1fr_72px_56px] sm:grid-cols-[40px_1fr_120px_80px] items-center px-2 sm:px-4 py-3">
                           <span className="text-sm text-muted-foreground font-medium">{idx}</span>
                           <div className="min-w-0">
                             <p className="text-sm font-medium text-foreground">{aq.label}</p>
@@ -594,10 +596,10 @@ export default function OperationalAprovacaoPage() {
                               <p className="text-xs text-warning mt-0.5">Justificativa: "{autoAns.justificativa}"</p>
                             )}
                           </div>
-                          <div className="flex items-center justify-center gap-1">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-destructive text-destructive-foreground">Automática</span>
+                          <div className="flex items-center justify-center gap-1 min-w-0">
+                            <span className="inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-bold bg-destructive text-destructive-foreground whitespace-nowrap">Auto</span>
                             {autoAns?.overridden && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-warning/10 text-warning border border-warning/20">Editada</span>
+                              <span className="inline-flex items-center px-1 sm:px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-medium bg-warning/10 text-warning border border-warning/20">Editada</span>
                             )}
                           </div>
                           <div className="flex items-center justify-end gap-1">
@@ -657,7 +659,7 @@ export default function OperationalAprovacaoPage() {
 
                   {/* Subtotal Penalidades */}
                   {autoQuestions.length > 0 && (
-                    <div className="grid grid-cols-[40px_1fr_120px_80px] items-center px-4 py-2 border-b border-border bg-muted/20">
+                    <div className="grid grid-cols-[28px_1fr_72px_56px] sm:grid-cols-[40px_1fr_120px_80px] items-center px-2 sm:px-4 py-2 border-b border-border bg-muted/20">
                       <span />
                       <span />
                       <span className="text-xs font-medium text-muted-foreground text-right">Subtotal Penalidades</span>
@@ -697,21 +699,21 @@ export default function OperationalAprovacaoPage() {
                       <div key={f.id} className={cn("border-b border-border transition-colors",
                         isConforme ? "bg-success/5" : isNaoConforme ? "bg-destructive/5" : "bg-accent/5"
                       )}>
-                        <div className="grid grid-cols-[40px_1fr_120px_80px] items-center px-4 py-3">
+                        <div className="grid grid-cols-[28px_1fr_72px_56px] sm:grid-cols-[40px_1fr_120px_80px] items-center px-2 sm:px-4 py-3">
                           <span className="text-sm text-muted-foreground font-medium">{idx}</span>
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-foreground">{f.aprovador_pergunta || f.label}</p>
                             <p className="text-[11px] text-muted-foreground mt-0.5">Pergunta exclusiva do aprovador final</p>
                           </div>
-                          <div className="flex items-center justify-center">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-accent text-accent-foreground border border-accent">Aprovador</span>
+                          <div className="flex items-center justify-center min-w-0">
+                            <span className="inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-bold bg-accent text-accent-foreground border border-accent whitespace-nowrap">Aprov.</span>
                           </div>
                           <span className="text-sm font-bold text-foreground text-right font-tabular">{fieldPeso}</span>
                         </div>
 
                         {/* Highlighted answer area */}
                         <div className="px-4 pb-3">
-                          <div className="ml-10 bg-card border-2 border-accent/40 rounded-lg p-4 space-y-3 shadow-sm">
+                          <div className="ml-0 sm:ml-10 bg-card border-2 border-accent/40 rounded-lg p-4 space-y-3 shadow-sm">
                             <div className="flex items-center justify-between gap-2 flex-wrap">
                               <Label className="text-xs font-semibold text-foreground uppercase tracking-wider">
                                 Sua resposta como aprovador
@@ -744,7 +746,7 @@ export default function OperationalAprovacaoPage() {
                         <AnimatePresence>
                           {isNaoConforme && (
                             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                              <div className="mx-4 ml-14 mb-3 bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-2">
+                              <div className="mx-4 sm:ml-14 mb-3 bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-2">
                                 <div className="flex items-center gap-1.5 text-caption text-destructive font-medium">
                                   <AlertTriangle className="w-3.5 h-3.5" /> Observação do aprovador
                                 </div>
@@ -764,7 +766,7 @@ export default function OperationalAprovacaoPage() {
                         <AnimatePresence>
                           {isConforme && (
                             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                              <div className="mx-4 ml-14 mb-3 bg-success/5 border border-success/20 rounded-lg p-3 space-y-2">
+                              <div className="mx-4 sm:ml-14 mb-3 bg-success/5 border border-success/20 rounded-lg p-3 space-y-2">
                                 <div className="flex items-center gap-1.5 text-caption text-success font-medium">
                                   <MessageSquare className="w-3.5 h-3.5" /> Observação (opcional)
                                 </div>
@@ -786,7 +788,7 @@ export default function OperationalAprovacaoPage() {
 
                   {/* Subtotal Campos */}
                   {approvalFields.length > 0 && (
-                    <div className="grid grid-cols-[40px_1fr_120px_80px] items-center px-4 py-2 border-b border-border bg-muted/20">
+                    <div className="grid grid-cols-[28px_1fr_72px_56px] sm:grid-cols-[40px_1fr_120px_80px] items-center px-2 sm:px-4 py-2 border-b border-border bg-muted/20">
                       <span />
                       <span />
                       <span className="text-xs font-medium text-muted-foreground text-right">Subtotal Campos</span>
@@ -795,7 +797,7 @@ export default function OperationalAprovacaoPage() {
                   )}
 
                   {/* Pontos Totais */}
-                  <div className="grid grid-cols-[40px_1fr_120px_80px] items-center px-4 py-3 bg-muted/40">
+                  <div className="grid grid-cols-[28px_1fr_72px_56px] sm:grid-cols-[40px_1fr_120px_80px] items-center px-2 sm:px-4 py-3 bg-muted/40">
                     <span />
                     <span />
                     <span className="text-sm font-semibold text-foreground text-right">Pontos Totais</span>
@@ -818,20 +820,22 @@ export default function OperationalAprovacaoPage() {
                   ))}
                 </div>
               )}
-              <div className="flex items-center gap-2 flex-wrap">
-                <Button variant="outline" size="sm" onClick={() => handleDecision("reprovar_devolver")}
-                  className="text-amber-700 border-amber-300 hover:bg-amber-50">
-                  <RotateCcw className="w-3.5 h-3.5 mr-1" /> Devolver
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => handleDecision("encerrar")}
-                  className="text-muted-foreground">
-                  Encerrar Manual
-                </Button>
-                <div className="flex-1" />
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                 <Button size="sm" onClick={() => handleDecision("aprovar")}
-                  disabled={blockingReasons.length > 0 || progressPercent < 100} className="press-effect">
-                  <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Aprovar Final
+                  disabled={blockingReasons.length > 0 || progressPercent < 100}
+                  className="press-effect order-first sm:order-last sm:ml-auto w-full sm:w-auto h-10 sm:h-9">
+                  <CheckCircle2 className="w-4 h-4 mr-1.5" /> Aprovar Final
                 </Button>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <Button variant="outline" size="sm" onClick={() => handleDecision("reprovar_devolver")}
+                    className="text-warning border-warning/40 hover:bg-warning/10 flex-1 sm:flex-none">
+                    <RotateCcw className="w-3.5 h-3.5 mr-1" /> Devolver
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleDecision("encerrar")}
+                    className="text-muted-foreground flex-1 sm:flex-none">
+                    Encerrar
+                  </Button>
+                </div>
               </div>
               {progressPercent < 100 && (
                 <p className="mt-2 text-[10px] text-muted-foreground text-right">Responda todas as perguntas (100%) para habilitar a aprovação final.</p>
