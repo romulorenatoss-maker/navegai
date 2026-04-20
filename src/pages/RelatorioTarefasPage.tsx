@@ -287,15 +287,25 @@ export default function RelatorioTarefasPage() {
         </CardHeader>
         <CardContent className="flex flex-wrap items-end gap-4">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-muted-foreground">Mês de competência</label>
-            <Select value={pendingMes} onValueChange={setPendingMes}>
-              <SelectTrigger className="w-[220px]"><SelectValue /></SelectTrigger>
-              <SelectContent className="bg-popover z-50 max-h-[300px]">
-                {MONTH_OPTIONS.map((m) => (
-                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <label className="text-xs font-medium text-muted-foreground">Mês competência</label>
+            <div className="flex gap-2">
+              <Select value={pendingMes} onValueChange={setPendingMes}>
+                <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-popover z-50 max-h-[300px]">
+                  {MES_OPTIONS.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={pendingAno} onValueChange={setPendingAno} disabled={pendingMes === "__all"}>
+                <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-popover z-50">
+                  {ANO_OPTIONS.map((a) => (
+                    <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="flex flex-col gap-1">
             <label className={cn("text-xs font-medium text-muted-foreground", pendingMes !== "__all" && "opacity-50")}>
@@ -306,10 +316,10 @@ export default function RelatorioTarefasPage() {
                 <Button
                   variant="outline"
                   disabled={pendingMes !== "__all"}
-                  className={cn("w-[200px] justify-start text-left font-normal", !pendingFrom && "text-muted-foreground")}
+                  className={cn("w-[170px] justify-start text-left font-normal", !pendingFrom && "text-muted-foreground")}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {pendingFrom ? format(pendingFrom, "PPP", { locale: ptBR }) : "Selecione"}
+                  {pendingFrom ? format(pendingFrom, "dd/MM/yyyy", { locale: ptBR }) : "Selecione"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -326,10 +336,10 @@ export default function RelatorioTarefasPage() {
                 <Button
                   variant="outline"
                   disabled={pendingMes !== "__all"}
-                  className={cn("w-[200px] justify-start text-left font-normal", !pendingTo && "text-muted-foreground")}
+                  className={cn("w-[170px] justify-start text-left font-normal", !pendingTo && "text-muted-foreground")}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {pendingTo ? format(pendingTo, "PPP", { locale: ptBR }) : "Selecione"}
+                  {pendingTo ? format(pendingTo, "dd/MM/yyyy", { locale: ptBR }) : "Selecione"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -340,7 +350,7 @@ export default function RelatorioTarefasPage() {
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-muted-foreground">Status</label>
             <Select value={pendingStatus} onValueChange={setPendingStatus}>
-              <SelectTrigger className="w-[220px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
               <SelectContent className="bg-popover z-50">
                 {STATUS_OPTIONS.map((s) => (
                   <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
@@ -354,7 +364,25 @@ export default function RelatorioTarefasPage() {
           <Button variant="ghost" onClick={handleClear}>Limpar</Button>
           <div className="ml-auto text-sm text-muted-foreground">
             Total: <span className="font-semibold text-foreground">{totalAssignments}</span> tarefa(s)
-            {mesAtivo && <span className="ml-2 text-xs">(filtro por mês ativo — datas ignoradas)</span>}
+          </div>
+
+          {/* Applied filters summary */}
+          <div className="basis-full flex flex-wrap items-center gap-2 pt-3 border-t mt-1">
+            <span className="text-xs text-muted-foreground">Filtros aplicados:</span>
+            {filters.mes !== "__all" ? (
+              <Badge variant="secondary">
+                Competência: {MES_OPTIONS.find((m) => m.value === filters.mes)?.label} / {filters.ano}
+              </Badge>
+            ) : (filters.from || filters.to) ? (
+              <Badge variant="secondary">
+                Período: {filters.from ? format(filters.from, "dd/MM/yyyy") : "—"} até {filters.to ? format(filters.to, "dd/MM/yyyy") : "—"}
+              </Badge>
+            ) : (
+              <Badge variant="outline">Todas as datas</Badge>
+            )}
+            <Badge variant={filters.status === "__all" ? "outline" : "secondary"}>
+              Status: {STATUS_LABEL[filters.status] ?? filters.status}
+            </Badge>
           </div>
         </CardContent>
       </Card>
