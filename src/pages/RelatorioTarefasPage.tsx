@@ -58,26 +58,34 @@ const STATUS_COLORS: Record<string, string> = {
   nao_executada: "bg-muted text-muted-foreground",
 };
 
-// Build month options: last 24 months + next 2
-const MONTH_OPTIONS = (() => {
-  const opts: { value: string; label: string }[] = [{ value: "__all", label: "Todos os meses" }];
-  const now = new Date();
-  for (let i = 2; i >= -23; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i + 2, 1);
-    // generate from oldest to newest later; build a window
-  }
-  // simpler: build from -23 to +2
+const MES_OPTIONS = [
+  { value: "__all", label: "Todos" },
+  { value: "1", label: "Janeiro" },
+  { value: "2", label: "Fevereiro" },
+  { value: "3", label: "Março" },
+  { value: "4", label: "Abril" },
+  { value: "5", label: "Maio" },
+  { value: "6", label: "Junho" },
+  { value: "7", label: "Julho" },
+  { value: "8", label: "Agosto" },
+  { value: "9", label: "Setembro" },
+  { value: "10", label: "Outubro" },
+  { value: "11", label: "Novembro" },
+  { value: "12", label: "Dezembro" },
+];
+
+const ANO_OPTIONS = (() => {
+  const now = new Date().getFullYear();
   const list: { value: string; label: string }[] = [];
-  for (let i = -23; i <= 2; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
-    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    const label = format(d, "MMMM 'de' yyyy", { locale: ptBR });
-    list.push({ value, label: label.charAt(0).toUpperCase() + label.slice(1) });
-  }
-  // newest first
-  list.reverse();
-  return [{ value: "__all", label: "Todos os meses" }, ...list];
+  for (let y = now + 1; y >= now - 4; y--) list.push({ value: String(y), label: String(y) });
+  return list;
 })();
+
+const STATUS_LABEL: Record<string, string> = STATUS_OPTIONS.reduce((acc, s) => {
+  acc[s.value] = s.label;
+  return acc;
+}, {} as Record<string, string>);
+
 
 export default function RelatorioTarefasPage() {
   const queryClient = useQueryClient();
