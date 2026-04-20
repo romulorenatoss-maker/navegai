@@ -409,10 +409,10 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                 <p className="text-xs font-semibold text-foreground">Resumo</p>
                 <div className="text-xs text-muted-foreground space-y-0.5">
                   <p><strong>Tarefa:</strong> {nome || "—"}</p>
-                  <p><strong>Responsável:</strong> {(colaboradores as any[]).find((c) => c.id === responsavelId)?.nome || "—"}</p>
+                  <p><strong>Avaliado:</strong> {(colaboradores as any[]).find((c) => c.id === avaliadoId)?.nome || "—"}</p>
                   <p><strong>Data:</strong> {dataPrevista} • limite {horarioLimite}</p>
-                  <p><strong>Avaliada:</strong> {serAvaliado ? `Sim (${(colaboradores as any[]).find((c) => c.id === avaliadoId)?.nome} → avaliada por ${(colaboradores as any[]).find((c) => c.id === avaliadorId)?.nome})` : "Não"}</p>
-                  <p><strong>Aprovação:</strong> {requerAprovacao ? (colaboradores as any[]).find((c) => c.id === aprovadorId)?.nome : "Não"}</p>
+                  <p><strong>Validador:</strong> {requerValidacao ? ((colaboradores as any[]).find((c) => c.id === validadorId)?.nome || "—") : "Não"}</p>
+                  <p><strong>Aprovador:</strong> {requerAprovacao ? ((colaboradores as any[]).find((c) => c.id === aprovadorId)?.nome || "—") : "Não"}</p>
                   <p><strong>Campos:</strong> {fields.length} em {sections.length} seção(ões)</p>
                 </div>
               </div>
