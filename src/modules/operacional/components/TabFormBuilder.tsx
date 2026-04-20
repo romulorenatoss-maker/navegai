@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { SectionForm, FieldForm, OpcaoRegra, FIELD_TYPES, SECTION_COLORS, defaultField, defaultSection, getDefaultOpcoesRegras } from "../types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import QuickFieldDialog from "@/components/QuickFieldDialog";
 
 interface Props {
   sections: SectionForm[];
@@ -25,6 +26,7 @@ interface Props {
 export function TabFormBuilder({ sections, setSections, fields, setFields, setores = [], tipoExecucao = "checklist_inspecao" }: Props) {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<FieldForm | null>(null);
+  const [quickAddSectionId, setQuickAddSectionId] = useState<string | null>(null);
 
   const addSection = () => {
     const s = defaultSection(sections.length);
@@ -101,16 +103,16 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-foreground">Seções e Campos</p>
+        <p className="text-sm font-medium text-foreground">Formulários e Campos</p>
         <Button type="button" variant="outline" size="sm" onClick={addSection}>
-          <Plus className="w-3.5 h-3.5 mr-1" /> Seção
+          <Plus className="w-3.5 h-3.5 mr-1" /> Novo Formulário
         </Button>
       </div>
 
       {sections.length === 0 && (
         <div className="text-center py-8 text-muted-foreground border border-dashed border-border rounded-lg">
-          <p className="text-sm">Nenhuma seção criada.</p>
-          <p className="text-caption">Adicione uma seção para começar a construir o formulário.</p>
+          <p className="text-sm">Nenhum formulário criado.</p>
+          <p className="text-caption">Clique em "Novo Formulário" para começar.</p>
         </div>
       )}
 
@@ -221,8 +223,8 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                               )}
                             </Droppable>
 
-                            <Button type="button" variant="outline" size="sm" className="w-full mt-2" onClick={() => addField(section.tempId)}>
-                              <Plus className="w-3.5 h-3.5 mr-1" /> Campo
+                            <Button type="button" variant="outline" size="sm" className="w-full mt-2" onClick={() => setQuickAddSectionId(section.tempId)}>
+                              <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Campo
                             </Button>
                           </div>
                         )}
@@ -245,6 +247,14 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
           onClose={() => setEditingField(null)}
         />
       )}
+
+      <QuickFieldDialog
+        open={!!quickAddSectionId}
+        onOpenChange={(o) => { if (!o) setQuickAddSectionId(null); }}
+        sectionTempId={quickAddSectionId || ""}
+        nextOrdem={fields.filter(f => f.sectionTempId === quickAddSectionId).length}
+        onAdd={(f) => setFields(prev => [...prev, f])}
+      />
     </div>
   );
 }
