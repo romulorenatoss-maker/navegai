@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { session, loading, isAdmin, canViewPath } = useAuth();
+  const { session, loading, isAdmin, canViewPath, allowedScreens } = useAuth();
   const location = useLocation();
   const [showFallback, setShowFallback] = useState(false);
 
@@ -58,7 +58,23 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isOpenForAll = currentPath === "/operacional/cadastro";
 
   if (!isEvalMode && !isDesempenhoView && !isOpenForAll && !canViewPath(currentPath)) {
-    return <Navigate to="/avaliacoes/minhas" replace />;
+    // Redirect to the user's first allowed screen, falling back to /avaliacoes/minhas.
+    // Avoids an infinite redirect loop when the user has no permission for the fallback.
+    const fallback = allowedScreens.find((p) => p && p !== currentPath) ?? "/avaliacoes/minhas";
+    if (fallback === currentPath) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center px-4">
+          <div className="max-w-md text-center space-y-3">
+            <div className="text-body font-medium text-foreground">Sem acesso</div>
+            <div className="text-caption text-muted-foreground">
+              Você não tem permissão para acessar nenhuma tela. Solicite ao administrador a liberação de pelo menos uma tela.
+            </div>
+            <Button onClick={() => window.location.replace("/login")}>Voltar ao login</Button>
+          </div>
+        </div>
+      );
+    }
+    return <Navigate to={fallback} replace />;
   }
 
   return <>{children}</>;
