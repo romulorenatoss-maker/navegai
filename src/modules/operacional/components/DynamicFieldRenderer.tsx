@@ -151,8 +151,9 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
       const path = `${assignmentId}/${field.id}/${Date.now()}.${ext}`;
       const { error: upErr } = await supabase.storage.from("evidencias").upload(path, file);
       if (upErr) throw upErr;
-      const { data: urlData } = supabase.storage.from("evidencias").getPublicUrl(path);
-      update({ evidencia_url: urlData.publicUrl });
+      const { data: signed, error: signErr } = await supabase.storage.from("evidencias").createSignedUrl(path, 60 * 60 * 24 * 365);
+      if (signErr) throw signErr;
+      update({ evidencia_url: signed.signedUrl });
     } catch (e: any) {
       console.error("Upload failed:", e);
     } finally {

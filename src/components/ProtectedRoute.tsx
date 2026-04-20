@@ -53,11 +53,10 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const currentPath = location.pathname;
   const searchParams = new URLSearchParams(location.search);
   const isEvalMode = currentPath === "/avaliacoes/pesquisa" && searchParams.get("mode") === "eval";
-  const isDesempenhoView = currentPath === "/desempenho";
   // Liberado a todos: criação de tarefa individual ad-hoc
   const isOpenForAll = currentPath === "/operacional/cadastro";
 
-  if (!isEvalMode && !isDesempenhoView && !isOpenForAll && !canViewPath(currentPath)) {
+  if (!isEvalMode && !isOpenForAll && !canViewPath(currentPath)) {
     // Redirect to the user's first allowed screen, falling back to /avaliacoes/minhas.
     // Avoids an infinite redirect loop when the user has no permission for the fallback.
     const fallback = allowedScreens.find((p) => p && p !== currentPath) ?? "/avaliacoes/minhas";
