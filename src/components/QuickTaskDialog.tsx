@@ -310,22 +310,42 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                 <div className="border-t border-border/60 pt-3 space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <div>
-                      <Label className="text-sm">Validar execução antes?</Label>
-                      <p className="text-[11px] text-muted-foreground">Um validador revisa a execução antes da aprovação.</p>
+                      <Label className="text-sm">Avaliador</Label>
+                      <p className="text-[11px] text-muted-foreground">Revisa a execução antes da aprovação. Pode ser uma pessoa ou um setor inteiro.</p>
                     </div>
                     <Switch checked={requerValidacao} onCheckedChange={setRequerValidacao} />
                   </div>
                   {requerValidacao && (
-                    <div className="space-y-1.5">
-                      <Label>Validador *</Label>
-                      <Select value={validadorId} onValueChange={setValidadorId} disabled={!avaliadoId}>
-                        <SelectTrigger><SelectValue placeholder={avaliadoId ? "Selecionar..." : "Escolha o avaliado primeiro"} /></SelectTrigger>
-                        <SelectContent>
-                          {validadorOptions.map((c: any) => (
-                            <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 text-xs">
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input type="radio" checked={validadorMode === "individual"} onChange={() => setValidadorMode("individual")} />
+                          Individual
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input type="radio" checked={validadorMode === "setor"} onChange={() => setValidadorMode("setor")} />
+                          Setorial
+                        </label>
+                      </div>
+                      {validadorMode === "individual" ? (
+                        <Select value={validadorId} onValueChange={setValidadorId} disabled={!avaliadoId}>
+                          <SelectTrigger><SelectValue placeholder={avaliadoId ? "Selecionar colaborador..." : "Escolha o avaliado primeiro"} /></SelectTrigger>
+                          <SelectContent>
+                            {validadorOptions.map((c: any) => (
+                              <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Select value={validadorSetorId} onValueChange={setValidadorSetorId}>
+                          <SelectTrigger><SelectValue placeholder="Selecionar setor..." /></SelectTrigger>
+                          <SelectContent>
+                            {(setores as any[]).map((s) => (
+                              <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                       <p className="text-[10px] text-muted-foreground">Não pode ser o próprio avaliado.</p>
                     </div>
                   )}
@@ -334,24 +354,42 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                 <div className="border-t border-border/60 pt-3 space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <div>
-                      <Label className="text-sm">Requer aprovação?</Label>
-                      <p className="text-[11px] text-muted-foreground">Aprovador final valida a nota. Não pode ser o próprio avaliado.</p>
+                      <Label className="text-sm">Aprovador</Label>
+                      <p className="text-[11px] text-muted-foreground">Valida a nota final. Não pode ser o próprio avaliado. Pode ser uma pessoa ou um setor.</p>
                     </div>
                     <Switch checked={requerAprovacao} onCheckedChange={setRequerAprovacao} />
                   </div>
                   {requerAprovacao && (
-                    <div className="space-y-1.5">
-                      <Label>Aprovador *</Label>
-                      <Select value={aprovadorId} onValueChange={setAprovadorId} disabled={!avaliadoId}>
-                        <SelectTrigger><SelectValue placeholder={avaliadoId ? "Selecionar..." : "Escolha o avaliado primeiro"} /></SelectTrigger>
-                        <SelectContent>
-                          {aprovadorOptions.map((c: any) => (
-                            <SelectItem key={c.id} value={c.id}>
-                              {c.nome}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 text-xs">
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input type="radio" checked={aprovadorMode === "individual"} onChange={() => setAprovadorMode("individual")} />
+                          Individual
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input type="radio" checked={aprovadorMode === "setor"} onChange={() => setAprovadorMode("setor")} />
+                          Setorial
+                        </label>
+                      </div>
+                      {aprovadorMode === "individual" ? (
+                        <Select value={aprovadorId} onValueChange={setAprovadorId} disabled={!avaliadoId}>
+                          <SelectTrigger><SelectValue placeholder={avaliadoId ? "Selecionar colaborador..." : "Escolha o avaliado primeiro"} /></SelectTrigger>
+                          <SelectContent>
+                            {aprovadorOptions.map((c: any) => (
+                              <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Select value={aprovadorSetorId} onValueChange={setAprovadorSetorId}>
+                          <SelectTrigger><SelectValue placeholder="Selecionar setor..." /></SelectTrigger>
+                          <SelectContent>
+                            {(setores as any[]).map((s) => (
+                              <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                       {isSelfTask && (
                         <p className="text-[10px] text-amber-600 dark:text-amber-400">Tarefa criada para si mesmo: o aprovador não pode ser você.</p>
                       )}
@@ -360,19 +398,7 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Setor</Label>
-                  <Select value={setorId} onValueChange={setSetorId}>
-                    <SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger>
-                    <SelectContent>
-                      {(setores as any[]).map((s) => (
-                        <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Data prevista *</Label>
                   <Input type="date" value={dataPrevista} onChange={(e) => setDataPrevista(e.target.value)} />
