@@ -30,13 +30,13 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
   // Step 1 state
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
-  const [responsavelId, setResponsavelId] = useState("");
   const [setorId, setSetorId] = useState("");
   const [dataPrevista, setDataPrevista] = useState(getLocalToday());
   const [horarioLimite, setHorarioLimite] = useState("18:00");
-  const [serAvaliado, setSerAvaliado] = useState(false);
-  const [avaliadoId, setAvaliadoId] = useState("");
-  const [avaliadorId, setAvaliadorId] = useState("");
+  // Responsáveis
+  const [avaliadoId, setAvaliadoId] = useState(""); // quem responde + recebe nota
+  const [requerValidacao, setRequerValidacao] = useState(false);
+  const [validadorId, setValidadorId] = useState("");
   const [requerAprovacao, setRequerAprovacao] = useState(false);
   const [aprovadorId, setAprovadorId] = useState("");
 
@@ -51,9 +51,10 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
 
   const reset = () => {
     setStep(1);
-    setNome(""); setDescricao(""); setResponsavelId(""); setSetorId("");
+    setNome(""); setDescricao(""); setSetorId("");
     setDataPrevista(getLocalToday()); setHorarioLimite("18:00");
-    setSerAvaliado(false); setAvaliadoId(""); setAvaliadorId("");
+    setAvaliadoId("");
+    setRequerValidacao(false); setValidadorId("");
     setRequerAprovacao(false); setAprovadorId("");
     setSections([]); setFields([]);
     setSlaHoras(24); setPenalidadeForaPrazo(20); setPesoNotaMaxima(100);
@@ -62,7 +63,6 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
   useEffect(() => {
     if (open) {
       reset();
-      // criar 1 seção padrão para começar
       const s = defaultSection(0);
       s.nome = "Itens";
       setSections([s]);
@@ -89,16 +89,27 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
     enabled: open,
   });
 
-  // Avaliador não pode ser ele mesmo (não pode avaliar a si mesmo)
-  const avaliadorOptions = useMemo(() => {
-    return (colaboradores as any[]).filter((c) => c.id !== avaliadoId);
-  }, [colaboradores, avaliadoId]);
+  // Tarefa "para si mesmo" → criador == avaliado
+  const isSelfTask = !!profile?.id && avaliadoId === profile.id;
+
+  // Validador: nunca pode ser o avaliado (não pode validar a si mesmo)
+  const validadorOptions = useMemo(
+    () => (colaboradores as any[]).filter((c) => c.id !== avaliadoId),
+    [colaboradores, avaliadoId]
+  );
+
+  // Aprovador: pode ser qualquer um, INCLUSIVE o avaliado.
+  // EXCEÇÃO: se a tarefa é "para si mesmo" (criador == avaliado), o aprovador NÃO pode ser o próprio.
+  const aprovadorOptions = useMemo(() => {
+    if (isSelfTask) return (colaboradores as any[]).filter((c) => c.id !== profile?.id);
+    return colaboradores as any[];
+  }, [colaboradores, isSelfTask, profile?.id]);
 
   const canAdvanceStep1 = nome.trim().length > 0
-    && responsavelId
-    && dataPrevista
-    && (!serAvaliado || (avaliadoId && avaliadorId && avaliadoId !== avaliadorId))
-    && (!requerAprovacao || aprovadorId);
+    && !!avaliadoId
+    && !!dataPrevista
+    && (!requerValidacao || (!!validadorId && validadorId !== avaliadoId))
+    && (!requerAprovacao || (!!aprovadorId && (!isSelfTask || aprovadorId !== profile?.id)));
 
   const canAdvanceStep2 = fields.length > 0 && fields.every((f) => f.label.trim().length > 0);
 
@@ -114,7 +125,7 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
         descricao: descricao.trim() || null,
         tipo_execucao: "checklist_inspecao",
         setor_id: setorId || null,
-        responsavel_id: responsavelId,
+        responsavel_id: avaliadoId,
         recorrencia_tipo: "unica",
         data_inicio: dataPrevista,
         data_fim: dataPrevista,
@@ -122,13 +133,13 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
         horario_limite_execucao: horarioLimite,
         sla_horas: slaHoras,
         penalidade_fora_prazo: penalidadeForaPrazo,
-        executor_profile_id: responsavelId,
+        executor_profile_id: avaliadoId,
         executor_setor_id: setorId || null,
-        avaliador_profile_id: serAvaliado ? avaliadorId : null,
-        avaliado_profile_id: serAvaliado ? avaliadoId : null,
+        avaliador_profile_id: requerValidacao ? validadorId : null,
+        avaliado_profile_id: avaliadoId,
         aprovador_profile_id: requerAprovacao ? aprovadorId : null,
         requer_aprovacao_gestor: requerAprovacao,
-        modo_pontuacao: serAvaliado ? "pontuar_avaliado" : "sem_pontuacao",
+        modo_pontuacao: "pontuar_avaliado",
         destino_score: "individual",
         tipo_atribuicao_avaliado: "individual",
         habilitar_perguntas_automaticas: false,
@@ -166,7 +177,7 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
             obrigatorio: f.obrigatorio, peso: f.peso,
             nota_maxima: pesoNotaMaxima,
             penalidade_reprovacao: f.penalidade_reprovacao,
-            impacta_score: serAvaliado && f.impacta_score,
+            impacta_score: f.impacta_score,
             criticidade: f.criticidade, gera_contingencia: f.gera_contingencia,
             exige_evidencia: f.exige_evidencia, tipo_evidencia: f.tipo_evidencia || "foto",
             opcoes: f.opcoes?.length > 0 ? f.opcoes : null,
@@ -186,16 +197,16 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
         if (error) throw error;
       }
 
-      // 4) cria assignment imediato para o responsável
+      // 4) cria assignment imediato para o avaliado (executor + recebe nota)
       const assignPayload: any = {
         template_id: templateId,
-        responsavel_id: responsavelId,
+        responsavel_id: avaliadoId,
         data_prevista: dataPrevista,
         horario_limite: horarioLimite || null,
         status: "pendente",
         created_by: profile.id,
-        avaliador_id: serAvaliado ? avaliadorId : null,
-        avaliado_id: serAvaliado ? avaliadoId : null,
+        avaliador_id: requerValidacao ? validadorId : null,
+        avaliado_id: avaliadoId,
         aprovador_id: requerAprovacao ? aprovadorId : null,
         setor_executor_id: setorId || null,
       };
@@ -259,10 +270,16 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                 <Textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Detalhes (opcional)" rows={2} maxLength={500} />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Responsáveis */}
+              <div className="border border-border rounded-lg p-3 space-y-3 bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-primary" />
+                  <Label className="text-sm font-semibold">Responsáveis</Label>
+                </div>
+
                 <div className="space-y-1.5">
-                  <Label>Quem vai responder *</Label>
-                  <Select value={responsavelId} onValueChange={setResponsavelId}>
+                  <Label>Avaliado *</Label>
+                  <Select value={avaliadoId} onValueChange={setAvaliadoId}>
                     <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
                     <SelectContent>
                       {(colaboradores as any[]).map((c) => (
@@ -270,8 +287,63 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-[10px] text-muted-foreground">Pessoa que responde a tarefa e recebe a nota.</p>
                 </div>
 
+                <div className="border-t border-border/60 pt-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <Label className="text-sm">Validar execução antes?</Label>
+                      <p className="text-[11px] text-muted-foreground">Um validador revisa a execução antes da aprovação.</p>
+                    </div>
+                    <Switch checked={requerValidacao} onCheckedChange={setRequerValidacao} />
+                  </div>
+                  {requerValidacao && (
+                    <div className="space-y-1.5">
+                      <Label>Validador *</Label>
+                      <Select value={validadorId} onValueChange={setValidadorId} disabled={!avaliadoId}>
+                        <SelectTrigger><SelectValue placeholder={avaliadoId ? "Selecionar..." : "Escolha o avaliado primeiro"} /></SelectTrigger>
+                        <SelectContent>
+                          {validadorOptions.map((c: any) => (
+                            <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[10px] text-muted-foreground">Não pode ser o próprio avaliado.</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t border-border/60 pt-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <Label className="text-sm">Requer aprovação?</Label>
+                      <p className="text-[11px] text-muted-foreground">Aprovador final valida a nota. Pode ser o próprio avaliado, exceto quando a tarefa é criada para si mesmo.</p>
+                    </div>
+                    <Switch checked={requerAprovacao} onCheckedChange={setRequerAprovacao} />
+                  </div>
+                  {requerAprovacao && (
+                    <div className="space-y-1.5">
+                      <Label>Aprovador *</Label>
+                      <Select value={aprovadorId} onValueChange={setAprovadorId} disabled={!avaliadoId}>
+                        <SelectTrigger><SelectValue placeholder={avaliadoId ? "Selecionar..." : "Escolha o avaliado primeiro"} /></SelectTrigger>
+                        <SelectContent>
+                          {aprovadorOptions.map((c: any) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.nome}{c.id === avaliadoId ? " (próprio avaliado)" : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {isSelfTask && (
+                        <p className="text-[10px] text-amber-600 dark:text-amber-400">Tarefa criada para si mesmo: o aprovador não pode ser você.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                   <Label>Setor</Label>
                   <Select value={setorId} onValueChange={setSetorId}>
@@ -293,68 +365,6 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                   <Label>Horário limite</Label>
                   <Input type="time" value={horarioLimite} onChange={(e) => setHorarioLimite(e.target.value)} />
                 </div>
-              </div>
-
-              <div className="border border-border rounded-lg p-3 space-y-3 bg-muted/30">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-sm">Será avaliada?</Label>
-                    <p className="text-[11px] text-muted-foreground">Define quem recebe a nota e quem avalia.</p>
-                  </div>
-                  <Switch checked={serAvaliado} onCheckedChange={setSerAvaliado} />
-                </div>
-
-                {serAvaliado && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                    <div className="space-y-1.5">
-                      <Label>Quem recebe a nota *</Label>
-                      <Select value={avaliadoId} onValueChange={setAvaliadoId}>
-                        <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-                        <SelectContent>
-                          {(colaboradores as any[]).map((c) => (
-                            <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Quem vai avaliar *</Label>
-                      <Select value={avaliadorId} onValueChange={setAvaliadorId} disabled={!avaliadoId}>
-                        <SelectTrigger><SelectValue placeholder={avaliadoId ? "Selecionar..." : "Escolha o avaliado primeiro"} /></SelectTrigger>
-                        <SelectContent>
-                          {avaliadorOptions.map((c: any) => (
-                            <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-[10px] text-muted-foreground">Avaliador não pode ser o mesmo do avaliado.</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="border border-border rounded-lg p-3 space-y-3 bg-muted/30">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-sm">Requer aprovação?</Label>
-                    <p className="text-[11px] text-muted-foreground">Após avaliada, um aprovador valida.</p>
-                  </div>
-                  <Switch checked={requerAprovacao} onCheckedChange={setRequerAprovacao} />
-                </div>
-
-                {requerAprovacao && (
-                  <div className="space-y-1.5 pt-1">
-                    <Label>Aprovador (gestor) *</Label>
-                    <Select value={aprovadorId} onValueChange={setAprovadorId}>
-                      <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-                      <SelectContent>
-                        {(colaboradores as any[]).map((c) => (
-                          <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -399,10 +409,10 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                 <p className="text-xs font-semibold text-foreground">Resumo</p>
                 <div className="text-xs text-muted-foreground space-y-0.5">
                   <p><strong>Tarefa:</strong> {nome || "—"}</p>
-                  <p><strong>Responsável:</strong> {(colaboradores as any[]).find((c) => c.id === responsavelId)?.nome || "—"}</p>
+                  <p><strong>Avaliado:</strong> {(colaboradores as any[]).find((c) => c.id === avaliadoId)?.nome || "—"}</p>
                   <p><strong>Data:</strong> {dataPrevista} • limite {horarioLimite}</p>
-                  <p><strong>Avaliada:</strong> {serAvaliado ? `Sim (${(colaboradores as any[]).find((c) => c.id === avaliadoId)?.nome} → avaliada por ${(colaboradores as any[]).find((c) => c.id === avaliadorId)?.nome})` : "Não"}</p>
-                  <p><strong>Aprovação:</strong> {requerAprovacao ? (colaboradores as any[]).find((c) => c.id === aprovadorId)?.nome : "Não"}</p>
+                  <p><strong>Validador:</strong> {requerValidacao ? ((colaboradores as any[]).find((c) => c.id === validadorId)?.nome || "—") : "Não"}</p>
+                  <p><strong>Aprovador:</strong> {requerAprovacao ? ((colaboradores as any[]).find((c) => c.id === aprovadorId)?.nome || "—") : "Não"}</p>
                   <p><strong>Campos:</strong> {fields.length} em {sections.length} seção(ões)</p>
                 </div>
               </div>
