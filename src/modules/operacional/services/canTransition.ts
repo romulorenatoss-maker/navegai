@@ -9,11 +9,13 @@ import type { OperationalRole } from "./operationalRbac";
 
 export const VALID_TRANSITIONS: Record<string, string[]> = {
   pendente: ["em_andamento"],
-  em_andamento: ["aguardando_avaliacao", "contingenciado"],
+  em_andamento: ["aguardando_avaliacao", "aguardando_validacao", "contingenciado"],
   aguardando_avaliacao: ["em_avaliacao"],
   em_avaliacao: ["aguardando_aprovacao", "concluida", "devolvida", "contingenciado", "reprovada"],
   contingenciado: ["aguardando_aprovacao"],
   aguardando_aprovacao: ["aprovada", "devolvida", "concluida"],
+  // Novo fluxo "tarefa designada": criador valida ou devolve
+  aguardando_validacao: ["aprovada", "devolvida"],
   devolvida: ["em_andamento"],
   concluida: ["em_andamento"],
   aprovada: ["em_andamento"],
@@ -21,16 +23,20 @@ export const VALID_TRANSITIONS: Record<string, string[]> = {
   nao_executada: ["em_andamento"],
 };
 
-/** Quem pode disparar cada transição de destino. ADMIN sempre permitido. */
+/** Quem pode disparar cada transição de destino. ADMIN sempre permitido.
+ *  CRIADOR_DESIGNANTE = quem criou a tarefa para outra pessoa (created_by). */
 const ROLE_FOR_TARGET: Record<string, OperationalRole[]> = {
   em_andamento:          ["EXECUTOR", "ADMIN"],
   aguardando_avaliacao:  ["EXECUTOR", "ADMIN"],
+  aguardando_validacao:  ["EXECUTOR", "ADMIN"],
   em_avaliacao:          ["AVALIADOR", "ADMIN"],
   contingenciado:        ["EXECUTOR", "AVALIADOR", "ADMIN"],
   aguardando_aprovacao:  ["AVALIADOR", "ADMIN"],
-  aprovada:              ["APROVADOR", "ADMIN"],
+  // aprovada agora pode vir do APROVADOR (fluxo antigo) OU do CRIADOR_DESIGNANTE (novo)
+  aprovada:              ["APROVADOR", "CRIADOR_DESIGNANTE", "ADMIN"],
   concluida:             ["AVALIADOR", "APROVADOR", "ADMIN"],
-  devolvida:             ["AVALIADOR", "APROVADOR", "ADMIN"],
+  // devolvida pode ser feita pelo avaliador, aprovador OU criador-designante
+  devolvida:             ["AVALIADOR", "APROVADOR", "CRIADOR_DESIGNANTE", "ADMIN"],
   reprovada:             ["AVALIADOR", "ADMIN"],
 };
 

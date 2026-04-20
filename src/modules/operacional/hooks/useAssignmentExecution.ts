@@ -371,10 +371,14 @@ export function useAssignmentExecution(assignmentId: string | null) {
           });
         }
       } else {
-        // Normal flow: send to evaluation
+        // Decide fluxo: tarefa designada (created_by ≠ executor e sem avaliador padrão) → aguardando_validacao
+        // caso contrário → aguardando_avaliacao (fluxo tradicional)
+        const isDesignada = !!assignment.created_by
+          && assignment.created_by !== assignment.responsavel_id
+          && !assignment.avaliador_id;
         await transition.mutateAsync({
           assignmentId: assignment.id,
-          action: "enviar_avaliacao",
+          action: isDesignada ? "enviar_validacao_designante" : "enviar_avaliacao",
           origem: "execucao",
           extraData: { tempoGasto, atrasado },
         });

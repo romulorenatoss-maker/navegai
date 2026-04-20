@@ -143,10 +143,11 @@ export default function OperationalExecucaoPage() {
     queryFn: async () => {
       if (!profile?.id) return [];
       let q = (supabase as any).from("operational_assignments")
-        .select("*, operational_templates(nome, tipo_execucao), profiles:responsavel_id(id, nome, foto_url)")
+        .select("*, operational_templates(nome, tipo_execucao), profiles:responsavel_id(id, nome, foto_url), criador:created_by(id, nome)")
         .order("data_prevista", { ascending: true });
       if (!isAdmin) {
-        q = q.or(`responsavel_id.eq.${profile.id},avaliador_id.eq.${profile.id},avaliado_id.eq.${profile.id},validador_contingencia_id.eq.${profile.id}`);
+        // Inclui também tarefas onde sou o CRIADOR (created_by) — necessário para "Designadas" e "Validação"
+        q = q.or(`responsavel_id.eq.${profile.id},avaliador_id.eq.${profile.id},avaliado_id.eq.${profile.id},validador_contingencia_id.eq.${profile.id},created_by.eq.${profile.id}`);
       }
       const { data, error } = await q.limit(500);
       if (error) throw error;
@@ -193,16 +194,31 @@ export default function OperationalExecucaoPage() {
   // "Tarefas de Hoje" includes: today's tasks + em_andamento (any date) + atrasadas (past dates still open)
    const hoje = filteredAssignments.filter((a: any) => {
     if (["em_andamento"].includes(a.status)) return true;
-    if (["pendente", "devolvida"].includes(a.status) && a.data_prevista <= filterDate) return true;
+    if (["pendente", "devolvida"].includes(a.status) && a.data_prevista <= filterDate && a.responsavel_id === profile?.id) return true;
     return false;
   });
-  const aFazer = filteredAssignments.filter((a: any) => ["pendente"].includes(a.status) && a.data_prevista > filterDate);
-  // Devolvidas: status devolvida OR contingenciado tasks where the current user is the avaliado (they need to attach missing items)
-  const devolvidas = filteredAssignments.filter((a: any) => {
-    if (a.status === "devolvida") return true;
-    if (["contingenciado", "contingencia"].includes(a.status) && a.avaliado_id === profile?.id) return true;
-    return false;
-  });
+  // NOVO: "Tarefas Designadas" — tarefas que EU criei para outras pessoas (qualquer status ativo)
+  const tarefasDesignadas = filteredAssignments.filter((a: any) =>
+    a.created_by === profile?.id &&
+    a.responsavel_id !== profile?.id &&
+    !["concluida", "aprovada", "reprovada", "nao_executada"].includes(a.status)
+  );
+  // NOVO: "Aguardando Minha Validação" — tarefas designadas por mim que aguardam minha validação
+  const aguardandoMinhaValidacao = filteredAssignments.filter((a: any) =>
+    a.created_by === profile?.id &&
+    a.responsavel_id !== profile?.id &&
+    a.status === "aguardando_validacao"
+  );
+  // Devolvidas — separado em duas sub-listas
+  const minhasDevolucoes = filteredAssignments.filter((a: any) =>
+    a.status === "devolvida" && a.responsavel_id === profile?.id
+  );
+  const devolvidasParaOutros = filteredAssignments.filter((a: any) =>
+    a.status === "devolvida" && a.created_by === profile?.id && a.responsavel_id !== profile?.id
+  );
+  const devolvidas = [...minhasDevolucoes, ...filteredAssignments.filter((a: any) =>
+    ["contingenciado", "contingencia"].includes(a.status) && a.avaliado_id === profile?.id
+  )];
   const contingenciados = filteredAssignments.filter((a: any) => ["contingenciado", "contingencia"].includes(a.status));
   const aguardandoAvaliacao = filteredAssignments.filter((a: any) => ["aguardando_avaliacao", "aguardando_aprovacao"].includes(a.status));
   const concluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 50);
@@ -417,19 +433,42 @@ export default function OperationalExecucaoPage() {
             {hoje.length === 0 ? renderEmptyState("Nenhuma tarefa para hoje.") : hoje.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
           </AccordionSection>
 
-          <AccordionSection title="A Fazer" count={aFazer.length}
+          {aguardandoMinhaValidacao.length > 0 && (
+            <AccordionSection title="Aguardando Minha Validação" count={aguardandoMinhaValidacao.length}
+              icon={<CheckCircle2 className="w-4 h-4" style={{ color: "#06b6d4" }} />}
+              borderColor="#06b6d4" badgeBg="bg-cyan-500/15" badgeText="text-cyan-700 dark:text-cyan-400"
+              isOpen={openAccordion === "validacao"} onToggle={() => setOpenAccordion(openAccordion === "validacao" ? null : "validacao")}>
+              {aguardandoMinhaValidacao.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+            </AccordionSection>
+          )}
+
+          <AccordionSection title="Tarefas Designadas" count={tarefasDesignadas.length}
             icon={<ListTodo className="w-4 h-4" style={{ color: "#eab308" }} />}
             borderColor="#eab308" badgeBg="bg-yellow-500/15" badgeText="text-yellow-700 dark:text-yellow-400"
-            isOpen={openAccordion === "afazer"} onToggle={() => setOpenAccordion(openAccordion === "afazer" ? null : "afazer")}>
-            {aFazer.length === 0 ? renderEmptyState("Nenhuma rotina a fazer.") : aFazer.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+            isOpen={openAccordion === "designadas"} onToggle={() => setOpenAccordion(openAccordion === "designadas" ? null : "designadas")}>
+            {tarefasDesignadas.length === 0 ? renderEmptyState("Você não designou tarefas para outros.") : tarefasDesignadas.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
           </AccordionSection>
 
-
-          <AccordionSection title="Devolvidas" count={devolvidas.length}
+          <AccordionSection title="Devolvidas" count={devolvidas.length + devolvidasParaOutros.length}
             icon={<RotateCcw className="w-4 h-4" style={{ color: "#ef4444" }} />}
             borderColor="#ef4444" badgeBg="bg-red-500/15" badgeText="text-red-700 dark:text-red-400"
             isOpen={openAccordion === "devolvidas"} onToggle={() => setOpenAccordion(openAccordion === "devolvidas" ? null : "devolvidas")}>
-            {devolvidas.length === 0 ? renderEmptyState("Nenhuma rotina devolvida.") : devolvidas.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+            {devolvidas.length + devolvidasParaOutros.length === 0 ? renderEmptyState("Nenhuma rotina devolvida.") : (
+              <div className="space-y-3">
+                {devolvidas.length > 0 && (
+                  <div>
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Minhas devoluções</p>
+                    {devolvidas.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+                  </div>
+                )}
+                {devolvidasParaOutros.length > 0 && (
+                  <div>
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 mt-2">Devolvidas para outros</p>
+                    {devolvidasParaOutros.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+                  </div>
+                )}
+              </div>
+            )}
           </AccordionSection>
 
           <AccordionSection title="Contingenciados" count={contingenciados.length}

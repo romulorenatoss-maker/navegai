@@ -18,22 +18,27 @@ import { toast } from "sonner";
 // Valid status transitions
 const VALID_TRANSITIONS: Record<string, string[]> = {
   pendente: ["em_andamento"],
-  em_andamento: ["aguardando_avaliacao", "contingenciado"],
+  em_andamento: ["aguardando_avaliacao", "aguardando_validacao", "contingenciado"],
   aguardando_avaliacao: ["em_avaliacao"],
   em_avaliacao: ["aguardando_aprovacao", "concluida", "devolvida", "contingenciado", "reprovada"],
-  contingenciado: ["aguardando_aprovacao"], // auto-return after all contingencies resolved
+  contingenciado: ["aguardando_aprovacao"],
   aguardando_aprovacao: ["aprovada", "devolvida", "concluida"],
+  // Novo fluxo: tarefa designada — criador valida
+  aguardando_validacao: ["aprovada", "devolvida"],
   devolvida: ["em_andamento"],
   // Terminal
-  concluida: ["em_andamento"], // reopen only
-  aprovada: ["em_andamento"],  // reopen only
-  reprovada: ["em_andamento"], // reopen only
-  nao_executada: ["em_andamento"], // reopen only
+  concluida: ["em_andamento"],
+  aprovada: ["em_andamento"],
+  reprovada: ["em_andamento"],
+  nao_executada: ["em_andamento"],
 };
 
 export type TransitionAction =
   | "iniciar"
   | "enviar_avaliacao"
+  | "enviar_validacao_designante"   // novo: executor finaliza tarefa designada
+  | "validar_designada_aprovar"     // novo: criador valida → aprovada
+  | "validar_designada_devolver"    // novo: criador devolve → devolvida
   | "iniciar_avaliacao"
   | "avaliar_aprovar"
   | "avaliar_devolver"
@@ -95,6 +100,9 @@ function resolveTargetStatus(action: TransitionAction, currentStatus: string, ex
   switch (action) {
     case "iniciar": return "em_andamento";
     case "enviar_avaliacao": return "aguardando_avaliacao";
+    case "enviar_validacao_designante": return "aguardando_validacao";
+    case "validar_designada_aprovar": return "aprovada";
+    case "validar_designada_devolver": return "devolvida";
     case "iniciar_avaliacao": return "em_avaliacao";
     case "avaliar_aprovar": return extraData?.requerAprovacao ? "aguardando_aprovacao" : "concluida";
     case "avaliar_devolver": return "devolvida";
@@ -174,8 +182,11 @@ export function useOperationalTransition() {
         }
       }
 
-      // Require motivo for certain actions
-      if (["reabrir", "avaliar_devolver", "avaliar_reprovar", "reprovar_devolver_final"].includes(action) && !motivo?.trim()) {
+      // Require motivo for certain actions (devoluções/reabertura/reprovação sempre exigem)
+      if (
+        ["reabrir", "avaliar_devolver", "avaliar_reprovar", "reprovar_devolver_final", "validar_designada_devolver"].includes(action) &&
+        !motivo?.trim()
+      ) {
         throw new Error("Justificativa/motivo é obrigatório para esta ação.");
       }
 
@@ -196,7 +207,7 @@ export function useOperationalTransition() {
         if (profile.id) updatePayload.avaliador_id = profile.id;
       }
 
-      if (action === "avaliar_devolver" || action === "reprovar_devolver_final") {
+      if (action === "avaliar_devolver" || action === "reprovar_devolver_final" || action === "validar_designada_devolver") {
         updatePayload.rodada_atual = (extraData?.rodadaAtual || 1) + 1;
       }
 
@@ -209,7 +220,8 @@ export function useOperationalTransition() {
         updatePayload.aprovador_id = extraData.aprovadorProfileId;
       }
 
-      if (["enviar_avaliacao"].includes(action)) {
+      // "enviar_validacao_designante" carrega fim_em e tempo gasto, igual ao enviar_avaliacao
+      if (action === "enviar_avaliacao" || action === "enviar_validacao_designante") {
         updatePayload.fim_em = now;
         if (extraData?.tempoGasto != null) updatePayload.tempo_gasto_minutos = extraData.tempoGasto;
       }

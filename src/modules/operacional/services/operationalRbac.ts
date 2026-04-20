@@ -12,12 +12,13 @@
  */
 import type { EffectivePermission } from "@/hooks/usePermissions";
 
-export type OperationalRole = "EXECUTOR" | "AVALIADOR" | "APROVADOR" | "GESTOR" | "ADMIN";
+export type OperationalRole = "EXECUTOR" | "AVALIADOR" | "APROVADOR" | "GESTOR" | "ADMIN" | "CRIADOR_DESIGNANTE";
 
 export type OperationalAction =
   | "executar_tarefa"
   | "avaliar_tarefa"
   | "aprovar_tarefa"
+  | "validar_designada"
   | "gerenciar_contingencia"
   | "ver_gestao_operacional"
   | "cadastrar_template_operacional";
@@ -27,6 +28,7 @@ export const ACTION_ROLES: Record<OperationalAction, OperationalRole[]> = {
   executar_tarefa:                ["EXECUTOR", "ADMIN"],
   avaliar_tarefa:                 ["AVALIADOR", "ADMIN"],
   aprovar_tarefa:                 ["APROVADOR", "ADMIN"],
+  validar_designada:              ["CRIADOR_DESIGNANTE", "ADMIN"],
   gerenciar_contingencia:         ["AVALIADOR", "APROVADOR", "GESTOR", "ADMIN"],
   ver_gestao_operacional:         ["GESTOR", "ADMIN"],
   cadastrar_template_operacional: ["GESTOR", "ADMIN"],
@@ -38,12 +40,17 @@ interface AssignmentRoleInput {
     responsavel_id?: string | null;
     avaliador_id?: string | null;
     aprovador_id?: string | null;
+    created_by?: string | null;
   } | null;
 }
 
 /**
  * Determina o papel efetivo do usuário para um assignment específico.
  * Admin sempre vence. Caso contrário, deriva dos campos do assignment.
+ *
+ * Prioridade: ADMIN > APROVADOR > AVALIADOR > CRIADOR_DESIGNANTE > EXECUTOR.
+ * CRIADOR_DESIGNANTE = created_by == profileId E executor != profileId
+ * (auto-criação não conta como "designada").
  */
 export function resolveAssignmentRole(
   input: AssignmentRoleInput,
@@ -56,6 +63,7 @@ export function resolveAssignmentRole(
   if (!a) return null;
   if (a.aprovador_id === pid) return "APROVADOR";
   if (a.avaliador_id === pid) return "AVALIADOR";
+  if (a.created_by === pid && a.responsavel_id !== pid) return "CRIADOR_DESIGNANTE";
   if (a.responsavel_id === pid) return "EXECUTOR";
   return null;
 }

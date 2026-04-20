@@ -97,6 +97,7 @@ export const STATUS_CONFIG: Record<string, { label: string; class: string }> = {
   concluida: { label: "Concluída", class: "badge-complete" },
   aguardando_aprovacao: { label: "Aguardando Aprovação", class: "bg-purple-100 text-purple-800 border-purple-200" },
   aguardando_avaliacao: { label: "Aguardando Avaliação", class: "bg-indigo-100 text-indigo-800 border-indigo-200" },
+  aguardando_validacao: { label: "Aguardando Validação", class: "bg-cyan-100 text-cyan-800 border-cyan-200" },
   em_avaliacao: { label: "Em Avaliação", class: "bg-violet-100 text-violet-800 border-violet-200" },
   aprovada: { label: "Aprovada", class: "bg-emerald-100 text-emerald-800 border-emerald-200" },
   reprovada: { label: "Reprovada", class: "bg-red-100 text-red-800 border-red-200" },
