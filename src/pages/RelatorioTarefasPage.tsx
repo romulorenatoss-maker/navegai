@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Trash2, ChevronDown, ChevronRight, FileBarChart } from "lucide-react";
+import { CalendarIcon, Trash2, ChevronDown, ChevronRight, FileBarChart, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -28,27 +29,62 @@ interface AssignmentRow {
   template_titulo: string;
 }
 
+const STATUS_OPTIONS = [
+  { value: "__all", label: "Todos os status" },
+  { value: "pendente", label: "Pendente" },
+  { value: "em_andamento", label: "Em andamento" },
+  { value: "aguardando_avaliacao", label: "Aguardando avaliação" },
+  { value: "aguardando_aprovacao", label: "Aguardando aprovação" },
+  { value: "devolvida", label: "Devolvida" },
+  { value: "contingenciado", label: "Contingenciada" },
+  { value: "contingencia", label: "Contingência" },
+  { value: "concluida", label: "Concluída" },
+  { value: "aprovada", label: "Aprovada" },
+  { value: "nao_executada", label: "Não executada" },
+];
+
+const STATUS_COLORS: Record<string, string> = {
+  pendente: "bg-muted text-muted-foreground",
+  em_andamento: "bg-blue-500/15 text-blue-700 dark:text-blue-400",
+  aguardando_avaliacao: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+  aguardando_aprovacao: "bg-purple-500/15 text-purple-700 dark:text-purple-400",
+  devolvida: "bg-orange-500/15 text-orange-700 dark:text-orange-400",
+  contingenciado: "bg-destructive/15 text-destructive",
+  contingencia: "bg-destructive/15 text-destructive",
+  concluida: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+  aprovada: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+  nao_executada: "bg-muted text-muted-foreground",
+};
+
 export default function RelatorioTarefasPage() {
   const queryClient = useQueryClient();
-  const [dateFrom, setDateFrom] = useState<Date | undefined>();
-  const [dateTo, setDateTo] = useState<Date | undefined>();
+  // Pending filters (form state)
+  const [pendingFrom, setPendingFrom] = useState<Date | undefined>();
+  const [pendingTo, setPendingTo] = useState<Date | undefined>();
+  const [pendingStatus, setPendingStatus] = useState<string>("__all");
+  // Applied filters (used in query)
+  const [filters, setFilters] = useState<{ from?: Date; to?: Date; status: string }>({ status: "__all" });
+
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [toDelete, setToDelete] = useState<AssignmentRow | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["relatorio-tarefas", dateFrom?.toISOString(), dateTo?.toISOString()],
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ["relatorio-tarefas", filters],
     queryFn: async () => {
       let q = supabase
         .from("operational_assignments")
-        .select("id, template_id, status, data_prevista, created_at, numero_tarefa, operational_templates(titulo)")
+        .select("id, template_id, status, data_prevista, created_at, numero_tarefa, operational_templates(nome)")
         .order("created_at", { ascending: false });
-      if (dateFrom) q = q.gte("created_at", dateFrom.toISOString());
-      if (dateTo) {
-        const end = new Date(dateTo);
+
+      if (filters.from) q = q.gte("created_at", filters.from.toISOString());
+      if (filters.to) {
+        const end = new Date(filters.to);
         end.setHours(23, 59, 59, 999);
         q = q.lte("created_at", end.toISOString());
       }
+      if (filters.status !== "__all") q = q.eq("status", filters.status);
+
       const { data, error } = await q;
       if (error) throw error;
       return (data || []).map((r: any) => ({
@@ -58,7 +94,7 @@ export default function RelatorioTarefasPage() {
         data_prevista: r.data_prevista,
         created_at: r.created_at,
         numero_tarefa: r.numero_tarefa,
-        template_titulo: r.operational_templates?.titulo ?? "Sem título",
+        template_titulo: r.operational_templates?.nome ?? "Sem título",
       })) as AssignmentRow[];
     },
   });
@@ -75,28 +111,21 @@ export default function RelatorioTarefasPage() {
 
   const toggleGroup = (k: string) => setOpenGroups((p) => ({ ...p, [k]: !p[k] }));
 
+  const handleSearch = () => {
+    setFilters({ from: pendingFrom, to: pendingTo, status: pendingStatus });
+  };
+  const handleClear = () => {
+    setPendingFrom(undefined);
+    setPendingTo(undefined);
+    setPendingStatus("__all");
+    setFilters({ status: "__all" });
+  };
+
   const handleDelete = async () => {
     if (!toDelete) return;
     setDeleting(true);
     try {
       const aid = toDelete.id;
-      // Apaga registros filhos (NÃO toca em operational_templates / rotina)
-      const tables = [
-        "operational_contingency_resolution_logs", // via contingências (CASCADE? caso não, apagar manual)
-        "operational_contingencies",
-        "operational_field_answers",
-        "operational_field_reviews",
-        "operational_approval_answers",
-        "operational_execution_check_answers",
-        "operational_execution_step_logs",
-        "operational_execution_logs",
-        "operational_assignment_history",
-        "operational_audit_trail",
-        "operational_score_logs",
-        "operational_score_overrides",
-      ] as const;
-
-      // resolution_logs depende de contingencies — apaga por contingency_id primeiro
       const { data: cgs } = await supabase
         .from("operational_contingencies")
         .select("id")
@@ -109,16 +138,25 @@ export default function RelatorioTarefasPage() {
           .in("contingency_id", cgIds);
       }
 
+      const tables = [
+        "operational_contingencies",
+        "operational_field_answers",
+        "operational_field_reviews",
+        "operational_approval_answers",
+        "operational_execution_check_answers",
+        "operational_execution_step_logs",
+        "operational_execution_logs",
+        "operational_assignment_history",
+        "operational_audit_trail",
+        "operational_score_logs",
+        "operational_score_overrides",
+      ] as const;
       for (const t of tables) {
-        if (t === "operational_contingency_resolution_logs") continue;
         const { error } = await (supabase as any).from(t).delete().eq("assignment_id", aid);
         if (error) logSystem.warn(`Falha ao limpar ${t}`, { error: error.message, assignmentId: aid });
       }
 
-      const { error: delErr } = await supabase
-        .from("operational_assignments")
-        .delete()
-        .eq("id", aid);
+      const { error: delErr } = await supabase.from("operational_assignments").delete().eq("id", aid);
       if (delErr) throw delErr;
 
       logSystem.info("Tarefa excluída via relatório", { assignmentId: aid, template: toDelete.template_titulo });
@@ -143,7 +181,7 @@ export default function RelatorioTarefasPage() {
         <div>
           <h1 className="text-2xl font-bold">Relatório de Tarefas</h1>
           <p className="text-sm text-muted-foreground">
-            Tarefas geradas a partir das rotinas operacionais. A exclusão remove apenas a tarefa e seus registros — a rotina é preservada.
+            Tarefas geradas pelas rotinas operacionais (todos os status). Excluir uma tarefa remove apenas seus registros — a rotina é preservada.
           </p>
         </div>
       </div>
@@ -157,13 +195,13 @@ export default function RelatorioTarefasPage() {
             <label className="text-xs font-medium text-muted-foreground">Criadas a partir de</label>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-[200px] justify-start text-left font-normal", !dateFrom && "text-muted-foreground")}>
+                <Button variant="outline" className={cn("w-[200px] justify-start text-left font-normal", !pendingFrom && "text-muted-foreground")}>
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dateFrom ? format(dateFrom, "PPP", { locale: ptBR }) : "Selecione"}
+                  {pendingFrom ? format(pendingFrom, "PPP", { locale: ptBR }) : "Selecione"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus className="p-3 pointer-events-auto" />
+                <Calendar mode="single" selected={pendingFrom} onSelect={setPendingFrom} initialFocus className="p-3 pointer-events-auto" />
               </PopoverContent>
             </Popover>
           </div>
@@ -171,21 +209,31 @@ export default function RelatorioTarefasPage() {
             <label className="text-xs font-medium text-muted-foreground">Criadas até</label>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-[200px] justify-start text-left font-normal", !dateTo && "text-muted-foreground")}>
+                <Button variant="outline" className={cn("w-[200px] justify-start text-left font-normal", !pendingTo && "text-muted-foreground")}>
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dateTo ? format(dateTo, "PPP", { locale: ptBR }) : "Selecione"}
+                  {pendingTo ? format(pendingTo, "PPP", { locale: ptBR }) : "Selecione"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus className="p-3 pointer-events-auto" />
+                <Calendar mode="single" selected={pendingTo} onSelect={setPendingTo} initialFocus className="p-3 pointer-events-auto" />
               </PopoverContent>
             </Popover>
           </div>
-          {(dateFrom || dateTo) && (
-            <Button variant="ghost" onClick={() => { setDateFrom(undefined); setDateTo(undefined); }}>
-              Limpar
-            </Button>
-          )}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-muted-foreground">Status</label>
+            <Select value={pendingStatus} onValueChange={setPendingStatus}>
+              <SelectTrigger className="w-[220px]"><SelectValue /></SelectTrigger>
+              <SelectContent className="bg-popover z-50">
+                {STATUS_OPTIONS.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={handleSearch} disabled={isFetching}>
+            <Search className="w-4 h-4 mr-2" /> Buscar
+          </Button>
+          <Button variant="ghost" onClick={handleClear}>Limpar</Button>
           <div className="ml-auto text-sm text-muted-foreground">
             Total: <span className="font-semibold text-foreground">{totalAssignments}</span> tarefa(s)
           </div>
@@ -197,7 +245,7 @@ export default function RelatorioTarefasPage() {
           {[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 w-full" />)}
         </div>
       ) : groups.length === 0 ? (
-        <Card><CardContent className="py-12 text-center text-muted-foreground">Nenhuma tarefa encontrada.</CardContent></Card>
+        <Card><CardContent className="py-12 text-center text-muted-foreground">Nenhuma tarefa encontrada com os filtros aplicados.</CardContent></Card>
       ) : (
         <div className="space-y-4">
           {groups.map(([titulo, items]) => {
@@ -222,7 +270,9 @@ export default function RelatorioTarefasPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded">#{row.numero_tarefa}</span>
-                              <Badge variant="outline" className="capitalize">{row.status.replace(/_/g, " ")}</Badge>
+                              <span className={cn("inline-flex items-center text-xs font-medium px-2 py-0.5 rounded capitalize", STATUS_COLORS[row.status] || "bg-muted text-muted-foreground")}>
+                                {row.status.replace(/_/g, " ")}
+                              </span>
                               <span className="text-sm text-muted-foreground">
                                 Prevista: {format(new Date(row.data_prevista), "dd/MM/yyyy")}
                               </span>
