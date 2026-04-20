@@ -36,9 +36,13 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
   // Responsáveis
   const [avaliadoId, setAvaliadoId] = useState(""); // quem responde + recebe nota
   const [requerValidacao, setRequerValidacao] = useState(false);
+  const [validadorMode, setValidadorMode] = useState<"individual" | "setor">("individual");
   const [validadorId, setValidadorId] = useState("");
+  const [validadorSetorId, setValidadorSetorId] = useState("");
   const [requerAprovacao, setRequerAprovacao] = useState(false);
+  const [aprovadorMode, setAprovadorMode] = useState<"individual" | "setor">("individual");
   const [aprovadorId, setAprovadorId] = useState("");
+  const [aprovadorSetorId, setAprovadorSetorId] = useState("");
 
   // Step 2 state
   const [sections, setSections] = useState<SectionForm[]>([]);
@@ -54,8 +58,8 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
     setNome(""); setDescricao(""); setSetorId("");
     setDataPrevista(getLocalToday()); setHorarioLimite("18:00");
     setAvaliadoId("");
-    setRequerValidacao(false); setValidadorId("");
-    setRequerAprovacao(false); setAprovadorId("");
+    setRequerValidacao(false); setValidadorMode("individual"); setValidadorId(""); setValidadorSetorId("");
+    setRequerAprovacao(false); setAprovadorMode("individual"); setAprovadorId(""); setAprovadorSetorId("");
     setSections([]); setFields([]);
     setSlaHoras(24); setPenalidadeForaPrazo(20); setPesoNotaMaxima(100);
   };
