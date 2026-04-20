@@ -1,0 +1,2 @@
+ALTER TABLE public.operational_templates ADD COLUMN IF NOT EXISTS origem text NOT NULL DEFAULT 'rotina';
+CREATE INDEX IF NOT EXISTS idx_operational_templates_origem ON public.operational_templates(origem);

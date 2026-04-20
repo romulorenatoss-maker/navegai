@@ -2434,6 +2434,7 @@ export type Database = {
           modo_pontuacao: string
           nome: string
           ordem: number
+          origem: string
           penalidade_contingencia: number
           penalidade_fora_prazo: number
           penalidade_sla_contingencia: number
@@ -2485,6 +2486,7 @@ export type Database = {
           modo_pontuacao?: string
           nome: string
           ordem?: number
+          origem?: string
           penalidade_contingencia?: number
           penalidade_fora_prazo?: number
           penalidade_sla_contingencia?: number
@@ -2536,6 +2538,7 @@ export type Database = {
           modo_pontuacao?: string
           nome?: string
           ordem?: number
+          origem?: string
           penalidade_contingencia?: number
           penalidade_fora_prazo?: number
           penalidade_sla_contingencia?: number
