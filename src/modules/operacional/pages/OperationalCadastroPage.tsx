@@ -448,7 +448,7 @@ export default function OperationalCadastroPage() {
           <h1 className="text-section font-semibold text-foreground">Rotinas Operacionais</h1>
           <p className="text-body text-muted-foreground">Cadastre templates com seções, campos dinâmicos, workflow e recorrência.</p>
         </div>
-        <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Nova Tarefa</Button>
+        <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Gerar Nova Tarefa</Button>
       </div>
 
       {/* Filters */}
