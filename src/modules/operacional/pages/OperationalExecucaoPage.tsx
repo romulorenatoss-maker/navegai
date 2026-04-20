@@ -18,6 +18,9 @@ import { useAssignmentExecution } from "@/modules/operacional/hooks/useAssignmen
 import { useOperationalTransition } from "@/modules/operacional/hooks/useOperationalTransition";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import MinhasTarefasTab from "@/components/MinhasTarefasTab";
+import { ListChecks, Trophy } from "lucide-react";
 
 interface AccordionSectionProps {
   title: string;
