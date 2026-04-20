@@ -384,16 +384,11 @@ export default function OperationalExecucaoPage() {
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto">
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold text-foreground">Execução Operacional</h1>
-          <p className="text-xs text-muted-foreground">
-            {isAdmin ? "Visualização administrativa de todas as rotinas." : "Formulários e rotinas atribuídos a você."}
-          </p>
-        </div>
-        <Button onClick={() => navigate("/operacional/cadastro")} className="shrink-0">
-          <Plus className="w-4 h-4 mr-1.5" /> Nova Tarefa
-        </Button>
+      <div className="mb-4">
+        <h1 className="text-lg font-semibold text-foreground">Execução Operacional</h1>
+        <p className="text-xs text-muted-foreground">
+          {isAdmin ? "Visualização administrativa de todas as rotinas." : "Formulários e rotinas atribuídos a você."}
+        </p>
       </div>
 
       <div className="flex items-center gap-2 mb-4">
