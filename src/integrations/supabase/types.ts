@@ -1247,6 +1247,7 @@ export type Database = {
           avaliador_id: string | null
           avaliador_inicio_em: string | null
           created_at: string
+          created_by: string | null
           data_prevista: string
           evidencia_url: string | null
           fim_em: string | null
@@ -1281,6 +1282,7 @@ export type Database = {
           avaliador_id?: string | null
           avaliador_inicio_em?: string | null
           created_at?: string
+          created_by?: string | null
           data_prevista?: string
           evidencia_url?: string | null
           fim_em?: string | null
@@ -1315,6 +1317,7 @@ export type Database = {
           avaliador_id?: string | null
           avaliador_inicio_em?: string | null
           created_at?: string
+          created_by?: string | null
           data_prevista?: string
           evidencia_url?: string | null
           fim_em?: string | null
@@ -1360,6 +1363,13 @@ export type Database = {
           {
             foreignKeyName: "operational_assignments_avaliador_id_fkey"
             columns: ["avaliador_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_assignments_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
