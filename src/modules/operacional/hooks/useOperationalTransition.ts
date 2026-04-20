@@ -100,6 +100,9 @@ function resolveTargetStatus(action: TransitionAction, currentStatus: string, ex
   switch (action) {
     case "iniciar": return "em_andamento";
     case "enviar_avaliacao": return "aguardando_avaliacao";
+    case "enviar_validacao_designante": return "aguardando_validacao";
+    case "validar_designada_aprovar": return "aprovada";
+    case "validar_designada_devolver": return "devolvida";
     case "iniciar_avaliacao": return "em_avaliacao";
     case "avaliar_aprovar": return extraData?.requerAprovacao ? "aguardando_aprovacao" : "concluida";
     case "avaliar_devolver": return "devolvida";
