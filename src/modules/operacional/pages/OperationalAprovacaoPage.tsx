@@ -453,19 +453,21 @@ export default function OperationalAprovacaoPage() {
             </div>
 
             {/* Executor + Avaliador + Avaliado info */}
-            <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border text-xs">
-              <div className="min-w-0">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3 pt-3 border-t border-border text-xs">
+              <div className="min-w-0 flex sm:block items-center justify-between gap-2">
                 <span className="text-muted-foreground">Executor</span>
-                <p className="font-medium text-foreground truncate">{selectedAssignment?.executor?.nome || "—"}</p>
+                <p className="font-medium text-foreground truncate sm:mt-0.5">{selectedAssignment?.executor?.nome || "—"}</p>
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex sm:block items-center justify-between gap-2">
                 <span className="text-muted-foreground">Avaliador</span>
-                <p className="font-medium text-foreground truncate">{selectedAssignment?.avaliador?.nome || "—"}</p>
+                <p className="font-medium text-foreground truncate sm:mt-0.5">{selectedAssignment?.avaliador?.nome || "—"}</p>
               </div>
               <div className="min-w-0">
-                <span className="text-muted-foreground">Avaliado</span>
-                <p className="font-medium text-foreground truncate">{selectedAssignment?.avaliado?.nome || "—"}</p>
-                <div className="mt-1">
+                <div className="flex sm:block items-center justify-between gap-2">
+                  <span className="text-muted-foreground">Avaliado</span>
+                  <p className="font-medium text-foreground truncate sm:mt-0.5">{selectedAssignment?.avaliado?.nome || "—"}</p>
+                </div>
+                <div className="mt-1.5">
                   <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold border",
                     scoreCalc.score >= 85 ? "border-success/40 bg-success/10 text-success" :
                     scoreCalc.score >= 75 ? "border-warning/40 bg-warning/10 text-warning" :
@@ -478,7 +480,7 @@ export default function OperationalAprovacaoPage() {
             </div>
 
             {/* Task info — compact responsive grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-1.5 mt-3 pt-3 border-t border-border text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-2 mt-3 pt-3 border-t border-border text-xs">
               <div className="flex flex-col">
                 <span className="text-muted-foreground">Data Prevista</span>
                 <span className="text-foreground font-medium">
@@ -489,17 +491,18 @@ export default function OperationalAprovacaoPage() {
               </div>
               <div className="flex flex-col">
                 <span className="text-muted-foreground">Início</span>
-                <span className="text-foreground font-medium">{selectedAssignment?.inicio_em ? new Date(selectedAssignment.inicio_em).toLocaleString("pt-BR") : "—"}</span>
+                <span className="text-foreground font-medium truncate">{selectedAssignment?.inicio_em ? new Date(selectedAssignment.inicio_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "—"}</span>
               </div>
-              <div className="flex flex-col sm:text-right">
+              <div className="flex flex-col">
                 <span className="text-muted-foreground">Fim</span>
-                <span className="text-foreground font-medium">{selectedAssignment?.fim_em ? new Date(selectedAssignment.fim_em).toLocaleString("pt-BR") : "—"}</span>
+                <span className="text-foreground font-medium truncate">{selectedAssignment?.fim_em ? new Date(selectedAssignment.fim_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "—"}</span>
               </div>
-              <div className="flex flex-col sm:text-right">
+              <div className="flex flex-col">
                 <span className="text-muted-foreground">Tempo Gasto</span>
                 <span className="text-foreground font-medium">{selectedAssignment?.tempo_gasto_minutos ? `${selectedAssignment.tempo_gasto_minutos} min` : "—"}</span>
               </div>
             </div>
+          </div>
           </div>
 
           {/* Scrollable content */}
