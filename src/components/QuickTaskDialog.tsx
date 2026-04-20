@@ -431,7 +431,7 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                   <p><strong>Tarefa:</strong> {nome || "—"}</p>
                   <p><strong>Avaliado:</strong> {(colaboradores as any[]).find((c) => c.id === avaliadoId)?.nome || "—"}</p>
                   <p><strong>Data:</strong> {dataPrevista} • limite {horarioLimite}</p>
-                  <p><strong>Validador:</strong> {requerValidacao ? ((colaboradores as any[]).find((c) => c.id === validadorId)?.nome || "—") : "Não"}</p>
+                  <p><strong>Avaliação:</strong> Por campo (definida em cada pergunta)</p>
                   <p><strong>Aprovador:</strong> {requerAprovacao ? ((colaboradores as any[]).find((c) => c.id === aprovadorId)?.nome || "—") : "Não"}</p>
                   <p><strong>Campos:</strong> {fields.length} em {sections.length} seção(ões)</p>
                 </div>
