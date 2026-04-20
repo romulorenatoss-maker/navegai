@@ -89,16 +89,22 @@ export default function MinhasTarefasTab() {
         </div>
       </div>
 
+      {/* Botão Nova Tarefa - destaque */}
+      <div className="flex justify-end">
+        <Button
+          onClick={() => setQuickTaskOpen(true)}
+          size="lg"
+          className="h-11 shadow-md w-full sm:w-auto"
+        >
+          <Plus className="w-5 h-5 mr-2" /> Nova Tarefa
+        </Button>
+      </div>
+
       {/* Filtros */}
       <div className="bg-card border border-border rounded-lg p-4 shadow-card">
-        <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-muted-foreground" />
-            <span className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Filtros</span>
-          </div>
-          <Button onClick={() => setQuickTaskOpen(true)} size="sm" className="h-9">
-            <Plus className="w-4 h-4 mr-1.5" /> Nova Tarefa
-          </Button>
+        <div className="flex items-center gap-2 mb-3">
+          <Filter className="w-4 h-4 text-muted-foreground" />
+          <span className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Filtros</span>
         </div>
         <div className="flex flex-wrap gap-4 items-end">
           <div className="flex flex-col gap-1.5">
