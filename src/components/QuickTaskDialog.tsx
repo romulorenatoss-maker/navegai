@@ -51,9 +51,10 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
 
   const reset = () => {
     setStep(1);
-    setNome(""); setDescricao(""); setResponsavelId(""); setSetorId("");
+    setNome(""); setDescricao(""); setSetorId("");
     setDataPrevista(getLocalToday()); setHorarioLimite("18:00");
-    setSerAvaliado(false); setAvaliadoId(""); setAvaliadorId("");
+    setAvaliadoId("");
+    setRequerValidacao(false); setValidadorId("");
     setRequerAprovacao(false); setAprovadorId("");
     setSections([]); setFields([]);
     setSlaHoras(24); setPenalidadeForaPrazo(20); setPesoNotaMaxima(100);
@@ -62,7 +63,6 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
   useEffect(() => {
     if (open) {
       reset();
-      // criar 1 seção padrão para começar
       const s = defaultSection(0);
       s.nome = "Itens";
       setSections([s]);
@@ -89,16 +89,27 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
     enabled: open,
   });
 
-  // Avaliador não pode ser ele mesmo (não pode avaliar a si mesmo)
-  const avaliadorOptions = useMemo(() => {
-    return (colaboradores as any[]).filter((c) => c.id !== avaliadoId);
-  }, [colaboradores, avaliadoId]);
+  // Tarefa "para si mesmo" → criador == avaliado
+  const isSelfTask = !!profile?.id && avaliadoId === profile.id;
+
+  // Validador: nunca pode ser o avaliado (não pode validar a si mesmo)
+  const validadorOptions = useMemo(
+    () => (colaboradores as any[]).filter((c) => c.id !== avaliadoId),
+    [colaboradores, avaliadoId]
+  );
+
+  // Aprovador: pode ser qualquer um, INCLUSIVE o avaliado.
+  // EXCEÇÃO: se a tarefa é "para si mesmo" (criador == avaliado), o aprovador NÃO pode ser o próprio.
+  const aprovadorOptions = useMemo(() => {
+    if (isSelfTask) return (colaboradores as any[]).filter((c) => c.id !== profile?.id);
+    return colaboradores as any[];
+  }, [colaboradores, isSelfTask, profile?.id]);
 
   const canAdvanceStep1 = nome.trim().length > 0
-    && responsavelId
-    && dataPrevista
-    && (!serAvaliado || (avaliadoId && avaliadorId && avaliadoId !== avaliadorId))
-    && (!requerAprovacao || aprovadorId);
+    && !!avaliadoId
+    && !!dataPrevista
+    && (!requerValidacao || (!!validadorId && validadorId !== avaliadoId))
+    && (!requerAprovacao || (!!aprovadorId && (!isSelfTask || aprovadorId !== profile?.id)));
 
   const canAdvanceStep2 = fields.length > 0 && fields.every((f) => f.label.trim().length > 0);
 
