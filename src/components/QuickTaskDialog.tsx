@@ -111,11 +111,18 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
     });
   }, [colaboradores, isSelfTask, profile?.id]);
 
+  const validadorOk = !requerValidacao
+    || (validadorMode === "individual" && !!validadorId && validadorId !== avaliadoId)
+    || (validadorMode === "setor" && !!validadorSetorId);
+  const aprovadorOk = !requerAprovacao
+    || (aprovadorMode === "individual" && !!aprovadorId && aprovadorId !== avaliadoId && (!isSelfTask || aprovadorId !== profile?.id))
+    || (aprovadorMode === "setor" && !!aprovadorSetorId);
+
   const canAdvanceStep1 = nome.trim().length > 0
     && !!avaliadoId
     && !!dataPrevista
-    && (!requerValidacao || (!!validadorId && validadorId !== avaliadoId))
-    && (!requerAprovacao || (!!aprovadorId && aprovadorId !== avaliadoId && (!isSelfTask || aprovadorId !== profile?.id)));
+    && validadorOk
+    && aprovadorOk;
 
   const canAdvanceStep2 = fields.length > 0 && fields.every((f) => f.label.trim().length > 0);
 
@@ -141,9 +148,11 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
         penalidade_fora_prazo: penalidadeForaPrazo,
         executor_profile_id: avaliadoId,
         executor_setor_id: setorId || null,
-        avaliador_profile_id: requerValidacao ? validadorId : null,
+        avaliador_profile_id: requerValidacao && validadorMode === "individual" ? validadorId : null,
+        avaliador_setor_id: requerValidacao && validadorMode === "setor" ? validadorSetorId : null,
         avaliado_profile_id: avaliadoId,
-        aprovador_profile_id: requerAprovacao ? aprovadorId : null,
+        aprovador_profile_id: requerAprovacao && aprovadorMode === "individual" ? aprovadorId : null,
+        aprovador_setor_id: requerAprovacao && aprovadorMode === "setor" ? aprovadorSetorId : null,
         requer_aprovacao_gestor: requerAprovacao,
         modo_pontuacao: "pontuar_avaliado",
         destino_score: "individual",
@@ -212,9 +221,10 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
         horario_limite: horarioLimite || null,
         status: "pendente",
         created_by: profile.id,
-        avaliador_id: requerValidacao ? validadorId : null,
+        avaliador_id: requerValidacao && validadorMode === "individual" ? validadorId : null,
         avaliado_id: avaliadoId,
-        aprovador_id: requerAprovacao ? aprovadorId : null,
+        aprovador_id: requerAprovacao && aprovadorMode === "individual" ? aprovadorId : null,
+        setor_avaliador_id: requerValidacao && validadorMode === "setor" ? validadorSetorId : null,
         setor_executor_id: setorId || null,
       };
       const { error: assignErr } = await (supabase as any)
