@@ -125,7 +125,7 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
         descricao: descricao.trim() || null,
         tipo_execucao: "checklist_inspecao",
         setor_id: setorId || null,
-        responsavel_id: responsavelId,
+        responsavel_id: avaliadoId,
         recorrencia_tipo: "unica",
         data_inicio: dataPrevista,
         data_fim: dataPrevista,
@@ -133,13 +133,13 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
         horario_limite_execucao: horarioLimite,
         sla_horas: slaHoras,
         penalidade_fora_prazo: penalidadeForaPrazo,
-        executor_profile_id: responsavelId,
+        executor_profile_id: avaliadoId,
         executor_setor_id: setorId || null,
-        avaliador_profile_id: serAvaliado ? avaliadorId : null,
-        avaliado_profile_id: serAvaliado ? avaliadoId : null,
+        avaliador_profile_id: requerValidacao ? validadorId : null,
+        avaliado_profile_id: avaliadoId,
         aprovador_profile_id: requerAprovacao ? aprovadorId : null,
         requer_aprovacao_gestor: requerAprovacao,
-        modo_pontuacao: serAvaliado ? "pontuar_avaliado" : "sem_pontuacao",
+        modo_pontuacao: "pontuar_avaliado",
         destino_score: "individual",
         tipo_atribuicao_avaliado: "individual",
         habilitar_perguntas_automaticas: false,
@@ -177,7 +177,7 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
             obrigatorio: f.obrigatorio, peso: f.peso,
             nota_maxima: pesoNotaMaxima,
             penalidade_reprovacao: f.penalidade_reprovacao,
-            impacta_score: serAvaliado && f.impacta_score,
+            impacta_score: f.impacta_score,
             criticidade: f.criticidade, gera_contingencia: f.gera_contingencia,
             exige_evidencia: f.exige_evidencia, tipo_evidencia: f.tipo_evidencia || "foto",
             opcoes: f.opcoes?.length > 0 ? f.opcoes : null,
@@ -197,16 +197,16 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
         if (error) throw error;
       }
 
-      // 4) cria assignment imediato para o responsável
+      // 4) cria assignment imediato para o avaliado (executor + recebe nota)
       const assignPayload: any = {
         template_id: templateId,
-        responsavel_id: responsavelId,
+        responsavel_id: avaliadoId,
         data_prevista: dataPrevista,
         horario_limite: horarioLimite || null,
         status: "pendente",
         created_by: profile.id,
-        avaliador_id: serAvaliado ? avaliadorId : null,
-        avaliado_id: serAvaliado ? avaliadoId : null,
+        avaliador_id: requerValidacao ? validadorId : null,
+        avaliado_id: avaliadoId,
         aprovador_id: requerAprovacao ? aprovadorId : null,
         setor_executor_id: setorId || null,
       };
