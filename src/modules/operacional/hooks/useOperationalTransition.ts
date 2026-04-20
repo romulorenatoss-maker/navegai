@@ -18,22 +18,27 @@ import { toast } from "sonner";
 // Valid status transitions
 const VALID_TRANSITIONS: Record<string, string[]> = {
   pendente: ["em_andamento"],
-  em_andamento: ["aguardando_avaliacao", "contingenciado"],
+  em_andamento: ["aguardando_avaliacao", "aguardando_validacao", "contingenciado"],
   aguardando_avaliacao: ["em_avaliacao"],
   em_avaliacao: ["aguardando_aprovacao", "concluida", "devolvida", "contingenciado", "reprovada"],
-  contingenciado: ["aguardando_aprovacao"], // auto-return after all contingencies resolved
+  contingenciado: ["aguardando_aprovacao"],
   aguardando_aprovacao: ["aprovada", "devolvida", "concluida"],
+  // Novo fluxo: tarefa designada — criador valida
+  aguardando_validacao: ["aprovada", "devolvida"],
   devolvida: ["em_andamento"],
   // Terminal
-  concluida: ["em_andamento"], // reopen only
-  aprovada: ["em_andamento"],  // reopen only
-  reprovada: ["em_andamento"], // reopen only
-  nao_executada: ["em_andamento"], // reopen only
+  concluida: ["em_andamento"],
+  aprovada: ["em_andamento"],
+  reprovada: ["em_andamento"],
+  nao_executada: ["em_andamento"],
 };
 
 export type TransitionAction =
   | "iniciar"
   | "enviar_avaliacao"
+  | "enviar_validacao_designante"   // novo: executor finaliza tarefa designada
+  | "validar_designada_aprovar"     // novo: criador valida → aprovada
+  | "validar_designada_devolver"    // novo: criador devolve → devolvida
   | "iniciar_avaliacao"
   | "avaliar_aprovar"
   | "avaliar_devolver"
