@@ -30,13 +30,13 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
   // Step 1 state
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
-  const [responsavelId, setResponsavelId] = useState("");
   const [setorId, setSetorId] = useState("");
   const [dataPrevista, setDataPrevista] = useState(getLocalToday());
   const [horarioLimite, setHorarioLimite] = useState("18:00");
-  const [serAvaliado, setSerAvaliado] = useState(false);
-  const [avaliadoId, setAvaliadoId] = useState("");
-  const [avaliadorId, setAvaliadorId] = useState("");
+  // Responsáveis
+  const [avaliadoId, setAvaliadoId] = useState(""); // quem responde + recebe nota
+  const [requerValidacao, setRequerValidacao] = useState(false);
+  const [validadorId, setValidadorId] = useState("");
   const [requerAprovacao, setRequerAprovacao] = useState(false);
   const [aprovadorId, setAprovadorId] = useState("");
 
