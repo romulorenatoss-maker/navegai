@@ -234,14 +234,14 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
     }
   };
 
-  if (isLoading) return <p className="text-xs text-muted-foreground text-center py-3">Carregando contingências...</p>;
-  if (contingencies.length === 0) return <p className="text-xs text-muted-foreground text-center py-3">Nenhuma contingência registrada.</p>;
+  if (isLoading) return <p className="text-xs text-muted-foreground text-center py-3">Carregando planos de ação...</p>;
+  if (contingencies.length === 0) return <p className="text-xs text-muted-foreground text-center py-3">Nenhuma plano de ação registrada.</p>;
 
   return (
     <div className="space-y-2">
       <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
         <AlertTriangle className="w-3.5 h-3.5 text-destructive" />
-        Contingências ({contingencies.length})
+        Planos de Ação ({contingencies.length})
       </h4>
 
       {contingencies.map((c: any) => {
@@ -286,7 +286,7 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
               <div className="border-t border-border p-3 space-y-3">
                 {c.prazo_sla && c.status !== "aberta" && <SlaCountdown prazoSla={c.prazo_sla} />}
 
-                {/* Origem da contingência */}
+                {/* Origem da plano de ação */}
                 <div className="border rounded p-2 bg-destructive/5 border-destructive/20 space-y-1.5 text-[11px]">
                   <p className="font-semibold text-destructive text-[10px] uppercase tracking-wider flex items-center gap-1">
                     <AlertTriangle className="w-3 h-3" /> Origem
@@ -412,7 +412,7 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
                 )}
 
                 {!userCanManage && !userCanValidate && (
-                  <p className="text-[10px] text-muted-foreground italic text-center py-1">Sem permissão para gerenciar esta contingência.</p>
+                  <p className="text-[10px] text-muted-foreground italic text-center py-1">Sem permissão para gerenciar esta plano de ação.</p>
                 )}
               </div>
             )}
@@ -485,7 +485,7 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
       <Dialog open={resolveOpen} onOpenChange={(v) => { if (!v) setResolveOpen(false); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-sm">Resolver Contingência</DialogTitle>
+            <DialogTitle className="text-sm">Resolver Plano de Ação</DialogTitle>
             <DialogDescription>Descreva a ação corretiva.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -521,7 +521,7 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
           <DialogHeader>
             <DialogTitle className="text-sm">{validateApproved ? "Validar" : "Reprovar"} Resolução</DialogTitle>
             <DialogDescription>
-              {validateApproved ? "A contingência será validada." : "Será devolvida com justificativa para nova resolução."}
+              {validateApproved ? "A plano de ação será validada." : "Será devolvida com justificativa para nova resolução."}
             </DialogDescription>
           </DialogHeader>
           <div>
@@ -553,8 +553,8 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
       <Dialog open={discardOpen} onOpenChange={(v) => { if (!v) setDiscardOpen(false); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-sm">Descartar Contingência</DialogTitle>
-            <DialogDescription>A contingência será descartada.</DialogDescription>
+            <DialogTitle className="text-sm">Descartar Plano de Ação</DialogTitle>
+            <DialogDescription>A plano de ação será descartada.</DialogDescription>
           </DialogHeader>
           <div>
             <Label className="text-xs">Justificativa <span className="text-destructive">*</span></Label>

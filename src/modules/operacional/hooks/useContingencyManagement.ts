@@ -46,7 +46,7 @@ async function assertIsValidador(contingencyId: string, profileId: string, isAdm
   if (error) throw new Error("Erro ao verificar validador.");
   const validadorId = data?.assignment?.validador_contingencia_id;
   if (validadorId && validadorId !== profileId) {
-    throw new Error("Somente o validador designado ou um administrador pode validar esta contingência.");
+    throw new Error("Somente o validador designado ou um administrador pode validar esta plano de ação.");
   }
 }
 
@@ -306,7 +306,7 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
               tipo_evento: "STATUS_APROVACAO_FINAL",
               usuario_id: profile.id,
               etapa: "contingencia",
-              detalhes_json: { motivo: "Todas as contingências resolvidas", contingency_id: contingencyId },
+              detalhes_json: { motivo: "Todas as planos de ação resolvidas", contingency_id: contingencyId },
             });
           }
         }
@@ -316,7 +316,7 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
       qc.invalidateQueries({ queryKey: ["operational_contingencies_management"] });
       qc.invalidateQueries({ queryKey: ["operational_contingency_resolution_logs"] });
       qc.invalidateQueries({ queryKey: ["operational_embedded_contingencies"] });
-      toast.success("Contingência marcada como resolvida.");
+      toast.success("Plano de Ação marcada como resolvida.");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -368,7 +368,7 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
         contingency_id: contingencyId,
         acao: approved ? "validacao_aprovada" : "validacao_reprovada",
         executado_por: profile.id,
-        observacao: observacao || (approved ? "Resolução validada" : "Resolução reprovada — contingência reaberta"),
+        observacao: observacao || (approved ? "Resolução validada" : "Resolução reprovada — plano de ação reaberta"),
       });
 
       const { data: cont } = await (supabase as any)
@@ -411,7 +411,7 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
                 tipo_evento: "STATUS_APROVACAO_FINAL",
                 usuario_id: profile.id,
                 etapa: "contingencia",
-                detalhes_json: { motivo: "Todas as contingências validadas", contingency_id: contingencyId },
+                detalhes_json: { motivo: "Todas as planos de ação validadas", contingency_id: contingencyId },
               });
             }
           }
@@ -510,7 +510,7 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
           usuario_id: profile.id,
           etapa: "contingencia",
           detalhes_json: {
-            motivo: "Contingência descartada — pergunta liberada para nova resposta",
+            motivo: "Plano de Ação descartada — pergunta liberada para nova resposta",
             contingency_id: contingencyId,
             origin_field_id: cont.origin_field_id,
             origin_review_id: cont.origin_review_id,
@@ -525,7 +525,7 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
       qc.invalidateQueries({ queryKey: ["operational_field_answers"] });
       qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
       qc.invalidateQueries({ queryKey: ["operational_exec_assignments"] });
-      toast.success("Contingência descartada — pergunta liberada para nova resposta.");
+      toast.success("Plano de Ação descartada — pergunta liberada para nova resposta.");
     },
     onError: (e: any) => toast.error(e.message),
   });

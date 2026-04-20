@@ -156,7 +156,7 @@ export default function AssignmentQuickViewDialog({ assignmentId, open, onOpenCh
                 <>
                   <Separator />
                   <div>
-                    <h4 className="text-sm font-semibold mb-2">Contingências ({data!.contingencies.length})</h4>
+                    <h4 className="text-sm font-semibold mb-2">Planos de Ação ({data!.contingencies.length})</h4>
                     <div className="space-y-2">
                       {data!.contingencies.map((c: any) => (
                         <div key={c.id} className="border rounded-md p-2 text-sm">

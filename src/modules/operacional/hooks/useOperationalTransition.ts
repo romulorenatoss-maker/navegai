@@ -2,7 +2,7 @@
  * Centralized Operational Assignment Status Transition Service
  * 
  * Single source of truth for ALL status changes on operational_assignments.
- * Every screen (Execução, Avaliação, Aprovação, Gestão, Contingências) MUST use this.
+ * Every screen (Execução, Avaliação, Aprovação, Gestão, Planos de Ação) MUST use this.
  * 
  * Flow:
  *   pendente → em_andamento → aguardando_avaliacao → em_avaliacao
@@ -178,7 +178,7 @@ export function useOperationalTransition() {
       if (["aguardando_aprovacao", "concluida", "aprovada"].includes(targetStatus) && action !== "encerrar_final") {
         const openCount = await hasOpenContingencies(assignmentId);
         if (openCount > 0) {
-          throw new Error(`Não é possível avançar: existem ${openCount} contingência(s) pendente(s).`);
+          throw new Error(`Não é possível avançar: existem ${openCount} plano de ação(s) pendente(s).`);
         }
       }
 

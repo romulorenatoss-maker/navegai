@@ -102,7 +102,7 @@ export function ReviewFieldCard({ field, answer, review, previousReview, onChang
             <Label className="text-sm font-medium">{field.label}</Label>
             {field.obrigatorio && <span className="text-destructive text-xs">*</span>}
             {field.criticidade === "critica" && <span className="text-[10px] bg-red-100 text-red-700 border border-red-200 px-1.5 py-0.5 rounded">Crítico</span>}
-            {answerTriggersContingency && <span className="text-[10px] bg-orange-100 text-orange-700 border border-orange-200 px-1.5 py-0.5 rounded">Gera Contingência</span>}
+            {answerTriggersContingency && <span className="text-[10px] bg-orange-100 text-orange-700 border border-orange-200 px-1.5 py-0.5 rounded">Gera Plano de Ação</span>}
             {isReincidente && <span className="text-[10px] bg-red-200 text-red-800 border border-red-300 px-1.5 py-0.5 rounded flex items-center gap-0.5"><AlertTriangle className="w-2.5 h-2.5" />Reincidente</span>}
           </div>
           <div className="text-xs text-muted-foreground">Peso: {field.peso} | Máx: {field.nota_maxima}</div>
@@ -186,10 +186,10 @@ export function ReviewFieldCard({ field, answer, review, previousReview, onChang
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-orange-600" /> Enviar para Contingência?
+              <AlertTriangle className="w-4 h-4 text-orange-600" /> Enviar para Plano de Ação?
             </DialogTitle>
             <DialogDescription>
-              O campo "{field.label}" foi marcado como Não Conforme. Deseja criar uma contingência formal para correção?
+              O campo "{field.label}" foi marcado como Não Conforme. Deseja criar uma plano de ação formal para correção?
             </DialogDescription>
           </DialogHeader>
 
@@ -219,7 +219,7 @@ export function ReviewFieldCard({ field, answer, review, previousReview, onChang
             <Button onClick={handleContingencyConfirm}
               disabled={!contingencyPrazo || !contingencyMotivo.trim()}
               className="bg-orange-600 hover:bg-orange-700 text-white">
-              Criar Contingência
+              Criar Plano de Ação
             </Button>
           </DialogFooter>
         </DialogContent>

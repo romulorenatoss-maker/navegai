@@ -171,10 +171,10 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
           );
         })}
 
-        {/* Validador Contingência — Individual OU Setorial */}
+        {/* Validador Plano de Ação — Individual OU Setorial */}
         <div className="bg-muted/50 rounded-lg border border-border p-3">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-medium text-muted-foreground">Validador Contingência — <span className="font-normal">Quem valida e ajusta contingências. Administradores podem assumir este papel.</span></p>
+            <p className="text-xs font-medium text-muted-foreground">Validador Plano de Ação — <span className="font-normal">Quem valida e ajusta planos de ação. Administradores podem assumir este papel.</span></p>
             <RadioGroup
               value={validadorMode}
               onValueChange={v => handleModeChange("validador_contingencia_profile_id", "validador_contingencia_setor_id", v)}

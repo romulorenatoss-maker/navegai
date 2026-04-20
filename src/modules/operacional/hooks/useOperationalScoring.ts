@@ -11,7 +11,7 @@ export interface OperationalScoreInput {
   totalItens: number;
   itensConformes: number;
   evidenciaValidada: boolean | null;
-  totalContingencias: number;
+  totalPlanos de Ação: number;
   contingenciasNoPrazo: number;
 }
 
@@ -54,8 +54,8 @@ export function calculateOperationalScore(input: OperationalScoreInput): Operati
   }
 
   let slaCorrecoes = 100;
-  if (input.totalContingencias > 0) {
-    slaCorrecoes = (input.contingenciasNoPrazo / input.totalContingencias) * 100;
+  if (input.totalPlanos de Ação > 0) {
+    slaCorrecoes = (input.contingenciasNoPrazo / input.totalPlanos de Ação) * 100;
   }
 
   const scoreFinal = Math.max(0, Math.min(100, Math.round(
@@ -92,7 +92,7 @@ export const STATUS_CONFIG: Record<string, { label: string; class: string }> = {
   pendente: { label: "Pendente", class: "bg-yellow-100 text-yellow-800 border-yellow-200" },
   em_andamento: { label: "Em Andamento", class: "bg-blue-100 text-blue-800 border-blue-200" },
   contingenciado: { label: "Contingenciado", class: "bg-orange-100 text-orange-800 border-orange-200" },
-  contingencia: { label: "Contingência", class: "bg-orange-100 text-orange-800 border-orange-200" },
+  contingencia: { label: "Plano de Ação", class: "bg-orange-100 text-orange-800 border-orange-200" },
   devolvida: { label: "Devolvida", class: "bg-amber-100 text-amber-800 border-amber-200" },
   concluida: { label: "Concluída", class: "badge-complete" },
   aguardando_aprovacao: { label: "Aguardando Aprovação", class: "bg-purple-100 text-purple-800 border-purple-200" },
@@ -124,9 +124,9 @@ export const AUDIT_EVENT_LABELS: Record<string, string> = {
   alteracao_sla: "Alteração SLA",
   alteracao_responsavel: "Alteração Responsável",
   encerramento_manual: "Encerramento Manual",
-  contingencia_criada: "Contingência Criada",
-  contingencia_resolvida: "Contingência Resolvida",
-  contingencia_validada: "Contingência Validada",
+  contingencia_criada: "Plano de Ação Criada",
+  contingencia_resolvida: "Plano de Ação Resolvida",
+  contingencia_validada: "Plano de Ação Validada",
   inicio: "Início",
   ajuste_score: "Ajuste de Score",
   avaliacao_aprovada: "Avaliação Aprovada",
@@ -139,10 +139,10 @@ export const AUDIT_EVENT_LABELS: Record<string, string> = {
   executor_anexou_evidencia: "Executor Anexou Evidência",
   avaliador_iniciou: "Avaliador Iniciou Avaliação",
   avaliador_revisou_campo: "Avaliador Revisou Campo",
-  avaliador_gerou_contingencia: "Avaliador Gerou Contingência",
-  contingencia_prazo_definido: "Prazo de Contingência Definido",
+  avaliador_gerou_contingencia: "Avaliador Gerou Plano de Ação",
+  contingencia_prazo_definido: "Prazo de Plano de Ação Definido",
   contingencia_correcao_iniciada: "Correção Iniciada",
-  contingencia_venceu_sla: "Contingência Venceu SLA",
+  contingencia_venceu_sla: "Plano de Ação Venceu SLA",
   aprovacao_final: "Aprovação Final",
   aprovacao_devolucao: "Devolução na Aprovação",
   override_manual: "Override Manual de Score",

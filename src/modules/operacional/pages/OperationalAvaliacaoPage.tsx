@@ -453,7 +453,7 @@ export default function OperationalAvaliacaoPage() {
                   {review.contingencies.length > 0 && (
                     <div className="border rounded-lg p-3 space-y-2">
                       <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3" /> Contingências ({review.contingencies.length})
+                        <AlertTriangle className="w-3 h-3" /> Planos de Ação ({review.contingencies.length})
                       </h4>
                       <div className="space-y-1.5">
                         {review.contingencies.map((c: any) => (
@@ -562,10 +562,10 @@ export default function OperationalAvaliacaoPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-orange-600" /> Enviar para Contingência?
+              <AlertTriangle className="w-4 h-4 text-orange-600" /> Enviar para Plano de Ação?
             </DialogTitle>
             <DialogDescription>
-              O campo foi marcado como Não Conforme. Deseja criar uma contingência formal para correção?
+              O campo foi marcado como Não Conforme. Deseja criar uma plano de ação formal para correção?
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -583,7 +583,7 @@ export default function OperationalAvaliacaoPage() {
             <Button variant="outline" onClick={() => setContingencyModalOpen(false)}>Cancelar</Button>
             <Button onClick={handleContingencyConfirm} disabled={!contingencyPrazo || !contingencyMotivo.trim()}
               className="bg-orange-600 hover:bg-orange-700 text-white">
-              Criar Contingência
+              Criar Plano de Ação
             </Button>
           </DialogFooter>
         </DialogContent>
