@@ -31,6 +31,7 @@ export interface SnapshotField {
     cor: string;
     requer_descricao: boolean;
     requer_evidencia: boolean;
+    tipos_evidencia?: string[];
     gera_contingencia: boolean;
   }>;
   validacao?: any;
