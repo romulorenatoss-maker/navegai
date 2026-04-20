@@ -596,10 +596,10 @@ export default function OperationalAprovacaoPage() {
                               <p className="text-xs text-warning mt-0.5">Justificativa: "{autoAns.justificativa}"</p>
                             )}
                           </div>
-                          <div className="flex items-center justify-center gap-1">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-destructive text-destructive-foreground">Automática</span>
+                          <div className="flex items-center justify-center gap-1 min-w-0">
+                            <span className="inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-bold bg-destructive text-destructive-foreground whitespace-nowrap">Auto</span>
                             {autoAns?.overridden && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-warning/10 text-warning border border-warning/20">Editada</span>
+                              <span className="inline-flex items-center px-1 sm:px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-medium bg-warning/10 text-warning border border-warning/20">Editada</span>
                             )}
                           </div>
                           <div className="flex items-center justify-end gap-1">
