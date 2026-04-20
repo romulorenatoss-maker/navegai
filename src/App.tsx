@@ -19,7 +19,7 @@ import OperationalExecucaoPage from "./modules/operacional/pages/OperationalExec
 import OperationalGestaoPage from "./modules/operacional/pages/OperationalGestaoPage";
 import OperationalAvaliacaoPage from "./modules/operacional/pages/OperationalAvaliacaoPage";
 import OperationalAprovacaoPage from "./modules/operacional/pages/OperationalAprovacaoPage";
-import OperationalPlanos de AçãoPage from "./modules/operacional/pages/OperationalPlanos de AçãoPage";
+import OperationalContingenciasPage from "./modules/operacional/pages/OperationalContingenciasPage";
 import DashboardOperacionalKPIPage from "./pages/DashboardOperacionalKPIPage";
 import CadastroEnderecosPage from "./pages/CadastroEnderecosPage";
 import ClientesPage from "./pages/ClientesPage";
@@ -77,7 +77,7 @@ const App = () => (
               <Route path="/operacional/gestao" element={<OperationalGestaoPage />} />
               <Route path="/operacional/avaliacao" element={<OperationalAvaliacaoPage />} />
               <Route path="/operacional/aprovacao" element={<OperationalAprovacaoPage />} />
-              <Route path="/operacional/planos de ação" element={<OperationalPlanos de AçãoPage />} />
+              <Route path="/operacional/contingencias" element={<OperationalContingenciasPage />} />
               <Route path="/operacional/dashboard" element={<DashboardOperacionalKPIPage />} />
               
               <Route path="/cadastros/setores" element={<SetoresPage />} />

@@ -95,7 +95,7 @@ function formatDatetimeLocal(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-export default function OperationalPlanos de AçãoPage() {
+export default function OperationalContingenciasPage() {
   const { profile, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState("abertas");
   const [selected, setSelected] = useState<any>(null);
