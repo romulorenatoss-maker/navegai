@@ -11,11 +11,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TabFormBuilder } from "@/modules/operacional/components/TabFormBuilder";
-import { SectionForm, FieldForm, defaultSection, getLocalToday } from "@/modules/operacional/types";
+import { FIELD_TYPES, SectionForm, FieldForm, defaultSection, getLocalToday } from "@/modules/operacional/types";
 import { cn } from "@/lib/utils";
 import QuickFieldDialog from "@/components/QuickFieldDialog";
-import { Plus } from "lucide-react";
+import { Plus, Trash2, Settings2, GripVertical } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -369,13 +368,51 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
 
           {step === 2 && (
             <div className="space-y-3">
-              <TabFormBuilder
-                sections={sections}
-                setSections={setSections}
-                fields={fields}
-                setFields={setFields}
-                setores={setores as any[]}
-                tipoExecucao="checklist_inspecao"
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium text-foreground">Formulários e Campos</p>
+                <Button type="button" size="sm" onClick={() => setQuickFieldOpen(true)}>
+                  <Plus className="w-4 h-4 mr-1.5" />
+                  Novo Formulário
+                </Button>
+              </div>
+
+              {fields.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground border border-dashed border-border rounded-lg">
+                  <p className="text-sm">Nenhum campo criado.</p>
+                  <p className="text-xs">Clique em "Novo Formulário" para adicionar uma pergunta.</p>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {fields.sort((a, b) => a.ordem - b.ordem).map((field, idx) => (
+                    <div
+                      key={field.tempId}
+                      className="flex items-center gap-2 bg-card border border-border rounded-md px-3 py-2 group hover:border-primary/40 transition-colors"
+                    >
+                      <span className="text-xs text-muted-foreground font-mono w-5 text-right">{idx + 1}.</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{field.label || "Sem título"}</p>
+                        <p className="text-[11px] text-muted-foreground">{FIELD_TYPES[field.tipo] || field.tipo}</p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-destructive opacity-0 group-hover:opacity-100"
+                        onClick={() => setFields(prev => prev.filter(f => f.tempId !== field.tempId))}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <QuickFieldDialog
+                open={quickFieldOpen}
+                onOpenChange={setQuickFieldOpen}
+                sectionTempId={sections[0]?.tempId || ""}
+                nextOrdem={fields.length}
+                onAdd={(f) => setFields(prev => [...prev, f])}
               />
             </div>
           )}
