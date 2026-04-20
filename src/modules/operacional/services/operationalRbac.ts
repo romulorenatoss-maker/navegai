@@ -40,12 +40,17 @@ interface AssignmentRoleInput {
     responsavel_id?: string | null;
     avaliador_id?: string | null;
     aprovador_id?: string | null;
+    created_by?: string | null;
   } | null;
 }
 
 /**
  * Determina o papel efetivo do usuário para um assignment específico.
  * Admin sempre vence. Caso contrário, deriva dos campos do assignment.
+ *
+ * Prioridade: ADMIN > APROVADOR > AVALIADOR > CRIADOR_DESIGNANTE > EXECUTOR.
+ * CRIADOR_DESIGNANTE = created_by == profileId E executor != profileId
+ * (auto-criação não conta como "designada").
  */
 export function resolveAssignmentRole(
   input: AssignmentRoleInput,
@@ -58,6 +63,7 @@ export function resolveAssignmentRole(
   if (!a) return null;
   if (a.aprovador_id === pid) return "APROVADOR";
   if (a.avaliador_id === pid) return "AVALIADOR";
+  if (a.created_by === pid && a.responsavel_id !== pid) return "CRIADOR_DESIGNANTE";
   if (a.responsavel_id === pid) return "EXECUTOR";
   return null;
 }
