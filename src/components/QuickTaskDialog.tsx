@@ -98,18 +98,20 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
     [colaboradores, avaliadoId]
   );
 
-  // Aprovador: pode ser qualquer um, INCLUSIVE o avaliado.
-  // EXCEÇÃO: se a tarefa é "para si mesmo" (criador == avaliado), o aprovador NÃO pode ser o próprio.
+  // Aprovador: nunca pode ser o avaliado. Em tarefa "para si mesmo" também exclui o criador.
   const aprovadorOptions = useMemo(() => {
-    if (isSelfTask) return (colaboradores as any[]).filter((c) => c.id !== profile?.id);
-    return colaboradores as any[];
+    return (colaboradores as any[]).filter((c) => {
+      if (avaliadoId && c.id === avaliadoId) return false;
+      if (isSelfTask && c.id === profile?.id) return false;
+      return true;
+    });
   }, [colaboradores, isSelfTask, profile?.id]);
 
   const canAdvanceStep1 = nome.trim().length > 0
     && !!avaliadoId
     && !!dataPrevista
     && (!requerValidacao || (!!validadorId && validadorId !== avaliadoId))
-    && (!requerAprovacao || (!!aprovadorId && (!isSelfTask || aprovadorId !== profile?.id)));
+    && (!requerAprovacao || (!!aprovadorId && aprovadorId !== avaliadoId && (!isSelfTask || aprovadorId !== profile?.id)));
 
   const canAdvanceStep2 = fields.length > 0 && fields.every((f) => f.label.trim().length > 0);
 
@@ -319,7 +321,7 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                   <div className="flex items-center justify-between gap-2">
                     <div>
                       <Label className="text-sm">Requer aprovação?</Label>
-                      <p className="text-[11px] text-muted-foreground">Aprovador final valida a nota. Pode ser o próprio avaliado, exceto quando a tarefa é criada para si mesmo.</p>
+                      <p className="text-[11px] text-muted-foreground">Aprovador final valida a nota. Não pode ser o próprio avaliado.</p>
                     </div>
                     <Switch checked={requerAprovacao} onCheckedChange={setRequerAprovacao} />
                   </div>
@@ -331,7 +333,7 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                         <SelectContent>
                           {aprovadorOptions.map((c: any) => (
                             <SelectItem key={c.id} value={c.id}>
-                              {c.nome}{c.id === avaliadoId ? " (próprio avaliado)" : ""}
+                              {c.nome}
                             </SelectItem>
                           ))}
                         </SelectContent>

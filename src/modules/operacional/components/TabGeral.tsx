@@ -240,10 +240,19 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
                 </RadioGroup>
               </div>
               {aprovadorMode === "nome" ? (
-                <Select value={form.aprovador_profile_id as string} onValueChange={v => set("aprovador_profile_id" as any, v)}>
-                  <SelectTrigger className="h-8"><SelectValue placeholder="Selecione colaborador" /></SelectTrigger>
-                  <SelectContent>{colaboradores.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
-                </Select>
+                <>
+                  <Select value={form.aprovador_profile_id as string} onValueChange={v => set("aprovador_profile_id" as any, v)}>
+                    <SelectTrigger className="h-8"><SelectValue placeholder="Selecione colaborador" /></SelectTrigger>
+                    <SelectContent>
+                      {colaboradores
+                        .filter((c: any) => !form.avaliado_profile_id || c.id !== form.avaliado_profile_id)
+                        .map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {form.avaliado_profile_id && form.aprovador_profile_id === form.avaliado_profile_id && (
+                    <p className="text-[10px] text-destructive mt-1">O aprovador não pode ser o mesmo que o avaliado.</p>
+                  )}
+                </>
               ) : (
                 <div className="space-y-2">
                   <Select value={form.aprovador_setor_id as string} onValueChange={v => set("aprovador_setor_id" as any, v)}>
