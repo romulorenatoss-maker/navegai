@@ -565,7 +565,7 @@ export default function OperationalAprovacaoPage() {
                   </div>
 
                   {/* Table header */}
-                  <div className="grid grid-cols-[28px_1fr_72px_56px] sm:grid-cols-[40px_1fr_120px_80px] items-center px-4 py-2 border-b border-border bg-muted/30 text-xs font-medium text-muted-foreground">
+                  <div className="grid grid-cols-[28px_1fr_72px_56px] sm:grid-cols-[40px_1fr_120px_80px] items-center px-2 sm:px-4 py-2 border-b border-border bg-muted/30 text-[10px] sm:text-xs font-medium text-muted-foreground">
                     <span>#</span>
                     <span>Pergunta / Campo</span>
                     <span className="text-center">Tipo</span>
@@ -585,7 +585,7 @@ export default function OperationalAprovacaoPage() {
 
                     return (
                       <div key={aq.id} className={cn("border-b border-border transition-colors", isNaoConf ? "bg-destructive/5" : "")}>
-                        <div className="grid grid-cols-[28px_1fr_72px_56px] sm:grid-cols-[40px_1fr_120px_80px] items-center px-4 py-3">
+                        <div className="grid grid-cols-[28px_1fr_72px_56px] sm:grid-cols-[40px_1fr_120px_80px] items-center px-2 sm:px-4 py-3">
                           <span className="text-sm text-muted-foreground font-medium">{idx}</span>
                           <div className="min-w-0">
                             <p className="text-sm font-medium text-foreground">{aq.label}</p>
@@ -659,7 +659,7 @@ export default function OperationalAprovacaoPage() {
 
                   {/* Subtotal Penalidades */}
                   {autoQuestions.length > 0 && (
-                    <div className="grid grid-cols-[28px_1fr_72px_56px] sm:grid-cols-[40px_1fr_120px_80px] items-center px-4 py-2 border-b border-border bg-muted/20">
+                    <div className="grid grid-cols-[28px_1fr_72px_56px] sm:grid-cols-[40px_1fr_120px_80px] items-center px-2 sm:px-4 py-2 border-b border-border bg-muted/20">
                       <span />
                       <span />
                       <span className="text-xs font-medium text-muted-foreground text-right">Subtotal Penalidades</span>
@@ -699,7 +699,7 @@ export default function OperationalAprovacaoPage() {
                       <div key={f.id} className={cn("border-b border-border transition-colors",
                         isConforme ? "bg-success/5" : isNaoConforme ? "bg-destructive/5" : "bg-accent/5"
                       )}>
-                        <div className="grid grid-cols-[28px_1fr_72px_56px] sm:grid-cols-[40px_1fr_120px_80px] items-center px-4 py-3">
+                        <div className="grid grid-cols-[28px_1fr_72px_56px] sm:grid-cols-[40px_1fr_120px_80px] items-center px-2 sm:px-4 py-3">
                           <span className="text-sm text-muted-foreground font-medium">{idx}</span>
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-foreground">{f.aprovador_pergunta || f.label}</p>
@@ -788,7 +788,7 @@ export default function OperationalAprovacaoPage() {
 
                   {/* Subtotal Campos */}
                   {approvalFields.length > 0 && (
-                    <div className="grid grid-cols-[28px_1fr_72px_56px] sm:grid-cols-[40px_1fr_120px_80px] items-center px-4 py-2 border-b border-border bg-muted/20">
+                    <div className="grid grid-cols-[28px_1fr_72px_56px] sm:grid-cols-[40px_1fr_120px_80px] items-center px-2 sm:px-4 py-2 border-b border-border bg-muted/20">
                       <span />
                       <span />
                       <span className="text-xs font-medium text-muted-foreground text-right">Subtotal Campos</span>
@@ -797,7 +797,7 @@ export default function OperationalAprovacaoPage() {
                   )}
 
                   {/* Pontos Totais */}
-                  <div className="grid grid-cols-[28px_1fr_72px_56px] sm:grid-cols-[40px_1fr_120px_80px] items-center px-4 py-3 bg-muted/40">
+                  <div className="grid grid-cols-[28px_1fr_72px_56px] sm:grid-cols-[40px_1fr_120px_80px] items-center px-2 sm:px-4 py-3 bg-muted/40">
                     <span />
                     <span />
                     <span className="text-sm font-semibold text-foreground text-right">Pontos Totais</span>
