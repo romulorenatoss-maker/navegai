@@ -321,7 +321,7 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                   <div className="flex items-center justify-between gap-2">
                     <div>
                       <Label className="text-sm">Requer aprovação?</Label>
-                      <p className="text-[11px] text-muted-foreground">Aprovador final valida a nota. Pode ser o próprio avaliado, exceto quando a tarefa é criada para si mesmo.</p>
+                      <p className="text-[11px] text-muted-foreground">Aprovador final valida a nota. Não pode ser o próprio avaliado.</p>
                     </div>
                     <Switch checked={requerAprovacao} onCheckedChange={setRequerAprovacao} />
                   </div>
@@ -333,7 +333,7 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                         <SelectContent>
                           {aprovadorOptions.map((c: any) => (
                             <SelectItem key={c.id} value={c.id}>
-                              {c.nome}{c.id === avaliadoId ? " (próprio avaliado)" : ""}
+                              {c.nome}
                             </SelectItem>
                           ))}
                         </SelectContent>
