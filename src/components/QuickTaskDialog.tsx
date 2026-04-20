@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TabFormBuilder } from "@/modules/operacional/components/TabFormBuilder";
 import { SectionForm, FieldForm, defaultSection, getLocalToday } from "@/modules/operacional/types";
 import { cn } from "@/lib/utils";
+import QuickFieldDialog from "@/components/QuickFieldDialog";
+import { Plus } from "lucide-react";
 
 interface Props {
   open: boolean;
