@@ -42,10 +42,10 @@ const allNavSections = [
   {
     title: "Tarefas",
     items: [
+      { to: "/operacional/gestao", icon: FolderKanban, label: "Dash de Tarefas" },
       { to: "/operacional/execucao", icon: PlayCircle, label: "Minhas Tarefas" },
       { to: "/operacional/planos de ação", icon: AlertTriangle, label: "Planos de Ação" },
       { to: "/operacional/aprovacao", icon: Shield, label: "Aprovação Final" },
-      { to: "/operacional/gestao", icon: FolderKanban, label: "Dash de Tarefas" },
       { to: "/operacional/cadastro", icon: ListChecks, label: "Rotinas Operacionais" },
     ],
   },
