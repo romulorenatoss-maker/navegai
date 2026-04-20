@@ -24,12 +24,10 @@ export const ALL_SCREENS: ScreenDef[] = [
   { path: "/leads/gerenciamento", label: "Gerenciamento de Leads", group: "Leads" },
   { path: "/leads/campanhas", label: "Campanhas", group: "Leads" },
   // Tarefas
-  { path: "/operacional/dashboard", label: "Dashboard Operacional", group: "Tarefas" },
+  { path: "/operacional/gestao", label: "Dash de Tarefas", group: "Tarefas" },
   { path: "/operacional/execucao", label: "Minhas Tarefas", group: "Tarefas" },
-  { path: "/operacional/contingencias", label: "Planos de Ação", group: "Tarefas" },
+  { path: "/operacional/planos de ação", label: "Planos de Ação", group: "Tarefas" },
   { path: "/operacional/aprovacao", label: "Aprovação Final", group: "Tarefas" },
-  { path: "/operacional/avaliacao", label: "Avaliação", group: "Tarefas" },
-  { path: "/operacional/gestao", label: "Gestão", group: "Tarefas" },
   { path: "/operacional/cadastro", label: "Rotinas Operacionais", group: "Tarefas" },
   // Cadastros
   { path: "/cadastros/setores", label: "Setores", group: "Cadastros" },
@@ -43,6 +41,7 @@ export const ALL_SCREENS: ScreenDef[] = [
   { path: "/leads/rotina", label: "Rotina de Tentativas", group: "Configurações" },
   // Sistema
   { path: "/relatorios", label: "Relatórios de OS", group: "Sistema" },
+  { path: "/relatorios/tarefas", label: "Relatório de Tarefas", group: "Sistema" },
   { path: "/leads/relatorios", label: "Relatórios de Leads", group: "Sistema" },
   { path: "/desempenho", label: "Desempenho", group: "Sistema" },
   { path: "/desempenho/operacional", label: "Desempenho Operacional", group: "Sistema" },
