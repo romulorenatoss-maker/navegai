@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { CONTINGENCY_STATUS } from "@/hooks/useOperationalScoring";
+import { CONTINGENCY_STATUS } from "@/modules/operacional/hooks/useOperationalScoring";
 
 const scoreColor = (v: number) => {
   if (v >= 90) return "text-emerald-600";

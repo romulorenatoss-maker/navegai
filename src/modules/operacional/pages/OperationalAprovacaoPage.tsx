@@ -17,10 +17,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { STATUS_CONFIG, CONTINGENCY_STATUS, AUDIT_EVENT_LABELS } from "@/hooks/useOperationalScoring";
-import { AssignmentCard } from "@/components/operational/AssignmentCard";
-import { SnapshotField, evaluateVisibility } from "@/components/operational/DynamicFieldRenderer";
-import { useApprovalFlow } from "@/hooks/useApprovalFlow";
+import { STATUS_CONFIG, CONTINGENCY_STATUS, AUDIT_EVENT_LABELS } from "@/modules/operacional/hooks/useOperationalScoring";
+import { AssignmentCard } from "@/modules/operacional/components/AssignmentCard";
+import { SnapshotField, evaluateVisibility } from "@/modules/operacional/components/DynamicFieldRenderer";
+import { useApprovalFlow } from "@/modules/operacional/hooks/useApprovalFlow";
 
 type ApprovalAnswer = "conforme" | "nao_conforme" | "na" | "";
 

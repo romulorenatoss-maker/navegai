@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { SnapshotField } from "./DynamicFieldRenderer";
-import { FieldReviewDraft } from "@/hooks/useAssignmentReview";
+import { FieldReviewDraft } from "@/modules/operacional/hooks/useAssignmentReview";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";

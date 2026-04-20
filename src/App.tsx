@@ -14,12 +14,12 @@ import ColaboradoresPage from "./pages/ColaboradoresPage";
 import TiposServicoPage from "./pages/TiposServicoPage";
 
 import PerguntasPage from "./pages/PerguntasPage";
-import OperationalCadastroPage from "./pages/OperationalCadastroPage";
-import OperationalExecucaoPage from "./pages/OperationalExecucaoPage";
-import OperationalGestaoPage from "./pages/OperationalGestaoPage";
-import OperationalAvaliacaoPage from "./pages/OperationalAvaliacaoPage";
-import OperationalAprovacaoPage from "./pages/OperationalAprovacaoPage";
-import OperationalContingenciasPage from "./pages/OperationalContingenciasPage";
+import OperationalCadastroPage from "./modules/operacional/pages/OperationalCadastroPage";
+import OperationalExecucaoPage from "./modules/operacional/pages/OperationalExecucaoPage";
+import OperationalGestaoPage from "./modules/operacional/pages/OperationalGestaoPage";
+import OperationalAvaliacaoPage from "./modules/operacional/pages/OperationalAvaliacaoPage";
+import OperationalAprovacaoPage from "./modules/operacional/pages/OperationalAprovacaoPage";
+import OperationalContingenciasPage from "./modules/operacional/pages/OperationalContingenciasPage";
 import DashboardOperacionalKPIPage from "./pages/DashboardOperacionalKPIPage";
 import CadastroEnderecosPage from "./pages/CadastroEnderecosPage";
 import ClientesPage from "./pages/ClientesPage";

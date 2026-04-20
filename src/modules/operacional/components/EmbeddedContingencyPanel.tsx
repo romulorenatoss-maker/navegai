@@ -12,8 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { CONTINGENCY_STATUS } from "@/hooks/useOperationalScoring";
-import { useContingencyManagement, uploadContingencyAttachment } from "@/hooks/useContingencyManagement";
+import { CONTINGENCY_STATUS } from "@/modules/operacional/hooks/useOperationalScoring";
+import { useContingencyManagement, uploadContingencyAttachment } from "@/modules/operacional/hooks/useContingencyManagement";
 import { toast } from "sonner";
 
 function SlaCountdown({ prazoSla }: { prazoSla: string }) {

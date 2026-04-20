@@ -3,8 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { FieldAnswer, SnapshotField, evaluateVisibility, validateField } from "@/components/operational/DynamicFieldRenderer";
-import { useOperationalTransition } from "@/hooks/useOperationalTransition";
+import { FieldAnswer, SnapshotField, evaluateVisibility, validateField } from "@/modules/operacional/components/DynamicFieldRenderer";
+import { useOperationalTransition } from "@/modules/operacional/hooks/useOperationalTransition";
 
 export function useAssignmentExecution(assignmentId: string | null) {
   const { profile } = useAuth();
