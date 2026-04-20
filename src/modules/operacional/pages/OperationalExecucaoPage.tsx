@@ -510,6 +510,12 @@ export default function OperationalExecucaoPage() {
           </AccordionSection>
         </div>
       )}
+        </TabsContent>
+
+        <TabsContent value="avaliadas" className="mt-0">
+          <MinhasTarefasTab />
+        </TabsContent>
+      </Tabs>
 
       {/* Execution Dialog */}
       <Dialog open={execDialogOpen} onOpenChange={v => { if (!v) closeExecution(); }}>
