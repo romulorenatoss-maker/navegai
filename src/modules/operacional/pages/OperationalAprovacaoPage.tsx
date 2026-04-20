@@ -505,7 +505,7 @@ export default function OperationalAprovacaoPage() {
           </div>
 
           {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-3 sm:space-y-4">
             {/* Progress Bar */}
             <div className="bg-card border border-border rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
