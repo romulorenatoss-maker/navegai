@@ -503,7 +503,6 @@ export default function OperationalAprovacaoPage() {
               </div>
             </div>
           </div>
-          </div>
 
           {/* Scrollable content */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
