@@ -58,26 +58,34 @@ const STATUS_COLORS: Record<string, string> = {
   nao_executada: "bg-muted text-muted-foreground",
 };
 
-// Build month options: last 24 months + next 2
-const MONTH_OPTIONS = (() => {
-  const opts: { value: string; label: string }[] = [{ value: "__all", label: "Todos os meses" }];
-  const now = new Date();
-  for (let i = 2; i >= -23; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i + 2, 1);
-    // generate from oldest to newest later; build a window
-  }
-  // simpler: build from -23 to +2
+const MES_OPTIONS = [
+  { value: "__all", label: "Todos" },
+  { value: "1", label: "Janeiro" },
+  { value: "2", label: "Fevereiro" },
+  { value: "3", label: "Março" },
+  { value: "4", label: "Abril" },
+  { value: "5", label: "Maio" },
+  { value: "6", label: "Junho" },
+  { value: "7", label: "Julho" },
+  { value: "8", label: "Agosto" },
+  { value: "9", label: "Setembro" },
+  { value: "10", label: "Outubro" },
+  { value: "11", label: "Novembro" },
+  { value: "12", label: "Dezembro" },
+];
+
+const ANO_OPTIONS = (() => {
+  const now = new Date().getFullYear();
   const list: { value: string; label: string }[] = [];
-  for (let i = -23; i <= 2; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
-    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    const label = format(d, "MMMM 'de' yyyy", { locale: ptBR });
-    list.push({ value, label: label.charAt(0).toUpperCase() + label.slice(1) });
-  }
-  // newest first
-  list.reverse();
-  return [{ value: "__all", label: "Todos os meses" }, ...list];
+  for (let y = now + 1; y >= now - 4; y--) list.push({ value: String(y), label: String(y) });
+  return list;
 })();
+
+const STATUS_LABEL: Record<string, string> = STATUS_OPTIONS.reduce((acc, s) => {
+  acc[s.value] = s.label;
+  return acc;
+}, {} as Record<string, string>);
+
 
 export default function RelatorioTarefasPage() {
   const queryClient = useQueryClient();
@@ -86,8 +94,9 @@ export default function RelatorioTarefasPage() {
   const [pendingTo, setPendingTo] = useState<Date | undefined>();
   const [pendingStatus, setPendingStatus] = useState<string>("__all");
   const [pendingMes, setPendingMes] = useState<string>("__all");
+  const [pendingAno, setPendingAno] = useState<string>(String(new Date().getFullYear()));
   // Applied filters (used in query)
-  const [filters, setFilters] = useState<{ from?: Date; to?: Date; status: string; mes: string }>({ status: "__all", mes: "__all" });
+  const [filters, setFilters] = useState<{ from?: Date; to?: Date; status: string; mes: string; ano: string }>({ status: "__all", mes: "__all", ano: String(new Date().getFullYear()) });
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [toDelete, setToDelete] = useState<AssignmentRow | null>(null);
@@ -106,9 +115,10 @@ export default function RelatorioTarefasPage() {
 
       // Mês de competência tem prioridade — quando aplicado, ignora from/to
       if (filters.mes !== "__all") {
-        const [yy, mm] = filters.mes.split("-").map(Number);
+        const yy = Number(filters.ano);
+        const mm = Number(filters.mes);
         const start = new Date(yy, mm - 1, 1, 0, 0, 0, 0);
-        const end = new Date(yy, mm, 0, 23, 59, 59, 999); // último dia do mês
+        const end = new Date(yy, mm, 0, 23, 59, 59, 999);
         q = q.gte("created_at", start.toISOString()).lte("created_at", end.toISOString());
       } else {
         if (filters.from) q = q.gte("created_at", filters.from.toISOString());
@@ -147,7 +157,7 @@ export default function RelatorioTarefasPage() {
   const toggleGroup = (k: string) => setOpenGroups((p) => ({ ...p, [k]: !p[k] }));
 
   const handleSearch = () => {
-    setFilters({ from: pendingFrom, to: pendingTo, status: pendingStatus, mes: pendingMes });
+    setFilters({ from: pendingFrom, to: pendingTo, status: pendingStatus, mes: pendingMes, ano: pendingAno });
     setSelected(new Set());
   };
   const handleClear = () => {
@@ -155,7 +165,8 @@ export default function RelatorioTarefasPage() {
     setPendingTo(undefined);
     setPendingStatus("__all");
     setPendingMes("__all");
-    setFilters({ status: "__all", mes: "__all" });
+    setPendingAno(String(new Date().getFullYear()));
+    setFilters({ status: "__all", mes: "__all", ano: String(new Date().getFullYear()) });
     setSelected(new Set());
   };
 
@@ -276,15 +287,25 @@ export default function RelatorioTarefasPage() {
         </CardHeader>
         <CardContent className="flex flex-wrap items-end gap-4">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-muted-foreground">Mês de competência</label>
-            <Select value={pendingMes} onValueChange={setPendingMes}>
-              <SelectTrigger className="w-[220px]"><SelectValue /></SelectTrigger>
-              <SelectContent className="bg-popover z-50 max-h-[300px]">
-                {MONTH_OPTIONS.map((m) => (
-                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <label className="text-xs font-medium text-muted-foreground">Mês competência</label>
+            <div className="flex gap-2">
+              <Select value={pendingMes} onValueChange={setPendingMes}>
+                <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-popover z-50 max-h-[300px]">
+                  {MES_OPTIONS.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={pendingAno} onValueChange={setPendingAno} disabled={pendingMes === "__all"}>
+                <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-popover z-50">
+                  {ANO_OPTIONS.map((a) => (
+                    <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="flex flex-col gap-1">
             <label className={cn("text-xs font-medium text-muted-foreground", pendingMes !== "__all" && "opacity-50")}>
@@ -295,10 +316,10 @@ export default function RelatorioTarefasPage() {
                 <Button
                   variant="outline"
                   disabled={pendingMes !== "__all"}
-                  className={cn("w-[200px] justify-start text-left font-normal", !pendingFrom && "text-muted-foreground")}
+                  className={cn("w-[170px] justify-start text-left font-normal", !pendingFrom && "text-muted-foreground")}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {pendingFrom ? format(pendingFrom, "PPP", { locale: ptBR }) : "Selecione"}
+                  {pendingFrom ? format(pendingFrom, "dd/MM/yyyy", { locale: ptBR }) : "Selecione"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -315,10 +336,10 @@ export default function RelatorioTarefasPage() {
                 <Button
                   variant="outline"
                   disabled={pendingMes !== "__all"}
-                  className={cn("w-[200px] justify-start text-left font-normal", !pendingTo && "text-muted-foreground")}
+                  className={cn("w-[170px] justify-start text-left font-normal", !pendingTo && "text-muted-foreground")}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {pendingTo ? format(pendingTo, "PPP", { locale: ptBR }) : "Selecione"}
+                  {pendingTo ? format(pendingTo, "dd/MM/yyyy", { locale: ptBR }) : "Selecione"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
@@ -329,7 +350,7 @@ export default function RelatorioTarefasPage() {
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-muted-foreground">Status</label>
             <Select value={pendingStatus} onValueChange={setPendingStatus}>
-              <SelectTrigger className="w-[220px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
               <SelectContent className="bg-popover z-50">
                 {STATUS_OPTIONS.map((s) => (
                   <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
@@ -343,7 +364,25 @@ export default function RelatorioTarefasPage() {
           <Button variant="ghost" onClick={handleClear}>Limpar</Button>
           <div className="ml-auto text-sm text-muted-foreground">
             Total: <span className="font-semibold text-foreground">{totalAssignments}</span> tarefa(s)
-            {mesAtivo && <span className="ml-2 text-xs">(filtro por mês ativo — datas ignoradas)</span>}
+          </div>
+
+          {/* Applied filters summary */}
+          <div className="basis-full flex flex-wrap items-center gap-2 pt-3 border-t mt-1">
+            <span className="text-xs text-muted-foreground">Filtros aplicados:</span>
+            {filters.mes !== "__all" ? (
+              <Badge variant="secondary">
+                Competência: {MES_OPTIONS.find((m) => m.value === filters.mes)?.label} / {filters.ano}
+              </Badge>
+            ) : (filters.from || filters.to) ? (
+              <Badge variant="secondary">
+                Período: {filters.from ? format(filters.from, "dd/MM/yyyy") : "—"} até {filters.to ? format(filters.to, "dd/MM/yyyy") : "—"}
+              </Badge>
+            ) : (
+              <Badge variant="outline">Todas as datas</Badge>
+            )}
+            <Badge variant={filters.status === "__all" ? "outline" : "secondary"}>
+              Status: {STATUS_LABEL[filters.status] ?? filters.status}
+            </Badge>
           </div>
         </CardContent>
       </Card>
