@@ -13,7 +13,7 @@ const STATUS_LABELS: Record<string, string> = {
   aguardando_aprovacao: "Aguardando Aprovação",
   devolvida: "Devolvida",
   contingenciado: "Contingenciado",
-  contingencia: "Contingência",
+  contingencia: "Plano de Ação",
   concluida: "Concluída",
   aprovada: "Aprovada",
   nao_executada: "Não Executada",

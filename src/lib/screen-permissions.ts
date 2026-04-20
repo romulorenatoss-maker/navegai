@@ -26,7 +26,7 @@ export const ALL_SCREENS: ScreenDef[] = [
   // Tarefas
   { path: "/operacional/dashboard", label: "Dashboard Operacional", group: "Tarefas" },
   { path: "/operacional/execucao", label: "Minhas Tarefas", group: "Tarefas" },
-  { path: "/operacional/contingencias", label: "Contingências", group: "Tarefas" },
+  { path: "/operacional/planos de ação", label: "Planos de Ação", group: "Tarefas" },
   { path: "/operacional/aprovacao", label: "Aprovação Final", group: "Tarefas" },
   { path: "/operacional/avaliacao", label: "Avaliação", group: "Tarefas" },
   { path: "/operacional/gestao", label: "Gestão", group: "Tarefas" },

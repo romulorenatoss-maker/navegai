@@ -184,7 +184,7 @@ export function useApprovalFlow(assignmentId: string | null) {
     if (snapshot?.bloquear_fechamento_contingencia) {
       const openContingencies = contingencies.filter((c: any) => !["validada", "descartada", "resolvida"].includes(c.status));
       if (openContingencies.length > 0) {
-        reasons.push(`${openContingencies.length} contingência(s) aberta(s) impedem a aprovação.`);
+        reasons.push(`${openContingencies.length} plano(s) de ação aberto(s) impedem a aprovação.`);
       }
     }
 

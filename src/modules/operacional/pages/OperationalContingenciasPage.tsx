@@ -95,7 +95,7 @@ function formatDatetimeLocal(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-export default function OperationalContingenciasPage() {
+export default function OperationalPlanos de AçãoPage() {
   const { profile, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState("abertas");
   const [selected, setSelected] = useState<any>(null);
@@ -144,10 +144,10 @@ export default function OperationalContingenciasPage() {
   const canDiscardAction = isAdmin || isValidador || isAvaliador;
 
   const tabData: Record<string, { list: any[]; empty: string }> = {
-    abertas: { list: cm.abertas, empty: "Nenhuma contingência aberta." },
+    abertas: { list: cm.abertas, empty: "Nenhuma plano de ação aberta." },
     em_tratamento: { list: cm.emTratamento, empty: "Nenhuma em tratamento." },
-    vencidas: { list: cm.vencidas, empty: "Nenhuma contingência vencida." },
-    concluidas: { list: cm.validadas, empty: "Nenhuma contingência concluída." },
+    vencidas: { list: cm.vencidas, empty: "Nenhuma plano de ação vencida." },
+    concluidas: { list: cm.validadas, empty: "Nenhuma plano de ação concluída." },
   };
 
   const renderCard = (c: any) => {
@@ -342,9 +342,9 @@ export default function OperationalContingenciasPage() {
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
       <div className="mb-6">
         <h1 className="text-lg md:text-xl font-semibold text-foreground flex items-center gap-2">
-          <AlertTriangle className="w-5 h-5 text-destructive" /> Gestão de Contingências
+          <AlertTriangle className="w-5 h-5 text-destructive" /> Gestão de Planos de Ação
         </h1>
-        <p className="text-sm text-muted-foreground">Tratamento, resolução e validação de contingências operacionais.</p>
+        <p className="text-sm text-muted-foreground">Tratamento, resolução e validação de planos de ação operacionais.</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -408,10 +408,10 @@ export default function OperationalContingenciasPage() {
                 : <SlaCountdown prazoSla={selected.prazo_sla} />
             )}
 
-            {/* Origem da Contingência */}
+            {/* Origem da Plano de Ação */}
             <div className="border rounded-lg p-3 bg-destructive/5 border-destructive/20 space-y-2">
               <h4 className="text-xs font-semibold text-destructive uppercase tracking-wider flex items-center gap-1">
-                <AlertTriangle className="w-3.5 h-3.5" /> Origem da Contingência
+                <AlertTriangle className="w-3.5 h-3.5" /> Origem da Plano de Ação
               </h4>
               <p className="text-sm font-medium">{selected?.descricao}</p>
 
@@ -654,7 +654,7 @@ export default function OperationalContingenciasPage() {
                 )}
 
                 {isPending && !canInitiate && !canResolveAction && !canDiscardAction && (
-                  <p className="text-xs text-muted-foreground italic">Sem permissão para gerenciar esta contingência.</p>
+                  <p className="text-xs text-muted-foreground italic">Sem permissão para gerenciar esta plano de ação.</p>
                 )}
               </div>
             </div>
@@ -748,7 +748,7 @@ export default function OperationalContingenciasPage() {
       <Dialog open={resolveOpen} onOpenChange={(v) => { if (!v) setResolveOpen(false); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Resolver Contingência</DialogTitle>
+            <DialogTitle>Resolver Plano de Ação</DialogTitle>
             <DialogDescription>Descreva a ação corretiva aplicada.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -820,8 +820,8 @@ export default function OperationalContingenciasPage() {
             <DialogTitle>{validateApproved ? "Validar Resolução" : "Reprovar Resolução"}</DialogTitle>
             <DialogDescription>
               {validateApproved
-                ? "A contingência será marcada como validada e concluída."
-                : "A contingência será devolvida ao executor com sua justificativa como novo plano de ação."}
+                ? "A plano de ação será marcada como validada e concluída."
+                : "A plano de ação será devolvida ao executor com sua justificativa como novo plano de ação."}
             </DialogDescription>
           </DialogHeader>
           <div>
@@ -859,8 +859,8 @@ export default function OperationalContingenciasPage() {
       <Dialog open={discardOpen} onOpenChange={(v) => { if (!v) setDiscardOpen(false); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Descartar Contingência</DialogTitle>
-            <DialogDescription>A contingência será descartada permanentemente.</DialogDescription>
+            <DialogTitle>Descartar Plano de Ação</DialogTitle>
+            <DialogDescription>A plano de ação será descartada permanentemente.</DialogDescription>
           </DialogHeader>
           <div>
             <Label className="text-sm">Justificativa <span className="text-destructive">*</span></Label>

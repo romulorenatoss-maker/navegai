@@ -39,7 +39,7 @@ const STATUS_OPTIONS = [
   { value: "aguardando_aprovacao", label: "Aguardando aprovação" },
   { value: "devolvida", label: "Devolvida" },
   { value: "contingenciado", label: "Contingenciada" },
-  { value: "contingencia", label: "Contingência" },
+  { value: "contingencia", label: "Plano de Ação" },
   { value: "concluida", label: "Concluída" },
   { value: "aprovada", label: "Aprovada" },
   { value: "nao_executada", label: "Não executada" },
@@ -501,7 +501,7 @@ export default function RelatorioTarefasPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir tarefa #{toDelete?.numero_tarefa}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Serão removidos a tarefa <strong>"{toDelete?.template_titulo}"</strong> e <strong>todos os registros e logs gerados por ela</strong> (respostas, avaliações, contingências, históricos e auditoria).
+              Serão removidos a tarefa <strong>"{toDelete?.template_titulo}"</strong> e <strong>todos os registros e logs gerados por ela</strong> (respostas, avaliações, planos de ação, históricos e auditoria).
               <br /><br />
               <strong>A rotina operacional NÃO será excluída</strong> — apenas esta execução específica.
             </AlertDialogDescription>
@@ -521,7 +521,7 @@ export default function RelatorioTarefasPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir {selected.size} tarefa(s) selecionada(s)?</AlertDialogTitle>
             <AlertDialogDescription>
-              Todos os registros e logs gerados por estas tarefas serão removidos (respostas, avaliações, contingências, históricos e auditoria).
+              Todos os registros e logs gerados por estas tarefas serão removidos (respostas, avaliações, planos de ação, históricos e auditoria).
               <br /><br />
               <strong>As rotinas operacionais NÃO serão excluídas</strong> — apenas as execuções selecionadas.
             </AlertDialogDescription>

@@ -363,7 +363,7 @@ export function useAssignmentExecution(assignmentId: string | null) {
 
           await (supabase as any).from("operational_contingencies").insert({
             assignment_id: assignment.id,
-            descricao: `Campo "${field.label}" gerou contingência automaticamente`,
+            descricao: `Campo "${field.label}" gerou plano de ação automaticamente`,
             responsavel_id: assignment.responsavel_id,
             origin_field_id: field.id,
             prazo_sla: prazoSla,

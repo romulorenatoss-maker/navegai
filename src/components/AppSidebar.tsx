@@ -44,7 +44,7 @@ const allNavSections = [
     items: [
       { to: "/operacional/dashboard", icon: PieChart, label: "Dashboard Operacional" },
       { to: "/operacional/execucao", icon: PlayCircle, label: "Minhas Tarefas" },
-      { to: "/operacional/contingencias", icon: AlertTriangle, label: "Contingências" },
+      { to: "/operacional/planos de ação", icon: AlertTriangle, label: "Planos de Ação" },
       { to: "/operacional/aprovacao", icon: Shield, label: "Aprovação Final" },
       { to: "/operacional/gestao", icon: FolderKanban, label: "Gestão" },
       { to: "/operacional/cadastro", icon: ListChecks, label: "Rotinas Operacionais" },

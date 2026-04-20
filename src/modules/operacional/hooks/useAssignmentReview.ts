@@ -228,7 +228,7 @@ export function useAssignmentReview(assignmentId: string | null) {
       const hasOpenContingencies = (openContingencies?.length > 0) || newContingenciesCreated > 0;
 
       if (action === "aprovar" && hasOpenContingencies) {
-        throw new Error("Não é possível aprovar enquanto houver contingências abertas.");
+        throw new Error("Não é possível aprovar enquanto houver planos de ação abertas.");
       }
 
       let transitionAction: string;

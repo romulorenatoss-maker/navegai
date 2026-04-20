@@ -18,8 +18,8 @@ export function TabWorkflow({ form, set, fields = [] }: Props) {
 
   const autoQuestions = [
     { label: "Tarefa executada fora do prazo?", key: "penalidade_fora_prazo" as const, pontos: form.penalidade_fora_prazo },
-    { label: "Houve contingência nesta tarefa?", key: "penalidade_contingencia" as const, pontos: form.penalidade_contingencia },
-    { label: "Contingência resolvida dentro do prazo?", key: "penalidade_sla_contingencia" as const, pontos: form.penalidade_sla_contingencia },
+    { label: "Houve plano de ação nesta tarefa?", key: "penalidade_contingencia" as const, pontos: form.penalidade_contingencia },
+    { label: "Plano de Ação resolvido dentro do prazo?", key: "penalidade_sla_contingencia" as const, pontos: form.penalidade_sla_contingencia },
   ];
 
   const totalPenalidades = autoQuestions.reduce((s, q) => s + q.pontos, 0);
@@ -39,11 +39,11 @@ export function TabWorkflow({ form, set, fields = [] }: Props) {
             <Input type="number" min={0} max={100} value={form.penalidade_fora_prazo} onChange={e => set("penalidade_fora_prazo", +e.target.value)} className="max-w-[200px]" />
           </div>
           <div className="space-y-1.5">
-            <Label>Penalidade por contingência (pontos)</Label>
+            <Label>Penalidade por plano de ação (pontos)</Label>
             <Input type="number" min={0} max={100} value={form.penalidade_contingencia} onChange={e => set("penalidade_contingencia", +e.target.value)} className="max-w-[200px]" />
           </div>
           <div className="space-y-1.5">
-            <Label>Penalidade SLA contingência (pontos)</Label>
+            <Label>Penalidade SLA plano de ação (pontos)</Label>
             <Input type="number" min={0} max={100} value={form.penalidade_sla_contingencia} onChange={e => set("penalidade_sla_contingencia", +e.target.value)} className="max-w-[200px]" />
           </div>
         </div>
@@ -52,7 +52,7 @@ export function TabWorkflow({ form, set, fields = [] }: Props) {
           <Switch checked={form.habilitar_perguntas_automaticas} onCheckedChange={v => set("habilitar_perguntas_automaticas", v)} />
           <div>
             <Label className="cursor-pointer">Habilitar perguntas automáticas na aprovação</Label>
-            <p className="text-caption text-muted-foreground">Gera automaticamente perguntas sobre prazo, contingência e SLA na aprovação final.</p>
+            <p className="text-caption text-muted-foreground">Gera automaticamente perguntas sobre prazo, plano de ação e SLA na aprovação final.</p>
           </div>
         </div>
 

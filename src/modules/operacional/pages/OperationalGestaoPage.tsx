@@ -290,7 +290,7 @@ export default function OperationalGestaoPage() {
         <MetricCard icon={CheckCircle2} label="Concluídas" value={metrics.concluidas} color="text-green-600" />
         <MetricCard icon={Clock} label="Em Atraso" value={metrics.atrasadas} color="text-orange-600" />
         <MetricCard icon={Shield} label="Aguard. Aprovação" value={metrics.pendentesAprovacao} color="text-purple-600" />
-        <MetricCard icon={AlertTriangle} label="Contingências" value={metrics.contingenciasAbertas} sub={`${metrics.contingenciasVencidas} vencidas`} color="text-red-600" />
+        <MetricCard icon={AlertTriangle} label="Planos de Ação" value={metrics.contingenciasAbertas} sub={`${metrics.contingenciasVencidas} vencidas`} color="text-red-600" />
       </div>
 
       <Tabs defaultValue={awaitingApproval.length > 0 ? "aprovacoes" : "ranking"}>
@@ -303,7 +303,7 @@ export default function OperationalGestaoPage() {
           )}
           <TabsTrigger value="ranking"><Users className="w-3 h-3 mr-1" />Ranking</TabsTrigger>
           <TabsTrigger value="rotinas"><BarChart3 className="w-3 h-3 mr-1" />Rotinas</TabsTrigger>
-          <TabsTrigger value="contingencias"><AlertTriangle className="w-3 h-3 mr-1" />Contingências</TabsTrigger>
+          <TabsTrigger value="planos de ação"><AlertTriangle className="w-3 h-3 mr-1" />Planos de Ação</TabsTrigger>
         </TabsList>
 
         {/* Aprovações */}
@@ -460,8 +460,8 @@ export default function OperationalGestaoPage() {
           </div>
         </TabsContent>
 
-        {/* Contingências */}
-        <TabsContent value="contingencias">
+        {/* Planos de Ação */}
+        <TabsContent value="planos de ação">
           <div className="bg-card border border-border rounded-lg shadow-card overflow-hidden">
             <table className="w-full">
               <thead>
@@ -476,7 +476,7 @@ export default function OperationalGestaoPage() {
               </thead>
               <tbody className="divide-y divide-border">
                 {contingencies.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Sem contingências no período.</td></tr>
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Sem planos de ação no período.</td></tr>
                 ) : contingencies.map((c: any) => {
                   const sc = CONTINGENCY_STATUS[c.status] || CONTINGENCY_STATUS.aberta;
                   const isVencida = c.prazo_sla && new Date(c.prazo_sla) < new Date() && c.status === "aberta";

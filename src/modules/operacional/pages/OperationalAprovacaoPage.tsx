@@ -164,8 +164,8 @@ export default function OperationalAprovacaoPage() {
     if (!habilitarAuto) return [];
     return [
       { id: "__auto_fora_prazo", label: "Tarefa executada fora do prazo?", pontos: snapshot?.penalidade_fora_prazo ?? 20, key: "fora_prazo" },
-      { id: "__auto_contingencia", label: "Houve contingência nesta tarefa?", pontos: snapshot?.penalidade_contingencia ?? 10, key: "contingencia" },
-      { id: "__auto_sla_contingencia", label: "Contingência resolvida dentro do prazo?", pontos: snapshot?.penalidade_sla_contingencia ?? 15, key: "sla_contingencia" },
+      { id: "__auto_contingencia", label: "Houve plano de ação nesta tarefa?", pontos: snapshot?.penalidade_contingencia ?? 10, key: "contingencia" },
+      { id: "__auto_sla_contingencia", label: "Plano de Ação resolvido dentro do prazo?", pontos: snapshot?.penalidade_sla_contingencia ?? 15, key: "sla_contingencia" },
     ];
   }, [habilitarAuto, snapshot]);
 
@@ -185,7 +185,7 @@ export default function OperationalAprovacaoPage() {
     const hasContingency = approval.contingencies.length > 0;
     answers["__auto_contingencia"] = {
       resposta: hasContingency ? "nao_conforme" : "conforme",
-      detail: hasContingency ? `${approval.contingencies.length} contingência(s) registrada(s)` : "Nenhuma contingência",
+      detail: hasContingency ? `${approval.contingencies.length} plano de ação(s) registrado(s)` : "Nenhuma plano de ação",
     };
 
     const openOrLate = approval.contingencies.filter((c: any) =>
@@ -193,7 +193,7 @@ export default function OperationalAprovacaoPage() {
     );
     answers["__auto_sla_contingencia"] = {
       resposta: !hasContingency ? "na" : openOrLate.length > 0 ? "nao_conforme" : "conforme",
-      detail: !hasContingency ? "Sem contingências para avaliar" : openOrLate.length > 0 ? "Contingência(s) fora do prazo ou pendente(s)" : "Todas resolvidas dentro do SLA",
+      detail: !hasContingency ? "Sem planos de ação para avaliar" : openOrLate.length > 0 ? "Plano de Ação(s) fora do prazo ou pendente(s)" : "Todas resolvidas dentro do SLA",
     };
 
     return answers;
