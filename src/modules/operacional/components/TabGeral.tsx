@@ -143,10 +143,29 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
                 </RadioGroup>
               </div>
               {mode === "nome" ? (
-                <Select value={form[r.profileKey] as string} onValueChange={v => set(r.profileKey as any, v)}>
-                  <SelectTrigger className="h-8"><SelectValue placeholder="Selecione colaborador" /></SelectTrigger>
-                  <SelectContent>{colaboradores.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
-                </Select>
+                <>
+                  <Select value={form[r.profileKey] as string} onValueChange={v => set(r.profileKey as any, v)}>
+                    <SelectTrigger className="h-8"><SelectValue placeholder="Selecione colaborador" /></SelectTrigger>
+                    <SelectContent>
+                      {colaboradores
+                        .filter((c: any) => {
+                          // Avaliador não pode ser o mesmo que executor (quem recebe a nota) nem que avaliado
+                          if (r.profileKey === "avaliador_profile_id") {
+                            if (form.executor_profile_id && c.id === form.executor_profile_id) return false;
+                            if (form.avaliado_profile_id && c.id === form.avaliado_profile_id) return false;
+                          }
+                          return true;
+                        })
+                        .map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {r.profileKey === "avaliador_profile_id" && form.avaliador_profile_id && (
+                    (form.avaliador_profile_id === form.executor_profile_id ||
+                     form.avaliador_profile_id === form.avaliado_profile_id) && (
+                      <p className="text-[10px] text-destructive mt-1">O avaliador não pode ser o mesmo que recebe a nota.</p>
+                    )
+                  )}
+                </>
               ) : (
                 <div className="space-y-2">
                   <Select value={form[r.setorKey] as string} onValueChange={v => set(r.setorKey as any, v)}>
