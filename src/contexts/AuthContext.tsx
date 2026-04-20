@@ -23,6 +23,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const LEGACY_PATH_MAP: Record<string, string> = {
+  "/checklists/execucao": "/operacional/execucao",
+  "/checklists/gestao": "/operacional/gestao",
+  "/checklists/cadastro": "/operacional/cadastro",
+  "/checklists/avaliacao": "/operacional/avaliacao",
+  "/checklists/aprovacao": "/operacional/aprovacao",
+  "/checklists/contingencias": "/operacional/contingencias",
+};
+
+function normalizeAllowedScreens(paths: string[]) {
+  return Array.from(new Set(paths.map((path) => LEGACY_PATH_MAP[path] ?? path)));
+}
+
 function AuthProviderInner({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -42,11 +55,11 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
 
   const canViewPath = useCallback((path: string): boolean => {
     if (isAdmin) return true;
-    return allowedScreens.includes(path);
+    const normalizedPath = LEGACY_PATH_MAP[path] ?? path;
+    return allowedScreens.includes(normalizedPath);
   }, [isAdmin, allowedScreens]);
 
   const fetchProfileAndRoles = useCallback(async (userId: string) => {
-    // Timeout wrapper to prevent infinite loading when DB is unresponsive
     const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> =>
       Promise.race([
         promise,
@@ -94,7 +107,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
 
     setProfile(prof);
     setRoles((rolesRes.data ?? []).map((r) => r.role));
-    setAllowedScreens((telasRes.data ?? []).map((t) => t.tela_path));
+    setAllowedScreens(normalizeAllowedScreens((telasRes.data ?? []).map((t) => t.tela_path)));
   }, [clearAuthState]);
 
   useEffect(() => {
