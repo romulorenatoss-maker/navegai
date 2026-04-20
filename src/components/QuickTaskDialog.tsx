@@ -111,7 +111,7 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
     && !!avaliadoId
     && !!dataPrevista
     && (!requerValidacao || (!!validadorId && validadorId !== avaliadoId))
-    && (!requerAprovacao || (!!aprovadorId && (!isSelfTask || aprovadorId !== profile?.id)));
+    && (!requerAprovacao || (!!aprovadorId && aprovadorId !== avaliadoId && (!isSelfTask || aprovadorId !== profile?.id)));
 
   const canAdvanceStep2 = fields.length > 0 && fields.every((f) => f.label.trim().length > 0);
 
