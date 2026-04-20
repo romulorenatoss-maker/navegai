@@ -13,9 +13,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CalendarIcon, Filter, Trophy, AlertTriangle,
-  Eye, MessageSquare, Loader2, FileText, Download, TrendingUp
+  Eye, MessageSquare, Loader2, FileText, Download, TrendingUp, ListChecks
 } from "lucide-react";
 import MinhasVendasTab from "@/components/MinhasVendasTab";
+import MinhasTarefasTab from "@/components/MinhasTarefasTab";
 import { exportOSPdf } from "@/lib/export-os-pdf";
 import { cn } from "@/lib/utils";
 import { format, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
@@ -346,6 +347,9 @@ export default function MinhasAvaliacoesPage() {
           <TabsTrigger value="os_avaliadas" className="flex items-center gap-1.5">
             <FileText className="w-4 h-4" /> OS Avaliadas
           </TabsTrigger>
+          <TabsTrigger value="minhas_tarefas" className="flex items-center gap-1.5">
+            <ListChecks className="w-4 h-4" /> Minhas Tarefas
+          </TabsTrigger>
           <TabsTrigger value="minhas_vendas" className="flex items-center gap-1.5">
             <TrendingUp className="w-4 h-4" /> Minhas Vendas
           </TabsTrigger>
@@ -573,6 +577,11 @@ export default function MinhasAvaliacoesPage() {
               </table>
             </div>
           </div>
+        </TabsContent>
+
+        {/* Minhas Tarefas Tab */}
+        <TabsContent value="minhas_tarefas">
+          <MinhasTarefasTab />
         </TabsContent>
 
         {/* Minhas Vendas Tab */}

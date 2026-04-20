@@ -193,7 +193,7 @@ export default function OperationalAprovacaoPage() {
     );
     answers["__auto_sla_contingencia"] = {
       resposta: !hasContingency ? "na" : openOrLate.length > 0 ? "nao_conforme" : "conforme",
-      detail: !hasContingency ? "Sem planos de ação para avaliar" : openOrLate.length > 0 ? "Plano de Ação(s) fora do prazo ou pendente(s)" : "Todas resolvidas dentro do SLA",
+      detail: !hasContingency ? "Sem planos de ação para avaliar" : openOrLate.length > 0 ? "Plano(s) de Ação fora do prazo ou pendente(s)" : "Todas resolvidas dentro do SLA",
     };
 
     return answers;

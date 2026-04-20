@@ -154,7 +154,7 @@ export default function DashboardOperacionalKPIPage() {
           <KPICard icon={<CheckCircle2 className="w-4 h-4" />} label="Taxa Conclusão" value={dash.kpis.taxaConclusao} suffix="%" color={dash.kpis.taxaConclusao >= 80 ? "emerald" : dash.kpis.taxaConclusao >= 60 ? "amber" : "red"} />
           <KPICard icon={<Target className="w-4 h-4" />} label="Taxa Conformidade" value={dash.kpis.taxaConformidade} suffix="%" color={dash.kpis.taxaConformidade != null && dash.kpis.taxaConformidade >= 90 ? "emerald" : "amber"} />
           <KPICard icon={<TrendingUp className="w-4 h-4" />} label="Score Médio" value={dash.kpis.scoreMedio} color={dash.kpis.scoreMedio != null && dash.kpis.scoreMedio >= 80 ? "emerald" : "amber"} />
-          <KPICard icon={<ShieldAlert className="w-4 h-4" />} label="Planos de Ação" value={dash.kpis.totalPlanos de Ação} />
+          <KPICard icon={<ShieldAlert className="w-4 h-4" />} label="Planos de Ação" value={dash.kpis.totalContingencias} />
           <KPICard icon={<AlertTriangle className="w-4 h-4" />} label="Vencidas" value={dash.kpis.vencidas} color={dash.kpis.vencidas > 0 ? "red" : "emerald"} />
           <KPICard icon={<Clock className="w-4 h-4" />} label="SLA Cumprido" value={dash.kpis.slaMedio} suffix="%" color={dash.kpis.slaMedio != null && dash.kpis.slaMedio >= 80 ? "emerald" : "red"} />
           <KPICard icon={<Clock className="w-4 h-4" />} label="MTTR" value={dash.kpis.mttrHours} suffix="h" />
@@ -165,7 +165,7 @@ export default function DashboardOperacionalKPIPage() {
       <Tabs defaultValue="evolucao" className="space-y-4">
         <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="evolucao" className="text-xs">Evolução Score</TabsTrigger>
-          <TabsTrigger value="planos de ação" className="text-xs">Planos de Ação</TabsTrigger>
+          <TabsTrigger value="contingencias" className="text-xs">Planos de Ação</TabsTrigger>
           <TabsTrigger value="templates" className="text-xs">Por Template</TabsTrigger>
           <TabsTrigger value="naoconformidades" className="text-xs">Não Conformidades</TabsTrigger>
         </TabsList>
@@ -200,7 +200,7 @@ export default function DashboardOperacionalKPIPage() {
         </TabsContent>
 
         {/* Contingencies by status */}
-        <TabsContent value="planos de ação">
+        <TabsContent value="contingencias">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-card border border-border rounded-lg p-4">
               <h3 className="text-sm font-semibold text-foreground mb-4">Planos de Ação por Status</h3>
@@ -265,7 +265,7 @@ export default function DashboardOperacionalKPIPage() {
                     <td className="px-4 py-2 text-foreground">{t.nome}</td>
                     <td className="px-4 py-2 text-center font-mono">{t.count}</td>
                     <td className="px-4 py-2 text-center">
-                      <span className={cn("font-mono", t.planos de ação > 0 ? "text-destructive font-bold" : "text-muted-foreground")}>{t.planos de ação}</span>
+                      <span className={cn("font-mono", t.contingencias > 0 ? "text-destructive font-bold" : "text-muted-foreground")}>{t.contingencias}</span>
                     </td>
                     <td className="px-4 py-2 text-center">
                       {t.media != null ? (

@@ -11,7 +11,7 @@ export interface OperationalScoreInput {
   totalItens: number;
   itensConformes: number;
   evidenciaValidada: boolean | null;
-  totalPlanos de Ação: number;
+  totalContingencias: number;
   contingenciasNoPrazo: number;
 }
 
@@ -54,8 +54,8 @@ export function calculateOperationalScore(input: OperationalScoreInput): Operati
   }
 
   let slaCorrecoes = 100;
-  if (input.totalPlanos de Ação > 0) {
-    slaCorrecoes = (input.contingenciasNoPrazo / input.totalPlanos de Ação) * 100;
+  if (input.totalContingencias > 0) {
+    slaCorrecoes = (input.contingenciasNoPrazo / input.totalContingencias) * 100;
   }
 
   const scoreFinal = Math.max(0, Math.min(100, Math.round(
