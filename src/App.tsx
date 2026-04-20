@@ -49,7 +49,7 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 2 * 60 * 1000, // 2 min - avoid refetching unchanged data
+      staleTime: 5 * 60 * 1000, // 5 min - cache inteligente (enterprise)
       gcTime: 10 * 60 * 1000, // 10 min - keep in cache longer
       refetchOnWindowFocus: false, // don't refetch on tab switch
       retry: 1, // reduce retries on failure
