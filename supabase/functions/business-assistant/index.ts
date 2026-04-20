@@ -393,7 +393,7 @@ serve(async (req) => {
       abertura: os.data_abertura?.split("T")[0],
       conclusao: os.data_conclusao?.split("T")[0] || "-",
       cliente: os.cliente_nome || "-",
-      cpf: os.cliente_cpf || "-",
+      cpf: maskCpf(os.cliente_cpf),
       tecnico: os.tecnico?.nome || "-",
       atendente: os.atendente?.nome || "-",
       avaliado: os.colaborador_avaliado?.nome || "-",
