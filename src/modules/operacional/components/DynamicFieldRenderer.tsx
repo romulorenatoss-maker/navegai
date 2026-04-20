@@ -31,6 +31,7 @@ export interface SnapshotField {
     cor: string;
     requer_descricao: boolean;
     requer_evidencia: boolean;
+    tipos_evidencia?: string[];
     gera_contingencia: boolean;
   }>;
   validacao?: any;
@@ -161,29 +162,79 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
     }
   };
 
+  // Localiza a regra ativa baseada na opção selecionada (conforme/sim_nao/select)
+  const opcoesRegras = Array.isArray(field.opcoes_regras) ? field.opcoes_regras : [];
+  const activeRule = (() => {
+    if (!opcoesRegras.length) return null;
+    if (field.tipo === "conforme") {
+      if (val.valor_booleano === true) return opcoesRegras.find(r => r.valor === "conforme") || null;
+      if (val.valor_booleano === false) return opcoesRegras.find(r => r.valor === "nao_conforme") || null;
+    }
+    if (field.tipo === "sim_nao") {
+      if (val.valor_booleano === true) return opcoesRegras.find(r => r.valor === "sim") || null;
+      if (val.valor_booleano === false) return opcoesRegras.find(r => r.valor === "nao") || null;
+    }
+    if (field.tipo === "select" && val.valor_texto) {
+      const v = val.valor_texto.toLowerCase().replace(/\s+/g, "_");
+      return opcoesRegras.find(r => r.valor === v || r.label === val.valor_texto) || null;
+    }
+    return null;
+  })();
+
   const renderInput = () => {
     switch (field.tipo) {
-      case "conforme":
+      case "conforme": {
+        // Suporta opcoes_regras customizadas (Conforme/Não Conforme/N/A) ou padrão
+        const opts = opcoesRegras.length
+          ? opcoesRegras.map(r => ({
+              label: r.label,
+              val: r.valor === "conforme" ? true : r.valor === "nao_conforme" ? false : null,
+              cls: r.cor === "success" ? "bg-green-100 text-green-800 border-green-300"
+                : r.cor === "destructive" ? "bg-red-100 text-red-800 border-red-300"
+                : "bg-muted text-muted-foreground border-border",
+            }))
+          : [
+              { label: "Conforme", val: true, cls: "bg-green-100 text-green-800 border-green-300" },
+              { label: "Não Conforme", val: false, cls: "bg-red-100 text-red-800 border-red-300" },
+            ];
         return (
-          <div className="flex gap-2">
-            {[{ label: "Conforme", val: true, cls: "bg-green-100 text-green-800 border-green-300" },
-              { label: "Não Conforme", val: false, cls: "bg-red-100 text-red-800 border-red-300" }].map(opt => (
-              <button key={String(opt.val)} type="button" disabled={!isEditable}
+          <div className="flex gap-2 flex-wrap">
+            {opts.map(opt => (
+              <button key={String(opt.val) + opt.label} type="button" disabled={!isEditable}
                 onClick={() => update({ valor_booleano: opt.val })}
-                className={`flex-1 px-3 py-2 rounded-md border text-sm font-medium transition-colors ${val.valor_booleano === opt.val ? opt.cls + " ring-2 ring-offset-1 ring-primary/30" : "bg-card border-border text-muted-foreground"} ${!isEditable ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
+                className={`flex-1 min-w-[100px] px-3 py-2 rounded-md border text-sm font-medium transition-colors ${val.valor_booleano === opt.val ? opt.cls + " ring-2 ring-offset-1 ring-primary/30" : "bg-card border-border text-muted-foreground"} ${!isEditable ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
                 {opt.label}
               </button>
             ))}
           </div>
         );
+      }
 
-      case "sim_nao":
+      case "sim_nao": {
+        const opts = opcoesRegras.length
+          ? opcoesRegras.map(r => ({
+              label: r.label,
+              val: r.valor === "sim" ? true : r.valor === "nao" ? false : null,
+              cls: r.cor === "success" ? "bg-green-100 text-green-800 border-green-300"
+                : r.cor === "destructive" ? "bg-red-100 text-red-800 border-red-300"
+                : "bg-muted text-muted-foreground border-border",
+            }))
+          : [
+              { label: "Sim", val: true, cls: "bg-green-100 text-green-800 border-green-300" },
+              { label: "Não", val: false, cls: "bg-red-100 text-red-800 border-red-300" },
+            ];
         return (
-          <div className="flex items-center gap-3">
-            <Switch checked={val.valor_booleano === true} onCheckedChange={v => update({ valor_booleano: v })} disabled={!isEditable} />
-            <span className="text-sm">{val.valor_booleano === true ? "Sim" : val.valor_booleano === false ? "Não" : "—"}</span>
+          <div className="flex gap-2 flex-wrap">
+            {opts.map(opt => (
+              <button key={String(opt.val) + opt.label} type="button" disabled={!isEditable}
+                onClick={() => update({ valor_booleano: opt.val })}
+                className={`flex-1 min-w-[100px] px-3 py-2 rounded-md border text-sm font-medium transition-colors ${val.valor_booleano === opt.val ? opt.cls + " ring-2 ring-offset-1 ring-primary/30" : "bg-card border-border text-muted-foreground"} ${!isEditable ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
+                {opt.label}
+              </button>
+            ))}
           </div>
         );
+      }
 
       case "nota_avaliacao":
       case "numero":
@@ -287,6 +338,75 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
       {field.descricao && <p className="text-xs text-muted-foreground">{field.descricao}</p>}
 
       {renderInput()}
+
+      {/* Follow-up dinâmico baseado na regra da opção selecionada */}
+      {activeRule && (activeRule.requer_descricao || activeRule.requer_evidencia || activeRule.gera_contingencia) && (
+        <div className="mt-2 p-2.5 rounded-md border border-amber-300/60 bg-amber-50/40 dark:bg-amber-950/20 dark:border-amber-800/50 space-y-2">
+          <div className="flex items-center gap-1.5 text-[11px] font-medium text-amber-800 dark:text-amber-300">
+            <AlertTriangle className="w-3 h-3" />
+            Ação requerida pela opção "{activeRule.label}"
+            {activeRule.gera_contingencia && (
+              <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 border border-orange-200 dark:bg-orange-950/40 dark:text-orange-400 dark:border-orange-800">
+                Gera contingência
+              </span>
+            )}
+          </div>
+          {activeRule.requer_descricao && (
+            <div className="space-y-1">
+              <Label className="text-[11px]">Justificativa / Plano de ação *</Label>
+              <Textarea
+                value={val.valor_texto ?? ""}
+                onChange={e => update({ valor_texto: e.target.value })}
+                disabled={!isEditable}
+                placeholder="Descreva o motivo / ação corretiva..."
+                rows={2}
+                className={!isEditable ? "opacity-60" : ""}
+                maxLength={2000}
+              />
+            </div>
+          )}
+          {activeRule.requer_evidencia && (
+            <div className="space-y-1">
+              <Label className="text-[11px]">Evidência obrigatória *</Label>
+              {val.evidencia_url ? (
+                <div className="flex items-center gap-2">
+                  {/\.(jpg|jpeg|png|gif|webp)$/i.test(val.evidencia_url) ? (
+                    <img src={val.evidencia_url} alt="Evidência" className="max-h-24 rounded border border-border" />
+                  ) : /\.(mp4|webm|mov)$/i.test(val.evidencia_url) ? (
+                    <video src={val.evidencia_url} controls className="max-h-24 rounded border border-border" />
+                  ) : (
+                    <a href={val.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver evidência</a>
+                  )}
+                  {isEditable && (
+                    <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => update({ evidencia_url: null })}>
+                      <X className="w-3 h-3" />
+                    </Button>
+                  )}
+                </div>
+              ) : isEditable ? (
+                <label className={`flex items-center justify-center gap-2 border border-dashed border-amber-400/60 rounded p-2 cursor-pointer hover:border-amber-500 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
+                  {uploading ? <span className="text-xs text-muted-foreground">Enviando...</span> : (
+                    <>
+                      <Upload className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+                      <span className="text-xs text-amber-800 dark:text-amber-300">
+                        Anexar {(activeRule.tipos_evidencia || []).includes("foto") ? "foto" : (activeRule.tipos_evidencia || []).join("/") || "arquivo"}
+                      </span>
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept={(activeRule.tipos_evidencia || []).includes("foto") && !(activeRule.tipos_evidencia || []).includes("qualquer") ? "image/*" : "*"}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); }}
+                  />
+                </label>
+              ) : (
+                <span className="text-xs text-muted-foreground">Sem evidência</span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Who answered and when */}
       {val.respondido_por_nome && val.respondido_em && (
