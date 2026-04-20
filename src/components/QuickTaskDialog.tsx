@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TabFormBuilder } from "@/modules/operacional/components/TabFormBuilder";
 import { SectionForm, FieldForm, defaultSection, getLocalToday } from "@/modules/operacional/types";
 import { cn } from "@/lib/utils";
+import QuickFieldDialog from "@/components/QuickFieldDialog";
+import { Plus } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -47,6 +49,7 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
   // Step 2 state
   const [sections, setSections] = useState<SectionForm[]>([]);
   const [fields, setFields] = useState<FieldForm[]>([]);
+  const [quickFieldOpen, setQuickFieldOpen] = useState(false);
 
   // Step 3 state
   const [slaHoras, setSlaHoras] = useState(24);
@@ -414,8 +417,19 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
 
           {step === 2 && (
             <div className="space-y-3">
-              <div className="bg-primary/5 border border-primary/20 rounded-md px-3 py-2 text-xs text-foreground">
-                Arraste para reordenar. Clique em <strong>+ Campo</strong> para adicionar. Use o ícone de engrenagem para configurar opções avançadas.
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="bg-primary/5 border border-primary/20 rounded-md px-3 py-2 text-xs text-foreground flex-1 min-w-[200px]">
+                  Use <strong>+ Novo Formulário</strong> para criação rápida. Edição avançada continua disponível em cada campo.
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => setQuickFieldOpen(true)}
+                  disabled={sections.length === 0}
+                >
+                  <Plus className="w-4 h-4 mr-1.5" />
+                  Novo Formulário
+                </Button>
               </div>
               <TabFormBuilder
                 sections={sections}
@@ -424,6 +438,13 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                 setFields={setFields}
                 setores={setores as any[]}
                 tipoExecucao="checklist_inspecao"
+              />
+              <QuickFieldDialog
+                open={quickFieldOpen}
+                onOpenChange={setQuickFieldOpen}
+                sectionTempId={sections[0]?.tempId || ""}
+                nextOrdem={fields.length}
+                onAdd={(f) => setFields(prev => [...prev, f])}
               />
             </div>
           )}
