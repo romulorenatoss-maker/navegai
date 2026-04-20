@@ -1,9 +1,8 @@
 import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { format, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Filter, ListChecks, Plus, Eye, Trophy } from "lucide-react";
+import { CalendarIcon, Filter, ListChecks, Eye, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -23,7 +22,6 @@ const STATUS_LABELS: Record<string, { text: string; cls: string }> = {
 
 export default function MinhasTarefasTab() {
   const { profile } = useAuth();
-  const navigate = useNavigate();
 
   const now = new Date();
   const [startDate, setStartDate] = useState<Date | undefined>(startOfMonth(now));
@@ -73,7 +71,7 @@ export default function MinhasTarefasTab() {
   return (
     <div className="space-y-4 mt-4">
       {/* KPI no topo: Nota Média */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="bg-card border border-border rounded-lg p-4 shadow-card">
           <div className="flex items-center gap-2 text-caption text-muted-foreground uppercase tracking-wider mb-1">
             <Trophy className="w-3.5 h-3.5" /> Nota Média
@@ -86,15 +84,6 @@ export default function MinhasTarefasTab() {
         <div className="bg-card border border-border rounded-lg p-4 shadow-card">
           <div className="text-caption text-muted-foreground uppercase tracking-wider mb-1">Total Concluídas</div>
           <div className="text-2xl font-bold font-tabular text-foreground">{assignments.length}</div>
-        </div>
-        <div className="bg-card border border-border rounded-lg p-4 shadow-card flex items-center justify-between gap-3">
-          <div>
-            <div className="text-caption text-muted-foreground uppercase tracking-wider mb-1">Nova Tarefa</div>
-            <div className="text-xs text-muted-foreground">Criar tarefa individual</div>
-          </div>
-          <Button onClick={() => navigate("/operacional/cadastro")} className="shrink-0">
-            <Plus className="w-4 h-4 mr-1.5" /> Nova
-          </Button>
         </div>
       </div>
 

@@ -348,7 +348,7 @@ export default function MinhasAvaliacoesPage() {
             <FileText className="w-4 h-4" /> OS Avaliadas
           </TabsTrigger>
           <TabsTrigger value="minhas_tarefas" className="flex items-center gap-1.5">
-            <ListChecks className="w-4 h-4" /> Minhas Tarefas
+            <ListChecks className="w-4 h-4" /> Tarefas Avaliadas
           </TabsTrigger>
           <TabsTrigger value="minhas_vendas" className="flex items-center gap-1.5">
             <TrendingUp className="w-4 h-4" /> Minhas Vendas
