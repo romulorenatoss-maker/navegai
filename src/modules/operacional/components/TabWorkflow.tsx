@@ -19,7 +19,7 @@ export function TabWorkflow({ form, set, fields = [] }: Props) {
   const autoQuestions = [
     { label: "Tarefa executada fora do prazo?", key: "penalidade_fora_prazo" as const, pontos: form.penalidade_fora_prazo },
     { label: "Houve plano de ação nesta tarefa?", key: "penalidade_contingencia" as const, pontos: form.penalidade_contingencia },
-    { label: "Plano de Ação resolvida dentro do prazo?", key: "penalidade_sla_contingencia" as const, pontos: form.penalidade_sla_contingencia },
+    { label: "Plano de Ação resolvido dentro do prazo?", key: "penalidade_sla_contingencia" as const, pontos: form.penalidade_sla_contingencia },
   ];
 
   const totalPenalidades = autoQuestions.reduce((s, q) => s + q.pontos, 0);

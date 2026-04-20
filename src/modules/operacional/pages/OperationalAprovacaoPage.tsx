@@ -165,7 +165,7 @@ export default function OperationalAprovacaoPage() {
     return [
       { id: "__auto_fora_prazo", label: "Tarefa executada fora do prazo?", pontos: snapshot?.penalidade_fora_prazo ?? 20, key: "fora_prazo" },
       { id: "__auto_contingencia", label: "Houve plano de ação nesta tarefa?", pontos: snapshot?.penalidade_contingencia ?? 10, key: "contingencia" },
-      { id: "__auto_sla_contingencia", label: "Plano de Ação resolvida dentro do prazo?", pontos: snapshot?.penalidade_sla_contingencia ?? 15, key: "sla_contingencia" },
+      { id: "__auto_sla_contingencia", label: "Plano de Ação resolvido dentro do prazo?", pontos: snapshot?.penalidade_sla_contingencia ?? 15, key: "sla_contingencia" },
     ];
   }, [habilitarAuto, snapshot]);
 
@@ -185,7 +185,7 @@ export default function OperationalAprovacaoPage() {
     const hasContingency = approval.contingencies.length > 0;
     answers["__auto_contingencia"] = {
       resposta: hasContingency ? "nao_conforme" : "conforme",
-      detail: hasContingency ? `${approval.contingencies.length} plano de ação(s) registrada(s)` : "Nenhuma plano de ação",
+      detail: hasContingency ? `${approval.contingencies.length} plano de ação(s) registrado(s)` : "Nenhuma plano de ação",
     };
 
     const openOrLate = approval.contingencies.filter((c: any) =>
