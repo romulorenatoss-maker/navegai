@@ -885,8 +885,9 @@ export default function AvaliacaoOSPage() {
       const path = `${evalOsId}/${perguntaId}.${ext}`;
       const { error: uploadErr } = await supabase.storage.from("evidencias").upload(path, file, { upsert: true });
       if (uploadErr) throw uploadErr;
-      const { data: urlData } = supabase.storage.from("evidencias").getPublicUrl(path);
-      const url = urlData.publicUrl;
+      const { data: signed, error: signErr } = await supabase.storage.from("evidencias").createSignedUrl(path, 60 * 60 * 24 * 365);
+      if (signErr) throw signErr;
+      const url = signed.signedUrl;
       setEvalEvidencias(prev => ({ ...prev, [perguntaId]: url }));
       const setorId = evaluatorSetorIds[0] || null;
       await supabase.from("respostas_avaliacao").upsert(
@@ -925,8 +926,9 @@ export default function AvaliacaoOSPage() {
       const path = `${evalOsId}/${perguntaId}_audio.${ext}`;
       const { error: uploadErr } = await supabase.storage.from("evidencias").upload(path, file, { upsert: true });
       if (uploadErr) throw uploadErr;
-      const { data: urlData } = supabase.storage.from("evidencias").getPublicUrl(path);
-      const url = urlData.publicUrl;
+      const { data: signed, error: signErr } = await supabase.storage.from("evidencias").createSignedUrl(path, 60 * 60 * 24 * 365);
+      if (signErr) throw signErr;
+      const url = signed.signedUrl;
       setEvalAudios(prev => ({ ...prev, [perguntaId]: url }));
       const setorId = evaluatorSetorIds[0] || null;
       await supabase.from("respostas_avaliacao").upsert(
