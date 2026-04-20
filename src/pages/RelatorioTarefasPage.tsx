@@ -94,8 +94,9 @@ export default function RelatorioTarefasPage() {
   const [pendingTo, setPendingTo] = useState<Date | undefined>();
   const [pendingStatus, setPendingStatus] = useState<string>("__all");
   const [pendingMes, setPendingMes] = useState<string>("__all");
+  const [pendingAno, setPendingAno] = useState<string>(String(new Date().getFullYear()));
   // Applied filters (used in query)
-  const [filters, setFilters] = useState<{ from?: Date; to?: Date; status: string; mes: string }>({ status: "__all", mes: "__all" });
+  const [filters, setFilters] = useState<{ from?: Date; to?: Date; status: string; mes: string; ano: string }>({ status: "__all", mes: "__all", ano: String(new Date().getFullYear()) });
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [toDelete, setToDelete] = useState<AssignmentRow | null>(null);
@@ -114,9 +115,10 @@ export default function RelatorioTarefasPage() {
 
       // Mês de competência tem prioridade — quando aplicado, ignora from/to
       if (filters.mes !== "__all") {
-        const [yy, mm] = filters.mes.split("-").map(Number);
+        const yy = Number(filters.ano);
+        const mm = Number(filters.mes);
         const start = new Date(yy, mm - 1, 1, 0, 0, 0, 0);
-        const end = new Date(yy, mm, 0, 23, 59, 59, 999); // último dia do mês
+        const end = new Date(yy, mm, 0, 23, 59, 59, 999);
         q = q.gte("created_at", start.toISOString()).lte("created_at", end.toISOString());
       } else {
         if (filters.from) q = q.gte("created_at", filters.from.toISOString());
@@ -155,7 +157,7 @@ export default function RelatorioTarefasPage() {
   const toggleGroup = (k: string) => setOpenGroups((p) => ({ ...p, [k]: !p[k] }));
 
   const handleSearch = () => {
-    setFilters({ from: pendingFrom, to: pendingTo, status: pendingStatus, mes: pendingMes });
+    setFilters({ from: pendingFrom, to: pendingTo, status: pendingStatus, mes: pendingMes, ano: pendingAno });
     setSelected(new Set());
   };
   const handleClear = () => {
@@ -163,7 +165,8 @@ export default function RelatorioTarefasPage() {
     setPendingTo(undefined);
     setPendingStatus("__all");
     setPendingMes("__all");
-    setFilters({ status: "__all", mes: "__all" });
+    setPendingAno(String(new Date().getFullYear()));
+    setFilters({ status: "__all", mes: "__all", ano: String(new Date().getFullYear()) });
     setSelected(new Set());
   };
 
