@@ -49,6 +49,7 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
   // Step 2 state
   const [sections, setSections] = useState<SectionForm[]>([]);
   const [fields, setFields] = useState<FieldForm[]>([]);
+  const [quickFieldOpen, setQuickFieldOpen] = useState(false);
 
   // Step 3 state
   const [slaHoras, setSlaHoras] = useState(24);
