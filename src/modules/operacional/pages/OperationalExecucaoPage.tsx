@@ -649,14 +649,14 @@ export default function OperationalExecucaoPage() {
             icon={<AlertTriangle className="w-4 h-4" style={{ color: "#f97316" }} />}
             borderColor="#f97316" badgeBg="bg-orange-500/15" badgeText="text-orange-700 dark:text-orange-400"
             isOpen={openAccordion === "contingenciados"} onToggle={() => setOpenAccordion(openAccordion === "contingenciados" ? null : "contingenciados")}>
-            <MinhasTarefasPendentesPanel />
+            <MinhasTarefasPendentesPanel viewAsProfileId={isAdmin && filterResponsavel !== "__all" ? filterResponsavel : null} />
           </AccordionSection>
 
           <AccordionSection title="Aprovação Final" count={isAdmin ? aguardandoAvaliacao.length : aguardandoSplit.mine.length}
             icon={<Hourglass className="w-4 h-4" style={{ color: "#8b5cf6" }} />}
             borderColor="#8b5cf6" badgeBg="bg-violet-500/15" badgeText="text-violet-700 dark:text-violet-400"
             isOpen={openAccordion === "aguardando"} onToggle={() => setOpenAccordion(openAccordion === "aguardando" ? null : "aguardando")}>
-            <AguardandoAvaliacaoPanel />
+            <AguardandoAvaliacaoPanel viewAsProfileId={isAdmin && filterResponsavel !== "__all" ? filterResponsavel : null} />
           </AccordionSection>
 
           <AccordionSection title="Em Aberto" count={isAdmin ? emAberto.length : emAbertoSplit.mine.length}
