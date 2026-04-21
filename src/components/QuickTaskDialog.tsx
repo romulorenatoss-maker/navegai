@@ -364,6 +364,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId 
         avaliador_id: requerValidacao && validadorMode === "individual" ? validadorId : null,
         avaliado_id: avaliadoId,
         aprovador_id: aprovacaoAtiva && aprovadorMode === "individual" ? aprovadorId : null,
+        validador_contingencia_id: planoAcaoEnabled && planoAcaoMode === "individual" ? planoAcaoId : null,
         setor_avaliador_id: requerValidacao && validadorMode === "setor" ? validadorSetorId : null,
         setor_executor_id: setorId || null,
         template_versao: 1,
