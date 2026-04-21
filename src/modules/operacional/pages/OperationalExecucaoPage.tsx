@@ -591,7 +591,7 @@ export default function OperationalExecucaoPage() {
         </TabsContent>
 
         <TabsContent value="avaliadas" className="mt-0">
-          <MinhasTarefasTab />
+          <MinhasTarefasTab viewAsProfileId={isAdmin ? filterResponsavel : null} />
         </TabsContent>
       </Tabs>
 
