@@ -43,9 +43,7 @@ const allNavSections = [
     title: "Tarefas",
     items: [
       { to: "/operacional/gestao", icon: FolderKanban, label: "Dash de Tarefas" },
-      { to: "/operacional/execucao", icon: PlayCircle, label: "Minhas Tarefas" },
-      { to: "/operacional/contingencias", icon: AlertTriangle, label: "Tarefas Pendentes" },
-      { to: "/operacional/aprovacao", icon: Shield, label: "Aguardando Avaliação" },
+      { to: "/operacional/minhas-tarefas", icon: PlayCircle, label: "Minhas Tarefas" },
       { to: "/operacional/cadastro", icon: ListChecks, label: "Rotinas Operacionais" },
     ],
   },

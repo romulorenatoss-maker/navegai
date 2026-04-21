@@ -20,6 +20,7 @@ import OperationalGestaoPage from "./modules/operacional/pages/OperationalGestao
 import OperationalAvaliacaoPage from "./modules/operacional/pages/OperationalAvaliacaoPage";
 import OperationalAprovacaoPage from "./modules/operacional/pages/OperationalAprovacaoPage";
 import OperationalContingenciasPage from "./modules/operacional/pages/OperationalContingenciasPage";
+import MinhasTarefasHubPage from "./modules/operacional/pages/MinhasTarefasHubPage";
 
 import CadastroEnderecosPage from "./pages/CadastroEnderecosPage";
 import ClientesPage from "./pages/ClientesPage";
@@ -73,17 +74,18 @@ const App = () => (
               <Route path="/avaliacoes/perguntas" element={<PerguntasPage />} />
               <Route path="/avaliacoes/minhas" element={<MinhasAvaliacoesPage />} />
               <Route path="/operacional/cadastro" element={<OperationalCadastroPage />} />
-              <Route path="/operacional/execucao" element={<OperationalExecucaoPage />} />
+              <Route path="/operacional/minhas-tarefas" element={<MinhasTarefasHubPage />} />
+              <Route path="/operacional/execucao" element={<Navigate to="/operacional/minhas-tarefas?tab=hoje" replace />} />
               <Route path="/operacional/gestao" element={<OperationalGestaoPage />} />
               <Route path="/operacional/avaliacao" element={<OperationalAvaliacaoPage />} />
-              <Route path="/operacional/aprovacao" element={<OperationalAprovacaoPage />} />
-              <Route path="/operacional/contingencias" element={<OperationalContingenciasPage />} />
-              <Route path="/checklists/execucao" element={<Navigate to="/operacional/execucao" replace />} />
+              <Route path="/operacional/aprovacao" element={<Navigate to="/operacional/minhas-tarefas?tab=aguardando" replace />} />
+              <Route path="/operacional/contingencias" element={<Navigate to="/operacional/minhas-tarefas?tab=pendentes" replace />} />
+              <Route path="/checklists/execucao" element={<Navigate to="/operacional/minhas-tarefas?tab=hoje" replace />} />
               <Route path="/checklists/gestao" element={<Navigate to="/operacional/gestao" replace />} />
               <Route path="/checklists/cadastro" element={<Navigate to="/operacional/cadastro" replace />} />
               <Route path="/checklists/avaliacao" element={<Navigate to="/operacional/avaliacao" replace />} />
-              <Route path="/checklists/aprovacao" element={<Navigate to="/operacional/aprovacao" replace />} />
-              <Route path="/checklists/contingencias" element={<Navigate to="/operacional/contingencias" replace />} />
+              <Route path="/checklists/aprovacao" element={<Navigate to="/operacional/minhas-tarefas?tab=aguardando" replace />} />
+              <Route path="/checklists/contingencias" element={<Navigate to="/operacional/minhas-tarefas?tab=pendentes" replace />} />
               
               
               <Route path="/cadastros/setores" element={<SetoresPage />} />
