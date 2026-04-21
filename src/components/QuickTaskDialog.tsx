@@ -218,16 +218,17 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
       const pontuacaoValida = temPerguntasAprovador;
       const aprovacaoAtiva = requerAprovacao && pontuacaoValida;
 
-      // 1) cria template ad-hoc (recorrência única)
+      // 1) cria template (ad-hoc se única; rotina recorrente se ativa)
       const templatePayload: any = {
         nome: nome.trim(),
         descricao: descricao.trim() || null,
-        tipo_execucao: "checklist_inspecao",
+        tipo_execucao: taskType === "simples" ? "tarefa_simples" : "checklist_inspecao",
         setor_id: setorId || null,
         responsavel_id: avaliadoId,
-        recorrencia_tipo: "unica",
+        recorrencia_tipo: recorrenciaAtiva ? recorrenciaTipo : "unica",
+        dias_da_semana: recorrenciaAtiva && recorrenciaTipo === "semanal" ? recorrenciaDias : null,
         data_inicio: dataPrevista,
-        data_fim: dataPrevista,
+        data_fim: recorrenciaAtiva ? (recorrenciaDataFim || null) : dataPrevista,
         horario_inicio_previsto: "08:00",
         horario_limite_execucao: horarioLimite,
         sla_horas: slaHoras,
@@ -250,7 +251,9 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
         tipo_atribuicao_avaliado: "individual",
         habilitar_perguntas_automaticas: pontuacaoValida ? habilitarPerguntasAutomaticas : false,
         ativo: true,
-        origem: "ad_hoc",
+        // Recorrente vai pra "Rotinas Operacionais" (origem rotina); pontual permanece ad_hoc
+        origem: recorrenciaAtiva ? "rotina" : "ad_hoc",
+        created_by: profile.id,
       };
 
       const { data: tpl, error: tplErr } = await (supabase as any)
