@@ -239,7 +239,25 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     }));
   }, [planoAcaoEnabled]);
 
-  const canAdvanceStep2 = fields.length > 0;
+  // Validação Step 2:
+  // - precisa ter pelo menos 1 campo
+  // - se modo individual: cada etapa precisa ter horário PRÓPRIO OU TODAS as perguntas dessa etapa precisam ter horário (em validacao.horario_inicio/horario_fim)
+  const horarioValidationError = useMemo(() => {
+    if (taskType === "simples" || horarioModo === "global") return null;
+    for (const sec of sections) {
+      const secHasTime = !!(sec.horario_inicio && sec.horario_fim);
+      if (secHasTime) continue;
+      const secFields = fields.filter(f => f.sectionTempId === sec.tempId);
+      if (secFields.length === 0) continue;
+      const allFieldsHaveTime = secFields.every(f => f.validacao?.horario_inicio && f.validacao?.horario_fim);
+      if (!allFieldsHaveTime) {
+        return `Etapa "${sec.nome || "(sem nome)"}" precisa de horário no título OU horário em todas as perguntas.`;
+      }
+    }
+    return null;
+  }, [sections, fields, horarioModo, taskType]);
+
+  const canAdvanceStep2 = fields.length > 0 && !horarioValidationError;
 
   const create = useMutation({
     mutationFn: async () => {
