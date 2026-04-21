@@ -525,16 +525,7 @@ export default function OperationalExecucaoPage() {
         </Button>
       </div>
 
-      {isAdmin && filterResponsavel !== "__all" && (
-        <div className="mb-4 flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-lg px-3 py-2">
-          <span className="text-sm font-medium text-primary">
-            👁 Modo Visão: {profilesWithTasks.find((p: any) => p.id === filterResponsavel)?.nome || "Colaborador"}
-          </span>
-          <Button size="sm" variant="ghost" className="ml-auto h-7 text-xs" onClick={() => setFilterResponsavel("__all")}>
-            Sair da visão
-          </Button>
-        </div>
-      )}
+
 
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground text-sm">Carregando...</div>
