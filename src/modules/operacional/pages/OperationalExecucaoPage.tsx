@@ -35,6 +35,46 @@ interface AccordionSectionProps {
   children: React.ReactNode;
 }
 
+interface MineOthersTabsProps {
+  mine: any[];
+  others: any[];
+  showOthers: boolean;
+  renderItem: (a: any) => React.ReactNode;
+  emptyMine: string;
+  emptyOthers?: string;
+}
+
+function MineOthersTabs({ mine, others, showOthers, renderItem, emptyMine, emptyOthers = "Nenhuma tarefa de outros." }: MineOthersTabsProps) {
+  const [tab, setTab] = useState<"minhas" | "outros">("minhas");
+  if (!showOthers) {
+    return (
+      <>
+        {mine.length === 0
+          ? <p className="text-xs text-muted-foreground text-center py-4">{emptyMine}</p>
+          : mine.map(renderItem)}
+      </>
+    );
+  }
+  return (
+    <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full">
+      <TabsList className="h-8 mb-2">
+        <TabsTrigger value="minhas" className="text-xs h-6 px-2">Minhas ({mine.length})</TabsTrigger>
+        <TabsTrigger value="outros" className="text-xs h-6 px-2">Outros ({others.length})</TabsTrigger>
+      </TabsList>
+      <TabsContent value="minhas" className="mt-0 space-y-2">
+        {mine.length === 0
+          ? <p className="text-xs text-muted-foreground text-center py-4">{emptyMine}</p>
+          : mine.map(renderItem)}
+      </TabsContent>
+      <TabsContent value="outros" className="mt-0 space-y-2">
+        {others.length === 0
+          ? <p className="text-xs text-muted-foreground text-center py-4">{emptyOthers}</p>
+          : others.map(renderItem)}
+      </TabsContent>
+    </Tabs>
+  );
+}
+
 function AccordionSection({ title, count, icon, borderColor, badgeBg, badgeText, isOpen, onToggle, children }: AccordionSectionProps) {
   return (
     <div className={`rounded-xl border overflow-hidden transition-all duration-300 ${isOpen ? "shadow-md border-transparent" : "border-border hover:border-muted-foreground/20"}`}
@@ -263,6 +303,30 @@ export default function OperationalExecucaoPage() {
   // NOVO: separar Finalizadas em "Em Aberto" (não foram feitas) e "Concluídas" (efetivamente concluídas/aprovadas)
   const emAberto = filteredAssignments.filter((a: any) => ["nao_executada", "reprovada"].includes(a.status)).slice(0, 50);
   const concluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 50);
+
+  // Sub-abas Minhas/Outros — split listas baseado no usuário logado
+  const myId = profile?.id;
+  const splitByResp = (list: any[]) => ({
+    mine: list.filter((a: any) => a.responsavel_id === myId),
+    others: list.filter((a: any) => a.responsavel_id !== myId),
+  });
+  const splitByCreator = (list: any[]) => ({
+    mine: list.filter((a: any) => a.created_by === myId),
+    others: list.filter((a: any) => a.created_by !== myId),
+  });
+  const splitByAvaliado = (list: any[]) => ({
+    mine: list.filter((a: any) => a.avaliado_id === myId),
+    others: list.filter((a: any) => a.avaliado_id !== myId),
+  });
+
+  const hojeSplit = splitByResp(hoje);
+  const designadasSplit = splitByCreator(tarefasDesignadas);
+  const devolvidasAll = [...devolvidas, ...devolvidasParaOutros];
+  const devolvidasSplit = splitByResp(devolvidasAll);
+  const contingenciadosSplit = splitByResp(contingenciados);
+  const aguardandoSplit = splitByAvaliado(aguardandoAvaliacao);
+  const emAbertoSplit = splitByResp(emAberto);
+  const concluidasSplit = splitByResp(concluidas);
 
   const exec = useAssignmentExecution(selectedAssignment?.id || null);
 
@@ -531,11 +595,14 @@ export default function OperationalExecucaoPage() {
         <div className="text-center py-12 text-muted-foreground text-sm">Carregando...</div>
       ) : (
         <div className="space-y-3">
-          <AccordionSection title="Tarefas de Hoje" count={hoje.length}
+          <AccordionSection title="Tarefas de Hoje" count={isAdmin ? hoje.length : hojeSplit.mine.length}
             icon={<CalendarClock className="w-4 h-4" style={{ color: "#f97316" }} />}
             borderColor="#f97316" badgeBg="bg-orange-500/15" badgeText="text-orange-700 dark:text-orange-400"
             isOpen={openAccordion === "hoje"} onToggle={() => setOpenAccordion(openAccordion === "hoje" ? null : "hoje")}>
-            {hoje.length === 0 ? renderEmptyState("Nenhuma tarefa para hoje.") : hoje.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+            <MineOthersTabs
+              mine={hojeSplit.mine} others={hojeSplit.others} showOthers={isAdmin}
+              renderItem={(a) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />}
+              emptyMine="Nenhuma tarefa para hoje." />
           </AccordionSection>
 
           {aguardandoMinhaValidacao.length > 0 && (
@@ -547,61 +614,64 @@ export default function OperationalExecucaoPage() {
             </AccordionSection>
           )}
 
-          <AccordionSection title="Tarefas Designadas" count={tarefasDesignadas.length}
+          <AccordionSection title="Tarefas Designadas" count={isAdmin ? tarefasDesignadas.length : designadasSplit.mine.length}
             icon={<ListTodo className="w-4 h-4" style={{ color: "#eab308" }} />}
             borderColor="#eab308" badgeBg="bg-yellow-500/15" badgeText="text-yellow-700 dark:text-yellow-400"
             isOpen={openAccordion === "designadas"} onToggle={() => setOpenAccordion(openAccordion === "designadas" ? null : "designadas")}>
-            {tarefasDesignadas.length === 0 ? renderEmptyState("Você não designou tarefas para outros.") : tarefasDesignadas.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+            <MineOthersTabs
+              mine={designadasSplit.mine} others={designadasSplit.others} showOthers={isAdmin}
+              renderItem={(a) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />}
+              emptyMine="Você não designou tarefas para outros." />
           </AccordionSection>
 
-          <AccordionSection title="Devolvidas" count={devolvidas.length + devolvidasParaOutros.length}
+          <AccordionSection title="Devolvidas" count={isAdmin ? devolvidasAll.length : devolvidasSplit.mine.length}
             icon={<RotateCcw className="w-4 h-4" style={{ color: "#ef4444" }} />}
             borderColor="#ef4444" badgeBg="bg-red-500/15" badgeText="text-red-700 dark:text-red-400"
             isOpen={openAccordion === "devolvidas"} onToggle={() => setOpenAccordion(openAccordion === "devolvidas" ? null : "devolvidas")}>
-            {devolvidas.length + devolvidasParaOutros.length === 0 ? renderEmptyState("Nenhuma rotina devolvida.") : (
-              <div className="space-y-3">
-                {devolvidas.length > 0 && (
-                  <div>
-                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Minhas devoluções</p>
-                    {devolvidas.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
-                  </div>
-                )}
-                {devolvidasParaOutros.length > 0 && (
-                  <div>
-                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 mt-2">Devolvidas para outros</p>
-                    {devolvidasParaOutros.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
-                  </div>
-                )}
-              </div>
-            )}
+            <MineOthersTabs
+              mine={devolvidasSplit.mine} others={devolvidasSplit.others} showOthers={isAdmin}
+              renderItem={(a) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />}
+              emptyMine="Nenhuma rotina devolvida." />
           </AccordionSection>
 
-          <AccordionSection title="Tarefas Pendentes" count={contingenciados.length}
+          <AccordionSection title="Tarefas Pendentes" count={isAdmin ? contingenciados.length : contingenciadosSplit.mine.length}
             icon={<AlertTriangle className="w-4 h-4" style={{ color: "#f97316" }} />}
             borderColor="#f97316" badgeBg="bg-orange-500/15" badgeText="text-orange-700 dark:text-orange-400"
             isOpen={openAccordion === "contingenciados"} onToggle={() => setOpenAccordion(openAccordion === "contingenciados" ? null : "contingenciados")}>
-            {contingenciados.length === 0 ? renderEmptyState("Nenhuma rotina contingenciada.") : contingenciados.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+            <MineOthersTabs
+              mine={contingenciadosSplit.mine} others={contingenciadosSplit.others} showOthers={isAdmin}
+              renderItem={(a) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />}
+              emptyMine="Nenhuma rotina contingenciada." />
           </AccordionSection>
 
-          <AccordionSection title="Aguardando Avaliação" count={aguardandoAvaliacao.length}
+          <AccordionSection title="Aguardando Avaliação" count={isAdmin ? aguardandoAvaliacao.length : aguardandoSplit.mine.length}
             icon={<Hourglass className="w-4 h-4" style={{ color: "#8b5cf6" }} />}
             borderColor="#8b5cf6" badgeBg="bg-violet-500/15" badgeText="text-violet-700 dark:text-violet-400"
             isOpen={openAccordion === "aguardando"} onToggle={() => setOpenAccordion(openAccordion === "aguardando" ? null : "aguardando")}>
-            {aguardandoAvaliacao.length === 0 ? renderEmptyState("Nenhuma rotina aguardando avaliação.") : aguardandoAvaliacao.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+            <MineOthersTabs
+              mine={aguardandoSplit.mine} others={aguardandoSplit.others} showOthers={isAdmin}
+              renderItem={(a) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />}
+              emptyMine="Nenhuma rotina aguardando avaliação." />
           </AccordionSection>
 
-          <AccordionSection title="Em Aberto" count={emAberto.length}
+          <AccordionSection title="Em Aberto" count={isAdmin ? emAberto.length : emAbertoSplit.mine.length}
             icon={<AlertTriangle className="w-4 h-4" style={{ color: "#f59e0b" }} />}
             borderColor="#f59e0b" badgeBg="bg-amber-500/15" badgeText="text-amber-700 dark:text-amber-400"
             isOpen={openAccordion === "em_aberto"} onToggle={() => setOpenAccordion(openAccordion === "em_aberto" ? null : "em_aberto")}>
-            {emAberto.length === 0 ? renderEmptyState("Nenhuma rotina em aberto.") : emAberto.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+            <MineOthersTabs
+              mine={emAbertoSplit.mine} others={emAbertoSplit.others} showOthers={isAdmin}
+              renderItem={(a) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />}
+              emptyMine="Nenhuma rotina em aberto." />
           </AccordionSection>
 
-          <AccordionSection title="Concluídas" count={concluidas.length}
+          <AccordionSection title="Concluídas" count={isAdmin ? concluidas.length : concluidasSplit.mine.length}
             icon={<CheckCheck className="w-4 h-4" style={{ color: "#22c55e" }} />}
             borderColor="#22c55e" badgeBg="bg-green-500/15" badgeText="text-green-700 dark:text-green-400"
             isOpen={openAccordion === "finalizadas"} onToggle={() => setOpenAccordion(openAccordion === "finalizadas" ? null : "finalizadas")}>
-            {concluidas.length === 0 ? renderEmptyState("Nenhuma rotina concluída.") : concluidas.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+            <MineOthersTabs
+              mine={concluidasSplit.mine} others={concluidasSplit.others} showOthers={isAdmin}
+              renderItem={(a) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />}
+              emptyMine="Nenhuma rotina concluída." />
           </AccordionSection>
         </div>
       )}
