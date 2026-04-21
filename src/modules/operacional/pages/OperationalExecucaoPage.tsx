@@ -177,7 +177,8 @@ export default function OperationalExecucaoPage() {
   const filteredAssignments = useMemo(() => {
     let list = assignments;
     if (isAdmin && filterResponsavel !== "__all") {
-      list = list.filter((a: any) => a.responsavel_id === filterResponsavel);
+      // Mantém também tarefas que EU criei (designadas), mesmo ao filtrar por responsável
+      list = list.filter((a: any) => a.responsavel_id === filterResponsavel || a.created_by === profile?.id);
     }
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
@@ -188,13 +189,15 @@ export default function OperationalExecucaoPage() {
     }
     if (filterDate) {
       list = list.filter((a: any) => {
+        // Tarefas designadas por mim (created_by) sempre passam, independente de data
+        if (a.created_by === profile?.id && a.responsavel_id !== profile?.id) return true;
         if (["concluida", "aprovada", "aguardando_avaliacao", "aguardando_aprovacao", "nao_executada", "contingenciado", "contingencia"].includes(a.status)) return true;
         if (a.status === "devolvida") return true;
         return a.data_prevista === filterDate || (a.data_prevista < filterDate && !["concluida", "aprovada"].includes(a.status));
       });
     }
     return list;
-  }, [assignments, isAdmin, filterResponsavel, searchTerm, filterDate]);
+  }, [assignments, isAdmin, filterResponsavel, searchTerm, filterDate, profile?.id]);
 
   // "Tarefas de Hoje" includes: today's tasks + em_andamento (any date) + atrasadas (past dates still open)
    const hoje = filteredAssignments.filter((a: any) => {
