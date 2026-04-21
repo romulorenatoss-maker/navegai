@@ -576,7 +576,7 @@ export default function OperationalExecucaoPage() {
             )}
           </AccordionSection>
 
-          <AccordionSection title="Contingenciados" count={contingenciados.length}
+          <AccordionSection title="Tarefas Pendentes" count={contingenciados.length}
             icon={<AlertTriangle className="w-4 h-4" style={{ color: "#f97316" }} />}
             borderColor="#f97316" badgeBg="bg-orange-500/15" badgeText="text-orange-700 dark:text-orange-400"
             isOpen={openAccordion === "contingenciados"} onToggle={() => setOpenAccordion(openAccordion === "contingenciados" ? null : "contingenciados")}>
