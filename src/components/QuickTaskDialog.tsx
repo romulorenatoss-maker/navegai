@@ -168,6 +168,12 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
       if (!canAdvanceStep1) throw new Error("Preencha os dados de designação");
       if (!canAdvanceStep2) throw new Error("Adicione ao menos 1 campo com nome");
 
+      // Determinar se a tarefa terá pontuação válida:
+      // só pontua se houver perguntas configuradas para o aprovador responder
+      const temPerguntasAprovador = fields.some(f => f.aprovador_verificar && f.aprovador_pergunta?.trim());
+      const pontuacaoValida = temPerguntasAprovador;
+      const aprovacaoAtiva = requerAprovacao && pontuacaoValida;
+
       // 1) cria template ad-hoc (recorrência única)
       const templatePayload: any = {
         nome: nome.trim(),
@@ -181,19 +187,21 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
         horario_inicio_previsto: "08:00",
         horario_limite_execucao: horarioLimite,
         sla_horas: slaHoras,
-        penalidade_fora_prazo: penalidadeForaPrazo,
+        penalidade_fora_prazo: pontuacaoValida ? penalidadeForaPrazo : 0,
+        penalidade_contingencia: pontuacaoValida ? penalidadeContingencia : 0,
+        penalidade_sla_contingencia: pontuacaoValida ? penalidadeSlaContingencia : 0,
         executor_profile_id: avaliadoId,
         executor_setor_id: setorId || null,
         avaliador_profile_id: requerValidacao && validadorMode === "individual" ? validadorId : null,
         avaliador_setor_id: requerValidacao && validadorMode === "setor" ? validadorSetorId : null,
         avaliado_profile_id: avaliadoId,
-        aprovador_profile_id: requerAprovacao && aprovadorMode === "individual" ? aprovadorId : null,
-        aprovador_setor_id: requerAprovacao && aprovadorMode === "setor" ? aprovadorSetorId : null,
-        requer_aprovacao_gestor: requerAprovacao,
-        modo_pontuacao: "pontuar_avaliado",
+        aprovador_profile_id: aprovacaoAtiva && aprovadorMode === "individual" ? aprovadorId : null,
+        aprovador_setor_id: aprovacaoAtiva && aprovadorMode === "setor" ? aprovadorSetorId : null,
+        requer_aprovacao_gestor: aprovacaoAtiva,
+        modo_pontuacao: pontuacaoValida ? "pontuar_avaliado" : "sem_pontuacao",
         destino_score: "individual",
         tipo_atribuicao_avaliado: "individual",
-        habilitar_perguntas_automaticas: false,
+        habilitar_perguntas_automaticas: pontuacaoValida ? habilitarPerguntasAutomaticas : false,
         ativo: true,
         origem: "ad_hoc",
       };
