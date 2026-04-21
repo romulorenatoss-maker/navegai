@@ -162,6 +162,30 @@ export default function OperationalExecucaoPage() {
     staleTime: 300000,
   });
 
+  // Contingências (planos de ação) abertas onde sou responsável e prazo_sla < 24h
+  const { data: contingenciasUrgentes = [] } = useQuery({
+    queryKey: ["operational_contingencies_urgent", profile?.id],
+    queryFn: async () => {
+      if (!profile?.id) return [];
+      const limite = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
+      const { data, error } = await (supabase as any)
+        .from("operational_contingencies")
+        .select("assignment_id, prazo_sla, status")
+        .in("status", ["aberta", "em_andamento"])
+        .eq("responsavel_id", profile.id)
+        .lte("prazo_sla", limite);
+      if (error) return [];
+      return data || [];
+    },
+    enabled: !!profile?.id,
+    staleTime: 60000,
+  });
+
+  const urgentContingencyAssignmentIds = useMemo(
+    () => new Set(contingenciasUrgentes.map((c: any) => c.assignment_id)),
+    [contingenciasUrgentes]
+  );
+
   const profilesWithTasks = useMemo(() => {
     if (!isAdmin) return [];
     const openStatuses = ["pendente", "em_andamento", "devolvida", "aguardando_avaliacao", "aguardando_aprovacao", "contingenciado", "contingencia"];
