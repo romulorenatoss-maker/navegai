@@ -423,8 +423,10 @@ export default function OperationalContingenciasPage() {
           </TabsContent>
         ))}
       </Tabs>
+        </TabsContent>
+      </Tabs>
 
-      {/* Detail Dialog */}
+
       <Dialog open={detailOpen} onOpenChange={(v) => { if (!v) closeDetail(); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
           <div className="p-4 border-b border-border">
