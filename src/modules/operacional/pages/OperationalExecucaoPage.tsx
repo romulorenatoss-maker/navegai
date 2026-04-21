@@ -634,14 +634,11 @@ export default function OperationalExecucaoPage() {
               emptyMine="Nenhuma rotina devolvida." />
           </AccordionSection>
 
-          <AccordionSection title="Tarefas Pendentes" count={isAdmin ? contingenciados.length : contingenciadosSplit.mine.length}
+          <AccordionSection title="Tarefas Pendentes" count={pendentesCount}
             icon={<AlertTriangle className="w-4 h-4" style={{ color: "#f97316" }} />}
             borderColor="#f97316" badgeBg="bg-orange-500/15" badgeText="text-orange-700 dark:text-orange-400"
             isOpen={openAccordion === "contingenciados"} onToggle={() => setOpenAccordion(openAccordion === "contingenciados" ? null : "contingenciados")}>
-            <MineOthersTabs
-              mine={contingenciadosSplit.mine} others={contingenciadosSplit.others} showOthers={isAdmin}
-              renderItem={(a) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />}
-              emptyMine="Nenhuma rotina contingenciada." />
+            <MinhasTarefasPendentesPanel />
           </AccordionSection>
 
           <AccordionSection title="Aguardando Avaliação" count={isAdmin ? aguardandoAvaliacao.length : aguardandoSplit.mine.length}
