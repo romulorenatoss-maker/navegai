@@ -21,9 +21,13 @@ interface Props {
   setFields: React.Dispatch<React.SetStateAction<FieldForm[]>>;
   setores?: any[];
   tipoExecucao?: string;
+  /** Quando true, FieldDetailDialog exige horário_inicio/fim na pergunta (modo individual). */
+  requireFieldHorario?: boolean;
+  /** Propaga para FieldDetailDialog: habilita "gera plano de ação" nas opções. */
+  planoAcaoEnabled?: boolean;
 }
 
-export function TabFormBuilder({ sections, setSections, fields, setFields, setores = [], tipoExecucao = "checklist_inspecao" }: Props) {
+export function TabFormBuilder({ sections, setSections, fields, setFields, setores = [], tipoExecucao = "checklist_inspecao", requireFieldHorario = false, planoAcaoEnabled = true }: Props) {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<FieldForm | null>(null);
   const [quickAddSectionId, setQuickAddSectionId] = useState<string | null>(null);
@@ -262,6 +266,8 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
         <FieldDetailDialog
           field={editingField}
           setores={setores}
+          planoAcaoEnabled={planoAcaoEnabled}
+          requireFieldHorario={requireFieldHorario}
           onSave={(updates) => { updateField(editingField.tempId, updates); setEditingField(null); }}
           onClose={() => setEditingField(null)}
         />
@@ -278,7 +284,7 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
   );
 }
 
-export function FieldDetailDialog({ field, setores, onSave, onClose, planoAcaoEnabled = true }: { field: FieldForm; setores: any[]; onSave: (u: Partial<FieldForm>) => void; onClose: () => void; planoAcaoEnabled?: boolean }) {
+export function FieldDetailDialog({ field, setores, onSave, onClose, planoAcaoEnabled = true, requireFieldHorario = false }: { field: FieldForm; setores: any[]; onSave: (u: Partial<FieldForm>) => void; onClose: () => void; planoAcaoEnabled?: boolean; requireFieldHorario?: boolean }) {
   const [local, setLocal] = useState<FieldForm>({ ...field });
   const upd = <K extends keyof FieldForm>(k: K, v: FieldForm[K]) => setLocal(f => ({ ...f, [k]: v }));
   const [previewAnswer, setPreviewAnswer] = useState<string | null>(null);
@@ -354,6 +360,38 @@ export function FieldDetailDialog({ field, setores, onSave, onClose, planoAcaoEn
               <Label>Descrição / Instrução</Label>
               <Textarea value={local.descricao} onChange={e => upd("descricao", e.target.value)} placeholder="Instruções para o executor..." maxLength={1000} />
             </div>
+
+            {requireFieldHorario && (
+              <div className="space-y-1.5 bg-primary/5 border border-primary/20 rounded-md p-3">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-primary shrink-0" />
+                  <Label className="text-xs font-semibold">Horário individual desta pergunta</Label>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Modo individual ativo. Preencha aqui OU defina horário no título da etapa. O atraso será registrado individualmente.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-0.5">
+                    <Label className="text-[10px]">Início</Label>
+                    <Input
+                      type="time"
+                      value={local.validacao?.horario_inicio || ""}
+                      onChange={e => upd("validacao", { ...(local.validacao || {}), horario_inicio: e.target.value })}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-0.5">
+                    <Label className="text-[10px]">Fim</Label>
+                    <Input
+                      type="time"
+                      value={local.validacao?.horario_fim || ""}
+                      onChange={e => upd("validacao", { ...(local.validacao || {}), horario_fim: e.target.value })}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Anexo de instrução */}
             <div className="space-y-1.5">
