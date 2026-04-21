@@ -184,12 +184,12 @@ export function usePendingNotifications() {
     }
   }, [profile, isAdmin]);
 
-  // Debounce curto para realtime — alerta rápido sem travar UI com queries em rajada
+  // Debounce muito curto para realtime — alerta quase instantâneo
   const debouncedFetch = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       fetchCounts();
-    }, 800);
+    }, 400);
   }, [fetchCounts]);
 
   useEffect(() => {
