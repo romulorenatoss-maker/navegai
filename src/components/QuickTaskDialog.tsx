@@ -46,11 +46,12 @@ const saveDefaults = (d: WorkflowDefaults) => {
 interface Props {
   open: boolean;
   onOpenChange: (o: boolean) => void;
+  defaultAvaliadoId?: string;
 }
 
 type Step = 1 | 2 | 3;
 
-export default function QuickTaskDialog({ open, onOpenChange }: Props) {
+export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId }: Props) {
   const qc = useQueryClient();
   const { profile } = useAuth();
   const [step, setStep] = useState<Step>(1);
@@ -110,8 +111,10 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
       const s = defaultSection(0);
       s.nome = "Itens";
       setSections([s]);
+      // Pré-seleciona o avaliado quando há um default (visão admin de outro user)
+      if (defaultAvaliadoId) setAvaliadoId(defaultAvaliadoId);
     }
-  }, [open]);
+  }, [open, defaultAvaliadoId]);
 
   const { data: colaboradores = [] } = useQuery({
     queryKey: ["profiles_quicktask"],
