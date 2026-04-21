@@ -454,6 +454,49 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId 
                 <div className="border-t border-border/60 pt-3 space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <div>
+                      <Label className="text-sm">Responsável pelo Plano de Ação</Label>
+                      <p className="text-[11px] text-muted-foreground">Quem trata o plano de ação gerado por este formulário. Sem responsável, os campos não poderão "gerar plano de ação" — apenas exigir evidência obrigatória.</p>
+                    </div>
+                    <Switch checked={requerPlanoAcao} onCheckedChange={setRequerPlanoAcao} />
+                  </div>
+                  {requerPlanoAcao && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 text-xs">
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input type="radio" checked={planoAcaoMode === "individual"} onChange={() => setPlanoAcaoMode("individual")} />
+                          Individual
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input type="radio" checked={planoAcaoMode === "setor"} onChange={() => setPlanoAcaoMode("setor")} />
+                          Setorial
+                        </label>
+                      </div>
+                      {planoAcaoMode === "individual" ? (
+                        <Select value={planoAcaoId} onValueChange={setPlanoAcaoId} disabled={!avaliadoId}>
+                          <SelectTrigger><SelectValue placeholder={avaliadoId ? "Selecionar colaborador..." : "Escolha o avaliado primeiro"} /></SelectTrigger>
+                          <SelectContent>
+                            {planoAcaoOptions.map((c: any) => (
+                              <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Select value={planoAcaoSetorId} onValueChange={setPlanoAcaoSetorId}>
+                          <SelectTrigger><SelectValue placeholder="Selecionar setor..." /></SelectTrigger>
+                          <SelectContent>
+                            {(setores as any[]).map((s) => (
+                              <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t border-border/60 pt-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
                       <Label className="text-sm">Aprovador</Label>
                       <p className="text-[11px] text-muted-foreground">Valida a nota final. Não pode ser o próprio avaliado. Pode ser uma pessoa ou um setor.</p>
                     </div>
