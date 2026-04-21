@@ -13,10 +13,35 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FieldDetailDialog } from "@/modules/operacional/components/TabFormBuilder";
 import { DynamicFieldRenderer, SnapshotField } from "@/modules/operacional/components/DynamicFieldRenderer";
-import { FIELD_TYPES, SectionForm, FieldForm, defaultSection, getLocalToday } from "@/modules/operacional/types";
+import { FIELD_TYPES, SectionForm, FieldForm, defaultSection, getLocalToday, defaultTemplate } from "@/modules/operacional/types";
 import { cn } from "@/lib/utils";
 import { defaultField } from "@/modules/operacional/types";
-import { Plus, Trash2, Settings2, Copy } from "lucide-react";
+import { Plus, Trash2, Settings2, Copy, Settings, AlertCircle } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
+// localStorage keys for default penalty values (per-user defaults set via gear icon)
+const LS_DEFAULTS_KEY = "quicktask_workflow_defaults_v1";
+interface WorkflowDefaults {
+  penalidade_fora_prazo: number;
+  penalidade_contingencia: number;
+  penalidade_sla_contingencia: number;
+}
+const loadDefaults = (): WorkflowDefaults => {
+  try {
+    const raw = localStorage.getItem(LS_DEFAULTS_KEY);
+    if (raw) return { ...{ penalidade_fora_prazo: defaultTemplate.penalidade_fora_prazo, penalidade_contingencia: defaultTemplate.penalidade_contingencia, penalidade_sla_contingencia: defaultTemplate.penalidade_sla_contingencia }, ...JSON.parse(raw) };
+  } catch {}
+  return {
+    penalidade_fora_prazo: defaultTemplate.penalidade_fora_prazo,
+    penalidade_contingencia: defaultTemplate.penalidade_contingencia,
+    penalidade_sla_contingencia: defaultTemplate.penalidade_sla_contingencia,
+  };
+};
+const saveDefaults = (d: WorkflowDefaults) => {
+  try { localStorage.setItem(LS_DEFAULTS_KEY, JSON.stringify(d)); } catch {}
+};
 
 interface Props {
   open: boolean;
