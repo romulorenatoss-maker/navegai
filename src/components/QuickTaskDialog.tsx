@@ -15,8 +15,8 @@ import { FieldDetailDialog } from "@/modules/operacional/components/TabFormBuild
 import { DynamicFieldRenderer, SnapshotField } from "@/modules/operacional/components/DynamicFieldRenderer";
 import { FIELD_TYPES, SectionForm, FieldForm, defaultSection, getLocalToday } from "@/modules/operacional/types";
 import { cn } from "@/lib/utils";
-import QuickFieldDialog from "@/components/QuickFieldDialog";
-import { Plus, Trash2, Settings2, GripVertical } from "lucide-react";
+import { defaultField } from "@/modules/operacional/types";
+import { Plus, Trash2, Settings2, Copy } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -50,8 +50,8 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
   // Step 2 state
   const [sections, setSections] = useState<SectionForm[]>([]);
   const [fields, setFields] = useState<FieldForm[]>([]);
-  const [quickFieldOpen, setQuickFieldOpen] = useState(false);
   const [editingField, setEditingField] = useState<FieldForm | null>(null);
+  const [isNewField, setIsNewField] = useState(false);
   const [previewAnswers, setPreviewAnswers] = useState<Record<string, any>>({});
 
   // Step 3 state
@@ -374,7 +374,12 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-foreground">Formulários e Campos</p>
-                <Button type="button" size="sm" onClick={() => setQuickFieldOpen(true)}>
+                <Button type="button" size="sm" onClick={() => {
+                  const novo = defaultField(sections[0]?.tempId || "", fields.length);
+                  novo.label = "";
+                  setEditingField(novo);
+                  setIsNewField(true);
+                }}>
                   <Plus className="w-4 h-4 mr-1.5" />
                   Novo Formulário
                 </Button>
@@ -426,10 +431,23 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                             variant="ghost"
                             size="sm"
                             className="h-7 w-7 p-0 opacity-60 group-hover:opacity-100"
-                            onClick={() => setEditingField(field)}
-                            title="Editar campo (regras, plano de ação, evidências, etc.)"
+                            onClick={() => { setEditingField(field); setIsNewField(false); }}
+                            title="Configurar campo (regras, plano de ação, evidências, etc.)"
                           >
                             <Settings2 className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 opacity-60 group-hover:opacity-100"
+                            onClick={() => {
+                              const copia: FieldForm = { ...field, tempId: crypto.randomUUID(), id: undefined, label: field.label + " (cópia)", ordem: fields.length };
+                              setFields(prev => [...prev, copia]);
+                            }}
+                            title="Duplicar campo"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
                           </Button>
                           <Button
                             type="button"
@@ -460,23 +478,20 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                 </div>
               )}
 
-              <QuickFieldDialog
-                open={quickFieldOpen}
-                onOpenChange={setQuickFieldOpen}
-                sectionTempId={sections[0]?.tempId || ""}
-                nextOrdem={fields.length}
-                onAdd={(f) => setFields(prev => [...prev, f])}
-              />
-
               {editingField && (
                 <FieldDetailDialog
                   field={editingField}
                   setores={setores as any[]}
                   onSave={(updates) => {
-                    setFields(prev => prev.map(f => f.tempId === editingField.tempId ? { ...f, ...updates } : f));
+                    if (isNewField) {
+                      setFields(prev => [...prev, { ...editingField, ...updates }]);
+                    } else {
+                      setFields(prev => prev.map(f => f.tempId === editingField.tempId ? { ...f, ...updates } : f));
+                    }
                     setEditingField(null);
+                    setIsNewField(false);
                   }}
-                  onClose={() => setEditingField(null)}
+                  onClose={() => { setEditingField(null); setIsNewField(false); }}
                 />
               )}
             </div>
