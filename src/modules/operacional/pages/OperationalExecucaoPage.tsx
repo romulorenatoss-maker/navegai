@@ -307,8 +307,8 @@ export default function OperationalExecucaoPage() {
   const emAberto = filteredAssignments.filter((a: any) => ["nao_executada", "reprovada"].includes(a.status)).slice(0, 50);
   const concluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 50);
 
-  // Sub-abas Minhas/Outros — split listas baseado no usuário logado
-  const myId = profile?.id;
+  // Sub-abas Minhas/Outros — split por usuário logado OU pelo usuário em "Modo Visão" do admin
+  const myId = effectiveFilterProfileId || profile?.id;
   const splitByResp = (list: any[]) => ({
     mine: list.filter((a: any) => a.responsavel_id === myId),
     others: list.filter((a: any) => a.responsavel_id !== myId),
@@ -649,14 +649,14 @@ export default function OperationalExecucaoPage() {
             icon={<AlertTriangle className="w-4 h-4" style={{ color: "#f97316" }} />}
             borderColor="#f97316" badgeBg="bg-orange-500/15" badgeText="text-orange-700 dark:text-orange-400"
             isOpen={openAccordion === "contingenciados"} onToggle={() => setOpenAccordion(openAccordion === "contingenciados" ? null : "contingenciados")}>
-            <MinhasTarefasPendentesPanel />
+            <MinhasTarefasPendentesPanel viewAsProfileId={isAdmin && filterResponsavel !== "__all" ? filterResponsavel : null} />
           </AccordionSection>
 
           <AccordionSection title="Aprovação Final" count={isAdmin ? aguardandoAvaliacao.length : aguardandoSplit.mine.length}
             icon={<Hourglass className="w-4 h-4" style={{ color: "#8b5cf6" }} />}
             borderColor="#8b5cf6" badgeBg="bg-violet-500/15" badgeText="text-violet-700 dark:text-violet-400"
             isOpen={openAccordion === "aguardando"} onToggle={() => setOpenAccordion(openAccordion === "aguardando" ? null : "aguardando")}>
-            <AguardandoAvaliacaoPanel />
+            <AguardandoAvaliacaoPanel viewAsProfileId={isAdmin && filterResponsavel !== "__all" ? filterResponsavel : null} />
           </AccordionSection>
 
           <AccordionSection title="Em Aberto" count={isAdmin ? emAberto.length : emAbertoSplit.mine.length}

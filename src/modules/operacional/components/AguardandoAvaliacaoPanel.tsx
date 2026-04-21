@@ -16,9 +16,10 @@ import { AssignmentCard } from "@/modules/operacional/components/AssignmentCard"
  * Usuário comum vê apenas "Minhas". Admin vê todas.
  * Clique em um card navega para /operacional/aprovacao para preservar as ações.
  */
-export function AguardandoAvaliacaoPanel() {
+export function AguardandoAvaliacaoPanel({ viewAsProfileId }: { viewAsProfileId?: string | null } = {}) {
   const navigate = useNavigate();
   const { profile, isAdmin } = useAuth();
+  const targetId = viewAsProfileId || profile?.id;
 
   const { data: assignments = [], isLoading } = useQuery({
     queryKey: ["aguardando_avaliacao_panel", profile?.id, isAdmin],
@@ -53,14 +54,14 @@ export function AguardandoAvaliacaoPanel() {
   );
 
   const minhas = useMemo(() => {
-    if (!profile?.id) return [];
+    if (!targetId) return [];
     return assignments.filter((a: any) =>
-      a.aprovador_id === profile.id ||
-      a.avaliador_id === profile.id ||
-      a.responsavel_id === profile.id ||
-      a.avaliado_id === profile.id
+      a.aprovador_id === targetId ||
+      a.avaliador_id === targetId ||
+      a.responsavel_id === targetId ||
+      a.avaliado_id === targetId
     );
-  }, [assignments, profile?.id]);
+  }, [assignments, targetId]);
 
   const openItem = (_a: any) => navigate("/operacional/aprovacao");
 
