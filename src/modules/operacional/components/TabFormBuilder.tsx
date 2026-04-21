@@ -259,7 +259,7 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
   );
 }
 
-export function FieldDetailDialog({ field, setores, onSave, onClose }: { field: FieldForm; setores: any[]; onSave: (u: Partial<FieldForm>) => void; onClose: () => void }) {
+export function FieldDetailDialog({ field, setores, onSave, onClose, planoAcaoEnabled = true }: { field: FieldForm; setores: any[]; onSave: (u: Partial<FieldForm>) => void; onClose: () => void; planoAcaoEnabled?: boolean }) {
   const [local, setLocal] = useState<FieldForm>({ ...field });
   const upd = <K extends keyof FieldForm>(k: K, v: FieldForm[K]) => setLocal(f => ({ ...f, [k]: v }));
   const [previewAnswer, setPreviewAnswer] = useState<string | null>(null);
