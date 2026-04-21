@@ -102,19 +102,26 @@ export default function RelatorioTarefasPage() {
   // Applied filters (used in query)
   const [filters, setFilters] = useState<{ from?: Date; to?: Date; status: string; mes: string; ano: string }>({ status: "__all", mes: "__all", ano: String(new Date().getFullYear()) });
 
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [toDelete, setToDelete] = useState<AssignmentRow | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [viewId, setViewId] = useState<string | null>(null);
 
+  // Paginação
+  const [pageSize, setPageSize] = useState<number>(50);
+  const [page, setPage] = useState<number>(1);
+
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ["relatorio-tarefas", filters],
     queryFn: async () => {
       let q = supabase
         .from("operational_assignments")
-        .select("id, template_id, status, data_prevista, created_at, numero_tarefa, operational_templates(nome)")
+        .select(`
+          id, template_id, status, data_prevista, created_at, numero_tarefa,
+          operational_templates(nome, plano_acao_responsavel_id, aprovador_id),
+          avaliado:profiles!operational_assignments_avaliado_id_fkey(nome)
+        `)
         .order("created_at", { ascending: false });
 
       // Mês de competência tem prioridade — quando aplicado, ignora from/to
