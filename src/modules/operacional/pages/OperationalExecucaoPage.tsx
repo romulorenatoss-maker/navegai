@@ -307,8 +307,8 @@ export default function OperationalExecucaoPage() {
   const emAberto = filteredAssignments.filter((a: any) => ["nao_executada", "reprovada"].includes(a.status)).slice(0, 50);
   const concluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 50);
 
-  // Sub-abas Minhas/Outros — split listas baseado no usuário logado
-  const myId = profile?.id;
+  // Sub-abas Minhas/Outros — split por usuário logado OU pelo usuário em "Modo Visão" do admin
+  const myId = effectiveFilterProfileId || profile?.id;
   const splitByResp = (list: any[]) => ({
     mine: list.filter((a: any) => a.responsavel_id === myId),
     others: list.filter((a: any) => a.responsavel_id !== myId),
