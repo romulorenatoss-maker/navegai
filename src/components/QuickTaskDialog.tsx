@@ -149,6 +149,36 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     enabled: open,
   });
 
+  // Vínculos colaborador↔setor para filtrar "Quem recebe a nota" pelo Setor da Rotina
+  const { data: colaboradorSetores = [] } = useQuery({
+    queryKey: ["colaborador_setores_quicktask"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("colaborador_setores").select("profile_id, setor_id");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: open,
+  });
+
+  // Lista de colaboradores filtrada pelo setor da rotina (se selecionado)
+  const avaliadoOptions = useMemo(() => {
+    if (!setorId) return colaboradores as any[];
+    const idsDoSetor = new Set(
+      (colaboradorSetores as any[])
+        .filter((cs) => cs.setor_id === setorId)
+        .map((cs) => cs.profile_id)
+    );
+    return (colaboradores as any[]).filter((c) => idsDoSetor.has(c.id));
+  }, [colaboradores, colaboradorSetores, setorId]);
+
+  // Se o setor mudar e o avaliado atual não pertencer mais a ele, limpa seleção
+  useEffect(() => {
+    if (!setorId || !avaliadoId) return;
+    if (!avaliadoOptions.some((c: any) => c.id === avaliadoId)) {
+      setAvaliadoId("");
+    }
+  }, [setorId, avaliadoId, avaliadoOptions]);
+
   // Tarefa "para si mesmo" → criador == avaliado
   const isSelfTask = !!profile?.id && avaliadoId === profile.id;
 
