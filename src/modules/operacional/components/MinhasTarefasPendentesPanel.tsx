@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,10 +9,10 @@ import { Camera, Video, File as FileIcon, Clock } from "lucide-react";
 /**
  * Painel embutido em "Tarefas Pendentes" da página de Execução.
  *
- * Estrutura:
- *  - Aba "Minhas" (sempre): contingências onde o usuário é responsável.
- *  - Aba "Outros" (somente admin): demais contingências.
- *  Dentro de cada aba: 4 sub-abas (Abertas, Em Tratamento, Vencidas, Concluídas).
+ * Abas (no mesmo nível):
+ *  - Minhas: contingências onde o usuário é responsável (todos status).
+ *  - Abertas | Em Tratamento | Vencidas | Concluídas: visão completa
+ *    (admin vê tudo; usuário comum vê apenas o que tem acesso pelo hook).
  *
  * Clique em um card navega para /operacional/contingencias preservando as
  * ações/regras existentes.
@@ -21,23 +21,13 @@ export function MinhasTarefasPendentesPanel() {
   const navigate = useNavigate();
   const { profile, isAdmin } = useAuth();
   const cm = useContingencyManagement();
-  const [scope, setScope] = useState<"minhas" | "outros">("minhas");
 
   const filterMine = (list: any[]) => list.filter((c: any) => c.responsavel_id === profile?.id);
-  const filterOthers = (list: any[]) => list.filter((c: any) => c.responsavel_id !== profile?.id);
 
-  const buckets = useMemo(() => {
-    const pick = scope === "minhas" ? filterMine : filterOthers;
-    return {
-      abertas: pick(cm.abertas),
-      emTratamento: pick(cm.emTratamento),
-      vencidas: pick(cm.vencidas),
-      concluidas: pick(cm.validadas),
-    };
-  }, [cm.abertas, cm.emTratamento, cm.vencidas, cm.validadas, scope, profile?.id]);
-
-  const minhasTotal = filterMine(cm.abertas).length + filterMine(cm.emTratamento).length + filterMine(cm.vencidas).length + filterMine(cm.validadas).length;
-  const outrosTotal = filterOthers(cm.abertas).length + filterOthers(cm.emTratamento).length + filterOthers(cm.vencidas).length + filterOthers(cm.validadas).length;
+  const minhas = useMemo(
+    () => [...filterMine(cm.abertas), ...filterMine(cm.emTratamento), ...filterMine(cm.vencidas), ...filterMine(cm.validadas)],
+    [cm.abertas, cm.emTratamento, cm.vencidas, cm.validadas, profile?.id]
+  );
 
   const goToDetail = (_c: any) => navigate("/operacional/contingencias");
 
@@ -109,17 +99,41 @@ export function MinhasTarefasPendentesPanel() {
     );
   };
 
-  const subTabs = [
-    { key: "abertas", label: "Abertas", list: buckets.abertas, accent: "bg-red-500/20 text-red-700", empty: "Nenhuma plano de ação aberta." },
-    { key: "em_tratamento", label: "Em Tratamento", list: buckets.emTratamento, accent: "bg-blue-500/20 text-blue-700", empty: "Nenhuma em tratamento." },
-    { key: "vencidas", label: "Vencidas", list: buckets.vencidas, accent: "bg-red-600/20 text-red-800", empty: "Nenhuma plano de ação vencida." },
-    { key: "concluidas", label: "Concluídas", list: buckets.concluidas, accent: "bg-green-500/20 text-green-700", empty: "Nenhuma plano de ação concluída." },
+  const renderList = (list: any[], emptyMsg: string) => {
+    if (cm.isLoading) return <p className="text-xs text-muted-foreground text-center py-4">Carregando...</p>;
+    if (list.length === 0) return <p className="text-xs text-muted-foreground text-center py-4">{emptyMsg}</p>;
+    return <div className="space-y-2">{list.map(renderCard)}</div>;
+  };
+
+  // Usuário comum: apenas "Minhas"
+  if (!isAdmin) {
+    return (
+      <Tabs defaultValue="minhas" className="w-full">
+        <TabsList className="h-8 mb-2">
+          <TabsTrigger value="minhas" className="text-xs h-6 px-2">
+            Minhas {minhas.length > 0 && <span className="ml-1 px-1.5 rounded-full text-[10px] bg-primary/20 text-primary">{minhas.length}</span>}
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="minhas" className="mt-0">
+          {renderList(minhas, "Nenhuma tarefa atribuída a você.")}
+        </TabsContent>
+      </Tabs>
+    );
+  }
+
+  // Admin: Minhas + 4 abas de status no mesmo nível
+  const tabs = [
+    { key: "minhas", label: "Minhas", list: minhas, accent: "bg-primary/20 text-primary", empty: "Nenhuma tarefa atribuída a você." },
+    { key: "abertas", label: "Abertas", list: cm.abertas, accent: "bg-red-500/20 text-red-700", empty: "Nenhuma plano de ação aberta." },
+    { key: "em_tratamento", label: "Em Tratamento", list: cm.emTratamento, accent: "bg-blue-500/20 text-blue-700", empty: "Nenhuma em tratamento." },
+    { key: "vencidas", label: "Vencidas", list: cm.vencidas, accent: "bg-red-600/20 text-red-800", empty: "Nenhuma plano de ação vencida." },
+    { key: "concluidas", label: "Concluídas", list: cm.validadas, accent: "bg-green-500/20 text-green-700", empty: "Nenhuma plano de ação concluída." },
   ];
 
-  const renderSubTabs = () => (
-    <Tabs defaultValue="abertas" className="w-full">
+  return (
+    <Tabs defaultValue="minhas" className="w-full">
       <TabsList className="h-8 mb-2 flex-wrap gap-1 w-full">
-        {subTabs.map((t) => (
+        {tabs.map((t) => (
           <TabsTrigger key={t.key} value={t.key} className="text-xs h-6 px-2 flex-1 min-w-[80px]">
             {t.label}
             {t.list.length > 0 && (
@@ -128,43 +142,11 @@ export function MinhasTarefasPendentesPanel() {
           </TabsTrigger>
         ))}
       </TabsList>
-      {subTabs.map((t) => (
-        <TabsContent key={t.key} value={t.key} className="mt-0 space-y-2">
-          {cm.isLoading ? (
-            <p className="text-xs text-muted-foreground text-center py-4">Carregando...</p>
-          ) : t.list.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-4">{t.empty}</p>
-          ) : (
-            t.list.map(renderCard)
-          )}
+      {tabs.map((t) => (
+        <TabsContent key={t.key} value={t.key} className="mt-0">
+          {renderList(t.list, t.empty)}
         </TabsContent>
       ))}
-    </Tabs>
-  );
-
-  // Usuário comum: apenas "Minhas" como única aba (sem Outros)
-  if (!isAdmin) {
-    return (
-      <Tabs value="minhas" className="w-full">
-        <TabsList className="h-8 mb-2">
-          <TabsTrigger value="minhas" className="text-xs h-6 px-2">Minhas ({minhasTotal})</TabsTrigger>
-        </TabsList>
-        <TabsContent value="minhas" className="mt-0">
-          {renderSubTabs()}
-        </TabsContent>
-      </Tabs>
-    );
-  }
-
-  // Admin: Minhas | Outros
-  return (
-    <Tabs value={scope} onValueChange={(v) => setScope(v as any)} className="w-full">
-      <TabsList className="h-8 mb-2">
-        <TabsTrigger value="minhas" className="text-xs h-6 px-2">Minhas ({minhasTotal})</TabsTrigger>
-        <TabsTrigger value="outros" className="text-xs h-6 px-2">Outros ({outrosTotal})</TabsTrigger>
-      </TabsList>
-      <TabsContent value="minhas" className="mt-0">{renderSubTabs()}</TabsContent>
-      <TabsContent value="outros" className="mt-0">{renderSubTabs()}</TabsContent>
     </Tabs>
   );
 }
