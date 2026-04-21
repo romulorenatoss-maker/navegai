@@ -21,6 +21,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MinhasTarefasTab from "@/components/MinhasTarefasTab";
 import QuickTaskDialog from "@/components/QuickTaskDialog";
+import { MinhasTarefasPendentesPanel } from "@/modules/operacional/components/MinhasTarefasPendentesPanel";
+import { useContingencyManagement } from "@/modules/operacional/hooks/useContingencyManagement";
 import { ListChecks, Trophy } from "lucide-react";
 
 interface AccordionSectionProps {
