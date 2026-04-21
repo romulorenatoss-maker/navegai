@@ -22,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MinhasTarefasTab from "@/components/MinhasTarefasTab";
 import QuickTaskDialog from "@/components/QuickTaskDialog";
 import { MinhasTarefasPendentesPanel } from "@/modules/operacional/components/MinhasTarefasPendentesPanel";
+import { AguardandoAvaliacaoPanel } from "@/modules/operacional/components/AguardandoAvaliacaoPanel";
 import { useContingencyManagement } from "@/modules/operacional/hooks/useContingencyManagement";
 import { ListChecks, Trophy } from "lucide-react";
 
@@ -655,10 +656,7 @@ export default function OperationalExecucaoPage() {
             icon={<Hourglass className="w-4 h-4" style={{ color: "#8b5cf6" }} />}
             borderColor="#8b5cf6" badgeBg="bg-violet-500/15" badgeText="text-violet-700 dark:text-violet-400"
             isOpen={openAccordion === "aguardando"} onToggle={() => setOpenAccordion(openAccordion === "aguardando" ? null : "aguardando")}>
-            <MineOthersTabs
-              mine={aguardandoSplit.mine} others={aguardandoSplit.others} showOthers={isAdmin}
-              renderItem={(a) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />}
-              emptyMine="Nenhuma rotina aguardando avaliação." />
+            <AguardandoAvaliacaoPanel />
           </AccordionSection>
 
           <AccordionSection title="Em Aberto" count={isAdmin ? emAberto.length : emAbertoSplit.mine.length}
