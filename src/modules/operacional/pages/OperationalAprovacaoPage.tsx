@@ -390,13 +390,20 @@ export default function OperationalAprovacaoPage() {
 
   let globalQuestionIdx = 0;
 
+  // ── Visão pessoal: tarefas onde sou o avaliado e estão aguardando ──
+  const minhaAvaliacao = useMemo(
+    () => filteredByDate.filter((a: any) => a.avaliado_id === profile?.id && a.status === "aguardando_aprovacao"),
+    [filteredByDate, profile?.id]
+  );
+  const [outerTab, setOuterTab] = useState("minha");
+
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
       <div className="mb-6">
         <h1 className="text-lg md:text-xl font-semibold text-foreground flex items-center gap-2">
-          <Shield className="w-5 h-5 text-primary" /> Aprovação Final
+          <Shield className="w-5 h-5 text-primary" /> Aguardando Avaliação
         </h1>
-        <p className="text-sm text-muted-foreground">Avalie as perguntas do checklist e aprove ou devolva a tarefa.</p>
+        <p className="text-sm text-muted-foreground">Suas tarefas aguardando avaliação e a aprovação completa.</p>
       </div>
 
       <div className="flex items-center gap-2 mb-4 flex-wrap">
@@ -406,27 +413,52 @@ export default function OperationalAprovacaoPage() {
         <Input type="date" value={filterEnd} onChange={e => setFilterEnd(e.target.value)} className="w-[150px] h-9 text-sm" />
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full mb-4 flex-wrap h-auto gap-1">
-          <TabsTrigger value="pendentes" className="flex-1 min-w-[70px]">
-            Pendentes {pendentes.length > 0 && <span className="ml-1 bg-purple-500/20 text-purple-700 px-1.5 rounded-full text-[10px]">{pendentes.length}</span>}
+      <Tabs value={outerTab} onValueChange={setOuterTab} className="mb-4">
+        <TabsList className="w-full flex-wrap h-auto gap-1">
+          <TabsTrigger value="minha" className="flex-1 min-w-[120px]">
+            Minha Avaliação
+            {minhaAvaliacao.length > 0 && (
+              <span className="ml-1 px-1.5 rounded-full text-[10px] bg-primary/20 text-primary">
+                {minhaAvaliacao.length}
+              </span>
+            )}
           </TabsTrigger>
-          <TabsTrigger value="aprovados" className="flex-1 min-w-[70px]">
-            Aprovados {aprovados.length > 0 && <span className="ml-1 bg-emerald-500/20 text-emerald-700 px-1.5 rounded-full text-[10px]">{aprovados.length}</span>}
+          <TabsTrigger value="todas" className="flex-1 min-w-[120px]">
+            Aprovação Completa
           </TabsTrigger>
-          <TabsTrigger value="historico" className="flex-1 min-w-[70px]">Histórico</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="pendentes" className="space-y-3">
-          {isLoading ? renderEmptyState("Carregando...") : pendentes.length === 0 ? renderEmptyState("Nenhuma aprovação pendente.") : pendentes.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openApproval} />)}
+        <TabsContent value="minha" className="space-y-3 mt-4">
+          {isLoading ? renderEmptyState("Carregando...") :
+           minhaAvaliacao.length === 0 ? renderEmptyState("Nenhuma tarefa sua aguardando avaliação.") :
+           minhaAvaliacao.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openApproval} />)}
         </TabsContent>
-        <TabsContent value="aprovados" className="space-y-3">
-          {aprovados.length === 0 ? renderEmptyState("Nenhum aprovado recente.") : aprovados.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openApproval} />)}
-        </TabsContent>
-        <TabsContent value="historico" className="space-y-3">
-          {historico.length === 0 ? renderEmptyState("Nenhum histórico.") : historico.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openApproval} />)}
+
+        <TabsContent value="todas" className="mt-4">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="w-full mb-4 flex-wrap h-auto gap-1">
+              <TabsTrigger value="pendentes" className="flex-1 min-w-[70px]">
+                Pendentes {pendentes.length > 0 && <span className="ml-1 bg-purple-500/20 text-purple-700 px-1.5 rounded-full text-[10px]">{pendentes.length}</span>}
+              </TabsTrigger>
+              <TabsTrigger value="aprovados" className="flex-1 min-w-[70px]">
+                Aprovados {aprovados.length > 0 && <span className="ml-1 bg-emerald-500/20 text-emerald-700 px-1.5 rounded-full text-[10px]">{aprovados.length}</span>}
+              </TabsTrigger>
+              <TabsTrigger value="historico" className="flex-1 min-w-[70px]">Histórico</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="pendentes" className="space-y-3">
+              {isLoading ? renderEmptyState("Carregando...") : pendentes.length === 0 ? renderEmptyState("Nenhuma aprovação pendente.") : pendentes.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openApproval} />)}
+            </TabsContent>
+            <TabsContent value="aprovados" className="space-y-3">
+              {aprovados.length === 0 ? renderEmptyState("Nenhum aprovado recente.") : aprovados.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openApproval} />)}
+            </TabsContent>
+            <TabsContent value="historico" className="space-y-3">
+              {historico.length === 0 ? renderEmptyState("Nenhum histórico.") : historico.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openApproval} />)}
+            </TabsContent>
+          </Tabs>
         </TabsContent>
       </Tabs>
+
 
       {/* ── Detail Dialog ── */}
       <Dialog open={approvalDialogOpen} onOpenChange={v => { if (!v) closeApproval(); }}>
