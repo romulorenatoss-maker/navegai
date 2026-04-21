@@ -205,7 +205,11 @@ export default function MinhasTarefasTab({ viewAsProfileId }: MinhasTarefasTabPr
         onOpenChange={(o) => { if (!o) setSelectedAssignmentId(null); }}
       />
 
-      <QuickTaskDialog open={quickTaskOpen} onOpenChange={setQuickTaskOpen} />
+      <QuickTaskDialog
+        open={quickTaskOpen}
+        onOpenChange={setQuickTaskOpen}
+        defaultAvaliadoId={effectiveProfileId}
+      />
     </div>
   );
 }
