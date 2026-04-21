@@ -1,10 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Trash2, AlertTriangle, Play } from "lucide-react";
+import { Trash2, AlertTriangle, Play, UserCircle2, History, Repeat, ClipboardList, Workflow } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 const STATUS_LABELS: Record<string, string> = {
   pendente: "Pendente",
@@ -45,7 +46,15 @@ export function TabTarefasExecutadas({ templateId }: Props) {
       if (!templateId) return [];
       const { data, error } = await (supabase as any)
         .from("operational_assignments")
-        .select("id, numero_tarefa, status, data_prevista, inicio_em, fim_em, responsavel_id, avaliado_id, profiles!operational_assignments_responsavel_id_fkey(nome)")
+        .select(`
+          id, numero_tarefa, status, data_prevista, inicio_em, fim_em, created_at, created_by,
+          responsavel_id, avaliado_id,
+          profiles!operational_assignments_responsavel_id_fkey(nome),
+          creator:profiles!operational_assignments_created_by_fkey(id, nome),
+          template:operational_templates!operational_assignments_template_id_fkey(
+            id, tipo_execucao, recorrencia_tipo, dias_da_semana, origem
+          )
+        `)
         .eq("template_id", templateId)
         .order("data_prevista", { ascending: false });
       if (error) throw error;
@@ -264,46 +273,77 @@ export function TabTarefasExecutadas({ templateId }: Props) {
         <p className="text-sm text-muted-foreground text-center py-8">Nenhuma tarefa gerada para este template.</p>
       ) : (
         <div className="space-y-2 max-h-[400px] overflow-y-auto">
-          {assignments.map((a: any) => (
-            <div key={a.id} className="flex items-center justify-between p-3 bg-card rounded-lg border border-border">
-              <div className="flex-1 space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {a.numero_tarefa && (
-                    <span className="font-mono text-[11px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-                      #{String(a.numero_tarefa).padStart(4, "0")}
-                    </span>
-                  )}
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${STATUS_COLORS[a.status] || "bg-muted text-muted-foreground"}`}>
-                    {STATUS_LABELS[a.status] || a.status}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    Data: {a.data_prevista ? format(new Date(a.data_prevista + "T12:00:00"), "dd/MM/yyyy") : "—"}
-                  </span>
-                  {a.profiles?.nome && (
-                    <span className="text-xs text-muted-foreground">• {a.profiles.nome}</span>
-                  )}
+          {assignments.map((a: any) => {
+            const tipoExec = a.template?.tipo_execucao;
+            const isSimples = tipoExec === "tarefa_simples";
+            const TipoIcon = isSimples ? ClipboardList : Workflow;
+            const tipoLabel = isSimples ? "Tarefa Simples" : "Inspeção por Etapa";
+            const recTipo = a.template?.recorrencia_tipo;
+            const isRecorrente = recTipo && recTipo !== "unica";
+            const recLabel = recTipo === "diaria" ? "Diária" : recTipo === "semanal" ? "Semanal" : recTipo === "mensal" ? "Mensal" : "Pontual";
+            return (
+              <div key={a.id} className="p-3 bg-card rounded-lg border border-border space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {a.numero_tarefa && (
+                        <span className="font-mono text-[11px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                          #{String(a.numero_tarefa).padStart(4, "0")}
+                        </span>
+                      )}
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${STATUS_COLORS[a.status] || "bg-muted text-muted-foreground"}`}>
+                        {STATUS_LABELS[a.status] || a.status}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        Data: {a.data_prevista ? format(new Date(a.data_prevista + "T12:00:00"), "dd/MM/yyyy") : "—"}
+                      </span>
+                      {a.profiles?.nome && (
+                        <span className="text-xs text-muted-foreground">• {a.profiles.nome}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                      {a.inicio_em && <span>Início: {format(new Date(a.inicio_em), "dd/MM HH:mm")}</span>}
+                      {a.fim_em && <span>Fim: {format(new Date(a.fim_em), "dd/MM HH:mm")}</span>}
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive h-8 w-8 p-0 shrink-0"
+                    onClick={() => {
+                      if (window.confirm("Excluir esta tarefa?")) {
+                        deleteAssignment.mutate(a.id);
+                      }
+                    }}
+                    disabled={deleteAssignment.isPending}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
                 </div>
-                <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                  {a.inicio_em && <span>Início: {format(new Date(a.inicio_em), "dd/MM HH:mm")}</span>}
-                  {a.fim_em && <span>Fim: {format(new Date(a.fim_em), "dd/MM HH:mm")}</span>}
+
+                {/* Bloco de Auditoria: criador, data de criação, tipo, recorrência */}
+                <div className="border-t border-border/60 pt-2 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px]">
+                  <div className="flex items-center gap-1 text-muted-foreground" title="Criado por">
+                    <UserCircle2 className="w-3 h-3 shrink-0" />
+                    <span className="truncate"><strong className="text-foreground">{a.creator?.nome || "Sistema"}</strong></span>
+                  </div>
+                  <div className="flex items-center gap-1 text-muted-foreground" title="Criada em">
+                    <History className="w-3 h-3 shrink-0" />
+                    <span className="truncate">{a.created_at ? format(new Date(a.created_at), "dd/MM/yy HH:mm", { locale: ptBR }) : "—"}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-muted-foreground" title="Tipo de tarefa">
+                    <TipoIcon className="w-3 h-3 shrink-0" />
+                    <span className="truncate">{tipoLabel}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-muted-foreground" title="Recorrência">
+                    <Repeat className="w-3 h-3 shrink-0" />
+                    <span className="truncate">{isRecorrente ? recLabel : "Pontual"}</span>
+                  </div>
                 </div>
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="text-destructive h-8 w-8 p-0 shrink-0"
-                onClick={() => {
-                  if (window.confirm("Excluir esta tarefa?")) {
-                    deleteAssignment.mutate(a.id);
-                  }
-                }}
-                disabled={deleteAssignment.isPending}
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

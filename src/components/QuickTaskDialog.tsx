@@ -47,11 +47,13 @@ interface Props {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   defaultAvaliadoId?: string;
+  /** Tipo escolhido no seletor inicial. "simples" oculta workflow de etapas/seções e simplifica a Step 2. */
+  taskType?: "simples" | "inspecao";
 }
 
 type Step = 1 | 2 | 3;
 
-export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId }: Props) {
+export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId, taskType = "inspecao" }: Props) {
   const qc = useQueryClient();
   const { profile } = useAuth();
   const [step, setStep] = useState<Step>(1);
@@ -62,6 +64,11 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId 
   const [setorId, setSetorId] = useState("");
   const [dataPrevista, setDataPrevista] = useState(getLocalToday());
   const [horarioLimite, setHorarioLimite] = useState("18:00");
+  // Recorrência (opcional)
+  const [recorrenciaAtiva, setRecorrenciaAtiva] = useState(false);
+  const [recorrenciaTipo, setRecorrenciaTipo] = useState<"diaria" | "semanal" | "mensal">("diaria");
+  const [recorrenciaDias, setRecorrenciaDias] = useState<number[]>([]); // 0=dom..6=sab
+  const [recorrenciaDataFim, setRecorrenciaDataFim] = useState("");
   // Responsáveis
   const [avaliadoId, setAvaliadoId] = useState(""); // quem responde + recebe nota
   const [requerValidacao, setRequerValidacao] = useState(false);
@@ -96,6 +103,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId 
     setStep(1);
     setNome(""); setDescricao(""); setSetorId("");
     setDataPrevista(getLocalToday()); setHorarioLimite("18:00");
+    setRecorrenciaAtiva(false); setRecorrenciaTipo("diaria"); setRecorrenciaDias([]); setRecorrenciaDataFim("");
     setAvaliadoId("");
     setRequerValidacao(false); setValidadorMode("individual"); setValidadorId(""); setValidadorSetorId("");
     setRequerPlanoAcao(false); setPlanoAcaoMode("individual"); setPlanoAcaoId(""); setPlanoAcaoSetorId("");
@@ -210,16 +218,17 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId 
       const pontuacaoValida = temPerguntasAprovador;
       const aprovacaoAtiva = requerAprovacao && pontuacaoValida;
 
-      // 1) cria template ad-hoc (recorrência única)
+      // 1) cria template (ad-hoc se única; rotina recorrente se ativa)
       const templatePayload: any = {
         nome: nome.trim(),
         descricao: descricao.trim() || null,
-        tipo_execucao: "checklist_inspecao",
+        tipo_execucao: taskType === "simples" ? "tarefa_simples" : "checklist_inspecao",
         setor_id: setorId || null,
         responsavel_id: avaliadoId,
-        recorrencia_tipo: "unica",
+        recorrencia_tipo: recorrenciaAtiva ? recorrenciaTipo : "unica",
+        dias_da_semana: recorrenciaAtiva && recorrenciaTipo === "semanal" ? recorrenciaDias : null,
         data_inicio: dataPrevista,
-        data_fim: dataPrevista,
+        data_fim: recorrenciaAtiva ? (recorrenciaDataFim || null) : dataPrevista,
         horario_inicio_previsto: "08:00",
         horario_limite_execucao: horarioLimite,
         sla_horas: slaHoras,
@@ -242,7 +251,9 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId 
         tipo_atribuicao_avaliado: "individual",
         habilitar_perguntas_automaticas: pontuacaoValida ? habilitarPerguntasAutomaticas : false,
         ativo: true,
-        origem: "ad_hoc",
+        // Recorrente vai pra "Rotinas Operacionais" (origem rotina); pontual permanece ad_hoc
+        origem: recorrenciaAtiva ? "rotina" : "ad_hoc",
+        created_by: profile.id,
       };
 
       const { data: tpl, error: tplErr } = await (supabase as any)
@@ -378,7 +389,11 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId 
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["operational_assignments"] });
       qc.invalidateQueries({ queryKey: ["operational_templates"] });
-      toast.success("Tarefa criada e enviada ao responsável.");
+      toast.success(
+        recorrenciaAtiva
+          ? "Rotina criada! Template adicionado em Rotinas Operacionais e tarefa de hoje enviada ao responsável."
+          : "Tarefa criada e enviada ao responsável."
+      );
       onOpenChange(false);
     },
     onError: (e: any) => toast.error(e.message || "Erro ao criar tarefa"),
@@ -388,7 +403,9 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
         <DialogHeader className="px-5 pt-5 pb-3 border-b border-border shrink-0">
-          <DialogTitle className="text-base">Nova Tarefa Individual</DialogTitle>
+          <DialogTitle className="text-base">
+            {taskType === "simples" ? "Nova Tarefa Simples" : "Nova Inspeção por Etapa"}
+          </DialogTitle>
           {/* Stepper */}
           <div className="flex items-center gap-2 mt-3">
             {[
@@ -543,7 +560,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId 
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Data prevista *</Label>
+                  <Label>{recorrenciaAtiva ? "Início *" : "Data prevista *"}</Label>
                   <Input type="date" value={dataPrevista} onChange={(e) => setDataPrevista(e.target.value)} />
                 </div>
 
@@ -551,6 +568,60 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId 
                   <Label>Horário limite</Label>
                   <Input type="time" value={horarioLimite} onChange={(e) => setHorarioLimite(e.target.value)} />
                 </div>
+              </div>
+
+              {/* Recorrência (opcional) */}
+              <div className="border border-border rounded-lg p-3 space-y-3 bg-muted/30">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <Label className="text-sm font-semibold">Recorrência</Label>
+                    <p className="text-[11px] text-muted-foreground">Se ativada, esta tarefa vira uma rotina e aparecerá em <strong>Rotinas Operacionais</strong>. A tarefa de hoje também é gerada automaticamente.</p>
+                  </div>
+                  <Switch checked={recorrenciaAtiva} onCheckedChange={setRecorrenciaAtiva} />
+                </div>
+                {recorrenciaAtiva && (
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Frequência</Label>
+                      <Select value={recorrenciaTipo} onValueChange={(v: any) => setRecorrenciaTipo(v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="diaria">Diária</SelectItem>
+                          <SelectItem value="semanal">Semanal (escolher dias)</SelectItem>
+                          <SelectItem value="mensal">Mensal (mesmo dia do mês)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {recorrenciaTipo === "semanal" && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Dias da semana</Label>
+                        <div className="flex flex-wrap gap-1.5">
+                          {["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].map((d, i) => {
+                            const active = recorrenciaDias.includes(i);
+                            return (
+                              <button
+                                key={i}
+                                type="button"
+                                onClick={() => setRecorrenciaDias(prev => active ? prev.filter(x => x !== i) : [...prev, i].sort())}
+                                className={cn(
+                                  "h-9 min-w-[44px] px-3 rounded-md border text-xs font-medium transition-colors",
+                                  active ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-muted-foreground hover:border-primary/50"
+                                )}
+                              >
+                                {d}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Data fim (opcional)</Label>
+                      <Input type="date" value={recorrenciaDataFim} onChange={(e) => setRecorrenciaDataFim(e.target.value)} placeholder="Sem fim" />
+                      <p className="text-[10px] text-muted-foreground">Deixe em branco para rotina contínua.</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
