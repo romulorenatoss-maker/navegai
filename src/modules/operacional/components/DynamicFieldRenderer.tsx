@@ -417,18 +417,6 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
           )}
         </div>
       )}
-      {val.historico_alteracoes && val.historico_alteracoes.length > 1 && (
-        <details className="mt-1">
-          <summary className="text-[10px] text-muted-foreground cursor-pointer hover:text-foreground">Histórico de alterações ({val.historico_alteracoes.length})</summary>
-          <div className="mt-1 space-y-0.5 pl-2 border-l-2 border-border">
-            {val.historico_alteracoes.map((h: any, i: number) => (
-              <p key={i} className="text-[10px] text-muted-foreground">
-                v{h.versao}: {h.nome} — {format(new Date(h.data), "dd/MM/yyyy HH:mm")}
-              </p>
-            ))}
-          </div>
-        </details>
-      )}
 
       {/* Evidence upload for non-file fields that require evidence */}
       {field.exige_evidencia && !["foto", "arquivo", "assinatura"].includes(field.tipo) && (
