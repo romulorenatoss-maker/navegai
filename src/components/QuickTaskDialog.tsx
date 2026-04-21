@@ -596,32 +596,14 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                           {q.defaultKey === "penalidade_contingencia" && "Penalidade por plano de ação (pontos)"}
                           {q.defaultKey === "penalidade_sla_contingencia" && "Penalidade SLA plano de ação (pontos)"}
                         </Label>
-                        <div className="flex items-center gap-1.5">
-                          <Input
-                            type="number"
-                            min={0}
-                            max={100}
-                            value={q.pontos}
-                            onChange={(e) => q.set(+e.target.value || 0)}
-                            className="flex-1"
-                          />
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button type="button" variant="outline" size="sm" className="h-9 w-9 p-0 shrink-0" title="Definir valor padrão">
-                                <Settings className="w-3.5 h-3.5" />
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-64 p-3" align="end">
-                              <div className="space-y-2">
-                                <p className="text-xs font-semibold">Valor padrão</p>
-                                <p className="text-[10px] text-muted-foreground">Esse valor ({q.pontos}) será usado como padrão em novas tarefas individuais e rotinas.</p>
-                                <Button type="button" size="sm" className="w-full" onClick={() => setAsDefault(q.defaultKey, q.pontos)}>
-                                  Salvar como padrão
-                                </Button>
-                              </div>
-                            </PopoverContent>
-                          </Popover>
-                        </div>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={q.pontos}
+                          onChange={(e) => q.set(+e.target.value || 0)}
+                        />
+                        <p className="text-[10px] text-muted-foreground">Padrão definido em Rotinas Operacionais.</p>
                       </div>
                     ))}
                   </div>
