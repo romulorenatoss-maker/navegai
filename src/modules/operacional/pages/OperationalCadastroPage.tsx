@@ -347,12 +347,23 @@ export default function OperationalCadastroPage() {
   });
 
   const openCreate = () => {
+    // Abre o wizard 2-passos (Tipo + Setor) antes do builder
+    setTaskTypePickerOpen(true);
+  };
+
+  const handleWizardPick = ({ type, setorId }: { type: TaskType; setorId: string }) => {
     setEditingId(null);
-    setForm(defaultTemplate);
+    const tpl = {
+      ...defaultTemplate,
+      tipo_execucao: type === "simples" ? "tarefa_simples" : "checklist_inspecao",
+      setor_id: setorId || "",
+    };
+    setForm(tpl);
     setSections([]);
     setFields([]);
     setSteps([]);
     setActiveTab("geral");
+    setTaskTypePickerOpen(false);
     setDialogOpen(true);
   };
 
