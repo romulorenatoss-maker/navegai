@@ -389,7 +389,11 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["operational_assignments"] });
       qc.invalidateQueries({ queryKey: ["operational_templates"] });
-      toast.success("Tarefa criada e enviada ao responsável.");
+      toast.success(
+        recorrenciaAtiva
+          ? "Rotina criada! Template adicionado em Rotinas Operacionais e tarefa de hoje enviada ao responsável."
+          : "Tarefa criada e enviada ao responsável."
+      );
       onOpenChange(false);
     },
     onError: (e: any) => toast.error(e.message || "Erro ao criar tarefa"),
@@ -399,7 +403,9 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
         <DialogHeader className="px-5 pt-5 pb-3 border-b border-border shrink-0">
-          <DialogTitle className="text-base">Nova Tarefa Individual</DialogTitle>
+          <DialogTitle className="text-base">
+            {taskType === "simples" ? "Nova Tarefa Simples" : "Nova Inspeção por Etapa"}
+          </DialogTitle>
           {/* Stepper */}
           <div className="flex items-center gap-2 mt-3">
             {[
