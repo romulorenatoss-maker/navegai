@@ -807,6 +807,20 @@ export default function OperationalExecucaoPage() {
             )}
           </div>
 
+          {isCriadorValidando && (
+            <div className="border-t border-border p-3 flex items-center gap-2 bg-card safe-area-bottom flex-wrap">
+              <div className="flex-1 text-xs text-muted-foreground">
+                Esta tarefa foi designada por você e está aguardando sua validação de recebimento.
+              </div>
+              <Button type="button" size="sm" variant="outline" onClick={handleDevolverDesignada} disabled={centralTransition.isPending}>
+                <RotateCcw className="w-3.5 h-3.5 mr-1" /> Devolver
+              </Button>
+              <Button type="button" size="sm" onClick={handleAprovarRecebimento} disabled={centralTransition.isPending}>
+                <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Aprovar Recebimento
+              </Button>
+            </div>
+          )}
+
           {isEditable && selectedAssignment?.status !== "pendente" && (
             <div className="border-t border-border p-3 flex items-center gap-2 bg-card safe-area-bottom flex-wrap">
               {hasSections && currentSectionIndex > 0 && (
