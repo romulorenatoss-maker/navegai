@@ -488,14 +488,18 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                 <div className="space-y-1.5">
                   <Label>Avaliado *</Label>
                   <Select value={avaliadoId} onValueChange={setAvaliadoId}>
-                    <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder={setorId && avaliadoOptions.length === 0 ? "Nenhum colaborador no setor" : "Selecionar..."} /></SelectTrigger>
                     <SelectContent>
-                      {(colaboradores as any[]).map((c) => (
+                      {avaliadoOptions.map((c: any) => (
                         <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-[10px] text-muted-foreground">Pessoa que responde a tarefa e recebe a nota.</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {setorId
+                      ? "Lista filtrada pelos colaboradores vinculados ao setor da rotina."
+                      : "Pessoa que responde a tarefa e recebe a nota."}
+                  </p>
                 </div>
 
                 <div className="border-t border-border/60 pt-3 space-y-2">
