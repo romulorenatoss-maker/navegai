@@ -17,16 +17,17 @@ import { Camera, Video, File as FileIcon, Clock } from "lucide-react";
  * Clique em um card navega para /operacional/contingencias preservando as
  * ações/regras existentes.
  */
-export function MinhasTarefasPendentesPanel() {
+export function MinhasTarefasPendentesPanel({ viewAsProfileId }: { viewAsProfileId?: string | null } = {}) {
   const navigate = useNavigate();
   const { profile, isAdmin } = useAuth();
   const cm = useContingencyManagement();
 
-  const filterMine = (list: any[]) => list.filter((c: any) => c.responsavel_id === profile?.id);
+  const targetId = viewAsProfileId || profile?.id;
+  const filterMine = (list: any[]) => list.filter((c: any) => c.responsavel_id === targetId);
 
   const minhas = useMemo(
     () => [...filterMine(cm.abertas), ...filterMine(cm.emTratamento), ...filterMine(cm.vencidas), ...filterMine(cm.validadas)],
-    [cm.abertas, cm.emTratamento, cm.vencidas, cm.validadas, profile?.id]
+    [cm.abertas, cm.emTratamento, cm.vencidas, cm.validadas, targetId]
   );
 
   const goToDetail = (_c: any) => navigate("/operacional/contingencias");
