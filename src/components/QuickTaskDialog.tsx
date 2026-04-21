@@ -329,8 +329,8 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId 
           avaliado_setor_id: null,
           aprovador_profile_id: templatePayload.aprovador_profile_id,
           aprovador_setor_id: templatePayload.aprovador_setor_id,
-          validador_contingencia_profile_id: null,
-          validador_contingencia_setor_id: null,
+          validador_contingencia_profile_id: templatePayload.validador_contingencia_profile_id,
+          validador_contingencia_setor_id: templatePayload.validador_contingencia_setor_id,
         },
         sections: insertedSections.map((s: any) => ({
           id: s.id, nome: s.nome, descricao: s.descricao, peso: s.peso, ordem: s.ordem, cor: s.cor,
