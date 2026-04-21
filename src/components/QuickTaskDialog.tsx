@@ -68,6 +68,10 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId 
   const [validadorMode, setValidadorMode] = useState<"individual" | "setor">("individual");
   const [validadorId, setValidadorId] = useState("");
   const [validadorSetorId, setValidadorSetorId] = useState("");
+  const [requerPlanoAcao, setRequerPlanoAcao] = useState(false);
+  const [planoAcaoMode, setPlanoAcaoMode] = useState<"individual" | "setor">("individual");
+  const [planoAcaoId, setPlanoAcaoId] = useState("");
+  const [planoAcaoSetorId, setPlanoAcaoSetorId] = useState("");
   const [requerAprovacao, setRequerAprovacao] = useState(false);
   const [aprovadorMode, setAprovadorMode] = useState<"individual" | "setor">("individual");
   const [aprovadorId, setAprovadorId] = useState("");
