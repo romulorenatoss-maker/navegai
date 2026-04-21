@@ -330,6 +330,14 @@ export default function OperationalExecucaoPage() {
   const emAbertoSplit = splitByResp(emAberto);
   const concluidasSplit = splitByResp(concluidas);
 
+  // Contagem para "Tarefas Pendentes" — usa Planos de Ação (contingências).
+  // Admin: total de todas; usuário comum: apenas onde é responsável.
+  const cmCount = useContingencyManagement();
+  const pendentesCount = useMemo(() => {
+    const all = [...cmCount.abertas, ...cmCount.emTratamento, ...cmCount.vencidas, ...cmCount.validadas];
+    return isAdmin ? all.length : all.filter((c: any) => c.responsavel_id === myId).length;
+  }, [cmCount.abertas, cmCount.emTratamento, cmCount.vencidas, cmCount.validadas, isAdmin, myId]);
+
   const exec = useAssignmentExecution(selectedAssignment?.id || null);
 
   const snapshot = selectedAssignment?.template_snapshot;
