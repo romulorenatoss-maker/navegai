@@ -533,11 +533,18 @@ export default function OperationalExecucaoPage() {
             {aguardandoAvaliacao.length === 0 ? renderEmptyState("Nenhuma rotina aguardando avaliação.") : aguardandoAvaliacao.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
           </AccordionSection>
 
-          <AccordionSection title="Finalizadas" count={concluidas.length}
+          <AccordionSection title="Em Aberto" count={emAberto.length}
+            icon={<AlertTriangle className="w-4 h-4" style={{ color: "#f59e0b" }} />}
+            borderColor="#f59e0b" badgeBg="bg-amber-500/15" badgeText="text-amber-700 dark:text-amber-400"
+            isOpen={openAccordion === "em_aberto"} onToggle={() => setOpenAccordion(openAccordion === "em_aberto" ? null : "em_aberto")}>
+            {emAberto.length === 0 ? renderEmptyState("Nenhuma rotina em aberto.") : emAberto.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+          </AccordionSection>
+
+          <AccordionSection title="Concluídas" count={concluidas.length}
             icon={<CheckCheck className="w-4 h-4" style={{ color: "#22c55e" }} />}
             borderColor="#22c55e" badgeBg="bg-green-500/15" badgeText="text-green-700 dark:text-green-400"
             isOpen={openAccordion === "finalizadas"} onToggle={() => setOpenAccordion(openAccordion === "finalizadas" ? null : "finalizadas")}>
-            {concluidas.length === 0 ? renderEmptyState("Nenhuma rotina finalizada.") : concluidas.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+            {concluidas.length === 0 ? renderEmptyState("Nenhuma rotina concluída.") : concluidas.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
           </AccordionSection>
         </div>
       )}
