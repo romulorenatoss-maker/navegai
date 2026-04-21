@@ -14,11 +14,13 @@ import { TabFormBuilder } from "@/modules/operacional/components/TabFormBuilder"
 import { TabWorkflow } from "@/modules/operacional/components/TabWorkflow";
 import { TabRecorrencia } from "@/modules/operacional/components/TabRecorrencia";
 import { TabTarefasExecutadas } from "@/modules/operacional/components/TabTarefasExecutadas";
+import TaskTypeSelectorDialog, { type TaskType } from "@/components/TaskTypeSelectorDialog";
 
 export default function OperationalCadastroPage() {
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [taskTypePickerOpen, setTaskTypePickerOpen] = useState(false);
   
   const [form, setForm] = useState<TemplateForm>(defaultTemplate);
   const [sections, setSections] = useState<SectionForm[]>([]);
@@ -345,12 +347,23 @@ export default function OperationalCadastroPage() {
   });
 
   const openCreate = () => {
+    // Abre o wizard 2-passos (Tipo + Setor) antes do builder
+    setTaskTypePickerOpen(true);
+  };
+
+  const handleWizardPick = ({ type, setorId }: { type: TaskType; setorId: string }) => {
     setEditingId(null);
-    setForm(defaultTemplate);
+    const tpl = {
+      ...defaultTemplate,
+      tipo_execucao: type === "simples" ? "tarefa_simples" : "checklist_inspecao",
+      setor_id: setorId || "",
+    };
+    setForm(tpl);
     setSections([]);
     setFields([]);
     setSteps([]);
     setActiveTab("geral");
+    setTaskTypePickerOpen(false);
     setDialogOpen(true);
   };
 
@@ -596,6 +609,12 @@ export default function OperationalCadastroPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <TaskTypeSelectorDialog
+        open={taskTypePickerOpen}
+        onOpenChange={setTaskTypePickerOpen}
+        onPick={handleWizardPick}
+      />
     </div>
   );
 }

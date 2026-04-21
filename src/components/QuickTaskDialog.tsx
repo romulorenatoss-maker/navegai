@@ -49,11 +49,13 @@ interface Props {
   defaultAvaliadoId?: string;
   /** Tipo escolhido no seletor inicial. "simples" oculta workflow de etapas/seções e simplifica a Step 2. */
   taskType?: "simples" | "inspecao";
+  /** Setor pré-selecionado no wizard inicial (trava o campo Setor no Step 1 e filtra avaliados). */
+  initialSetorId?: string;
 }
 
 type Step = 1 | 2 | 3;
 
-export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId, taskType = "inspecao" }: Props) {
+export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId, taskType = "inspecao", initialSetorId = "" }: Props) {
   const qc = useQueryClient();
   const { profile } = useAuth();
   const [step, setStep] = useState<Step>(1);
@@ -101,7 +103,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
 
   const reset = () => {
     setStep(1);
-    setNome(""); setDescricao(""); setSetorId("");
+    setNome(""); setDescricao(""); setSetorId(initialSetorId || "");
     setDataPrevista(getLocalToday()); setHorarioLimite("18:00");
     setRecorrenciaAtiva(false); setRecorrenciaTipo("diaria"); setRecorrenciaDias([]); setRecorrenciaDataFim("");
     setAvaliadoId("");
@@ -486,6 +488,24 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                 </div>
 
                 <div className="space-y-1.5">
+                  <Label>Setor da tarefa {initialSetorId ? "" : "(opcional)"}</Label>
+                  <Select value={setorId || "__none"} onValueChange={(v) => setSetorId(v === "__none" ? "" : v)} disabled={!!initialSetorId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecionar setor..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none">Sem setor</SelectItem>
+                      {(setores as any[]).map((s) => (
+                        <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {initialSetorId && (
+                    <p className="text-[10px] text-muted-foreground">Setor definido no passo anterior.</p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
                   <Label>Avaliado *</Label>
                   <Select value={avaliadoId} onValueChange={setAvaliadoId}>
                     <SelectTrigger><SelectValue placeholder={setorId && avaliadoOptions.length === 0 ? "Nenhum colaborador no setor" : "Selecionar..."} /></SelectTrigger>
@@ -497,7 +517,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                   </Select>
                   <p className="text-[10px] text-muted-foreground">
                     {setorId
-                      ? "Lista filtrada pelos colaboradores vinculados ao setor da rotina."
+                      ? "Lista filtrada pelos colaboradores vinculados ao setor."
                       : "Pessoa que responde a tarefa e recebe a nota."}
                   </p>
                 </div>

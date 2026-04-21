@@ -180,6 +180,7 @@ export default function OperationalExecucaoPage() {
   const [quickTaskOpen, setQuickTaskOpen] = useState(false);
   const [taskTypePickerOpen, setTaskTypePickerOpen] = useState(false);
   const [pickedTaskType, setPickedTaskType] = useState<TaskType>("simples");
+  const [pickedSetorId, setPickedSetorId] = useState<string>("");
   const effectiveFilterProfileId = isAdmin && filterResponsavel !== "__all" ? filterResponsavel : profile?.id;
 
   const { data: allProfilesRaw = [] } = useQuery({
@@ -966,7 +967,12 @@ export default function OperationalExecucaoPage() {
       <TaskTypeSelectorDialog
         open={taskTypePickerOpen}
         onOpenChange={setTaskTypePickerOpen}
-        onPick={(t) => { setPickedTaskType(t); setTaskTypePickerOpen(false); setQuickTaskOpen(true); }}
+        onPick={({ type, setorId }) => {
+          setPickedTaskType(type);
+          setPickedSetorId(setorId);
+          setTaskTypePickerOpen(false);
+          setQuickTaskOpen(true);
+        }}
       />
 
       <QuickTaskDialog
@@ -974,6 +980,7 @@ export default function OperationalExecucaoPage() {
         onOpenChange={setQuickTaskOpen}
         defaultAvaliadoId={effectiveFilterProfileId}
         taskType={pickedTaskType}
+        initialSetorId={pickedSetorId}
       />
     </div>
   );
