@@ -293,7 +293,6 @@ export default function RelatorioTarefasPage() {
     }
   };
 
-  const totalAssignments = data?.length ?? 0;
   const mesAtivo = filters.mes !== "__all";
 
   return (
