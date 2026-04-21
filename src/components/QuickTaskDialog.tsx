@@ -15,8 +15,8 @@ import { FieldDetailDialog } from "@/modules/operacional/components/TabFormBuild
 import { DynamicFieldRenderer, SnapshotField } from "@/modules/operacional/components/DynamicFieldRenderer";
 import { FIELD_TYPES, SectionForm, FieldForm, defaultSection, getLocalToday } from "@/modules/operacional/types";
 import { cn } from "@/lib/utils";
-import QuickFieldDialog from "@/components/QuickFieldDialog";
-import { Plus, Trash2, Settings2, GripVertical } from "lucide-react";
+import { defaultField } from "@/modules/operacional/types";
+import { Plus, Trash2, Settings2, Copy } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -50,8 +50,8 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
   // Step 2 state
   const [sections, setSections] = useState<SectionForm[]>([]);
   const [fields, setFields] = useState<FieldForm[]>([]);
-  const [quickFieldOpen, setQuickFieldOpen] = useState(false);
   const [editingField, setEditingField] = useState<FieldForm | null>(null);
+  const [isNewField, setIsNewField] = useState(false);
   const [previewAnswers, setPreviewAnswers] = useState<Record<string, any>>({});
 
   // Step 3 state
@@ -374,7 +374,12 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-foreground">Formulários e Campos</p>
-                <Button type="button" size="sm" onClick={() => setQuickFieldOpen(true)}>
+                <Button type="button" size="sm" onClick={() => {
+                  const novo = defaultField(sections[0]?.tempId || "", fields.length);
+                  novo.label = "";
+                  setEditingField(novo);
+                  setIsNewField(true);
+                }}>
                   <Plus className="w-4 h-4 mr-1.5" />
                   Novo Formulário
                 </Button>
