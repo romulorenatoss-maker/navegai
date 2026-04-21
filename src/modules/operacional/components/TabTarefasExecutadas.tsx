@@ -1,10 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Trash2, AlertTriangle, Play } from "lucide-react";
+import { Trash2, AlertTriangle, Play, UserCircle2, History, Repeat, ClipboardList, Workflow } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 const STATUS_LABELS: Record<string, string> = {
   pendente: "Pendente",
@@ -45,7 +46,15 @@ export function TabTarefasExecutadas({ templateId }: Props) {
       if (!templateId) return [];
       const { data, error } = await (supabase as any)
         .from("operational_assignments")
-        .select("id, numero_tarefa, status, data_prevista, inicio_em, fim_em, responsavel_id, avaliado_id, profiles!operational_assignments_responsavel_id_fkey(nome)")
+        .select(`
+          id, numero_tarefa, status, data_prevista, inicio_em, fim_em, created_at, created_by,
+          responsavel_id, avaliado_id,
+          profiles!operational_assignments_responsavel_id_fkey(nome),
+          creator:profiles!operational_assignments_created_by_fkey(id, nome),
+          template:operational_templates!operational_assignments_template_id_fkey(
+            id, tipo_execucao, recorrencia_tipo, dias_da_semana, origem
+          )
+        `)
         .eq("template_id", templateId)
         .order("data_prevista", { ascending: false });
       if (error) throw error;
