@@ -99,7 +99,17 @@ export function usePendingNotifications() {
         .lte("data_contato", endOfToday);
       pendingMyLeads = myLeadTasksCount || 0;
 
-      setCounts({ pendingEvaluations, pendingLeadDecisions, pendingMyLeads });
+      // 4. Tarefas operacionais designadas por mim ainda em aberto (não concluídas)
+      let pendingDesignadas = 0;
+      const { count: designadasCount } = await (supabase as any)
+        .from("operational_assignments")
+        .select("id", { count: "exact", head: true })
+        .eq("created_by", profile.id)
+        .neq("responsavel_id", profile.id)
+        .not("status", "in", "(concluida,aprovada,reprovada,nao_executada)");
+      pendingDesignadas = designadasCount || 0;
+
+      setCounts({ pendingEvaluations, pendingLeadDecisions, pendingMyLeads, pendingDesignadas });
     } catch (err) {
       console.error("Error fetching pending notifications:", err);
     }
