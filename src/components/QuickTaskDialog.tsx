@@ -79,9 +79,12 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
   const [isNewField, setIsNewField] = useState(false);
   const [previewAnswers, setPreviewAnswers] = useState<Record<string, any>>({});
 
-  // Step 3 state
+  // Step 3 state — Prazos & Notas (replicando TabWorkflow)
   const [slaHoras, setSlaHoras] = useState(24);
-  const [penalidadeForaPrazo, setPenalidadeForaPrazo] = useState(20);
+  const [penalidadeForaPrazo, setPenalidadeForaPrazo] = useState(defaultTemplate.penalidade_fora_prazo);
+  const [penalidadeContingencia, setPenalidadeContingencia] = useState(defaultTemplate.penalidade_contingencia);
+  const [penalidadeSlaContingencia, setPenalidadeSlaContingencia] = useState(defaultTemplate.penalidade_sla_contingencia);
+  const [habilitarPerguntasAutomaticas, setHabilitarPerguntasAutomaticas] = useState(true);
   const [pesoNotaMaxima, setPesoNotaMaxima] = useState(100);
 
   const reset = () => {
@@ -92,7 +95,13 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
     setRequerValidacao(false); setValidadorMode("individual"); setValidadorId(""); setValidadorSetorId("");
     setRequerAprovacao(false); setAprovadorMode("individual"); setAprovadorId(""); setAprovadorSetorId("");
     setSections([]); setFields([]);
-    setSlaHoras(24); setPenalidadeForaPrazo(20); setPesoNotaMaxima(100);
+    const d = loadDefaults();
+    setSlaHoras(24);
+    setPenalidadeForaPrazo(d.penalidade_fora_prazo);
+    setPenalidadeContingencia(d.penalidade_contingencia);
+    setPenalidadeSlaContingencia(d.penalidade_sla_contingencia);
+    setHabilitarPerguntasAutomaticas(true);
+    setPesoNotaMaxima(100);
   };
 
   useEffect(() => {
