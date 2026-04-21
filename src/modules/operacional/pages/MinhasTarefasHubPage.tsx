@@ -79,15 +79,15 @@ export default function MinhasTarefasHubPage() {
         </TabsContent>
 
         <TabsContent value="hoje" className="mt-0 focus-visible:outline-none">
-          <OperationalExecucaoPage hubViewMode="hoje" />
+          <OperationalExecucaoPage />
         </TabsContent>
 
         <TabsContent value="devolvidas" className="mt-0 focus-visible:outline-none">
-          <OperationalExecucaoPage hubViewMode="devolvidas" />
+          <OperationalExecucaoPage />
         </TabsContent>
 
         <TabsContent value="concluidas" className="mt-0 focus-visible:outline-none">
-          <OperationalExecucaoPage hubViewMode="concluidas" />
+          <OperationalExecucaoPage />
         </TabsContent>
       </Tabs>
     </div>
