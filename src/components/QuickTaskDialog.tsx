@@ -107,7 +107,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   const reset = () => {
     setStep(1);
     setNome(""); setDescricao(""); setSetorId(initialSetorId || "");
-    setDataPrevista(getLocalToday()); setHorarioLimite("18:00");
+    setDataPrevista(getLocalToday()); setHorarioLimite("18:00"); setHorarioModo("global");
     setRecorrenciaAtiva(false); setRecorrenciaTipo("diaria"); setRecorrenciaDias([]); setRecorrenciaDataFim("");
     setAvaliadoId("");
     setRequerValidacao(false); setValidadorMode("individual"); setValidadorId(""); setValidadorSetorId("");
@@ -622,10 +622,40 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label>Horário limite</Label>
-                  <Input type="time" value={horarioLimite} onChange={(e) => setHorarioLimite(e.target.value)} />
+                  <Label>Horário limite {horarioModo === "individual" && taskType !== "simples" ? "(desabilitado — modo individual)" : ""}</Label>
+                  <Input
+                    type="time"
+                    value={horarioLimite}
+                    onChange={(e) => setHorarioLimite(e.target.value)}
+                    disabled={horarioModo === "individual" && taskType !== "simples"}
+                  />
                 </div>
               </div>
+
+              {/* Modo de horário (apenas inspeção) */}
+              {taskType !== "simples" && (
+                <div className="border border-border rounded-lg p-3 space-y-2 bg-muted/30">
+                  <div className="flex items-start gap-2">
+                    <Clock className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <Label className="text-sm font-semibold">Modo de horário das etapas</Label>
+                      <div className="flex flex-wrap gap-3 text-xs">
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input type="radio" checked={horarioModo === "global"} onChange={() => setHorarioModo("global")} />
+                          <span><strong>Global</strong> — todas as etapas seguem o "Horário limite" acima</span>
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input type="radio" checked={horarioModo === "individual"} onChange={() => setHorarioModo("individual")} />
+                          <span><strong>Individual por etapa</strong> — cada etapa (ou cada pergunta) tem seu próprio horário</span>
+                        </label>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        No modo individual, o "Horário limite" da designação fica desabilitado. Em cada etapa: defina horário no título da etapa OU defina horário em <strong>todas</strong> as perguntas dessa etapa. Atrasos serão registrados individualmente.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Recorrência (opcional) */}
               <div className="border border-border rounded-lg p-3 space-y-3 bg-muted/30">
