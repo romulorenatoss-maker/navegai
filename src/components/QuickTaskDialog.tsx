@@ -157,7 +157,23 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId 
       if (isSelfTask && c.id === profile?.id) return false;
       return true;
     });
-  }, [colaboradores, isSelfTask, profile?.id]);
+  }, [colaboradores, isSelfTask, profile?.id, avaliadoId]);
+
+  // Responsável pelo Plano de Ação: nunca pode ser o avaliado.
+  const planoAcaoOptions = useMemo(() => {
+    return (colaboradores as any[]).filter((c) => {
+      if (avaliadoId && c.id === avaliadoId) return false;
+      if (isSelfTask && c.id === profile?.id) return false;
+      return true;
+    });
+  }, [colaboradores, isSelfTask, profile?.id, avaliadoId]);
+
+  const planoAcaoOk = !requerPlanoAcao
+    || (planoAcaoMode === "individual" && !!planoAcaoId && planoAcaoId !== avaliadoId)
+    || (planoAcaoMode === "setor" && !!planoAcaoSetorId);
+
+  const planoAcaoEnabled = requerPlanoAcao
+    && ((planoAcaoMode === "individual" && !!planoAcaoId) || (planoAcaoMode === "setor" && !!planoAcaoSetorId));
 
   const aprovadorOk = !requerAprovacao
     || (aprovadorMode === "individual" && !!aprovadorId && aprovadorId !== avaliadoId && (!isSelfTask || aprovadorId !== profile?.id))
@@ -166,7 +182,19 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId 
   const canAdvanceStep1 = nome.trim().length > 0
     && !!avaliadoId
     && !!dataPrevista
+    && planoAcaoOk
     && aprovadorOk;
+
+  // Quando o responsável pelo plano de ação é desabilitado, limpa qualquer
+  // regra "gera_contingencia" que tenha sido configurada nos campos.
+  useEffect(() => {
+    if (planoAcaoEnabled) return;
+    setFields(prev => prev.map(f => {
+      if (!f.opcoes_regras?.length) return f;
+      const cleaned = f.opcoes_regras.map((o: any) => o.gera_contingencia ? { ...o, gera_contingencia: false, requer_evidencia: true } : o);
+      return { ...f, opcoes_regras: cleaned, gera_contingencia: false };
+    }));
+  }, [planoAcaoEnabled]);
 
   const canAdvanceStep2 = fields.length > 0;
 
