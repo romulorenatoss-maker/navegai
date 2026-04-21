@@ -47,11 +47,13 @@ interface Props {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   defaultAvaliadoId?: string;
+  /** Tipo escolhido no seletor inicial. "simples" oculta workflow de etapas/seções e simplifica a Step 2. */
+  taskType?: "simples" | "inspecao";
 }
 
 type Step = 1 | 2 | 3;
 
-export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId }: Props) {
+export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId, taskType = "inspecao" }: Props) {
   const qc = useQueryClient();
   const { profile } = useAuth();
   const [step, setStep] = useState<Step>(1);
