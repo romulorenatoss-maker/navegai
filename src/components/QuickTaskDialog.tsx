@@ -570,19 +570,16 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
                   </div>
                 )}
 
-                {/* SLA */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label>Prazo SLA (horas)</Label>
-                    <Input type="number" min={1} max={720} value={slaHoras} onChange={(e) => setSlaHoras(+e.target.value || 24)} />
-                    <p className="text-[10px] text-muted-foreground">Tempo para concluir após criação.</p>
+                {/* Alerta quando ultrapassa 100 pontos */}
+                {temPerguntasAprovador && totalGeral > 100 && (
+                  <div className="flex items-start gap-2 p-3 rounded-lg border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700/40">
+                    <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div className="text-xs text-amber-800 dark:text-amber-200">
+                      <p className="font-semibold">Pontuação acima do limite</p>
+                      <p>O total de pontos é <strong>{totalGeral}</strong> e ultrapassa o limite recomendado de <strong>100</strong>. Você ainda pode prosseguir, mas considere revisar os pesos.</p>
+                    </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>Nota máxima por campo</Label>
-                    <Input type="number" min={1} max={1000} value={pesoNotaMaxima} onChange={(e) => setPesoNotaMaxima(+e.target.value || 100)} disabled={!temPerguntasAprovador} />
-                    <p className="text-[10px] text-muted-foreground">Pontuação máxima de cada campo.</p>
-                  </div>
-                </div>
+                )}
 
                 {/* Perguntas de Aprovação Final — replica TabWorkflow */}
                 <div className={cn("bg-muted/50 rounded-lg border border-border p-4 space-y-4", !temPerguntasAprovador && "opacity-50 pointer-events-none")}>
