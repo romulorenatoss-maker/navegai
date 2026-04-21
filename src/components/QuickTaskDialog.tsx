@@ -733,129 +733,26 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
 
           {step === 2 && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-medium text-foreground">Formulários e Campos</p>
-                <Button type="button" size="sm" onClick={() => {
-                  const novo = defaultField(sections[0]?.tempId || "", fields.length);
-                  novo.label = "";
-                  setEditingField(novo);
-                  setIsNewField(true);
-                }}>
-                  <Plus className="w-4 h-4 mr-1.5" />
-                  Novo Formulário
-                </Button>
-              </div>
-
-              {fields.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground border border-dashed border-border rounded-lg">
-                  <p className="text-sm">Nenhum campo criado.</p>
-                  <p className="text-xs">Clique em "Novo Formulário" para adicionar uma pergunta.</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {fields.sort((a, b) => a.ordem - b.ordem).map((field, idx) => {
-                    const snapshot: SnapshotField = {
-                      id: field.tempId,
-                      label: field.label,
-                      descricao: field.descricao,
-                      tipo: field.tipo,
-                      ordem: field.ordem,
-                      obrigatorio: field.obrigatorio,
-                      peso: field.peso,
-                      nota_maxima: field.nota_maxima,
-                      penalidade_reprovacao: field.penalidade_reprovacao,
-                      impacta_score: field.impacta_score,
-                      criticidade: field.criticidade,
-                      gera_contingencia: field.gera_contingencia,
-                      exige_evidencia: field.exige_evidencia,
-                      tipo_evidencia: field.tipo_evidencia,
-                      opcoes: field.opcoes as string[],
-                      opcoes_regras: field.opcoes_regras as any,
-                      validacao: field.validacao,
-                      condicao_visibilidade: field.condicao_visibilidade,
-                      formula: field.formula,
-                      visivel_para: field.visivel_para,
-                      editavel_por: field.editavel_por,
-                    };
-                    return (
-                      <div
-                        key={field.tempId}
-                        className="bg-card border border-border rounded-lg p-3 group hover:border-primary/40 transition-colors space-y-2"
-                      >
-                        <div className="flex items-start gap-2">
-                          <span className="text-xs text-muted-foreground font-mono w-5 text-right pt-0.5">{idx + 1}.</span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{FIELD_TYPES[field.tipo] || field.tipo}</p>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0 opacity-60 group-hover:opacity-100"
-                            onClick={() => { setEditingField(field); setIsNewField(false); }}
-                            title="Configurar campo (regras, plano de ação, evidências, etc.)"
-                          >
-                            <Settings2 className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0 opacity-60 group-hover:opacity-100"
-                            onClick={() => {
-                              const copia: FieldForm = { ...field, tempId: crypto.randomUUID(), id: undefined, label: field.label + " (cópia)", ordem: fields.length };
-                              setFields(prev => [...prev, copia]);
-                            }}
-                            title="Duplicar campo"
-                          >
-                            <Copy className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0 text-destructive opacity-60 group-hover:opacity-100"
-                            onClick={() => setFields(prev => prev.filter(f => f.tempId !== field.tempId))}
-                            title="Remover"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                        <div className="pl-7">
-                          <DynamicFieldRenderer
-                            field={snapshot}
-                            answer={previewAnswers[field.tempId]}
-                            userRole="executor"
-                            disabled={false}
-                            allAnswers={previewAnswers}
-                            onChange={(val) => setPreviewAnswers(prev => ({ ...prev, [field.tempId]: val }))}
-                            assignmentId="preview"
-                            showValidation={false}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
+              {horarioValidationError && (
+                <div className="flex items-start gap-2 p-3 rounded-lg border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700/40">
+                  <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <div className="text-xs text-amber-800 dark:text-amber-200">
+                    <p className="font-semibold">Horário individual incompleto</p>
+                    <p>{horarioValidationError}</p>
+                  </div>
                 </div>
               )}
 
-              {editingField && (
-                <FieldDetailDialog
-                  field={editingField}
-                  setores={setores as any[]}
-                  planoAcaoEnabled={planoAcaoEnabled}
-                  onSave={(updates) => {
-                    if (isNewField) {
-                      setFields(prev => [...prev, { ...editingField, ...updates }]);
-                    } else {
-                      setFields(prev => prev.map(f => f.tempId === editingField.tempId ? { ...f, ...updates } : f));
-                    }
-                    setEditingField(null);
-                    setIsNewField(false);
-                  }}
-                  onClose={() => { setEditingField(null); setIsNewField(false); }}
-                />
-              )}
+              <TabFormBuilder
+                sections={sections}
+                setSections={setSections}
+                fields={fields}
+                setFields={setFields}
+                setores={setores as any[]}
+                tipoExecucao={taskType === "simples" ? "tarefa_simples" : "etapas"}
+                requireFieldHorario={taskType !== "simples" && horarioModo === "individual"}
+                planoAcaoEnabled={planoAcaoEnabled}
+              />
             </div>
           )}
 
