@@ -211,14 +211,7 @@ export default function RelatorioTarefasPage() {
       return n;
     });
 
-  const toggleGroupSelection = (items: AssignmentRow[], checked: boolean) =>
-    setSelected((p) => {
-      const n = new Set(p);
-      items.forEach((r) => (checked ? n.add(r.id) : n.delete(r.id)));
-      return n;
-    });
-
-  const allVisibleIds = useMemo(() => (data || []).map((r) => r.id), [data]);
+  const allVisibleIds = useMemo(() => pagedRows.map((r) => r.id), [pagedRows]);
   const allSelected = allVisibleIds.length > 0 && allVisibleIds.every((id) => selected.has(id));
   const toggleSelectAll = () =>
     setSelected(allSelected ? new Set() : new Set(allVisibleIds));
