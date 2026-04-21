@@ -137,6 +137,7 @@ export function usePendingNotifications() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, debouncedFetch)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ordens_servico' }, debouncedFetch)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'lead_tarefas_contato' }, debouncedFetch)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'operational_assignments' }, debouncedFetch)
       .subscribe();
 
     return () => {
