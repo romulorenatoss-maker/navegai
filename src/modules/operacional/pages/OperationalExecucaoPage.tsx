@@ -35,6 +35,46 @@ interface AccordionSectionProps {
   children: React.ReactNode;
 }
 
+interface MineOthersTabsProps {
+  mine: any[];
+  others: any[];
+  showOthers: boolean;
+  renderItem: (a: any) => React.ReactNode;
+  emptyMine: string;
+  emptyOthers?: string;
+}
+
+function MineOthersTabs({ mine, others, showOthers, renderItem, emptyMine, emptyOthers = "Nenhuma tarefa de outros." }: MineOthersTabsProps) {
+  const [tab, setTab] = useState<"minhas" | "outros">("minhas");
+  if (!showOthers) {
+    return (
+      <>
+        {mine.length === 0
+          ? <p className="text-xs text-muted-foreground text-center py-4">{emptyMine}</p>
+          : mine.map(renderItem)}
+      </>
+    );
+  }
+  return (
+    <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full">
+      <TabsList className="h-8 mb-2">
+        <TabsTrigger value="minhas" className="text-xs h-6 px-2">Minhas ({mine.length})</TabsTrigger>
+        <TabsTrigger value="outros" className="text-xs h-6 px-2">Outros ({others.length})</TabsTrigger>
+      </TabsList>
+      <TabsContent value="minhas" className="mt-0 space-y-2">
+        {mine.length === 0
+          ? <p className="text-xs text-muted-foreground text-center py-4">{emptyMine}</p>
+          : mine.map(renderItem)}
+      </TabsContent>
+      <TabsContent value="outros" className="mt-0 space-y-2">
+        {others.length === 0
+          ? <p className="text-xs text-muted-foreground text-center py-4">{emptyOthers}</p>
+          : others.map(renderItem)}
+      </TabsContent>
+    </Tabs>
+  );
+}
+
 function AccordionSection({ title, count, icon, borderColor, badgeBg, badgeText, isOpen, onToggle, children }: AccordionSectionProps) {
   return (
     <div className={`rounded-xl border overflow-hidden transition-all duration-300 ${isOpen ? "shadow-md border-transparent" : "border-border hover:border-muted-foreground/20"}`}
