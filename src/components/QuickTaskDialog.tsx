@@ -667,6 +667,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId 
                 <FieldDetailDialog
                   field={editingField}
                   setores={setores as any[]}
+                  planoAcaoEnabled={planoAcaoEnabled}
                   onSave={(updates) => {
                     if (isNewField) {
                       setFields(prev => [...prev, { ...editingField, ...updates }]);
