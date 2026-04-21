@@ -304,6 +304,30 @@ export default function OperationalExecucaoPage() {
   const emAberto = filteredAssignments.filter((a: any) => ["nao_executada", "reprovada"].includes(a.status)).slice(0, 50);
   const concluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 50);
 
+  // Sub-abas Minhas/Outros — split listas baseado no usuário logado
+  const myId = profile?.id;
+  const splitByResp = (list: any[]) => ({
+    mine: list.filter((a: any) => a.responsavel_id === myId),
+    others: list.filter((a: any) => a.responsavel_id !== myId),
+  });
+  const splitByCreator = (list: any[]) => ({
+    mine: list.filter((a: any) => a.created_by === myId),
+    others: list.filter((a: any) => a.created_by !== myId),
+  });
+  const splitByAvaliado = (list: any[]) => ({
+    mine: list.filter((a: any) => a.avaliado_id === myId),
+    others: list.filter((a: any) => a.avaliado_id !== myId),
+  });
+
+  const hojeSplit = splitByResp(hoje);
+  const designadasSplit = splitByCreator(tarefasDesignadas);
+  const devolvidasAll = [...devolvidas, ...devolvidasParaOutros];
+  const devolvidasSplit = splitByResp(devolvidasAll);
+  const contingenciadosSplit = splitByResp(contingenciados);
+  const aguardandoSplit = splitByAvaliado(aguardandoAvaliacao);
+  const emAbertoSplit = splitByResp(emAberto);
+  const concluidasSplit = splitByResp(concluidas);
+
   const exec = useAssignmentExecution(selectedAssignment?.id || null);
 
   const snapshot = selectedAssignment?.template_snapshot;
