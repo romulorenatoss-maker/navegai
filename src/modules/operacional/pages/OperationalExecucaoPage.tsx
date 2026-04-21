@@ -374,6 +374,10 @@ export default function OperationalExecucaoPage() {
     selectedAssignment.validador_contingencia_id === profile?.id ||
     selectedAssignment.avaliador_id === profile?.id
   );
+  // Criador validando recebimento de tarefa designada
+  const isCriadorValidando = !!selectedAssignment
+    && selectedAssignment.status === "aguardando_validacao"
+    && selectedAssignment.created_by === profile?.id;
 
   const handleStart = () => {
     if (selectedAssignment) exec.startTask.mutate({
@@ -386,6 +390,40 @@ export default function OperationalExecucaoPage() {
         toast.success("Tarefa iniciada com sucesso!");
       },
     });
+  };
+
+  const handleAprovarRecebimento = async () => {
+    if (!selectedAssignment) return;
+    try {
+      await centralTransition.mutateAsync({
+        assignmentId: selectedAssignment.id,
+        action: "validar_designada_aprovar",
+        origem: "execucao_validacao",
+      });
+      toast.success("Recebimento aprovado. Tarefa concluída.");
+      closeExecution();
+    } catch (e: any) {
+      toast.error("Erro ao aprovar: " + e.message);
+    }
+  };
+
+  const handleDevolverDesignada = async () => {
+    if (!selectedAssignment) return;
+    const motivo = window.prompt("Justifique a devolução desta tarefa:");
+    if (!motivo?.trim()) { toast.error("Justificativa obrigatória."); return; }
+    try {
+      await centralTransition.mutateAsync({
+        assignmentId: selectedAssignment.id,
+        action: "validar_designada_devolver",
+        motivo,
+        origem: "execucao_validacao",
+        extraData: { rodadaAtual: selectedAssignment.rodada_atual || 1 },
+      });
+      toast.success("Tarefa devolvida ao executor.");
+      closeExecution();
+    } catch (e: any) {
+      toast.error("Erro ao devolver: " + e.message);
+    }
   };
 
   const handleSubmit = () => {
