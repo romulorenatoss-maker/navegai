@@ -64,6 +64,11 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   const [setorId, setSetorId] = useState("");
   const [dataPrevista, setDataPrevista] = useState(getLocalToday());
   const [horarioLimite, setHorarioLimite] = useState("18:00");
+  // Recorrência (opcional)
+  const [recorrenciaAtiva, setRecorrenciaAtiva] = useState(false);
+  const [recorrenciaTipo, setRecorrenciaTipo] = useState<"diaria" | "semanal" | "mensal">("diaria");
+  const [recorrenciaDias, setRecorrenciaDias] = useState<number[]>([]); // 0=dom..6=sab
+  const [recorrenciaDataFim, setRecorrenciaDataFim] = useState("");
   // Responsáveis
   const [avaliadoId, setAvaliadoId] = useState(""); // quem responde + recebe nota
   const [requerValidacao, setRequerValidacao] = useState(false);
@@ -98,6 +103,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     setStep(1);
     setNome(""); setDescricao(""); setSetorId("");
     setDataPrevista(getLocalToday()); setHorarioLimite("18:00");
+    setRecorrenciaAtiva(false); setRecorrenciaTipo("diaria"); setRecorrenciaDias([]); setRecorrenciaDataFim("");
     setAvaliadoId("");
     setRequerValidacao(false); setValidadorMode("individual"); setValidadorId(""); setValidadorSetorId("");
     setRequerPlanoAcao(false); setPlanoAcaoMode("individual"); setPlanoAcaoId(""); setPlanoAcaoSetorId("");
