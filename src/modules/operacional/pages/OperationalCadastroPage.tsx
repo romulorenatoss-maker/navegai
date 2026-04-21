@@ -609,6 +609,12 @@ export default function OperationalCadastroPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <TaskTypeSelectorDialog
+        open={taskTypePickerOpen}
+        onOpenChange={setTaskTypePickerOpen}
+        onPick={handleWizardPick}
+      />
     </div>
   );
 }
