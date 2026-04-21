@@ -223,13 +223,15 @@ export default function OperationalExecucaoPage() {
     return list;
   }, [assignments, isAdmin, filterResponsavel, searchTerm, filterDate, profile?.id]);
 
-  // "Tarefas de Hoje" includes: today's tasks + em_andamento (any date) + atrasadas (past dates still open)
+  // "Tarefas de Hoje" includes: today's tasks + em_andamento (any date) + atrasadas + contingências com SLA < 24h
    const hoje = filteredAssignments.filter((a: any) => {
     if (["em_andamento"].includes(a.status)) return true;
     if (["pendente", "devolvida"].includes(a.status) && a.data_prevista <= filterDate && a.responsavel_id === profile?.id) return true;
+    // Contingências (planos de ação) prioridade: aparecem no dia se SLA expira em <24h
+    if (["contingenciado", "contingencia"].includes(a.status) && urgentContingencyAssignmentIds.has(a.id)) return true;
     return false;
   });
-  // NOVO: "Tarefas Designadas" — tarefas que EU criei para outras pessoas (qualquer status ativo)
+  // NOVO: "Tarefas Designadas" — tarefas que EU criei para outras pessoas (apenas em aberto/ativas)
   const tarefasDesignadas = filteredAssignments.filter((a: any) =>
     a.created_by === profile?.id &&
     a.responsavel_id !== profile?.id &&
@@ -253,6 +255,8 @@ export default function OperationalExecucaoPage() {
   )];
   const contingenciados = filteredAssignments.filter((a: any) => ["contingenciado", "contingencia"].includes(a.status));
   const aguardandoAvaliacao = filteredAssignments.filter((a: any) => ["aguardando_avaliacao", "aguardando_aprovacao"].includes(a.status));
+  // NOVO: separar Finalizadas em "Em Aberto" (não foram feitas) e "Concluídas" (efetivamente concluídas/aprovadas)
+  const emAberto = filteredAssignments.filter((a: any) => ["nao_executada", "reprovada"].includes(a.status)).slice(0, 50);
   const concluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 50);
 
   const exec = useAssignmentExecution(selectedAssignment?.id || null);
