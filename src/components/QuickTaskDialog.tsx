@@ -98,6 +98,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId 
     setDataPrevista(getLocalToday()); setHorarioLimite("18:00");
     setAvaliadoId("");
     setRequerValidacao(false); setValidadorMode("individual"); setValidadorId(""); setValidadorSetorId("");
+    setRequerPlanoAcao(false); setPlanoAcaoMode("individual"); setPlanoAcaoId(""); setPlanoAcaoSetorId("");
     setRequerAprovacao(false); setAprovadorMode("individual"); setAprovadorId(""); setAprovadorSetorId("");
     setSections([]); setFields([]);
     const d = loadDefaults();
