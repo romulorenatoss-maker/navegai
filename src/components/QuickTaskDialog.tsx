@@ -213,6 +213,7 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
 
       // 2) sections
       const sectionIdMap: Record<string, string> = {};
+      let insertedSections: any[] = [];
       if (sections.length > 0) {
         const { data: insSecs, error } = await (supabase as any).from("operational_template_sections").insert(
           sections.map((s, i) => ({
@@ -222,40 +223,96 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
           }))
         ).select();
         if (error) throw error;
+        insertedSections = insSecs || [];
         sections.forEach((s, i) => { sectionIdMap[s.tempId] = insSecs[i].id; });
       }
 
       // 3) fields
+      let insertedFields: any[] = [];
       if (fields.length > 0) {
-        const { error } = await (supabase as any).from("operational_template_fields").insert(
-          fields.map((f) => ({
-            template_id: templateId,
-            section_id: sectionIdMap[f.sectionTempId] || null,
-            label: f.label || "Campo sem nome",
-            descricao: f.descricao || null,
-            tipo: f.tipo, ordem: f.ordem,
-            obrigatorio: f.obrigatorio, peso: f.peso,
-            nota_maxima: pesoNotaMaxima,
-            penalidade_reprovacao: f.penalidade_reprovacao,
-            impacta_score: f.impacta_score,
-            criticidade: f.criticidade, gera_contingencia: f.gera_contingencia,
-            exige_evidencia: f.exige_evidencia, tipo_evidencia: f.tipo_evidencia || "foto",
-            opcoes: f.opcoes?.length > 0 ? f.opcoes : null,
-            opcoes_regras: f.opcoes_regras?.length > 0 ? f.opcoes_regras : [],
-            validacao: f.validacao, condicao_visibilidade: f.condicao_visibilidade,
-            formula: f.formula,
-            visivel_para: f.visivel_para, editavel_por: f.editavel_por,
-            aprovador_verificar: f.aprovador_verificar || false,
-            aprovador_pergunta: f.aprovador_verificar ? (f.aprovador_pergunta || null) : null,
-            aprovador_tipo_resposta: f.aprovador_tipo_resposta || "conforme",
-            aprovador_peso: f.aprovador_peso ?? 1,
-            aprovador_obriga_observacao_nao: f.aprovador_obriga_observacao_nao ?? true,
-            aprovador_exige_evidencia_nao: f.aprovador_exige_evidencia_nao ?? false,
-            aprovador_tipos_evidencia: f.aprovador_tipos_evidencia || ["foto"],
-          }))
-        );
+        const fieldsPayload = fields.map((f) => ({
+          template_id: templateId,
+          section_id: sectionIdMap[f.sectionTempId] || null,
+          label: f.label || "Campo sem nome",
+          descricao: f.descricao || null,
+          tipo: f.tipo, ordem: f.ordem,
+          obrigatorio: f.obrigatorio, peso: f.peso,
+          nota_maxima: pesoNotaMaxima,
+          penalidade_reprovacao: f.penalidade_reprovacao,
+          impacta_score: f.impacta_score,
+          criticidade: f.criticidade, gera_contingencia: f.gera_contingencia,
+          exige_evidencia: f.exige_evidencia, tipo_evidencia: f.tipo_evidencia || "foto",
+          opcoes: f.opcoes?.length > 0 ? f.opcoes : null,
+          opcoes_regras: f.opcoes_regras?.length > 0 ? f.opcoes_regras : [],
+          validacao: f.validacao, condicao_visibilidade: f.condicao_visibilidade,
+          formula: f.formula,
+          visivel_para: f.visivel_para, editavel_por: f.editavel_por,
+          aprovador_verificar: f.aprovador_verificar || false,
+          aprovador_pergunta: f.aprovador_verificar ? (f.aprovador_pergunta || null) : null,
+          aprovador_tipo_resposta: f.aprovador_tipo_resposta || "conforme",
+          aprovador_peso: f.aprovador_peso ?? 1,
+          aprovador_obriga_observacao_nao: f.aprovador_obriga_observacao_nao ?? true,
+          aprovador_exige_evidencia_nao: f.aprovador_exige_evidencia_nao ?? false,
+          aprovador_tipos_evidencia: f.aprovador_tipos_evidencia || ["foto"],
+        }));
+        const { data: insFields, error } = await (supabase as any)
+          .from("operational_template_fields").insert(fieldsPayload).select();
         if (error) throw error;
+        insertedFields = insFields || [];
       }
+
+      // 3.5) Build template snapshot (igual TabTarefasExecutadas) para a execução renderizar os campos
+      const snapshot = {
+        versao: 1,
+        nome: templatePayload.nome,
+        descricao: templatePayload.descricao,
+        sla_horas: templatePayload.sla_horas,
+        permite_devolucao_parcial: false,
+        requer_aprovacao_gestor: templatePayload.requer_aprovacao_gestor,
+        bloquear_fechamento_com_contingencia: false,
+        gerar_contingencia_automatica: false,
+        peso_recorrencia: 1.0,
+        modo_pontuacao: templatePayload.modo_pontuacao,
+        destino_score: templatePayload.destino_score,
+        horario_inicio_previsto: templatePayload.horario_inicio_previsto,
+        horario_limite_execucao: templatePayload.horario_limite_execucao,
+        tolerancia_minutos: 0,
+        habilitar_perguntas_automaticas: templatePayload.habilitar_perguntas_automaticas,
+        penalidade_fora_prazo: templatePayload.penalidade_fora_prazo,
+        penalidade_contingencia: templatePayload.penalidade_contingencia,
+        penalidade_sla_contingencia: templatePayload.penalidade_sla_contingencia,
+        responsaveis: {
+          executor_profile_id: templatePayload.executor_profile_id,
+          executor_setor_id: templatePayload.executor_setor_id,
+          avaliador_profile_id: templatePayload.avaliador_profile_id,
+          avaliador_setor_id: templatePayload.avaliador_setor_id,
+          avaliado_profile_id: templatePayload.avaliado_profile_id,
+          avaliado_setor_id: null,
+          aprovador_profile_id: templatePayload.aprovador_profile_id,
+          aprovador_setor_id: templatePayload.aprovador_setor_id,
+          validador_contingencia_profile_id: null,
+          validador_contingencia_setor_id: null,
+        },
+        sections: insertedSections.map((s: any) => ({
+          id: s.id, nome: s.nome, descricao: s.descricao, peso: s.peso, ordem: s.ordem, cor: s.cor,
+          horario_inicio: s.horario_inicio, horario_fim: s.horario_fim,
+        })),
+        fields: insertedFields.map((f: any) => ({
+          id: f.id, section_id: f.section_id, label: f.label, descricao: f.descricao,
+          tipo: f.tipo, ordem: f.ordem, obrigatorio: f.obrigatorio, peso: f.peso,
+          nota_maxima: f.nota_maxima, penalidade_reprovacao: f.penalidade_reprovacao,
+          impacta_score: f.impacta_score, criticidade: f.criticidade,
+          gera_contingencia: f.gera_contingencia, exige_evidencia: f.exige_evidencia,
+          tipo_evidencia: f.tipo_evidencia, opcoes: f.opcoes, opcoes_regras: f.opcoes_regras,
+          condicao_visibilidade: f.condicao_visibilidade, validacao: f.validacao,
+          formula: f.formula, visivel_para: f.visivel_para, editavel_por: f.editavel_por,
+          aprovador_verificar: f.aprovador_verificar, aprovador_pergunta: f.aprovador_pergunta,
+          aprovador_tipo_resposta: f.aprovador_tipo_resposta, aprovador_peso: f.aprovador_peso,
+          aprovador_obriga_observacao_nao: f.aprovador_obriga_observacao_nao,
+          aprovador_exige_evidencia_nao: f.aprovador_exige_evidencia_nao,
+          aprovador_tipos_evidencia: f.aprovador_tipos_evidencia,
+        })),
+      };
 
       // 4) cria assignment imediato para o avaliado (executor + recebe nota)
       const assignPayload: any = {
@@ -270,6 +327,9 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
         aprovador_id: aprovacaoAtiva && aprovadorMode === "individual" ? aprovadorId : null,
         setor_avaliador_id: requerValidacao && validadorMode === "setor" ? validadorSetorId : null,
         setor_executor_id: setorId || null,
+        template_versao: 1,
+        template_snapshot: snapshot,
+        rodada_atual: 1,
       };
       const { error: assignErr } = await (supabase as any)
         .from("operational_assignments").insert(assignPayload);
