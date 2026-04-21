@@ -118,9 +118,8 @@ export default function RelatorioTarefasPage() {
       let q = supabase
         .from("operational_assignments")
         .select(`
-          id, template_id, status, data_prevista, created_at, numero_tarefa,
-          operational_templates(nome, plano_acao_responsavel_id, aprovador_id),
-          avaliado:profiles!operational_assignments_avaliado_id_fkey(nome)
+          id, template_id, status, data_prevista, created_at, numero_tarefa, aprovador_id, avaliado_id,
+          operational_templates(nome, responsavel_contingencia_id, aprovador_profile_id)
         `)
         .order("created_at", { ascending: false });
 
@@ -141,31 +140,55 @@ export default function RelatorioTarefasPage() {
       }
       if (filters.status !== "__all") q = q.eq("status", filters.status);
 
-      const { data, error } = await q;
+      const { data: rows, error } = await q;
       if (error) throw error;
-      return (data || []).map((r: any) => ({
-        id: r.id,
-        template_id: r.template_id,
-        status: r.status,
-        data_prevista: r.data_prevista,
-        created_at: r.created_at,
-        numero_tarefa: r.numero_tarefa,
-        template_titulo: r.operational_templates?.nome ?? "Sem título",
-      })) as AssignmentRow[];
+
+      // Single fetch de profiles para preencher nomes
+      const ids = new Set<string>();
+      (rows || []).forEach((r: any) => {
+        if (r.avaliado_id) ids.add(r.avaliado_id);
+        const aprov = r.aprovador_id || r.operational_templates?.aprovador_profile_id;
+        if (aprov) ids.add(aprov);
+        const plano = r.operational_templates?.responsavel_contingencia_id;
+        if (plano) ids.add(plano);
+      });
+      let profMap: Record<string, string> = {};
+      if (ids.size > 0) {
+        const { data: profs } = await supabase
+          .from("profiles").select("id, nome").in("id", Array.from(ids));
+        profMap = (profs || []).reduce((acc: Record<string, string>, p: any) => {
+          acc[p.id] = p.nome; return acc;
+        }, {});
+      }
+
+      return (rows || []).map((r: any) => {
+        const aprovId = r.aprovador_id || r.operational_templates?.aprovador_profile_id;
+        const planoId = r.operational_templates?.responsavel_contingencia_id;
+        return {
+          id: r.id,
+          template_id: r.template_id,
+          status: r.status,
+          data_prevista: r.data_prevista,
+          created_at: r.created_at,
+          numero_tarefa: r.numero_tarefa,
+          template_titulo: r.operational_templates?.nome ?? "Sem título",
+          avaliado_nome: r.avaliado_id ? (profMap[r.avaliado_id] ?? null) : null,
+          plano_acao_nome: planoId ? (profMap[planoId] ?? null) : null,
+          aprovador_nome: aprovId ? (profMap[aprovId] ?? null) : null,
+        };
+      }) as AssignmentRow[];
     },
   });
 
-  const groups = useMemo(() => {
-    const map = new Map<string, AssignmentRow[]>();
-    (data || []).forEach((r) => {
-      const key = r.template_titulo;
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(r);
-    });
-    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [data]);
+  // Reset página quando filtros ou pageSize mudam
+  useEffect(() => { setPage(1); }, [filters, pageSize]);
 
-  const toggleGroup = (k: string) => setOpenGroups((p) => ({ ...p, [k]: !p[k] }));
+  const totalAssignments = data?.length ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalAssignments / pageSize));
+  const pagedRows = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return (data || []).slice(start, start + pageSize);
+  }, [data, page, pageSize]);
 
   const handleSearch = () => {
     setFilters({ from: pendingFrom, to: pendingTo, status: pendingStatus, mes: pendingMes, ano: pendingAno });
