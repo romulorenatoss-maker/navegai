@@ -410,11 +410,8 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
 
       {/* Who answered and when */}
       {val.respondido_por_nome && val.respondido_em && (
-        <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-1 flex-wrap">
-          <span>Preenchido por <strong>{val.respondido_por_nome}</strong> em {format(new Date(val.respondido_em), "dd/MM/yyyy HH:mm")}</span>
-          {val.versao && val.versao > 1 && (
-            <span className="text-amber-600 font-medium">(v{val.versao} — alterado {(val.versao ?? 1) - 1}x)</span>
-          )}
+        <div className="text-[10px] text-muted-foreground mt-1">
+          Preenchido por <strong>{val.respondido_por_nome}</strong> em {format(new Date(val.respondido_em), "dd/MM/yyyy HH:mm")}
         </div>
       )}
 
