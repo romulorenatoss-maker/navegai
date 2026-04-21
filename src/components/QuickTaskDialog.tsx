@@ -111,8 +111,10 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId 
       const s = defaultSection(0);
       s.nome = "Itens";
       setSections([s]);
+      // Pré-seleciona o avaliado quando há um default (visão admin de outro user)
+      if (defaultAvaliadoId) setAvaliadoId(defaultAvaliadoId);
     }
-  }, [open]);
+  }, [open, defaultAvaliadoId]);
 
   const { data: colaboradores = [] } = useQuery({
     queryKey: ["profiles_quicktask"],
