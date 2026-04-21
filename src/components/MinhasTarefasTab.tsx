@@ -21,8 +21,13 @@ const STATUS_LABELS: Record<string, { text: string; cls: string }> = {
   aprovada: { text: "Aprovada", cls: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-300/50" },
 };
 
-export default function MinhasTarefasTab() {
+interface MinhasTarefasTabProps {
+  viewAsProfileId?: string | null;
+}
+
+export default function MinhasTarefasTab({ viewAsProfileId }: MinhasTarefasTabProps = {}) {
   const { profile } = useAuth();
+  const effectiveProfileId = viewAsProfileId && viewAsProfileId !== "__all" ? viewAsProfileId : profile?.id;
 
   const now = new Date();
   const [startDate, setStartDate] = useState<Date | undefined>(startOfMonth(now));
@@ -33,9 +38,9 @@ export default function MinhasTarefasTab() {
   const [quickTaskOpen, setQuickTaskOpen] = useState(false);
 
   const { data: assignments = [], isLoading } = useQuery({
-    queryKey: ["minhas_tarefas_avaliado", profile?.id, appliedStart?.toISOString(), appliedEnd?.toISOString()],
+    queryKey: ["minhas_tarefas_avaliado", effectiveProfileId, appliedStart?.toISOString(), appliedEnd?.toISOString()],
     queryFn: async () => {
-      if (!profile?.id) return [];
+      if (!effectiveProfileId) return [];
       const from = appliedStart ? startOfDay(appliedStart).toISOString().slice(0, 10) : startOfDay(startOfMonth(now)).toISOString().slice(0, 10);
       const to = appliedEnd ? endOfDay(appliedEnd).toISOString().slice(0, 10) : endOfDay(endOfMonth(now)).toISOString().slice(0, 10);
 
@@ -48,7 +53,7 @@ export default function MinhasTarefasTab() {
           operational_templates(nome),
           avaliador:profiles!operational_assignments_avaliador_id_fkey(id, nome)
         `)
-        .eq("avaliado_id", profile.id)
+        .eq("avaliado_id", effectiveProfileId)
         .in("status", COMPLETED_STATUSES)
         .gte("data_prevista", from)
         .lte("data_prevista", to)
@@ -58,7 +63,7 @@ export default function MinhasTarefasTab() {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!profile?.id,
+    enabled: !!effectiveProfileId,
   });
 
   const { avgScore, scored } = useMemo(() => {

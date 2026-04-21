@@ -456,11 +456,27 @@ export default function OperationalExecucaoPage() {
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto">
-      <div className="mb-4">
-        <h1 className="text-lg font-semibold text-foreground">Minhas Tarefas</h1>
-        <p className="text-xs text-muted-foreground">
-          {isAdmin ? "Visualização administrativa de todas as rotinas." : "Formulários e rotinas atribuídos a você."}
-        </p>
+      <div className="mb-4 flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-lg font-semibold text-foreground">Minhas Tarefas</h1>
+          <p className="text-xs text-muted-foreground">
+            {isAdmin ? "Visualização administrativa de todas as rotinas." : "Formulários e rotinas atribuídos a você."}
+          </p>
+        </div>
+        {isAdmin && (
+          <Select value={filterResponsavel} onValueChange={setFilterResponsavel}>
+            <SelectTrigger className="w-[220px] h-9">
+              <Filter className="w-3.5 h-3.5 mr-1" />
+              <SelectValue placeholder="Visão de..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">Todos os executores</SelectItem>
+              {profilesWithTasks.map((p: any) => (
+                <SelectItem key={p.id} value={p.id}>👁 {p.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <Tabs defaultValue="operacionais" className="w-full">
@@ -481,20 +497,6 @@ export default function OperationalExecucaoPage() {
           <Input placeholder="Pesquisar" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9 h-9 text-sm" />
         </div>
         <Input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value || today)} className="w-[160px] h-9 text-sm" />
-        {isAdmin && (
-          <Select value={filterResponsavel} onValueChange={setFilterResponsavel}>
-            <SelectTrigger className="w-[200px] h-9">
-              <Filter className="w-3.5 h-3.5 mr-1" />
-              <SelectValue placeholder="Visão de..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all">Todos os executores</SelectItem>
-              {profilesWithTasks.map((p: any) => (
-                <SelectItem key={p.id} value={p.id}>👁 {p.nome}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
       </div>
 
       {isAdmin && filterResponsavel !== "__all" && (
@@ -589,7 +591,7 @@ export default function OperationalExecucaoPage() {
         </TabsContent>
 
         <TabsContent value="avaliadas" className="mt-0">
-          <MinhasTarefasTab />
+          <MinhasTarefasTab viewAsProfileId={isAdmin ? filterResponsavel : null} />
         </TabsContent>
       </Tabs>
 
