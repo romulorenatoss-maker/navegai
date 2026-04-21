@@ -560,7 +560,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Data prevista *</Label>
+                  <Label>{recorrenciaAtiva ? "Início *" : "Data prevista *"}</Label>
                   <Input type="date" value={dataPrevista} onChange={(e) => setDataPrevista(e.target.value)} />
                 </div>
 
@@ -568,6 +568,60 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                   <Label>Horário limite</Label>
                   <Input type="time" value={horarioLimite} onChange={(e) => setHorarioLimite(e.target.value)} />
                 </div>
+              </div>
+
+              {/* Recorrência (opcional) */}
+              <div className="border border-border rounded-lg p-3 space-y-3 bg-muted/30">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <Label className="text-sm font-semibold">Recorrência</Label>
+                    <p className="text-[11px] text-muted-foreground">Se ativada, esta tarefa vira uma rotina e aparecerá em <strong>Rotinas Operacionais</strong>. A tarefa de hoje também é gerada automaticamente.</p>
+                  </div>
+                  <Switch checked={recorrenciaAtiva} onCheckedChange={setRecorrenciaAtiva} />
+                </div>
+                {recorrenciaAtiva && (
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Frequência</Label>
+                      <Select value={recorrenciaTipo} onValueChange={(v: any) => setRecorrenciaTipo(v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="diaria">Diária</SelectItem>
+                          <SelectItem value="semanal">Semanal (escolher dias)</SelectItem>
+                          <SelectItem value="mensal">Mensal (mesmo dia do mês)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {recorrenciaTipo === "semanal" && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Dias da semana</Label>
+                        <div className="flex flex-wrap gap-1.5">
+                          {["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].map((d, i) => {
+                            const active = recorrenciaDias.includes(i);
+                            return (
+                              <button
+                                key={i}
+                                type="button"
+                                onClick={() => setRecorrenciaDias(prev => active ? prev.filter(x => x !== i) : [...prev, i].sort())}
+                                className={cn(
+                                  "h-9 min-w-[44px] px-3 rounded-md border text-xs font-medium transition-colors",
+                                  active ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-muted-foreground hover:border-primary/50"
+                                )}
+                              >
+                                {d}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Data fim (opcional)</Label>
+                      <Input type="date" value={recorrenciaDataFim} onChange={(e) => setRecorrenciaDataFim(e.target.value)} placeholder="Sem fim" />
+                      <p className="text-[10px] text-muted-foreground">Deixe em branco para rotina contínua.</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
