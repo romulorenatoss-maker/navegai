@@ -539,39 +539,190 @@ export default function QuickTaskDialog({ open, onOpenChange }: Props) {
             </div>
           )}
 
-          {step === 3 && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Prazo SLA (horas)</Label>
-                  <Input type="number" min={1} max={720} value={slaHoras} onChange={(e) => setSlaHoras(+e.target.value || 24)} />
-                  <p className="text-[10px] text-muted-foreground">Tempo para concluir após criação.</p>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Penalidade fora do prazo (%)</Label>
-                  <Input type="number" min={0} max={100} value={penalidadeForaPrazo} onChange={(e) => setPenalidadeForaPrazo(+e.target.value || 0)} />
-                  <p className="text-[10px] text-muted-foreground">Desconto aplicado na nota se atrasar.</p>
-                </div>
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label>Nota máxima por campo</Label>
-                  <Input type="number" min={1} max={1000} value={pesoNotaMaxima} onChange={(e) => setPesoNotaMaxima(+e.target.value || 100)} />
-                  <p className="text-[10px] text-muted-foreground">Pontuação máxima de cada campo (padrão 100).</p>
-                </div>
-              </div>
+          {step === 3 && (() => {
+            const uniqueAprovadorFields = fields.filter(f => f.aprovador_verificar && f.aprovador_pergunta?.trim());
+            const temPerguntasAprovador = uniqueAprovadorFields.length > 0;
+            const autoQuestions = [
+              { label: "Tarefa executada fora do prazo?", pontos: penalidadeForaPrazo, set: setPenalidadeForaPrazo, defaultKey: "penalidade_fora_prazo" as const },
+              { label: "Houve plano de ação nesta tarefa?", pontos: penalidadeContingencia, set: setPenalidadeContingencia, defaultKey: "penalidade_contingencia" as const },
+              { label: "Plano de Ação resolvido dentro do prazo?", pontos: penalidadeSlaContingencia, set: setPenalidadeSlaContingencia, defaultKey: "penalidade_sla_contingencia" as const },
+            ];
+            const totalPenalidades = habilitarPerguntasAutomaticas ? autoQuestions.reduce((s, q) => s + q.pontos, 0) : 0;
+            const totalCampos = uniqueAprovadorFields.reduce((s, f) => s + f.aprovador_peso, 0);
+            const totalGeral = totalCampos + totalPenalidades;
 
-              <div className="bg-muted/40 border border-border rounded-md p-3 space-y-1.5">
-                <p className="text-xs font-semibold text-foreground">Resumo</p>
-                <div className="text-xs text-muted-foreground space-y-0.5">
-                  <p><strong>Tarefa:</strong> {nome || "—"}</p>
-                  <p><strong>Avaliado:</strong> {(colaboradores as any[]).find((c) => c.id === avaliadoId)?.nome || "—"}</p>
-                  <p><strong>Data:</strong> {dataPrevista} • limite {horarioLimite}</p>
-                  <p><strong>Avaliação:</strong> Por campo (definida em cada pergunta)</p>
-                  <p><strong>Aprovador:</strong> {requerAprovacao ? ((colaboradores as any[]).find((c) => c.id === aprovadorId)?.nome || "—") : "Não"}</p>
-                  <p><strong>Campos:</strong> {fields.length} em {sections.length} seção(ões)</p>
+            const setAsDefault = (key: keyof WorkflowDefaults, value: number) => {
+              const current = loadDefaults();
+              saveDefaults({ ...current, [key]: value });
+              toast.success(`Valor padrão atualizado: ${value} pontos`);
+            };
+
+            return (
+              <div className="space-y-4">
+                {/* Aviso quando não há perguntas de aprovador */}
+                {!temPerguntasAprovador && (
+                  <div className="flex items-start gap-2 p-3 rounded-lg border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700/40">
+                    <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div className="text-xs text-amber-800 dark:text-amber-200">
+                      <p className="font-semibold">Tarefa sem pontuação</p>
+                      <p>Esta tarefa não terá nota nem etapa de aprovação porque não há perguntas configuradas para o aprovador responder. Será criada apenas como lembrete. Para habilitar pontuação, volte à etapa <strong>Campos</strong> e ative <em>"Aprovador deve verificar"</em> em pelo menos um campo.</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* SLA */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Prazo SLA (horas)</Label>
+                    <Input type="number" min={1} max={720} value={slaHoras} onChange={(e) => setSlaHoras(+e.target.value || 24)} />
+                    <p className="text-[10px] text-muted-foreground">Tempo para concluir após criação.</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Nota máxima por campo</Label>
+                    <Input type="number" min={1} max={1000} value={pesoNotaMaxima} onChange={(e) => setPesoNotaMaxima(+e.target.value || 100)} disabled={!temPerguntasAprovador} />
+                    <p className="text-[10px] text-muted-foreground">Pontuação máxima de cada campo.</p>
+                  </div>
+                </div>
+
+                {/* Perguntas de Aprovação Final — replica TabWorkflow */}
+                <div className={cn("bg-muted/50 rounded-lg border border-border p-4 space-y-4", !temPerguntasAprovador && "opacity-50 pointer-events-none")}>
+                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Perguntas de Aprovação Final</p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {autoQuestions.map((q) => (
+                      <div key={q.defaultKey} className="space-y-1.5">
+                        <Label className="text-xs">
+                          {q.defaultKey === "penalidade_fora_prazo" && "Penalidade fora do prazo (pontos)"}
+                          {q.defaultKey === "penalidade_contingencia" && "Penalidade por plano de ação (pontos)"}
+                          {q.defaultKey === "penalidade_sla_contingencia" && "Penalidade SLA plano de ação (pontos)"}
+                        </Label>
+                        <div className="flex items-center gap-1.5">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={q.pontos}
+                            onChange={(e) => q.set(+e.target.value || 0)}
+                            className="flex-1"
+                          />
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button type="button" variant="outline" size="sm" className="h-9 w-9 p-0 shrink-0" title="Definir valor padrão">
+                                <Settings className="w-3.5 h-3.5" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-64 p-3" align="end">
+                              <div className="space-y-2">
+                                <p className="text-xs font-semibold">Valor padrão</p>
+                                <p className="text-[10px] text-muted-foreground">Esse valor ({q.pontos}) será usado como padrão em novas tarefas individuais e rotinas.</p>
+                                <Button type="button" size="sm" className="w-full" onClick={() => setAsDefault(q.defaultKey, q.pontos)}>
+                                  Salvar como padrão
+                                </Button>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Switch checked={habilitarPerguntasAutomaticas} onCheckedChange={setHabilitarPerguntasAutomaticas} />
+                    <div>
+                      <Label className="cursor-pointer text-sm">Habilitar perguntas automáticas na aprovação</Label>
+                      <p className="text-[11px] text-muted-foreground">Gera automaticamente perguntas sobre prazo, plano de ação e SLA na aprovação final.</p>
+                    </div>
+                  </div>
+
+                  {/* Tabela unificada de pontuação */}
+                  <div className="border border-border rounded-lg overflow-hidden mt-3 bg-card">
+                    <div className="bg-muted px-3 py-2">
+                      <p className="text-xs font-semibold">Resumo de Pontuação</p>
+                    </div>
+
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[40px] text-center text-xs">#</TableHead>
+                          <TableHead className="text-xs">Pergunta / Campo</TableHead>
+                          <TableHead className="w-[100px] text-center text-xs">Tipo</TableHead>
+                          <TableHead className="w-[80px] text-right text-xs">Pontos</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {habilitarPerguntasAutomaticas && autoQuestions.map((q, i) => (
+                          <TableRow key={`auto-${i}`} className="bg-destructive/5">
+                            <TableCell className="text-center text-xs text-muted-foreground">{i + 1}</TableCell>
+                            <TableCell className="text-xs font-medium">{q.label}</TableCell>
+                            <TableCell className="text-center">
+                              <Badge variant="destructive" className="text-[10px]">Automática</Badge>
+                            </TableCell>
+                            <TableCell className="text-right text-xs font-medium text-destructive">-{q.pontos}</TableCell>
+                          </TableRow>
+                        ))}
+
+                        {habilitarPerguntasAutomaticas && (
+                          <TableRow className="bg-muted/30">
+                            <TableCell colSpan={3} className="text-[10px] font-medium text-right text-muted-foreground">Subtotal Penalidades</TableCell>
+                            <TableCell className="text-right text-xs font-bold text-destructive">-{totalPenalidades}</TableCell>
+                          </TableRow>
+                        )}
+
+                        {uniqueAprovadorFields.map((f, i) => {
+                          const idx = (habilitarPerguntasAutomaticas ? autoQuestions.length : 0) + i + 1;
+                          return (
+                            <TableRow key={f.tempId}>
+                              <TableCell className="text-center text-xs text-muted-foreground">{idx}</TableCell>
+                              <TableCell className="text-xs">
+                                <div className="font-medium">{f.aprovador_pergunta}</div>
+                                <div className="text-[10px] text-muted-foreground">Campo: {f.label || "(sem nome)"}</div>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant="outline" className="text-[10px]">Aprovador</Badge>
+                              </TableCell>
+                              <TableCell className="text-right text-xs font-medium">{f.aprovador_peso}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+
+                        {uniqueAprovadorFields.length > 0 && (
+                          <TableRow className="bg-muted/30">
+                            <TableCell colSpan={3} className="text-[10px] font-medium text-right text-muted-foreground">Subtotal Campos</TableCell>
+                            <TableCell className="text-right text-xs font-bold">{totalCampos}</TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                      <TableFooter>
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-xs font-bold text-right">Pontos Totais</TableCell>
+                          <TableCell className="text-right text-xs font-bold">{totalGeral}</TableCell>
+                        </TableRow>
+                      </TableFooter>
+                    </Table>
+
+                    {uniqueAprovadorFields.length === 0 && !habilitarPerguntasAutomaticas && (
+                      <div className="p-3 text-center text-xs text-muted-foreground">
+                        Configure perguntas para o aprovador na aba "Campos".
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Resumo */}
+                <div className="bg-muted/40 border border-border rounded-md p-3 space-y-1">
+                  <p className="text-xs font-semibold text-foreground">Resumo</p>
+                  <div className="text-[11px] text-muted-foreground space-y-0.5">
+                    <p><strong>Tarefa:</strong> {nome || "—"}</p>
+                    <p><strong>Avaliado:</strong> {(colaboradores as any[]).find((c) => c.id === avaliadoId)?.nome || "—"}</p>
+                    <p><strong>Data:</strong> {dataPrevista} • limite {horarioLimite}</p>
+                    <p><strong>Pontuação:</strong> {temPerguntasAprovador ? `Ativa — ${totalGeral} pontos totais` : "Desativada (lembrete)"}</p>
+                    <p><strong>Aprovação:</strong> {temPerguntasAprovador && requerAprovacao ? ((colaboradores as any[]).find((c) => c.id === aprovadorId)?.nome || "—") : "Não"}</p>
+                    <p><strong>Campos:</strong> {fields.length} em {sections.length} seção(ões)</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
 
         <div className="border-t border-border px-5 py-3 flex items-center justify-between gap-2 shrink-0 bg-card">
