@@ -21,9 +21,13 @@ interface Props {
   setFields: React.Dispatch<React.SetStateAction<FieldForm[]>>;
   setores?: any[];
   tipoExecucao?: string;
+  /** Quando true, FieldDetailDialog exige horário_inicio/fim na pergunta (modo individual). */
+  requireFieldHorario?: boolean;
+  /** Propaga para FieldDetailDialog: habilita "gera plano de ação" nas opções. */
+  planoAcaoEnabled?: boolean;
 }
 
-export function TabFormBuilder({ sections, setSections, fields, setFields, setores = [], tipoExecucao = "checklist_inspecao" }: Props) {
+export function TabFormBuilder({ sections, setSections, fields, setFields, setores = [], tipoExecucao = "checklist_inspecao", requireFieldHorario = false, planoAcaoEnabled = true }: Props) {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<FieldForm | null>(null);
   const [quickAddSectionId, setQuickAddSectionId] = useState<string | null>(null);
