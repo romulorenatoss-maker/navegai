@@ -442,77 +442,111 @@ export default function RelatorioTarefasPage() {
         <div className="space-y-3">
           {[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 w-full" />)}
         </div>
-      ) : groups.length === 0 ? (
+      ) : totalAssignments === 0 ? (
         <Card><CardContent className="py-12 text-center text-muted-foreground">Nenhuma tarefa encontrada com os filtros aplicados.</CardContent></Card>
       ) : (
-        <div className="space-y-4">
-          {groups.map(([titulo, items]) => {
-            const isOpen = openGroups[titulo] ?? true;
-            const groupSelectedCount = items.filter((i) => selected.has(i.id)).length;
-            const groupAllSelected = groupSelectedCount === items.length;
-            return (
-              <Card key={titulo}>
-                <div className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-3 flex-1">
-                    <Checkbox
-                      checked={groupAllSelected}
-                      onCheckedChange={(c) => toggleGroupSelection(items, !!c)}
-                      onClick={(e) => e.stopPropagation()}
-                      aria-label={`Selecionar todas de ${titulo}`}
-                    />
-                    <button
-                      onClick={() => toggleGroup(titulo)}
-                      className="flex items-center gap-2 flex-1 text-left"
-                    >
-                      {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                      <h3 className="font-semibold">{titulo}</h3>
-                      <Badge variant="secondary">{items.length}</Badge>
-                      {groupSelectedCount > 0 && (
-                        <Badge variant="outline">{groupSelectedCount} sel.</Badge>
-                      )}
-                    </button>
-                  </div>
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={allSelected}
+                        onCheckedChange={toggleSelectAll}
+                        aria-label="Selecionar página"
+                      />
+                    </TableHead>
+                    <TableHead className="w-[90px]">ID</TableHead>
+                    <TableHead className="min-w-[220px]">Título da tarefa</TableHead>
+                    <TableHead className="min-w-[160px]">Avaliado</TableHead>
+                    <TableHead className="min-w-[160px]">Resp. Plano de Ação</TableHead>
+                    <TableHead className="min-w-[160px]">Aprovador</TableHead>
+                    <TableHead className="w-[140px]">Status</TableHead>
+                    <TableHead className="w-[140px]">Criada em</TableHead>
+                    <TableHead className="w-[80px] text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pagedRows.map((row) => (
+                    <TableRow key={row.id} className="hover:bg-muted/50">
+                      <TableCell>
+                        <Checkbox
+                          checked={selected.has(row.id)}
+                          onCheckedChange={() => toggleOne(row.id)}
+                          aria-label={`Selecionar tarefa ${row.numero_tarefa}`}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded">#{row.numero_tarefa}</span>
+                      </TableCell>
+                      <TableCell className="font-medium text-foreground">{row.template_titulo}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{row.avaliado_nome ?? "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{row.plano_acao_nome ?? "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{row.aprovador_nome ?? "—"}</TableCell>
+                      <TableCell>
+                        <span className={cn("inline-flex items-center text-xs font-medium px-2 py-0.5 rounded capitalize", STATUS_COLORS[row.status] || "bg-muted text-muted-foreground")}>
+                          {STATUS_LABEL[row.status] ?? row.status.replace(/_/g, " ")}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                        {format(new Date(row.created_at), "dd/MM/yyyy HH:mm")}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setViewId(row.id)}
+                          title="Abrir tarefa"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Paginação */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>Mostrando</span>
+                <span className="font-semibold text-foreground">
+                  {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, totalAssignments)}
+                </span>
+                <span>de</span>
+                <span className="font-semibold text-foreground">{totalAssignments}</span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground">Por página:</span>
+                  <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+                    <SelectTrigger className="h-8 w-[80px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                      <SelectItem value="200">200</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                {isOpen && (
-                  <CardContent className="pt-0">
-                    <div className="border rounded-md divide-y">
-                      {items.map((row) => (
-                        <div key={row.id} className="flex items-center justify-between p-3 gap-3">
-                          <Checkbox
-                            checked={selected.has(row.id)}
-                            onCheckedChange={() => toggleOne(row.id)}
-                            aria-label={`Selecionar tarefa ${row.numero_tarefa}`}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded">#{row.numero_tarefa}</span>
-                              <span className={cn("inline-flex items-center text-xs font-medium px-2 py-0.5 rounded capitalize", STATUS_COLORS[row.status] || "bg-muted text-muted-foreground")}>
-                                {row.status.replace(/_/g, " ")}
-                              </span>
-                              <span className="text-sm text-muted-foreground">
-                                Prevista: {format(new Date(row.data_prevista), "dd/MM/yyyy")}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                · Criada em {format(new Date(row.created_at), "dd/MM/yyyy HH:mm")}
-                              </span>
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setViewId(row.id)}
-                          >
-                            <Eye className="w-4 h-4 mr-1" /> Ver
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                )}
-              </Card>
-            );
-          })}
-        </div>
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <span className="text-xs px-2 font-medium">
+                    {page} / {totalPages}
+                  </span>
+                  <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <AssignmentQuickViewDialog
