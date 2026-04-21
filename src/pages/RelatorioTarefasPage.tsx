@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Trash2, ChevronDown, ChevronRight, FileBarChart, Search, Eye } from "lucide-react";
+import { CalendarIcon, Trash2, FileBarChart, Search, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import AssignmentQuickViewDialog from "@/components/AssignmentQuickViewDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -29,6 +30,9 @@ interface AssignmentRow {
   created_at: string;
   numero_tarefa: number;
   template_titulo: string;
+  avaliado_nome: string | null;
+  plano_acao_nome: string | null;
+  aprovador_nome: string | null;
 }
 
 const STATUS_OPTIONS = [
@@ -98,19 +102,25 @@ export default function RelatorioTarefasPage() {
   // Applied filters (used in query)
   const [filters, setFilters] = useState<{ from?: Date; to?: Date; status: string; mes: string; ano: string }>({ status: "__all", mes: "__all", ano: String(new Date().getFullYear()) });
 
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [toDelete, setToDelete] = useState<AssignmentRow | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [viewId, setViewId] = useState<string | null>(null);
 
+  // Paginação
+  const [pageSize, setPageSize] = useState<number>(50);
+  const [page, setPage] = useState<number>(1);
+
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ["relatorio-tarefas", filters],
     queryFn: async () => {
       let q = supabase
         .from("operational_assignments")
-        .select("id, template_id, status, data_prevista, created_at, numero_tarefa, operational_templates(nome)")
+        .select(`
+          id, template_id, status, data_prevista, created_at, numero_tarefa, aprovador_id, avaliado_id,
+          operational_templates(nome, responsavel_contingencia_id, aprovador_profile_id)
+        `)
         .order("created_at", { ascending: false });
 
       // Mês de competência tem prioridade — quando aplicado, ignora from/to
@@ -130,31 +140,55 @@ export default function RelatorioTarefasPage() {
       }
       if (filters.status !== "__all") q = q.eq("status", filters.status);
 
-      const { data, error } = await q;
+      const { data: rows, error } = await q;
       if (error) throw error;
-      return (data || []).map((r: any) => ({
-        id: r.id,
-        template_id: r.template_id,
-        status: r.status,
-        data_prevista: r.data_prevista,
-        created_at: r.created_at,
-        numero_tarefa: r.numero_tarefa,
-        template_titulo: r.operational_templates?.nome ?? "Sem título",
-      })) as AssignmentRow[];
+
+      // Single fetch de profiles para preencher nomes
+      const ids = new Set<string>();
+      (rows || []).forEach((r: any) => {
+        if (r.avaliado_id) ids.add(r.avaliado_id);
+        const aprov = r.aprovador_id || r.operational_templates?.aprovador_profile_id;
+        if (aprov) ids.add(aprov);
+        const plano = r.operational_templates?.responsavel_contingencia_id;
+        if (plano) ids.add(plano);
+      });
+      let profMap: Record<string, string> = {};
+      if (ids.size > 0) {
+        const { data: profs } = await supabase
+          .from("profiles").select("id, nome").in("id", Array.from(ids));
+        profMap = (profs || []).reduce((acc: Record<string, string>, p: any) => {
+          acc[p.id] = p.nome; return acc;
+        }, {});
+      }
+
+      return (rows || []).map((r: any) => {
+        const aprovId = r.aprovador_id || r.operational_templates?.aprovador_profile_id;
+        const planoId = r.operational_templates?.responsavel_contingencia_id;
+        return {
+          id: r.id,
+          template_id: r.template_id,
+          status: r.status,
+          data_prevista: r.data_prevista,
+          created_at: r.created_at,
+          numero_tarefa: r.numero_tarefa,
+          template_titulo: r.operational_templates?.nome ?? "Sem título",
+          avaliado_nome: r.avaliado_id ? (profMap[r.avaliado_id] ?? null) : null,
+          plano_acao_nome: planoId ? (profMap[planoId] ?? null) : null,
+          aprovador_nome: aprovId ? (profMap[aprovId] ?? null) : null,
+        };
+      }) as AssignmentRow[];
     },
   });
 
-  const groups = useMemo(() => {
-    const map = new Map<string, AssignmentRow[]>();
-    (data || []).forEach((r) => {
-      const key = r.template_titulo;
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(r);
-    });
-    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [data]);
+  // Reset página quando filtros ou pageSize mudam
+  useEffect(() => { setPage(1); }, [filters, pageSize]);
 
-  const toggleGroup = (k: string) => setOpenGroups((p) => ({ ...p, [k]: !p[k] }));
+  const totalAssignments = data?.length ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalAssignments / pageSize));
+  const pagedRows = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return (data || []).slice(start, start + pageSize);
+  }, [data, page, pageSize]);
 
   const handleSearch = () => {
     setFilters({ from: pendingFrom, to: pendingTo, status: pendingStatus, mes: pendingMes, ano: pendingAno });
@@ -177,14 +211,7 @@ export default function RelatorioTarefasPage() {
       return n;
     });
 
-  const toggleGroupSelection = (items: AssignmentRow[], checked: boolean) =>
-    setSelected((p) => {
-      const n = new Set(p);
-      items.forEach((r) => (checked ? n.add(r.id) : n.delete(r.id)));
-      return n;
-    });
-
-  const allVisibleIds = useMemo(() => (data || []).map((r) => r.id), [data]);
+  const allVisibleIds = useMemo(() => pagedRows.map((r) => r.id), [pagedRows]);
   const allSelected = allVisibleIds.length > 0 && allVisibleIds.every((id) => selected.has(id));
   const toggleSelectAll = () =>
     setSelected(allSelected ? new Set() : new Set(allVisibleIds));
@@ -266,7 +293,6 @@ export default function RelatorioTarefasPage() {
     }
   };
 
-  const totalAssignments = data?.length ?? 0;
   const mesAtivo = filters.mes !== "__all";
 
   return (
@@ -416,77 +442,111 @@ export default function RelatorioTarefasPage() {
         <div className="space-y-3">
           {[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 w-full" />)}
         </div>
-      ) : groups.length === 0 ? (
+      ) : totalAssignments === 0 ? (
         <Card><CardContent className="py-12 text-center text-muted-foreground">Nenhuma tarefa encontrada com os filtros aplicados.</CardContent></Card>
       ) : (
-        <div className="space-y-4">
-          {groups.map(([titulo, items]) => {
-            const isOpen = openGroups[titulo] ?? true;
-            const groupSelectedCount = items.filter((i) => selected.has(i.id)).length;
-            const groupAllSelected = groupSelectedCount === items.length;
-            return (
-              <Card key={titulo}>
-                <div className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-3 flex-1">
-                    <Checkbox
-                      checked={groupAllSelected}
-                      onCheckedChange={(c) => toggleGroupSelection(items, !!c)}
-                      onClick={(e) => e.stopPropagation()}
-                      aria-label={`Selecionar todas de ${titulo}`}
-                    />
-                    <button
-                      onClick={() => toggleGroup(titulo)}
-                      className="flex items-center gap-2 flex-1 text-left"
-                    >
-                      {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                      <h3 className="font-semibold">{titulo}</h3>
-                      <Badge variant="secondary">{items.length}</Badge>
-                      {groupSelectedCount > 0 && (
-                        <Badge variant="outline">{groupSelectedCount} sel.</Badge>
-                      )}
-                    </button>
-                  </div>
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={allSelected}
+                        onCheckedChange={toggleSelectAll}
+                        aria-label="Selecionar página"
+                      />
+                    </TableHead>
+                    <TableHead className="w-[90px]">ID</TableHead>
+                    <TableHead className="min-w-[220px]">Título da tarefa</TableHead>
+                    <TableHead className="min-w-[160px]">Avaliado</TableHead>
+                    <TableHead className="min-w-[160px]">Resp. Plano de Ação</TableHead>
+                    <TableHead className="min-w-[160px]">Aprovador</TableHead>
+                    <TableHead className="w-[140px]">Status</TableHead>
+                    <TableHead className="w-[140px]">Criada em</TableHead>
+                    <TableHead className="w-[80px] text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pagedRows.map((row) => (
+                    <TableRow key={row.id} className="hover:bg-muted/50">
+                      <TableCell>
+                        <Checkbox
+                          checked={selected.has(row.id)}
+                          onCheckedChange={() => toggleOne(row.id)}
+                          aria-label={`Selecionar tarefa ${row.numero_tarefa}`}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded">#{row.numero_tarefa}</span>
+                      </TableCell>
+                      <TableCell className="font-medium text-foreground">{row.template_titulo}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{row.avaliado_nome ?? "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{row.plano_acao_nome ?? "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{row.aprovador_nome ?? "—"}</TableCell>
+                      <TableCell>
+                        <span className={cn("inline-flex items-center text-xs font-medium px-2 py-0.5 rounded capitalize", STATUS_COLORS[row.status] || "bg-muted text-muted-foreground")}>
+                          {STATUS_LABEL[row.status] ?? row.status.replace(/_/g, " ")}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                        {format(new Date(row.created_at), "dd/MM/yyyy HH:mm")}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setViewId(row.id)}
+                          title="Abrir tarefa"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Paginação */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>Mostrando</span>
+                <span className="font-semibold text-foreground">
+                  {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, totalAssignments)}
+                </span>
+                <span>de</span>
+                <span className="font-semibold text-foreground">{totalAssignments}</span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground">Por página:</span>
+                  <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+                    <SelectTrigger className="h-8 w-[80px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                      <SelectItem value="200">200</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                {isOpen && (
-                  <CardContent className="pt-0">
-                    <div className="border rounded-md divide-y">
-                      {items.map((row) => (
-                        <div key={row.id} className="flex items-center justify-between p-3 gap-3">
-                          <Checkbox
-                            checked={selected.has(row.id)}
-                            onCheckedChange={() => toggleOne(row.id)}
-                            aria-label={`Selecionar tarefa ${row.numero_tarefa}`}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-mono text-xs bg-muted px-2 py-0.5 rounded">#{row.numero_tarefa}</span>
-                              <span className={cn("inline-flex items-center text-xs font-medium px-2 py-0.5 rounded capitalize", STATUS_COLORS[row.status] || "bg-muted text-muted-foreground")}>
-                                {row.status.replace(/_/g, " ")}
-                              </span>
-                              <span className="text-sm text-muted-foreground">
-                                Prevista: {format(new Date(row.data_prevista), "dd/MM/yyyy")}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                · Criada em {format(new Date(row.created_at), "dd/MM/yyyy HH:mm")}
-                              </span>
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setViewId(row.id)}
-                          >
-                            <Eye className="w-4 h-4 mr-1" /> Ver
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                )}
-              </Card>
-            );
-          })}
-        </div>
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <span className="text-xs px-2 font-medium">
+                    {page} / {totalPages}
+                  </span>
+                  <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <AssignmentQuickViewDialog
