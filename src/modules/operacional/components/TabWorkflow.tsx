@@ -3,7 +3,24 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Settings } from "lucide-react";
+import { toast } from "sonner";
 import { TemplateForm, FieldForm } from "../types";
+
+const LS_DEFAULTS_KEY = "quicktask_workflow_defaults_v1";
+type DefKey = "penalidade_fora_prazo" | "penalidade_contingencia" | "penalidade_sla_contingencia";
+const saveDefault = (key: DefKey, value: number) => {
+  try {
+    const raw = localStorage.getItem(LS_DEFAULTS_KEY);
+    const cur = raw ? JSON.parse(raw) : {};
+    localStorage.setItem(LS_DEFAULTS_KEY, JSON.stringify({ ...cur, [key]: value }));
+    toast.success(`Valor padrão salvo: ${value} pontos`);
+  } catch {
+    toast.error("Não foi possível salvar o valor padrão");
+  }
+};
 
 interface Props {
   form: TemplateForm;
