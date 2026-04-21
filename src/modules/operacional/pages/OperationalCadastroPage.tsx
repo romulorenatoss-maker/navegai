@@ -14,11 +14,13 @@ import { TabFormBuilder } from "@/modules/operacional/components/TabFormBuilder"
 import { TabWorkflow } from "@/modules/operacional/components/TabWorkflow";
 import { TabRecorrencia } from "@/modules/operacional/components/TabRecorrencia";
 import { TabTarefasExecutadas } from "@/modules/operacional/components/TabTarefasExecutadas";
+import TaskTypeSelectorDialog, { type TaskType } from "@/components/TaskTypeSelectorDialog";
 
 export default function OperationalCadastroPage() {
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [taskTypePickerOpen, setTaskTypePickerOpen] = useState(false);
   
   const [form, setForm] = useState<TemplateForm>(defaultTemplate);
   const [sections, setSections] = useState<SectionForm[]>([]);
