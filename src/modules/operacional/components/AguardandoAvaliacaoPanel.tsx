@@ -70,13 +70,19 @@ export function AguardandoAvaliacaoPanel() {
     return <div className="space-y-3">{list.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openItem} />)}</div>;
   };
 
-  // Usuário comum: apenas "Minhas"
+  // Usuário comum sem nada designado: não mostra abas
+  if (!isAdmin && minhas.length === 0) {
+    if (isLoading) return <p className="text-xs text-muted-foreground text-center py-4">Carregando...</p>;
+    return <p className="text-xs text-muted-foreground text-center py-4">Nenhuma rotina aguardando avaliação atribuída a você.</p>;
+  }
+
+  // Usuário comum com itens designados: apenas "Minhas"
   if (!isAdmin) {
     return (
       <Tabs defaultValue="minhas" className="w-full">
         <TabsList className="h-8 mb-2">
           <TabsTrigger value="minhas" className="text-xs h-6 px-2">
-            Minhas {minhas.length > 0 && <span className="ml-1 px-1.5 rounded-full text-[10px] bg-primary/20 text-primary">{minhas.length}</span>}
+            Minhas <span className="ml-1 px-1.5 rounded-full text-[10px] bg-primary/20 text-primary">{minhas.length}</span>
           </TabsTrigger>
         </TabsList>
         <TabsContent value="minhas" className="mt-0">
