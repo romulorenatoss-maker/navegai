@@ -195,8 +195,10 @@ export default function OperationalExecucaoPage() {
         .map((a: any) => a.responsavel_id)
         .filter(Boolean)
     );
+    // Sempre incluir o próprio usuário logado no filtro, mesmo sem tarefas em aberto
+    if (profile?.id) idsWithTasks.add(profile.id);
     return allProfilesRaw.filter((p: any) => idsWithTasks.has(p.id));
-  }, [isAdmin, assignments, allProfilesRaw]);
+  }, [isAdmin, assignments, allProfilesRaw, profile?.id]);
 
   const filteredAssignments = useMemo(() => {
     let list = assignments;
