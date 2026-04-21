@@ -66,6 +66,9 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   const [setorId, setSetorId] = useState("");
   const [dataPrevista, setDataPrevista] = useState(getLocalToday());
   const [horarioLimite, setHorarioLimite] = useState("18:00");
+  // Modo de horário (apenas para inspeção): "global" usa horarioLimite p/ tudo;
+  // "individual" desabilita horarioLimite e exige horário por etapa OU por pergunta.
+  const [horarioModo, setHorarioModo] = useState<"global" | "individual">("global");
   // Recorrência (opcional)
   const [recorrenciaAtiva, setRecorrenciaAtiva] = useState(false);
   const [recorrenciaTipo, setRecorrenciaTipo] = useState<"diaria" | "semanal" | "mensal">("diaria");
