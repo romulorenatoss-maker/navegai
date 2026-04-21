@@ -6,11 +6,12 @@ interface PendingCounts {
   pendingEvaluations: number;
   pendingLeadDecisions: number;
   pendingMyLeads: number;
+  pendingDesignadas: number;
 }
 
 export function usePendingNotifications() {
   const { profile, isAdmin } = useAuth();
-  const [counts, setCounts] = useState<PendingCounts>({ pendingEvaluations: 0, pendingLeadDecisions: 0, pendingMyLeads: 0 });
+  const [counts, setCounts] = useState<PendingCounts>({ pendingEvaluations: 0, pendingLeadDecisions: 0, pendingMyLeads: 0, pendingDesignadas: 0 });
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchCounts = useCallback(async () => {
@@ -98,7 +99,17 @@ export function usePendingNotifications() {
         .lte("data_contato", endOfToday);
       pendingMyLeads = myLeadTasksCount || 0;
 
-      setCounts({ pendingEvaluations, pendingLeadDecisions, pendingMyLeads });
+      // 4. Tarefas operacionais designadas por mim ainda em aberto (não concluídas)
+      let pendingDesignadas = 0;
+      const { count: designadasCount } = await (supabase as any)
+        .from("operational_assignments")
+        .select("id", { count: "exact", head: true })
+        .eq("created_by", profile.id)
+        .neq("responsavel_id", profile.id)
+        .not("status", "in", "(concluida,aprovada,reprovada,nao_executada)");
+      pendingDesignadas = designadasCount || 0;
+
+      setCounts({ pendingEvaluations, pendingLeadDecisions, pendingMyLeads, pendingDesignadas });
     } catch (err) {
       console.error("Error fetching pending notifications:", err);
     }
@@ -126,6 +137,7 @@ export function usePendingNotifications() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, debouncedFetch)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ordens_servico' }, debouncedFetch)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'lead_tarefas_contato' }, debouncedFetch)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'operational_assignments' }, debouncedFetch)
       .subscribe();
 
     return () => {

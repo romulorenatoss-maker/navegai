@@ -162,6 +162,30 @@ export default function OperationalExecucaoPage() {
     staleTime: 300000,
   });
 
+  // Contingências (planos de ação) abertas onde sou responsável e prazo_sla < 24h
+  const { data: contingenciasUrgentes = [] } = useQuery({
+    queryKey: ["operational_contingencies_urgent", profile?.id],
+    queryFn: async () => {
+      if (!profile?.id) return [];
+      const limite = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
+      const { data, error } = await (supabase as any)
+        .from("operational_contingencies")
+        .select("assignment_id, prazo_sla, status")
+        .in("status", ["aberta", "em_andamento"])
+        .eq("responsavel_id", profile.id)
+        .lte("prazo_sla", limite);
+      if (error) return [];
+      return data || [];
+    },
+    enabled: !!profile?.id,
+    staleTime: 60000,
+  });
+
+  const urgentContingencyAssignmentIds = useMemo(
+    () => new Set(contingenciasUrgentes.map((c: any) => c.assignment_id)),
+    [contingenciasUrgentes]
+  );
+
   const profilesWithTasks = useMemo(() => {
     if (!isAdmin) return [];
     const openStatuses = ["pendente", "em_andamento", "devolvida", "aguardando_avaliacao", "aguardando_aprovacao", "contingenciado", "contingencia"];
@@ -199,13 +223,15 @@ export default function OperationalExecucaoPage() {
     return list;
   }, [assignments, isAdmin, filterResponsavel, searchTerm, filterDate, profile?.id]);
 
-  // "Tarefas de Hoje" includes: today's tasks + em_andamento (any date) + atrasadas (past dates still open)
+  // "Tarefas de Hoje" includes: today's tasks + em_andamento (any date) + atrasadas + contingências com SLA < 24h
    const hoje = filteredAssignments.filter((a: any) => {
     if (["em_andamento"].includes(a.status)) return true;
     if (["pendente", "devolvida"].includes(a.status) && a.data_prevista <= filterDate && a.responsavel_id === profile?.id) return true;
+    // Contingências (planos de ação) prioridade: aparecem no dia se SLA expira em <24h
+    if (["contingenciado", "contingencia"].includes(a.status) && urgentContingencyAssignmentIds.has(a.id)) return true;
     return false;
   });
-  // NOVO: "Tarefas Designadas" — tarefas que EU criei para outras pessoas (qualquer status ativo)
+  // NOVO: "Tarefas Designadas" — tarefas que EU criei para outras pessoas (apenas em aberto/ativas)
   const tarefasDesignadas = filteredAssignments.filter((a: any) =>
     a.created_by === profile?.id &&
     a.responsavel_id !== profile?.id &&
@@ -229,6 +255,8 @@ export default function OperationalExecucaoPage() {
   )];
   const contingenciados = filteredAssignments.filter((a: any) => ["contingenciado", "contingencia"].includes(a.status));
   const aguardandoAvaliacao = filteredAssignments.filter((a: any) => ["aguardando_avaliacao", "aguardando_aprovacao"].includes(a.status));
+  // NOVO: separar Finalizadas em "Em Aberto" (não foram feitas) e "Concluídas" (efetivamente concluídas/aprovadas)
+  const emAberto = filteredAssignments.filter((a: any) => ["nao_executada", "reprovada"].includes(a.status)).slice(0, 50);
   const concluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 50);
 
   const exec = useAssignmentExecution(selectedAssignment?.id || null);
@@ -346,6 +374,10 @@ export default function OperationalExecucaoPage() {
     selectedAssignment.validador_contingencia_id === profile?.id ||
     selectedAssignment.avaliador_id === profile?.id
   );
+  // Criador validando recebimento de tarefa designada
+  const isCriadorValidando = !!selectedAssignment
+    && selectedAssignment.status === "aguardando_validacao"
+    && selectedAssignment.created_by === profile?.id;
 
   const handleStart = () => {
     if (selectedAssignment) exec.startTask.mutate({
@@ -358,6 +390,40 @@ export default function OperationalExecucaoPage() {
         toast.success("Tarefa iniciada com sucesso!");
       },
     });
+  };
+
+  const handleAprovarRecebimento = async () => {
+    if (!selectedAssignment) return;
+    try {
+      await centralTransition.mutateAsync({
+        assignmentId: selectedAssignment.id,
+        action: "validar_designada_aprovar",
+        origem: "execucao_validacao",
+      });
+      toast.success("Recebimento aprovado. Tarefa concluída.");
+      closeExecution();
+    } catch (e: any) {
+      toast.error("Erro ao aprovar: " + e.message);
+    }
+  };
+
+  const handleDevolverDesignada = async () => {
+    if (!selectedAssignment) return;
+    const motivo = window.prompt("Justifique a devolução desta tarefa:");
+    if (!motivo?.trim()) { toast.error("Justificativa obrigatória."); return; }
+    try {
+      await centralTransition.mutateAsync({
+        assignmentId: selectedAssignment.id,
+        action: "validar_designada_devolver",
+        motivo,
+        origem: "execucao_validacao",
+        extraData: { rodadaAtual: selectedAssignment.rodada_atual || 1 },
+      });
+      toast.success("Tarefa devolvida ao executor.");
+      closeExecution();
+    } catch (e: any) {
+      toast.error("Erro ao devolver: " + e.message);
+    }
   };
 
   const handleSubmit = () => {
@@ -505,11 +571,18 @@ export default function OperationalExecucaoPage() {
             {aguardandoAvaliacao.length === 0 ? renderEmptyState("Nenhuma rotina aguardando avaliação.") : aguardandoAvaliacao.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
           </AccordionSection>
 
-          <AccordionSection title="Finalizadas" count={concluidas.length}
+          <AccordionSection title="Em Aberto" count={emAberto.length}
+            icon={<AlertTriangle className="w-4 h-4" style={{ color: "#f59e0b" }} />}
+            borderColor="#f59e0b" badgeBg="bg-amber-500/15" badgeText="text-amber-700 dark:text-amber-400"
+            isOpen={openAccordion === "em_aberto"} onToggle={() => setOpenAccordion(openAccordion === "em_aberto" ? null : "em_aberto")}>
+            {emAberto.length === 0 ? renderEmptyState("Nenhuma rotina em aberto.") : emAberto.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+          </AccordionSection>
+
+          <AccordionSection title="Concluídas" count={concluidas.length}
             icon={<CheckCheck className="w-4 h-4" style={{ color: "#22c55e" }} />}
             borderColor="#22c55e" badgeBg="bg-green-500/15" badgeText="text-green-700 dark:text-green-400"
             isOpen={openAccordion === "finalizadas"} onToggle={() => setOpenAccordion(openAccordion === "finalizadas" ? null : "finalizadas")}>
-            {concluidas.length === 0 ? renderEmptyState("Nenhuma rotina finalizada.") : concluidas.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
+            {concluidas.length === 0 ? renderEmptyState("Nenhuma rotina concluída.") : concluidas.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
           </AccordionSection>
         </div>
       )}
@@ -733,6 +806,20 @@ export default function OperationalExecucaoPage() {
               </div>
             )}
           </div>
+
+          {isCriadorValidando && (
+            <div className="border-t border-border p-3 flex items-center gap-2 bg-card safe-area-bottom flex-wrap">
+              <div className="flex-1 text-xs text-muted-foreground">
+                Esta tarefa foi designada por você e está aguardando sua validação de recebimento.
+              </div>
+              <Button type="button" size="sm" variant="outline" onClick={handleDevolverDesignada} disabled={centralTransition.isPending}>
+                <RotateCcw className="w-3.5 h-3.5 mr-1" /> Devolver
+              </Button>
+              <Button type="button" size="sm" onClick={handleAprovarRecebimento} disabled={centralTransition.isPending}>
+                <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Aprovar Recebimento
+              </Button>
+            </div>
+          )}
 
           {isEditable && selectedAssignment?.status !== "pendente" && (
             <div className="border-t border-border p-3 flex items-center gap-2 bg-card safe-area-bottom flex-wrap">

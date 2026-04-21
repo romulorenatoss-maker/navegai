@@ -31,15 +31,16 @@ export function AppLayout() {
   const [changingPassword, setChangingPassword] = useState(false);
 
   const { endSession } = useSessionTracker(user?.id || null, profile?.id || null);
-  const { pendingEvaluations, pendingLeadDecisions, pendingMyLeads } = usePendingNotifications();
+  const { pendingEvaluations, pendingLeadDecisions, pendingMyLeads, pendingDesignadas } = usePendingNotifications();
 
   const badgeCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     if (pendingEvaluations > 0) counts["/avaliacoes/pesquisa"] = pendingEvaluations;
     if (pendingLeadDecisions > 0) counts["/leads/fila"] = pendingLeadDecisions;
     if (pendingMyLeads > 0) counts["/leads"] = pendingMyLeads;
+    if (pendingDesignadas > 0) counts["/operacional/execucao"] = pendingDesignadas;
     return counts;
-  }, [pendingEvaluations, pendingLeadDecisions, pendingMyLeads]);
+  }, [pendingEvaluations, pendingLeadDecisions, pendingMyLeads, pendingDesignadas]);
 
   const handleIdleLogout = useCallback(async () => {
     toast.info("Sessão encerrada por inatividade (15 min).");
