@@ -3,7 +3,24 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Settings } from "lucide-react";
+import { toast } from "sonner";
 import { TemplateForm, FieldForm } from "../types";
+
+const LS_DEFAULTS_KEY = "quicktask_workflow_defaults_v1";
+type DefKey = "penalidade_fora_prazo" | "penalidade_contingencia" | "penalidade_sla_contingencia";
+const saveDefault = (key: DefKey, value: number) => {
+  try {
+    const raw = localStorage.getItem(LS_DEFAULTS_KEY);
+    const cur = raw ? JSON.parse(raw) : {};
+    localStorage.setItem(LS_DEFAULTS_KEY, JSON.stringify({ ...cur, [key]: value }));
+    toast.success(`Valor padrão salvo: ${value} pontos`);
+  } catch {
+    toast.error("Não foi possível salvar o valor padrão");
+  }
+};
 
 interface Props {
   form: TemplateForm;
@@ -34,18 +51,40 @@ export function TabWorkflow({ form, set, fields = [] }: Props) {
         <p className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Perguntas de Aprovação Final</p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-1.5">
-            <Label>Penalidade fora do prazo (pontos)</Label>
-            <Input type="number" min={0} max={100} value={form.penalidade_fora_prazo} onChange={e => set("penalidade_fora_prazo", +e.target.value)} className="max-w-[200px]" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Penalidade por plano de ação (pontos)</Label>
-            <Input type="number" min={0} max={100} value={form.penalidade_contingencia} onChange={e => set("penalidade_contingencia", +e.target.value)} className="max-w-[200px]" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Penalidade SLA plano de ação (pontos)</Label>
-            <Input type="number" min={0} max={100} value={form.penalidade_sla_contingencia} onChange={e => set("penalidade_sla_contingencia", +e.target.value)} className="max-w-[200px]" />
-          </div>
+          {([
+            { key: "penalidade_fora_prazo" as const, label: "Penalidade fora do prazo (pontos)" },
+            { key: "penalidade_contingencia" as const, label: "Penalidade por plano de ação (pontos)" },
+            { key: "penalidade_sla_contingencia" as const, label: "Penalidade SLA plano de ação (pontos)" },
+          ]).map(({ key, label }) => (
+            <div key={key} className="space-y-1.5">
+              <Label>{label}</Label>
+              <div className="flex items-center gap-1.5 max-w-[240px]">
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={form[key]}
+                  onChange={e => set(key, +e.target.value)}
+                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0" title="Salvar como valor padrão">
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-64 space-y-2">
+                    <p className="text-sm font-semibold">Valor padrão</p>
+                    <p className="text-xs text-muted-foreground">
+                      Salvar <strong>{form[key]} pontos</strong> como valor padrão para novas tarefas individuais.
+                    </p>
+                    <Button type="button" size="sm" className="w-full" onClick={() => saveDefault(key, form[key] as number)}>
+                      Salvar como padrão
+                    </Button>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+          ))}
         </div>
 
         <div className="flex items-center gap-3">
