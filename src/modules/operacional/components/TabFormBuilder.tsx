@@ -433,11 +433,20 @@ export function FieldDetailDialog({ field, setores, onSave, onClose, planoAcaoEn
                               }} />
                               <Label className="cursor-pointer text-caption">Exigir evidência</Label>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Switch checked={opcao.gera_contingencia} onCheckedChange={v => updateOpcaoRegra(opcao.valor, { gera_contingencia: v })} />
-                              <Label className="cursor-pointer text-caption">Gera plano de ação</Label>
+                            <div className="flex items-center gap-2" title={!planoAcaoEnabled ? "Defina um Responsável pelo Plano de Ação na etapa Designação para habilitar." : undefined}>
+                              <Switch
+                                checked={planoAcaoEnabled && opcao.gera_contingencia}
+                                disabled={!planoAcaoEnabled}
+                                onCheckedChange={v => updateOpcaoRegra(opcao.valor, { gera_contingencia: v })}
+                              />
+                              <Label className={`cursor-pointer text-caption ${!planoAcaoEnabled ? "text-muted-foreground/60" : ""}`}>
+                                Gera plano de ação{!planoAcaoEnabled && <span className="text-[10px] ml-1">(requer responsável)</span>}
+                              </Label>
                             </div>
                           </div>
+                          {!planoAcaoEnabled && opcao.requer_evidencia && (
+                            <p className="text-[10px] text-muted-foreground pl-1">Evidência será obrigatória ao selecionar esta opção.</p>
+                          )}
 
                           {opcao.requer_evidencia && (
                             <div className="space-y-2 pl-1">
