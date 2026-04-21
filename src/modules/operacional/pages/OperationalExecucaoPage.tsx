@@ -21,6 +21,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MinhasTarefasTab from "@/components/MinhasTarefasTab";
 import QuickTaskDialog from "@/components/QuickTaskDialog";
+import { MinhasTarefasPendentesPanel } from "@/modules/operacional/components/MinhasTarefasPendentesPanel";
+import { useContingencyManagement } from "@/modules/operacional/hooks/useContingencyManagement";
 import { ListChecks, Trophy } from "lucide-react";
 
 interface AccordionSectionProps {
@@ -328,6 +330,14 @@ export default function OperationalExecucaoPage() {
   const emAbertoSplit = splitByResp(emAberto);
   const concluidasSplit = splitByResp(concluidas);
 
+  // Contagem para "Tarefas Pendentes" — usa Planos de Ação (contingências).
+  // Admin: total de todas; usuário comum: apenas onde é responsável.
+  const cmCount = useContingencyManagement();
+  const pendentesCount = useMemo(() => {
+    const all = [...cmCount.abertas, ...cmCount.emTratamento, ...cmCount.vencidas, ...cmCount.validadas];
+    return isAdmin ? all.length : all.filter((c: any) => c.responsavel_id === myId).length;
+  }, [cmCount.abertas, cmCount.emTratamento, cmCount.vencidas, cmCount.validadas, isAdmin, myId]);
+
   const exec = useAssignmentExecution(selectedAssignment?.id || null);
 
   const snapshot = selectedAssignment?.template_snapshot;
@@ -634,14 +644,11 @@ export default function OperationalExecucaoPage() {
               emptyMine="Nenhuma rotina devolvida." />
           </AccordionSection>
 
-          <AccordionSection title="Tarefas Pendentes" count={isAdmin ? contingenciados.length : contingenciadosSplit.mine.length}
+          <AccordionSection title="Tarefas Pendentes" count={pendentesCount}
             icon={<AlertTriangle className="w-4 h-4" style={{ color: "#f97316" }} />}
             borderColor="#f97316" badgeBg="bg-orange-500/15" badgeText="text-orange-700 dark:text-orange-400"
             isOpen={openAccordion === "contingenciados"} onToggle={() => setOpenAccordion(openAccordion === "contingenciados" ? null : "contingenciados")}>
-            <MineOthersTabs
-              mine={contingenciadosSplit.mine} others={contingenciadosSplit.others} showOthers={isAdmin}
-              renderItem={(a) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />}
-              emptyMine="Nenhuma rotina contingenciada." />
+            <MinhasTarefasPendentesPanel />
           </AccordionSection>
 
           <AccordionSection title="Aguardando Avaliação" count={isAdmin ? aguardandoAvaliacao.length : aguardandoSplit.mine.length}
