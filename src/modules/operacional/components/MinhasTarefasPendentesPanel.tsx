@@ -1,10 +1,10 @@
-import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useContingencyManagement } from "@/modules/operacional/hooks/useContingencyManagement";
 import { CONTINGENCY_STATUS } from "@/modules/operacional/hooks/useOperationalScoring";
 import { Camera, Video, File as FileIcon, Clock } from "lucide-react";
+import { ContingencyDetailDialog } from "@/modules/operacional/components/ContingencyDetailDialog";
 
 /**
  * Painel embutido em "Tarefas Pendentes" da página de Execução.
@@ -18,9 +18,10 @@ import { Camera, Video, File as FileIcon, Clock } from "lucide-react";
  * ações/regras existentes.
  */
 export function MinhasTarefasPendentesPanel({ viewAsProfileId }: { viewAsProfileId?: string | null } = {}) {
-  const navigate = useNavigate();
   const { profile, isAdmin } = useAuth();
   const cm = useContingencyManagement();
+  const [selectedContingency, setSelectedContingency] = useState<any>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   const targetId = viewAsProfileId || profile?.id;
   const filterMine = (list: any[]) => list.filter((c: any) => c.responsavel_id === targetId);
@@ -30,7 +31,7 @@ export function MinhasTarefasPendentesPanel({ viewAsProfileId }: { viewAsProfile
     [cm.abertas, cm.emTratamento, cm.vencidas, cm.validadas, targetId]
   );
 
-  const goToDetail = (_c: any) => navigate("/operacional/contingencias");
+  const goToDetail = (c: any) => { setSelectedContingency(c); setDetailOpen(true); };
 
   const renderCard = (c: any) => {
     const statusCfg = CONTINGENCY_STATUS[c.status] || { label: c.status, class: "bg-muted text-muted-foreground border-border" };
