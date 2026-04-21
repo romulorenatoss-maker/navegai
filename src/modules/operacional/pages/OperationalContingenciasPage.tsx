@@ -338,15 +338,62 @@ export default function OperationalContingenciasPage() {
     }
   };
 
+  // ── Visão pessoal: contingências onde sou o responsável ──
+  const minhasTarefas = useMemo(() => {
+    const all = [
+      ...(cm.abertas || []),
+      ...(cm.emTratamento || []),
+      ...(cm.vencidas || []),
+      ...(cm.validadas || []),
+    ];
+    const seen = new Set<string>();
+    return all.filter((c: any) => {
+      if (c.responsavel_id !== profile?.id) return false;
+      if (seen.has(c.id)) return false;
+      seen.add(c.id);
+      return true;
+    });
+  }, [cm.abertas, cm.emTratamento, cm.vencidas, cm.validadas, profile?.id]);
+
+  const [outerTab, setOuterTab] = useState("minhas");
+
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
       <div className="mb-6">
         <h1 className="text-lg md:text-xl font-semibold text-foreground flex items-center gap-2">
-          <AlertTriangle className="w-5 h-5 text-destructive" /> Gestão de Planos de Ação
+          <AlertTriangle className="w-5 h-5 text-destructive" /> Tarefas Pendentes
         </h1>
-        <p className="text-sm text-muted-foreground">Tratamento, resolução e validação de planos de ação operacionais.</p>
+        <p className="text-sm text-muted-foreground">Suas tarefas pendentes e a gestão completa de planos de ação.</p>
       </div>
 
+      <Tabs value={outerTab} onValueChange={setOuterTab} className="mb-4">
+        <TabsList className="w-full flex-wrap h-auto gap-1">
+          <TabsTrigger value="minhas" className="flex-1 min-w-[120px]">
+            Minhas Tarefas
+            {minhasTarefas.length > 0 && (
+              <span className="ml-1 px-1.5 rounded-full text-[10px] bg-primary/20 text-primary">
+                {minhasTarefas.length}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="todas" className="flex-1 min-w-[120px]">
+            Gestão Completa
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="minhas" className="space-y-3 mt-4">
+          {cm.isLoading ? (
+            <div className="text-center py-12 text-muted-foreground text-sm">Carregando...</div>
+          ) : minhasTarefas.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground text-sm">
+              Você não tem tarefas pendentes no momento.
+            </div>
+          ) : (
+            minhasTarefas.map(renderCard)
+          )}
+        </TabsContent>
+
+        <TabsContent value="todas" className="mt-4">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full mb-4 flex-wrap h-auto gap-1">
           {[
