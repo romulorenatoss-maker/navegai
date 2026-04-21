@@ -20,6 +20,7 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MinhasTarefasTab from "@/components/MinhasTarefasTab";
+import QuickTaskDialog from "@/components/QuickTaskDialog";
 import { ListChecks, Trophy } from "lucide-react";
 
 interface AccordionSectionProps {
@@ -132,6 +133,8 @@ export default function OperationalExecucaoPage() {
   const [filterDate, setFilterDate] = useState<string>(today);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [quickTaskOpen, setQuickTaskOpen] = useState(false);
+  const effectiveFilterProfileId = isAdmin && filterResponsavel !== "__all" ? filterResponsavel : profile?.id;
 
   const { data: allProfilesRaw = [] } = useQuery({
     queryKey: ["operational_profiles_for_exec_filter"],
@@ -499,6 +502,16 @@ export default function OperationalExecucaoPage() {
           <Input placeholder="Pesquisar" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9 h-9 text-sm" />
         </div>
         <Input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value || today)} className="w-[160px] h-9 text-sm" />
+        <Button
+          type="button"
+          size="icon"
+          className="h-9 w-9 shrink-0"
+          onClick={() => setQuickTaskOpen(true)}
+          title="Nova Tarefa"
+          aria-label="Nova Tarefa"
+        >
+          <Plus className="w-4 h-4" />
+        </Button>
       </div>
 
       {isAdmin && filterResponsavel !== "__all" && (
@@ -869,6 +882,12 @@ export default function OperationalExecucaoPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <QuickTaskDialog
+        open={quickTaskOpen}
+        onOpenChange={setQuickTaskOpen}
+        defaultAvaliadoId={effectiveFilterProfileId}
+      />
     </div>
   );
 }

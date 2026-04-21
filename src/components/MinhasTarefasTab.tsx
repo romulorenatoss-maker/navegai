@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Filter, ListChecks, Eye, Trophy, Plus } from "lucide-react";
+import { CalendarIcon, Filter, ListChecks, Eye, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,6 @@ import { Calendar } from "@/components/ui/calendar";
 import { getScoreColorClass } from "@/lib/score-colors";
 import { cn } from "@/lib/utils";
 import AssignmentQuickViewDialog from "@/components/AssignmentQuickViewDialog";
-import QuickTaskDialog from "@/components/QuickTaskDialog";
 
 const COMPLETED_STATUSES = ["concluida", "aprovada"];
 
@@ -35,7 +34,6 @@ export default function MinhasTarefasTab({ viewAsProfileId }: MinhasTarefasTabPr
   const [appliedStart, setAppliedStart] = useState<Date | undefined>(startOfMonth(now));
   const [appliedEnd, setAppliedEnd] = useState<Date | undefined>(endOfMonth(now));
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
-  const [quickTaskOpen, setQuickTaskOpen] = useState(false);
 
   const { data: assignments = [], isLoading } = useQuery({
     queryKey: ["minhas_tarefas_avaliado", effectiveProfileId, appliedStart?.toISOString(), appliedEnd?.toISOString()],
@@ -92,17 +90,6 @@ export default function MinhasTarefasTab({ viewAsProfileId }: MinhasTarefasTabPr
           <div className="text-caption text-muted-foreground uppercase tracking-wider mb-1">Total Concluídas</div>
           <div className="text-2xl font-bold font-tabular text-foreground">{assignments.length}</div>
         </div>
-      </div>
-
-      {/* Botão Nova Tarefa - destaque */}
-      <div className="flex justify-end">
-        <Button
-          onClick={() => setQuickTaskOpen(true)}
-          size="lg"
-          className="h-11 shadow-md w-full sm:w-auto"
-        >
-          <Plus className="w-5 h-5 mr-2" /> Nova Tarefa
-        </Button>
       </div>
 
       {/* Filtros */}
@@ -203,12 +190,6 @@ export default function MinhasTarefasTab({ viewAsProfileId }: MinhasTarefasTabPr
         assignmentId={selectedAssignmentId}
         open={!!selectedAssignmentId}
         onOpenChange={(o) => { if (!o) setSelectedAssignmentId(null); }}
-      />
-
-      <QuickTaskDialog
-        open={quickTaskOpen}
-        onOpenChange={setQuickTaskOpen}
-        defaultAvaliadoId={effectiveProfileId}
       />
     </div>
   );
