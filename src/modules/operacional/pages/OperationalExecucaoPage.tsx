@@ -21,6 +21,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MinhasTarefasTab from "@/components/MinhasTarefasTab";
 import QuickTaskDialog from "@/components/QuickTaskDialog";
+import TaskTypeSelectorDialog, { type TaskType } from "@/components/TaskTypeSelectorDialog";
 import { MinhasTarefasPendentesPanel } from "@/modules/operacional/components/MinhasTarefasPendentesPanel";
 import { AguardandoAvaliacaoPanel } from "@/modules/operacional/components/AguardandoAvaliacaoPanel";
 import { useContingencyManagement } from "@/modules/operacional/hooks/useContingencyManagement";
@@ -177,6 +178,8 @@ export default function OperationalExecucaoPage() {
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [quickTaskOpen, setQuickTaskOpen] = useState(false);
+  const [taskTypePickerOpen, setTaskTypePickerOpen] = useState(false);
+  const [pickedTaskType, setPickedTaskType] = useState<TaskType>("simples");
   const effectiveFilterProfileId = isAdmin && filterResponsavel !== "__all" ? filterResponsavel : profile?.id;
 
   const { data: allProfilesRaw = [] } = useQuery({
@@ -592,7 +595,7 @@ export default function OperationalExecucaoPage() {
           type="button"
           size="icon"
           className="h-9 w-9 shrink-0"
-          onClick={() => setQuickTaskOpen(true)}
+          onClick={() => setTaskTypePickerOpen(true)}
           title="Nova Tarefa"
           aria-label="Nova Tarefa"
         >
@@ -960,10 +963,17 @@ export default function OperationalExecucaoPage() {
         </DialogContent>
       </Dialog>
 
+      <TaskTypeSelectorDialog
+        open={taskTypePickerOpen}
+        onOpenChange={setTaskTypePickerOpen}
+        onPick={(t) => { setPickedTaskType(t); setTaskTypePickerOpen(false); setQuickTaskOpen(true); }}
+      />
+
       <QuickTaskDialog
         open={quickTaskOpen}
         onOpenChange={setQuickTaskOpen}
         defaultAvaliadoId={effectiveFilterProfileId}
+        taskType={pickedTaskType}
       />
     </div>
   );
