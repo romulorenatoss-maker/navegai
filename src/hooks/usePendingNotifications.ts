@@ -6,11 +6,12 @@ interface PendingCounts {
   pendingEvaluations: number;
   pendingLeadDecisions: number;
   pendingMyLeads: number;
+  pendingDesignadas: number;
 }
 
 export function usePendingNotifications() {
   const { profile, isAdmin } = useAuth();
-  const [counts, setCounts] = useState<PendingCounts>({ pendingEvaluations: 0, pendingLeadDecisions: 0, pendingMyLeads: 0 });
+  const [counts, setCounts] = useState<PendingCounts>({ pendingEvaluations: 0, pendingLeadDecisions: 0, pendingMyLeads: 0, pendingDesignadas: 0 });
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchCounts = useCallback(async () => {
