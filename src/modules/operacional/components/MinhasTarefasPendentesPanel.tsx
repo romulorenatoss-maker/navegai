@@ -107,19 +107,30 @@ export function MinhasTarefasPendentesPanel({ viewAsProfileId }: { viewAsProfile
     return <div className="space-y-2">{list.map(renderCard)}</div>;
   };
 
+  const dialog = (
+    <ContingencyDetailDialog
+      contingency={selectedContingency}
+      open={detailOpen}
+      onOpenChange={(o) => { setDetailOpen(o); if (!o) setSelectedContingency(null); }}
+    />
+  );
+
   // Usuário comum: apenas "Minhas"
   if (!isAdmin) {
     return (
-      <Tabs defaultValue="minhas" className="w-full">
-        <TabsList className="h-8 mb-2">
-          <TabsTrigger value="minhas" className="text-xs h-6 px-2">
-            Minhas {minhas.length > 0 && <span className="ml-1 px-1.5 rounded-full text-[10px] bg-primary/20 text-primary">{minhas.length}</span>}
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="minhas" className="mt-0">
-          {renderList(minhas, "Nenhuma tarefa atribuída a você.")}
-        </TabsContent>
-      </Tabs>
+      <>
+        <Tabs defaultValue="minhas" className="w-full">
+          <TabsList className="h-8 mb-2">
+            <TabsTrigger value="minhas" className="text-xs h-6 px-2">
+              Minhas {minhas.length > 0 && <span className="ml-1 px-1.5 rounded-full text-[10px] bg-primary/20 text-primary">{minhas.length}</span>}
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="minhas" className="mt-0">
+            {renderList(minhas, "Nenhuma tarefa atribuída a você.")}
+          </TabsContent>
+        </Tabs>
+        {dialog}
+      </>
     );
   }
 
@@ -133,22 +144,25 @@ export function MinhasTarefasPendentesPanel({ viewAsProfileId }: { viewAsProfile
   ];
 
   return (
-    <Tabs defaultValue="minhas" className="w-full">
-      <TabsList className="h-8 mb-2 flex-wrap gap-1 w-full">
+    <>
+      <Tabs defaultValue="minhas" className="w-full">
+        <TabsList className="h-8 mb-2 flex-wrap gap-1 w-full">
+          {tabs.map((t) => (
+            <TabsTrigger key={t.key} value={t.key} className="text-xs h-6 px-2 flex-1 min-w-[80px]">
+              {t.label}
+              {t.list.length > 0 && (
+                <span className={`ml-1 px-1.5 rounded-full text-[10px] ${t.accent}`}>{t.list.length}</span>
+              )}
+            </TabsTrigger>
+          ))}
+        </TabsList>
         {tabs.map((t) => (
-          <TabsTrigger key={t.key} value={t.key} className="text-xs h-6 px-2 flex-1 min-w-[80px]">
-            {t.label}
-            {t.list.length > 0 && (
-              <span className={`ml-1 px-1.5 rounded-full text-[10px] ${t.accent}`}>{t.list.length}</span>
-            )}
-          </TabsTrigger>
+          <TabsContent key={t.key} value={t.key} className="mt-0">
+            {renderList(t.list, t.empty)}
+          </TabsContent>
         ))}
-      </TabsList>
-      {tabs.map((t) => (
-        <TabsContent key={t.key} value={t.key} className="mt-0">
-          {renderList(t.list, t.empty)}
-        </TabsContent>
-      ))}
-    </Tabs>
+      </Tabs>
+      {dialog}
+    </>
   );
 }
