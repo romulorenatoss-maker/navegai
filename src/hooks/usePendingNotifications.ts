@@ -7,23 +7,33 @@ interface PendingCounts {
   pendingLeadDecisions: number;
   pendingMyLeads: number;
   pendingDesignadas: number;
+  pendingContingencias: number;
+  pendingAprovacoes: number;
 }
 
 export function usePendingNotifications() {
   const { profile, isAdmin } = useAuth();
-  const [counts, setCounts] = useState<PendingCounts>({ pendingEvaluations: 0, pendingLeadDecisions: 0, pendingMyLeads: 0, pendingDesignadas: 0 });
+  const [counts, setCounts] = useState<PendingCounts>({
+    pendingEvaluations: 0,
+    pendingLeadDecisions: 0,
+    pendingMyLeads: 0,
+    pendingDesignadas: 0,
+    pendingContingencias: 0,
+    pendingAprovacoes: 0,
+  });
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchCounts = useCallback(async () => {
     if (!profile) return;
 
     try {
-      // 1. Pending evaluations count (OS with unanswered questions for this user's sectors)
+      // Setores do usuário (para responsabilidade por setor em contingências/aprovações)
       const { data: sectorLinks } = await supabase
         .from("colaborador_setores").select("setor_id").eq("profile_id", profile.id);
       let mySetorIds = sectorLinks?.map(l => l.setor_id) || [];
       if (mySetorIds.length === 0 && profile.setor_id) mySetorIds = [profile.setor_id];
 
+      // 1. Pending evaluations count (OS with unanswered questions for this user's sectors)
       let pendingEvaluations = 0;
 
       if (mySetorIds.length > 0 || isAdmin) {
@@ -79,57 +89,116 @@ export function usePendingNotifications() {
       }
 
       // 2. Leads awaiting evaluator decision
-      let pendingLeadDecisions = 0;
-      const { count } = await supabase
+      const { count: leadDecCount } = await supabase
         .from("leads")
         .select("id", { count: "exact", head: true })
         .in("status_lead", ["aguardando_decisao_avaliador", "cancelado_pendente_analise"]);
-      pendingLeadDecisions = count || 0;
+      const pendingLeadDecisions = leadDecCount || 0;
 
       // 3. My leads with pending tasks for today
-      let pendingMyLeads = 0;
       const now = new Date();
       const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
-      
+
       const { count: myLeadTasksCount } = await supabase
         .from("lead_tarefas_contato")
         .select("id", { count: "exact", head: true })
         .eq("responsavel_id", profile.id)
         .eq("status", "pendente")
         .lte("data_contato", endOfToday);
-      pendingMyLeads = myLeadTasksCount || 0;
+      const pendingMyLeads = myLeadTasksCount || 0;
 
       // 4. Tarefas operacionais designadas por mim ainda em aberto (não concluídas)
-      let pendingDesignadas = 0;
       const { count: designadasCount } = await (supabase as any)
         .from("operational_assignments")
         .select("id", { count: "exact", head: true })
         .eq("created_by", profile.id)
         .neq("responsavel_id", profile.id)
         .not("status", "in", "(concluida,aprovada,reprovada,nao_executada)");
-      pendingDesignadas = designadasCount || 0;
+      const pendingDesignadas = designadasCount || 0;
 
-      setCounts({ pendingEvaluations, pendingLeadDecisions, pendingMyLeads, pendingDesignadas });
+      // 5. Planos de ação (contingências) pendentes — onde o user é responsável direto
+      //    OU está em algum setor responsável pelo assignment de origem.
+      let pendingContingencias = 0;
+      const openContingencyStatuses = "(aberta,em_tratamento,em_validacao,rejeitada)";
+
+      // 5a. Diretas (responsavel_id = eu)
+      const { count: contDiretas } = await (supabase as any)
+        .from("operational_contingencies")
+        .select("id", { count: "exact", head: true })
+        .eq("responsavel_id", profile.id)
+        .filter("status", "in", openContingencyStatuses);
+      pendingContingencias = contDiretas || 0;
+
+      // 5b. Por setor: contingências cujo assignment pertence a setor onde sou membro
+      if (mySetorIds.length > 0) {
+        const { data: setorAssignments } = await (supabase as any)
+          .from("operational_assignments")
+          .select("id")
+          .or(
+            `setor_executor_id.in.(${mySetorIds.join(",")}),setor_avaliador_id.in.(${mySetorIds.join(",")}),setor_avaliado_id.in.(${mySetorIds.join(",")})`
+          );
+        const aIds = (setorAssignments || []).map((a: any) => a.id);
+        if (aIds.length > 0) {
+          const { data: contSetor } = await (supabase as any)
+            .from("operational_contingencies")
+            .select("id, responsavel_id")
+            .in("assignment_id", aIds)
+            .filter("status", "in", openContingencyStatuses);
+          // Soma só as que NÃO foram contadas no 5a (evita duplicar)
+          const extras = (contSetor || []).filter((c: any) => c.responsavel_id !== profile.id).length;
+          pendingContingencias += extras;
+        }
+      }
+
+      // 6. Aprovações finais pendentes
+      let pendingAprovacoes = 0;
+      // 6a. Onde sou aprovador direto
+      const { count: aprovDiretas } = await (supabase as any)
+        .from("operational_assignments")
+        .select("id", { count: "exact", head: true })
+        .eq("aprovador_id", profile.id)
+        .eq("status", "aguardando_aprovacao");
+      pendingAprovacoes = aprovDiretas || 0;
+
+      // 6b. Por setor avaliador (quando não há aprovador específico designado)
+      if (mySetorIds.length > 0) {
+        const { count: aprovSetor } = await (supabase as any)
+          .from("operational_assignments")
+          .select("id", { count: "exact", head: true })
+          .is("aprovador_id", null)
+          .in("setor_avaliador_id", mySetorIds)
+          .eq("status", "aguardando_aprovacao");
+        pendingAprovacoes += (aprovSetor || 0);
+      }
+
+      setCounts({
+        pendingEvaluations,
+        pendingLeadDecisions,
+        pendingMyLeads,
+        pendingDesignadas,
+        pendingContingencias,
+        pendingAprovacoes,
+      });
     } catch (err) {
       console.error("Error fetching pending notifications:", err);
     }
   }, [profile, isAdmin]);
 
-  // Debounced version for realtime events
+  // Debounce curto para realtime — alerta rápido sem travar UI com queries em rajada
   const debouncedFetch = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       fetchCounts();
-    }, 5000); // Wait 5s after last realtime event before fetching
+    }, 800);
   }, [fetchCounts]);
 
   useEffect(() => {
     fetchCounts();
 
-    // Refresh every 2 minutes instead of 30 seconds
+    // Refresh de segurança a cada 2 minutos
     const interval = setInterval(fetchCounts, 120_000);
 
-    // Listen for realtime changes on key tables (debounced)
+    // Realtime em todas as tabelas relevantes
     const channel = supabase
       .channel('pending-notifications')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'respostas_avaliacao' }, debouncedFetch)
@@ -138,6 +207,7 @@ export function usePendingNotifications() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ordens_servico' }, debouncedFetch)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'lead_tarefas_contato' }, debouncedFetch)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'operational_assignments' }, debouncedFetch)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'operational_contingencies' }, debouncedFetch)
       .subscribe();
 
     return () => {
