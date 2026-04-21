@@ -180,7 +180,18 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                                       className="h-7 text-xs w-[110px]" />
                                   </div>
                                 </div>
-                                <p className="text-[10px] text-muted-foreground max-w-[180px]">Campos desta etapa devem ser preenchidos neste horário. Fora do prazo = atraso automático.</p>
+                                <p className="text-[10px] text-muted-foreground max-w-[180px]">
+                                  {section.horario_inicio && section.horario_fim
+                                    ? "Todas as perguntas desta etapa herdam este horário (campo individual desabilitado)."
+                                    : "Sem horário na etapa, cada pergunta exigirá horário próprio."}
+                                </p>
+                              </div>
+                            )}
+
+                            {!section.nome.trim() && (
+                              <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/30 rounded-md p-2 text-[11px] text-amber-700 dark:text-amber-300">
+                                <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                                <span>Defina o <strong>nome da etapa</strong> acima antes de adicionar campos. As perguntas só podem ser associadas a uma etapa nomeada.</span>
                               </div>
                             )}
 
@@ -223,7 +234,15 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                               )}
                             </Droppable>
 
-                            <Button type="button" variant="outline" size="sm" className="w-full mt-2" onClick={() => setQuickAddSectionId(section.tempId)}>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="w-full mt-2"
+                              onClick={() => setQuickAddSectionId(section.tempId)}
+                              disabled={!section.nome.trim()}
+                              title={!section.nome.trim() ? "Defina o nome da etapa antes de adicionar campos" : undefined}
+                            >
                               <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Campo
                             </Button>
                           </div>
