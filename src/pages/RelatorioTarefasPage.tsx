@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Trash2, ChevronDown, ChevronRight, FileBarChart, Search, Eye } from "lucide-react";
+import { CalendarIcon, Trash2, FileBarChart, Search, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import AssignmentQuickViewDialog from "@/components/AssignmentQuickViewDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -29,6 +30,9 @@ interface AssignmentRow {
   created_at: string;
   numero_tarefa: number;
   template_titulo: string;
+  avaliado_nome: string | null;
+  plano_acao_nome: string | null;
+  aprovador_nome: string | null;
 }
 
 const STATUS_OPTIONS = [
