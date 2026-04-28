@@ -27,6 +27,7 @@ import { ptBR } from "date-fns/locale";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon } from "lucide-react";
+import { logRespostaEvento } from "@/lib/logRespostaEvento";
 
 // TipoAvaliacao type removed - no longer used
 
