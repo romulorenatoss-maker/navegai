@@ -27,6 +27,7 @@ import { ptBR } from "date-fns/locale";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon } from "lucide-react";
+import { logRespostaEvento } from "@/lib/logRespostaEvento";
 
 // TipoAvaliacao type removed - no longer used
 
@@ -869,7 +870,15 @@ export default function AvaliacaoOSPage() {
     setEvalAnswers(prev => ({ ...prev, [perguntaId]: answer }));
     setResponseAuthors(prev => ({ ...prev, [perguntaId]: { avaliador_nome: profile?.nome || "Você", resposta: answer || "" } }));
     autoSaveAnswer(perguntaId, answer);
-  }, [autoSaveAnswer, profile]);
+    // Camada paralela de métricas de tempo (não bloqueante, isolada)
+    logRespostaEvento({
+      osId: evalOsId,
+      perguntaId,
+      usuarioId: profile?.id,
+      setorId: evaluatorSetorIds[0] || null,
+      resposta: answer,
+    });
+  }, [autoSaveAnswer, profile, evalOsId, evaluatorSetorIds]);
 
   const handleObservationChange = useCallback((perguntaId: string, text: string) => {
     setEvalObservations(prev => ({ ...prev, [perguntaId]: text }));

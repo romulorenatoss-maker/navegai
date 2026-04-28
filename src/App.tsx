@@ -29,6 +29,7 @@ import RelatoriosPage from "./pages/RelatoriosPage";
 import RelatorioTarefasPage from "./pages/RelatorioTarefasPage";
 import DesempenhoColaboradorPage from "./pages/DesempenhoColaboradorPage";
 import DesempenhoOperacionalPage from "./pages/DesempenhoOperacionalPage";
+import DashboardTempoAvaliacoes from "./pages/DashboardTempoAvaliacoes";
 
 import LeadsPage from "./pages/LeadsPage";
 import FilaLeadsPage from "./pages/FilaLeadsPage";
@@ -110,6 +111,7 @@ const App = () => (
               <Route path="/leads/relatorios" element={<RelatoriosLeadsPage />} />
               <Route path="/desempenho" element={<DesempenhoColaboradorPage />} />
               <Route path="/desempenho/operacional" element={<DesempenhoOperacionalPage />} />
+              <Route path="/desempenho/tempo-avaliacoes" element={<DashboardTempoAvaliacoes />} />
               <Route path="/assistente" element={<AssistentePage />} />
               <Route path="/auditoria" element={<PlaceholderPage title="Auditoria" description="Registro completo de todas as ações do sistema." />} />
               <Route path="/configuracoes" element={<PermissoesPage />} />

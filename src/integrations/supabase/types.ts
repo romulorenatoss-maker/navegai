@@ -3312,6 +3312,39 @@ export type Database = {
           },
         ]
       }
+      respostas_eventos: {
+        Row: {
+          id: string
+          is_primeira_resposta: boolean
+          ordem_servico_id: string
+          pergunta_id: string
+          respondido_em: string
+          resposta: string | null
+          setor_id: string | null
+          usuario_id: string | null
+        }
+        Insert: {
+          id?: string
+          is_primeira_resposta?: boolean
+          ordem_servico_id: string
+          pergunta_id: string
+          respondido_em?: string
+          resposta?: string | null
+          setor_id?: string | null
+          usuario_id?: string | null
+        }
+        Update: {
+          id?: string
+          is_primeira_resposta?: boolean
+          ordem_servico_id?: string
+          pergunta_id?: string
+          respondido_em?: string
+          resposta?: string | null
+          setor_id?: string | null
+          usuario_id?: string | null
+        }
+        Relationships: []
+      }
       rotina_tentativas_leads: {
         Row: {
           ativo: boolean
@@ -4070,6 +4103,16 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      insert_resposta_evento: {
+        Args: {
+          p_os_id: string
+          p_pergunta_id: string
+          p_resposta: string
+          p_setor_id: string
+          p_usuario_id: string
+        }
+        Returns: undefined
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       normalize_cpf: { Args: { cpf_input: string }; Returns: string }
