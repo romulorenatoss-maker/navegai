@@ -464,6 +464,58 @@ serve(async (req) => {
       responsavel: t.responsavel?.nome || "-",
     }));
 
+    // ── MÉTRICAS DE TEMPO (consulta condicional baseada em intenção) ──
+    const qLower = String(question || "").toLowerCase();
+    const tempoKeywords = [
+      "tempo", "lento", "lentidão", "rápido", "rapido", "velocidade",
+      "gargalo", "demora", "demorou", "demorando", "pausa", "intervalo",
+      "produtividade", "performance de avalia", "avaliação mais", "avaliacao mais",
+      "quanto tempo", "média de tempo", "media de tempo", "duração", "duracao",
+      "responde", "responderam", "responder", "setor mais", "usuário mais lento",
+      "usuario mais lento", "quem está mais", "quem esta mais"
+    ];
+    const isTempoIntent = tempoKeywords.some((k) => qLower.includes(k));
+
+    let metricasTempoBlock = "";
+    if (isTempoIntent) {
+      try {
+        const [
+          { data: vwUsuario },
+          { data: vwSetor },
+          { data: vwSequencia },
+          { data: vwAgregada },
+        ] = await Promise.all([
+          supabase.from("vw_metricas_usuario").select("*").limit(200),
+          supabase.from("vw_metricas_setor").select("*").limit(200),
+          supabase.from("vw_metricas_sequencia").select("*").limit(500),
+          supabase.from("vw_metricas_agregadas").select("*").limit(200),
+        ]);
+
+        metricasTempoBlock = `
+═══════════════════════════════════════
+MÉTRICAS DE TEMPO DE AVALIAÇÕES (views agregadas)
+═══════════════════════════════════════
+Estas métricas vêm das views vw_metricas_* baseadas em respostas_eventos
+(considerando apenas is_primeira_resposta = true).
+
+POR USUÁRIO (${vwUsuario?.length || 0} registros):
+${JSON.stringify(vwUsuario || [])}
+
+POR SETOR (${vwSetor?.length || 0} registros):
+${JSON.stringify(vwSetor || [])}
+
+SEQUÊNCIA / COMPORTAMENTO (${vwSequencia?.length || 0} registros — tempo entre respostas, identifica gargalos e pausas):
+${JSON.stringify(vwSequencia || [])}
+
+AGREGADA POR OS (${vwAgregada?.length || 0} registros):
+${JSON.stringify(vwAgregada || [])}
+`;
+      } catch (err) {
+        console.error("Erro ao consultar views de métricas de tempo:", err);
+        metricasTempoBlock = "\n[Métricas de tempo solicitadas mas não disponíveis no momento]\n";
+      }
+    }
+
     // ── Build context ──
     const contextData = `
 DADOS DO SISTEMA EM TEMPO REAL (${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}):
@@ -582,6 +634,7 @@ ${JSON.stringify(atrasosFmt)}
 REGISTROS DE OBJEÇÃO (${objecoesFmt.length} registros)
 ═══════════════════════════════════════
 ${JSON.stringify(objecoesFmt)}
+${metricasTempoBlock}
 `;
 
     const systemPrompt = `Você é a Naví, uma assistente inteligente de Business Intelligence (BI) para um sistema completo de gestão de leads, vendas, clientes e avaliações de qualidade.
@@ -605,6 +658,7 @@ REGRAS IMPORTANTES:
 6. Identifique colaboradores pelos nomes nos dados (profiles)
 7. Para performance de colaboradores, cruze: interações, conversões (vendas), atrasos, avaliações
 8. Se a pergunta é genérica ("como está o sistema?"), forneça visão geral de TODAS as áreas
+9. MÉTRICAS DE TEMPO: quando aparecer o bloco "MÉTRICAS DE TEMPO DE AVALIAÇÕES", use APENAS esses dados para responder sobre tempo, velocidade, gargalos, lentidão e produtividade na avaliação de OS. Nunca invente SQL nem números — apenas interprete as views (vw_metricas_usuario, vw_metricas_setor, vw_metricas_sequencia, vw_metricas_agregadas).
 
 REGRAS DE FORMATAÇÃO:
 - Responda sempre em português do Brasil
