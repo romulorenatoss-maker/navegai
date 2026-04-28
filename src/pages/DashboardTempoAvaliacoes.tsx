@@ -109,12 +109,12 @@ export default function DashboardTempoAvaliacoes() {
       const [profsRes, secsRes, perguntasRes] = await Promise.all([
         userIds.length ? supabase.from("profiles").select("id, nome").in("id", userIds) : Promise.resolve({ data: [] }),
         setorIds.length ? supabase.from("setores").select("id, nome").in("id", setorIds) : Promise.resolve({ data: [] }),
-        perguntaIds.length ? supabase.from("perguntas_avaliacao").select("id, texto").in("id", perguntaIds) : Promise.resolve({ data: [] }),
+        perguntaIds.length ? supabase.from("perguntas_avaliacao").select("id, pergunta").in("id", perguntaIds) : Promise.resolve({ data: [] }),
       ]);
 
       const profMap = Object.fromEntries(((profsRes as any).data || []).map((x: any) => [x.id, x.nome]));
       const secMap = Object.fromEntries(((secsRes as any).data || []).map((x: any) => [x.id, x.nome]));
-      const perguntaMap = Object.fromEntries(((perguntasRes as any).data || []).map((x: any) => [x.id, x.texto]));
+      const perguntaMap = Object.fromEntries(((perguntasRes as any).data || []).map((x: any) => [x.id, x.pergunta]));
 
       setUsuarios(uData
         .map(x => ({ ...x, nome: x.usuario_id ? profMap[x.usuario_id] ?? "—" : "—" }))
