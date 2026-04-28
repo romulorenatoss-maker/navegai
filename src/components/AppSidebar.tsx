@@ -19,7 +19,7 @@ const allNavSections = [
       { to: "/leads/dashboard", icon: LayoutGrid, label: "Dashboard de Leads" },
       { to: "/leads/dashboard-vendas", icon: Trophy, label: "Dashboard Vendas" },
       { to: "/desempenho/tempo-avaliacoes", icon: Clock, label: "Análise Operacional" },
-      
+      { to: "/assistente", icon: Bot, label: "Assistente Naví" },
     ],
   },
   {
@@ -28,7 +28,6 @@ const allNavSections = [
       { to: "/avaliacoes/pesquisa", icon: FileSearch, label: "Criar OS / Buscar" },
       { to: "/avaliacoes/minhas", icon: Star, label: "Minhas Avaliações" },
       { to: "/leads", icon: UserPlus, label: "Meus Leads" },
-      { to: "/assistente", icon: Bot, label: "Assistente Naví" },
     ],
   },
   {
