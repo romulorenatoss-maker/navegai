@@ -29,6 +29,7 @@ import RelatoriosPage from "./pages/RelatoriosPage";
 import RelatorioTarefasPage from "./pages/RelatorioTarefasPage";
 import DesempenhoColaboradorPage from "./pages/DesempenhoColaboradorPage";
 import DesempenhoOperacionalPage from "./pages/DesempenhoOperacionalPage";
+import DashboardTempoAvaliacoes from "./pages/DashboardTempoAvaliacoes";
 
 import LeadsPage from "./pages/LeadsPage";
 import FilaLeadsPage from "./pages/FilaLeadsPage";
