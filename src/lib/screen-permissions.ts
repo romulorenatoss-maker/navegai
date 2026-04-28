@@ -13,7 +13,7 @@ export const ALL_SCREENS: ScreenDef[] = [
   { path: "/leads/dashboard", label: "Dashboard de Leads", group: "Dashboards" },
   { path: "/leads/dashboard-vendas", label: "Dashboard Vendas", group: "Dashboards" },
   { path: "/desempenho/tempo-avaliacoes", label: "Análise Operacional", group: "Dashboards" },
-  { path: "/desempenho", label: "Desempenho", group: "Dashboards" },
+  
   // Avaliações
   { path: "/avaliacoes/pesquisa", label: "Criar OS / Buscar", group: "Avaliações" },
   { path: "/avaliacoes/minhas", label: "Minhas Avaliações", group: "Avaliações" },
