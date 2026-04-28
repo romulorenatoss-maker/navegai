@@ -41,13 +41,11 @@ export const ALL_SCREENS: ScreenDef[] = [
   // Configurações
   { path: "/cadastros/colaboradores", label: "Colaboradores", group: "Configurações" },
   { path: "/leads/rotina", label: "Rotina de Tentativas", group: "Configurações" },
-  // Sistema
-  { path: "/relatorios", label: "Relatórios de OS", group: "Sistema" },
-  { path: "/relatorios/tarefas", label: "Relatório de Tarefas", group: "Sistema" },
-  { path: "/leads/relatorios", label: "Relatórios de Leads", group: "Sistema" },
-  { path: "/desempenho/operacional", label: "Desempenho Operacional", group: "Sistema" },
-  
-  { path: "/configuracoes", label: "Configurações", group: "Sistema" },
+  // Relatórios
+  { path: "/relatorios", label: "Relatórios de OS", group: "Relatórios" },
+  { path: "/relatorios/tarefas", label: "Relatório de Tarefas", group: "Relatórios" },
+  { path: "/leads/relatorios", label: "Relatórios de Leads", group: "Relatórios" },
+  { path: "/desempenho/operacional", label: "Desempenho Operacional", group: "Relatórios" },
 ];
 
 // Group screens by group name
