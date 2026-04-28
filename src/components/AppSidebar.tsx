@@ -19,7 +19,7 @@ const allNavSections = [
       { to: "/leads/dashboard", icon: LayoutGrid, label: "Dashboard de Leads" },
       { to: "/leads/dashboard-vendas", icon: Trophy, label: "Dashboard Vendas" },
       { to: "/desempenho/tempo-avaliacoes", icon: Clock, label: "Análise Operacional" },
-      { to: "/desempenho", icon: UserCheck, label: "Desempenho" },
+      
     ],
   },
   {
