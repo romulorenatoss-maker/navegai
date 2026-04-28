@@ -28,8 +28,6 @@ export const ALL_SCREENS: ScreenDef[] = [
   // Tarefas
   { path: "/operacional/gestao", label: "Dash de Tarefas", group: "Tarefas" },
   { path: "/operacional/execucao", label: "Minhas Tarefas", group: "Tarefas" },
-  { path: "/operacional/planos de ação", label: "Planos de Ação", group: "Tarefas" },
-  { path: "/operacional/aprovacao", label: "Aprovação Final", group: "Tarefas" },
   { path: "/operacional/cadastro", label: "Rotinas Operacionais", group: "Tarefas" },
   // Cadastros
   { path: "/cadastros/setores", label: "Setores", group: "Cadastros" },
@@ -45,7 +43,6 @@ export const ALL_SCREENS: ScreenDef[] = [
   { path: "/relatorios", label: "Relatórios de OS", group: "Relatórios" },
   { path: "/relatorios/tarefas", label: "Relatório de Tarefas", group: "Relatórios" },
   { path: "/leads/relatorios", label: "Relatórios de Leads", group: "Relatórios" },
-  { path: "/desempenho/operacional", label: "Desempenho Operacional", group: "Relatórios" },
 ];
 
 // Group screens by group name
