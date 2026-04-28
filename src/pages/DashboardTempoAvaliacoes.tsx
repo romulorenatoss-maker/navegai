@@ -134,10 +134,57 @@ export default function DashboardTempoAvaliacoes() {
     })();
   }, []);
 
-  // Agregação por setor (já vem por OS+setor — agrupar por setor para cards)
-  const setoresAgregados = (() => {
-    const map = new Map<string, { nome: string; tempo_total: number; tempos_medios: number[]; total_os: number }>();
+  // Helpers para extrair YYYY-MM e YYYY-MM-DD em America/Sao_Paulo
+  const fmtMes = useMemo(
+    () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit" }),
+    []
+  );
+  const fmtDia = useMemo(
+    () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }),
+    []
+  );
+  const isoToMes = (iso?: string | null) => (iso ? fmtMes.format(new Date(iso)) : null);
+  const isoToDia = (iso?: string | null) => (iso ? fmtDia.format(new Date(iso)) : null);
+  const hojeBR = useMemo(() => fmtDia.format(new Date()), [fmtDia]);
+
+  // Lista de meses disponíveis (com base nos dados carregados) + mês atual sempre presente
+  const mesesDisponiveis = useMemo(() => {
+    const set = new Set<string>();
+    setores.forEach(s => { const m = isoToMes(s.fim ?? s.inicio); if (m) set.add(m); });
+    pausas.forEach(p => { const m = isoToMes(p.respondido_em); if (m) set.add(m); });
+    usuarios.forEach(u => { const m = isoToMes(u.ultima_acao); if (m) set.add(m); });
+    set.add(fmtMes.format(new Date()));
+    return Array.from(set).sort().reverse();
+  }, [setores, pausas, usuarios, fmtMes]);
+
+  // Filtragem por mês selecionado
+  const setoresFiltrados = useMemo(
+    () => setores.filter(s => isoToMes(s.fim ?? s.inicio) === mesSelecionado),
+    [setores, mesSelecionado]
+  );
+  const usuariosFiltrados = useMemo(
+    () => usuarios.filter(u => !u.ultima_acao || isoToMes(u.ultima_acao) === mesSelecionado),
+    [usuarios, mesSelecionado]
+  );
+  const pausasFiltradas = useMemo(
+    () => pausas.filter(p => isoToMes(p.respondido_em) === mesSelecionado),
+    [pausas, mesSelecionado]
+  );
+
+  // OS avaliadas hoje (distintas em vw_metricas_setor com fim hoje, BR)
+  const osAvaliadasHoje = useMemo(() => {
+    const ids = new Set<string>();
     setores.forEach(s => {
+      const dia = isoToDia(s.fim ?? s.inicio);
+      if (dia === hojeBR && s.ordem_servico_id) ids.add(s.ordem_servico_id);
+    });
+    return ids.size;
+  }, [setores, hojeBR]);
+
+  // Agregação por setor (já vem por OS+setor — agrupar por setor para cards)
+  const setoresAgregados = useMemo(() => {
+    const map = new Map<string, { nome: string; tempo_total: number; tempos_medios: number[]; total_os: number }>();
+    setoresFiltrados.forEach(s => {
       const k = s.setor_id ?? "sem_setor";
       if (!map.has(k)) map.set(k, { nome: s.setor_nome ?? "Sem setor", tempo_total: 0, tempos_medios: [], total_os: 0 });
       const cur = map.get(k)!;
@@ -155,7 +202,14 @@ export default function DashboardTempoAvaliacoes() {
         tempo_medio: v.tempos_medios.length ? v.tempos_medios.reduce((a, b) => a + b, 0) / v.tempos_medios.length : 0,
       }))
       .sort((a, b) => b.total_os - a.total_os);
-  })();
+  }, [setoresFiltrados]);
+
+  // Label amigável de mês (ex: "abril/2026")
+  const labelMes = (m: string) => {
+    const [y, mm] = m.split("-");
+    const d = new Date(Number(y), Number(mm) - 1, 1);
+    return d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  };
 
   if (loading) {
     return (
