@@ -658,6 +658,7 @@ REGRAS IMPORTANTES:
 6. Identifique colaboradores pelos nomes nos dados (profiles)
 7. Para performance de colaboradores, cruze: interações, conversões (vendas), atrasos, avaliações
 8. Se a pergunta é genérica ("como está o sistema?"), forneça visão geral de TODAS as áreas
+9. MÉTRICAS DE TEMPO: quando aparecer o bloco "MÉTRICAS DE TEMPO DE AVALIAÇÕES", use APENAS esses dados para responder sobre tempo, velocidade, gargalos, lentidão e produtividade na avaliação de OS. Nunca invente SQL nem números — apenas interprete as views (vw_metricas_usuario, vw_metricas_setor, vw_metricas_sequencia, vw_metricas_agregadas).
 
 REGRAS DE FORMATAÇÃO:
 - Responda sempre em português do Brasil
