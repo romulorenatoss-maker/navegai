@@ -23,7 +23,7 @@ const allNavSections = [
   {
     title: "Dashboards",
     items: [
-      { to: "/desempenho/tempo-avaliacoes", icon: Clock, label: "Tempo de Avaliações" },
+      { to: "/desempenho/tempo-avaliacoes", icon: Clock, label: "Análise Operacional" },
     ],
   },
   {
@@ -78,7 +78,6 @@ const allNavSections = [
       { to: "/relatorios/tarefas", icon: FileBarChart, label: "Relatório de Tarefas" },
       { to: "/leads/relatorios", icon: FileBarChart, label: "Relatórios de Leads" },
       { to: "/desempenho", icon: UserCheck, label: "Desempenho" },
-      { to: "/desempenho/operacional", icon: BarChart3, label: "Desempenho Operacional" },
       { to: "/auditoria", icon: ClipboardList, label: "Auditoria" },
       { to: "/configuracoes", icon: Settings, label: "Configurações" },
     ],
