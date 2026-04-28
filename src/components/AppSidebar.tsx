@@ -13,17 +13,13 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 
 const allNavSections = [
   {
-    title: "Principal",
+    title: "Dashboards",
     items: [
       { to: "/", icon: LayoutDashboard, label: "Dashboard OS" },
       { to: "/leads/dashboard", icon: LayoutGrid, label: "Dashboard de Leads" },
       { to: "/leads/dashboard-vendas", icon: Trophy, label: "Dashboard Vendas" },
-    ],
-  },
-  {
-    title: "Dashboards",
-    items: [
       { to: "/desempenho/tempo-avaliacoes", icon: Clock, label: "Análise Operacional" },
+      { to: "/desempenho", icon: UserCheck, label: "Desempenho" },
     ],
   },
   {
@@ -77,7 +73,6 @@ const allNavSections = [
       { to: "/relatorios", icon: BarChart3, label: "Relatórios de OS" },
       { to: "/relatorios/tarefas", icon: FileBarChart, label: "Relatório de Tarefas" },
       { to: "/leads/relatorios", icon: FileBarChart, label: "Relatórios de Leads" },
-      { to: "/desempenho", icon: UserCheck, label: "Desempenho" },
       { to: "/auditoria", icon: ClipboardList, label: "Auditoria" },
       { to: "/configuracoes", icon: Settings, label: "Configurações" },
     ],

@@ -8,10 +8,12 @@ export interface ScreenDef {
 }
 
 export const ALL_SCREENS: ScreenDef[] = [
-  // Principal
-  { path: "/", label: "Dashboard OS", group: "Principal" },
-  { path: "/leads/dashboard", label: "Dashboard de Leads", group: "Principal" },
-  { path: "/leads/dashboard-vendas", label: "Dashboard Vendas", group: "Principal" },
+  // Dashboards
+  { path: "/", label: "Dashboard OS", group: "Dashboards" },
+  { path: "/leads/dashboard", label: "Dashboard de Leads", group: "Dashboards" },
+  { path: "/leads/dashboard-vendas", label: "Dashboard Vendas", group: "Dashboards" },
+  { path: "/desempenho/tempo-avaliacoes", label: "Análise Operacional", group: "Dashboards" },
+  { path: "/desempenho", label: "Desempenho", group: "Dashboards" },
   // Avaliações
   { path: "/avaliacoes/pesquisa", label: "Criar OS / Buscar", group: "Avaliações" },
   { path: "/avaliacoes/minhas", label: "Minhas Avaliações", group: "Avaliações" },
@@ -43,7 +45,6 @@ export const ALL_SCREENS: ScreenDef[] = [
   { path: "/relatorios", label: "Relatórios de OS", group: "Sistema" },
   { path: "/relatorios/tarefas", label: "Relatório de Tarefas", group: "Sistema" },
   { path: "/leads/relatorios", label: "Relatórios de Leads", group: "Sistema" },
-  { path: "/desempenho", label: "Desempenho", group: "Sistema" },
   { path: "/desempenho/operacional", label: "Desempenho Operacional", group: "Sistema" },
   { path: "/auditoria", label: "Auditoria", group: "Sistema" },
   { path: "/configuracoes", label: "Configurações", group: "Sistema" },
