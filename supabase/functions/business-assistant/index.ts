@@ -464,6 +464,58 @@ serve(async (req) => {
       responsavel: t.responsavel?.nome || "-",
     }));
 
+    // ── MÉTRICAS DE TEMPO (consulta condicional baseada em intenção) ──
+    const qLower = String(question || "").toLowerCase();
+    const tempoKeywords = [
+      "tempo", "lento", "lentidão", "rápido", "rapido", "velocidade",
+      "gargalo", "demora", "demorou", "demorando", "pausa", "intervalo",
+      "produtividade", "performance de avalia", "avaliação mais", "avaliacao mais",
+      "quanto tempo", "média de tempo", "media de tempo", "duração", "duracao",
+      "responde", "responderam", "responder", "setor mais", "usuário mais lento",
+      "usuario mais lento", "quem está mais", "quem esta mais"
+    ];
+    const isTempoIntent = tempoKeywords.some((k) => qLower.includes(k));
+
+    let metricasTempoBlock = "";
+    if (isTempoIntent) {
+      try {
+        const [
+          { data: vwUsuario },
+          { data: vwSetor },
+          { data: vwSequencia },
+          { data: vwAgregada },
+        ] = await Promise.all([
+          supabase.from("vw_metricas_usuario").select("*").limit(200),
+          supabase.from("vw_metricas_setor").select("*").limit(200),
+          supabase.from("vw_metricas_sequencia").select("*").limit(500),
+          supabase.from("vw_metricas_agregadas").select("*").limit(200),
+        ]);
+
+        metricasTempoBlock = `
+═══════════════════════════════════════
+MÉTRICAS DE TEMPO DE AVALIAÇÕES (views agregadas)
+═══════════════════════════════════════
+Estas métricas vêm das views vw_metricas_* baseadas em respostas_eventos
+(considerando apenas is_primeira_resposta = true).
+
+POR USUÁRIO (${vwUsuario?.length || 0} registros):
+${JSON.stringify(vwUsuario || [])}
+
+POR SETOR (${vwSetor?.length || 0} registros):
+${JSON.stringify(vwSetor || [])}
+
+SEQUÊNCIA / COMPORTAMENTO (${vwSequencia?.length || 0} registros — tempo entre respostas, identifica gargalos e pausas):
+${JSON.stringify(vwSequencia || [])}
+
+AGREGADA POR OS (${vwAgregada?.length || 0} registros):
+${JSON.stringify(vwAgregada || [])}
+`;
+      } catch (err) {
+        console.error("Erro ao consultar views de métricas de tempo:", err);
+        metricasTempoBlock = "\n[Métricas de tempo solicitadas mas não disponíveis no momento]\n";
+      }
+    }
+
     // ── Build context ──
     const contextData = `
 DADOS DO SISTEMA EM TEMPO REAL (${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}):
