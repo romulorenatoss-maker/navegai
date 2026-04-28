@@ -154,7 +154,14 @@ export function AppSidebar({ userName = "Usuário", onSignOut, onNavigate, isAdm
             const sectionHasActive = section.items.some(item => item.to === location.pathname);
 
             return (
-              <div key={section.title}>
+              <div
+                key={section.title}
+                className={cn(
+                  !collapsed && isOpen
+                    ? "rounded-lg bg-sidebar-accent/30 ring-1 ring-sidebar-border shadow-md shadow-black/20 p-1"
+                    : ""
+                )}
+              >
                 {/* Collapsed sidebar: separator between groups */}
                 {collapsed ? (
                   <>
@@ -203,16 +210,19 @@ export function AppSidebar({ userName = "Usuário", onSignOut, onNavigate, isAdm
                     <button
                       onClick={() => toggleSection(section.title)}
                       className={cn(
-                        "w-full flex items-center justify-between px-3 py-1.5 rounded-md text-[10px] font-semibold uppercase tracking-wider transition-colors",
-                        sectionHasActive
+                        "w-full flex items-center justify-between rounded-md transition-all",
+                        isOpen
+                          ? "px-3 py-2 text-[13px] font-bold uppercase tracking-wide text-sidebar-foreground"
+                          : "px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider",
+                        !isOpen && (sectionHasActive
                           ? "text-sidebar-foreground/70"
-                          : "text-sidebar-foreground/40 hover:text-sidebar-foreground/60"
+                          : "text-sidebar-foreground/50 hover:text-sidebar-foreground/80")
                       )}
                     >
                       <span>{section.title}</span>
                       <ChevronDown className={cn(
-                        "w-3 h-3 transition-transform duration-200",
-                        isOpen ? "rotate-0" : "-rotate-90"
+                        "transition-transform duration-200",
+                        isOpen ? "w-4 h-4 rotate-0" : "w-3 h-3 -rotate-90"
                       )} />
                     </button>
 
