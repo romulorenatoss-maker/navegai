@@ -634,6 +634,7 @@ ${JSON.stringify(atrasosFmt)}
 REGISTROS DE OBJEÇÃO (${objecoesFmt.length} registros)
 ═══════════════════════════════════════
 ${JSON.stringify(objecoesFmt)}
+${metricasTempoBlock}
 `;
 
     const systemPrompt = `Você é a Naví, uma assistente inteligente de Business Intelligence (BI) para um sistema completo de gestão de leads, vendas, clientes e avaliações de qualidade.
