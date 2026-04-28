@@ -23,7 +23,7 @@ const allNavSections = [
   {
     title: "Dashboards",
     items: [
-      { to: "/desempenho/tempo-avaliacoes", icon: Clock, label: "Tempo de Avaliações" },
+      { to: "/desempenho/tempo-avaliacoes", icon: Clock, label: "Análise Operacional" },
     ],
   },
   {
