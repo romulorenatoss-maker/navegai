@@ -5,7 +5,7 @@ import {
   BarChart3, Building2, Users, HelpCircle, Wrench, LogOut, Star,
   PanelLeftClose, PanelLeft, UserPlus, ListOrdered, LayoutGrid, Settings, UserCheck, ClipboardList,
   FileUp, MessageSquare, FileBarChart, Archive, MapPin, Megaphone, Bot, Trophy, CheckSquare,
-  AlertTriangle, PieChart, ChevronDown,
+  AlertTriangle, PieChart, ChevronDown, Clock,
 } from "lucide-react";
 import { Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -73,6 +73,7 @@ const allNavSections = [
       { to: "/leads/relatorios", icon: FileBarChart, label: "Relatórios de Leads" },
       { to: "/desempenho", icon: UserCheck, label: "Desempenho" },
       { to: "/desempenho/operacional", icon: BarChart3, label: "Desempenho Operacional" },
+      { to: "/desempenho/tempo-avaliacoes", icon: Clock, label: "Tempo de Avaliações" },
       { to: "/auditoria", icon: ClipboardList, label: "Auditoria" },
       { to: "/configuracoes", icon: Settings, label: "Configurações" },
     ],
