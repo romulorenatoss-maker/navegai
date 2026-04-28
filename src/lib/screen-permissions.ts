@@ -13,12 +13,12 @@ export const ALL_SCREENS: ScreenDef[] = [
   { path: "/leads/dashboard", label: "Dashboard de Leads", group: "Dashboards" },
   { path: "/leads/dashboard-vendas", label: "Dashboard Vendas", group: "Dashboards" },
   { path: "/desempenho/tempo-avaliacoes", label: "Análise Operacional", group: "Dashboards" },
-  
+  { path: "/assistente", label: "Assistente Naví", group: "Dashboards" },
+
   // Avaliações
   { path: "/avaliacoes/pesquisa", label: "Criar OS / Buscar", group: "Avaliações" },
   { path: "/avaliacoes/minhas", label: "Minhas Avaliações", group: "Avaliações" },
   { path: "/leads", label: "Meus Leads", group: "Avaliações" },
-  { path: "/assistente", label: "Assistente Naví", group: "Avaliações" },
   // Leads
   { path: "/leads/fila", label: "Gerenciador de Leads", group: "Leads" },
   { path: "/leads/arquivados", label: "Leads Arquivados", group: "Leads" },
