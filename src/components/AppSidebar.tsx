@@ -73,7 +73,6 @@ const allNavSections = [
       { to: "/relatorios", icon: BarChart3, label: "Relatórios de OS" },
       { to: "/relatorios/tarefas", icon: FileBarChart, label: "Relatório de Tarefas" },
       { to: "/leads/relatorios", icon: FileBarChart, label: "Relatórios de Leads" },
-      { to: "/desempenho", icon: UserCheck, label: "Desempenho" },
       { to: "/auditoria", icon: ClipboardList, label: "Auditoria" },
       { to: "/configuracoes", icon: Settings, label: "Configurações" },
     ],
