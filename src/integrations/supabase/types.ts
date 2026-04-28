@@ -3343,7 +3343,15 @@ export type Database = {
           setor_id?: string | null
           usuario_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "respostas_eventos_ordem_servico_id_fkey"
+            columns: ["ordem_servico_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rotina_tentativas_leads: {
         Row: {
@@ -4067,7 +4075,15 @@ export type Database = {
           setor_id?: string | null
           usuario_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "respostas_eventos_ordem_servico_id_fkey"
+            columns: ["ordem_servico_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vw_eventos_tempo_sequencia: {
         Row: {
@@ -4078,7 +4094,15 @@ export type Database = {
           tempo_entre_respostas: string | null
           usuario_id: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "respostas_eventos_ordem_servico_id_fkey"
+            columns: ["ordem_servico_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vw_metricas_gargalos: {
         Row: {
@@ -4099,7 +4123,15 @@ export type Database = {
           tempo_entre_respostas: string | null
           usuario_id: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "respostas_eventos_ordem_servico_id_fkey"
+            columns: ["ordem_servico_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vw_metricas_setor: {
         Row: {
@@ -4110,7 +4142,15 @@ export type Database = {
           tempo_medio: string | null
           tempo_total: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "respostas_eventos_ordem_servico_id_fkey"
+            columns: ["ordem_servico_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vw_metricas_usuario: {
         Row: {
