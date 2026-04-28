@@ -29,6 +29,7 @@ interface MetricaSetor {
 
 interface MetricaGargalo {
   pergunta_id: string;
+  pergunta?: string | null;
   tempo_medio: string | null;
   maior_tempo: string | null;
   ocorrencias: number;
