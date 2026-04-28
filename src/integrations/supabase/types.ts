@@ -4036,7 +4036,91 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      vw_eventos_primeira_resposta: {
+        Row: {
+          id: string | null
+          is_primeira_resposta: boolean | null
+          ordem_servico_id: string | null
+          pergunta_id: string | null
+          respondido_em: string | null
+          resposta: string | null
+          setor_id: string | null
+          usuario_id: string | null
+        }
+        Insert: {
+          id?: string | null
+          is_primeira_resposta?: boolean | null
+          ordem_servico_id?: string | null
+          pergunta_id?: string | null
+          respondido_em?: string | null
+          resposta?: string | null
+          setor_id?: string | null
+          usuario_id?: string | null
+        }
+        Update: {
+          id?: string | null
+          is_primeira_resposta?: boolean | null
+          ordem_servico_id?: string | null
+          pergunta_id?: string | null
+          respondido_em?: string | null
+          resposta?: string | null
+          setor_id?: string | null
+          usuario_id?: string | null
+        }
+        Relationships: []
+      }
+      vw_eventos_tempo_sequencia: {
+        Row: {
+          ordem_servico_id: string | null
+          pergunta_id: string | null
+          respondido_em: string | null
+          setor_id: string | null
+          tempo_entre_respostas: string | null
+          usuario_id: string | null
+        }
+        Relationships: []
+      }
+      vw_metricas_gargalos: {
+        Row: {
+          maior_tempo: string | null
+          ocorrencias: number | null
+          pergunta_id: string | null
+          tempo_medio: string | null
+        }
+        Relationships: []
+      }
+      vw_metricas_pausas: {
+        Row: {
+          ordem_servico_id: string | null
+          pergunta_id: string | null
+          respondido_em: string | null
+          setor_id: string | null
+          tempo_entre_respostas: string | null
+          usuario_id: string | null
+        }
+        Relationships: []
+      }
+      vw_metricas_setor: {
+        Row: {
+          fim: string | null
+          inicio: string | null
+          ordem_servico_id: string | null
+          setor_id: string | null
+          tempo_medio: string | null
+          tempo_total: string | null
+        }
+        Relationships: []
+      }
+      vw_metricas_usuario: {
+        Row: {
+          primeira_acao: string | null
+          tempo_medio_resposta: string | null
+          total_respostas: number | null
+          ultima_acao: string | null
+          usuario_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       atomic_reserve_lead: {
