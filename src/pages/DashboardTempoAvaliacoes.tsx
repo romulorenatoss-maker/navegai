@@ -77,6 +77,11 @@ export default function DashboardTempoAvaliacoes() {
   const [setores, setSetores] = useState<MetricaSetor[]>([]);
   const [gargalos, setGargalos] = useState<MetricaGargalo[]>([]);
   const [pausas, setPausas] = useState<MetricaPausa[]>([]);
+  // Filtro de mês (YYYY-MM em America/Sao_Paulo). Default: mês corrente.
+  const [mesSelecionado, setMesSelecionado] = useState<string>(() => {
+    const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit" });
+    return fmt.format(new Date()); // ex: "2026-04"
+  });
 
   useEffect(() => {
     (async () => {
