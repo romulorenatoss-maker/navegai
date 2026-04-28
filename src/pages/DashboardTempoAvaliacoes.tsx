@@ -162,12 +162,20 @@ export default function DashboardTempoAvaliacoes() {
     <div className="container mx-auto py-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Clock className="w-6 h-6" /> Tempo de Avaliações
+          <Clock className="w-6 h-6" /> Análise Operacional
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Métricas consolidadas via views SQL (apenas primeira resposta por pergunta).
+          Métricas de tempo de avaliações e desempenho operacional consolidados.
         </p>
       </div>
+
+      <Tabs defaultValue="tempo" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="tempo">Tempo</TabsTrigger>
+          <TabsTrigger value="operacional">Operacional</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="tempo" className="space-y-6">
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
