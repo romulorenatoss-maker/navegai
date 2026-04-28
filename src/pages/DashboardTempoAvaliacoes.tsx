@@ -285,6 +285,34 @@ export default function DashboardTempoAvaliacoes() {
         </CardContent>
       </Card>
 
+      {/* Maior tempo entre perguntas */}
+      {(() => {
+        const maxGargalo = gargalos.reduce<{ texto: string; segundos: number } | null>((acc, g) => {
+          const seg = intervalToSeconds(g.maior_tempo);
+          if (!acc || seg > acc.segundos) return { texto: g.pergunta_texto ?? g.pergunta_id, segundos: seg };
+          return acc;
+        }, null);
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-500" /> Maior tempo entre perguntas
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {maxGargalo && maxGargalo.segundos > 0 ? (
+                <div className="space-y-1">
+                  <div className="text-2xl font-bold">{formatDuration(maxGargalo.segundos)}</div>
+                  <p className="text-sm text-muted-foreground">{maxGargalo.texto}</p>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Sem dados ainda.</p>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {/* Alertas de pausas */}
       <Card>
         <CardHeader>
