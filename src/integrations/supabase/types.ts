@@ -4084,6 +4084,7 @@ export type Database = {
         Row: {
           maior_tempo: string | null
           ocorrencias: number | null
+          pergunta: string | null
           pergunta_id: string | null
           tempo_medio: string | null
         }
