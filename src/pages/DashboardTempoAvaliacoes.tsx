@@ -121,7 +121,7 @@ export default function DashboardTempoAvaliacoes() {
         .map(x => ({ ...x, nome: x.usuario_id ? profMap[x.usuario_id] ?? "—" : "—" }))
         .sort((a, b) => b.total_respostas - a.total_respostas));
       setSetores(sData.map(x => ({ ...x, setor_nome: x.setor_id ? secMap[x.setor_id] ?? "Sem setor" : "Sem setor" })));
-      setGargalos(gData.map(x => ({ ...x, pergunta_texto: perguntaMap[x.pergunta_id] ?? x.pergunta_id })));
+      setGargalos(gData.map(x => ({ ...x, pergunta_texto: x.pergunta ?? perguntaMap[x.pergunta_id] ?? x.pergunta_id })));
       setPausas(pData);
 
       setLoading(false);
