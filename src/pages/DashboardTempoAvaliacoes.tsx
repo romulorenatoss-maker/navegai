@@ -317,6 +317,12 @@ export default function DashboardTempoAvaliacoes() {
           </Table>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="operacional">
+          <DesempenhoOperacionalPage />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
