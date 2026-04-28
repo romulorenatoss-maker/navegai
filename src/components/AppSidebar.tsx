@@ -68,13 +68,11 @@ const allNavSections = [
     ],
   },
   {
-    title: "Sistema",
+    title: "Relatórios",
     items: [
       { to: "/relatorios", icon: BarChart3, label: "Relatórios de OS" },
       { to: "/relatorios/tarefas", icon: FileBarChart, label: "Relatório de Tarefas" },
       { to: "/leads/relatorios", icon: FileBarChart, label: "Relatórios de Leads" },
-      
-      { to: "/configuracoes", icon: Settings, label: "Configurações" },
     ],
   },
 ];
