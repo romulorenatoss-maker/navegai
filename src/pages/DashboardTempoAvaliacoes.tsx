@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Clock, Users, Activity, AlertTriangle, TrendingDown } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, Clock, Users, Activity, AlertTriangle, TrendingDown, CalendarCheck } from "lucide-react";
 import DesempenhoOperacionalPage from "@/pages/DesempenhoOperacionalPage";
 
 
@@ -76,6 +77,11 @@ export default function DashboardTempoAvaliacoes() {
   const [setores, setSetores] = useState<MetricaSetor[]>([]);
   const [gargalos, setGargalos] = useState<MetricaGargalo[]>([]);
   const [pausas, setPausas] = useState<MetricaPausa[]>([]);
+  // Filtro de mês (YYYY-MM em America/Sao_Paulo). Default: mês corrente.
+  const [mesSelecionado, setMesSelecionado] = useState<string>(() => {
+    const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit" });
+    return fmt.format(new Date()); // ex: "2026-04"
+  });
 
   useEffect(() => {
     (async () => {
@@ -128,10 +134,57 @@ export default function DashboardTempoAvaliacoes() {
     })();
   }, []);
 
-  // Agregação por setor (já vem por OS+setor — agrupar por setor para cards)
-  const setoresAgregados = (() => {
-    const map = new Map<string, { nome: string; tempo_total: number; tempos_medios: number[]; total_os: number }>();
+  // Helpers para extrair YYYY-MM e YYYY-MM-DD em America/Sao_Paulo
+  const fmtMes = useMemo(
+    () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit" }),
+    []
+  );
+  const fmtDia = useMemo(
+    () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }),
+    []
+  );
+  const isoToMes = (iso?: string | null) => (iso ? fmtMes.format(new Date(iso)) : null);
+  const isoToDia = (iso?: string | null) => (iso ? fmtDia.format(new Date(iso)) : null);
+  const hojeBR = useMemo(() => fmtDia.format(new Date()), [fmtDia]);
+
+  // Lista de meses disponíveis (com base nos dados carregados) + mês atual sempre presente
+  const mesesDisponiveis = useMemo(() => {
+    const set = new Set<string>();
+    setores.forEach(s => { const m = isoToMes(s.fim ?? s.inicio); if (m) set.add(m); });
+    pausas.forEach(p => { const m = isoToMes(p.respondido_em); if (m) set.add(m); });
+    usuarios.forEach(u => { const m = isoToMes(u.ultima_acao); if (m) set.add(m); });
+    set.add(fmtMes.format(new Date()));
+    return Array.from(set).sort().reverse();
+  }, [setores, pausas, usuarios, fmtMes]);
+
+  // Filtragem por mês selecionado
+  const setoresFiltrados = useMemo(
+    () => setores.filter(s => isoToMes(s.fim ?? s.inicio) === mesSelecionado),
+    [setores, mesSelecionado]
+  );
+  const usuariosFiltrados = useMemo(
+    () => usuarios.filter(u => !u.ultima_acao || isoToMes(u.ultima_acao) === mesSelecionado),
+    [usuarios, mesSelecionado]
+  );
+  const pausasFiltradas = useMemo(
+    () => pausas.filter(p => isoToMes(p.respondido_em) === mesSelecionado),
+    [pausas, mesSelecionado]
+  );
+
+  // OS avaliadas hoje (distintas em vw_metricas_setor com fim hoje, BR)
+  const osAvaliadasHoje = useMemo(() => {
+    const ids = new Set<string>();
     setores.forEach(s => {
+      const dia = isoToDia(s.fim ?? s.inicio);
+      if (dia === hojeBR && s.ordem_servico_id) ids.add(s.ordem_servico_id);
+    });
+    return ids.size;
+  }, [setores, hojeBR]);
+
+  // Agregação por setor (já vem por OS+setor — agrupar por setor para cards)
+  const setoresAgregados = useMemo(() => {
+    const map = new Map<string, { nome: string; tempo_total: number; tempos_medios: number[]; total_os: number }>();
+    setoresFiltrados.forEach(s => {
       const k = s.setor_id ?? "sem_setor";
       if (!map.has(k)) map.set(k, { nome: s.setor_nome ?? "Sem setor", tempo_total: 0, tempos_medios: [], total_os: 0 });
       const cur = map.get(k)!;
@@ -149,7 +202,14 @@ export default function DashboardTempoAvaliacoes() {
         tempo_medio: v.tempos_medios.length ? v.tempos_medios.reduce((a, b) => a + b, 0) / v.tempos_medios.length : 0,
       }))
       .sort((a, b) => b.total_os - a.total_os);
-  })();
+  }, [setoresFiltrados]);
+
+  // Label amigável de mês (ex: "abril/2026")
+  const labelMes = (m: string) => {
+    const [y, mm] = m.split("-");
+    const d = new Date(Number(y), Number(mm) - 1, 1);
+    return d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  };
 
   if (loading) {
     return (
@@ -178,10 +238,25 @@ export default function DashboardTempoAvaliacoes() {
 
         <TabsContent value="tempo" className="space-y-6">
 
+      {/* Seletor de mês — afeta tudo abaixo */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-muted-foreground">Mês:</span>
+        <Select value={mesSelecionado} onValueChange={setMesSelecionado}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Selecione o mês" />
+          </SelectTrigger>
+          <SelectContent>
+            {mesesDisponiveis.map(m => (
+              <SelectItem key={m} value={m}>{labelMes(m)}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Users className="w-4 h-4" /> Avaliadores</CardTitle></CardHeader>
-          <CardContent><div className="text-2xl font-bold">{usuarios.length}</div></CardContent>
+          <CardContent><div className="text-2xl font-bold">{usuariosFiltrados.length}</div></CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Activity className="w-4 h-4" /> Setores</CardTitle></CardHeader>
@@ -193,7 +268,7 @@ export default function DashboardTempoAvaliacoes() {
         </Card>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><AlertTriangle className="w-4 h-4" /> Pausas {'>'} 5min</CardTitle></CardHeader>
-          <CardContent><div className="text-2xl font-bold">{pausas.length}</div></CardContent>
+          <CardContent><div className="text-2xl font-bold">{pausasFiltradas.length}</div></CardContent>
         </Card>
       </div>
 
@@ -211,7 +286,7 @@ export default function DashboardTempoAvaliacoes() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {usuarios.map(u => (
+              {usuariosFiltrados.map(u => (
                 <TableRow key={u.usuario_id ?? "null"}>
                   <TableCell>{u.nome}</TableCell>
                   <TableCell className="text-right">{u.total_respostas}</TableCell>
@@ -221,7 +296,7 @@ export default function DashboardTempoAvaliacoes() {
                   </TableCell>
                 </TableRow>
               ))}
-              {usuarios.length === 0 && (
+              {usuariosFiltrados.length === 0 && (
                 <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">Sem dados ainda.</TableCell></TableRow>
               )}
             </TableBody>
@@ -229,31 +304,47 @@ export default function DashboardTempoAvaliacoes() {
         </CardContent>
       </Card>
 
-      {/* Cards por setor */}
-      <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2">🏢 Por Setor</CardTitle></CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {setoresAgregados.map(s => (
-              <Card key={s.setor_id}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base flex items-center justify-between">
-                    {s.nome}
-                    <Badge variant="secondary">{s.total_os} OS</Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-1 text-sm">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Tempo total</span><span>{formatDuration(s.tempo_total)}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Tempo médio entre cliques</span><span>{formatDuration(s.tempo_medio)}</span></div>
-                </CardContent>
-              </Card>
-            ))}
-            {setoresAgregados.length === 0 && (
-              <p className="text-sm text-muted-foreground">Sem dados ainda.</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Por Setor + OS avaliadas hoje (lado a lado) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2">
+          <CardHeader><CardTitle className="flex items-center gap-2">🏢 Por Setor</CardTitle></CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {setoresAgregados.map(s => (
+                <Card key={s.setor_id}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center justify-between">
+                      {s.nome}
+                      <Badge variant="secondary">{s.total_os} OS</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1 text-sm">
+                    <div className="flex justify-between"><span className="text-muted-foreground">Tempo total</span><span>{formatDuration(s.tempo_total)}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Tempo médio entre cliques</span><span>{formatDuration(s.tempo_medio)}</span></div>
+                  </CardContent>
+                </Card>
+              ))}
+              {setoresAgregados.length === 0 && (
+                <p className="text-sm text-muted-foreground">Sem dados ainda.</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <CalendarCheck className="w-4 h-4" /> OS avaliadas hoje
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-4xl font-bold">{osAvaliadasHoje}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "long", year: "numeric" })}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Gargalos */}
       <Card>
@@ -331,7 +422,7 @@ export default function DashboardTempoAvaliacoes() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pausas.slice(0, 50).map((p, i) => (
+              {pausasFiltradas.slice(0, 50).map((p, i) => (
                 <TableRow key={`${p.ordem_servico_id}-${p.pergunta_id}-${i}`}>
                   <TableCell className="text-xs">{new Date(p.respondido_em).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</TableCell>
                   <TableCell className="font-mono text-xs">{p.ordem_servico_id.slice(0, 8)}</TableCell>
@@ -339,7 +430,7 @@ export default function DashboardTempoAvaliacoes() {
                   <TableCell className="text-right">{formatDuration(intervalToSeconds(p.tempo_entre_respostas))}</TableCell>
                 </TableRow>
               ))}
-              {pausas.length === 0 && (
+              {pausasFiltradas.length === 0 && (
                 <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">Nenhuma pausa grande detectada.</TableCell></TableRow>
               )}
             </TableBody>
