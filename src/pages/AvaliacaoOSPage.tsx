@@ -869,7 +869,15 @@ export default function AvaliacaoOSPage() {
     setEvalAnswers(prev => ({ ...prev, [perguntaId]: answer }));
     setResponseAuthors(prev => ({ ...prev, [perguntaId]: { avaliador_nome: profile?.nome || "Você", resposta: answer || "" } }));
     autoSaveAnswer(perguntaId, answer);
-  }, [autoSaveAnswer, profile]);
+    // Camada paralela de métricas de tempo (não bloqueante, isolada)
+    logRespostaEvento({
+      osId: evalOsId,
+      perguntaId,
+      usuarioId: profile?.id,
+      setorId: evaluatorSetorIds[0] || null,
+      resposta: answer,
+    });
+  }, [autoSaveAnswer, profile, evalOsId, evaluatorSetorIds]);
 
   const handleObservationChange = useCallback((perguntaId: string, text: string) => {
     setEvalObservations(prev => ({ ...prev, [perguntaId]: text }));
