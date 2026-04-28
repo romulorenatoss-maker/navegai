@@ -422,7 +422,7 @@ export default function DashboardTempoAvaliacoes() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pausas.slice(0, 50).map((p, i) => (
+              {pausasFiltradas.slice(0, 50).map((p, i) => (
                 <TableRow key={`${p.ordem_servico_id}-${p.pergunta_id}-${i}`}>
                   <TableCell className="text-xs">{new Date(p.respondido_em).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</TableCell>
                   <TableCell className="font-mono text-xs">{p.ordem_servico_id.slice(0, 8)}</TableCell>
@@ -430,7 +430,7 @@ export default function DashboardTempoAvaliacoes() {
                   <TableCell className="text-right">{formatDuration(intervalToSeconds(p.tempo_entre_respostas))}</TableCell>
                 </TableRow>
               ))}
-              {pausas.length === 0 && (
+              {pausasFiltradas.length === 0 && (
                 <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">Nenhuma pausa grande detectada.</TableCell></TableRow>
               )}
             </TableBody>
