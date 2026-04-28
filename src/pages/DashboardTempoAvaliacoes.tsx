@@ -238,10 +238,25 @@ export default function DashboardTempoAvaliacoes() {
 
         <TabsContent value="tempo" className="space-y-6">
 
+      {/* Seletor de mês — afeta tudo abaixo */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-muted-foreground">Mês:</span>
+        <Select value={mesSelecionado} onValueChange={setMesSelecionado}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Selecione o mês" />
+          </SelectTrigger>
+          <SelectContent>
+            {mesesDisponiveis.map(m => (
+              <SelectItem key={m} value={m}>{labelMes(m)}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Users className="w-4 h-4" /> Avaliadores</CardTitle></CardHeader>
-          <CardContent><div className="text-2xl font-bold">{usuarios.length}</div></CardContent>
+          <CardContent><div className="text-2xl font-bold">{usuariosFiltrados.length}</div></CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Activity className="w-4 h-4" /> Setores</CardTitle></CardHeader>
@@ -253,7 +268,7 @@ export default function DashboardTempoAvaliacoes() {
         </Card>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><AlertTriangle className="w-4 h-4" /> Pausas {'>'} 5min</CardTitle></CardHeader>
-          <CardContent><div className="text-2xl font-bold">{pausas.length}</div></CardContent>
+          <CardContent><div className="text-2xl font-bold">{pausasFiltradas.length}</div></CardContent>
         </Card>
       </div>
 
@@ -271,7 +286,7 @@ export default function DashboardTempoAvaliacoes() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {usuarios.map(u => (
+              {usuariosFiltrados.map(u => (
                 <TableRow key={u.usuario_id ?? "null"}>
                   <TableCell>{u.nome}</TableCell>
                   <TableCell className="text-right">{u.total_respostas}</TableCell>
@@ -281,7 +296,7 @@ export default function DashboardTempoAvaliacoes() {
                   </TableCell>
                 </TableRow>
               ))}
-              {usuarios.length === 0 && (
+              {usuariosFiltrados.length === 0 && (
                 <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">Sem dados ainda.</TableCell></TableRow>
               )}
             </TableBody>
@@ -289,31 +304,47 @@ export default function DashboardTempoAvaliacoes() {
         </CardContent>
       </Card>
 
-      {/* Cards por setor */}
-      <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2">🏢 Por Setor</CardTitle></CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {setoresAgregados.map(s => (
-              <Card key={s.setor_id}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base flex items-center justify-between">
-                    {s.nome}
-                    <Badge variant="secondary">{s.total_os} OS</Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-1 text-sm">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Tempo total</span><span>{formatDuration(s.tempo_total)}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Tempo médio entre cliques</span><span>{formatDuration(s.tempo_medio)}</span></div>
-                </CardContent>
-              </Card>
-            ))}
-            {setoresAgregados.length === 0 && (
-              <p className="text-sm text-muted-foreground">Sem dados ainda.</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Por Setor + OS avaliadas hoje (lado a lado) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2">
+          <CardHeader><CardTitle className="flex items-center gap-2">🏢 Por Setor</CardTitle></CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {setoresAgregados.map(s => (
+                <Card key={s.setor_id}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center justify-between">
+                      {s.nome}
+                      <Badge variant="secondary">{s.total_os} OS</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1 text-sm">
+                    <div className="flex justify-between"><span className="text-muted-foreground">Tempo total</span><span>{formatDuration(s.tempo_total)}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Tempo médio entre cliques</span><span>{formatDuration(s.tempo_medio)}</span></div>
+                  </CardContent>
+                </Card>
+              ))}
+              {setoresAgregados.length === 0 && (
+                <p className="text-sm text-muted-foreground">Sem dados ainda.</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <CalendarCheck className="w-4 h-4" /> OS avaliadas hoje
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-4xl font-bold">{osAvaliadasHoje}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "long", year: "numeric" })}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Gargalos */}
       <Card>
