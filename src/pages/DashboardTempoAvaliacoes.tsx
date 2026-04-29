@@ -130,6 +130,8 @@ interface OSDoAvaliador {
   fim: string;
   duracao_seg: number;
   dia: string; // YYYY-MM-DD em America/Sao_Paulo (com base no início)
+  em_aberto?: boolean;
+  setor_id?: string | null;
 }
 interface FaixaHora {
   faixa: string;
