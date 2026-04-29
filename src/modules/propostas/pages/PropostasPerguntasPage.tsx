@@ -13,6 +13,7 @@ import {
   listarCategorias, listarPerguntas, criarPergunta, atualizarPergunta, excluirPergunta,
   criarCategoria, atualizarCategoria, excluirCategoria, reordenarPerguntas,
   type PropostasCategoriaSetup, type PropostasPerguntaSetup, type PropostasPerguntaTipo, type PropostasCobranca,
+  type PropostasTipoPergunta, type PropostasCategoriaProduto,
 } from "../services/propostasPerguntasService";
 
 const TIPOS: { v: PropostasPerguntaTipo; l: string }[] = [
@@ -21,6 +22,18 @@ const TIPOS: { v: PropostasPerguntaTipo; l: string }[] = [
 ];
 const COBRANCAS: { v: PropostasCobranca; l: string }[] = [
   { v: "implantacao", l: "Implantação" }, { v: "mensal", l: "Mensal" }, { v: "informativo", l: "Informativo" },
+];
+const TIPOS_PERGUNTA: { v: PropostasTipoPergunta; l: string; desc: string }[] = [
+  { v: "input", l: "Input simples", desc: "Resposta direta (texto/número)" },
+  { v: "contexto", l: "Contexto", desc: "Texto livre, pode gerar contexto via IA" },
+  { v: "produto", l: "Produto", desc: "Mostra catálogo da categoria escolhida" },
+];
+const CATEGORIAS_PRODUTO: { v: PropostasCategoriaProduto; l: string }[] = [
+  { v: "infraestrutura", l: "Infraestrutura" },
+  { v: "dados", l: "Dados" },
+  { v: "seguranca", l: "Segurança" },
+  { v: "telefonia", l: "Telefonia" },
+  { v: "outros", l: "Outros" },
 ];
 
 export default function PropostasPerguntasPage() {
