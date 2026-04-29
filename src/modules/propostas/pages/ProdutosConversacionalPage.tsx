@@ -184,6 +184,10 @@ export default function ProdutosConversacionalPage() {
         valor_medio: Number(d.valor_medio) || Number(d.valor_minimo),
         cobranca_padrao: d.cobranca_padrao,
         origem: "manual",
+        placeholder_key: d.placeholder_key || null,
+        placeholder_qtd: d.placeholder_qtd || null,
+        placeholder_valor: d.placeholder_valor || null,
+        is_checkbox: d.is_checkbox ?? false,
       } as Partial<PropostasProduto>);
       setProdutos(ps => [novo, ...ps]);
       removerDraft(key);
