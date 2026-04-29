@@ -27,6 +27,7 @@ import {
   buscarRascunhoPorCliente, salvarRascunho, excluirRascunho,
   type PropostasRascunhoConversa,
 } from "../services/propostasRascunhoService";
+import { PerguntaGuiadaPanel } from "../components/PerguntaGuiadaPanel";
 
 interface Msg { role: "user" | "assistant"; content: string }
 interface ItemConv {
