@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,8 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { Send, Sparkles, Plus, Trash2, Save, Package, MessageSquare, ListChecks, Building2, X, Check, Loader2 } from "lucide-react";
+import { Plus, Trash2, Save, Package, ListChecks, Building2, X, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -138,6 +136,10 @@ export default function ProdutosConversacionalPage() {
     unidade: string;
     valor_minimo: number;
     valor_medio: number;
+    placeholder_key?: string;
+    placeholder_qtd?: string;
+    placeholder_valor?: string;
+    is_checkbox?: boolean;
   };
   const [drafts, setDrafts] = useState<ProdutoDraft[]>([]);
   const [salvandoDraft, setSalvandoDraft] = useState<string | null>(null);
@@ -182,6 +184,10 @@ export default function ProdutosConversacionalPage() {
         valor_medio: Number(d.valor_medio) || Number(d.valor_minimo),
         cobranca_padrao: d.cobranca_padrao,
         origem: "manual",
+        placeholder_key: d.placeholder_key || null,
+        placeholder_qtd: d.placeholder_qtd || null,
+        placeholder_valor: d.placeholder_valor || null,
+        is_checkbox: d.is_checkbox ?? false,
       } as Partial<PropostasProduto>);
       setProdutos(ps => [novo, ...ps]);
       removerDraft(key);
@@ -542,55 +548,8 @@ export default function ProdutosConversacionalPage() {
 
   // ============ RENDER ============
   return (
-    <div className="h-[calc(100vh-4rem)]">
-      <ResizablePanelGroup direction="horizontal">
-        {/* CONVERSA */}
-        <ResizablePanel defaultSize={40} minSize={28}>
-          <Card className="h-full rounded-none border-0 border-r flex flex-col">
-            <CardHeader className="border-b">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Sparkles className="w-4 h-4 text-primary" /> Assistente de Catálogo
-              </CardTitle>
-              <p className="text-xs text-muted-foreground">
-                Conta sobre seus produtos. Eu valido o escopo e cadastro automaticamente.
-              </p>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-y-auto p-4 space-y-3">
-              {msgs.map((m, i) => (
-                <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
-                    <ReactMarkdown
-                      components={{
-                        p: ({ children }) => <p className="leading-snug">{children}</p>,
-                      }}
-                    >{m.content}</ReactMarkdown>
-                  </div>
-                </div>
-              ))}
-              {enviando && <div className="text-xs text-muted-foreground">Pensando…</div>}
-              <div ref={fim} />
-            </CardContent>
-            <div className="border-t p-3 flex gap-2">
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && enviar()}
-                placeholder="Ex: switch 24 portas R$1300"
-                disabled={enviando}
-              />
-              <Button onClick={enviar} disabled={enviando || !input.trim()}>
-                <Send className="w-4 h-4" />
-              </Button>
-            </div>
-          </Card>
-        </ResizablePanel>
-
-        <ResizableHandle withHandle className="w-1.5 bg-primary/30 hover:bg-primary/60 transition-colors" />
-
-        {/* PAINEL */}
-        <ResizablePanel defaultSize={60} minSize={40}>
-          <div className="h-full overflow-y-auto p-4">
-            <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+    <div className="h-[calc(100vh-4rem)] overflow-y-auto p-4">
+      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
               <TabsList className="mb-4">
                 <TabsTrigger value="contexto"><Building2 className="w-4 h-4 mr-1" />Contexto</TabsTrigger>
                 <TabsTrigger value="produtos"><Package className="w-4 h-4 mr-1" />Produtos ({produtos.length})</TabsTrigger>
@@ -664,6 +623,10 @@ export default function ProdutosConversacionalPage() {
                             <TableHead>Unidade</TableHead>
                             <TableHead className="text-right" title="Valor mínimo aceito de venda (piso). A IA nunca sugere abaixo disso.">Valor mín. (R$)</TableHead>
                             <TableHead className="text-right" title="Valor médio praticado. Usado pela IA como sugestão padrão na proposta.">Valor médio (R$)</TableHead>
+                            <TableHead>Placeholder item</TableHead>
+                            <TableHead>Placeholder qtd</TableHead>
+                            <TableHead>Placeholder valor</TableHead>
+                            <TableHead className="text-center">Checkbox?</TableHead>
                             <TableHead className="w-20" />
                           </TableRow>
                         </TableHeader>
@@ -712,6 +675,27 @@ export default function ProdutosConversacionalPage() {
                                   <Input type="number" step="0.01" min="0" className="h-8 w-28 pl-8 text-right"
                                     value={d.valor_medio || ""} onChange={(e) => patchDraft(d._key, { valor_medio: Number(e.target.value) })} />
                                 </div>
+                              </TableCell>
+                              <TableCell>
+                                <Input className="h-7 text-xs w-28 font-mono" placeholder="{item_switch}"
+                                  value={d.placeholder_key ?? ""} onChange={(e) => patchDraft(d._key, { placeholder_key: e.target.value })} />
+                              </TableCell>
+                              <TableCell>
+                                <Input className="h-7 text-xs w-24 font-mono" placeholder="{qtd_switch}"
+                                  value={d.placeholder_qtd ?? ""} onChange={(e) => patchDraft(d._key, { placeholder_qtd: e.target.value })} />
+                              </TableCell>
+                              <TableCell>
+                                <Input className="h-7 text-xs w-24 font-mono" placeholder="{valor_switch}"
+                                  value={d.placeholder_valor ?? ""} onChange={(e) => patchDraft(d._key, { placeholder_valor: e.target.value })} />
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={d.is_checkbox ?? false}
+                                  onChange={(e) => patchDraft(d._key, { is_checkbox: e.target.checked })}
+                                  className="w-4 h-4 accent-primary"
+                                  title="Marcar (x) na proposta quando selecionado"
+                                />
                               </TableCell>
                               <TableCell>
                                 <div className="flex gap-1">
@@ -771,6 +755,42 @@ export default function ProdutosConversacionalPage() {
                                     <Input type="number" step="0.01" min="0" className="h-8 w-28 pl-8 text-right" defaultValue={ext.valor_medio ?? 0}
                                       onBlur={(e) => Number(e.target.value) !== (ext.valor_medio ?? 0) && patchProduto(p.id, { valor_medio: Number(e.target.value) } as never)} />
                                   </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Input className="h-7 text-xs w-28 font-mono" placeholder="{item_switch}"
+                                    defaultValue={(p as unknown as { placeholder_key?: string }).placeholder_key ?? ""}
+                                    onBlur={(e) => {
+                                      const v = e.target.value || null;
+                                      const cur = (p as unknown as { placeholder_key?: string | null }).placeholder_key ?? null;
+                                      if (v !== cur) patchProduto(p.id, { placeholder_key: v } as never);
+                                    }} />
+                                </TableCell>
+                                <TableCell>
+                                  <Input className="h-7 text-xs w-24 font-mono" placeholder="{qtd_switch}"
+                                    defaultValue={(p as unknown as { placeholder_qtd?: string }).placeholder_qtd ?? ""}
+                                    onBlur={(e) => {
+                                      const v = e.target.value || null;
+                                      const cur = (p as unknown as { placeholder_qtd?: string | null }).placeholder_qtd ?? null;
+                                      if (v !== cur) patchProduto(p.id, { placeholder_qtd: v } as never);
+                                    }} />
+                                </TableCell>
+                                <TableCell>
+                                  <Input className="h-7 text-xs w-24 font-mono" placeholder="{valor_switch}"
+                                    defaultValue={(p as unknown as { placeholder_valor?: string }).placeholder_valor ?? ""}
+                                    onBlur={(e) => {
+                                      const v = e.target.value || null;
+                                      const cur = (p as unknown as { placeholder_valor?: string | null }).placeholder_valor ?? null;
+                                      if (v !== cur) patchProduto(p.id, { placeholder_valor: v } as never);
+                                    }} />
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={(p as unknown as { is_checkbox?: boolean }).is_checkbox ?? false}
+                                    onChange={(e) => patchProduto(p.id, { is_checkbox: e.target.checked } as never)}
+                                    className="w-4 h-4 accent-primary"
+                                    title="Marcar (x) na proposta quando selecionado"
+                                  />
                                 </TableCell>
                                 <TableCell>
                                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deletarProduto(p.id)}>
@@ -837,16 +857,48 @@ export default function ProdutosConversacionalPage() {
                             <p className="text-xs text-muted-foreground italic mb-3">Sem perguntas</p>
                           ) : (
                             <div className="space-y-1.5 mb-3">
-                              {lista.map(q => (
-                                <div key={q.id} className="flex items-center gap-2 p-2 border rounded-md">
-                                  <Switch checked={q.ativo} onCheckedChange={(v) => togglePergunta(q.id, v)} />
-                                  <Input className="h-8 flex-1" defaultValue={q.pergunta}
-                                    onBlur={(e) => e.target.value !== q.pergunta && atualizarPerguntaProduto(q.id, { pergunta: e.target.value }).then(() => setPerguntas(ps => ps.map(p => p.id === q.id ? { ...p, pergunta: e.target.value } : p)))} />
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deletarPergunta(q.id)}>
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </Button>
+                              {lista.map(q => {
+                                const prodsCat = produtos.filter(prod => normalizarCategoria((prod as unknown as { categoria?: string }).categoria) === normalizarCategoria(q.categoria));
+                                return (
+                                <div key={q.id} className="border rounded-md p-2 space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <Switch checked={q.ativo} onCheckedChange={(v) => togglePergunta(q.id, v)} />
+                                    <Input className="h-8 flex-1" defaultValue={q.pergunta}
+                                      onBlur={(e) => e.target.value !== q.pergunta && atualizarPerguntaProduto(q.id, { pergunta: e.target.value }).then(() => setPerguntas(ps => ps.map(p => p.id === q.id ? { ...p, pergunta: e.target.value } : p)))} />
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deletarPergunta(q.id)}>
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </div>
+                                  <div className="pl-4 border-l-2 border-muted space-y-1">
+                                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-1">
+                                      Produtos desta categoria:
+                                    </p>
+                                    {prodsCat.length === 0 ? (
+                                      <p className="text-[10px] text-muted-foreground">Nenhum produto cadastrado nesta categoria.</p>
+                                    ) : (
+                                      prodsCat.map(prod => {
+                                        const ext = prod as unknown as { placeholder_key?: string; is_checkbox?: boolean; valor_minimo?: number };
+                                        return (
+                                          <div key={prod.id} className="flex items-center gap-2 text-xs">
+                                            <span className="text-muted-foreground">↳</span>
+                                            <span className="flex-1 truncate">{prod.nome}</span>
+                                            {ext.placeholder_key && (
+                                              <code className="text-[10px] bg-muted px-1 rounded text-muted-foreground">{ext.placeholder_key}</code>
+                                            )}
+                                            {ext.is_checkbox && (
+                                              <Badge variant="outline" className="text-[9px] px-1">checkbox</Badge>
+                                            )}
+                                            <span className="text-muted-foreground font-mono text-[10px]">
+                                              R$ {Number(ext.valor_minimo || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                                            </span>
+                                          </div>
+                                        );
+                                      })
+                                    )}
+                                  </div>
                                 </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           )}
                         </div>
@@ -856,9 +908,6 @@ export default function ProdutosConversacionalPage() {
                 </Card>
               </TabsContent>
             </Tabs>
-          </div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
     </div>
   );
 }

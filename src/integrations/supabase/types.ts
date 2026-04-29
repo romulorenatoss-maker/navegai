@@ -3454,9 +3454,13 @@ export type Database = {
           descricao_padrao: string | null
           descricao_padrao_extendida: string | null
           id: string
+          is_checkbox: boolean
           nome: string
           origem: string
+          placeholder_key: string | null
+          placeholder_qtd: string | null
           placeholder_template: string | null
+          placeholder_valor: string | null
           regra_json: Json
           revisado: boolean
           tipo: string
@@ -3477,9 +3481,13 @@ export type Database = {
           descricao_padrao?: string | null
           descricao_padrao_extendida?: string | null
           id?: string
+          is_checkbox?: boolean
           nome: string
           origem?: string
+          placeholder_key?: string | null
+          placeholder_qtd?: string | null
           placeholder_template?: string | null
+          placeholder_valor?: string | null
           regra_json?: Json
           revisado?: boolean
           tipo?: string
@@ -3500,9 +3508,13 @@ export type Database = {
           descricao_padrao?: string | null
           descricao_padrao_extendida?: string | null
           id?: string
+          is_checkbox?: boolean
           nome?: string
           origem?: string
+          placeholder_key?: string | null
+          placeholder_qtd?: string | null
           placeholder_template?: string | null
+          placeholder_valor?: string | null
           regra_json?: Json
           revisado?: boolean
           tipo?: string
