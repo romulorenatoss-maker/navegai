@@ -286,8 +286,34 @@ export default function PropostaConversacionalPage() {
     });
   }
 
-  async function enviar() {
-    if (!input.trim() || enviando) return;
+  // ===== Fase 2 — handlers do painel de Pergunta Guiada =====
+  function guiadoAdicionarItem(item: ItemConv) {
+    setItens(prev => {
+      const idx = item.produto_id
+        ? prev.findIndex(i => i.produto_id === item.produto_id)
+        : prev.findIndex(i => normalize(i.nome) === normalize(item.nome));
+      if (idx >= 0) {
+        const arr = [...prev];
+        arr[idx] = { ...arr[idx], ...item };
+        return arr;
+      }
+      return [...prev, item];
+    });
+  }
+  function guiadoRemoverItem(produto_id: string) {
+    setItens(prev => prev.filter(i => i.produto_id !== produto_id));
+  }
+  function guiadoResponder(p: PropostasPerguntaSetup, resposta: string) {
+    const k = p.campo_token ?? p.id;
+    setRespostas(r => ({ ...r, [k]: resposta }));
+    const norm = p.pergunta.trim().toLowerCase();
+    setPerguntasRespondidas(prev => prev.includes(norm) ? prev : [...prev, norm]);
+  }
+  function guiadoAvancar() {
+    // apenas registra mensagem informativa; a próxima pendente vira automaticamente.
+    setMsgs(m => [...m, { role: "assistant", content: "✓ Resposta registrada. Próxima pergunta…" }]);
+  }
+
     const texto = input.trim();
     setInput("");
 
