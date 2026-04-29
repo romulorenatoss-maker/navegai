@@ -16,7 +16,7 @@ import {
 } from "../services/propostasService";
 import { sugerirConfiguracao, type SugestaoItem } from "../services/propostasIAService";
 import { calcularItem, calcularTotal, renderTabelaHtml, formatarBRL, type ItemCalculado } from "../utils/propostasCalculo";
-import { substituirPlaceholders } from "../utils/propostasParser";
+import { propostasRenderizarTemplate } from "../utils/propostasRender";
 import { limparHtmlFinal } from "../utils/propostasLimpeza";
 
 export default function PropostaCreatePage() {
@@ -136,8 +136,8 @@ export default function PropostaCreatePage() {
       const template = templates.find(t => t.id === templateId);
       const baseHtml = template?.conteudo_html ?? "";
 
-      // Placeholders padrão
-      const valores: Record<string, string | number> = {
+      // Tokens (compatível com <span data-token> e {token})
+      const dados: Record<string, unknown> = {
         cliente_nome: clienteSel.nome,
         cliente_cpf: clienteSel.cpf ?? "",
         cliente_cidade: clienteSel.cidade ?? "",
@@ -147,7 +147,7 @@ export default function PropostaCreatePage() {
         itens_tabela: renderTabelaHtml(itens),
       };
 
-      let conteudo = substituirPlaceholders(baseHtml, valores);
+      let conteudo = propostasRenderizarTemplate(baseHtml, dados);
 
       // Se template não tem {itens_tabela}, anexa a tabela ao final
       if (!baseHtml.includes("{itens_tabela}")) {
