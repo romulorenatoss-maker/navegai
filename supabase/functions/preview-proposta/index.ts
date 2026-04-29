@@ -53,14 +53,24 @@ Deno.serve(async (req) => {
   const docxPath = body.docx_path || tpl.arquivo_docx_path;
   if (!docxPath) return jerr(400, "Template sem arquivo .docx vinculado");
 
-  // 2) Se PDF já existe e !force, retorna o existente
+  // 2) Se PDF já existe e !force, retorna o existente (com base64)
   if (tpl.arquivo_pdf_path && !body.force) {
+    const { data: cachedBlob } = await supabase.storage
+      .from(BUCKET)
+      .download(tpl.arquivo_pdf_path);
     const { data: signed } = await supabase.storage
       .from(BUCKET)
       .createSignedUrl(tpl.arquivo_pdf_path, 60 * 60);
-    if (signed?.signedUrl) {
+    if (cachedBlob) {
+      const buf = new Uint8Array(await cachedBlob.arrayBuffer());
+      const b64 = btoa(String.fromCharCode(...buf));
       return new Response(
-        JSON.stringify({ pdf_path: tpl.arquivo_pdf_path, signed_url: signed.signedUrl, cached: true }),
+        JSON.stringify({
+          pdf_path: tpl.arquivo_pdf_path,
+          signed_url: signed?.signedUrl ?? null,
+          pdf_base64: b64,
+          cached: true,
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
