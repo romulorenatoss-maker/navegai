@@ -31,6 +31,7 @@ import { PerguntaGuiadaPanel } from "../components/PerguntaGuiadaPanel";
 
 interface Msg { role: "user" | "assistant"; content: string }
 interface ItemConv {
+  produto_id?: string;
   nome: string;
   quantidade: number;
   valor_unitario: number;
