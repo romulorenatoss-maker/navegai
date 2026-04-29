@@ -90,6 +90,8 @@ export default function PropostaConversacionalPage() {
   // Estado conversacional (frontend = fonte da verdade)
   const [etapa, setEtapa] = useState<Etapa>("contexto");
   const [perguntasRespondidas, setPerguntasRespondidas] = useState<string[]>([]);
+  // Fase 2 — texto de contexto gerado pela IA (alimenta {contexto} no template)
+  const [contextoIA, setContextoIA] = useState<string>("");
 
   // Contexto da empresa + catálogo + perguntas padrão por categoria
   const [empresa, setEmpresa] = useState<PropostasEmpresaContexto | null>(null);
