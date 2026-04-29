@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
+import { usePlaceholderData } from "../hooks/usePlaceholderData";
 
 /**
  * Etapa 1 — Seletor estruturado de placeholders (sem banco).
@@ -74,7 +75,9 @@ export function PropostaPlaceholderModal({ open, onOpenChange, onSelect }: Props
     handleSelect(v);
   }
 
-  const opcoes = PLACEHOLDER_MOCK[tipo];
+  const { data: placeholderData, loading } = usePlaceholderData();
+  // Etapa 2: usar dados reais do banco; fallback automático para MOCK acontece dentro do hook.
+  const opcoes = placeholderData ? placeholderData[tipo] : PLACEHOLDER_MOCK[tipo];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
