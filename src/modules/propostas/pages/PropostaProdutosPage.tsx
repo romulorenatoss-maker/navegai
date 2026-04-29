@@ -161,6 +161,24 @@ export default function PropostaProdutosPage() {
                 <Input type="number" step="0.01" value={form.valor_minimo ?? 0}
                   onChange={(e) => setForm({ ...form, valor_minimo: Number(e.target.value) })} />
               </div>
+              <div>
+                <Label>Placeholder visual <span className="text-xs text-muted-foreground">(ex: "Switch - {qtd} unidades")</span></Label>
+                <Input
+                  value={form.placeholder_template ?? ""}
+                  onChange={(e) => setForm({ ...form, placeholder_template: e.target.value })}
+                  placeholder="Ex.: Switch - {qtd} unidades · Cabeamento - {qtd}m · ({ip_30})"
+                />
+                {form.placeholder_template && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Preview: <span className="font-mono">
+                      {form.placeholder_template
+                        .replace(/\{qtd\}/g, "10")
+                        .replace(/\{valor\}/g, "R$ 100,00")
+                        .replace(/\{nome\}/g, form.nome ?? "Produto")}
+                    </span>
+                  </p>
+                )}
+              </div>
               <div className="flex items-center justify-between rounded-md border p-3">
                 <Label className="!mb-0">Ativo</Label>
                 <Switch checked={form.ativo ?? true} onCheckedChange={(v) => setForm({ ...form, ativo: v })} />
