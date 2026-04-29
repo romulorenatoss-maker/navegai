@@ -1,0 +1,352 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Send, Sparkles, ArrowLeft, Trash2, Save } from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  buscarClientes, listarTemplates, criarProposta, criarProdutoSugerido,
+  type ClienteLite, type PropostasTemplate,
+} from "../services/propostasService";
+import {
+  listarCategorias, listarPerguntas,
+  type PropostasCategoriaSetup, type PropostasPerguntaSetup, type PropostasCobranca,
+} from "../services/propostasPerguntasService";
+import { propostasRenderizarTemplate } from "../utils/propostasRender";
+
+interface Msg { role: "user" | "assistant"; content: string }
+interface ItemConv {
+  nome: string;
+  quantidade: number;
+  valor_unitario: number;
+  cobranca: PropostasCobranca;
+  categoria?: string;
+}
+
+export default function PropostaConversacionalPage() {
+  const navigate = useNavigate();
+
+  // Cliente obrigatório
+  const [modalCliente, setModalCliente] = useState(true);
+  const [termoCliente, setTermoCliente] = useState("");
+  const [clientes, setClientes] = useState<ClienteLite[]>([]);
+  const [clienteSel, setClienteSel] = useState<ClienteLite | null>(null);
+
+  // Template
+  const [templates, setTemplates] = useState<PropostasTemplate[]>([]);
+  const [templateId, setTemplateId] = useState<string>("");
+
+  // Perguntas/categorias
+  const [categorias, setCategorias] = useState<PropostasCategoriaSetup[]>([]);
+  const [perguntas, setPerguntas] = useState<PropostasPerguntaSetup[]>([]);
+  const [respostas, setRespostas] = useState<Record<string, unknown>>({});
+
+  // Chat
+  const [msgs, setMsgs] = useState<Msg[]>([]);
+  const [input, setInput] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [itens, setItens] = useState<ItemConv[]>([]);
+  const [finalizado, setFinalizado] = useState(false);
+  const [gerando, setGerando] = useState(false);
+  const fim = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    Promise.all([listarTemplates(), listarCategorias(true), listarPerguntas(true)])
+      .then(([t, c, p]) => { setTemplates(t); setCategorias(c); setPerguntas(p); })
+      .catch(e => toast.error(String(e)));
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => buscarClientes(termoCliente).then(setClientes).catch(console.error), 300);
+    return () => clearTimeout(t);
+  }, [termoCliente]);
+
+  useEffect(() => { fim.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
+
+  const perguntasOrdenadas = useMemo(() => {
+    const catMap = new Map(categorias.map(c => [c.id, c]));
+    return [...perguntas].sort((a, b) => {
+      const ca = catMap.get(a.categoria_id)?.ordem ?? 999;
+      const cb = catMap.get(b.categoria_id)?.ordem ?? 999;
+      return ca - cb || a.ordem - b.ordem;
+    });
+  }, [perguntas, categorias]);
+
+  const pendentes = useMemo(() => {
+    return perguntasOrdenadas.filter(p => {
+      const k = p.campo_token ?? p.id;
+      return respostas[k] === undefined || respostas[k] === "";
+    });
+  }, [perguntasOrdenadas, respostas]);
+
+  function confirmarCliente() {
+    if (!clienteSel) { toast.error("Selecione um cliente"); return; }
+    setModalCliente(false);
+    // Mensagem de boas-vindas + primeira pergunta
+    const primeira = perguntasOrdenadas[0];
+    const cat = primeira ? categorias.find(c => c.id === primeira.categoria_id) : null;
+    setMsgs([{
+      role: "assistant",
+      content: `Olá! Vamos montar a proposta para **${clienteSel.nome}**. ${primeira ? `Começando por **${cat?.nome ?? "Contexto"}**:\n\n${primeira.pergunta}` : "Pode começar descrevendo o que o cliente precisa."}`,
+    }]);
+  }
+
+  async function enviar() {
+    if (!input.trim() || enviando) return;
+    const texto = input.trim();
+    setInput("");
+
+    const novaMsg: Msg = { role: "user", content: texto };
+    const novoHistorico = [...msgs, novaMsg];
+    setMsgs(novoHistorico);
+
+    // Heurística: se a primeira pergunta pendente tem campo_token, salva resposta automaticamente
+    const proxima = pendentes[0];
+    if (proxima) {
+      const k = proxima.campo_token ?? proxima.id;
+      setRespostas(r => ({ ...r, [k]: texto }));
+    }
+
+    setEnviando(true);
+    try {
+      const cat = categorias.map(c => ({ codigo: c.codigo, nome: c.nome, cobranca_padrao: c.cobranca_padrao }));
+      const pend = pendentes.slice(1, 6).map(p => ({
+        categoria: categorias.find(c => c.id === p.categoria_id)?.codigo ?? "",
+        pergunta: p.pergunta,
+        campo_token: p.campo_token ?? undefined,
+        tipo: p.tipo,
+        opcoes: p.opcoes ?? undefined,
+      }));
+
+      const { data, error } = await supabase.functions.invoke("propostas-conversacional", {
+        body: {
+          messages: novoHistorico,
+          contexto: {
+            cliente_nome: clienteSel?.nome,
+            categorias: cat,
+            perguntas_pendentes: pend,
+            respostas,
+          },
+        },
+      });
+      if (error) throw error;
+
+      const resp = data as { mensagem: string; produtos: ItemConv[]; finalizado: boolean; error?: string };
+      if (resp.error) { toast.error(resp.error); return; }
+
+      setMsgs(m => [...m, { role: "assistant", content: resp.mensagem || "…" }]);
+
+      if (resp.produtos?.length) {
+        const novos = resp.produtos.map(p => ({
+          nome: String(p.nome ?? ""),
+          quantidade: Number(p.quantidade ?? 1),
+          valor_unitario: Number(p.valor_unitario ?? 0),
+          cobranca: (p.cobranca ?? "mensal") as PropostasCobranca,
+          categoria: p.categoria,
+        })).filter(p => p.nome);
+        setItens(it => [...it, ...novos]);
+        // Salva produtos novos no catálogo (origem ia_sugerido)
+        for (const p of novos) {
+          try {
+            await criarProdutoSugerido({
+              nome: p.nome, tipo: "produto",
+              valor_minimo: p.valor_unitario, tipo_calculo: "quantidade", unidade: "un",
+            });
+          } catch { /* ignora duplicados */ }
+        }
+      }
+
+      if (resp.finalizado) setFinalizado(true);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Erro na conversa");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  async function gerarProposta() {
+    if (!clienteSel || !templateId) { toast.error("Selecione cliente e template"); return; }
+    setGerando(true);
+    try {
+      const tpl = templates.find(t => t.id === templateId);
+      if (!tpl) throw new Error("Template não encontrado");
+
+      // Agrupa por cobrança
+      const grupos: Record<PropostasCobranca, ItemConv[]> = { implantacao: [], mensal: [], informativo: [] };
+      itens.forEach(i => grupos[i.cobranca]?.push(i));
+
+      const total = itens.reduce((s, i) => s + i.quantidade * i.valor_unitario, 0);
+
+      const dados: Record<string, unknown> = {
+        ...respostas,
+        cliente_nome: clienteSel.nome,
+        cliente_cpf: clienteSel.cpf ?? "",
+        cliente_cidade: clienteSel.cidade ?? "",
+        data_emissao: new Date().toLocaleDateString("pt-BR"),
+        valor_total: total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+      };
+
+      const html = propostasRenderizarTemplate(tpl.conteudo_html, dados);
+
+      const proposta = await criarProposta({
+        cliente_id: clienteSel.id,
+        template_id: templateId,
+        conteudo_original: html,
+        conteudo_editado: html,
+        valor_total: total,
+        validade: null,
+        itens: itens.map(i => ({
+          descricao: i.nome,
+          quantidade: i.quantidade,
+          unidade: "un",
+          valor_unitario: i.valor_unitario,
+          valor_total: i.quantidade * i.valor_unitario,
+          cobranca: i.cobranca,
+          categoria: i.categoria,
+        } as unknown as {
+          descricao: string; quantidade: number; unidade: string;
+          valor_unitario: number; valor_total: number;
+        })),
+      });
+
+      toast.success("Proposta gerada");
+      navigate(`/propostas/${proposta.id}/preview`);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Erro ao gerar");
+    } finally {
+      setGerando(false);
+    }
+  }
+
+  if (modalCliente) {
+    return (
+      <Dialog open onOpenChange={(o) => { if (!o) navigate("/propostas/nova"); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Selecione o cliente</DialogTitle>
+            <DialogDescription>O modo conversacional começa pela escolha do cliente.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input placeholder="Buscar por nome..." value={termoCliente} onChange={(e) => setTermoCliente(e.target.value)} autoFocus />
+            <div className="max-h-64 overflow-auto border rounded-md divide-y">
+              {clientes.length === 0
+                ? <p className="p-3 text-sm text-muted-foreground">Nenhum cliente encontrado.</p>
+                : clientes.map(c => (
+                  <button key={c.id}
+                    className={`w-full text-left p-3 text-sm hover:bg-accent ${clienteSel?.id === c.id ? "bg-accent" : ""}`}
+                    onClick={() => setClienteSel(c)}>
+                    <div className="font-medium">{c.nome}</div>
+                    <div className="text-xs text-muted-foreground">{c.cpf ?? "—"}{c.cidade ? ` · ${c.cidade}` : ""}</div>
+                  </button>
+                ))}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => navigate("/propostas/nova")}>Cancelar</Button>
+              <Button onClick={confirmarCliente} disabled={!clienteSel}>Continuar</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <div className="p-4 max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="lg:col-span-2 flex flex-col h-[calc(100vh-8rem)]">
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-xl font-bold flex items-center gap-2"><Sparkles className="w-5 h-5" /> Conversa Guiada</h1>
+          <div className="flex gap-2 items-center">
+            <Badge variant="outline">Cliente: {clienteSel?.nome}</Badge>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/propostas/nova")}>
+              <ArrowLeft className="w-4 h-4 mr-1" /> Sair
+            </Button>
+          </div>
+        </div>
+
+        <Card className="flex-1 flex flex-col">
+          <CardContent className="flex-1 overflow-auto p-4 space-y-3">
+            {msgs.map((m, i) => (
+              <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                  <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:my-1">
+                    <ReactMarkdown>{m.content}</ReactMarkdown>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {enviando && <div className="text-xs text-muted-foreground">IA digitando…</div>}
+            <div ref={fim} />
+          </CardContent>
+          <div className="border-t p-2 flex gap-2">
+            <Input
+              placeholder="Sua resposta..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviar(); } }}
+              disabled={enviando}
+            />
+            <Button onClick={enviar} disabled={enviando || !input.trim()}>
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
+        </Card>
+      </div>
+
+      {/* Painel lateral */}
+      <div className="space-y-3">
+        <Card>
+          <CardHeader><CardTitle className="text-sm">Template</CardTitle></CardHeader>
+          <CardContent>
+            <select className="w-full border rounded-md p-2 text-sm bg-background"
+              value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
+              <option value="">Selecione…</option>
+              {templates.filter(t => t.ativo).map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+            </select>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle className="text-sm">Itens detectados ({itens.length})</CardTitle></CardHeader>
+          <CardContent className="space-y-1 max-h-64 overflow-auto">
+            {itens.length === 0 && <p className="text-xs text-muted-foreground">Nada ainda. Descreva produtos no chat.</p>}
+            {itens.map((it, i) => (
+              <div key={i} className="flex items-center justify-between text-xs border rounded p-2">
+                <div className="min-w-0">
+                  <div className="font-medium truncate">{it.nome}</div>
+                  <div className="text-muted-foreground">{it.quantidade}× R$ {it.valor_unitario.toFixed(2)} <Badge variant="outline" className="ml-1">{it.cobranca}</Badge></div>
+                </div>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setItens(arr => arr.filter((_, k) => k !== i))}>
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </div>
+            ))}
+            {itens.length > 0 && (
+              <div className="text-sm font-medium pt-2 border-t">
+                Total: R$ {itens.reduce((s, i) => s + i.quantidade * i.valor_unitario, 0).toFixed(2)}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle className="text-sm">Respostas coletadas</CardTitle></CardHeader>
+          <CardContent className="text-xs space-y-1 max-h-48 overflow-auto">
+            {Object.entries(respostas).length === 0 && <p className="text-muted-foreground">Nada ainda.</p>}
+            {Object.entries(respostas).map(([k, v]) => (
+              <div key={k}><b>{k}:</b> {String(v)}</div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Button className="w-full" onClick={gerarProposta} disabled={!templateId || itens.length === 0 || gerando}>
+          {gerando ? "Gerando…" : <><Save className="w-4 h-4 mr-2" />Gerar proposta {finalizado ? "✓" : ""}</>}
+        </Button>
+      </div>
+    </div>
+  );
+}

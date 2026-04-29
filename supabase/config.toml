@@ -29,3 +29,6 @@ verify_jwt = true
 
 [functions.propostas-gerar-contexto]
 verify_jwt = true
+
+[functions.propostas-conversacional]
+verify_jwt = true

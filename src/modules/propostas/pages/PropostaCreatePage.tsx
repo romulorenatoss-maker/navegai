@@ -189,9 +189,14 @@ export default function PropostaCreatePage() {
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <FilePlus2 className="w-6 h-6" /> Nova Proposta
         </h1>
-        <Button variant="outline" onClick={() => navigate("/propostas/setup")}>
-          <Wand2 className="w-4 h-4 mr-2" /> Modo Guiado (IA)
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => navigate("/propostas/setup")}>
+            <Wand2 className="w-4 h-4 mr-2" /> Modo Guiado
+          </Button>
+          <Button onClick={() => navigate("/propostas/conversa")}>
+            <Wand2 className="w-4 h-4 mr-2" /> Modo Conversacional
+          </Button>
+        </div>
       </div>
 
       {/* CLIENTE */}
