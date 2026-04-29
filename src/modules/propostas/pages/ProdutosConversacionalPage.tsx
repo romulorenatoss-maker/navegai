@@ -199,6 +199,9 @@ export default function ProdutosConversacionalPage() {
   const [input, setInput] = useState("");
   const [enviando, setEnviando] = useState(false);
   const fim = useRef<HTMLDivElement>(null);
+  const catalogoTableScrollRef = useRef<HTMLDivElement>(null);
+  const catalogoBottomScrollRef = useRef<HTMLDivElement>(null);
+  const [catalogoScrollWidth, setCatalogoScrollWidth] = useState(0);
 
   // Nova pergunta padrão
   const [novaPergunta, setNovaPergunta] = useState<{ categoria: PropostasCategoria; pergunta: string }>({ categoria: "infraestrutura", pergunta: "" });
@@ -220,6 +223,33 @@ export default function ProdutosConversacionalPage() {
 
   useEffect(() => { recarregar().catch(e => toast.error(String(e))); }, []);
   useEffect(() => { fim.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
+  useEffect(() => {
+    const atualizarLargura = () => {
+      const el = catalogoTableScrollRef.current;
+      if (el) setCatalogoScrollWidth(el.scrollWidth);
+    };
+
+    atualizarLargura();
+    const el = catalogoTableScrollRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver(atualizarLargura);
+    observer.observe(el);
+    Array.from(el.children).forEach((child) => observer.observe(child));
+    window.addEventListener("resize", atualizarLargura);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", atualizarLargura);
+    };
+  }, [produtos.length, drafts.length, tab]);
+
+  const sincronizarScrollCatalogo = (origem: "tabela" | "barra") => {
+    const source = origem === "tabela" ? catalogoTableScrollRef.current : catalogoBottomScrollRef.current;
+    const target = origem === "tabela" ? catalogoBottomScrollRef.current : catalogoTableScrollRef.current;
+    if (!source || !target || target.scrollLeft === source.scrollLeft) return;
+    target.scrollLeft = source.scrollLeft;
+  };
 
   const categoriasCatalogo = useMemo<Array<{ value: CategoriaCatalogo; label: string }>>(() => {
     const ativas = categoriasSetup
