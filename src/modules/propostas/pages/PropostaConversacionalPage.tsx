@@ -82,6 +82,10 @@ export default function PropostaConversacionalPage() {
   const [finalizado, setFinalizado] = useState(false);
   const [gerando, setGerando] = useState(false);
 
+  // Estado conversacional (frontend = fonte da verdade)
+  const [etapa, setEtapa] = useState<Etapa>("contexto");
+  const [perguntasRespondidas, setPerguntasRespondidas] = useState<string[]>([]);
+
   // Contexto da empresa + catálogo + perguntas padrão por categoria
   const [empresa, setEmpresa] = useState<PropostasEmpresaContexto | null>(null);
   const [catalogo, setCatalogo] = useState<PropostasProduto[]>([]);
