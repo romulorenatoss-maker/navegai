@@ -112,16 +112,22 @@ export function PropostaEditorVisual({ value, onChange, className, onReady, edit
           <div className="w-px h-5 bg-border mx-1" />
           <Button
             type="button" variant="outline" size="sm" className="h-7 text-xs"
-            onClick={() => {
-              const chave = prompt("Chave do placeholder (ex: cliente_nome):");
-              if (chave) editor.chain().focus().insertContent({ type: "propostasPlaceholder", attrs: { chave } }).run();
-            }}
+            onClick={() => setPhModalOpen(true)}
           >
             + Placeholder
           </Button>
         </div>
       )}
       <EditorContent editor={editor} />
+      <PropostaPlaceholderModal
+        open={phModalOpen}
+        onOpenChange={setPhModalOpen}
+        onSelect={(chave: string, tipo: PlaceholderTipo) => {
+          editor.chain().focus().insertContent({ type: "propostasPlaceholder", attrs: { chave } }).run();
+          // Log estruturado (etapa 1)
+          console.log("[propostas/templates] placeholder inserido", { tipo, chave });
+        }}
+      />
     </div>
   );
 }
