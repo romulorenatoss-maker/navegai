@@ -410,6 +410,7 @@ export default function DashboardTempoAvaliacoes() {
       setGargalos(gargalosCalc);
       setPausas(pausasEnriquecidas);
       setEventos(evData);
+      setEventosExt(evDataExt);
 
       setLoading(false);
     })();
@@ -422,8 +423,8 @@ export default function DashboardTempoAvaliacoes() {
   }, [eventos]);
 
   const avaliadores = useMemo(
-    () => calcularMetricasPorAvaliador(eventos, profMap, osNumeroMap),
-    [eventos, profMap, osNumeroMap]
+    () => calcularMetricasPorAvaliador(eventos, eventosExt, profMap, osNumeroMap),
+    [eventos, eventosExt, profMap, osNumeroMap]
   );
 
   const setoresAgregados = useMemo(() => {
