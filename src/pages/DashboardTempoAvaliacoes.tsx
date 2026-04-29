@@ -84,8 +84,15 @@ function formatDuration(seconds: number): string {
 }
 const fmtHora = (iso: string) =>
   new Date(iso).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
+const fmtData = (iso: string) =>
+  new Date(iso).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "2-digit" });
 const fmtDataHora = (iso: string) =>
   new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
+// Compara se duas datas ISO caem no mesmo dia em America/Sao_Paulo
+const mesmaDataBR = (a: string, b: string) => {
+  const fmt = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
+  return fmt(a) === fmt(b);
+};
 
 function horaBR(iso: string): number {
   const s = new Intl.DateTimeFormat("en-GB", { timeZone: "America/Sao_Paulo", hour: "2-digit", hour12: false }).format(new Date(iso));
