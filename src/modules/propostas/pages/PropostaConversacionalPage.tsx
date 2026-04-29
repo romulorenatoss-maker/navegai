@@ -18,6 +18,10 @@ import {
   type PropostasCategoriaSetup, type PropostasPerguntaSetup, type PropostasCobranca,
 } from "../services/propostasPerguntasService";
 import { propostasRenderizarTemplate } from "../utils/propostasRender";
+import {
+  buscarRascunhoPorCliente, salvarRascunho, excluirRascunho,
+  type PropostasRascunhoConversa,
+} from "../services/propostasRascunhoService";
 
 interface Msg { role: "user" | "assistant"; content: string }
 interface ItemConv {
