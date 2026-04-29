@@ -117,17 +117,23 @@ export function PropostaPlaceholderModal({ open, onOpenChange, onSelect }: Props
           <div>
             <Label className="text-xs uppercase text-muted-foreground">Opções</Label>
             <div className="mt-2 max-h-60 overflow-auto border rounded-md divide-y">
-              {opcoes.map((o) => (
-                <button
-                  key={o.value}
-                  type="button"
-                  onClick={() => handleSelect(o.value)}
-                  className="w-full text-left px-3 py-2 hover:bg-accent flex items-center justify-between gap-3"
-                >
-                  <span className="text-sm">{o.label}</span>
-                  <code className="text-xs text-muted-foreground">{`{${o.value}}`}</code>
-                </button>
-              ))}
+              {loading && !placeholderData ? (
+                <span className="block px-3 py-2 text-xs text-muted-foreground">Carregando...</span>
+              ) : opcoes.length === 0 ? (
+                <span className="block px-3 py-2 text-xs text-muted-foreground">Nenhuma opção disponível</span>
+              ) : (
+                opcoes.map((o) => (
+                  <button
+                    key={o.value}
+                    type="button"
+                    onClick={() => handleSelect(o.value)}
+                    className="w-full text-left px-3 py-2 hover:bg-accent flex items-center justify-between gap-3"
+                  >
+                    <span className="text-sm">{o.label}</span>
+                    <code className="text-xs text-muted-foreground">{`{${o.value}}`}</code>
+                  </button>
+                ))
+              )}
             </div>
           </div>
 
