@@ -339,42 +339,60 @@ export default function DashboardTempoAvaliacoes() {
       const inicioIso = inicioDiaSaoPauloIso(dataInicio);
       const fimIso = fimDiaSaoPauloIso(dataFim);
 
-      // Base inicial: primeiras respostas que caíram no período selecionado.
-      const ev = await supabase.from("respostas_eventos")
-        .select("ordem_servico_id, usuario_id, setor_id, pergunta_id, respondido_em")
-        .eq("is_primeira_resposta", true)
-        .gte("respondido_em", inicioIso)
-        .lte("respondido_em", fimIso)
-        .order("respondido_em", { ascending: true })
-        .limit(50000);
+      // Fonte unificada (cobre OS antigas que não gravavam respostas_eventos):
+      // Usamos respostas_avaliacao como base — cada (os, pergunta) tem 1 registro com created_at.
+      // Complementamos com respostas_eventos para preservar histórico (caso usuário registre múltiplas interações por pergunta).
+      const [raPeriodoRes, evPeriodoRes] = await Promise.all([
+        supabase.from("respostas_avaliacao")
+          .select("ordem_servico_id, pergunta_id, avaliador_id, avaliador_setor_id, created_at, resposta")
+          .gte("created_at", inicioIso)
+          .lte("created_at", fimIso)
+          .not("resposta", "is", null)
+          .order("created_at", { ascending: true })
+          .limit(50000),
+        supabase.from("respostas_eventos")
+          .select("ordem_servico_id, usuario_id, setor_id, pergunta_id, respondido_em")
+          .gte("respondido_em", inicioIso)
+          .lte("respondido_em", fimIso)
+          .order("respondido_em", { ascending: true })
+          .limit(50000),
+      ]);
 
-      const evDataPeriodo: EventoResposta[] = ((ev.data || []) as EventoResposta[])
-        .filter(e => Boolean(e.ordem_servico_id && e.respondido_em));
-      const osIdsPeriodo = Array.from(new Set(evDataPeriodo.map(e => e.ordem_servico_id)));
-      let evData: EventoResposta[] = evDataPeriodo;
+      type RaRow = { ordem_servico_id: string | null; pergunta_id: string; avaliador_id: string | null; avaliador_setor_id: string | null; created_at: string; resposta: string | null };
+      const raPeriodo: RaRow[] = ((raPeriodoRes.data || []) as RaRow[]).filter(r => Boolean(r.ordem_servico_id));
+      const evPeriodo: EventoResposta[] = ((evPeriodoRes.data || []) as EventoResposta[]).filter(e => Boolean(e.ordem_servico_id && e.respondido_em));
+
+      // OS que aparecem em qualquer das duas fontes dentro do período
+      const osIdsPeriodo = Array.from(new Set<string>([
+        ...raPeriodo.map(r => r.ordem_servico_id as string),
+        ...evPeriodo.map(e => e.ordem_servico_id),
+      ]));
       const aberturaMap = new Map<string, boolean>();
       const setorPorPergunta = new Map<string, string | null>();
+      let evData: EventoResposta[] = [];
 
       if (osIdsPeriodo.length > 0) {
-        // Buscar perguntas das OS com setor associado
-        const [opRes, raRes] = await Promise.all([
+        // Para detecção de abertura/conclusão precisamos de TODAS as respostas das OS, não só as do período
+        const [opRes, raAllRes] = await Promise.all([
           supabase.from("os_perguntas")
             .select("os_id, pergunta_id")
             .in("os_id", osIdsPeriodo)
             .limit(200000),
           supabase.from("respostas_avaliacao")
-            .select("ordem_servico_id, pergunta_id, resposta")
+            .select("ordem_servico_id, pergunta_id, avaliador_id, avaliador_setor_id, created_at, resposta")
             .in("ordem_servico_id", osIdsPeriodo)
             .not("resposta", "is", null)
             .limit(200000),
         ]);
 
+        const raAll: RaRow[] = ((raAllRes.data || []) as RaRow[]).filter(r => Boolean(r.ordem_servico_id));
+
         const perguntaIdsAll = Array.from(new Set([
           ...((opRes.data || []) as { pergunta_id: string }[]).map(r => r.pergunta_id),
-          ...evDataPeriodo.map(e => e.pergunta_id).filter(Boolean) as string[],
+          ...raAll.map(r => r.pergunta_id).filter(Boolean) as string[],
+          ...evPeriodo.map(e => e.pergunta_id).filter(Boolean) as string[],
         ]));
 
-        // Batchear perguntas_avaliacao para evitar limite default de 1000 linhas
         const BATCH = 500;
         for (let i = 0; i < perguntaIdsAll.length; i += BATCH) {
           const slice = perguntaIdsAll.slice(i, i + BATCH);
@@ -387,7 +405,7 @@ export default function DashboardTempoAvaliacoes() {
           }
         }
 
-        // Esperado: perguntas distintas por (os, setor_avaliado da pergunta)
+        // Esperado por (os, setor)
         const expected = new Map<string, Set<string>>();
         for (const r of ((opRes.data || []) as { os_id: string; pergunta_id: string }[])) {
           const setor = setorPorPergunta.get(r.pergunta_id) ?? null;
@@ -395,29 +413,72 @@ export default function DashboardTempoAvaliacoes() {
           if (!expected.has(k)) expected.set(k, new Set());
           expected.get(k)!.add(r.pergunta_id);
         }
-
-        // Respondido: perguntas distintas respondidas, agrupadas pelo MESMO critério
+        // Respondido (todas as respostas da OS, não só do período)
         const responded = new Map<string, Set<string>>();
-        for (const r of ((raRes.data || []) as { ordem_servico_id: string; pergunta_id: string }[])) {
+        for (const r of raAll) {
           if (!r.pergunta_id) continue;
           const setor = setorPorPergunta.get(r.pergunta_id) ?? null;
           const k = `${r.ordem_servico_id}::${setor ?? "sem_setor"}`;
           if (!responded.has(k)) responded.set(k, new Set());
           responded.get(k)!.add(r.pergunta_id);
         }
-
-        // Aberto se respondido < esperado
         for (const [k, esp] of expected.entries()) {
           const resp = responded.get(k);
           aberturaMap.set(k, !resp || resp.size < esp.size);
         }
 
-        // Remapear setor_id dos eventos para o setor_avaliado_id da pergunta
-        // (assim agrupamento por avaliador usa a MESMA chave da abertura)
-        evData = evDataPeriodo.map(e => ({
-          ...e,
-          setor_id: e.pergunta_id ? (setorPorPergunta.get(e.pergunta_id) ?? e.setor_id) : e.setor_id,
-        }));
+        // Construir evData unificado: 1 entrada por (os, pergunta).
+        // Preferir respostas_eventos (tem histórico de múltiplas interações) quando existir;
+        // senão, sintetizar a partir de respostas_avaliacao (cobre OS antigas).
+        const evByKey = new Map<string, EventoResposta[]>();
+        for (const e of evPeriodo) {
+          const k = `${e.ordem_servico_id}::${e.pergunta_id ?? ""}`;
+          if (!evByKey.has(k)) evByKey.set(k, []);
+          evByKey.get(k)!.push(e);
+        }
+
+        const merged: EventoResposta[] = [];
+        // Considerar apenas respostas das OS cuja primeira resposta caia no período (ou que tenham eventos no período)
+        const osPrimeiraResposta = new Map<string, string>();
+        for (const r of raAll) {
+          const cur = osPrimeiraResposta.get(r.ordem_servico_id as string);
+          if (!cur || r.created_at < cur) osPrimeiraResposta.set(r.ordem_servico_id as string, r.created_at);
+        }
+        const osValidas = new Set<string>();
+        for (const osId of osIdsPeriodo) {
+          const primeira = osPrimeiraResposta.get(osId);
+          if (primeira && primeira >= inicioIso && primeira <= fimIso) osValidas.add(osId);
+          // ou se há evento dentro do período (já garantido por evPeriodo)
+          if (evPeriodo.some(e => e.ordem_servico_id === osId)) osValidas.add(osId);
+        }
+
+        for (const r of raAll) {
+          if (!osValidas.has(r.ordem_servico_id as string)) continue;
+          const k = `${r.ordem_servico_id}::${r.pergunta_id}`;
+          const evs = evByKey.get(k);
+          const setorPergunta = setorPorPergunta.get(r.pergunta_id) ?? r.avaliador_setor_id ?? null;
+          if (evs && evs.length > 0) {
+            for (const e of evs) {
+              merged.push({
+                ordem_servico_id: e.ordem_servico_id,
+                usuario_id: e.usuario_id ?? r.avaliador_id ?? null,
+                setor_id: setorPergunta,
+                pergunta_id: e.pergunta_id ?? r.pergunta_id,
+                respondido_em: e.respondido_em,
+              });
+            }
+          } else {
+            // Fallback: OS antiga sem evento — sintetiza um a partir de respostas_avaliacao
+            merged.push({
+              ordem_servico_id: r.ordem_servico_id as string,
+              usuario_id: r.avaliador_id,
+              setor_id: setorPergunta,
+              pergunta_id: r.pergunta_id,
+              respondido_em: r.created_at,
+            });
+          }
+        }
+        evData = merged;
       }
       setAberturaPorSetorOs(aberturaMap);
 
