@@ -130,6 +130,8 @@ interface OSDoAvaliador {
   fim: string;
   duracao_seg: number;
   dia: string; // YYYY-MM-DD em America/Sao_Paulo (com base no início)
+  em_aberto?: boolean;
+  setor_id?: string | null;
 }
 interface FaixaHora {
   faixa: string;
@@ -168,35 +170,50 @@ function calcularMetricasPorAvaliador(
   osNumeroMap: Record<string, string | number | null>,
   periodoInicioMs?: number,
   periodoFimMs?: number,
+  aberturaPorSetorOs?: Map<string, boolean>, // key = `${osId}::${setorId}`
+  agoraIso?: string,
 ): MetricaAvaliador[] {
-  // 1) Agrupar eventos do PERÍODO por usuário/OS (define quais OS aparecem)
-  const porUsuario = new Map<string, Map<string, string[]>>();
+  // 1) Agrupar eventos do PERÍODO por usuário/(OS+setor) — uma "OS" do avaliador é por setor
+  const porUsuario = new Map<string, Map<string, { os_id: string; setor_id: string | null; tempos: string[] }>>();
   for (const e of eventos) {
     if (!e.usuario_id) continue;
     if (!porUsuario.has(e.usuario_id)) porUsuario.set(e.usuario_id, new Map());
     const osMap = porUsuario.get(e.usuario_id)!;
-    if (!osMap.has(e.ordem_servico_id)) osMap.set(e.ordem_servico_id, []);
-    osMap.get(e.ordem_servico_id)!.push(e.respondido_em);
+    const k = `${e.ordem_servico_id}::${e.setor_id ?? "sem_setor"}`;
+    if (!osMap.has(k)) osMap.set(k, { os_id: e.ordem_servico_id, setor_id: e.setor_id, tempos: [] });
+    osMap.get(k)!.tempos.push(e.respondido_em);
   }
 
   const result: MetricaAvaliador[] = [];
   for (const [usuario_id, osMap] of porUsuario.entries()) {
     const oss: OSDoAvaliador[] = [];
-    for (const [os_id, timestamps] of osMap.entries()) {
-      // Usar somente timestamps do período aplicado: primeira/última ação DO DIA/FILTRO.
-      const ts = timestamps.slice().sort();
+    for (const [, info] of osMap.entries()) {
+      const ts = info.tempos.slice().sort();
       const inicio = ts[0];
-      const fim = ts[ts.length - 1];
+      const ultimaResp = ts[ts.length - 1];
 
-      // Garante que a OS considerada tenha início e fim calculados dentro do filtro aplicado.
+      // Início da avaliação (primeira resposta do setor) deve estar dentro do filtro.
       if (periodoInicioMs != null && periodoFimMs != null) {
         const inicioMs = new Date(inicio).getTime();
-        const fimMs = new Date(fim).getTime();
-        if (inicioMs < periodoInicioMs || fimMs > periodoFimMs) continue;
+        if (inicioMs < periodoInicioMs || inicioMs > periodoFimMs) continue;
       }
 
+      // Verifica se a avaliação do setor está em aberto
+      const chaveAbertura = `${info.os_id}::${info.setor_id ?? "sem_setor"}`;
+      const emAberto = aberturaPorSetorOs?.get(chaveAbertura) === true;
+      const fim = emAberto ? (agoraIso ?? new Date().toISOString()) : ultimaResp;
+
       const dur = (new Date(fim).getTime() - new Date(inicio).getTime()) / 1000;
-      oss.push({ os_id, numero_os: osNumeroMap[os_id] ?? null, inicio, fim, duracao_seg: dur, dia: diaBR(inicio) });
+      oss.push({
+        os_id: info.os_id,
+        numero_os: osNumeroMap[info.os_id] ?? null,
+        inicio,
+        fim,
+        duracao_seg: dur,
+        dia: diaBR(inicio),
+        em_aberto: emAberto,
+        setor_id: info.setor_id,
+      });
     }
     oss.sort((a, b) => a.inicio.localeCompare(b.inicio));
 
@@ -280,7 +297,15 @@ export default function DashboardTempoAvaliacoes() {
   const [eventos, setEventos] = useState<EventoResposta[]>([]);
   const [profMap, setProfMap] = useState<Record<string, string>>({});
   const [osNumeroMap, setOsNumeroMap] = useState<Record<string, string | number | null>>({});
+  const [aberturaPorSetorOs, setAberturaPorSetorOs] = useState<Map<string, boolean>>(new Map());
+  const [agoraTick, setAgoraTick] = useState<number>(Date.now());
   const [expandido, setExpandido] = useState<Set<string>>(new Set());
+
+  // Tick a cada 60s para atualizar tempo de avaliações em aberto
+  useEffect(() => {
+    const id = setInterval(() => setAgoraTick(Date.now()), 60000);
+    return () => clearInterval(id);
+  }, []);
 
   // Período: estado pendente (que o usuário está editando) e estado APLICADO (o que dispara a busca)
   const hoje = new Date();
@@ -326,35 +351,57 @@ export default function DashboardTempoAvaliacoes() {
       const evDataPeriodo: EventoResposta[] = ((ev.data || []) as EventoResposta[])
         .filter(e => Boolean(e.ordem_servico_id && e.respondido_em));
       const osIdsPeriodo = Array.from(new Set(evDataPeriodo.map(e => e.ordem_servico_id)));
-      let evData: EventoResposta[] = [];
+      let evData: EventoResposta[] = evDataPeriodo;
+      const aberturaMap = new Map<string, boolean>();
 
       if (osIdsPeriodo.length > 0) {
-        const { data: evGlobal } = await supabase.from("respostas_eventos")
-          .select("ordem_servico_id, usuario_id, setor_id, pergunta_id, respondido_em")
-          .eq("is_primeira_resposta", true)
-          .in("ordem_servico_id", osIdsPeriodo)
-          .limit(100000);
+        // Buscar perguntas das OS com setor associado
+        const [opRes, raRes] = await Promise.all([
+          supabase.from("os_perguntas")
+            .select("os_id, pergunta_id")
+            .in("os_id", osIdsPeriodo)
+            .limit(200000),
+          supabase.from("respostas_eventos")
+            .select("ordem_servico_id, setor_id, pergunta_id")
+            .in("ordem_servico_id", osIdsPeriodo)
+            .limit(200000),
+        ]);
 
-        const porOsGlobal = new Map<string, string[]>();
-        for (const e of ((evGlobal || []) as EventoResposta[])) {
-          if (!e.ordem_servico_id || !e.respondido_em) continue;
-          if (!porOsGlobal.has(e.ordem_servico_id)) porOsGlobal.set(e.ordem_servico_id, []);
-          porOsGlobal.get(e.ordem_servico_id)!.push(e.respondido_em);
+        const perguntaIdsAll = Array.from(new Set(((opRes.data || []) as { pergunta_id: string }[]).map(r => r.pergunta_id)));
+        const paRes = perguntaIdsAll.length
+          ? await supabase.from("perguntas_avaliacao")
+              .select("id, setor_avaliado_id")
+              .in("id", perguntaIdsAll)
+          : { data: [] as { id: string; setor_avaliado_id: string | null }[] };
+        const setorPorPergunta = new Map<string, string | null>(
+          ((paRes.data || []) as { id: string; setor_avaliado_id: string | null }[]).map(p => [p.id, p.setor_avaliado_id])
+        );
+
+        // Esperado: nº de perguntas por (os, setor)
+        const expected = new Map<string, Set<string>>();
+        for (const r of ((opRes.data || []) as { os_id: string; pergunta_id: string }[])) {
+          const setor = setorPorPergunta.get(r.pergunta_id) ?? null;
+          const k = `${r.os_id}::${setor ?? "sem_setor"}`;
+          if (!expected.has(k)) expected.set(k, new Set());
+          expected.get(k)!.add(r.pergunta_id);
         }
 
-        // Regra D global da OS: só entra se a primeira e a última resposta da OS inteira caíram no filtro.
-        const osValidas = new Set<string>();
-        const inicioMs = new Date(inicioIso).getTime();
-        const fimMs = new Date(fimIso).getTime();
-        for (const [osId, tempos] of porOsGlobal.entries()) {
-          const ordenados = tempos.slice().sort();
-          const primeiraMs = new Date(ordenados[0]).getTime();
-          const ultimaMs = new Date(ordenados[ordenados.length - 1]).getTime();
-          if (primeiraMs >= inicioMs && ultimaMs <= fimMs) osValidas.add(osId);
+        // Respondido: perguntas distintas respondidas por (os, setor)
+        const responded = new Map<string, Set<string>>();
+        for (const r of ((raRes.data || []) as { ordem_servico_id: string; setor_id: string | null; pergunta_id: string | null }[])) {
+          if (!r.pergunta_id) continue;
+          const k = `${r.ordem_servico_id}::${r.setor_id ?? "sem_setor"}`;
+          if (!responded.has(k)) responded.set(k, new Set());
+          responded.get(k)!.add(r.pergunta_id);
         }
 
-        evData = evDataPeriodo.filter(e => osValidas.has(e.ordem_servico_id));
+        // Determina abertura por (os, setor): aberto se respondido < esperado
+        for (const [k, esp] of expected.entries()) {
+          const resp = responded.get(k);
+          aberturaMap.set(k, !resp || resp.size < esp.size);
+        }
       }
+      setAberturaPorSetorOs(aberturaMap);
 
       const seqData: EventoSequenciaPeriodo[] = [];
       const ultimoPorOsSetor = new Map<string, EventoResposta>();
@@ -478,8 +525,8 @@ export default function DashboardTempoAvaliacoes() {
   );
 
   const avaliadores = useMemo(
-    () => calcularMetricasPorAvaliador(eventos, profMap, osNumeroMap, periodoInicioMs, periodoFimMs),
-    [eventos, profMap, osNumeroMap, periodoInicioMs, periodoFimMs]
+    () => calcularMetricasPorAvaliador(eventos, profMap, osNumeroMap, periodoInicioMs, periodoFimMs, aberturaPorSetorOs, new Date(agoraTick).toISOString()),
+    [eventos, profMap, osNumeroMap, periodoInicioMs, periodoFimMs, aberturaPorSetorOs, agoraTick]
   );
 
   // OS avaliadas: aplicar a MESMA regra D — primeira E última resposta dentro do período
@@ -736,8 +783,9 @@ export default function DashboardTempoAvaliacoes() {
                                       <TableBody>
                                         {a.oss.map(o => {
                                           const cruzaDia = !mesmaDataBR(o.inicio, o.fim);
+                                          const aberta = o.em_aberto === true;
                                           return (
-                                            <TableRow key={o.os_id} className={cruzaDia ? "bg-amber-500/10" : undefined}>
+                                            <TableRow key={`${o.os_id}-${o.setor_id ?? "s"}`} className={aberta ? "bg-blue-500/10" : (cruzaDia ? "bg-amber-500/10" : undefined)}>
                                               <TableCell className="text-xs">
                                                 {o.numero_os ? (
                                                   <a
@@ -749,15 +797,22 @@ export default function DashboardTempoAvaliacoes() {
                                                 ) : (
                                                   <span className="font-mono text-muted-foreground">{o.os_id.slice(0, 8)}</span>
                                                 )}
+                                                {aberta && (
+                                                  <Badge variant="outline" className="ml-2 text-blue-700 dark:text-blue-400 border-blue-500/50 text-[10px] px-1 py-0">
+                                                    Em andamento
+                                                  </Badge>
+                                                )}
                                               </TableCell>
                                               <TableCell className="text-xs">{fmtData(o.inicio)}</TableCell>
                                               <TableCell className="text-xs">{fmtHora(o.inicio)}</TableCell>
-                                              <TableCell className="text-xs">{fmtHora(o.fim)}</TableCell>
-                                              <TableCell className={`text-xs ${cruzaDia ? "font-semibold text-amber-700 dark:text-amber-400" : ""}`}>
-                                                {fmtData(o.fim)}
-                                                {cruzaDia && <span className="ml-1" title="Avaliação cruzou de um dia para outro">⚠️</span>}
+                                              <TableCell className="text-xs">
+                                                {aberta ? <span className="italic text-muted-foreground">— agora</span> : fmtHora(o.fim)}
                                               </TableCell>
-                                              <TableCell className="text-right text-xs">{formatDuration(o.duracao_seg)}</TableCell>
+                                              <TableCell className={`text-xs ${cruzaDia && !aberta ? "font-semibold text-amber-700 dark:text-amber-400" : ""}`}>
+                                                {aberta ? <span className="italic text-muted-foreground">—</span> : fmtData(o.fim)}
+                                                {cruzaDia && !aberta && <span className="ml-1" title="Avaliação cruzou de um dia para outro">⚠️</span>}
+                                              </TableCell>
+                                              <TableCell className="text-right text-xs">{formatDuration(o.duracao_seg)}{aberta && " ⏱"}</TableCell>
                                             </TableRow>
                                           );
                                         })}
