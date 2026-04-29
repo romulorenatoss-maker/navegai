@@ -65,6 +65,14 @@ serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    // contexto é obrigatório no render — token sempre presente no template
+    const contextoFinal = (input.contexto ?? "").toString().trim();
+    if (!contextoFinal) {
+      return new Response(JSON.stringify({
+        error: "contexto obrigatório",
+        hint: "Envie 'contexto' no payload — o token {contexto} é exigido pelo template.",
+      }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     // 1) Buscar template
     const { data: tpl, error: tplErr } = await supabase
