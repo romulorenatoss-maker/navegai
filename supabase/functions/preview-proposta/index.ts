@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
       .createSignedUrl(tpl.arquivo_pdf_path, 60 * 60);
     if (cachedBlob) {
       const buf = new Uint8Array(await cachedBlob.arrayBuffer());
-      const b64 = btoa(String.fromCharCode(...buf));
+      const b64 = uint8ToBase64(buf);
       return new Response(
         JSON.stringify({
           pdf_path: tpl.arquivo_pdf_path,
