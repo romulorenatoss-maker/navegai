@@ -107,6 +107,9 @@ export default function TemplateImportPage() {
     setEditandoId(null);
     setNome("");
     setHtml("");
+    setDocxPath(null);
+    setPdfPath(null);
+    setPendingDocx(null);
     setAnalise(null);
     setEditorOpen(true);
   }
@@ -115,6 +118,9 @@ export default function TemplateImportPage() {
     setEditandoId(t.id);
     setNome(t.nome);
     setHtml(t.conteudo_html);
+    setDocxPath((t as unknown as { arquivo_docx_path?: string | null }).arquivo_docx_path ?? null);
+    setPdfPath((t as unknown as { arquivo_pdf_path?: string | null }).arquivo_pdf_path ?? null);
+    setPendingDocx(null);
     setAnalise(null);
     setEditorOpen(true);
   }
@@ -135,6 +141,9 @@ export default function TemplateImportPage() {
     setEditandoId(null);
     setNome("");
     setHtml("");
+    setDocxPath(null);
+    setPdfPath(null);
+    setPendingDocx(null);
     setAnalise(null);
   }
 
@@ -149,7 +158,10 @@ export default function TemplateImportPage() {
       setHtml(prepararHtmlParaEditor(result.value));
       if (!nome) setNome(file.name.replace(/\.(docx?|html?)$/i, ""));
       setAnalise(null);
-      toast.success("Documento importado.");
+      setPendingDocx(file);
+      // Invalida PDF antigo (será regenerado no próximo preview)
+      setPdfPath(null);
+      toast.success("Documento importado. O preview gerará um novo PDF.");
     } catch (err) {
       console.error(err);
       toast.error("Falha ao converter o documento. Use .docx.");
