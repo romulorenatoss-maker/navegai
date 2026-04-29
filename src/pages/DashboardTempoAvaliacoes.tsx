@@ -353,6 +353,7 @@ export default function DashboardTempoAvaliacoes() {
       const osIdsPeriodo = Array.from(new Set(evDataPeriodo.map(e => e.ordem_servico_id)));
       let evData: EventoResposta[] = evDataPeriodo;
       const aberturaMap = new Map<string, boolean>();
+      const setorPorPergunta = new Map<string, string | null>();
 
       if (osIdsPeriodo.length > 0) {
         // Buscar perguntas das OS com setor associado
@@ -368,10 +369,12 @@ export default function DashboardTempoAvaliacoes() {
             .limit(200000),
         ]);
 
-        const perguntaIdsAll = Array.from(new Set(((opRes.data || []) as { pergunta_id: string }[]).map(r => r.pergunta_id)));
+        const perguntaIdsAll = Array.from(new Set([
+          ...((opRes.data || []) as { pergunta_id: string }[]).map(r => r.pergunta_id),
+          ...evDataPeriodo.map(e => e.pergunta_id).filter(Boolean) as string[],
+        ]));
 
-        // Batchear perguntas_avaliacao para evitar limite de 1000 linhas
-        const setorPorPergunta = new Map<string, string | null>();
+        // Batchear perguntas_avaliacao para evitar limite default de 1000 linhas
         const BATCH = 500;
         for (let i = 0; i < perguntaIdsAll.length; i += BATCH) {
           const slice = perguntaIdsAll.slice(i, i + BATCH);
@@ -393,7 +396,7 @@ export default function DashboardTempoAvaliacoes() {
           expected.get(k)!.add(r.pergunta_id);
         }
 
-        // Respondido: perguntas distintas respondidas, agrupadas pelo MESMO critério (setor_avaliado da pergunta)
+        // Respondido: perguntas distintas respondidas, agrupadas pelo MESMO critério
         const responded = new Map<string, Set<string>>();
         for (const r of ((raRes.data || []) as { ordem_servico_id: string; pergunta_id: string }[])) {
           if (!r.pergunta_id) continue;
@@ -403,11 +406,18 @@ export default function DashboardTempoAvaliacoes() {
           responded.get(k)!.add(r.pergunta_id);
         }
 
-        // Determina abertura por (os, setor): aberto se respondido < esperado
+        // Aberto se respondido < esperado
         for (const [k, esp] of expected.entries()) {
           const resp = responded.get(k);
           aberturaMap.set(k, !resp || resp.size < esp.size);
         }
+
+        // Remapear setor_id dos eventos para o setor_avaliado_id da pergunta
+        // (assim agrupamento por avaliador usa a MESMA chave da abertura)
+        evData = evDataPeriodo.map(e => ({
+          ...e,
+          setor_id: e.pergunta_id ? (setorPorPergunta.get(e.pergunta_id) ?? e.setor_id) : e.setor_id,
+        }));
       }
       setAberturaPorSetorOs(aberturaMap);
 
