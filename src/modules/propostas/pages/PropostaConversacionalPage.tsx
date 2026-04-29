@@ -86,6 +86,67 @@ export default function PropostaConversacionalPage() {
 
   useEffect(() => { fim.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
 
+  // Retomada via ?cliente= : carrega cliente + rascunho automaticamente
+  useEffect(() => {
+    if (!clienteParam) return;
+    let cancelado = false;
+    (async () => {
+      try {
+        const [lista, rascunho] = await Promise.all([
+          buscarClientes(""),
+          buscarRascunhoPorCliente(clienteParam),
+        ]);
+        if (cancelado) return;
+        const cli = lista.find(c => c.id === clienteParam) ?? null;
+        if (!cli) { toast.error("Cliente não encontrado"); return; }
+        setClienteSel(cli);
+        setModalCliente(false);
+        if (rascunho) hidratarRascunho(rascunho, cli.nome);
+        else iniciarConversa(cli.nome);
+      } catch (e) { console.error(e); }
+    })();
+    return () => { cancelado = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clienteParam, perguntasOrdenadas.length]);
+
+  // Auto-save com debounce — só após retomada/início e enquanto não finalizado/gerando
+  useEffect(() => {
+    if (!clienteSel || !retomado || gerando) return;
+    const t = setTimeout(() => {
+      salvarRascunho({
+        cliente_id: clienteSel.id,
+        cliente_nome: clienteSel.nome,
+        template_id: templateId || null,
+        mensagens: msgs,
+        itens,
+        respostas,
+        finalizado: false,
+      }).then(r => setRascunhoId(r.id)).catch(e => console.error("auto-save", e));
+    }, 800);
+    return () => clearTimeout(t);
+  }, [clienteSel, retomado, gerando, templateId, msgs, itens, respostas]);
+
+  function hidratarRascunho(r: PropostasRascunhoConversa, nomeCliente: string) {
+    setRascunhoId(r.id);
+    setMsgs(r.mensagens);
+    setItens(r.itens);
+    setRespostas(r.respostas);
+    if (r.template_id) setTemplateId(r.template_id);
+    setRetomado(true);
+    toast.success(`Conversa de ${nomeCliente} retomada (${r.mensagens.length} msg, ${r.itens.length} item${r.itens.length !== 1 ? "s" : ""})`);
+  }
+
+  function iniciarConversa(nomeCliente: string) {
+    const primeira = perguntasOrdenadas[0];
+    const cat = primeira ? categorias.find(c => c.id === primeira.categoria_id) : null;
+    setMsgs([{
+      role: "assistant",
+      content: `Olá! Vamos montar a proposta para **${nomeCliente}**. ${primeira ? `Começando por **${cat?.nome ?? "Contexto"}**:\n\n${primeira.pergunta}` : "Pode descrever o que o cliente precisa (ex.: \"switch 1300\")."}`,
+    }]);
+    setRetomado(true);
+  }
+
+
   const perguntasOrdenadas = useMemo(() => {
     const catMap = new Map(categorias.map(c => [c.id, c]));
     return [...perguntas].sort((a, b) => {
