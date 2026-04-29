@@ -47,14 +47,14 @@ interface PausaItem {
 interface EventoResposta {
   ordem_servico_id: string;
   usuario_id: string | null;
+  setor_id: string | null;
+  pergunta_id: string | null;
   respondido_em: string;
 }
 
-// Linha bruta de vw_eventos_tempo_sequencia (para derivar gargalos no período)
-interface EventoSequencia {
-  pergunta_id: string;
-  respondido_em: string;
+interface EventoSequenciaPeriodo extends EventoResposta {
   tempo_entre_respostas: string | null;
+  tempo_entre_respostas_seg: number | null;
 }
 
 // =============================================================
@@ -81,6 +81,27 @@ function formatDuration(seconds: number): string {
   if (m < 60) return `${m}m ${s}s`;
   const h = Math.floor(m / 60);
   return `${h}h ${m % 60}m`;
+}
+function secondsToInterval(seconds: number): string {
+  const safe = Math.max(0, Math.floor(seconds));
+  const days = Math.floor(safe / 86400);
+  const rest = safe % 86400;
+  const h = Math.floor(rest / 3600);
+  const m = Math.floor((rest % 3600) / 60);
+  const s = rest % 60;
+  return `${days > 0 ? `${days} day ` : ""}${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+function dataSelecionadaBR(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+function inicioDiaSaoPauloIso(date: Date): string {
+  return new Date(`${dataSelecionadaBR(date)}T00:00:00.000-03:00`).toISOString();
+}
+function fimDiaSaoPauloIso(date: Date): string {
+  return new Date(`${dataSelecionadaBR(date)}T23:59:59.999-03:00`).toISOString();
 }
 const fmtHora = (iso: string) =>
   new Date(iso).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
