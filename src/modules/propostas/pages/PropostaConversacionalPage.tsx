@@ -118,12 +118,15 @@ export default function PropostaConversacionalPage() {
   useEffect(() => { fim.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
 
   const perguntasOrdenadas = useMemo(() => {
-    const catMap = new Map(categorias.map(c => [c.id, c]));
-    return [...perguntas].sort((a, b) => {
-      const ca = catMap.get(a.categoria_id)?.ordem ?? 999;
-      const cb = catMap.get(b.categoria_id)?.ordem ?? 999;
-      return ca - cb || a.ordem - b.ordem;
-    });
+    const categoriasAtivas = categorias.filter(c => c.ativo);
+    const catMap = new Map(categoriasAtivas.map(c => [c.id, c]));
+    return perguntas
+      .filter(p => catMap.has(p.categoria_id))
+      .sort((a, b) => {
+        const ca = catMap.get(a.categoria_id)?.ordem ?? 999;
+        const cb = catMap.get(b.categoria_id)?.ordem ?? 999;
+        return ca - cb || a.ordem - b.ordem;
+      });
   }, [perguntas, categorias]);
 
   const pendentes = useMemo(() => perguntasOrdenadas.filter(p => {
@@ -294,7 +297,7 @@ export default function PropostaConversacionalPage() {
 
     setEnviando(true);
     try {
-      const cat = categorias.map(c => ({ codigo: c.codigo, nome: c.nome, cobranca_padrao: c.cobranca_padrao }));
+      const cat = categorias.filter(c => c.ativo).map(c => ({ codigo: c.codigo, nome: c.nome, cobranca_padrao: c.cobranca_padrao }));
       const pend = pendentes.slice(1, 6).map(p => ({
         categoria: categorias.find(c => c.id === p.categoria_id)?.codigo ?? "",
         pergunta: p.pergunta,

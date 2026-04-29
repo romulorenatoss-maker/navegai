@@ -31,6 +31,36 @@ interface ProdutoSugerido {
   descricao_padrao?: string;
 }
 
+const normalizarTexto = (v?: string | null) => (v ?? "")
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .toLowerCase()
+  .trim();
+const normalizarCategoria = (v?: string | null) => {
+  const n = normalizarTexto(v).replace(/[^a-z0-9]+/g, " ").trim();
+  if (!n) return "";
+  if (n.includes("infra")) return "infraestrutura";
+  if (n.includes("dado") || n.includes("internet") || n.includes("link")) return "dados";
+  if (n.includes("segur") || n.includes("cftv") || n.includes("camera")) return "seguranca";
+  if (n.includes("telefon") || n.includes("ramal") || n.includes("pabx")) return "telefonia";
+  if (n.includes("outro")) return "outros";
+  return "";
+};
+const normalizarTipo = (v?: string | null) => {
+  const n = normalizarTexto(v);
+  if (n.includes("serv")) return "servico";
+  if (n.includes("prod")) return "produto";
+  return "";
+};
+const normalizarCobranca = (v?: string | null) => {
+  const n = normalizarTexto(v);
+  if (n.includes("impl") || n.includes("instal")) return "implantacao";
+  if (n.includes("mens") || n.includes("recorr")) return "mensal";
+  if (n.includes("info")) return "informativo";
+  return "";
+};
+const extrairUltimaMensagemUsuario = (messages: Msg[]) => [...messages].reverse().find(m => m.role === "user")?.content ?? "";
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -46,7 +76,7 @@ serve(async (req) => {
           tipo_ambiente?: string[];
           regras_tecnicas?: string[];
         } | null;
-        catalogo: Array<{ id?: string; nome: string; categoria?: string; valor_minimo: number; valor_medio?: number; unidade: string; cobranca_padrao?: string }>;
+        catalogo: Array<{ id?: string; nome: string; categoria?: string; tipo?: string; valor_minimo: number; valor_medio?: number; unidade: string; cobranca_padrao?: string }>;
         perguntas_padrao: Array<{ id?: string; categoria: string; pergunta: string }>;
       };
     };
@@ -55,6 +85,21 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY ausente");
 
     const emp = contexto.empresa ?? {};
+    const ultimaMensagemUsuario = extrairUltimaMensagemUsuario(messages);
+    const categoriasNaMensagem = ["infraestrutura", "dados", "seguranca", "telefonia", "outros"]
+      .filter(c => normalizarTexto(ultimaMensagemUsuario).includes(normalizarTexto(c))
+        || (c === "seguranca" && normalizarTexto(ultimaMensagemUsuario).includes("cftv"))
+        || (c === "dados" && normalizarTexto(ultimaMensagemUsuario).includes("internet")));
+    const palavrasMigracao = ["migr", "vai para", "manda para", "coloca em", "joga para", "destino", "nova categoria"];
+    const querMigrar = palavrasMigracao.some(p => normalizarTexto(ultimaMensagemUsuario).includes(p));
+    const categoriaDestinoDetectada = categoriasNaMensagem[categoriasNaMensagem.length - 1] ?? "";
+    const tipoDetectado = normalizarTipo(ultimaMensagemUsuario);
+    const cobrancaDetectada = normalizarCobranca(ultimaMensagemUsuario);
+    const ultimaCategoriaComProdutos = [...messages].reverse()
+      .map(m => (/Antes de remover \*\*([^*]+)\*\*/i.exec(m.content)
+        ?? /A categoria \*\*([^*]+)\*\* tem/i.exec(m.content))?.[1])
+      .find(Boolean);
+
     const sys = `Você é o ASSISTENTE DE CATÁLOGO da empresa "${emp.nome_empresa ?? "(sem nome)"}".
 
 ═══ CONTEXTO DA EMPRESA ═══
@@ -66,7 +111,7 @@ AMBIENTE: ${(emp.tipo_ambiente ?? []).join(", ") || "(não definido)"}
 REGRAS: ${(emp.regras_tecnicas ?? []).join(", ") || "(não definido)"}
 
 ═══ CATÁLOGO ATUAL (use o id para remover) ═══
-${contexto.catalogo.length === 0 ? "(catálogo vazio)" : contexto.catalogo.map(p => `- id=${p.id ?? "?"} | ${p.nome} [${p.categoria ?? "?"}] ${p.unidade} mín=R$${p.valor_minimo} méd=R$${p.valor_medio ?? p.valor_minimo} (${p.cobranca_padrao ?? "?"})`).join("\n")}
+${contexto.catalogo.length === 0 ? "(catálogo vazio)" : contexto.catalogo.map(p => `- id=${p.id ?? "?"} | ${p.nome} [${p.categoria ?? "?"}] tipo=${p.tipo ?? "?"} ${p.unidade} mín=R$${p.valor_minimo} méd=R$${p.valor_medio ?? p.valor_minimo} (${p.cobranca_padrao ?? "?"})`).join("\n")}
 
 ═══ PERGUNTAS PADRÃO POR CATEGORIA (use o id para remover) ═══
 ${contexto.perguntas_padrao.map(q => `- id=${q.id ?? "?"} [${q.categoria}] ${q.pergunta}`).join("\n") || "(nenhuma)"}
@@ -77,7 +122,10 @@ Para cada item NOVO, colete: nome, categoria, tipo (produto|servico), cobrança 
 
 ═══ REGRAS CRÍTICAS ═══
 - NUNCA invente valores. Se faltar valor, PERGUNTE.
-- NUNCA afirme que removeu algo SEM emitir o bloco de remoção correspondente. O frontend só executa via blocos.
+- NUNCA afirme que removeu algo SEM emitir o bloco de remoção/migração correspondente. O frontend só executa via blocos.
+- Se o usuário pediu remover produto específico e ele existe, emita remover_produto imediatamente; não apenas diga que removeu.
+- Se o usuário pediu remover categoria e houver produtos nela, NÃO emita remover_categoria ainda. Pergunte obrigatoriamente: para qual categoria, tipo e cobrança migrar os produtos.
+- Depois que o usuário informar categoria destino + tipo + cobrança, emita migrar_categoria.
 - Faça UMA pergunta por vez. Markdown leve, no máx 3 linhas.
 - Se o item já existe no catálogo, AVISE e pergunte se quer atualizar.
 - CONTROLE DE ESCOPO: se o item NÃO se encaixa em "${(emp.o_que_vendemos ?? []).join(", ") || "escopo da empresa"}", responda:
@@ -99,11 +147,45 @@ Para remover UMA pergunta padrão (use o id):
 \`\`\`remover_pergunta
 {"id":"uuid-aqui"}
 \`\`\`
-Para remover/desativar TODA UMA CATEGORIA (remove todos os produtos e perguntas daquela categoria):
+Para remover/desativar TODA UMA CATEGORIA SOMENTE quando NÃO houver produto vinculado nela:
 \`\`\`remover_categoria
 {"categoria":"telefonia"}
 \`\`\`
+Para migrar todos os produtos de uma categoria antes de remover a categoria antiga do catálogo:
+\`\`\`migrar_categoria
+{"categoria_origem":"telefonia","categoria_destino":"dados","tipo":"servico","cobranca_padrao":"mensal"}
+\`\`\`
 Múltiplos itens = múltiplos blocos. SEMPRE confirme com o usuário ANTES de emitir blocos de remoção em massa (categoria inteira).`;
+
+    const categoriaSolicitada = normalizarCategoria(ultimaMensagemUsuario);
+    const textoNormalizado = normalizarTexto(ultimaMensagemUsuario);
+    const pediuRemoverCategoria = /\b(remov|exclu|apag|tir|delet)/i.test(textoNormalizado)
+      && Boolean(categoriaSolicitada)
+      && (textoNormalizado.includes("categoria")
+        || /\b(infraestrutura|dados|seguranca|cftv|telefonia|outros)\b/i.test(textoNormalizado));
+    const produtosDaCategoria = contexto.catalogo.filter(p => normalizarCategoria(p.categoria) === categoriaSolicitada);
+    if (pediuRemoverCategoria && produtosDaCategoria.length > 0 && !querMigrar) {
+      return new Response(JSON.stringify({
+        mensagem: `A categoria **${categoriaSolicitada}** tem ${produtosDaCategoria.length} produto(s) vinculado(s). Para qual **nova categoria**, **tipo** (produto/servico) e **cobrança** (implantacao/mensal/informativo) devo migrar antes de remover?`,
+        produtos: [],
+        fora_escopo: [],
+        remover_produtos: [],
+        remover_perguntas: [],
+        remover_categorias: [],
+        migrar_categorias: [],
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    if ((querMigrar || ultimaCategoriaComProdutos) && ultimaCategoriaComProdutos && categoriaDestinoDetectada && tipoDetectado && cobrancaDetectada) {
+      return new Response(JSON.stringify({
+        mensagem: `Certo, vou migrar os produtos para **${categoriaDestinoDetectada}** e remover a categoria anterior da lista.`,
+        produtos: [],
+        fora_escopo: [],
+        remover_produtos: [],
+        remover_perguntas: [],
+        remover_categorias: [],
+        migrar_categorias: [{ categoria_origem: normalizarCategoria(ultimaCategoriaComProdutos), categoria_destino: categoriaDestinoDetectada, tipo: tipoDetectado, cobranca_padrao: cobrancaDetectada }],
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -137,9 +219,10 @@ Múltiplos itens = múltiplos blocos. SEMPRE confirme com o usuário ANTES de em
 
     const produtos: ProdutoSugerido[] = [];
     const fora_escopo: Array<{ nome: string }> = [];
-    const remover_produtos: Array<{ id: string; nome?: string }> = [];
+    const remover_produtos: Array<{ id?: string; nome?: string }> = [];
     const remover_perguntas: Array<{ id: string }> = [];
     const remover_categorias: Array<{ categoria: string }> = [];
+    const migrar_categorias: Array<{ categoria_origem: string; categoria_destino: string; tipo: string; cobranca_padrao: string }> = [];
     let mensagem = raw;
 
     mensagem = mensagem
@@ -163,9 +246,13 @@ Múltiplos itens = múltiplos blocos. SEMPRE confirme com o usuário ANTES de em
         try { remover_categorias.push(JSON.parse(json.trim())); } catch (e) { console.error("parse remover_categoria:", e); }
         return "";
       })
+      .replace(/```migrar_categoria\s*([\s\S]*?)```/g, (_f, json) => {
+        try { migrar_categorias.push(JSON.parse(json.trim())); } catch (e) { console.error("parse migrar_categoria:", e); }
+        return "";
+      })
       .trim();
 
-    return new Response(JSON.stringify({ mensagem, produtos, fora_escopo, remover_produtos, remover_perguntas, remover_categorias }), {
+    return new Response(JSON.stringify({ mensagem, produtos, fora_escopo, remover_produtos, remover_perguntas, remover_categorias, migrar_categorias }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
