@@ -17,6 +17,11 @@ import {
   listarCategorias, listarPerguntas,
   type PropostasCategoriaSetup, type PropostasPerguntaSetup, type PropostasCobranca,
 } from "../services/propostasPerguntasService";
+import {
+  obterContextoEmpresa, listarPerguntasProduto,
+  type PropostasEmpresaContexto, type PropostasPerguntaProduto,
+} from "../services/propostasContextoService";
+import { listarProdutos, type PropostasProduto } from "../services/propostasService";
 import { propostasRenderizarTemplate } from "../utils/propostasRender";
 import {
   buscarRascunhoPorCliente, salvarRascunho, excluirRascunho,
