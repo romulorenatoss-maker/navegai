@@ -3246,6 +3246,7 @@ export type Database = {
           id: string
           nome: string
           regra_json: Json
+          tipo: string
           tipo_calculo: Database["public"]["Enums"]["propostas_tipo_calculo"]
           unidade: string
           updated_at: string
@@ -3258,6 +3259,7 @@ export type Database = {
           id?: string
           nome: string
           regra_json?: Json
+          tipo?: string
           tipo_calculo?: Database["public"]["Enums"]["propostas_tipo_calculo"]
           unidade?: string
           updated_at?: string
@@ -3270,6 +3272,7 @@ export type Database = {
           id?: string
           nome?: string
           regra_json?: Json
+          tipo?: string
           tipo_calculo?: Database["public"]["Enums"]["propostas_tipo_calculo"]
           unidade?: string
           updated_at?: string
@@ -3334,12 +3337,64 @@ export type Database = {
           },
         ]
       }
+      propostas_setup_respostas: {
+        Row: {
+          cliente_id: string | null
+          created_at: string
+          finalizado: boolean
+          id: string
+          nome_sessao: string | null
+          profile_id: string
+          respostas: Json
+          template_id: string
+          updated_at: string
+        }
+        Insert: {
+          cliente_id?: string | null
+          created_at?: string
+          finalizado?: boolean
+          id?: string
+          nome_sessao?: string | null
+          profile_id: string
+          respostas?: Json
+          template_id: string
+          updated_at?: string
+        }
+        Update: {
+          cliente_id?: string | null
+          created_at?: string
+          finalizado?: boolean
+          id?: string
+          nome_sessao?: string | null
+          profile_id?: string
+          respostas?: Json
+          template_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "propostas_setup_respostas_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "propostas_setup_respostas_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "propostas_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       propostas_templates: {
         Row: {
           ativo: boolean
           campos_detectados: Json
           conteudo_html: string
           created_at: string
+          estrutura_blocos: Json | null
           id: string
           nome: string
           tipo: Database["public"]["Enums"]["propostas_tipo_template"]
@@ -3350,6 +3405,7 @@ export type Database = {
           campos_detectados?: Json
           conteudo_html?: string
           created_at?: string
+          estrutura_blocos?: Json | null
           id?: string
           nome: string
           tipo?: Database["public"]["Enums"]["propostas_tipo_template"]
@@ -3360,6 +3416,7 @@ export type Database = {
           campos_detectados?: Json
           conteudo_html?: string
           created_at?: string
+          estrutura_blocos?: Json | null
           id?: string
           nome?: string
           tipo?: Database["public"]["Enums"]["propostas_tipo_template"]

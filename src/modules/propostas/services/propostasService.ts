@@ -9,6 +9,17 @@ import { supabase } from "@/integrations/supabase/client";
 export type PropostasTipoCalculo = "quantidade" | "gb_total" | "gb_por_unidade";
 export type PropostasStatus = "rascunho" | "aprovado" | "cancelado";
 export type PropostasTipoTemplate = "proposta" | "contrato";
+export type PropostasTipoProduto = "produto" | "servico";
+
+export interface PropostasBloco {
+  id: string;
+  tipo: "fixo" | "variavel" | "tabela";
+  conteudo?: string;
+  campo?: string;
+  schema?: string[];
+  locked?: boolean;
+  pergunta?: string;
+}
 
 export interface PropostasProduto {
   id: string;
@@ -16,6 +27,7 @@ export interface PropostasProduto {
   descricao_padrao: string | null;
   valor_minimo: number;
   tipo_calculo: PropostasTipoCalculo;
+  tipo: PropostasTipoProduto;
   unidade: string;
   regra_json: Record<string, unknown>;
   ativo: boolean;
@@ -29,9 +41,54 @@ export interface PropostasTemplate {
   tipo: PropostasTipoTemplate;
   conteudo_html: string;
   campos_detectados: unknown[];
+  estrutura_blocos: PropostasBloco[] | null;
   ativo: boolean;
   created_at: string;
   updated_at: string;
+}
+
+// ---------- IA SETUP (Fase 3) ----------
+export interface PerguntaSetup {
+  bloco_id: string;
+  tipo: "variavel" | "tabela";
+  campo?: string;
+  pergunta: string;
+  schema?: string[];
+}
+
+export async function analisarTemplateBlocos(html: string): Promise<{ blocos: PropostasBloco[]; perguntas: PerguntaSetup[] }> {
+  const { data, error } = await supabase.functions.invoke("propostas-analisar-template-blocos", { body: { html } });
+  if (error) throw error;
+  return data as { blocos: PropostasBloco[]; perguntas: PerguntaSetup[] };
+}
+
+export async function gerarPropostaPorBlocos(blocos: PropostasBloco[], respostas: Record<string, unknown>): Promise<string> {
+  const { data, error } = await supabase.functions.invoke("propostas-gerar-proposta", { body: { blocos, respostas } });
+  if (error) throw error;
+  return (data as { html: string }).html;
+}
+
+// ---------- SETUP RESPOSTAS (cache) ----------
+export async function salvarSetupRespostas(input: {
+  template_id: string;
+  cliente_id?: string | null;
+  respostas: Record<string, unknown>;
+  finalizado?: boolean;
+  nome_sessao?: string;
+}) {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) throw new Error("Não autenticado");
+  const { data: prof } = await supabase.from("profiles").select("id").eq("user_id", auth.user.id).single();
+  if (!prof) throw new Error("Perfil não encontrado");
+  const { error } = await supabase.from("propostas_setup_respostas" as never).insert({
+    template_id: input.template_id,
+    profile_id: (prof as { id: string }).id,
+    cliente_id: input.cliente_id ?? null,
+    respostas: input.respostas,
+    finalizado: input.finalizado ?? false,
+    nome_sessao: input.nome_sessao ?? null,
+  } as never);
+  if (error) throw error;
 }
 
 // ---------- PRODUTOS ----------

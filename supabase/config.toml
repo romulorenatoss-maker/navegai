@@ -17,3 +17,9 @@ verify_jwt = true
 
 [functions.propostas-ajustar-texto]
 verify_jwt = true
+
+[functions.propostas-analisar-template-blocos]
+verify_jwt = true
+
+[functions.propostas-gerar-proposta]
+verify_jwt = true
