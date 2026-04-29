@@ -187,6 +187,7 @@ export default function DashboardTempoAvaliacoes() {
   const [pausas, setPausas] = useState<MetricaPausa[]>([]);
   const [eventos, setEventos] = useState<EventoResposta[]>([]);
   const [profMap, setProfMap] = useState<Record<string, string>>({});
+  const [osNumeroMap, setOsNumeroMap] = useState<Record<string, string | number | null>>({});
   const [expandido, setExpandido] = useState<Set<string>>(new Set());
 
   // Período (default: mês corrente)
