@@ -124,14 +124,14 @@ export function AppSidebar({ userName = "Usuário", onSignOut, onNavigate, isAdm
     return navSections[0]?.title ?? null;
   }, [navSections, location.pathname]);
 
-  // Accordion: only one section open at a time
+  // Accordion: only one section open at a time.
+  // null = "untouched" (auto-open active section). "__closed__" = explicitly collapsed.
   const [openSection, setOpenSection] = useState<string | null>(activeSectionTitle);
 
-  // When route changes, auto-open the section that contains it
-  const effectiveOpen = openSection ?? activeSectionTitle;
+  const effectiveOpen = openSection === "__closed__" ? null : (openSection ?? activeSectionTitle);
 
   const toggleSection = (title: string) => {
-    setOpenSection(prev => prev === title ? null : title);
+    setOpenSection(prev => (prev === title ? "__closed__" : title));
   };
 
   return (
@@ -249,7 +249,7 @@ export function AppSidebar({ userName = "Usuário", onSignOut, onNavigate, isAdm
                               key={item.to}
                               to={item.to}
                               onClick={() => {
-                                if (item.to.startsWith("/propostas")) setOpenSection(null);
+                                if (item.to.startsWith("/propostas")) setOpenSection("__closed__");
                                 onNavigate?.();
                               }}
                               className={cn(
