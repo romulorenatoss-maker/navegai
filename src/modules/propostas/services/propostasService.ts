@@ -31,6 +31,8 @@ export interface PropostasProduto {
   unidade: string;
   regra_json: Record<string, unknown>;
   ativo: boolean;
+  origem?: "manual" | "ia_sugerido";
+  revisado?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -66,6 +68,51 @@ export async function gerarPropostaPorBlocos(blocos: PropostasBloco[], respostas
   const { data, error } = await supabase.functions.invoke("propostas-gerar-proposta", { body: { blocos, respostas } });
   if (error) throw error;
   return (data as { html: string }).html;
+}
+
+// ---------- DETECÇÃO DE PRODUTOS (texto livre → catálogo) ----------
+export interface ProdutoDetectado {
+  nome: string;
+  tipo: PropostasTipoProduto;
+  valor_minimo: number;
+  tipo_calculo: PropostasTipoCalculo;
+  unidade: string;
+}
+
+export async function detectarProdutosDeTexto(texto: string): Promise<ProdutoDetectado[]> {
+  const { data, error } = await supabase.functions.invoke("propostas-detectar-produtos", { body: { texto } });
+  if (error) throw error;
+  return (data as { produtos: ProdutoDetectado[] }).produtos ?? [];
+}
+
+/** Cria produto sugerido pela IA: origem='ia_sugerido', revisado=false. */
+export async function criarProdutoSugerido(p: ProdutoDetectado) {
+  const payload = {
+    nome: p.nome,
+    tipo: p.tipo,
+    valor_minimo: p.valor_minimo,
+    tipo_calculo: p.tipo_calculo,
+    unidade: p.unidade,
+    ativo: true,
+    origem: "ia_sugerido",
+    revisado: false,
+  };
+  const { data, error } = await supabase
+    .from("propostas_produtos" as never)
+    .insert(payload as never)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as unknown as PropostasProduto;
+}
+
+// ---------- CONTEXTO ({contexto}) ----------
+export async function gerarTextoContexto(respostas: Record<string, unknown>, cliente_nome?: string): Promise<string> {
+  const { data, error } = await supabase.functions.invoke("propostas-gerar-contexto", {
+    body: { respostas, cliente_nome },
+  });
+  if (error) throw error;
+  return (data as { texto: string }).texto;
 }
 
 // ---------- SETUP RESPOSTAS (cache) ----------

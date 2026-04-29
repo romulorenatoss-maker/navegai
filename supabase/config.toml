@@ -23,3 +23,9 @@ verify_jwt = true
 
 [functions.propostas-gerar-proposta]
 verify_jwt = true
+
+[functions.propostas-detectar-produtos]
+verify_jwt = true
+
+[functions.propostas-gerar-contexto]
+verify_jwt = true
