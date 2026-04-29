@@ -256,6 +256,7 @@ export default function DashboardTempoAvaliacoes() {
   const [gargalos, setGargalos] = useState<GargaloAgg[]>([]);
   const [pausas, setPausas] = useState<PausaItem[]>([]);
   const [eventos, setEventos] = useState<EventoResposta[]>([]);
+  const [eventosExt, setEventosExt] = useState<EventoResposta[]>([]);
   const [profMap, setProfMap] = useState<Record<string, string>>({});
   const [osNumeroMap, setOsNumeroMap] = useState<Record<string, string | number | null>>({});
   const [expandido, setExpandido] = useState<Set<string>>(new Set());
