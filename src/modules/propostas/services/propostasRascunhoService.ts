@@ -72,6 +72,7 @@ export async function salvarRascunho(input: {
   mensagens: RascunhoMensagem[];
   itens: RascunhoItem[];
   respostas: Record<string, unknown>;
+  estado_proposta?: Record<string, unknown>;
   finalizado?: boolean;
 }): Promise<PropostasRascunhoConversa> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -85,6 +86,7 @@ export async function salvarRascunho(input: {
     mensagens: input.mensagens as unknown as never,
     itens: input.itens as unknown as never,
     respostas: input.respostas as unknown as never,
+    estado_proposta: (input.estado_proposta ?? {}) as unknown as never,
     finalizado: input.finalizado ?? false,
   };
 
