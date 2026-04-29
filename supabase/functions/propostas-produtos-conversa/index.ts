@@ -147,15 +147,31 @@ Para remover UMA pergunta padrão (use o id):
 \`\`\`remover_pergunta
 {"id":"uuid-aqui"}
 \`\`\`
-Para remover/desativar TODA UMA CATEGORIA SOMENTE quando NÃO houver produto vinculado nela:
+Para CRIAR/ATIVAR uma categoria no catálogo (reflete imediato na lista):
+\`\`\`criar_categoria
+{"categoria":"telefonia"}
+\`\`\`
+Para remover/desativar TODA UMA CATEGORIA SOMENTE quando NÃO houver produto nem pergunta vinculada:
 \`\`\`remover_categoria
+{"categoria":"telefonia"}
+\`\`\`
+Quando o usuário CONFIRMAR EXPLICITAMENTE que quer excluir tudo (produtos + perguntas + categoria):
+\`\`\`remover_categoria_completa
 {"categoria":"telefonia"}
 \`\`\`
 Para migrar todos os produtos de uma categoria antes de remover a categoria antiga do catálogo:
 \`\`\`migrar_categoria
 {"categoria_origem":"telefonia","categoria_destino":"dados","tipo":"servico","cobranca_padrao":"mensal"}
 \`\`\`
-Múltiplos itens = múltiplos blocos. SEMPRE confirme com o usuário ANTES de emitir blocos de remoção em massa (categoria inteira).`;
+
+═══ FLUXO OBRIGATÓRIO PARA REMOÇÃO DE CATEGORIA ═══
+1. Se categoria está VAZIA → emita remover_categoria direto.
+2. Se categoria tem produtos/perguntas vinculados → NÃO emita nada ainda. Liste quantos itens existem e pergunte:
+   "A categoria **X** tem N produto(s) e M pergunta(s). Quer **migrar** para outra categoria ou **excluir tudo** (produtos + perguntas + categoria)?"
+3. Só emita remover_categoria_completa APÓS o usuário confirmar "excluir tudo" / "apagar tudo" / "remove tudo".
+4. Só emita migrar_categoria APÓS receber categoria destino + tipo + cobrança.
+
+Múltiplos itens = múltiplos blocos.`;
 
     const categoriaSolicitada = normalizarCategoria(ultimaMensagemUsuario);
     const textoNormalizado = normalizarTexto(ultimaMensagemUsuario);
