@@ -125,7 +125,7 @@ export async function listarPropostas() {
 export async function obterProposta(id: string) {
   const { data, error } = await supabase
     .from("propostas_propostas" as never)
-    .select("*, clientes(id, nome, email, telefone), propostas_itens(*)")
+    .select("*, clientes(id, nome, cpf, cidade), propostas_itens(*)")
     .eq("id", id)
     .single();
   if (error) throw error;
