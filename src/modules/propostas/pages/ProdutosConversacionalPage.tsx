@@ -230,13 +230,62 @@ export default function ProdutosConversacionalPage() {
         },
       });
       if (error) throw error;
-      const resp = data as { mensagem: string; produtos: ProdutoSugerido[]; fora_escopo: Array<{ nome: string }>; error?: string };
+      const resp = data as {
+        mensagem: string;
+        produtos: ProdutoSugerido[];
+        fora_escopo: Array<{ nome: string }>;
+        remover_produtos?: Array<{ id: string; nome?: string }>;
+        remover_perguntas?: Array<{ id: string }>;
+        remover_categorias?: Array<{ categoria: string }>;
+        error?: string;
+      };
       if (resp.error) { toast.error(resp.error); return; }
 
       setMsgs(m => [...m, { role: "assistant", content: resp.mensagem || "…" }]);
+
+      // Inserções
       if (resp.produtos?.length) {
         for (const sug of resp.produtos) {
           await inserirSugerido(sug);
+        }
+      }
+
+      // Remoções de produtos individuais
+      if (resp.remover_produtos?.length) {
+        for (const r of resp.remover_produtos) {
+          try {
+            await excluirProduto(r.id);
+            setProdutos(ps => ps.filter(p => p.id !== r.id));
+            toast.success(`Removido: ${r.nome ?? r.id}`);
+          } catch (e) { toast.error(e instanceof Error ? e.message : "Erro ao remover produto"); }
+        }
+      }
+
+      // Remoções de perguntas individuais
+      if (resp.remover_perguntas?.length) {
+        for (const r of resp.remover_perguntas) {
+          try {
+            await excluirPerguntaProduto(r.id);
+            setPerguntas(qs => qs.filter(q => q.id !== r.id));
+          } catch (e) { toast.error(e instanceof Error ? e.message : "Erro ao remover pergunta"); }
+        }
+      }
+
+      // Remoção em massa por categoria
+      if (resp.remover_categorias?.length) {
+        for (const r of resp.remover_categorias) {
+          const cat = r.categoria;
+          const prodsDaCat = produtos.filter(p => (p as unknown as { categoria?: string }).categoria === cat);
+          const pergsDaCat = perguntas.filter(q => q.categoria === cat);
+          try {
+            await Promise.all([
+              ...prodsDaCat.map(p => excluirProduto(p.id)),
+              ...pergsDaCat.map(q => excluirPerguntaProduto(q.id)),
+            ]);
+            setProdutos(ps => ps.filter(p => (p as unknown as { categoria?: string }).categoria !== cat));
+            setPerguntas(qs => qs.filter(q => q.categoria !== cat));
+            toast.success(`Categoria "${cat}" removida (${prodsDaCat.length} produto(s), ${pergsDaCat.length} pergunta(s))`);
+          } catch (e) { toast.error(e instanceof Error ? e.message : `Erro ao remover categoria ${cat}`); }
         }
       }
     } catch (e) {
