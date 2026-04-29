@@ -609,6 +609,11 @@ export default function PropostaConversacionalPage() {
         <div className="flex gap-2 items-center">
           <Badge variant="outline">Cliente: {clienteSel?.nome}</Badge>
           <Badge variant="default" className="capitalize">Etapa: {etapa}</Badge>
+          {perguntasOrdenadas.length > 0 && (
+            <Badge variant="secondary">
+              Pergunta {Math.min(perguntasOrdenadas.length - pendentes.length + 1, perguntasOrdenadas.length)} / {perguntasOrdenadas.length}
+            </Badge>
+          )}
           {rascunhoId && <Badge variant="secondary" className="text-xs">Auto-salvo</Badge>}
           <select className="border rounded-md p-1.5 text-sm bg-background"
             value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
