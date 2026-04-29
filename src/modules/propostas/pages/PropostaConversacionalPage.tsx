@@ -345,6 +345,10 @@ export default function PropostaConversacionalPage() {
         })),
       });
 
+      // Remove rascunho ao concluir
+      if (rascunhoId) {
+        try { await excluirRascunho(rascunhoId); } catch (e) { console.error(e); }
+      }
       toast.success("Proposta gerada");
       navigate(`/propostas/${proposta.id}/preview`);
     } catch (e: unknown) {
