@@ -648,9 +648,11 @@ export default function PropostaConversacionalPage() {
               onAdicionarItem={guiadoAdicionarItem}
               onRemoverItem={guiadoRemoverItem}
               onResponder={guiadoResponder}
-              onContexto={setContextoIA}
+              onContexto={(texto) => setContextoIA(prev => prev ? prev + "\n\n" + texto : texto)}
               onAvancar={guiadoAvancar}
               clienteNome={clienteSel?.nome}
+              etapaIndex={Math.max(0, perguntasOrdenadas.length - pendentes.length)}
+              etapaTotal={perguntasOrdenadas.length}
             />
           </div>
           <CardHeader className="py-2 border-b"><CardTitle className="text-sm">Conversa</CardTitle></CardHeader>
