@@ -257,7 +257,34 @@ export default function DashboardTempoAvaliacoes() {
       const sData: MetricaSetor[] = s.data || [];
       const pData: PausaItem[] = (p.data || []) as PausaItem[];
       const seqData: EventoSequencia[] = eventosSeqRes.data || [];
-      const evData: EventoResposta[] = (ev.data || []) as EventoResposta[];
+      let evData: EventoResposta[] = (ev.data || []) as EventoResposta[];
+
+      // === Estender eventos: para cada (OS, usuário) que aparece no período,
+      // buscar TODOS os eventos daquela OS/usuário (mesmo fora do período),
+      // assim início/fim/duração refletem avaliações que cruzam dias. ===
+      const paresOSUser = Array.from(new Set(
+        evData.filter(e => e.ordem_servico_id && e.usuario_id).map(e => `${e.ordem_servico_id}::${e.usuario_id}`)
+      ));
+      if (paresOSUser.length > 0) {
+        const osIdsParaExpandir = Array.from(new Set(paresOSUser.map(k => k.split("::")[0])));
+        const userIdsParaExpandir = Array.from(new Set(paresOSUser.map(k => k.split("::")[1])));
+        const { data: evExpand } = await supabase.from("respostas_eventos")
+          .select("ordem_servico_id, usuario_id, respondido_em")
+          .in("ordem_servico_id", osIdsParaExpandir)
+          .in("usuario_id", userIdsParaExpandir)
+          .limit(100000);
+        if (evExpand && evExpand.length) {
+          const valid = new Set(paresOSUser);
+          const merged = new Map<string, EventoResposta>();
+          for (const e of [...evData, ...(evExpand as EventoResposta[])]) {
+            if (!e.ordem_servico_id || !e.usuario_id) continue;
+            const k = `${e.ordem_servico_id}::${e.usuario_id}`;
+            if (!valid.has(k)) continue;
+            merged.set(`${k}::${e.respondido_em}`, e);
+          }
+          evData = Array.from(merged.values());
+        }
+      }
 
       // === Hidratar nomes (profiles, setores, perguntas, OS) ===
       const userIds = Array.from(new Set([
