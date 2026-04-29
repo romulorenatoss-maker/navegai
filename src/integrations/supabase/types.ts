@@ -3420,6 +3420,7 @@ export type Database = {
           updated_at: string
           valor_medio: number | null
           valor_minimo: number
+          valor_padrao: number
         }
         Insert: {
           ativo?: boolean
@@ -3441,6 +3442,7 @@ export type Database = {
           updated_at?: string
           valor_medio?: number | null
           valor_minimo?: number
+          valor_padrao?: number
         }
         Update: {
           ativo?: boolean
@@ -3462,6 +3464,7 @@ export type Database = {
           updated_at?: string
           valor_medio?: number | null
           valor_minimo?: number
+          valor_padrao?: number
         }
         Relationships: []
       }
