@@ -286,6 +286,10 @@ export default function TemplateImportPage() {
                     <Sparkles className="w-4 h-4 mr-2" />
                     {analisando ? "Analisando..." : "Analisar com IA"}
                   </Button>
+                  <Button variant="outline" size="sm" onClick={abrirPreview}>
+                    <Eye className="w-4 h-4 mr-2" />
+                    Ver preview
+                  </Button>
                   <Button size="sm" onClick={salvar}>
                     <Save className="w-4 h-4 mr-2" />
                     {editandoId ? "Salvar alterações" : "Salvar template"}
