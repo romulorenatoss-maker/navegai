@@ -214,6 +214,7 @@ export default function TemplateImportPage() {
     setDocxPath(null);
     setPdfPath(null);
     setPendingDocx(null);
+      setPreviewPdfBytes(null);
     setAnalise(null);
     setEditorOpen(true);
   }
@@ -248,6 +249,7 @@ export default function TemplateImportPage() {
     setDocxPath(null);
     setPdfPath(null);
     setPendingDocx(null);
+    setPreviewPdfBytes(null);
     setAnalise(null);
   }
 
@@ -473,7 +475,10 @@ export default function TemplateImportPage() {
         </>
       )}
 
-      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+      <Dialog open={previewOpen} onOpenChange={(open) => {
+        setPreviewOpen(open);
+        if (!open && previewUrl.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
+      }}>
         <DialogContent className="max-w-5xl w-[90vw] max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -491,12 +496,13 @@ export default function TemplateImportPage() {
               )}
             </DialogTitle>
           </DialogHeader>
-          {previewUrl ? (
-            <iframe
-              src={previewUrl}
-              title="Preview PDF"
-              className="flex-1 w-full border rounded-md bg-white min-h-[70vh]"
-            />
+          {previewPdfBytes ? (
+            <PdfCanvasPreview bytes={previewPdfBytes} />
+          ) : previewUrl ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 rounded-md border bg-muted/30 min-h-[70vh] text-center text-sm text-muted-foreground">
+              <FileText className="w-10 h-10" />
+              <span>Preview gerado. Abra o PDF em nova aba para visualizar.</span>
+            </div>
           ) : (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
               <Loader2 className="w-5 h-5 mr-2 animate-spin" /> Carregando…
