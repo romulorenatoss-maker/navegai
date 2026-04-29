@@ -231,17 +231,21 @@ export default function DashboardTempoAvaliacoes() {
         ...pData.map(x => x.setor_id),
       ].filter(Boolean))) as string[];
       const perguntaIds = Array.from(new Set(gData.map(x => x.pergunta_id).filter(Boolean))) as string[];
+      const osIds = Array.from(new Set(evData.map(x => x.ordem_servico_id).filter(Boolean))) as string[];
 
-      const [profsRes, secsRes, perguntasRes] = await Promise.all([
+      const [profsRes, secsRes, perguntasRes, osRes] = await Promise.all([
         userIds.length ? supabase.from("profiles").select("id, nome").in("id", userIds) : Promise.resolve({ data: [] }),
         setorIds.length ? supabase.from("setores").select("id, nome").in("id", setorIds) : Promise.resolve({ data: [] }),
         perguntaIds.length ? supabase.from("perguntas_avaliacao").select("id, pergunta").in("id", perguntaIds) : Promise.resolve({ data: [] }),
+        osIds.length ? supabase.from("ordens_servico").select("id, numero_os").in("id", osIds) : Promise.resolve({ data: [] }),
       ]);
       const pMap = Object.fromEntries(((profsRes as any).data || []).map((x: any) => [x.id, x.nome]));
       const secMap = Object.fromEntries(((secsRes as any).data || []).map((x: any) => [x.id, x.nome]));
       const perguntaMap = Object.fromEntries(((perguntasRes as any).data || []).map((x: any) => [x.id, x.pergunta]));
+      const osMap = Object.fromEntries(((osRes as any).data || []).map((x: any) => [x.id, x.numero_os]));
 
       setProfMap(pMap);
+      setOsNumeroMap(osMap);
       setSetores(sData.map(x => ({ ...x, setor_nome: x.setor_id ? secMap[x.setor_id] ?? "Sem setor" : "Sem setor" })));
       setGargalos(gData.map(x => ({ ...x, pergunta_texto: x.pergunta ?? perguntaMap[x.pergunta_id] ?? x.pergunta_id })));
       setPausas(pData);
