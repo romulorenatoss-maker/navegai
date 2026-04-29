@@ -84,8 +84,15 @@ function formatDuration(seconds: number): string {
 }
 const fmtHora = (iso: string) =>
   new Date(iso).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
+const fmtData = (iso: string) =>
+  new Date(iso).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "2-digit" });
 const fmtDataHora = (iso: string) =>
   new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
+// Compara se duas datas ISO caem no mesmo dia em America/Sao_Paulo
+const mesmaDataBR = (a: string, b: string) => {
+  const fmt = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
+  return fmt(a) === fmt(b);
+};
 
 function horaBR(iso: string): number {
   const s = new Intl.DateTimeFormat("en-GB", { timeZone: "America/Sao_Paulo", hour: "2-digit", hour12: false }).format(new Date(iso));
@@ -250,7 +257,34 @@ export default function DashboardTempoAvaliacoes() {
       const sData: MetricaSetor[] = s.data || [];
       const pData: PausaItem[] = (p.data || []) as PausaItem[];
       const seqData: EventoSequencia[] = eventosSeqRes.data || [];
-      const evData: EventoResposta[] = (ev.data || []) as EventoResposta[];
+      let evData: EventoResposta[] = (ev.data || []) as EventoResposta[];
+
+      // === Estender eventos: para cada (OS, usuário) que aparece no período,
+      // buscar TODOS os eventos daquela OS/usuário (mesmo fora do período),
+      // assim início/fim/duração refletem avaliações que cruzam dias. ===
+      const paresOSUser = Array.from(new Set(
+        evData.filter(e => e.ordem_servico_id && e.usuario_id).map(e => `${e.ordem_servico_id}::${e.usuario_id}`)
+      ));
+      if (paresOSUser.length > 0) {
+        const osIdsParaExpandir = Array.from(new Set(paresOSUser.map(k => k.split("::")[0])));
+        const userIdsParaExpandir = Array.from(new Set(paresOSUser.map(k => k.split("::")[1])));
+        const { data: evExpand } = await supabase.from("respostas_eventos")
+          .select("ordem_servico_id, usuario_id, respondido_em")
+          .in("ordem_servico_id", osIdsParaExpandir)
+          .in("usuario_id", userIdsParaExpandir)
+          .limit(100000);
+        if (evExpand && evExpand.length) {
+          const valid = new Set(paresOSUser);
+          const merged = new Map<string, EventoResposta>();
+          for (const e of [...evData, ...(evExpand as EventoResposta[])]) {
+            if (!e.ordem_servico_id || !e.usuario_id) continue;
+            const k = `${e.ordem_servico_id}::${e.usuario_id}`;
+            if (!valid.has(k)) continue;
+            merged.set(`${k}::${e.respondido_em}`, e);
+          }
+          evData = Array.from(merged.values());
+        }
+      }
 
       // === Hidratar nomes (profiles, setores, perguntas, OS) ===
       const userIds = Array.from(new Set([
@@ -527,31 +561,41 @@ export default function DashboardTempoAvaliacoes() {
                                       <TableHeader>
                                         <TableRow>
                                           <TableHead>OS</TableHead>
+                                          <TableHead>Data Início</TableHead>
                                           <TableHead>Início</TableHead>
                                           <TableHead>Fim</TableHead>
+                                          <TableHead>Data Fim</TableHead>
                                           <TableHead className="text-right">Duração</TableHead>
                                         </TableRow>
                                       </TableHeader>
                                       <TableBody>
-                                        {a.oss.map(o => (
-                                          <TableRow key={o.os_id}>
-                                            <TableCell className="text-xs">
-                                              {o.numero_os ? (
-                                                <a
-                                                  href={`/avaliacoes/pesquisa?os=${encodeURIComponent(String(o.numero_os))}`}
-                                                  className="text-primary hover:underline font-medium"
-                                                >
-                                                  #{o.numero_os}
-                                                </a>
-                                              ) : (
-                                                <span className="font-mono text-muted-foreground">{o.os_id.slice(0, 8)}</span>
-                                              )}
-                                            </TableCell>
-                                            <TableCell className="text-xs">{fmtHora(o.inicio)}</TableCell>
-                                            <TableCell className="text-xs">{fmtHora(o.fim)}</TableCell>
-                                            <TableCell className="text-right text-xs">{formatDuration(o.duracao_seg)}</TableCell>
-                                          </TableRow>
-                                        ))}
+                                        {a.oss.map(o => {
+                                          const cruzaDia = !mesmaDataBR(o.inicio, o.fim);
+                                          return (
+                                            <TableRow key={o.os_id} className={cruzaDia ? "bg-amber-500/10" : undefined}>
+                                              <TableCell className="text-xs">
+                                                {o.numero_os ? (
+                                                  <a
+                                                    href={`/avaliacoes/pesquisa?os=${encodeURIComponent(String(o.numero_os))}`}
+                                                    className="text-primary hover:underline font-medium"
+                                                  >
+                                                    #{o.numero_os}
+                                                  </a>
+                                                ) : (
+                                                  <span className="font-mono text-muted-foreground">{o.os_id.slice(0, 8)}</span>
+                                                )}
+                                              </TableCell>
+                                              <TableCell className="text-xs">{fmtData(o.inicio)}</TableCell>
+                                              <TableCell className="text-xs">{fmtHora(o.inicio)}</TableCell>
+                                              <TableCell className="text-xs">{fmtHora(o.fim)}</TableCell>
+                                              <TableCell className={`text-xs ${cruzaDia ? "font-semibold text-amber-700 dark:text-amber-400" : ""}`}>
+                                                {fmtData(o.fim)}
+                                                {cruzaDia && <span className="ml-1" title="Avaliação cruzou de um dia para outro">⚠️</span>}
+                                              </TableCell>
+                                              <TableCell className="text-right text-xs">{formatDuration(o.duracao_seg)}</TableCell>
+                                            </TableRow>
+                                          );
+                                        })}
                                       </TableBody>
                                     </Table>
                                   </div>
