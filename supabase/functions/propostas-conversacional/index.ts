@@ -118,6 +118,7 @@ ${contexto.categorias.map(c => `- ${c.nome} (codigo=${c.codigo}, cobranca_padrao
 
 Perguntas auxiliares já configuradas pelo admin (use como dica de conteúdo, mas siga o FLUXO acima):
 ${contexto.perguntas_pendentes.map(p => `- [${p.categoria}] ${p.pergunta}${p.opcoes ? ` (opções: ${p.opcoes.join(", ")})` : ""}`).join("\n") || "(nenhuma pendente)"}
+${escopoTxt}${catalogoTxt}${perguntasProdTxt}
 
 Respostas já coletadas:
 ${JSON.stringify(contexto.respostas, null, 2)}`;
