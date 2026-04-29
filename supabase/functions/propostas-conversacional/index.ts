@@ -39,9 +39,13 @@ interface ItemAcao {
 }
 
 interface IAAction {
-  type: "add_item" | "next_step" | "finalizar" | "none";
+  type: "add_item" | "update_item" | "next_step" | "finalizar" | "none";
   item?: Partial<ItemAcao>;
+  match?: { produto_id?: string; nome?: string };
+  updates?: { quantidade?: number; valor?: number; cobranca?: ItemAcao["cobranca"] };
   proxima_etapa?: Etapa;
+  // erro de validação devolvido ao frontend
+  validacao?: { ok: false; mensagem: string };
 }
 
 const ETAPAS_ORDEM: Etapa[] = ["contexto", "infraestrutura", "dados", "seguranca", "telefonia", "financeiro", "fechamento"];
