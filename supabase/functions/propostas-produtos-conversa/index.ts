@@ -137,17 +137,35 @@ Múltiplos itens = múltiplos blocos. SEMPRE confirme com o usuário ANTES de em
 
     const produtos: ProdutoSugerido[] = [];
     const fora_escopo: Array<{ nome: string }> = [];
+    const remover_produtos: Array<{ id: string; nome?: string }> = [];
+    const remover_perguntas: Array<{ id: string }> = [];
+    const remover_categorias: Array<{ categoria: string }> = [];
     let mensagem = raw;
 
-    mensagem = mensagem.replace(/```produto\s*([\s\S]*?)```/g, (_f, json) => {
-      try { produtos.push(JSON.parse(json.trim())); } catch (e) { console.error("parse produto:", e); }
-      return "";
-    }).replace(/```fora_escopo\s*([\s\S]*?)```/g, (_f, json) => {
-      try { fora_escopo.push(JSON.parse(json.trim())); } catch (e) { console.error("parse fora_escopo:", e); }
-      return "";
-    }).trim();
+    mensagem = mensagem
+      .replace(/```produto\s*([\s\S]*?)```/g, (_f, json) => {
+        try { produtos.push(JSON.parse(json.trim())); } catch (e) { console.error("parse produto:", e); }
+        return "";
+      })
+      .replace(/```fora_escopo\s*([\s\S]*?)```/g, (_f, json) => {
+        try { fora_escopo.push(JSON.parse(json.trim())); } catch (e) { console.error("parse fora_escopo:", e); }
+        return "";
+      })
+      .replace(/```remover_produto\s*([\s\S]*?)```/g, (_f, json) => {
+        try { remover_produtos.push(JSON.parse(json.trim())); } catch (e) { console.error("parse remover_produto:", e); }
+        return "";
+      })
+      .replace(/```remover_pergunta\s*([\s\S]*?)```/g, (_f, json) => {
+        try { remover_perguntas.push(JSON.parse(json.trim())); } catch (e) { console.error("parse remover_pergunta:", e); }
+        return "";
+      })
+      .replace(/```remover_categoria\s*([\s\S]*?)```/g, (_f, json) => {
+        try { remover_categorias.push(JSON.parse(json.trim())); } catch (e) { console.error("parse remover_categoria:", e); }
+        return "";
+      })
+      .trim();
 
-    return new Response(JSON.stringify({ mensagem, produtos, fora_escopo }), {
+    return new Response(JSON.stringify({ mensagem, produtos, fora_escopo, remover_produtos, remover_perguntas, remover_categorias }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
