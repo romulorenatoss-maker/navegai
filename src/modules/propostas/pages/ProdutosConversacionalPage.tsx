@@ -644,11 +644,16 @@ export default function ProdutosConversacionalPage() {
                       <Plus className="w-4 h-4 mr-1" /> Adicionar linha
                     </Button>
                   </CardHeader>
-                  <CardContent>
+                    <CardContent className="relative pb-9">
                     {produtos.length === 0 && drafts.length === 0 ? (
                       <p className="text-sm text-muted-foreground py-6 text-center">Nenhum produto. Use a conversa ou clique em "Adicionar linha".</p>
                     ) : (
-                      <div className="overflow-auto max-h-[calc(100vh-260px)] border rounded-md">
+                      <>
+                      <div
+                        ref={catalogoTableScrollRef}
+                        onScroll={() => sincronizarScrollCatalogo("tabela")}
+                        className="overflow-y-auto overflow-x-hidden max-h-[calc(100vh-300px)] border rounded-md"
+                      >
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -778,6 +783,14 @@ export default function ProdutosConversacionalPage() {
                         </TableBody>
                       </Table>
                       </div>
+                      <div
+                        ref={catalogoBottomScrollRef}
+                        onScroll={() => sincronizarScrollCatalogo("barra")}
+                        className="absolute inset-x-6 bottom-3 overflow-x-auto overflow-y-hidden h-5"
+                      >
+                        <div style={{ width: catalogoScrollWidth, height: 1 }} />
+                      </div>
+                      </>
                     )}
                     <div className="flex gap-2 mt-3 text-xs text-muted-foreground">
                       <span>Total: {produtos.length}</span>
