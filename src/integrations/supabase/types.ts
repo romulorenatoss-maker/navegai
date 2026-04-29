@@ -3402,6 +3402,7 @@ export type Database = {
       propostas_produtos: {
         Row: {
           ativo: boolean
+          campo_template: string | null
           categoria: string | null
           cobranca_padrao: string
           created_at: string
@@ -3414,6 +3415,7 @@ export type Database = {
           revisado: boolean
           tipo: string
           tipo_calculo: Database["public"]["Enums"]["propostas_tipo_calculo"]
+          tipo_input: string
           unidade: string
           updated_at: string
           valor_medio: number | null
@@ -3421,6 +3423,7 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean
+          campo_template?: string | null
           categoria?: string | null
           cobranca_padrao?: string
           created_at?: string
@@ -3433,6 +3436,7 @@ export type Database = {
           revisado?: boolean
           tipo?: string
           tipo_calculo?: Database["public"]["Enums"]["propostas_tipo_calculo"]
+          tipo_input?: string
           unidade?: string
           updated_at?: string
           valor_medio?: number | null
@@ -3440,6 +3444,7 @@ export type Database = {
         }
         Update: {
           ativo?: boolean
+          campo_template?: string | null
           categoria?: string | null
           cobranca_padrao?: string
           created_at?: string
@@ -3452,6 +3457,7 @@ export type Database = {
           revisado?: boolean
           tipo?: string
           tipo_calculo?: Database["public"]["Enums"]["propostas_tipo_calculo"]
+          tipo_input?: string
           unidade?: string
           updated_at?: string
           valor_medio?: number | null
@@ -3611,6 +3617,7 @@ export type Database = {
       }
       propostas_templates: {
         Row: {
+          arquivo_docx_path: string | null
           ativo: boolean
           campos_detectados: Json
           conteudo_html: string
@@ -3619,9 +3626,11 @@ export type Database = {
           id: string
           nome: string
           tipo: Database["public"]["Enums"]["propostas_tipo_template"]
+          tipo_template: string
           updated_at: string
         }
         Insert: {
+          arquivo_docx_path?: string | null
           ativo?: boolean
           campos_detectados?: Json
           conteudo_html?: string
@@ -3630,9 +3639,11 @@ export type Database = {
           id?: string
           nome: string
           tipo?: Database["public"]["Enums"]["propostas_tipo_template"]
+          tipo_template?: string
           updated_at?: string
         }
         Update: {
+          arquivo_docx_path?: string | null
           ativo?: boolean
           campos_detectados?: Json
           conteudo_html?: string
@@ -3641,6 +3652,7 @@ export type Database = {
           id?: string
           nome?: string
           tipo?: Database["public"]["Enums"]["propostas_tipo_template"]
+          tipo_template?: string
           updated_at?: string
         }
         Relationships: []
