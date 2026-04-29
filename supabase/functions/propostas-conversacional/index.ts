@@ -365,11 +365,115 @@ ${escopoTxt}${catalogoTxt}${perguntasProdTxt}${estadoTxt}`;
 
     console.log("[propostas-conversacional] log:", JSON.stringify(log));
 
+    // ====== ETAPA 4 — EXECUÇÃO AUTOMÁTICA DO FLUXO (feature flag interna) ======
+    // Só ativa se template_id foi passado e existir registros em propostas_fluxo.
+    // Caso contrário, mantém comportamento atual (modo antigo) intacto.
+    const fluxoLog = {
+      etapas_executadas: [] as Array<{ tipo: string; referencia: string }>,
+      respostas_geradas: [] as Array<{ token: string; resposta: string }>,
+      blocos_liberados: [] as string[],
+      ordem_fluxo: [] as string[],
+    };
+    const tokensPreenchidos: Record<string, string> = {};
+    let blocoAtual: string | null = null;
+    let fluxoExecutado = false;
+
+    if (template_id) {
+      try {
+        const SB_URL = Deno.env.get("SUPABASE_URL")!;
+        const SB_SR = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const sb = createClient(SB_URL, SB_SR);
+        const { data: fluxo, error: fluxoErr } = await sb
+          .from("propostas_fluxo")
+          .select("id, tipo, referencia, label, ordem")
+          .eq("template_id", template_id)
+          .eq("ativo", true)
+          .order("ordem", { ascending: true });
+
+        if (fluxoErr) {
+          console.error("[fluxo] erro ao carregar:", fluxoErr.message);
+        } else if (fluxo && fluxo.length > 0) {
+          fluxoExecutado = true;
+          fluxoLog.ordem_fluxo = fluxo.map((e: { referencia: string }) => e.referencia);
+
+          // Respostas já existentes no estado/contexto (fonte da verdade)
+          const respostasExistentes: Record<string, unknown> = {
+            ...(contexto.respostas ?? {}),
+          };
+          const itensEstadoFluxo = estado?.itens ?? [];
+
+          for (const etapa of fluxo as Array<{ tipo: string; referencia: string; label: string | null }>) {
+            fluxoLog.etapas_executadas.push({ tipo: etapa.tipo, referencia: etapa.referencia });
+
+            if (etapa.tipo === "bloco") {
+              blocoAtual = etapa.referencia;
+              fluxoLog.blocos_liberados.push(etapa.referencia);
+              continue;
+            }
+
+            if (etapa.tipo === "pergunta") {
+              const token = etapa.referencia;
+              if (respostasExistentes[token]) {
+                tokensPreenchidos[token] = String(respostasExistentes[token]);
+                continue;
+              }
+
+              const promptPergunta = gerarPromptPergunta(token, {
+                cliente_nome: contexto.cliente_nome,
+                empresa: emp,
+                itens: itensEstadoFluxo,
+                respostas: respostasExistentes,
+              });
+
+              try {
+                const ar = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                  method: "POST",
+                  headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    model: "google/gemini-3-flash-preview",
+                    messages: [
+                      { role: "system", content: "Você é um redator comercial. Responda APENAS com o texto pedido, sem markdown nem JSON." },
+                      { role: "user", content: promptPergunta },
+                    ],
+                  }),
+                });
+                if (ar.ok) {
+                  const aj = await ar.json();
+                  const resposta = String(aj.choices?.[0]?.message?.content ?? "").trim();
+                  if (resposta) {
+                    tokensPreenchidos[token] = resposta;
+                    respostasExistentes[token] = resposta;
+                    fluxoLog.respostas_geradas.push({ token, resposta });
+                  }
+                } else {
+                  console.warn("[fluxo] IA falhou para token", token, ar.status);
+                }
+              } catch (e) {
+                console.warn("[fluxo] erro ao executar pergunta", token, e);
+              }
+            }
+          }
+          console.log("[fluxo] executado:", JSON.stringify({
+            etapas: fluxoLog.etapas_executadas.length,
+            respostas: fluxoLog.respostas_geradas.length,
+            blocos: fluxoLog.blocos_liberados,
+          }));
+        }
+      } catch (e) {
+        console.error("[fluxo] erro inesperado, mantendo modo antigo:", e);
+      }
+    }
+
     return new Response(JSON.stringify({
       message,
       actions,
       finalizado,
       log,
+      // Etapa 4: campos novos (não quebram clientes antigos)
+      fluxo_executado: fluxoExecutado,
+      fluxo_log: fluxoLog,
+      tokens_preenchidos: tokensPreenchidos,
+      bloco_atual: blocoAtual,
       // aliases legacy
       mensagem: message,
       produtos,
