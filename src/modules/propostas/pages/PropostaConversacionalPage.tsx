@@ -273,6 +273,23 @@ export default function PropostaConversacionalPage() {
             categorias: cat,
             perguntas_pendentes: pend,
             respostas,
+            empresa: empresa ? {
+              nome_empresa: empresa.nome_empresa ?? undefined,
+              descricao_operacional: empresa.descricao_operacional ?? undefined,
+              o_que_vendemos: empresa.o_que_vendemos,
+              o_que_nao_vendemos: empresa.o_que_nao_vendemos,
+              tipo_ambiente: empresa.tipo_ambiente,
+              regras_tecnicas: empresa.regras_tecnicas,
+            } : null,
+            catalogo: catalogo.filter(p => p.ativo).slice(0, 80).map(p => ({
+              nome: p.nome,
+              categoria: (p as unknown as { categoria?: string }).categoria,
+              valor_minimo: Number(p.valor_minimo),
+              valor_medio: Number((p as unknown as { valor_medio?: number }).valor_medio ?? p.valor_minimo),
+              unidade: p.unidade,
+              cobranca_padrao: (p as unknown as { cobranca_padrao?: string }).cobranca_padrao,
+            })),
+            perguntas_produtos: perguntasProd.map(q => ({ categoria: q.categoria, pergunta: q.pergunta })),
           },
         },
       });
