@@ -2581,6 +2581,31 @@ export default function AvaliacaoOSPage() {
     const atendScore = calcScore(osDetailBySetor.atendimento);
     const tecScore = calcScore(osDetailBySetor.tecnico);
 
+    // Tempo de avaliação por avaliador (com base nas respostas do setor dele)
+    const tempoPorAvaliador = (avaliadorId: string | null | undefined) => {
+      if (!avaliadorId) return null;
+      const all = [...osDetailBySetor.atendimento, ...osDetailBySetor.tecnico];
+      const dts = all
+        .map(q => q._answer)
+        .filter(a => a?.created_at && a.avaliador_id === avaliadorId)
+        .map(a => new Date(a.created_at).getTime())
+        .sort((a, b) => a - b);
+      if (dts.length === 0) return null;
+      const primeira = dts[0];
+      const ultima = dts[dts.length - 1];
+      const segs = Math.max(0, Math.floor((ultima - primeira) / 1000));
+      const h = Math.floor(segs / 3600);
+      const m = Math.floor((segs % 3600) / 60);
+      const s = segs % 60;
+      const duracao = h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m ${s}s` : `${s}s`;
+      return {
+        primeira: format(new Date(primeira), "dd/MM/yyyy HH:mm"),
+        ultima: format(new Date(ultima), "dd/MM/yyyy HH:mm"),
+        duracao,
+        total: dts.length,
+      };
+    };
+
     const renderQuestionList = (questions: any[]) => (
       <div className="divide-y divide-border">
         {questions.length === 0 ? (
