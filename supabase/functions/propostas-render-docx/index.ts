@@ -65,6 +65,14 @@ serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    // contexto é obrigatório no render — token sempre presente no template
+    const contextoFinal = (input.contexto ?? "").toString().trim();
+    if (!contextoFinal) {
+      return new Response(JSON.stringify({
+        error: "contexto obrigatório",
+        hint: "Envie 'contexto' no payload — o token {contexto} é exigido pelo template.",
+      }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     // 1) Buscar template
     const { data: tpl, error: tplErr } = await supabase
@@ -107,22 +115,30 @@ serve(async (req) => {
     }
 
     // 4) Tokens diretos a partir de produtos (campo_template + tipo_input)
-    //    quantidade  → soma de quantidades
-    //    boolean     → "X" se >=1 item, "" caso contrário
-    //    lista       → "Item1, Item2, ..."
+    //    Padronização: campo_template é normalizado (trim + lower) para garantir
+    //    unicidade e agrupamento consistente, alinhado ao índice único do banco.
+    //    quantidade  → soma de quantidades de itens com mesmo campo_template
+    //    boolean     → "X" SOMENTE se existir pelo menos 1 item com aquele campo_template
+    //                  (qtd > 0). Caso contrário "" — nunca marcar sem item real.
+    //    lista       → "Item1, Item2, ..." (nomes dos itens com mesmo campo_template)
     const tokensProduto: Record<string, string | number> = {};
     for (const it of itens) {
-      const k = (it.campo_template ?? "").trim();
+      const k = (it.campo_template ?? "").trim().toLowerCase();
       if (!k) continue;
       const tipo = it.tipo_input ?? "quantidade";
+      const qtd = Number(it.quantidade ?? 0);
+
       if (tipo === "boolean") {
-        tokensProduto[k] = "X";
+        // Só marca "X" se existir item real com quantidade > 0
+        if (qtd > 0) tokensProduto[k] = "X";
+        else if (!(k in tokensProduto)) tokensProduto[k] = "";
       } else if (tipo === "lista") {
+        if (qtd <= 0) continue;
         const prev = (tokensProduto[k] as string) ?? "";
         tokensProduto[k] = prev ? `${prev}, ${it.nome}` : it.nome;
       } else {
         const prev = Number(tokensProduto[k] ?? 0);
-        tokensProduto[k] = prev + Number(it.quantidade ?? 0);
+        tokensProduto[k] = prev + qtd;
       }
     }
 
@@ -141,7 +157,7 @@ serve(async (req) => {
     // 6) Contexto final passado ao docxtemplater
     const data = {
       cliente_nome: input.cliente_nome ?? "",
-      contexto: input.contexto ?? "",
+      contexto: contextoFinal,
       data_hoje: new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }),
       ...(input.respostas ?? {}),
       ...tokensProduto,

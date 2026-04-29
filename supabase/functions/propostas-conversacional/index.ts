@@ -33,6 +33,9 @@ interface ItemAcao {
   valor: number;
   categoria: string;
   cobranca: "implantacao" | "mensal" | "informativo";
+  produto_id?: string; // OBRIGATÓRIO no fluxo conversacional — referência ao catálogo
+  campo_template?: string;
+  tipo_input?: "quantidade" | "boolean" | "lista";
 }
 
 interface IAAction {
@@ -62,7 +65,7 @@ serve(async (req) => {
           tipo_ambiente?: string[];
           regras_tecnicas?: string[];
         } | null;
-        catalogo?: Array<{ nome: string; categoria?: string; valor_minimo: number; valor_medio?: number; unidade: string; cobranca_padrao?: string }>;
+        catalogo?: Array<{ id?: string; nome: string; categoria?: string; valor_minimo: number; valor_medio?: number; unidade: string; cobranca_padrao?: string; campo_template?: string | null; tipo_input?: "quantidade" | "boolean" | "lista" }>;
         perguntas_produtos?: Array<{ categoria: string; pergunta: string }>;
         // === NOVO: estado controlado pelo frontend (fonte da verdade) ===
         estado_proposta?: {
@@ -93,7 +96,7 @@ serve(async (req) => {
       ? `\n\n═══ ESCOPO DA EMPRESA "${emp.nome_empresa ?? ""}" ═══\n${emp.descricao_operacional ?? ""}\nVENDEMOS: ${(emp.o_que_vendemos ?? []).join(", ") || "(?)"}\nNÃO VENDEMOS: ${(emp.o_que_nao_vendemos ?? []).join(", ") || "(?)"}\nAMBIENTE: ${(emp.tipo_ambiente ?? []).join(", ") || "(?)"}\nREGRAS: ${(emp.regras_tecnicas ?? []).join(", ") || "(?)"}\n\nSe o cliente pedir algo FORA de "VENDEMOS", responda: "Esse item não está no escopo da empresa. Deseja adicionar como ADENDO (cobranca=informativo, categoria=outros)?" — só emita add_item se o usuário confirmar.`
       : "";
     const catalogoTxt = cat.length
-      ? `\n\n═══ CATÁLOGO PADRÃO (use estes valores como base) ═══\n${cat.map(p => `- ${p.nome} [${p.categoria ?? "?"}] ${p.unidade} mín=R$${p.valor_minimo} méd=R$${p.valor_medio ?? p.valor_minimo} (${p.cobranca_padrao ?? "?"})`).join("\n")}`
+      ? `\n\n═══ CATÁLOGO PADRÃO (USE EXCLUSIVAMENTE estes produtos — NUNCA invente nome novo) ═══\n${cat.map(p => `- id=${p.id ?? "?"} | ${p.nome} [${p.categoria ?? "?"}] ${p.unidade} mín=R$${p.valor_minimo} méd=R$${p.valor_medio ?? p.valor_minimo} (${p.cobranca_padrao ?? "?"}) campo_template=${p.campo_template ?? "?"} tipo_input=${p.tipo_input ?? "quantidade"}`).join("\n")}\n\nREGRA: ao emitir add_item, SEMPRE preencha "produto_id" com o id exato do catálogo. Use a categoria, campo_template e tipo_input EXATAMENTE como no catálogo. Se não encontrar produto adequado, NÃO emita add_item — pergunte ao usuário se devemos cadastrar um novo produto.`
       : "";
     const perguntasProdTxt = perguntasProdFiltradas.length
       ? `\n\n═══ PERGUNTAS PADRÃO POR CATEGORIA (ainda não respondidas) ═══\n${perguntasProdFiltradas.map(q => `[${q.categoria}] ${q.pergunta}`).join("\n")}`
@@ -138,7 +141,7 @@ Responda SEMPRE com APENAS um JSON válido entre tags <json>...</json>, sem text
   "message": "texto curto para o usuário",
   "actions": [
     { "type": "add_item",
-      "item": { "nome": "Switch 24P", "quantidade": 1, "valor": 1300, "categoria": "infraestrutura", "cobranca": "implantacao" } },
+      "item": { "produto_id": "<uuid do catálogo>", "nome": "Switch 24P", "quantidade": 1, "valor": 1300, "categoria": "infraestrutura", "cobranca": "implantacao" } },
     { "type": "next_step", "proxima_etapa": "dados" }
   ]
 }
@@ -236,18 +239,42 @@ ${escopoTxt}${catalogoTxt}${perguntasProdTxt}${estadoTxt}`;
 
     if (actions.some(a => a.type === "finalizar")) finalizado = true;
 
-    // === SEGURANÇA: filtra add_item que já está no estado (anti-duplicata) ===
+    // === SEGURANÇA: filtra add_item duplicado e força mapeamento por catálogo ===
     const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
     const nomesExistentes = new Set((estado?.itens ?? []).map(i => norm(i.nome)));
-    actions = actions.filter(a => {
-      if (a.type !== "add_item") return true;
-      const n = norm(String(a.item?.nome ?? ""));
-      if (!n) return false;
+    const catalogById = new Map(cat.filter(p => p.id).map(p => [String(p.id), p]));
+    const catalogByName = new Map(cat.map(p => [norm(p.nome), p]));
+
+    actions = actions.flatMap(a => {
+      if (a.type !== "add_item") return [a];
+      const item = a.item ?? {};
+      const n = norm(String(item.nome ?? ""));
+      if (!n) return [];
       if (nomesExistentes.has(n)) {
-        console.log("⚠️ add_item filtrado (já existe no estado):", n);
-        return false;
+        console.log("⚠️ add_item filtrado (duplicado):", n);
+        return [];
       }
-      return true;
+
+      // Resolver produto: por id (preferido) ou por nome (fallback)
+      let prod = item.produto_id ? catalogById.get(String(item.produto_id)) : undefined;
+      if (!prod) prod = catalogByName.get(n);
+
+      if (!prod) {
+        console.log("⚠️ add_item bloqueado (produto fora do catálogo):", item.nome);
+        return [];
+      }
+
+      // Enriquecer com dados canônicos do catálogo (IA não decide categoria/campo_template)
+      const enriched: Partial<ItemAcao> = {
+        ...item,
+        produto_id: String(prod.id),
+        nome: prod.nome,
+        categoria: prod.categoria ?? item.categoria,
+        cobranca: (prod.cobranca_padrao as ItemAcao["cobranca"]) ?? item.cobranca ?? "mensal",
+        campo_template: prod.campo_template ?? undefined,
+        tipo_input: prod.tipo_input ?? "quantidade",
+      };
+      return [{ ...a, item: enriched }];
     });
 
     // Compat: produtos[] (formato antigo) derivado de actions
@@ -259,6 +286,9 @@ ${escopoTxt}${catalogoTxt}${perguntasProdTxt}${estadoTxt}`;
         valor_unitario: a.item!.valor ?? 0,
         cobranca: a.item!.cobranca ?? "mensal",
         categoria: a.item!.categoria,
+        produto_id: a.item!.produto_id,
+        campo_template: a.item!.campo_template,
+        tipo_input: a.item!.tipo_input,
       }));
 
     return new Response(JSON.stringify({
