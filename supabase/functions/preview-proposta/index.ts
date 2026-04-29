@@ -22,6 +22,17 @@ function jerr(status: number, msg: string, extra?: unknown) {
   });
 }
 
+// Converte Uint8Array → base64 em chunks (evita "Maximum call stack size exceeded")
+function uint8ToBase64(bytes: Uint8Array): string {
+  const CHUNK = 0x8000; // 32KB
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    const slice = bytes.subarray(i, i + CHUNK);
+    binary += String.fromCharCode(...slice);
+  }
+  return btoa(binary);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return jerr(405, "Method not allowed");
