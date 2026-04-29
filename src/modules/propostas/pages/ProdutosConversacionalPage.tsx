@@ -136,6 +136,10 @@ export default function ProdutosConversacionalPage() {
     unidade: string;
     valor_minimo: number;
     valor_medio: number;
+    placeholder_key?: string;
+    placeholder_qtd?: string;
+    placeholder_valor?: string;
+    is_checkbox?: boolean;
   };
   const [drafts, setDrafts] = useState<ProdutoDraft[]>([]);
   const [salvandoDraft, setSalvandoDraft] = useState<string | null>(null);
