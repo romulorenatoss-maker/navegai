@@ -252,6 +252,8 @@ Múltiplos itens = múltiplos blocos.`;
     const remover_perguntas: Array<{ id: string }> = [];
     const remover_categorias: Array<{ categoria: string }> = [];
     const migrar_categorias: Array<{ categoria_origem: string; categoria_destino: string; tipo: string; cobranca_padrao: string }> = [];
+    const criar_categorias: Array<{ categoria: string }> = [];
+    const remover_categorias_completa: Array<{ categoria: string }> = [];
     let mensagem = raw;
 
     mensagem = mensagem
@@ -271,8 +273,16 @@ Múltiplos itens = múltiplos blocos.`;
         try { remover_perguntas.push(JSON.parse(json.trim())); } catch (e) { console.error("parse remover_pergunta:", e); }
         return "";
       })
+      .replace(/```remover_categoria_completa\s*([\s\S]*?)```/g, (_f, json) => {
+        try { remover_categorias_completa.push(JSON.parse(json.trim())); } catch (e) { console.error("parse remover_categoria_completa:", e); }
+        return "";
+      })
       .replace(/```remover_categoria\s*([\s\S]*?)```/g, (_f, json) => {
         try { remover_categorias.push(JSON.parse(json.trim())); } catch (e) { console.error("parse remover_categoria:", e); }
+        return "";
+      })
+      .replace(/```criar_categoria\s*([\s\S]*?)```/g, (_f, json) => {
+        try { criar_categorias.push(JSON.parse(json.trim())); } catch (e) { console.error("parse criar_categoria:", e); }
         return "";
       })
       .replace(/```migrar_categoria\s*([\s\S]*?)```/g, (_f, json) => {
@@ -281,7 +291,7 @@ Múltiplos itens = múltiplos blocos.`;
       })
       .trim();
 
-    return new Response(JSON.stringify({ mensagem, produtos, fora_escopo, remover_produtos, remover_perguntas, remover_categorias, migrar_categorias }), {
+    return new Response(JSON.stringify({ mensagem, produtos, fora_escopo, remover_produtos, remover_perguntas, remover_categorias, migrar_categorias, criar_categorias, remover_categorias_completa }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
