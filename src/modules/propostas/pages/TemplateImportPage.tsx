@@ -71,6 +71,20 @@ export default function TemplateImportPage() {
 
   useEffect(() => { carregar(); }, []);
 
+  // Preview modal
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState<string>("");
+
+  function abrirPreview() {
+    if (!html.trim()) {
+      toast.error("Importe ou cole conteúdo primeiro");
+      return;
+    }
+    const renderizado = substituirPlaceholders(html, PREVIEW_MOCK);
+    setPreviewHtml(renderizado);
+    setPreviewOpen(true);
+  }
+
   function novoTemplate() {
     setEditandoId(null);
     setNome("");
