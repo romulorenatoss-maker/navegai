@@ -73,9 +73,9 @@ async function carregarProdutosCached(categoria: string): Promise<PropostasProdu
 function renderPlaceholder(template: string | undefined | null, dados: { qtd: number; valor: number; nome: string }): string {
   if (!template) return dados.nome;
   return template
-    .replaceAll("{qtd}", String(dados.qtd))
-    .replaceAll("{valor}", dados.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }))
-    .replaceAll("{nome}", dados.nome);
+    .replace(/\{qtd\}/g, String(dados.qtd))
+    .replace(/\{valor\}/g, dados.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }))
+    .replace(/\{nome\}/g, dados.nome);
 }
 
 // ===== UUID leve (sem dependência externa)
