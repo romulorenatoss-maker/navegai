@@ -37,6 +37,15 @@ interface ItemConv {
   categoria?: string;
 }
 
+type Etapa = "contexto" | "infraestrutura" | "dados" | "seguranca" | "telefonia" | "financeiro" | "fechamento";
+const ETAPAS_ORDEM: Etapa[] = ["contexto", "infraestrutura", "dados", "seguranca", "telefonia", "financeiro", "fechamento"];
+
+interface IAAction {
+  type: "add_item" | "next_step" | "finalizar" | "none";
+  item?: { nome?: string; quantidade?: number; valor?: number; categoria?: string; cobranca?: string };
+  proxima_etapa?: Etapa;
+}
+
 const COBRANCAS: PropostasCobranca[] = ["implantacao", "mensal", "informativo"];
 const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
