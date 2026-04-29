@@ -807,9 +807,6 @@ export default function ProdutosConversacionalPage() {
                 </Card>
               </TabsContent>
             </Tabs>
-          </div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
     </div>
   );
 }
