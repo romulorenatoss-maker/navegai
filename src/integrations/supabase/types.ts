@@ -3352,7 +3352,7 @@ export type Database = {
       propostas_perguntas_setup: {
         Row: {
           ativo: boolean
-          campo_token: string | null
+          campo_token: string
           categoria_id: string
           created_at: string
           id: string
@@ -3365,7 +3365,7 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean
-          campo_token?: string | null
+          campo_token: string
           categoria_id: string
           created_at?: string
           id?: string
@@ -3378,7 +3378,7 @@ export type Database = {
         }
         Update: {
           ativo?: boolean
-          campo_token?: string | null
+          campo_token?: string
           categoria_id?: string
           created_at?: string
           id?: string
