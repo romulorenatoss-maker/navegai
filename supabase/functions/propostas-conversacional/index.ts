@@ -96,7 +96,7 @@ serve(async (req) => {
       ? `\n\n═══ ESCOPO DA EMPRESA "${emp.nome_empresa ?? ""}" ═══\n${emp.descricao_operacional ?? ""}\nVENDEMOS: ${(emp.o_que_vendemos ?? []).join(", ") || "(?)"}\nNÃO VENDEMOS: ${(emp.o_que_nao_vendemos ?? []).join(", ") || "(?)"}\nAMBIENTE: ${(emp.tipo_ambiente ?? []).join(", ") || "(?)"}\nREGRAS: ${(emp.regras_tecnicas ?? []).join(", ") || "(?)"}\n\nSe o cliente pedir algo FORA de "VENDEMOS", responda: "Esse item não está no escopo da empresa. Deseja adicionar como ADENDO (cobranca=informativo, categoria=outros)?" — só emita add_item se o usuário confirmar.`
       : "";
     const catalogoTxt = cat.length
-      ? `\n\n═══ CATÁLOGO PADRÃO (use estes valores como base) ═══\n${cat.map(p => `- ${p.nome} [${p.categoria ?? "?"}] ${p.unidade} mín=R$${p.valor_minimo} méd=R$${p.valor_medio ?? p.valor_minimo} (${p.cobranca_padrao ?? "?"})`).join("\n")}`
+      ? `\n\n═══ CATÁLOGO PADRÃO (USE EXCLUSIVAMENTE estes produtos — NUNCA invente nome novo) ═══\n${cat.map(p => `- id=${p.id ?? "?"} | ${p.nome} [${p.categoria ?? "?"}] ${p.unidade} mín=R$${p.valor_minimo} méd=R$${p.valor_medio ?? p.valor_minimo} (${p.cobranca_padrao ?? "?"}) campo_template=${p.campo_template ?? "?"} tipo_input=${p.tipo_input ?? "quantidade"}`).join("\n")}\n\nREGRA: ao emitir add_item, SEMPRE preencha "produto_id" com o id exato do catálogo. Use a categoria, campo_template e tipo_input EXATAMENTE como no catálogo. Se não encontrar produto adequado, NÃO emita add_item — pergunte ao usuário se devemos cadastrar um novo produto.`
       : "";
     const perguntasProdTxt = perguntasProdFiltradas.length
       ? `\n\n═══ PERGUNTAS PADRÃO POR CATEGORIA (ainda não respondidas) ═══\n${perguntasProdFiltradas.map(q => `[${q.categoria}] ${q.pergunta}`).join("\n")}`
