@@ -10,11 +10,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Loader2, Clock, Users, Activity, AlertTriangle, TrendingDown, CalendarCheck, CalendarIcon, ChevronDown, ChevronRight } from "lucide-react";
+import { Loader2, Clock, Users, Activity, AlertTriangle, TrendingDown, CalendarCheck, CalendarIcon, ChevronDown, ChevronRight, Search } from "lucide-react";
 import DesempenhoOperacionalPage from "@/pages/DesempenhoOperacionalPage";
 
 // =============================================================
-// Tipos das views existentes (mantidas)
+// Tipos
 // =============================================================
 interface MetricaSetor {
   setor_id: string | null;
@@ -25,28 +25,36 @@ interface MetricaSetor {
   tempo_medio: string | null;
   setor_nome?: string;
 }
-interface MetricaGargalo {
+interface GargaloAgg {
   pergunta_id: string;
-  pergunta?: string | null;
-  tempo_medio: string | null;
-  maior_tempo: string | null;
+  pergunta_texto: string;
+  tempo_medio_seg: number;
+  maior_tempo_seg: number;
   ocorrencias: number;
-  pergunta_texto?: string;
 }
-interface MetricaPausa {
+interface PausaItem {
   ordem_servico_id: string;
   setor_id: string | null;
   usuario_id: string | null;
   pergunta_id: string;
   respondido_em: string;
   tempo_entre_respostas: string | null;
+  // enriquecido
+  numero_os?: string | number | null;
+  pergunta_texto?: string;
 }
 
-// Eventos crus para calcular métricas por avaliador no período
 interface EventoResposta {
   ordem_servico_id: string;
   usuario_id: string | null;
   respondido_em: string;
+}
+
+// Linha bruta de vw_eventos_tempo_sequencia (para derivar gargalos no período)
+interface EventoSequencia {
+  pergunta_id: string;
+  respondido_em: string;
+  tempo_entre_respostas: string | null;
 }
 
 // =============================================================
@@ -79,7 +87,6 @@ const fmtHora = (iso: string) =>
 const fmtDataHora = (iso: string) =>
   new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
 
-// Hora do dia (0-23) em America/Sao_Paulo
 function horaBR(iso: string): number {
   const s = new Intl.DateTimeFormat("en-GB", { timeZone: "America/Sao_Paulo", hour: "2-digit", hour12: false }).format(new Date(iso));
   return parseInt(s, 10);
@@ -96,7 +103,7 @@ interface OSDoAvaliador {
   duracao_seg: number;
 }
 interface FaixaHora {
-  faixa: string;       // "09h–10h"
+  faixa: string;
   qtd_os: number;
   tempo_total_seg: number;
 }
@@ -106,14 +113,13 @@ interface MetricaAvaliador {
   total_os: number;
   primeira_acao: string | null;
   ultima_acao: string | null;
-  tempo_medio_entre_os_seg: number; // janela entre fim de uma OS e início da próxima
-  tempo_medio_dentro_os_seg: number; // duração média de cada OS
+  tempo_medio_entre_os_seg: number;
+  tempo_medio_dentro_os_seg: number;
   faixas: FaixaHora[];
   oss: OSDoAvaliador[];
 }
 
 function calcularMetricasPorAvaliador(eventos: EventoResposta[], profMap: Record<string, string>, osNumeroMap: Record<string, string | number | null>): MetricaAvaliador[] {
-  // Agrupa por usuario → os → eventos
   const porUsuario = new Map<string, Map<string, string[]>>();
   for (const e of eventos) {
     if (!e.usuario_id) continue;
@@ -135,7 +141,6 @@ function calcularMetricasPorAvaliador(eventos: EventoResposta[], profMap: Record
     }
     oss.sort((a, b) => a.inicio.localeCompare(b.inicio));
 
-    // Tempo médio entre OSs (gap entre fim de uma e início da próxima)
     const gaps: number[] = [];
     for (let i = 1; i < oss.length; i++) {
       const gap = (new Date(oss[i].inicio).getTime() - new Date(oss[i - 1].fim).getTime()) / 1000;
@@ -144,7 +149,6 @@ function calcularMetricasPorAvaliador(eventos: EventoResposta[], profMap: Record
     const tempo_medio_entre_os_seg = gaps.length ? gaps.reduce((a, b) => a + b, 0) / gaps.length : 0;
     const tempo_medio_dentro_os_seg = oss.length ? oss.reduce((a, o) => a + o.duracao_seg, 0) / oss.length : 0;
 
-    // Faixas horárias (cada OS é alocada à faixa do seu início)
     const faixaMap = new Map<number, { qtd: number; tempo: number }>();
     for (const o of oss) {
       const h = horaBR(o.inicio);
@@ -183,32 +187,59 @@ function calcularMetricasPorAvaliador(eventos: EventoResposta[], profMap: Record
 export default function DashboardTempoAvaliacoes() {
   const [loading, setLoading] = useState(true);
   const [setores, setSetores] = useState<MetricaSetor[]>([]);
-  const [gargalos, setGargalos] = useState<MetricaGargalo[]>([]);
-  const [pausas, setPausas] = useState<MetricaPausa[]>([]);
+  const [gargalos, setGargalos] = useState<GargaloAgg[]>([]);
+  const [pausas, setPausas] = useState<PausaItem[]>([]);
   const [eventos, setEventos] = useState<EventoResposta[]>([]);
   const [profMap, setProfMap] = useState<Record<string, string>>({});
   const [osNumeroMap, setOsNumeroMap] = useState<Record<string, string | number | null>>({});
   const [expandido, setExpandido] = useState<Set<string>>(new Set());
 
-  // Período (default: mês corrente)
+  // Período: estado pendente (que o usuário está editando) e estado APLICADO (o que dispara a busca)
   const hoje = new Date();
   const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  const [dataInicioPend, setDataInicioPend] = useState<Date>(inicioMes);
+  const [dataFimPend, setDataFimPend] = useState<Date>(hoje);
   const [dataInicio, setDataInicio] = useState<Date>(inicioMes);
   const [dataFim, setDataFim] = useState<Date>(hoje);
+
+  const periodoSujo =
+    dataInicioPend.getTime() !== dataInicio.getTime() ||
+    dataFimPend.getTime() !== dataFim.getTime();
+
+  function aplicarPeriodo() {
+    if (dataFimPend < dataInicioPend) {
+      // troca se invertido
+      setDataInicio(dataFimPend);
+      setDataFim(dataInicioPend);
+      setDataInicioPend(dataFimPend);
+      setDataFimPend(dataInicioPend);
+      return;
+    }
+    setDataInicio(dataInicioPend);
+    setDataFim(dataFimPend);
+  }
 
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const sb = supabase as any;
 
-      // Range em ISO (cobre dia inteiro do início ao fim, BR)
       const inicioIso = new Date(dataInicio.getFullYear(), dataInicio.getMonth(), dataInicio.getDate(), 0, 0, 0).toISOString();
       const fimIso = new Date(dataFim.getFullYear(), dataFim.getMonth(), dataFim.getDate(), 23, 59, 59, 999).toISOString();
 
-      const [s, g, p, ev] = await Promise.all([
-        sb.from("vw_metricas_setor").select("*").gte("inicio", inicioIso).lte("inicio", fimIso).limit(5000),
-        sb.from("vw_metricas_gargalos").select("*").limit(50),
-        sb.from("vw_metricas_pausas").select("*").gte("respondido_em", inicioIso).lte("respondido_em", fimIso).order("respondido_em", { ascending: false }).limit(500),
+      // Todas as consultas filtram por respondido_em ∈ [inicioIso, fimIso]
+      // - vw_metricas_setor (campo inicio = min(respondido_em) por OS/setor)
+      // - vw_metricas_pausas (respondido_em direto)
+      // - vw_eventos_tempo_sequencia (respondido_em direto) → derivamos gargalos client-side coerentes com o período
+      // - respostas_eventos (respondido_em direto)
+      const [s, p, eventosSeqRes, ev] = await Promise.all([
+        (supabase as never as { from: (t: string) => { select: (c: string) => { gte: (c: string, v: string) => { lte: (c: string, v: string) => { limit: (n: number) => Promise<{ data: MetricaSetor[] | null }> } } } } })
+          .from("vw_metricas_setor").select("*").gte("inicio", inicioIso).lte("inicio", fimIso).limit(5000),
+        (supabase as never as { from: (t: string) => { select: (c: string) => { gte: (c: string, v: string) => { lte: (c: string, v: string) => { order: (c: string, o: { ascending: boolean }) => { limit: (n: number) => Promise<{ data: PausaItem[] | null }> } } } } } })
+          .from("vw_metricas_pausas").select("*").gte("respondido_em", inicioIso).lte("respondido_em", fimIso).order("respondido_em", { ascending: false }).limit(500),
+        (supabase as never as { from: (t: string) => { select: (c: string) => { gte: (c: string, v: string) => { lte: (c: string, v: string) => { limit: (n: number) => Promise<{ data: EventoSequencia[] | null }> } } } } })
+          .from("vw_eventos_tempo_sequencia")
+          .select("pergunta_id, respondido_em, tempo_entre_respostas")
+          .gte("respondido_em", inicioIso).lte("respondido_em", fimIso).limit(50000),
         supabase.from("respostas_eventos")
           .select("ordem_servico_id, usuario_id, respondido_em")
           .gte("respondido_em", inicioIso)
@@ -217,11 +248,11 @@ export default function DashboardTempoAvaliacoes() {
       ]);
 
       const sData: MetricaSetor[] = s.data || [];
-      const gData: MetricaGargalo[] = g.data || [];
-      const pData: MetricaPausa[] = p.data || [];
-      const evData: EventoResposta[] = (ev as any).data || [];
+      const pData: PausaItem[] = (p.data || []) as PausaItem[];
+      const seqData: EventoSequencia[] = eventosSeqRes.data || [];
+      const evData: EventoResposta[] = (ev.data || []) as EventoResposta[];
 
-      // Hidratar nomes
+      // === Hidratar nomes (profiles, setores, perguntas, OS) ===
       const userIds = Array.from(new Set([
         ...evData.map(x => x.usuario_id),
         ...pData.map(x => x.usuario_id),
@@ -230,45 +261,76 @@ export default function DashboardTempoAvaliacoes() {
         ...sData.map(x => x.setor_id),
         ...pData.map(x => x.setor_id),
       ].filter(Boolean))) as string[];
-      const perguntaIds = Array.from(new Set(gData.map(x => x.pergunta_id).filter(Boolean))) as string[];
-      const osIds = Array.from(new Set(evData.map(x => x.ordem_servico_id).filter(Boolean))) as string[];
+      const perguntaIds = Array.from(new Set([
+        ...seqData.map(x => x.pergunta_id),
+        ...pData.map(x => x.pergunta_id),
+      ].filter(Boolean))) as string[];
+      const osIds = Array.from(new Set([
+        ...evData.map(x => x.ordem_servico_id),
+        ...pData.map(x => x.ordem_servico_id),
+      ].filter(Boolean))) as string[];
 
       const [profsRes, secsRes, perguntasRes, osRes] = await Promise.all([
-        userIds.length ? supabase.from("profiles").select("id, nome").in("id", userIds) : Promise.resolve({ data: [] }),
-        setorIds.length ? supabase.from("setores").select("id, nome").in("id", setorIds) : Promise.resolve({ data: [] }),
-        perguntaIds.length ? supabase.from("perguntas_avaliacao").select("id, pergunta").in("id", perguntaIds) : Promise.resolve({ data: [] }),
-        osIds.length ? supabase.from("ordens_servico").select("id, numero_os").in("id", osIds) : Promise.resolve({ data: [] }),
+        userIds.length ? supabase.from("profiles").select("id, nome").in("id", userIds) : Promise.resolve({ data: [] as { id: string; nome: string }[] }),
+        setorIds.length ? supabase.from("setores").select("id, nome").in("id", setorIds) : Promise.resolve({ data: [] as { id: string; nome: string }[] }),
+        perguntaIds.length ? supabase.from("perguntas_avaliacao").select("id, pergunta").in("id", perguntaIds) : Promise.resolve({ data: [] as { id: string; pergunta: string }[] }),
+        osIds.length ? supabase.from("ordens_servico").select("id, numero_os").in("id", osIds) : Promise.resolve({ data: [] as { id: string; numero_os: string | number | null }[] }),
       ]);
-      const pMap = Object.fromEntries(((profsRes as any).data || []).map((x: any) => [x.id, x.nome]));
-      const secMap = Object.fromEntries(((secsRes as any).data || []).map((x: any) => [x.id, x.nome]));
-      const perguntaMap = Object.fromEntries(((perguntasRes as any).data || []).map((x: any) => [x.id, x.pergunta]));
-      const osMap = Object.fromEntries(((osRes as any).data || []).map((x: any) => [x.id, x.numero_os]));
+      const pMap = Object.fromEntries(((profsRes as { data: { id: string; nome: string }[] | null }).data || []).map(x => [x.id, x.nome]));
+      const secMap = Object.fromEntries(((secsRes as { data: { id: string; nome: string }[] | null }).data || []).map(x => [x.id, x.nome]));
+      const perguntaMap = Object.fromEntries(((perguntasRes as { data: { id: string; pergunta: string }[] | null }).data || []).map(x => [x.id, x.pergunta]));
+      const osMap = Object.fromEntries(((osRes as { data: { id: string; numero_os: string | number | null }[] | null }).data || []).map(x => [x.id, x.numero_os]));
+
+      // === Derivar GARGALOS no período (a partir de vw_eventos_tempo_sequencia) ===
+      const aggMap = new Map<string, { soma: number; n: number; max: number; ocorrencias: number }>();
+      for (const e of seqData) {
+        const seg = intervalToSeconds(e.tempo_entre_respostas);
+        if (!aggMap.has(e.pergunta_id)) aggMap.set(e.pergunta_id, { soma: 0, n: 0, max: 0, ocorrencias: 0 });
+        const cur = aggMap.get(e.pergunta_id)!;
+        cur.ocorrencias += 1;
+        if (seg > 0) {
+          cur.soma += seg;
+          cur.n += 1;
+          if (seg > cur.max) cur.max = seg;
+        }
+      }
+      const gargalosCalc: GargaloAgg[] = Array.from(aggMap.entries()).map(([pergunta_id, v]) => ({
+        pergunta_id,
+        pergunta_texto: perguntaMap[pergunta_id] ?? "Pergunta não encontrada",
+        tempo_medio_seg: v.n > 0 ? v.soma / v.n : 0,
+        maior_tempo_seg: v.max,
+        ocorrencias: v.ocorrencias,
+      })).sort((a, b) => b.tempo_medio_seg - a.tempo_medio_seg);
+
+      // === Enriquecer pausas com numero_os e pergunta_texto ===
+      const pausasEnriquecidas: PausaItem[] = pData.map(x => ({
+        ...x,
+        numero_os: osMap[x.ordem_servico_id] ?? null,
+        pergunta_texto: perguntaMap[x.pergunta_id] ?? null,
+      }));
 
       setProfMap(pMap);
       setOsNumeroMap(osMap);
       setSetores(sData.map(x => ({ ...x, setor_nome: x.setor_id ? secMap[x.setor_id] ?? "Sem setor" : "Sem setor" })));
-      setGargalos(gData.map(x => ({ ...x, pergunta_texto: x.pergunta ?? perguntaMap[x.pergunta_id] ?? x.pergunta_id })));
-      setPausas(pData);
+      setGargalos(gargalosCalc);
+      setPausas(pausasEnriquecidas);
       setEventos(evData);
 
       setLoading(false);
     })();
   }, [dataInicio, dataFim]);
 
-  // OS avaliadas no período (distintas)
   const osAvaliadas = useMemo(() => {
     const ids = new Set<string>();
     for (const e of eventos) ids.add(e.ordem_servico_id);
     return ids.size;
   }, [eventos]);
 
-  // Métricas por avaliador (período)
   const avaliadores = useMemo(
     () => calcularMetricasPorAvaliador(eventos, profMap, osNumeroMap),
     [eventos, profMap, osNumeroMap]
   );
 
-  // Setores agregados (já filtrados via query)
   const setoresAgregados = useMemo(() => {
     const map = new Map<string, { nome: string; tempo_total: number; tempos_medios: number[]; total_os: number }>();
     setores.forEach(s => {
@@ -301,14 +363,6 @@ export default function DashboardTempoAvaliacoes() {
 
   const labelPeriodo = `${format(dataInicio, "dd/MM/yyyy")} → ${format(dataFim, "dd/MM/yyyy")}`;
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div>
@@ -328,21 +382,21 @@ export default function DashboardTempoAvaliacoes() {
 
         <TabsContent value="tempo" className="space-y-6">
 
-          {/* Seletor de período */}
+          {/* Seletor de período + botão Buscar */}
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-sm text-muted-foreground">Período:</span>
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className={cn("w-[180px] justify-start text-left font-normal")}>
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {format(dataInicio, "dd/MM/yyyy")}
+                  {format(dataInicioPend, "dd/MM/yyyy")}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
-                  selected={dataInicio}
-                  onSelect={(d) => d && setDataInicio(d)}
+                  selected={dataInicioPend}
+                  onSelect={(d) => d && setDataInicioPend(d)}
                   locale={ptBR}
                   initialFocus
                   className={cn("p-3 pointer-events-auto")}
@@ -354,22 +408,44 @@ export default function DashboardTempoAvaliacoes() {
               <PopoverTrigger asChild>
                 <Button variant="outline" className={cn("w-[180px] justify-start text-left font-normal")}>
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {format(dataFim, "dd/MM/yyyy")}
+                  {format(dataFimPend, "dd/MM/yyyy")}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
-                  selected={dataFim}
-                  onSelect={(d) => d && setDataFim(d)}
+                  selected={dataFimPend}
+                  onSelect={(d) => d && setDataFimPend(d)}
                   locale={ptBR}
                   initialFocus
                   className={cn("p-3 pointer-events-auto")}
                 />
               </PopoverContent>
             </Popover>
+
+            <Button
+              onClick={aplicarPeriodo}
+              disabled={loading || !periodoSujo}
+              className="ml-1"
+            >
+              {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
+              Buscar
+            </Button>
+
+            {periodoSujo && (
+              <Badge variant="outline" className="text-amber-600 border-amber-500/50">
+                Período alterado — clique em Buscar
+              </Badge>
+            )}
+            <span className="text-xs text-muted-foreground ml-auto">Aplicado: {labelPeriodo}</span>
           </div>
 
+          {loading ? (
+            <div className="flex items-center justify-center min-h-[300px]">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+          <>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Users className="w-4 h-4" /> Avaliadores</CardTitle></CardHeader>
@@ -389,7 +465,7 @@ export default function DashboardTempoAvaliacoes() {
             </Card>
           </div>
 
-          {/* Por Avaliador — primeira/última ação, OSs, tempo médio entre OSs, faixas horárias */}
+          {/* Por Avaliador */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">👤 Por Avaliador</CardTitle>
@@ -551,14 +627,14 @@ export default function DashboardTempoAvaliacoes() {
                 <TableBody>
                   {gargalos.slice(0, 20).map(g => (
                     <TableRow key={g.pergunta_id}>
-                      <TableCell className="max-w-md truncate">{g.pergunta_texto}</TableCell>
-                      <TableCell className="text-right">{formatDuration(intervalToSeconds(g.tempo_medio))}</TableCell>
-                      <TableCell className="text-right">{formatDuration(intervalToSeconds(g.maior_tempo))}</TableCell>
+                      <TableCell className="max-w-md truncate" title={g.pergunta_texto}>{g.pergunta_texto}</TableCell>
+                      <TableCell className="text-right">{formatDuration(g.tempo_medio_seg)}</TableCell>
+                      <TableCell className="text-right">{formatDuration(g.maior_tempo_seg)}</TableCell>
                       <TableCell className="text-right">{g.ocorrencias}</TableCell>
                     </TableRow>
                   ))}
                   {gargalos.length === 0 && (
-                    <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">Sem dados ainda.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">Sem dados no período.</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
@@ -568,8 +644,7 @@ export default function DashboardTempoAvaliacoes() {
           {/* Maior tempo entre perguntas */}
           {(() => {
             const maxGargalo = gargalos.reduce<{ texto: string; segundos: number } | null>((acc, g) => {
-              const seg = intervalToSeconds(g.maior_tempo);
-              if (!acc || seg > acc.segundos) return { texto: g.pergunta_texto ?? g.pergunta_id, segundos: seg };
+              if (!acc || g.maior_tempo_seg > acc.segundos) return { texto: g.pergunta_texto, segundos: g.maior_tempo_seg };
               return acc;
             }, null);
             return (
@@ -586,14 +661,14 @@ export default function DashboardTempoAvaliacoes() {
                       <p className="text-sm text-muted-foreground">{maxGargalo.texto}</p>
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">Sem dados ainda.</p>
+                    <p className="text-sm text-muted-foreground">Sem dados no período.</p>
                   )}
                 </CardContent>
               </Card>
             );
           })()}
 
-          {/* Pausas grandes */}
+          {/* Pausas grandes — agora com número real da OS (link) e texto da pergunta */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -614,18 +689,33 @@ export default function DashboardTempoAvaliacoes() {
                   {pausas.slice(0, 50).map((p, i) => (
                     <TableRow key={`${p.ordem_servico_id}-${p.pergunta_id}-${i}`}>
                       <TableCell className="text-xs">{fmtDataHora(p.respondido_em)}</TableCell>
-                      <TableCell className="font-mono text-xs">{p.ordem_servico_id.slice(0, 8)}</TableCell>
-                      <TableCell className="font-mono text-xs">{p.pergunta_id.slice(0, 8)}</TableCell>
+                      <TableCell className="text-xs">
+                        {p.numero_os ? (
+                          <a
+                            href={`/avaliacoes/pesquisa?os=${encodeURIComponent(String(p.numero_os))}`}
+                            className="text-primary hover:underline font-medium"
+                          >
+                            #{p.numero_os}
+                          </a>
+                        ) : (
+                          <span className="font-mono text-muted-foreground">{p.ordem_servico_id.slice(0, 8)}</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs max-w-md truncate" title={p.pergunta_texto ?? p.pergunta_id}>
+                        {p.pergunta_texto ?? <span className="font-mono text-muted-foreground">{p.pergunta_id.slice(0, 8)}</span>}
+                      </TableCell>
                       <TableCell className="text-right">{formatDuration(intervalToSeconds(p.tempo_entre_respostas))}</TableCell>
                     </TableRow>
                   ))}
                   {pausas.length === 0 && (
-                    <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">Nenhuma pausa grande detectada.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">Nenhuma pausa grande detectada no período.</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
             </CardContent>
           </Card>
+          </>
+          )}
         </TabsContent>
 
         <TabsContent value="operacional">
