@@ -351,35 +351,57 @@ export default function DashboardTempoAvaliacoes() {
       const evDataPeriodo: EventoResposta[] = ((ev.data || []) as EventoResposta[])
         .filter(e => Boolean(e.ordem_servico_id && e.respondido_em));
       const osIdsPeriodo = Array.from(new Set(evDataPeriodo.map(e => e.ordem_servico_id)));
-      let evData: EventoResposta[] = [];
+      let evData: EventoResposta[] = evDataPeriodo;
+      const aberturaMap = new Map<string, boolean>();
 
       if (osIdsPeriodo.length > 0) {
-        const { data: evGlobal } = await supabase.from("respostas_eventos")
-          .select("ordem_servico_id, usuario_id, setor_id, pergunta_id, respondido_em")
-          .eq("is_primeira_resposta", true)
-          .in("ordem_servico_id", osIdsPeriodo)
-          .limit(100000);
+        // Buscar perguntas das OS com setor associado
+        const [opRes, raRes] = await Promise.all([
+          supabase.from("os_perguntas")
+            .select("os_id, pergunta_id")
+            .in("os_id", osIdsPeriodo)
+            .limit(200000),
+          supabase.from("respostas_eventos")
+            .select("ordem_servico_id, setor_id, pergunta_id")
+            .in("ordem_servico_id", osIdsPeriodo)
+            .limit(200000),
+        ]);
 
-        const porOsGlobal = new Map<string, string[]>();
-        for (const e of ((evGlobal || []) as EventoResposta[])) {
-          if (!e.ordem_servico_id || !e.respondido_em) continue;
-          if (!porOsGlobal.has(e.ordem_servico_id)) porOsGlobal.set(e.ordem_servico_id, []);
-          porOsGlobal.get(e.ordem_servico_id)!.push(e.respondido_em);
+        const perguntaIdsAll = Array.from(new Set(((opRes.data || []) as { pergunta_id: string }[]).map(r => r.pergunta_id)));
+        const paRes = perguntaIdsAll.length
+          ? await supabase.from("perguntas_avaliacao")
+              .select("id, setor_avaliado_id")
+              .in("id", perguntaIdsAll)
+          : { data: [] as { id: string; setor_avaliado_id: string | null }[] };
+        const setorPorPergunta = new Map<string, string | null>(
+          ((paRes.data || []) as { id: string; setor_avaliado_id: string | null }[]).map(p => [p.id, p.setor_avaliado_id])
+        );
+
+        // Esperado: nº de perguntas por (os, setor)
+        const expected = new Map<string, Set<string>>();
+        for (const r of ((opRes.data || []) as { os_id: string; pergunta_id: string }[])) {
+          const setor = setorPorPergunta.get(r.pergunta_id) ?? null;
+          const k = `${r.os_id}::${setor ?? "sem_setor"}`;
+          if (!expected.has(k)) expected.set(k, new Set());
+          expected.get(k)!.add(r.pergunta_id);
         }
 
-        // Regra D global da OS: só entra se a primeira e a última resposta da OS inteira caíram no filtro.
-        const osValidas = new Set<string>();
-        const inicioMs = new Date(inicioIso).getTime();
-        const fimMs = new Date(fimIso).getTime();
-        for (const [osId, tempos] of porOsGlobal.entries()) {
-          const ordenados = tempos.slice().sort();
-          const primeiraMs = new Date(ordenados[0]).getTime();
-          const ultimaMs = new Date(ordenados[ordenados.length - 1]).getTime();
-          if (primeiraMs >= inicioMs && ultimaMs <= fimMs) osValidas.add(osId);
+        // Respondido: perguntas distintas respondidas por (os, setor)
+        const responded = new Map<string, Set<string>>();
+        for (const r of ((raRes.data || []) as { ordem_servico_id: string; setor_id: string | null; pergunta_id: string | null }[])) {
+          if (!r.pergunta_id) continue;
+          const k = `${r.ordem_servico_id}::${r.setor_id ?? "sem_setor"}`;
+          if (!responded.has(k)) responded.set(k, new Set());
+          responded.get(k)!.add(r.pergunta_id);
         }
 
-        evData = evDataPeriodo.filter(e => osValidas.has(e.ordem_servico_id));
+        // Determina abertura por (os, setor): aberto se respondido < esperado
+        for (const [k, esp] of expected.entries()) {
+          const resp = responded.get(k);
+          aberturaMap.set(k, !resp || resp.size < esp.size);
+        }
       }
+      setAberturaPorSetorOs(aberturaMap);
 
       const seqData: EventoSequenciaPeriodo[] = [];
       const ultimoPorOsSetor = new Map<string, EventoResposta>();
