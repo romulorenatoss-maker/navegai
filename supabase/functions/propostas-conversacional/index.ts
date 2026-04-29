@@ -69,7 +69,7 @@ serve(async (req) => {
           tipo_ambiente?: string[];
           regras_tecnicas?: string[];
         } | null;
-        catalogo?: Array<{ id?: string; nome: string; categoria?: string; valor_minimo: number; valor_medio?: number; unidade: string; cobranca_padrao?: string; campo_template?: string | null; tipo_input?: "quantidade" | "boolean" | "lista" }>;
+        catalogo?: Array<{ id?: string; nome: string; categoria?: string; valor_minimo: number; valor_medio?: number; valor_padrao?: number; unidade: string; cobranca_padrao?: string; campo_template?: string | null; tipo_input?: "quantidade" | "boolean" | "lista" }>;
         perguntas_produtos?: Array<{ categoria: string; pergunta: string }>;
         // === NOVO: estado controlado pelo frontend (fonte da verdade) ===
         estado_proposta?: {
