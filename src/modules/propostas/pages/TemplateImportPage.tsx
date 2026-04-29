@@ -64,7 +64,7 @@ function PdfCanvasPreview({ bytes }: { bytes: Uint8Array }) {
           canvas.className = "mx-auto mb-4 block max-w-full rounded-md border bg-background shadow-sm";
           canvases.push(canvas);
           containerRef.current.appendChild(canvas);
-          await page.render({ canvasContext: context, viewport }).promise;
+          await page.render({ canvas, canvasContext: context, viewport }).promise;
         }
         if (!cancelled) setLoading(false);
       } catch (err) {
@@ -129,6 +129,7 @@ export default function TemplateImportPage() {
   // Preview modal (PDF via CloudConvert)
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string>("");
+  const [previewPdfBytes, setPreviewPdfBytes] = useState<Uint8Array | null>(null);
 
   async function abrirPreview() {
     if (!pendingDocx && !docxPath) {
@@ -171,13 +172,13 @@ export default function TemplateImportPage() {
       const resp = data as { signed_url?: string; pdf_base64?: string; pdf_path?: string };
       let url = "";
       if (resp.pdf_base64) {
-        const bin = atob(resp.pdf_base64);
-        const bytes = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const bytes = base64ToBytes(resp.pdf_base64);
         const blob = new Blob([bytes], { type: "application/pdf" });
         url = URL.createObjectURL(blob);
+        setPreviewPdfBytes(bytes);
       } else if (resp.signed_url) {
         url = resp.signed_url;
+        setPreviewPdfBytes(null);
       }
       if (!url) throw new Error("PDF não disponível");
       setPdfPath(resp.pdf_path ?? null);
