@@ -783,8 +783,9 @@ export default function DashboardTempoAvaliacoes() {
                                       <TableBody>
                                         {a.oss.map(o => {
                                           const cruzaDia = !mesmaDataBR(o.inicio, o.fim);
+                                          const aberta = o.em_aberto === true;
                                           return (
-                                            <TableRow key={o.os_id} className={cruzaDia ? "bg-amber-500/10" : undefined}>
+                                            <TableRow key={`${o.os_id}-${o.setor_id ?? "s"}`} className={aberta ? "bg-blue-500/10" : (cruzaDia ? "bg-amber-500/10" : undefined)}>
                                               <TableCell className="text-xs">
                                                 {o.numero_os ? (
                                                   <a
@@ -796,15 +797,22 @@ export default function DashboardTempoAvaliacoes() {
                                                 ) : (
                                                   <span className="font-mono text-muted-foreground">{o.os_id.slice(0, 8)}</span>
                                                 )}
+                                                {aberta && (
+                                                  <Badge variant="outline" className="ml-2 text-blue-700 dark:text-blue-400 border-blue-500/50 text-[10px] px-1 py-0">
+                                                    Em andamento
+                                                  </Badge>
+                                                )}
                                               </TableCell>
                                               <TableCell className="text-xs">{fmtData(o.inicio)}</TableCell>
                                               <TableCell className="text-xs">{fmtHora(o.inicio)}</TableCell>
-                                              <TableCell className="text-xs">{fmtHora(o.fim)}</TableCell>
-                                              <TableCell className={`text-xs ${cruzaDia ? "font-semibold text-amber-700 dark:text-amber-400" : ""}`}>
-                                                {fmtData(o.fim)}
-                                                {cruzaDia && <span className="ml-1" title="Avaliação cruzou de um dia para outro">⚠️</span>}
+                                              <TableCell className="text-xs">
+                                                {aberta ? <span className="italic text-muted-foreground">— agora</span> : fmtHora(o.fim)}
                                               </TableCell>
-                                              <TableCell className="text-right text-xs">{formatDuration(o.duracao_seg)}</TableCell>
+                                              <TableCell className={`text-xs ${cruzaDia && !aberta ? "font-semibold text-amber-700 dark:text-amber-400" : ""}`}>
+                                                {aberta ? <span className="italic text-muted-foreground">—</span> : fmtData(o.fim)}
+                                                {cruzaDia && !aberta && <span className="ml-1" title="Avaliação cruzou de um dia para outro">⚠️</span>}
+                                              </TableCell>
+                                              <TableCell className="text-right text-xs">{formatDuration(o.duracao_seg)}{aberta && " ⏱"}</TableCell>
                                             </TableRow>
                                           );
                                         })}
