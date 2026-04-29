@@ -131,7 +131,7 @@ function calcularMetricasPorAvaliador(eventos: EventoResposta[], profMap: Record
       const inicio = timestamps[0];
       const fim = timestamps[timestamps.length - 1];
       const dur = (new Date(fim).getTime() - new Date(inicio).getTime()) / 1000;
-      oss.push({ os_id, inicio, fim, duracao_seg: dur });
+      oss.push({ os_id, numero_os: osNumeroMap[os_id] ?? null, inicio, fim, duracao_seg: dur });
     }
     oss.sort((a, b) => a.inicio.localeCompare(b.inicio));
 
