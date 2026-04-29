@@ -211,10 +211,10 @@ export async function atualizarProposta(id: string, payload: { conteudo_editado?
 }
 
 // ---------- CLIENTES (apenas leitura — fonte de verdade é a tabela existente) ----------
-export interface ClienteLite { id: string; nome: string; email?: string | null; telefone?: string | null }
+export interface ClienteLite { id: string; nome: string; cpf?: string | null; cidade?: string | null }
 
 export async function buscarClientes(termo: string): Promise<ClienteLite[]> {
-  let query = supabase.from("clientes").select("id, nome, email, telefone").order("nome").limit(20);
+  let query = supabase.from("clientes").select("id, nome, cpf, cidade").order("nome").limit(20);
   if (termo.trim()) {
     query = query.ilike("nome", `%${termo}%`);
   }
