@@ -170,35 +170,50 @@ function calcularMetricasPorAvaliador(
   osNumeroMap: Record<string, string | number | null>,
   periodoInicioMs?: number,
   periodoFimMs?: number,
+  aberturaPorSetorOs?: Map<string, boolean>, // key = `${osId}::${setorId}`
+  agoraIso?: string,
 ): MetricaAvaliador[] {
-  // 1) Agrupar eventos do PERÍODO por usuário/OS (define quais OS aparecem)
-  const porUsuario = new Map<string, Map<string, string[]>>();
+  // 1) Agrupar eventos do PERÍODO por usuário/(OS+setor) — uma "OS" do avaliador é por setor
+  const porUsuario = new Map<string, Map<string, { os_id: string; setor_id: string | null; tempos: string[] }>>();
   for (const e of eventos) {
     if (!e.usuario_id) continue;
     if (!porUsuario.has(e.usuario_id)) porUsuario.set(e.usuario_id, new Map());
     const osMap = porUsuario.get(e.usuario_id)!;
-    if (!osMap.has(e.ordem_servico_id)) osMap.set(e.ordem_servico_id, []);
-    osMap.get(e.ordem_servico_id)!.push(e.respondido_em);
+    const k = `${e.ordem_servico_id}::${e.setor_id ?? "sem_setor"}`;
+    if (!osMap.has(k)) osMap.set(k, { os_id: e.ordem_servico_id, setor_id: e.setor_id, tempos: [] });
+    osMap.get(k)!.tempos.push(e.respondido_em);
   }
 
   const result: MetricaAvaliador[] = [];
   for (const [usuario_id, osMap] of porUsuario.entries()) {
     const oss: OSDoAvaliador[] = [];
-    for (const [os_id, timestamps] of osMap.entries()) {
-      // Usar somente timestamps do período aplicado: primeira/última ação DO DIA/FILTRO.
-      const ts = timestamps.slice().sort();
+    for (const [, info] of osMap.entries()) {
+      const ts = info.tempos.slice().sort();
       const inicio = ts[0];
-      const fim = ts[ts.length - 1];
+      const ultimaResp = ts[ts.length - 1];
 
-      // Garante que a OS considerada tenha início e fim calculados dentro do filtro aplicado.
+      // Início da avaliação (primeira resposta do setor) deve estar dentro do filtro.
       if (periodoInicioMs != null && periodoFimMs != null) {
         const inicioMs = new Date(inicio).getTime();
-        const fimMs = new Date(fim).getTime();
-        if (inicioMs < periodoInicioMs || fimMs > periodoFimMs) continue;
+        if (inicioMs < periodoInicioMs || inicioMs > periodoFimMs) continue;
       }
 
+      // Verifica se a avaliação do setor está em aberto
+      const chaveAbertura = `${info.os_id}::${info.setor_id ?? "sem_setor"}`;
+      const emAberto = aberturaPorSetorOs?.get(chaveAbertura) === true;
+      const fim = emAberto ? (agoraIso ?? new Date().toISOString()) : ultimaResp;
+
       const dur = (new Date(fim).getTime() - new Date(inicio).getTime()) / 1000;
-      oss.push({ os_id, numero_os: osNumeroMap[os_id] ?? null, inicio, fim, duracao_seg: dur, dia: diaBR(inicio) });
+      oss.push({
+        os_id: info.os_id,
+        numero_os: osNumeroMap[info.os_id] ?? null,
+        inicio,
+        fim,
+        duracao_seg: dur,
+        dia: diaBR(inicio),
+        em_aberto: emAberto,
+        setor_id: info.setor_id,
+      });
     }
     oss.sort((a, b) => a.inicio.localeCompare(b.inicio));
 
