@@ -8,3 +8,12 @@ verify_jwt = false
 
 [functions.admin-update-password]
 verify_jwt = false
+
+[functions.propostas-analisar-template]
+verify_jwt = true
+
+[functions.propostas-sugerir-config]
+verify_jwt = true
+
+[functions.propostas-ajustar-texto]
+verify_jwt = true
