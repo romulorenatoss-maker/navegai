@@ -51,6 +51,43 @@ interface IAAction {
 
 const ETAPAS_ORDEM: Etapa[] = ["contexto", "infraestrutura", "dados", "seguranca", "telefonia", "financeiro", "fechamento"];
 
+// === Etapa 4 — Prompt inteligente por token ===
+function gerarPromptPergunta(token: string, ctx: {
+  cliente_nome?: string;
+  empresa?: { nome_empresa?: string; descricao_operacional?: string } | null;
+  itens?: Array<{ nome: string; quantidade: number; valor: number; cobranca: string; categoria?: string }>;
+  respostas?: Record<string, unknown>;
+}): string {
+  const cliente = ctx.cliente_nome ?? "(cliente)";
+  const empresa = ctx.empresa?.nome_empresa ?? "(empresa)";
+  const itensTxt = (ctx.itens ?? []).length
+    ? (ctx.itens ?? []).map(i => `- ${i.nome} (qtd ${i.quantidade}, R$${i.valor}, ${i.cobranca})`).join("\n")
+    : "(nenhum item adicionado ainda)";
+
+  if (token === "contexto") {
+    return `Cliente: ${cliente}
+Empresa fornecedora: ${empresa}
+Itens já dimensionados:
+${itensTxt}
+
+Gere um texto comercial de 2 a 4 parágrafos explicando:
+- cenário atual do cliente
+- problemas/necessidades identificados
+- por que a solução proposta atende a esses pontos
+
+Linguagem profissional, clara e persuasiva. Não use markdown nem títulos. Apenas o texto corrido.`;
+  }
+
+  if (token === "objetivo") {
+    return `Cliente: ${cliente}. Itens da proposta:
+${itensTxt}
+
+Escreva 1 parágrafo curto descrevendo o objetivo do projeto, em tom comercial.`;
+  }
+
+  return `Responda de forma objetiva e profissional para preencher o campo "${token}" da proposta para o cliente ${cliente}. Máximo 3 frases.`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
