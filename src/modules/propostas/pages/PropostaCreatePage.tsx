@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, FilePlus2, Plus, Trash2, ArrowRight } from "lucide-react";
+import { Sparkles, FilePlus2, Plus, Trash2, ArrowRight, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   buscarClientes, listarTemplates, listarProdutos, criarProposta,
@@ -185,10 +185,13 @@ export default function PropostaCreatePage() {
 
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
-      <div>
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <FilePlus2 className="w-6 h-6" /> Nova Proposta
         </h1>
+        <Button variant="outline" onClick={() => navigate("/propostas/setup")}>
+          <Wand2 className="w-4 h-4 mr-2" /> Modo Guiado (IA)
+        </Button>
       </div>
 
       {/* CLIENTE */}

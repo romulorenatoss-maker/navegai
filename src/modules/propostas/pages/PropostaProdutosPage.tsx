@@ -13,7 +13,7 @@ import { Plus, Pencil, Trash2, Package } from "lucide-react";
 import { toast } from "sonner";
 import {
   listarProdutos, criarProduto, atualizarProduto, excluirProduto,
-  type PropostasProduto, type PropostasTipoCalculo,
+  type PropostasProduto, type PropostasTipoCalculo, type PropostasTipoProduto,
 } from "../services/propostasService";
 
 const TIPOS_CALC: { value: PropostasTipoCalculo; label: string }[] = [
@@ -22,11 +22,17 @@ const TIPOS_CALC: { value: PropostasTipoCalculo; label: string }[] = [
   { value: "gb_por_unidade", label: "GB por unidade" },
 ];
 
+const TIPOS_PROD: { value: PropostasTipoProduto; label: string }[] = [
+  { value: "produto", label: "Produto (infraestrutura)" },
+  { value: "servico", label: "Serviço (recorrente)" },
+];
+
 const emptyForm: Partial<PropostasProduto> = {
   nome: "",
   descricao_padrao: "",
   valor_minimo: 0,
   tipo_calculo: "quantidade",
+  tipo: "produto",
   unidade: "un",
   ativo: true,
 };
@@ -37,6 +43,9 @@ export default function PropostaProdutosPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<PropostasProduto | null>(null);
   const [form, setForm] = useState<Partial<PropostasProduto>>(emptyForm);
+  const [filtroTipo, setFiltroTipo] = useState<"todos" | PropostasTipoProduto>("todos");
+
+  const produtosFiltrados = filtroTipo === "todos" ? produtos : produtos.filter(p => p.tipo === filtroTipo);
 
   async function load() {
     setLoading(true);
