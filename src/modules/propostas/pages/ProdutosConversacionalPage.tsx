@@ -358,6 +358,8 @@ export default function ProdutosConversacionalPage() {
         remover_produtos?: Array<{ id?: string; nome?: string }>;
         remover_perguntas?: Array<{ id: string }>;
         remover_categorias?: Array<{ categoria: string }>;
+        remover_categorias_completa?: Array<{ categoria: string }>;
+        criar_categorias?: Array<{ categoria: string }>;
         migrar_categorias?: Array<{ categoria_origem: string; categoria_destino: string; tipo?: string; cobranca_padrao?: string }>;
         error?: string;
       };
