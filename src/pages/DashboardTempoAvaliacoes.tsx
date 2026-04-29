@@ -323,8 +323,38 @@ export default function DashboardTempoAvaliacoes() {
         .order("respondido_em", { ascending: true })
         .limit(50000);
 
-      const evData: EventoResposta[] = ((ev.data || []) as EventoResposta[])
+      const evDataPeriodo: EventoResposta[] = ((ev.data || []) as EventoResposta[])
         .filter(e => Boolean(e.ordem_servico_id && e.respondido_em));
+      const osIdsPeriodo = Array.from(new Set(evDataPeriodo.map(e => e.ordem_servico_id)));
+      let evData: EventoResposta[] = [];
+
+      if (osIdsPeriodo.length > 0) {
+        const { data: evGlobal } = await supabase.from("respostas_eventos")
+          .select("ordem_servico_id, usuario_id, setor_id, pergunta_id, respondido_em")
+          .eq("is_primeira_resposta", true)
+          .in("ordem_servico_id", osIdsPeriodo)
+          .limit(100000);
+
+        const porOsGlobal = new Map<string, string[]>();
+        for (const e of ((evGlobal || []) as EventoResposta[])) {
+          if (!e.ordem_servico_id || !e.respondido_em) continue;
+          if (!porOsGlobal.has(e.ordem_servico_id)) porOsGlobal.set(e.ordem_servico_id, []);
+          porOsGlobal.get(e.ordem_servico_id)!.push(e.respondido_em);
+        }
+
+        // Regra D global da OS: só entra se a primeira e a última resposta da OS inteira caíram no filtro.
+        const osValidas = new Set<string>();
+        const inicioMs = new Date(inicioIso).getTime();
+        const fimMs = new Date(fimIso).getTime();
+        for (const [osId, tempos] of porOsGlobal.entries()) {
+          const ordenados = tempos.slice().sort();
+          const primeiraMs = new Date(ordenados[0]).getTime();
+          const ultimaMs = new Date(ordenados[ordenados.length - 1]).getTime();
+          if (primeiraMs >= inicioMs && ultimaMs <= fimMs) osValidas.add(osId);
+        }
+
+        evData = evDataPeriodo.filter(e => osValidas.has(e.ordem_servico_id));
+      }
 
       const seqData: EventoSequenciaPeriodo[] = [];
       const ultimoPorOsSetor = new Map<string, EventoResposta>();
