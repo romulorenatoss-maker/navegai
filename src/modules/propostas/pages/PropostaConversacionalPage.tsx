@@ -147,6 +147,11 @@ export default function PropostaConversacionalPage() {
     setItens(r.itens);
     setRespostas(r.respostas);
     if (r.template_id) setTemplateId(r.template_id);
+    // Restaura etapa e perguntas respondidas
+    const et = (r.respostas as { __etapa?: Etapa }).__etapa;
+    if (et && ETAPAS_ORDEM.includes(et)) setEtapa(et);
+    const pr = (r.respostas as { __perguntas_respondidas?: string[] }).__perguntas_respondidas;
+    if (Array.isArray(pr)) setPerguntasRespondidas(pr);
     setRetomado(true);
     toast.success(`Conversa de ${nomeCliente} retomada (${r.mensagens.length} msg, ${r.itens.length} item${r.itens.length !== 1 ? "s" : ""})`);
   }
