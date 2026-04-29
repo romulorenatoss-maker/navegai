@@ -29,8 +29,12 @@ export default function TemplateImportPage() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [nome, setNome] = useState("");
   const [html, setHtml] = useState<string>("");
+  const [docxPath, setDocxPath] = useState<string | null>(null);
+  const [pdfPath, setPdfPath] = useState<string | null>(null);
+  const [pendingDocx, setPendingDocx] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [analisando, setAnalisando] = useState(false);
+  const [convertendo, setConvertendo] = useState(false);
   const [analise, setAnalise] = useState<AnaliseTemplate | null>(null);
 
   async function carregar() {
