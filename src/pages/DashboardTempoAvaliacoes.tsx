@@ -361,23 +361,30 @@ export default function DashboardTempoAvaliacoes() {
             .select("os_id, pergunta_id")
             .in("os_id", osIdsPeriodo)
             .limit(200000),
-          supabase.from("respostas_eventos")
-            .select("ordem_servico_id, setor_id, pergunta_id")
+          supabase.from("respostas_avaliacao")
+            .select("ordem_servico_id, pergunta_id, resposta")
             .in("ordem_servico_id", osIdsPeriodo)
+            .not("resposta", "is", null)
             .limit(200000),
         ]);
 
         const perguntaIdsAll = Array.from(new Set(((opRes.data || []) as { pergunta_id: string }[]).map(r => r.pergunta_id)));
-        const paRes = perguntaIdsAll.length
-          ? await supabase.from("perguntas_avaliacao")
-              .select("id, setor_avaliado_id")
-              .in("id", perguntaIdsAll)
-          : { data: [] as { id: string; setor_avaliado_id: string | null }[] };
-        const setorPorPergunta = new Map<string, string | null>(
-          ((paRes.data || []) as { id: string; setor_avaliado_id: string | null }[]).map(p => [p.id, p.setor_avaliado_id])
-        );
 
-        // Esperado: nº de perguntas por (os, setor)
+        // Batchear perguntas_avaliacao para evitar limite de 1000 linhas
+        const setorPorPergunta = new Map<string, string | null>();
+        const BATCH = 500;
+        for (let i = 0; i < perguntaIdsAll.length; i += BATCH) {
+          const slice = perguntaIdsAll.slice(i, i + BATCH);
+          const { data } = await supabase.from("perguntas_avaliacao")
+            .select("id, setor_avaliado_id")
+            .in("id", slice)
+            .limit(BATCH);
+          for (const p of ((data || []) as { id: string; setor_avaliado_id: string | null }[])) {
+            setorPorPergunta.set(p.id, p.setor_avaliado_id);
+          }
+        }
+
+        // Esperado: perguntas distintas por (os, setor_avaliado da pergunta)
         const expected = new Map<string, Set<string>>();
         for (const r of ((opRes.data || []) as { os_id: string; pergunta_id: string }[])) {
           const setor = setorPorPergunta.get(r.pergunta_id) ?? null;
@@ -386,11 +393,12 @@ export default function DashboardTempoAvaliacoes() {
           expected.get(k)!.add(r.pergunta_id);
         }
 
-        // Respondido: perguntas distintas respondidas por (os, setor)
+        // Respondido: perguntas distintas respondidas, agrupadas pelo MESMO critério (setor_avaliado da pergunta)
         const responded = new Map<string, Set<string>>();
-        for (const r of ((raRes.data || []) as { ordem_servico_id: string; setor_id: string | null; pergunta_id: string | null }[])) {
+        for (const r of ((raRes.data || []) as { ordem_servico_id: string; pergunta_id: string }[])) {
           if (!r.pergunta_id) continue;
-          const k = `${r.ordem_servico_id}::${r.setor_id ?? "sem_setor"}`;
+          const setor = setorPorPergunta.get(r.pergunta_id) ?? null;
+          const k = `${r.ordem_servico_id}::${setor ?? "sem_setor"}`;
           if (!responded.has(k)) responded.set(k, new Set());
           responded.get(k)!.add(r.pergunta_id);
         }
