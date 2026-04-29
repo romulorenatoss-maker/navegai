@@ -354,8 +354,8 @@ export default function ProdutosConversacionalPage() {
                             <TableHead>Tipo</TableHead>
                             <TableHead>Cobrança</TableHead>
                             <TableHead>Unidade</TableHead>
-                            <TableHead className="text-right">Mín.</TableHead>
-                            <TableHead className="text-right">Médio</TableHead>
+                            <TableHead className="text-right" title="Valor mínimo aceito de venda (piso). A IA nunca sugere abaixo disso.">Valor mín. (R$)</TableHead>
+                            <TableHead className="text-right" title="Valor médio praticado. Usado pela IA como sugestão padrão na proposta.">Valor médio (R$)</TableHead>
                             <TableHead className="w-10" />
                           </TableRow>
                         </TableHeader>
