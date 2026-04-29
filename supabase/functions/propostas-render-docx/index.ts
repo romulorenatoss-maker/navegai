@@ -157,7 +157,7 @@ serve(async (req) => {
     // 6) Contexto final passado ao docxtemplater
     const data = {
       cliente_nome: input.cliente_nome ?? "",
-      contexto: input.contexto ?? "",
+      contexto: contextoFinal,
       data_hoje: new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" }),
       ...(input.respostas ?? {}),
       ...tokensProduto,
