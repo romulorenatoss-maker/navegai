@@ -30,6 +30,7 @@ interface Props {
 }
 
 export function PropostaEditorVisual({ value, onChange, className, onReady, editable = true }: Props) {
+  const [phModalOpen, setPhModalOpen] = useState(false);
   const editor = useEditor({
     extensions: [
       StarterKit,
