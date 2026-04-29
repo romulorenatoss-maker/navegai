@@ -635,6 +635,19 @@ export default function PropostaConversacionalPage() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 flex-1 min-h-0">
         {/* CHAT — 40% */}
         <Card className="lg:col-span-2 flex flex-col min-h-0">
+          {/* Fase 2 — Painel de pergunta guiada (renderiza apenas quando há tipo_pergunta). Fallback automático para o chat IA. */}
+          <div className="p-2">
+            <PerguntaGuiadaPanel
+              pergunta={pendentes[0] ?? null}
+              itens={itens}
+              onAdicionarItem={guiadoAdicionarItem}
+              onRemoverItem={guiadoRemoverItem}
+              onResponder={guiadoResponder}
+              onContexto={setContextoIA}
+              onAvancar={guiadoAvancar}
+              clienteNome={clienteSel?.nome}
+            />
+          </div>
           <CardHeader className="py-2 border-b"><CardTitle className="text-sm">Conversa</CardTitle></CardHeader>
           <CardContent className="flex-1 overflow-auto p-3 space-y-3">
             {msgs.map((m, i) => (
