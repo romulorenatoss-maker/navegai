@@ -112,7 +112,7 @@ interface MetricaAvaliador {
   oss: OSDoAvaliador[];
 }
 
-function calcularMetricasPorAvaliador(eventos: EventoResposta[], profMap: Record<string, string>): MetricaAvaliador[] {
+function calcularMetricasPorAvaliador(eventos: EventoResposta[], profMap: Record<string, string>, osNumeroMap: Record<string, string | number | null>): MetricaAvaliador[] {
   // Agrupa por usuario → os → eventos
   const porUsuario = new Map<string, Map<string, string[]>>();
   for (const e of eventos) {
