@@ -264,8 +264,8 @@ export default function DashboardTempoAvaliacoes() {
 
   // Métricas por avaliador (período)
   const avaliadores = useMemo(
-    () => calcularMetricasPorAvaliador(eventos, profMap),
-    [eventos, profMap]
+    () => calcularMetricasPorAvaliador(eventos, profMap, osNumeroMap),
+    [eventos, profMap, osNumeroMap]
   );
 
   // Setores agregados (já filtrados via query)
