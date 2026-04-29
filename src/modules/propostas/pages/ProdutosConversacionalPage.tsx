@@ -354,8 +354,8 @@ export default function ProdutosConversacionalPage() {
                             <TableHead>Tipo</TableHead>
                             <TableHead>Cobrança</TableHead>
                             <TableHead>Unidade</TableHead>
-                            <TableHead className="text-right">Mín.</TableHead>
-                            <TableHead className="text-right">Médio</TableHead>
+                            <TableHead className="text-right" title="Valor mínimo aceito de venda (piso). A IA nunca sugere abaixo disso.">Valor mín. (R$)</TableHead>
+                            <TableHead className="text-right" title="Valor médio praticado. Usado pela IA como sugestão padrão na proposta.">Valor médio (R$)</TableHead>
                             <TableHead className="w-10" />
                           </TableRow>
                         </TableHeader>
@@ -392,12 +392,18 @@ export default function ProdutosConversacionalPage() {
                                   <Input className="h-8 w-20" defaultValue={p.unidade} onBlur={(e) => e.target.value !== p.unidade && patchProduto(p.id, { unidade: e.target.value })} />
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  <Input type="number" step="0.01" className="h-8 w-24 text-right" defaultValue={p.valor_minimo}
-                                    onBlur={(e) => Number(e.target.value) !== p.valor_minimo && patchProduto(p.id, { valor_minimo: Number(e.target.value) })} />
+                                  <div className="relative">
+                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">R$</span>
+                                    <Input type="number" step="0.01" min="0" className="h-8 w-28 pl-8 text-right" defaultValue={p.valor_minimo}
+                                      onBlur={(e) => Number(e.target.value) !== p.valor_minimo && patchProduto(p.id, { valor_minimo: Number(e.target.value) })} />
+                                  </div>
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  <Input type="number" step="0.01" className="h-8 w-24 text-right" defaultValue={ext.valor_medio ?? 0}
-                                    onBlur={(e) => Number(e.target.value) !== (ext.valor_medio ?? 0) && patchProduto(p.id, { valor_medio: Number(e.target.value) } as never)} />
+                                  <div className="relative">
+                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">R$</span>
+                                    <Input type="number" step="0.01" min="0" className="h-8 w-28 pl-8 text-right" defaultValue={ext.valor_medio ?? 0}
+                                      onBlur={(e) => Number(e.target.value) !== (ext.valor_medio ?? 0) && patchProduto(p.id, { valor_medio: Number(e.target.value) } as never)} />
+                                  </div>
                                 </TableCell>
                                 <TableCell>
                                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deletarProduto(p.id)}>
