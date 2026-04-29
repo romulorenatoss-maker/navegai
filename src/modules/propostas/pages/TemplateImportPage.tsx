@@ -93,9 +93,19 @@ export default function TemplateImportPage() {
         body: { template_id: tplId, docx_path: pathFinal, force: !!pendingDocx },
       });
       if (error) throw error;
-      const url = (data as { signed_url?: string })?.signed_url;
+      const resp = data as { signed_url?: string; pdf_base64?: string; pdf_path?: string };
+      let url = "";
+      if (resp.pdf_base64) {
+        const bin = atob(resp.pdf_base64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const blob = new Blob([bytes], { type: "application/pdf" });
+        url = URL.createObjectURL(blob);
+      } else if (resp.signed_url) {
+        url = resp.signed_url;
+      }
       if (!url) throw new Error("PDF não disponível");
-      setPdfPath((data as { pdf_path?: string }).pdf_path ?? null);
+      setPdfPath(resp.pdf_path ?? null);
       setPreviewUrl(url);
       setPreviewOpen(true);
       setPendingDocx(null);
