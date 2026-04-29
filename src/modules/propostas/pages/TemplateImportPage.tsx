@@ -19,32 +19,7 @@ import { PropostaEditorVisual } from "../components/PropostaEditorVisual";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 
-// Dados fictícios para preview do template
-const PREVIEW_MOCK: Record<string, string | number> = {
-  cliente_nome: "Empresa Teste Ltda",
-  cliente_cnpj: "00.000.000/0001-00",
-  cnpj: "00.000.000/0001-00",
-  cliente_cpf: "000.000.000-00",
-  cpf: "000.000.000-00",
-  cliente_endereco: "Rua Exemplo, 123 - Centro",
-  endereco: "Rua Exemplo, 123 - Centro",
-  cliente_cidade: "São Paulo - SP",
-  cidade: "São Paulo - SP",
-  cliente_email: "contato@empresateste.com.br",
-  email: "contato@empresateste.com.br",
-  cliente_telefone: "(11) 99999-9999",
-  telefone: "(11) 99999-9999",
-  contexto: "Este é um texto de contexto fictício gerado para fins de visualização do template. Em uma proposta real, este campo conterá a análise comercial do cenário do cliente.",
-  objetivo: "Apresentar uma solução completa adequada às necessidades do cliente.",
-  data: new Date().toLocaleDateString("pt-BR"),
-  data_proposta: new Date().toLocaleDateString("pt-BR"),
-  validade: "30 dias",
-  valor_total: "R$ 9.999,99",
-  valor_mensal: "R$ 1.499,99",
-  valor_implantacao: "R$ 2.500,00",
-  responsavel_nome: "Consultor Exemplo",
-  empresa_nome: "Sua Empresa S/A",
-};
+const BUCKET = "propostas-templates";
 
 export default function TemplateImportPage() {
   const [templates, setTemplates] = useState<PropostasTemplate[]>([]);
