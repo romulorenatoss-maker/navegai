@@ -93,6 +93,70 @@ export default function ProdutosConversacionalPage() {
   const [produtos, setProdutos] = useState<PropostasProduto[]>([]);
   const [perguntas, setPerguntas] = useState<PropostasPerguntaProduto[]>([]);
 
+  // Linhas em rascunho (ainda não salvas)
+  type ProdutoDraft = {
+    _key: string;
+    nome: string;
+    categoria: PropostasCategoria | "outros" | "";
+    tipo: "produto" | "servico";
+    cobranca_padrao: "implantacao" | "mensal" | "informativo";
+    unidade: string;
+    valor_minimo: number;
+    valor_medio: number;
+  };
+  const [drafts, setDrafts] = useState<ProdutoDraft[]>([]);
+  const [salvandoDraft, setSalvandoDraft] = useState<string | null>(null);
+
+  function novaLinhaDraft() {
+    setDrafts(d => [
+      {
+        _key: crypto.randomUUID(),
+        nome: "",
+        categoria: "",
+        tipo: "produto",
+        cobranca_padrao: "mensal",
+        unidade: "un",
+        valor_minimo: 0,
+        valor_medio: 0,
+      },
+      ...d,
+    ]);
+  }
+  function patchDraft(key: string, patch: Partial<ProdutoDraft>) {
+    setDrafts(ds => ds.map(d => d._key === key ? { ...d, ...patch } : d));
+  }
+  function removerDraft(key: string) {
+    setDrafts(ds => ds.filter(d => d._key !== key));
+  }
+  async function salvarDraft(key: string) {
+    const d = drafts.find(x => x._key === key);
+    if (!d) return;
+    if (!d.nome.trim()) { toast.error("Informe o nome"); return; }
+    if (!d.categoria) { toast.error("Selecione a categoria"); return; }
+    if (!d.valor_minimo || d.valor_minimo <= 0) { toast.error("Valor mínimo obrigatório"); return; }
+    setSalvandoDraft(key);
+    try {
+      const novo = await criarProduto({
+        nome: d.nome.trim(),
+        tipo: d.tipo,
+        unidade: d.unidade || "un",
+        valor_minimo: Number(d.valor_minimo),
+        ativo: true,
+        tipo_calculo: "quantidade",
+        categoria: d.categoria,
+        valor_medio: Number(d.valor_medio) || Number(d.valor_minimo),
+        cobranca_padrao: d.cobranca_padrao,
+        origem: "manual",
+      } as Partial<PropostasProduto>);
+      setProdutos(ps => [novo, ...ps]);
+      removerDraft(key);
+      toast.success(`"${novo.nome}" cadastrado`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao salvar");
+    } finally { setSalvandoDraft(null); }
+  }
+
+
   // ============ CHAT ============
   const [msgs, setMsgs] = useState<Msg[]>([
     { role: "assistant", content: "Olá! Vamos organizar o catálogo de produtos da empresa. Me diga um item que você vende (ex: *switch 24 portas a R$1300* ou *câmera IP 350 cada*)." },
