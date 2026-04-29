@@ -107,22 +107,30 @@ serve(async (req) => {
     }
 
     // 4) Tokens diretos a partir de produtos (campo_template + tipo_input)
-    //    quantidade  → soma de quantidades
-    //    boolean     → "X" se >=1 item, "" caso contrário
-    //    lista       → "Item1, Item2, ..."
+    //    Padronização: campo_template é normalizado (trim + lower) para garantir
+    //    unicidade e agrupamento consistente, alinhado ao índice único do banco.
+    //    quantidade  → soma de quantidades de itens com mesmo campo_template
+    //    boolean     → "X" SOMENTE se existir pelo menos 1 item com aquele campo_template
+    //                  (qtd > 0). Caso contrário "" — nunca marcar sem item real.
+    //    lista       → "Item1, Item2, ..." (nomes dos itens com mesmo campo_template)
     const tokensProduto: Record<string, string | number> = {};
     for (const it of itens) {
-      const k = (it.campo_template ?? "").trim();
+      const k = (it.campo_template ?? "").trim().toLowerCase();
       if (!k) continue;
       const tipo = it.tipo_input ?? "quantidade";
+      const qtd = Number(it.quantidade ?? 0);
+
       if (tipo === "boolean") {
-        tokensProduto[k] = "X";
+        // Só marca "X" se existir item real com quantidade > 0
+        if (qtd > 0) tokensProduto[k] = "X";
+        else if (!(k in tokensProduto)) tokensProduto[k] = "";
       } else if (tipo === "lista") {
+        if (qtd <= 0) continue;
         const prev = (tokensProduto[k] as string) ?? "";
         tokensProduto[k] = prev ? `${prev}, ${it.nome}` : it.nome;
       } else {
         const prev = Number(tokensProduto[k] ?? 0);
-        tokensProduto[k] = prev + Number(it.quantidade ?? 0);
+        tokensProduto[k] = prev + qtd;
       }
     }
 
