@@ -172,7 +172,7 @@ Deno.serve(async (req) => {
 
   // 10) Signed URL + base64 (para uso em blob URL no front, evita bloqueio do Chrome)
   const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(pdfPath, 60 * 60);
-  const pdfBase64 = btoa(String.fromCharCode(...pdfBuf));
+  const pdfBase64 = uint8ToBase64(pdfBuf);
 
   return new Response(
     JSON.stringify({
