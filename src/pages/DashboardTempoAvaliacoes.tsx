@@ -534,31 +534,41 @@ export default function DashboardTempoAvaliacoes() {
                                       <TableHeader>
                                         <TableRow>
                                           <TableHead>OS</TableHead>
+                                          <TableHead>Data Início</TableHead>
                                           <TableHead>Início</TableHead>
                                           <TableHead>Fim</TableHead>
+                                          <TableHead>Data Fim</TableHead>
                                           <TableHead className="text-right">Duração</TableHead>
                                         </TableRow>
                                       </TableHeader>
                                       <TableBody>
-                                        {a.oss.map(o => (
-                                          <TableRow key={o.os_id}>
-                                            <TableCell className="text-xs">
-                                              {o.numero_os ? (
-                                                <a
-                                                  href={`/avaliacoes/pesquisa?os=${encodeURIComponent(String(o.numero_os))}`}
-                                                  className="text-primary hover:underline font-medium"
-                                                >
-                                                  #{o.numero_os}
-                                                </a>
-                                              ) : (
-                                                <span className="font-mono text-muted-foreground">{o.os_id.slice(0, 8)}</span>
-                                              )}
-                                            </TableCell>
-                                            <TableCell className="text-xs">{fmtHora(o.inicio)}</TableCell>
-                                            <TableCell className="text-xs">{fmtHora(o.fim)}</TableCell>
-                                            <TableCell className="text-right text-xs">{formatDuration(o.duracao_seg)}</TableCell>
-                                          </TableRow>
-                                        ))}
+                                        {a.oss.map(o => {
+                                          const cruzaDia = !mesmaDataBR(o.inicio, o.fim);
+                                          return (
+                                            <TableRow key={o.os_id} className={cruzaDia ? "bg-amber-500/10" : undefined}>
+                                              <TableCell className="text-xs">
+                                                {o.numero_os ? (
+                                                  <a
+                                                    href={`/avaliacoes/pesquisa?os=${encodeURIComponent(String(o.numero_os))}`}
+                                                    className="text-primary hover:underline font-medium"
+                                                  >
+                                                    #{o.numero_os}
+                                                  </a>
+                                                ) : (
+                                                  <span className="font-mono text-muted-foreground">{o.os_id.slice(0, 8)}</span>
+                                                )}
+                                              </TableCell>
+                                              <TableCell className="text-xs">{fmtData(o.inicio)}</TableCell>
+                                              <TableCell className="text-xs">{fmtHora(o.inicio)}</TableCell>
+                                              <TableCell className="text-xs">{fmtHora(o.fim)}</TableCell>
+                                              <TableCell className={`text-xs ${cruzaDia ? "font-semibold text-amber-700 dark:text-amber-400" : ""}`}>
+                                                {fmtData(o.fim)}
+                                                {cruzaDia && <span className="ml-1" title="Avaliação cruzou de um dia para outro">⚠️</span>}
+                                              </TableCell>
+                                              <TableCell className="text-right text-xs">{formatDuration(o.duracao_seg)}</TableCell>
+                                            </TableRow>
+                                          );
+                                        })}
                                       </TableBody>
                                     </Table>
                                   </div>
