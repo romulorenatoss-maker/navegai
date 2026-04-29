@@ -112,7 +112,7 @@ export async function excluirTemplate(id: string) {
   if (error) throw error;
 }
 
-// ---------- PROPOSTAS (lista — fase 2 expande) ----------
+// ---------- PROPOSTAS ----------
 export async function listarPropostas() {
   const { data, error } = await supabase
     .from("propostas_propostas" as never)
@@ -121,3 +121,105 @@ export async function listarPropostas() {
   if (error) throw error;
   return data ?? [];
 }
+
+export async function obterProposta(id: string) {
+  const { data, error } = await supabase
+    .from("propostas_propostas" as never)
+    .select("*, clientes(id, nome, cpf, cidade), propostas_itens(*)")
+    .eq("id", id)
+    .single();
+  if (error) throw error;
+  return data as any;
+}
+
+export interface NovaPropostaInput {
+  cliente_id: string;
+  template_id?: string | null;
+  conteudo_original: string;
+  conteudo_editado: string;
+  valor_total: number;
+  validade?: string | null;
+  itens: Array<{
+    produto_id?: string | null;
+    descricao: string;
+    quantidade: number;
+    unidade: string;
+    valor_unitario: number;
+    valor_total: number;
+  }>;
+}
+
+export async function criarProposta(input: NovaPropostaInput) {
+  // Pega profile do usuário corrente
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) throw new Error("Não autenticado");
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("user_id", auth.user.id)
+    .single();
+  if (!prof) throw new Error("Perfil não encontrado");
+
+  const { data: prop, error } = await supabase
+    .from("propostas_propostas" as never)
+    .insert({
+      cliente_id: input.cliente_id,
+      usuario_id: (prof as any).id,
+      template_id: input.template_id ?? null,
+      conteudo_original: input.conteudo_original,
+      conteudo_editado: input.conteudo_editado,
+      valor_total: input.valor_total,
+      validade: input.validade ?? null,
+      status: "rascunho",
+    } as never)
+    .select()
+    .single();
+  if (error) throw error;
+
+  if (input.itens.length) {
+    const propId = (prop as any).id;
+    const itensPayload = input.itens.map((it, idx) => ({ ...it, proposta_id: propId, ordem: idx }));
+    const { error: errItens } = await supabase
+      .from("propostas_itens" as never)
+      .insert(itensPayload as never);
+    if (errItens) throw errItens;
+  }
+
+  await supabase.from("propostas_historico" as never).insert({
+    proposta_id: (prop as any).id,
+    conteudo: input.conteudo_editado,
+    tipo: "gerado",
+  } as never);
+
+  return prop as any;
+}
+
+export async function atualizarProposta(id: string, payload: { conteudo_editado?: string; valor_total?: number; validade?: string | null; status?: "rascunho" | "aprovado" | "cancelado" }) {
+  const { error } = await supabase
+    .from("propostas_propostas" as never)
+    .update(payload as never)
+    .eq("id", id);
+  if (error) throw error;
+
+  if (payload.conteudo_editado) {
+    await supabase.from("propostas_historico" as never).insert({
+      proposta_id: id,
+      conteudo: payload.conteudo_editado,
+      tipo: payload.status === "aprovado" ? "aprovado" : "editado",
+    } as never);
+  }
+}
+
+// ---------- CLIENTES (apenas leitura — fonte de verdade é a tabela existente) ----------
+export interface ClienteLite { id: string; nome: string; cpf?: string | null; cidade?: string | null }
+
+export async function buscarClientes(termo: string): Promise<ClienteLite[]> {
+  let query = supabase.from("clientes").select("id, nome, cpf, cidade").order("nome").limit(20);
+  if (termo.trim()) {
+    query = query.ilike("nome", `%${termo}%`);
+  }
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []) as ClienteLite[];
+}
+
