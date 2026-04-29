@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type PropostasCobranca = "implantacao" | "mensal" | "informativo";
 export type PropostasPerguntaTipo = "texto" | "numero" | "escolha" | "sim_nao";
+export type PropostasTipoPergunta = "contexto" | "produto" | "input";
+export type PropostasCategoriaProduto = "infraestrutura" | "dados" | "seguranca" | "telefonia" | "outros";
 
 export interface PropostasCategoriaSetup {
   id: string;
