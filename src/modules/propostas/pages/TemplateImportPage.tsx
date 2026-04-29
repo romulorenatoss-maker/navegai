@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,8 +18,83 @@ import { prepararHtmlParaEditor } from "../utils/propostasParser";
 import { PropostaEditorVisual } from "../components/PropostaEditorVisual";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import * as pdfjsLib from "pdfjs-dist";
+import pdfjsWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
 
 const BUCKET = "propostas-templates";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
+
+function base64ToBytes(base64: string) {
+  const bin = atob(base64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+function PdfCanvasPreview({ bytes }: { bytes: Uint8Array }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const canvases: HTMLCanvasElement[] = [];
+
+    async function renderPdf() {
+      if (!containerRef.current) return;
+      setLoading(true);
+      setError(null);
+      containerRef.current.innerHTML = "";
+
+      try {
+        const pdf = await pdfjsLib.getDocument({ data: bytes.slice() }).promise;
+        for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+          if (cancelled || !containerRef.current) return;
+          const page = await pdf.getPage(pageNumber);
+          const baseViewport = page.getViewport({ scale: 1 });
+          const width = Math.min(containerRef.current.clientWidth || 900, 1100);
+          const scale = Math.max(0.7, width / baseViewport.width);
+          const viewport = page.getViewport({ scale });
+          const canvas = document.createElement("canvas");
+          const context = canvas.getContext("2d");
+          if (!context) throw new Error("Canvas indisponível");
+          canvas.width = Math.floor(viewport.width);
+          canvas.height = Math.floor(viewport.height);
+          canvas.className = "mx-auto mb-4 block max-w-full rounded-md border bg-background shadow-sm";
+          canvases.push(canvas);
+          containerRef.current.appendChild(canvas);
+          await page.render({ canvas, canvasContext: context, viewport }).promise;
+        }
+        if (!cancelled) setLoading(false);
+      } catch (err) {
+        console.error(err);
+        if (!cancelled) {
+          setError("Não foi possível renderizar o PDF gerado.");
+          setLoading(false);
+        }
+      }
+    }
+
+    renderPdf();
+    return () => {
+      cancelled = true;
+      canvases.forEach((canvas) => canvas.remove());
+    };
+  }, [bytes]);
+
+  return (
+    <div className="relative flex-1 overflow-auto rounded-md border bg-muted/30 p-4 min-h-[70vh]">
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+          <Loader2 className="w-5 h-5 mr-2 animate-spin" /> Renderizando PDF…
+        </div>
+      )}
+      {error && <div className="flex min-h-[60vh] items-center justify-center text-sm text-destructive">{error}</div>}
+      <div ref={containerRef} className="mx-auto w-full max-w-[1100px]" />
+    </div>
+  );
+}
 
 export default function TemplateImportPage() {
   const [templates, setTemplates] = useState<PropostasTemplate[]>([]);
@@ -54,6 +129,7 @@ export default function TemplateImportPage() {
   // Preview modal (PDF via CloudConvert)
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string>("");
+  const [previewPdfBytes, setPreviewPdfBytes] = useState<Uint8Array | null>(null);
 
   async function abrirPreview() {
     if (!pendingDocx && !docxPath) {
@@ -96,13 +172,13 @@ export default function TemplateImportPage() {
       const resp = data as { signed_url?: string; pdf_base64?: string; pdf_path?: string };
       let url = "";
       if (resp.pdf_base64) {
-        const bin = atob(resp.pdf_base64);
-        const bytes = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const bytes = base64ToBytes(resp.pdf_base64);
         const blob = new Blob([bytes], { type: "application/pdf" });
         url = URL.createObjectURL(blob);
+        setPreviewPdfBytes(bytes);
       } else if (resp.signed_url) {
         url = resp.signed_url;
+        setPreviewPdfBytes(null);
       }
       if (!url) throw new Error("PDF não disponível");
       setPdfPath(resp.pdf_path ?? null);
@@ -138,6 +214,7 @@ export default function TemplateImportPage() {
     setDocxPath(null);
     setPdfPath(null);
     setPendingDocx(null);
+      setPreviewPdfBytes(null);
     setAnalise(null);
     setEditorOpen(true);
   }
@@ -172,6 +249,7 @@ export default function TemplateImportPage() {
     setDocxPath(null);
     setPdfPath(null);
     setPendingDocx(null);
+    setPreviewPdfBytes(null);
     setAnalise(null);
   }
 
@@ -397,7 +475,10 @@ export default function TemplateImportPage() {
         </>
       )}
 
-      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+      <Dialog open={previewOpen} onOpenChange={(open) => {
+        setPreviewOpen(open);
+        if (!open && previewUrl.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
+      }}>
         <DialogContent className="max-w-5xl w-[90vw] max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -415,12 +496,13 @@ export default function TemplateImportPage() {
               )}
             </DialogTitle>
           </DialogHeader>
-          {previewUrl ? (
-            <iframe
-              src={previewUrl}
-              title="Preview PDF"
-              className="flex-1 w-full border rounded-md bg-white min-h-[70vh]"
-            />
+          {previewPdfBytes ? (
+            <PdfCanvasPreview bytes={previewPdfBytes} />
+          ) : previewUrl ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 rounded-md border bg-muted/30 min-h-[70vh] text-center text-sm text-muted-foreground">
+              <FileText className="w-10 h-10" />
+              <span>Preview gerado. Abra o PDF em nova aba para visualizar.</span>
+            </div>
           ) : (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
               <Loader2 className="w-5 h-5 mr-2 animate-spin" /> Carregando…
