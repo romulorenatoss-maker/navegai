@@ -164,7 +164,6 @@ function diaBR(iso: string): string {
 
 function calcularMetricasPorAvaliador(
   eventos: EventoResposta[],
-  eventosEstendidos: EventoResposta[],
   profMap: Record<string, string>,
   osNumeroMap: Record<string, string | number | null>,
   periodoInicioMs?: number,
@@ -180,25 +179,16 @@ function calcularMetricasPorAvaliador(
     osMap.get(e.ordem_servico_id)!.push(e.respondido_em);
   }
 
-  // 2) Mapa estendido (inclui eventos fora do período) — usado para detectar OS que cruzam dia/período
-  const extMap = new Map<string, string[]>();
-  for (const e of eventosEstendidos) {
-    if (!e.usuario_id || !e.ordem_servico_id) continue;
-    const k = `${e.usuario_id}::${e.ordem_servico_id}`;
-    if (!extMap.has(k)) extMap.set(k, []);
-    extMap.get(k)!.push(e.respondido_em);
-  }
-
   const result: MetricaAvaliador[] = [];
   for (const [usuario_id, osMap] of porUsuario.entries()) {
     const oss: OSDoAvaliador[] = [];
     for (const [os_id, timestamps] of osMap.entries()) {
-      // Usar timestamps ESTENDIDOS para detectar início/fim REAL da avaliação (independente do filtro)
-      const ts = (extMap.get(`${usuario_id}::${os_id}`) ?? timestamps).slice().sort();
+      // Usar somente timestamps do período aplicado: primeira/última ação DO DIA/FILTRO.
+      const ts = timestamps.slice().sort();
       const inicio = ts[0];
       const fim = ts[ts.length - 1];
 
-      // === REGRA D: só conta OS cuja primeira E última resposta caem dentro do período ===
+      // Garante que a OS considerada tenha início e fim calculados dentro do filtro aplicado.
       if (periodoInicioMs != null && periodoFimMs != null) {
         const inicioMs = new Date(inicio).getTime();
         const fimMs = new Date(fim).getTime();
