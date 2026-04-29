@@ -23,6 +23,15 @@ const allNavSections = [
     ],
   },
   {
+    title: "Propostas",
+    items: [
+      { to: "/propostas/nova", icon: FilePlus2, label: "Nova Proposta" },
+      { to: "/propostas/templates", icon: FileSignature, label: "Templates" },
+      { to: "/propostas/produtos", icon: Package, label: "Produtos" },
+      { to: "/propostas", icon: History, label: "Histórico" },
+    ],
+  },
+  {
     title: "Avaliações",
     items: [
       { to: "/avaliacoes/pesquisa", icon: FileSearch, label: "Criar OS / Buscar" },

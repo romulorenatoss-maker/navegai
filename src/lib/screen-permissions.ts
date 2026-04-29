@@ -19,6 +19,11 @@ export const ALL_SCREENS: ScreenDef[] = [
   { path: "/avaliacoes/pesquisa", label: "Criar OS / Buscar", group: "Avaliações" },
   { path: "/avaliacoes/minhas", label: "Minhas Avaliações", group: "Avaliações" },
   { path: "/leads", label: "Meus Leads", group: "Avaliações" },
+  // Propostas (módulo isolado)
+  { path: "/propostas/nova", label: "Nova Proposta", group: "Propostas" },
+  { path: "/propostas/templates", label: "Templates", group: "Propostas" },
+  { path: "/propostas/produtos", label: "Produtos", group: "Propostas" },
+  { path: "/propostas", label: "Histórico", group: "Propostas" },
   // Leads
   { path: "/leads/fila", label: "Gerenciador de Leads", group: "Leads" },
   { path: "/leads/arquivados", label: "Leads Arquivados", group: "Leads" },
