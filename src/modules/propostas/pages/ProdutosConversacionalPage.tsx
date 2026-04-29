@@ -44,8 +44,41 @@ const CATEGORIAS: Array<{ value: PropostasCategoria; label: string }> = [
 ];
 const COBRANCAS = ["implantacao", "mensal", "informativo"] as const;
 const TIPOS = ["produto", "servico"] as const;
+type CategoriaCatalogo = PropostasCategoria | "outros";
+type TipoCatalogo = typeof TIPOS[number];
+type CobrancaCatalogo = typeof COBRANCAS[number];
 
 const fmtBRL = (v: number) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const normalizarTexto = (v?: string | null) => (v ?? "")
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .toLowerCase()
+  .trim();
+const normalizarCategoria = (v?: string | null): CategoriaCatalogo | "" => {
+  const n = normalizarTexto(v).replace(/[^a-z0-9]+/g, " ").trim();
+  if (!n) return "";
+  if (n.includes("infra")) return "infraestrutura";
+  if (n.includes("dado") || n.includes("internet") || n.includes("link")) return "dados";
+  if (n.includes("segur") || n.includes("cftv") || n.includes("camera")) return "seguranca";
+  if (n.includes("telefon") || n.includes("ramal") || n.includes("pabx")) return "telefonia";
+  if (n.includes("outro")) return "outros";
+  return "";
+};
+const isCategoriaCatalogo = (v: string): v is CategoriaCatalogo =>
+  ["infraestrutura", "dados", "seguranca", "telefonia", "outros"].includes(v);
+const normalizarTipo = (v?: string | null): TipoCatalogo | "" => {
+  const n = normalizarTexto(v);
+  if (n.includes("serv")) return "servico";
+  if (n.includes("prod")) return "produto";
+  return "";
+};
+const normalizarCobranca = (v?: string | null): CobrancaCatalogo | "" => {
+  const n = normalizarTexto(v);
+  if (n.includes("impl") || n.includes("instal")) return "implantacao";
+  if (n.includes("mens") || n.includes("recorr")) return "mensal";
+  if (n.includes("info")) return "informativo";
+  return "";
+};
 
 // ---------- Editor de array (chips) ----------
 function ChipsEditor({ label, values, onChange, placeholder }: {
@@ -268,6 +301,8 @@ export default function ProdutosConversacionalPage() {
     setMsgs(novo);
     setEnviando(true);
     try {
+        const catalogoAtual = produtos;
+      const perguntasAtuais = perguntas;
       const { data, error } = await supabase.functions.invoke("propostas-produtos-conversa", {
         body: {
           messages: novo,
@@ -280,16 +315,20 @@ export default function ProdutosConversacionalPage() {
               tipo_ambiente: empresa.tipo_ambiente,
               regras_tecnicas: empresa.regras_tecnicas,
             } : null,
-            catalogo: produtos.filter(p => p.ativo).map(p => ({
+            categorias_disponiveis: CATEGORIAS.map(c => ({ codigo: c.value, nome: c.label })),
+            tipos_disponiveis: TIPOS,
+            cobrancas_disponiveis: COBRANCAS,
+            catalogo: catalogoAtual.filter(p => p.ativo).map(p => ({
               id: p.id,
               nome: p.nome,
               categoria: (p as unknown as { categoria?: string }).categoria,
+              tipo: p.tipo,
               valor_minimo: Number(p.valor_minimo),
               valor_medio: Number((p as unknown as { valor_medio?: number }).valor_medio ?? p.valor_minimo),
               unidade: p.unidade,
               cobranca_padrao: (p as unknown as { cobranca_padrao?: string }).cobranca_padrao,
             })),
-            perguntas_padrao: perguntas.filter(q => q.ativo).map(q => ({ id: q.id, categoria: q.categoria, pergunta: q.pergunta })),
+            perguntas_padrao: perguntasAtuais.filter(q => q.ativo).map(q => ({ id: q.id, categoria: q.categoria, pergunta: q.pergunta })),
           },
         },
       });
@@ -298,9 +337,10 @@ export default function ProdutosConversacionalPage() {
         mensagem: string;
         produtos: ProdutoSugerido[];
         fora_escopo: Array<{ nome: string }>;
-        remover_produtos?: Array<{ id: string; nome?: string }>;
+        remover_produtos?: Array<{ id?: string; nome?: string }>;
         remover_perguntas?: Array<{ id: string }>;
         remover_categorias?: Array<{ categoria: string }>;
+        migrar_categorias?: Array<{ categoria_origem: string; categoria_destino: string; tipo?: string; cobranca_padrao?: string }>;
         error?: string;
       };
       if (resp.error) { toast.error(resp.error); return; }
@@ -317,11 +357,54 @@ export default function ProdutosConversacionalPage() {
       // Remoções de produtos individuais
       if (resp.remover_produtos?.length) {
         for (const r of resp.remover_produtos) {
+          const alvo = catalogoAtual.find(p => p.id === r.id)
+            ?? catalogoAtual.find(p => normalizarTexto(p.nome) === normalizarTexto(r.nome));
+          if (!alvo) {
+            toast.error(`Produto não encontrado para remover: ${r.nome ?? r.id ?? "sem identificação"}`);
+            continue;
+          }
           try {
-            await excluirProduto(r.id);
-            setProdutos(ps => ps.filter(p => p.id !== r.id));
-            toast.success(`Removido: ${r.nome ?? r.id}`);
-          } catch (e) { toast.error(e instanceof Error ? e.message : "Erro ao remover produto"); }
+            setProdutos(ps => ps.filter(p => p.id !== alvo.id));
+            await excluirProduto(alvo.id);
+            toast.success(`Removido: ${alvo.nome}`);
+          } catch (e) {
+            setProdutos(catalogoAtual);
+            toast.error(e instanceof Error ? e.message : "Erro ao remover produto");
+          }
+        }
+      }
+
+      // Migração de produtos de uma categoria antes de remover a categoria antiga do catálogo
+      if (resp.migrar_categorias?.length) {
+        for (const r of resp.migrar_categorias) {
+          const origem = normalizarCategoria(r.categoria_origem);
+          const destino = normalizarCategoria(r.categoria_destino);
+          const tipo = normalizarTipo(r.tipo);
+          const cobranca = normalizarCobranca(r.cobranca_padrao);
+          if (!origem || !destino || !isCategoriaCatalogo(destino) || !tipo || !cobranca) {
+            toast.error("Migração incompleta: informe categoria destino, tipo e cobrança.");
+            continue;
+          }
+          const prodsDaCat = catalogoAtual.filter(p => normalizarCategoria((p as unknown as { categoria?: string }).categoria) === origem);
+          const pergsDaCat = perguntasAtuais.filter(q => normalizarCategoria(q.categoria) === origem);
+          if (!prodsDaCat.length && !pergsDaCat.length) {
+            toast.info(`Nada encontrado em ${r.categoria_origem}.`);
+            continue;
+          }
+          const patch = { categoria: destino, tipo, cobranca_padrao: cobranca } as Partial<PropostasProduto>;
+          try {
+            setProdutos(ps => ps.map(p => prodsDaCat.some(alvo => alvo.id === p.id) ? { ...p, ...patch } as PropostasProduto : p));
+            if (origem !== "outros") setPerguntas(qs => qs.filter(q => normalizarCategoria(q.categoria) !== origem));
+            await Promise.all([
+              ...prodsDaCat.map(p => atualizarProduto(p.id, patch)),
+              ...(origem !== "outros" ? pergsDaCat.map(q => excluirPerguntaProduto(q.id)) : []),
+            ]);
+            toast.success(`Categoria "${r.categoria_origem}" migrada para "${destino}" (${prodsDaCat.length} produto(s))`);
+          } catch (e) {
+            setProdutos(catalogoAtual);
+            setPerguntas(perguntasAtuais);
+            toast.error(e instanceof Error ? e.message : `Erro ao migrar categoria ${r.categoria_origem}`);
+          }
         }
       }
 
@@ -329,27 +412,35 @@ export default function ProdutosConversacionalPage() {
       if (resp.remover_perguntas?.length) {
         for (const r of resp.remover_perguntas) {
           try {
-            await excluirPerguntaProduto(r.id);
             setPerguntas(qs => qs.filter(q => q.id !== r.id));
-          } catch (e) { toast.error(e instanceof Error ? e.message : "Erro ao remover pergunta"); }
+            await excluirPerguntaProduto(r.id);
+          } catch (e) {
+            setPerguntas(perguntasAtuais);
+            toast.error(e instanceof Error ? e.message : "Erro ao remover pergunta");
+          }
         }
       }
 
-      // Remoção em massa por categoria
+      // Remoção em massa por categoria: só remove direto quando não há produto vinculado.
+      // Se houver produto, o backend deve pedir migração e só depois emitir migrar_categoria.
       if (resp.remover_categorias?.length) {
         for (const r of resp.remover_categorias) {
-          const cat = r.categoria;
-          const prodsDaCat = produtos.filter(p => (p as unknown as { categoria?: string }).categoria === cat);
-          const pergsDaCat = perguntas.filter(q => q.categoria === cat);
+          const cat = normalizarCategoria(r.categoria);
+          if (!cat) { toast.error(`Categoria inválida: ${r.categoria}`); continue; }
+          const prodsDaCat = catalogoAtual.filter(p => normalizarCategoria((p as unknown as { categoria?: string }).categoria) === cat);
+          const pergsDaCat = perguntasAtuais.filter(q => normalizarCategoria(q.categoria) === cat);
+          if (prodsDaCat.length) {
+            setMsgs(m => [...m, { role: "assistant", content: `Antes de remover **${r.categoria}**, preciso migrar ${prodsDaCat.length} produto(s). Para qual **categoria**, **tipo** e **cobrança** eles devem ir?` }]);
+            continue;
+          }
           try {
-            await Promise.all([
-              ...prodsDaCat.map(p => excluirProduto(p.id)),
-              ...pergsDaCat.map(q => excluirPerguntaProduto(q.id)),
-            ]);
-            setProdutos(ps => ps.filter(p => (p as unknown as { categoria?: string }).categoria !== cat));
-            setPerguntas(qs => qs.filter(q => q.categoria !== cat));
-            toast.success(`Categoria "${cat}" removida (${prodsDaCat.length} produto(s), ${pergsDaCat.length} pergunta(s))`);
-          } catch (e) { toast.error(e instanceof Error ? e.message : `Erro ao remover categoria ${cat}`); }
+            if (cat !== "outros") setPerguntas(qs => qs.filter(q => normalizarCategoria(q.categoria) !== cat));
+            await Promise.all(cat !== "outros" ? pergsDaCat.map(q => excluirPerguntaProduto(q.id)) : []);
+            toast.success(`Categoria "${r.categoria}" removida (${pergsDaCat.length} pergunta(s))`);
+          } catch (e) {
+            setPerguntas(perguntasAtuais);
+            toast.error(e instanceof Error ? e.message : `Erro ao remover categoria ${r.categoria}`);
+          }
         }
       }
     } catch (e) {
