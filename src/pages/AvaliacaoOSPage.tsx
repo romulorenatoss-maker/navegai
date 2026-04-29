@@ -2581,6 +2581,31 @@ export default function AvaliacaoOSPage() {
     const atendScore = calcScore(osDetailBySetor.atendimento);
     const tecScore = calcScore(osDetailBySetor.tecnico);
 
+    // Tempo de avaliação por avaliador (com base nas respostas do setor dele)
+    const tempoPorAvaliador = (avaliadorId: string | null | undefined) => {
+      if (!avaliadorId) return null;
+      const all = [...osDetailBySetor.atendimento, ...osDetailBySetor.tecnico];
+      const dts = all
+        .map(q => q._answer)
+        .filter(a => a?.created_at && a.avaliador_id === avaliadorId)
+        .map(a => new Date(a.created_at).getTime())
+        .sort((a, b) => a - b);
+      if (dts.length === 0) return null;
+      const primeira = dts[0];
+      const ultima = dts[dts.length - 1];
+      const segs = Math.max(0, Math.floor((ultima - primeira) / 1000));
+      const h = Math.floor(segs / 3600);
+      const m = Math.floor((segs % 3600) / 60);
+      const s = segs % 60;
+      const duracao = h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m ${s}s` : `${s}s`;
+      return {
+        primeira: format(new Date(primeira), "dd/MM/yyyy HH:mm"),
+        ultima: format(new Date(ultima), "dd/MM/yyyy HH:mm"),
+        duracao,
+        total: dts.length,
+      };
+    };
+
     const renderQuestionList = (questions: any[]) => (
       <div className="divide-y divide-border">
         {questions.length === 0 ? (
@@ -2800,20 +2825,34 @@ export default function AvaliacaoOSPage() {
             </div>
           </div>
 
-          {/* Avaliadores com hora de conclusão */}
+          {/* Avaliadores com hora de conclusão e tempo de avaliação */}
           {osAvaliacoes.length > 0 && (
             <div className="flex flex-col gap-1.5 mt-3 pt-3 border-t border-border">
               <span className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Avaliadores</span>
-              {osAvaliacoes.map((aval: any, idx: number) => (
-                <div key={aval.id} className="flex items-center gap-2 text-sm flex-wrap">
-                  <span className="font-medium text-foreground">Avaliador {idx + 1}: {aval._avaliador_nome}</span>
-                  {aval.concluida_em ? (
-                    <span className="text-caption text-success">• Concluído em {format(new Date(aval.concluida_em), "dd/MM/yyyy HH:mm")}</span>
-                  ) : (
-                    <span className="text-caption text-warning">• Pendente</span>
-                  )}
-                </div>
-              ))}
+              {osAvaliacoes.map((aval: any, idx: number) => {
+                const tempo = tempoPorAvaliador(aval.avaliador_id);
+                return (
+                  <div key={aval.id} className="flex flex-col gap-0.5 text-sm">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-foreground">Avaliador {idx + 1}: {aval._avaliador_nome}</span>
+                      {aval.concluida_em ? (
+                        <span className="text-caption text-success">• Concluído em {format(new Date(aval.concluida_em), "dd/MM/yyyy HH:mm")}</span>
+                      ) : (
+                        <span className="text-caption text-warning">• Pendente</span>
+                      )}
+                    </div>
+                    {tempo && (
+                      <div className="flex items-center gap-2 flex-wrap text-caption text-muted-foreground pl-1">
+                        <span>1ª resposta: <span className="font-medium text-foreground">{tempo.primeira}</span></span>
+                        <span>•</span>
+                        <span>Última resposta: <span className="font-medium text-foreground">{tempo.ultima}</span></span>
+                        <span>•</span>
+                        <span>Tempo total: <span className="font-medium text-foreground">{tempo.duracao}</span> ({tempo.total} {tempo.total === 1 ? "resposta" : "respostas"})</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 
