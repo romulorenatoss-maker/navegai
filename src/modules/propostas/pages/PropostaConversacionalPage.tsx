@@ -38,12 +38,18 @@ const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u03
 
 export default function PropostaConversacionalPage() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const clienteParam = params.get("cliente");
 
   // Cliente
   const [modalCliente, setModalCliente] = useState(true);
   const [termoCliente, setTermoCliente] = useState("");
   const [clientes, setClientes] = useState<ClienteLite[]>([]);
   const [clienteSel, setClienteSel] = useState<ClienteLite | null>(null);
+
+  // Rascunho
+  const [rascunhoId, setRascunhoId] = useState<string | null>(null);
+  const [retomado, setRetomado] = useState(false);
 
   // Template
   const [templates, setTemplates] = useState<PropostasTemplate[]>([]);
