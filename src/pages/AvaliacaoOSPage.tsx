@@ -301,7 +301,7 @@ export default function AvaliacaoOSPage() {
       // Get all answers for this OS
       const { data: respostas } = await supabase
         .from("respostas_avaliacao")
-        .select("pergunta_id, resposta, observacao, evidencia_url, audio_url")
+        .select("pergunta_id, resposta, observacao, evidencia_url, audio_url, avaliador_id, created_at")
         .eq("ordem_servico_id", selectedOS.id)
         .not("resposta", "is", null);
 
@@ -2611,6 +2611,16 @@ export default function AvaliacaoOSPage() {
                       </span>
                     )}
                     <span className="text-caption text-muted-foreground">Nota: {q.peso}</span>
+                    {ans?.avaliador_id && (
+                      <span className="text-caption text-muted-foreground">
+                        • Avaliador: {allProfiles.find(p => p.id === ans.avaliador_id)?.nome || "—"}
+                      </span>
+                    )}
+                    {ans?.created_at && (
+                      <span className="text-caption text-muted-foreground">
+                        • {new Date(ans.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    )}
                   </div>
                   {ans?.observacao && (
                     <div className="mt-2 bg-muted/50 border border-border rounded p-2">
