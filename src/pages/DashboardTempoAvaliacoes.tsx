@@ -322,35 +322,64 @@ export default function DashboardTempoAvaliacoes() {
     (async () => {
       setLoading(true);
 
-      const inicioIso = new Date(dataInicio.getFullYear(), dataInicio.getMonth(), dataInicio.getDate(), 0, 0, 0).toISOString();
-      const fimIso = new Date(dataFim.getFullYear(), dataFim.getMonth(), dataFim.getDate(), 23, 59, 59, 999).toISOString();
+      const inicioIso = inicioDiaSaoPauloIso(dataInicio);
+      const fimIso = fimDiaSaoPauloIso(dataFim);
 
-      // Todas as consultas filtram por respondido_em ∈ [inicioIso, fimIso]
-      // - vw_metricas_setor (campo inicio = min(respondido_em) por OS/setor)
-      // - vw_metricas_pausas (respondido_em direto)
-      // - vw_eventos_tempo_sequencia (respondido_em direto) → derivamos gargalos client-side coerentes com o período
-      // - respostas_eventos (respondido_em direto)
-      const [s, p, eventosSeqRes, ev] = await Promise.all([
-        (supabase as never as { from: (t: string) => { select: (c: string) => { gte: (c: string, v: string) => { lte: (c: string, v: string) => { limit: (n: number) => Promise<{ data: MetricaSetor[] | null }> } } } } })
-          .from("vw_metricas_setor").select("*").gte("inicio", inicioIso).lte("inicio", fimIso).limit(5000),
-        (supabase as never as { from: (t: string) => { select: (c: string) => { gte: (c: string, v: string) => { lte: (c: string, v: string) => { order: (c: string, o: { ascending: boolean }) => { limit: (n: number) => Promise<{ data: PausaItem[] | null }> } } } } } })
-          .from("vw_metricas_pausas").select("*").gte("respondido_em", inicioIso).lte("respondido_em", fimIso).order("respondido_em", { ascending: false }).limit(500),
-        (supabase as never as { from: (t: string) => { select: (c: string) => { gte: (c: string, v: string) => { lte: (c: string, v: string) => { limit: (n: number) => Promise<{ data: EventoSequencia[] | null }> } } } } })
-          .from("vw_eventos_tempo_sequencia")
-          .select("pergunta_id, respondido_em, tempo_entre_respostas")
-          .gte("respondido_em", inicioIso).lte("respondido_em", fimIso).limit(50000),
-        supabase.from("respostas_eventos")
-          .select("ordem_servico_id, usuario_id, respondido_em")
-          .gte("respondido_em", inicioIso)
-          .lte("respondido_em", fimIso)
-          .limit(50000),
-      ]);
+      // Base única do dashboard: somente primeiras respostas dentro do período selecionado.
+      const ev = await supabase.from("respostas_eventos")
+        .select("ordem_servico_id, usuario_id, setor_id, pergunta_id, respondido_em")
+        .eq("is_primeira_resposta", true)
+        .gte("respondido_em", inicioIso)
+        .lte("respondido_em", fimIso)
+        .order("respondido_em", { ascending: true })
+        .limit(50000);
 
-      const sData: MetricaSetor[] = s.data || [];
-      const pData: PausaItem[] = (p.data || []) as PausaItem[];
-      const seqData: EventoSequencia[] = eventosSeqRes.data || [];
-      const evData: EventoResposta[] = (ev.data || []) as EventoResposta[]; // SOMENTE período
-      let evDataExt: EventoResposta[] = evData.slice(); // período + extensão para OS que cruzam dia
+      const evData: EventoResposta[] = ((ev.data || []) as EventoResposta[])
+        .filter(e => Boolean(e.ordem_servico_id && e.respondido_em));
+      let evDataExt: EventoResposta[] = evData.slice();
+
+      const seqData: EventoSequenciaPeriodo[] = [];
+      const ultimoPorOsSetor = new Map<string, EventoResposta>();
+      for (const e of evData.slice().sort((a, b) => a.respondido_em.localeCompare(b.respondido_em))) {
+        const k = `${e.ordem_servico_id}::${e.setor_id ?? "sem_setor"}`;
+        const anterior = ultimoPorOsSetor.get(k);
+        const seg = anterior ? (new Date(e.respondido_em).getTime() - new Date(anterior.respondido_em).getTime()) / 1000 : null;
+        seqData.push({
+          ...e,
+          tempo_entre_respostas_seg: seg != null && seg >= 0 ? seg : null,
+          tempo_entre_respostas: seg != null && seg >= 0 ? secondsToInterval(seg) : null,
+        });
+        ultimoPorOsSetor.set(k, e);
+      }
+
+      const setorOsMap = new Map<string, { setor_id: string | null; ordem_servico_id: string; tempos: string[]; gaps: number[] }>();
+      for (const e of seqData) {
+        const k = `${e.setor_id ?? "sem_setor"}::${e.ordem_servico_id}`;
+        if (!setorOsMap.has(k)) setorOsMap.set(k, { setor_id: e.setor_id, ordem_servico_id: e.ordem_servico_id, tempos: [], gaps: [] });
+        const cur = setorOsMap.get(k)!;
+        cur.tempos.push(e.respondido_em);
+        if (e.tempo_entre_respostas_seg != null && e.tempo_entre_respostas_seg > 0) cur.gaps.push(e.tempo_entre_respostas_seg);
+      }
+      const sData: MetricaSetor[] = Array.from(setorOsMap.values()).map(v => {
+        const ordenados = v.tempos.slice().sort();
+        const inicio = ordenados[0] ?? null;
+        const fim = ordenados[ordenados.length - 1] ?? null;
+        const total = inicio && fim ? (new Date(fim).getTime() - new Date(inicio).getTime()) / 1000 : 0;
+        const medio = v.gaps.length ? v.gaps.reduce((a, b) => a + b, 0) / v.gaps.length : 0;
+        return { setor_id: v.setor_id, ordem_servico_id: v.ordem_servico_id, inicio, fim, tempo_total: secondsToInterval(total), tempo_medio: medio > 0 ? secondsToInterval(medio) : null };
+      });
+      const pData: PausaItem[] = seqData
+        .filter(e => e.pergunta_id && e.tempo_entre_respostas_seg != null && e.tempo_entre_respostas_seg > 300)
+        .sort((a, b) => b.respondido_em.localeCompare(a.respondido_em))
+        .slice(0, 500)
+        .map(e => ({
+          ordem_servico_id: e.ordem_servico_id,
+          setor_id: e.setor_id,
+          usuario_id: e.usuario_id,
+          pergunta_id: e.pergunta_id!,
+          respondido_em: e.respondido_em,
+          tempo_entre_respostas: e.tempo_entre_respostas,
+        }));
 
       // === Estender eventos: para cada (OS, usuário) que aparece no período,
       // buscar TODOS os eventos daquela OS/usuário (mesmo fora do período).
