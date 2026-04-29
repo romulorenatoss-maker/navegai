@@ -614,10 +614,11 @@ export default function ProdutosConversacionalPage() {
                       <Plus className="w-4 h-4 mr-1" /> Adicionar linha
                     </Button>
                   </CardHeader>
-                  <CardContent className="overflow-x-auto">
+                  <CardContent>
                     {produtos.length === 0 && drafts.length === 0 ? (
                       <p className="text-sm text-muted-foreground py-6 text-center">Nenhum produto. Use a conversa ou clique em "Adicionar linha".</p>
                     ) : (
+                      <div className="overflow-auto max-h-[calc(100vh-260px)] border rounded-md">
                       <Table>
                         <TableHeader>
                           <TableRow>
