@@ -47,14 +47,14 @@ interface PausaItem {
 interface EventoResposta {
   ordem_servico_id: string;
   usuario_id: string | null;
+  setor_id: string | null;
+  pergunta_id: string | null;
   respondido_em: string;
 }
 
-// Linha bruta de vw_eventos_tempo_sequencia (para derivar gargalos no período)
-interface EventoSequencia {
-  pergunta_id: string;
-  respondido_em: string;
+interface EventoSequenciaPeriodo extends EventoResposta {
   tempo_entre_respostas: string | null;
+  tempo_entre_respostas_seg: number | null;
 }
 
 // =============================================================
@@ -81,6 +81,27 @@ function formatDuration(seconds: number): string {
   if (m < 60) return `${m}m ${s}s`;
   const h = Math.floor(m / 60);
   return `${h}h ${m % 60}m`;
+}
+function secondsToInterval(seconds: number): string {
+  const safe = Math.max(0, Math.floor(seconds));
+  const days = Math.floor(safe / 86400);
+  const rest = safe % 86400;
+  const h = Math.floor(rest / 3600);
+  const m = Math.floor((rest % 3600) / 60);
+  const s = rest % 60;
+  return `${days > 0 ? `${days} day ` : ""}${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+function dataSelecionadaBR(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+function inicioDiaSaoPauloIso(date: Date): string {
+  return new Date(`${dataSelecionadaBR(date)}T00:00:00.000-03:00`).toISOString();
+}
+function fimDiaSaoPauloIso(date: Date): string {
+  return new Date(`${dataSelecionadaBR(date)}T23:59:59.999-03:00`).toISOString();
 }
 const fmtHora = (iso: string) =>
   new Date(iso).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
@@ -143,7 +164,6 @@ function diaBR(iso: string): string {
 
 function calcularMetricasPorAvaliador(
   eventos: EventoResposta[],
-  eventosEstendidos: EventoResposta[],
   profMap: Record<string, string>,
   osNumeroMap: Record<string, string | number | null>,
   periodoInicioMs?: number,
@@ -159,25 +179,16 @@ function calcularMetricasPorAvaliador(
     osMap.get(e.ordem_servico_id)!.push(e.respondido_em);
   }
 
-  // 2) Mapa estendido (inclui eventos fora do período) — usado para detectar OS que cruzam dia/período
-  const extMap = new Map<string, string[]>();
-  for (const e of eventosEstendidos) {
-    if (!e.usuario_id || !e.ordem_servico_id) continue;
-    const k = `${e.usuario_id}::${e.ordem_servico_id}`;
-    if (!extMap.has(k)) extMap.set(k, []);
-    extMap.get(k)!.push(e.respondido_em);
-  }
-
   const result: MetricaAvaliador[] = [];
   for (const [usuario_id, osMap] of porUsuario.entries()) {
     const oss: OSDoAvaliador[] = [];
     for (const [os_id, timestamps] of osMap.entries()) {
-      // Usar timestamps ESTENDIDOS para detectar início/fim REAL da avaliação (independente do filtro)
-      const ts = (extMap.get(`${usuario_id}::${os_id}`) ?? timestamps).slice().sort();
+      // Usar somente timestamps do período aplicado: primeira/última ação DO DIA/FILTRO.
+      const ts = timestamps.slice().sort();
       const inicio = ts[0];
       const fim = ts[ts.length - 1];
 
-      // === REGRA D: só conta OS cuja primeira E última resposta caem dentro do período ===
+      // Garante que a OS considerada tenha início e fim calculados dentro do filtro aplicado.
       if (periodoInicioMs != null && periodoFimMs != null) {
         const inicioMs = new Date(inicio).getTime();
         const fimMs = new Date(fim).getTime();
@@ -267,7 +278,6 @@ export default function DashboardTempoAvaliacoes() {
   const [gargalos, setGargalos] = useState<GargaloAgg[]>([]);
   const [pausas, setPausas] = useState<PausaItem[]>([]);
   const [eventos, setEventos] = useState<EventoResposta[]>([]);
-  const [eventosExt, setEventosExt] = useState<EventoResposta[]>([]);
   const [profMap, setProfMap] = useState<Record<string, string>>({});
   const [osNumeroMap, setOsNumeroMap] = useState<Record<string, string | number | null>>({});
   const [expandido, setExpandido] = useState<Set<string>>(new Set());
@@ -301,62 +311,93 @@ export default function DashboardTempoAvaliacoes() {
     (async () => {
       setLoading(true);
 
-      const inicioIso = new Date(dataInicio.getFullYear(), dataInicio.getMonth(), dataInicio.getDate(), 0, 0, 0).toISOString();
-      const fimIso = new Date(dataFim.getFullYear(), dataFim.getMonth(), dataFim.getDate(), 23, 59, 59, 999).toISOString();
+      const inicioIso = inicioDiaSaoPauloIso(dataInicio);
+      const fimIso = fimDiaSaoPauloIso(dataFim);
 
-      // Todas as consultas filtram por respondido_em ∈ [inicioIso, fimIso]
-      // - vw_metricas_setor (campo inicio = min(respondido_em) por OS/setor)
-      // - vw_metricas_pausas (respondido_em direto)
-      // - vw_eventos_tempo_sequencia (respondido_em direto) → derivamos gargalos client-side coerentes com o período
-      // - respostas_eventos (respondido_em direto)
-      const [s, p, eventosSeqRes, ev] = await Promise.all([
-        (supabase as never as { from: (t: string) => { select: (c: string) => { gte: (c: string, v: string) => { lte: (c: string, v: string) => { limit: (n: number) => Promise<{ data: MetricaSetor[] | null }> } } } } })
-          .from("vw_metricas_setor").select("*").gte("inicio", inicioIso).lte("inicio", fimIso).limit(5000),
-        (supabase as never as { from: (t: string) => { select: (c: string) => { gte: (c: string, v: string) => { lte: (c: string, v: string) => { order: (c: string, o: { ascending: boolean }) => { limit: (n: number) => Promise<{ data: PausaItem[] | null }> } } } } } })
-          .from("vw_metricas_pausas").select("*").gte("respondido_em", inicioIso).lte("respondido_em", fimIso).order("respondido_em", { ascending: false }).limit(500),
-        (supabase as never as { from: (t: string) => { select: (c: string) => { gte: (c: string, v: string) => { lte: (c: string, v: string) => { limit: (n: number) => Promise<{ data: EventoSequencia[] | null }> } } } } })
-          .from("vw_eventos_tempo_sequencia")
-          .select("pergunta_id, respondido_em, tempo_entre_respostas")
-          .gte("respondido_em", inicioIso).lte("respondido_em", fimIso).limit(50000),
-        supabase.from("respostas_eventos")
-          .select("ordem_servico_id, usuario_id, respondido_em")
-          .gte("respondido_em", inicioIso)
-          .lte("respondido_em", fimIso)
-          .limit(50000),
-      ]);
+      // Base inicial: primeiras respostas que caíram no período selecionado.
+      const ev = await supabase.from("respostas_eventos")
+        .select("ordem_servico_id, usuario_id, setor_id, pergunta_id, respondido_em")
+        .eq("is_primeira_resposta", true)
+        .gte("respondido_em", inicioIso)
+        .lte("respondido_em", fimIso)
+        .order("respondido_em", { ascending: true })
+        .limit(50000);
 
-      const sData: MetricaSetor[] = s.data || [];
-      const pData: PausaItem[] = (p.data || []) as PausaItem[];
-      const seqData: EventoSequencia[] = eventosSeqRes.data || [];
-      const evData: EventoResposta[] = (ev.data || []) as EventoResposta[]; // SOMENTE período
-      let evDataExt: EventoResposta[] = evData.slice(); // período + extensão para OS que cruzam dia
+      const evDataPeriodo: EventoResposta[] = ((ev.data || []) as EventoResposta[])
+        .filter(e => Boolean(e.ordem_servico_id && e.respondido_em));
+      const osIdsPeriodo = Array.from(new Set(evDataPeriodo.map(e => e.ordem_servico_id)));
+      let evData: EventoResposta[] = [];
 
-      // === Estender eventos: para cada (OS, usuário) que aparece no período,
-      // buscar TODOS os eventos daquela OS/usuário (mesmo fora do período).
-      // Usado APENAS para corrigir início/fim/duração na tabela detalhada de OSs. ===
-      const paresOSUser = Array.from(new Set(
-        evData.filter(e => e.ordem_servico_id && e.usuario_id).map(e => `${e.ordem_servico_id}::${e.usuario_id}`)
-      ));
-      if (paresOSUser.length > 0) {
-        const osIdsParaExpandir = Array.from(new Set(paresOSUser.map(k => k.split("::")[0])));
-        const userIdsParaExpandir = Array.from(new Set(paresOSUser.map(k => k.split("::")[1])));
-        const { data: evExpand } = await supabase.from("respostas_eventos")
-          .select("ordem_servico_id, usuario_id, respondido_em")
-          .in("ordem_servico_id", osIdsParaExpandir)
-          .in("usuario_id", userIdsParaExpandir)
+      if (osIdsPeriodo.length > 0) {
+        const { data: evGlobal } = await supabase.from("respostas_eventos")
+          .select("ordem_servico_id, usuario_id, setor_id, pergunta_id, respondido_em")
+          .eq("is_primeira_resposta", true)
+          .in("ordem_servico_id", osIdsPeriodo)
           .limit(100000);
-        if (evExpand && evExpand.length) {
-          const valid = new Set(paresOSUser);
-          const merged = new Map<string, EventoResposta>();
-          for (const e of [...evData, ...(evExpand as EventoResposta[])]) {
-            if (!e.ordem_servico_id || !e.usuario_id) continue;
-            const k = `${e.ordem_servico_id}::${e.usuario_id}`;
-            if (!valid.has(k)) continue;
-            merged.set(`${k}::${e.respondido_em}`, e);
-          }
-          evDataExt = Array.from(merged.values());
+
+        const porOsGlobal = new Map<string, string[]>();
+        for (const e of ((evGlobal || []) as EventoResposta[])) {
+          if (!e.ordem_servico_id || !e.respondido_em) continue;
+          if (!porOsGlobal.has(e.ordem_servico_id)) porOsGlobal.set(e.ordem_servico_id, []);
+          porOsGlobal.get(e.ordem_servico_id)!.push(e.respondido_em);
         }
+
+        // Regra D global da OS: só entra se a primeira e a última resposta da OS inteira caíram no filtro.
+        const osValidas = new Set<string>();
+        const inicioMs = new Date(inicioIso).getTime();
+        const fimMs = new Date(fimIso).getTime();
+        for (const [osId, tempos] of porOsGlobal.entries()) {
+          const ordenados = tempos.slice().sort();
+          const primeiraMs = new Date(ordenados[0]).getTime();
+          const ultimaMs = new Date(ordenados[ordenados.length - 1]).getTime();
+          if (primeiraMs >= inicioMs && ultimaMs <= fimMs) osValidas.add(osId);
+        }
+
+        evData = evDataPeriodo.filter(e => osValidas.has(e.ordem_servico_id));
       }
+
+      const seqData: EventoSequenciaPeriodo[] = [];
+      const ultimoPorOsSetor = new Map<string, EventoResposta>();
+      for (const e of evData.slice().sort((a, b) => a.respondido_em.localeCompare(b.respondido_em))) {
+        const k = `${e.ordem_servico_id}::${e.setor_id ?? "sem_setor"}`;
+        const anterior = ultimoPorOsSetor.get(k);
+        const seg = anterior ? (new Date(e.respondido_em).getTime() - new Date(anterior.respondido_em).getTime()) / 1000 : null;
+        seqData.push({
+          ...e,
+          tempo_entre_respostas_seg: seg != null && seg >= 0 ? seg : null,
+          tempo_entre_respostas: seg != null && seg >= 0 ? secondsToInterval(seg) : null,
+        });
+        ultimoPorOsSetor.set(k, e);
+      }
+
+      const setorOsMap = new Map<string, { setor_id: string | null; ordem_servico_id: string; tempos: string[]; gaps: number[] }>();
+      for (const e of seqData) {
+        const k = `${e.setor_id ?? "sem_setor"}::${e.ordem_servico_id}`;
+        if (!setorOsMap.has(k)) setorOsMap.set(k, { setor_id: e.setor_id, ordem_servico_id: e.ordem_servico_id, tempos: [], gaps: [] });
+        const cur = setorOsMap.get(k)!;
+        cur.tempos.push(e.respondido_em);
+        if (e.tempo_entre_respostas_seg != null && e.tempo_entre_respostas_seg > 0) cur.gaps.push(e.tempo_entre_respostas_seg);
+      }
+      const sData: MetricaSetor[] = Array.from(setorOsMap.values()).map(v => {
+        const ordenados = v.tempos.slice().sort();
+        const inicio = ordenados[0] ?? null;
+        const fim = ordenados[ordenados.length - 1] ?? null;
+        const total = inicio && fim ? (new Date(fim).getTime() - new Date(inicio).getTime()) / 1000 : 0;
+        const medio = v.gaps.length ? v.gaps.reduce((a, b) => a + b, 0) / v.gaps.length : 0;
+        return { setor_id: v.setor_id, ordem_servico_id: v.ordem_servico_id, inicio, fim, tempo_total: secondsToInterval(total), tempo_medio: medio > 0 ? secondsToInterval(medio) : null };
+      });
+      const pData: PausaItem[] = seqData
+        .filter(e => e.pergunta_id && e.tempo_entre_respostas_seg != null && e.tempo_entre_respostas_seg > 300)
+        .sort((a, b) => b.respondido_em.localeCompare(a.respondido_em))
+        .slice(0, 500)
+        .map(e => ({
+          ordem_servico_id: e.ordem_servico_id,
+          setor_id: e.setor_id,
+          usuario_id: e.usuario_id,
+          pergunta_id: e.pergunta_id!,
+          respondido_em: e.respondido_em,
+          tempo_entre_respostas: e.tempo_entre_respostas,
+        }));
 
       // === Hidratar nomes (profiles, setores, perguntas, OS) ===
       const userIds = Array.from(new Set([
@@ -387,10 +428,11 @@ export default function DashboardTempoAvaliacoes() {
       const perguntaMap = Object.fromEntries(((perguntasRes as { data: { id: string; pergunta: string }[] | null }).data || []).map(x => [x.id, x.pergunta]));
       const osMap = Object.fromEntries(((osRes as { data: { id: string; numero_os: string | number | null }[] | null }).data || []).map(x => [x.id, x.numero_os]));
 
-      // === Derivar GARGALOS no período (a partir de vw_eventos_tempo_sequencia) ===
+      // === Derivar GARGALOS somente a partir das OS válidas no período ===
       const aggMap = new Map<string, { soma: number; n: number; max: number; ocorrencias: number }>();
       for (const e of seqData) {
-        const seg = intervalToSeconds(e.tempo_entre_respostas);
+        if (!e.pergunta_id) continue;
+        const seg = e.tempo_entre_respostas_seg ?? 0;
         if (!aggMap.has(e.pergunta_id)) aggMap.set(e.pergunta_id, { soma: 0, n: 0, max: 0, ocorrencias: 0 });
         const cur = aggMap.get(e.pergunta_id)!;
         cur.ocorrencias += 1;
@@ -421,24 +463,23 @@ export default function DashboardTempoAvaliacoes() {
       setGargalos(gargalosCalc);
       setPausas(pausasEnriquecidas);
       setEventos(evData);
-      setEventosExt(evDataExt);
 
       setLoading(false);
     })();
   }, [dataInicio, dataFim]);
 
   const periodoInicioMs = useMemo(
-    () => new Date(dataInicio.getFullYear(), dataInicio.getMonth(), dataInicio.getDate(), 0, 0, 0, 0).getTime(),
+    () => new Date(inicioDiaSaoPauloIso(dataInicio)).getTime(),
     [dataInicio]
   );
   const periodoFimMs = useMemo(
-    () => new Date(dataFim.getFullYear(), dataFim.getMonth(), dataFim.getDate(), 23, 59, 59, 999).getTime(),
+    () => new Date(fimDiaSaoPauloIso(dataFim)).getTime(),
     [dataFim]
   );
 
   const avaliadores = useMemo(
-    () => calcularMetricasPorAvaliador(eventos, eventosExt, profMap, osNumeroMap, periodoInicioMs, periodoFimMs),
-    [eventos, eventosExt, profMap, osNumeroMap, periodoInicioMs, periodoFimMs]
+    () => calcularMetricasPorAvaliador(eventos, profMap, osNumeroMap, periodoInicioMs, periodoFimMs),
+    [eventos, profMap, osNumeroMap, periodoInicioMs, periodoFimMs]
   );
 
   // OS avaliadas: aplicar a MESMA regra D — primeira E última resposta dentro do período
