@@ -747,6 +747,7 @@ export default function ProdutosConversacionalPage() {
                           })}
                         </TableBody>
                       </Table>
+                      </div>
                     )}
                     <div className="flex gap-2 mt-3 text-xs text-muted-foreground">
                       <span>Total: {produtos.length}</span>
