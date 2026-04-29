@@ -31,6 +31,8 @@ export interface PropostasProduto {
   unidade: string;
   regra_json: Record<string, unknown>;
   ativo: boolean;
+  origem?: "manual" | "ia_sugerido";
+  revisado?: boolean;
   created_at: string;
   updated_at: string;
 }
