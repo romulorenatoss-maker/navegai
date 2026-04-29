@@ -254,7 +254,8 @@ function calcularMetricasPorAvaliador(
     });
   }
 
-  return result.sort((a, b) => b.total_os - a.total_os);
+  // Não exibir avaliadores que ficaram zerados após filtro de período (regra D)
+  return result.filter(a => a.total_os > 0).sort((a, b) => b.total_os - a.total_os);
 }
 
 // =============================================================
