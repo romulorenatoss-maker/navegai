@@ -316,11 +316,12 @@ export default function DashboardTempoAvaliacoes() {
       const sData: MetricaSetor[] = s.data || [];
       const pData: PausaItem[] = (p.data || []) as PausaItem[];
       const seqData: EventoSequencia[] = eventosSeqRes.data || [];
-      let evData: EventoResposta[] = (ev.data || []) as EventoResposta[];
+      const evData: EventoResposta[] = (ev.data || []) as EventoResposta[]; // SOMENTE período
+      let evDataExt: EventoResposta[] = evData.slice(); // período + extensão para OS que cruzam dia
 
       // === Estender eventos: para cada (OS, usuário) que aparece no período,
-      // buscar TODOS os eventos daquela OS/usuário (mesmo fora do período),
-      // assim início/fim/duração refletem avaliações que cruzam dias. ===
+      // buscar TODOS os eventos daquela OS/usuário (mesmo fora do período).
+      // Usado APENAS para corrigir início/fim/duração na tabela detalhada de OSs. ===
       const paresOSUser = Array.from(new Set(
         evData.filter(e => e.ordem_servico_id && e.usuario_id).map(e => `${e.ordem_servico_id}::${e.usuario_id}`)
       ));
@@ -341,7 +342,7 @@ export default function DashboardTempoAvaliacoes() {
             if (!valid.has(k)) continue;
             merged.set(`${k}::${e.respondido_em}`, e);
           }
-          evData = Array.from(merged.values());
+          evDataExt = Array.from(merged.values());
         }
       }
 
