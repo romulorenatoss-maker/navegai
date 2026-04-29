@@ -610,6 +610,39 @@ export default function DashboardTempoAvaliacoes() {
                             <TableCell colSpan={6} className="py-3">
                               <div className="space-y-3">
                                 <div>
+                                  <p className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Indicadores por dia ({a.dias.length})</p>
+                                  {a.dias.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground">Sem dados.</p>
+                                  ) : (
+                                    <div className="rounded-md border bg-background overflow-x-auto">
+                                      <Table>
+                                        <TableHeader>
+                                          <TableRow>
+                                            <TableHead className="text-xs">Dia</TableHead>
+                                            <TableHead className="text-xs">Primeira ação</TableHead>
+                                            <TableHead className="text-xs">Última ação</TableHead>
+                                            <TableHead className="text-xs text-right">OS</TableHead>
+                                            <TableHead className="text-xs text-right">Médio por OS</TableHead>
+                                            <TableHead className="text-xs text-right">Médio entre OSs</TableHead>
+                                          </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                          {a.dias.map(d => (
+                                            <TableRow key={d.dia}>
+                                              <TableCell className="text-xs font-medium">{fmtData(d.primeira_acao)}</TableCell>
+                                              <TableCell className="text-xs">{fmtHora(d.primeira_acao)}</TableCell>
+                                              <TableCell className="text-xs">{fmtHora(d.ultima_acao)}</TableCell>
+                                              <TableCell className="text-xs text-right">{d.total_os}</TableCell>
+                                              <TableCell className="text-xs text-right">{formatDuration(d.tempo_medio_dentro_os_seg)}</TableCell>
+                                              <TableCell className="text-xs text-right">{formatDuration(d.tempo_medio_entre_os_seg)}</TableCell>
+                                            </TableRow>
+                                          ))}
+                                        </TableBody>
+                                      </Table>
+                                    </div>
+                                  )}
+                                </div>
+                                <div>
                                   <p className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Faixas horárias</p>
                                   {a.faixas.length === 0 ? (
                                     <p className="text-xs text-muted-foreground">Sem dados.</p>
