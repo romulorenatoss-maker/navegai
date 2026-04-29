@@ -27,11 +27,34 @@ serve(async (req) => {
         categorias: Array<{ codigo: string; nome: string; cobranca_padrao: string }>;
         perguntas_pendentes: Array<{ categoria: string; pergunta: string; campo_token?: string; tipo: string; opcoes?: string[] }>;
         respostas: Record<string, unknown>;
+        empresa?: {
+          nome_empresa?: string;
+          descricao_operacional?: string;
+          o_que_vendemos?: string[];
+          o_que_nao_vendemos?: string[];
+          tipo_ambiente?: string[];
+          regras_tecnicas?: string[];
+        } | null;
+        catalogo?: Array<{ nome: string; categoria?: string; valor_minimo: number; valor_medio?: number; unidade: string; cobranca_padrao?: string }>;
+        perguntas_produtos?: Array<{ categoria: string; pergunta: string }>;
       };
     };
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY ausente");
+
+    const emp = contexto.empresa ?? null;
+    const cat = contexto.catalogo ?? [];
+    const ppr = contexto.perguntas_produtos ?? [];
+    const escopoTxt = emp
+      ? `\n\n═══ ESCOPO DA EMPRESA "${emp.nome_empresa ?? ""}" ═══\n${emp.descricao_operacional ?? ""}\nVENDEMOS: ${(emp.o_que_vendemos ?? []).join(", ") || "(?)"}\nNÃO VENDEMOS: ${(emp.o_que_nao_vendemos ?? []).join(", ") || "(?)"}\nAMBIENTE: ${(emp.tipo_ambiente ?? []).join(", ") || "(?)"}\nREGRAS: ${(emp.regras_tecnicas ?? []).join(", ") || "(?)"}\n\nSe o cliente pedir algo FORA de "VENDEMOS", responda: "Esse item não está no escopo da empresa. Deseja adicionar como ADENDO (cobranca=informativo, categoria=outros)?" — só emita o produto se o usuário confirmar.`
+      : "";
+    const catalogoTxt = cat.length
+      ? `\n\n═══ CATÁLOGO PADRÃO (use estes valores como base) ═══\n${cat.map(p => `- ${p.nome} [${p.categoria ?? "?"}] ${p.unidade} mín=R$${p.valor_minimo} méd=R$${p.valor_medio ?? p.valor_minimo} (${p.cobranca_padrao ?? "?"})`).join("\n")}\n\nQuando o usuário citar um item do catálogo, use o valor_medio como sugestão e PERGUNTE confirmação.`
+      : "";
+    const perguntasProdTxt = ppr.length
+      ? `\n\n═══ PERGUNTAS PADRÃO POR CATEGORIA (use durante o fluxo) ═══\n${ppr.map(q => `[${q.categoria}] ${q.pergunta}`).join("\n")}`
+      : "";
 
     const sys = `Você é um VENDEDOR TÉCNICO especialista em propostas comerciais de:
 - Infraestrutura de rede
