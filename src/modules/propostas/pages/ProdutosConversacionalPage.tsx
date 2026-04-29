@@ -623,6 +623,10 @@ export default function ProdutosConversacionalPage() {
                             <TableHead>Unidade</TableHead>
                             <TableHead className="text-right" title="Valor mínimo aceito de venda (piso). A IA nunca sugere abaixo disso.">Valor mín. (R$)</TableHead>
                             <TableHead className="text-right" title="Valor médio praticado. Usado pela IA como sugestão padrão na proposta.">Valor médio (R$)</TableHead>
+                            <TableHead>Placeholder item</TableHead>
+                            <TableHead>Placeholder qtd</TableHead>
+                            <TableHead>Placeholder valor</TableHead>
+                            <TableHead className="text-center">Checkbox?</TableHead>
                             <TableHead className="w-20" />
                           </TableRow>
                         </TableHeader>
