@@ -757,6 +757,42 @@ export default function ProdutosConversacionalPage() {
                                   </div>
                                 </TableCell>
                                 <TableCell>
+                                  <Input className="h-7 text-xs w-28 font-mono" placeholder="{item_switch}"
+                                    defaultValue={(p as unknown as { placeholder_key?: string }).placeholder_key ?? ""}
+                                    onBlur={(e) => {
+                                      const v = e.target.value || null;
+                                      const cur = (p as unknown as { placeholder_key?: string | null }).placeholder_key ?? null;
+                                      if (v !== cur) patchProduto(p.id, { placeholder_key: v } as never);
+                                    }} />
+                                </TableCell>
+                                <TableCell>
+                                  <Input className="h-7 text-xs w-24 font-mono" placeholder="{qtd_switch}"
+                                    defaultValue={(p as unknown as { placeholder_qtd?: string }).placeholder_qtd ?? ""}
+                                    onBlur={(e) => {
+                                      const v = e.target.value || null;
+                                      const cur = (p as unknown as { placeholder_qtd?: string | null }).placeholder_qtd ?? null;
+                                      if (v !== cur) patchProduto(p.id, { placeholder_qtd: v } as never);
+                                    }} />
+                                </TableCell>
+                                <TableCell>
+                                  <Input className="h-7 text-xs w-24 font-mono" placeholder="{valor_switch}"
+                                    defaultValue={(p as unknown as { placeholder_valor?: string }).placeholder_valor ?? ""}
+                                    onBlur={(e) => {
+                                      const v = e.target.value || null;
+                                      const cur = (p as unknown as { placeholder_valor?: string | null }).placeholder_valor ?? null;
+                                      if (v !== cur) patchProduto(p.id, { placeholder_valor: v } as never);
+                                    }} />
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={(p as unknown as { is_checkbox?: boolean }).is_checkbox ?? false}
+                                    onChange={(e) => patchProduto(p.id, { is_checkbox: e.target.checked } as never)}
+                                    className="w-4 h-4 accent-primary"
+                                    title="Marcar (x) na proposta quando selecionado"
+                                  />
+                                </TableCell>
+                                <TableCell>
                                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deletarProduto(p.id)}>
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </Button>
