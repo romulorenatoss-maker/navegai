@@ -526,6 +526,8 @@ export default function PropostaConversacionalPage() {
         valor_total: fmtBRL(totais.total),
         valor_implantacao: fmtBRL(totais.implantacao),
         valor_mensal: fmtBRL(totais.mensal),
+        // Fase 2 — texto de contexto gerado pelo fluxo guiado (se houver)
+        ...(contextoIA ? { contexto: contextoIA } : {}),
       };
 
       const html = propostasRenderizarTemplate(tpl.conteudo_html, dados);
