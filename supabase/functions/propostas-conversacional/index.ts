@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -54,8 +55,9 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { messages, contexto } = await req.json() as {
+    const { messages, contexto, template_id } = await req.json() as {
       messages: Msg[];
+      template_id?: string; // Etapa 4 — opcional; ativa execução de fluxo
       contexto: {
         cliente_nome?: string;
         categorias: Array<{ codigo: string; nome: string; cobranca_padrao: string }>;
