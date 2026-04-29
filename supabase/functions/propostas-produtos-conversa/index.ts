@@ -96,7 +96,8 @@ serve(async (req) => {
     const tipoDetectado = normalizarTipo(ultimaMensagemUsuario);
     const cobrancaDetectada = normalizarCobranca(ultimaMensagemUsuario);
     const ultimaCategoriaComProdutos = [...messages].reverse()
-      .map(m => /Antes de remover \*\*([^*]+)\*\*/i.exec(m.content)?.[1])
+      .map(m => (/Antes de remover \*\*([^*]+)\*\*/i.exec(m.content)
+        ?? /A categoria \*\*([^*]+)\*\* tem/i.exec(m.content))?.[1])
       .find(Boolean);
 
     const sys = `Você é o ASSISTENTE DE CATÁLOGO da empresa "${emp.nome_empresa ?? "(sem nome)"}".
