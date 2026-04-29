@@ -146,6 +146,8 @@ function calcularMetricasPorAvaliador(
   eventosEstendidos: EventoResposta[],
   profMap: Record<string, string>,
   osNumeroMap: Record<string, string | number | null>,
+  periodoInicioMs?: number,
+  periodoFimMs?: number,
 ): MetricaAvaliador[] {
   // 1) Agrupar eventos do PERÍODO por usuário/OS (define quais OS aparecem)
   const porUsuario = new Map<string, Map<string, string[]>>();
@@ -157,7 +159,7 @@ function calcularMetricasPorAvaliador(
     osMap.get(e.ordem_servico_id)!.push(e.respondido_em);
   }
 
-  // 2) Mapa estendido (inclui eventos fora do período) só para corrigir início/fim de OS que cruzam dias
+  // 2) Mapa estendido (inclui eventos fora do período) — usado para detectar OS que cruzam dia/período
   const extMap = new Map<string, string[]>();
   for (const e of eventosEstendidos) {
     if (!e.usuario_id || !e.ordem_servico_id) continue;
@@ -170,10 +172,18 @@ function calcularMetricasPorAvaliador(
   for (const [usuario_id, osMap] of porUsuario.entries()) {
     const oss: OSDoAvaliador[] = [];
     for (const [os_id, timestamps] of osMap.entries()) {
-      // Usar timestamps estendidos quando disponíveis (para refletir cruzamento de dia)
+      // Usar timestamps ESTENDIDOS para detectar início/fim REAL da avaliação (independente do filtro)
       const ts = (extMap.get(`${usuario_id}::${os_id}`) ?? timestamps).slice().sort();
       const inicio = ts[0];
       const fim = ts[ts.length - 1];
+
+      // === REGRA D: só conta OS cuja primeira E última resposta caem dentro do período ===
+      if (periodoInicioMs != null && periodoFimMs != null) {
+        const inicioMs = new Date(inicio).getTime();
+        const fimMs = new Date(fim).getTime();
+        if (inicioMs < periodoInicioMs || fimMs > periodoFimMs) continue;
+      }
+
       const dur = (new Date(fim).getTime() - new Date(inicio).getTime()) / 1000;
       oss.push({ os_id, numero_os: osNumeroMap[os_id] ?? null, inicio, fim, duracao_seg: dur, dia: diaBR(inicio) });
     }
