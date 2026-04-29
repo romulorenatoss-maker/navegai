@@ -217,6 +217,7 @@ export default function ProdutosConversacionalPage() {
               regras_tecnicas: empresa.regras_tecnicas,
             } : null,
             catalogo: produtos.filter(p => p.ativo).map(p => ({
+              id: p.id,
               nome: p.nome,
               categoria: (p as unknown as { categoria?: string }).categoria,
               valor_minimo: Number(p.valor_minimo),
@@ -224,7 +225,7 @@ export default function ProdutosConversacionalPage() {
               unidade: p.unidade,
               cobranca_padrao: (p as unknown as { cobranca_padrao?: string }).cobranca_padrao,
             })),
-            perguntas_padrao: perguntas.filter(q => q.ativo).map(q => ({ categoria: q.categoria, pergunta: q.pergunta })),
+            perguntas_padrao: perguntas.filter(q => q.ativo).map(q => ({ id: q.id, categoria: q.categoria, pergunta: q.pergunta })),
           },
         },
       });
