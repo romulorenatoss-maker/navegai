@@ -332,6 +332,7 @@ export default function PropostaConversacionalPage() {
 
       const { data, error } = await supabase.functions.invoke("propostas-conversacional", {
         body: {
+          template_id: templateId || undefined, // Etapa 4: ativa execução de fluxo se houver registros
           messages: novoHistorico,
           contexto: {
             cliente_nome: clienteSel?.nome,
@@ -371,8 +372,26 @@ export default function PropostaConversacionalPage() {
         produtos?: Array<{ nome: string; quantidade?: number; valor_unitario?: number; cobranca?: string; categoria?: string }>;
         finalizado?: boolean;
         error?: string;
+        // Etapa 4
+        fluxo_executado?: boolean;
+        tokens_preenchidos?: Record<string, string>;
+        bloco_atual?: string | null;
+        fluxo_log?: { etapas_executadas: unknown[]; respostas_geradas: unknown[]; blocos_liberados: string[] };
       };
       if (resp.error) { toast.error(resp.error); return; }
+
+      // Etapa 4: aplicar tokens preenchidos pela IA via fluxo
+      if (resp.fluxo_executado && resp.tokens_preenchidos) {
+        const novos = resp.tokens_preenchidos;
+        if (Object.keys(novos).length > 0) {
+          setRespostas(r => ({ ...r, ...novos }));
+          console.log("[fluxo] tokens preenchidos pela IA:", Object.keys(novos));
+          toast.success(`Fluxo executado: ${Object.keys(novos).length} campo(s) preenchido(s) automaticamente.`);
+        }
+        if (resp.bloco_atual) {
+          console.log("[fluxo] bloco atual liberado:", resp.bloco_atual);
+        }
+      }
 
       const message = resp.message ?? resp.mensagem ?? "…";
       setMsgs(m => [...m, { role: "assistant", content: message }]);
