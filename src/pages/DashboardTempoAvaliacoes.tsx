@@ -146,6 +146,8 @@ function calcularMetricasPorAvaliador(
   eventosEstendidos: EventoResposta[],
   profMap: Record<string, string>,
   osNumeroMap: Record<string, string | number | null>,
+  periodoInicioMs?: number,
+  periodoFimMs?: number,
 ): MetricaAvaliador[] {
   // 1) Agrupar eventos do PERÍODO por usuário/OS (define quais OS aparecem)
   const porUsuario = new Map<string, Map<string, string[]>>();
@@ -157,7 +159,7 @@ function calcularMetricasPorAvaliador(
     osMap.get(e.ordem_servico_id)!.push(e.respondido_em);
   }
 
-  // 2) Mapa estendido (inclui eventos fora do período) só para corrigir início/fim de OS que cruzam dias
+  // 2) Mapa estendido (inclui eventos fora do período) — usado para detectar OS que cruzam dia/período
   const extMap = new Map<string, string[]>();
   for (const e of eventosEstendidos) {
     if (!e.usuario_id || !e.ordem_servico_id) continue;
@@ -170,10 +172,18 @@ function calcularMetricasPorAvaliador(
   for (const [usuario_id, osMap] of porUsuario.entries()) {
     const oss: OSDoAvaliador[] = [];
     for (const [os_id, timestamps] of osMap.entries()) {
-      // Usar timestamps estendidos quando disponíveis (para refletir cruzamento de dia)
+      // Usar timestamps ESTENDIDOS para detectar início/fim REAL da avaliação (independente do filtro)
       const ts = (extMap.get(`${usuario_id}::${os_id}`) ?? timestamps).slice().sort();
       const inicio = ts[0];
       const fim = ts[ts.length - 1];
+
+      // === REGRA D: só conta OS cuja primeira E última resposta caem dentro do período ===
+      if (periodoInicioMs != null && periodoFimMs != null) {
+        const inicioMs = new Date(inicio).getTime();
+        const fimMs = new Date(fim).getTime();
+        if (inicioMs < periodoInicioMs || fimMs > periodoFimMs) continue;
+      }
+
       const dur = (new Date(fim).getTime() - new Date(inicio).getTime()) / 1000;
       oss.push({ os_id, numero_os: osNumeroMap[os_id] ?? null, inicio, fim, duracao_seg: dur, dia: diaBR(inicio) });
     }
@@ -244,7 +254,8 @@ function calcularMetricasPorAvaliador(
     });
   }
 
-  return result.sort((a, b) => b.total_os - a.total_os);
+  // Não exibir avaliadores que ficaram zerados após filtro de período (regra D)
+  return result.filter(a => a.total_os > 0).sort((a, b) => b.total_os - a.total_os);
 }
 
 // =============================================================
@@ -416,16 +427,26 @@ export default function DashboardTempoAvaliacoes() {
     })();
   }, [dataInicio, dataFim]);
 
-  const osAvaliadas = useMemo(() => {
-    const ids = new Set<string>();
-    for (const e of eventos) ids.add(e.ordem_servico_id);
-    return ids.size;
-  }, [eventos]);
+  const periodoInicioMs = useMemo(
+    () => new Date(dataInicio.getFullYear(), dataInicio.getMonth(), dataInicio.getDate(), 0, 0, 0, 0).getTime(),
+    [dataInicio]
+  );
+  const periodoFimMs = useMemo(
+    () => new Date(dataFim.getFullYear(), dataFim.getMonth(), dataFim.getDate(), 23, 59, 59, 999).getTime(),
+    [dataFim]
+  );
 
   const avaliadores = useMemo(
-    () => calcularMetricasPorAvaliador(eventos, eventosExt, profMap, osNumeroMap),
-    [eventos, eventosExt, profMap, osNumeroMap]
+    () => calcularMetricasPorAvaliador(eventos, eventosExt, profMap, osNumeroMap, periodoInicioMs, periodoFimMs),
+    [eventos, eventosExt, profMap, osNumeroMap, periodoInicioMs, periodoFimMs]
   );
+
+  // OS avaliadas: aplicar a MESMA regra D — primeira E última resposta dentro do período
+  const osAvaliadas = useMemo(() => {
+    const ids = new Set<string>();
+    for (const a of avaliadores) for (const o of a.oss) ids.add(o.os_id);
+    return ids.size;
+  }, [avaliadores]);
 
   const setoresAgregados = useMemo(() => {
     const map = new Map<string, { nome: string; tempo_total: number; tempos_medios: number[]; total_os: number }>();
