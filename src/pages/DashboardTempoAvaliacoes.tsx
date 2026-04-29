@@ -222,16 +222,6 @@ export default function DashboardTempoAvaliacoes() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const sb = supabase as never as {
-        from: (t: string) => {
-          select: (c: string) => {
-            gte: (c: string, v: string) => unknown;
-            limit: (n: number) => unknown;
-            in: (c: string, v: string[]) => unknown;
-            order?: (...args: unknown[]) => unknown;
-          };
-        };
-      };
 
       const inicioIso = new Date(dataInicio.getFullYear(), dataInicio.getMonth(), dataInicio.getDate(), 0, 0, 0).toISOString();
       const fimIso = new Date(dataFim.getFullYear(), dataFim.getMonth(), dataFim.getDate(), 23, 59, 59, 999).toISOString();
