@@ -427,16 +427,26 @@ export default function DashboardTempoAvaliacoes() {
     })();
   }, [dataInicio, dataFim]);
 
-  const osAvaliadas = useMemo(() => {
-    const ids = new Set<string>();
-    for (const e of eventos) ids.add(e.ordem_servico_id);
-    return ids.size;
-  }, [eventos]);
+  const periodoInicioMs = useMemo(
+    () => new Date(dataInicio.getFullYear(), dataInicio.getMonth(), dataInicio.getDate(), 0, 0, 0, 0).getTime(),
+    [dataInicio]
+  );
+  const periodoFimMs = useMemo(
+    () => new Date(dataFim.getFullYear(), dataFim.getMonth(), dataFim.getDate(), 23, 59, 59, 999).getTime(),
+    [dataFim]
+  );
 
   const avaliadores = useMemo(
-    () => calcularMetricasPorAvaliador(eventos, eventosExt, profMap, osNumeroMap),
-    [eventos, eventosExt, profMap, osNumeroMap]
+    () => calcularMetricasPorAvaliador(eventos, eventosExt, profMap, osNumeroMap, periodoInicioMs, periodoFimMs),
+    [eventos, eventosExt, profMap, osNumeroMap, periodoInicioMs, periodoFimMs]
   );
+
+  // OS avaliadas: aplicar a MESMA regra D — primeira E última resposta dentro do período
+  const osAvaliadas = useMemo(() => {
+    const ids = new Set<string>();
+    for (const a of avaliadores) for (const o of a.oss) ids.add(o.os_id);
+    return ids.size;
+  }, [avaliadores]);
 
   const setoresAgregados = useMemo(() => {
     const map = new Map<string, { nome: string; tempo_total: number; tempos_medios: number[]; total_os: number }>();
