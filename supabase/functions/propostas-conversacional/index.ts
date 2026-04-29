@@ -243,41 +243,107 @@ ${escopoTxt}${catalogoTxt}${perguntasProdTxt}${estadoTxt}`;
 
     if (actions.some(a => a.type === "finalizar")) finalizado = true;
 
-    // === SEGURANÇA: filtra add_item duplicado e força mapeamento por catálogo ===
+    // === SEGURANÇA + ENRICHMENT + VALIDAÇÃO DE PREÇO ===
     const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-    const nomesExistentes = new Set((estado?.itens ?? []).map(i => norm(i.nome)));
+    const itensEstado = estado?.itens ?? [];
+    const nomesExistentes = new Set(itensEstado.map(i => norm(i.nome)));
     const catalogById = new Map(cat.filter(p => p.id).map(p => [String(p.id), p]));
     const catalogByName = new Map(cat.map(p => [norm(p.nome), p]));
 
+    // Logs de operação (retornados ao frontend)
+    const log = {
+      itens_criados: 0,
+      itens_atualizados: 0,
+      validacoes_rejeitadas: [] as Array<{ produto: string; motivo: string }>,
+    };
+
     actions = actions.flatMap(a => {
+      // ====== UPDATE_ITEM ======
+      if (a.type === "update_item") {
+        const m = a.match ?? {};
+        const u = a.updates ?? {};
+        let prod = m.produto_id ? catalogById.get(String(m.produto_id)) : undefined;
+        if (!prod && m.nome) prod = catalogByName.get(norm(m.nome));
+        if (!prod) {
+          console.log("⚠️ update_item bloqueado (produto fora do catálogo):", m);
+          return [];
+        }
+        // valida valor mínimo
+        if (u.valor !== undefined) {
+          const min = Number(prod.valor_minimo ?? 0);
+          if (Number(u.valor) < min) {
+            const msg = `Valor abaixo do mínimo permitido (R$${min}) para ${prod.nome}`;
+            log.validacoes_rejeitadas.push({ produto: prod.nome, motivo: msg });
+            return [{ type: "none", validacao: { ok: false, mensagem: msg } }];
+          }
+        }
+        log.itens_atualizados++;
+        return [{ ...a, match: { produto_id: String(prod.id), nome: prod.nome } }];
+      }
+
+      // ====== ADD_ITEM ======
       if (a.type !== "add_item") return [a];
       const item = a.item ?? {};
       const n = norm(String(item.nome ?? ""));
       if (!n) return [];
-      if (nomesExistentes.has(n)) {
-        console.log("⚠️ add_item filtrado (duplicado):", n);
-        return [];
-      }
 
-      // Resolver produto: por id (preferido) ou por nome (fallback)
+      // Resolver produto
       let prod = item.produto_id ? catalogById.get(String(item.produto_id)) : undefined;
       if (!prod) prod = catalogByName.get(n);
-
       if (!prod) {
         console.log("⚠️ add_item bloqueado (produto fora do catálogo):", item.nome);
         return [];
       }
 
-      // Enriquecer com dados canônicos do catálogo (IA não decide categoria/campo_template)
+      // Regra de decisão: se item já existe na proposta → converter em update_item
+      if (nomesExistentes.has(norm(prod.nome))) {
+        const updates: { quantidade?: number; valor?: number } = {};
+        if (item.quantidade !== undefined) updates.quantidade = Number(item.quantidade);
+        if (item.valor !== undefined) updates.valor = Number(item.valor);
+        if (Object.keys(updates).length === 0) {
+          console.log("⚠️ add_item filtrado (duplicado, sem updates):", n);
+          return [];
+        }
+        // Validar mínimo
+        if (updates.valor !== undefined) {
+          const min = Number(prod.valor_minimo ?? 0);
+          if (updates.valor < min) {
+            const msg = `Valor abaixo do mínimo permitido (R$${min}) para ${prod.nome}`;
+            log.validacoes_rejeitadas.push({ produto: prod.nome, motivo: msg });
+            return [{ type: "none", validacao: { ok: false, mensagem: msg } }];
+          }
+        }
+        log.itens_atualizados++;
+        return [{
+          type: "update_item",
+          match: { produto_id: String(prod.id), nome: prod.nome },
+          updates,
+        }];
+      }
+
+      // ENRICHMENT: valor_padrao quando IA não informou valor
+      const valorPadrao = Number(prod.valor_padrao ?? 0);
+      const valorMin = Number(prod.valor_minimo ?? 0);
+      const valorRecebido = item.valor !== undefined ? Number(item.valor) : valorPadrao;
+
+      // Validação de mínimo
+      if (valorMin > 0 && valorRecebido < valorMin) {
+        const msg = `Valor abaixo do mínimo permitido (R$${valorMin}) para ${prod.nome}`;
+        log.validacoes_rejeitadas.push({ produto: prod.nome, motivo: msg });
+        return [{ type: "none", validacao: { ok: false, mensagem: msg } }];
+      }
+
       const enriched: Partial<ItemAcao> = {
         ...item,
         produto_id: String(prod.id),
         nome: prod.nome,
+        valor: valorRecebido,
         categoria: prod.categoria ?? item.categoria,
         cobranca: (prod.cobranca_padrao as ItemAcao["cobranca"]) ?? item.cobranca ?? "mensal",
         campo_template: prod.campo_template ?? undefined,
         tipo_input: prod.tipo_input ?? "quantidade",
       };
+      log.itens_criados++;
       return [{ ...a, item: enriched }];
     });
 
@@ -294,6 +360,8 @@ ${escopoTxt}${catalogoTxt}${perguntasProdTxt}${estadoTxt}`;
         campo_template: a.item!.campo_template,
         tipo_input: a.item!.tipo_input,
       }));
+
+    console.log("[propostas-conversacional] log:", JSON.stringify(log));
 
     return new Response(JSON.stringify({
       message,
