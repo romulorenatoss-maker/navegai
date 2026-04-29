@@ -31,6 +31,10 @@ export interface PropostasPerguntaSetup {
   campo_token: string | null;
   obrigatoria: boolean;
   ativo: boolean;
+  // Fase 1 — fluxo simples
+  tipo_pergunta?: PropostasTipoPergunta | null;
+  categoria_produto?: PropostasCategoriaProduto | null;
+  gera_contexto?: boolean | null;
   created_at: string;
   updated_at: string;
 }
