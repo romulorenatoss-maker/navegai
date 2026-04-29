@@ -367,6 +367,7 @@ ${escopoTxt}${catalogoTxt}${perguntasProdTxt}${estadoTxt}`;
       message,
       actions,
       finalizado,
+      log,
       // aliases legacy
       mensagem: message,
       produtos,
