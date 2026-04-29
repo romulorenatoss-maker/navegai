@@ -68,6 +68,51 @@ export async function gerarPropostaPorBlocos(blocos: PropostasBloco[], respostas
   return (data as { html: string }).html;
 }
 
+// ---------- DETECÇÃO DE PRODUTOS (texto livre → catálogo) ----------
+export interface ProdutoDetectado {
+  nome: string;
+  tipo: PropostasTipoProduto;
+  valor_minimo: number;
+  tipo_calculo: PropostasTipoCalculo;
+  unidade: string;
+}
+
+export async function detectarProdutosDeTexto(texto: string): Promise<ProdutoDetectado[]> {
+  const { data, error } = await supabase.functions.invoke("propostas-detectar-produtos", { body: { texto } });
+  if (error) throw error;
+  return (data as { produtos: ProdutoDetectado[] }).produtos ?? [];
+}
+
+/** Cria produto sugerido pela IA: origem='ia_sugerido', revisado=false. */
+export async function criarProdutoSugerido(p: ProdutoDetectado) {
+  const payload = {
+    nome: p.nome,
+    tipo: p.tipo,
+    valor_minimo: p.valor_minimo,
+    tipo_calculo: p.tipo_calculo,
+    unidade: p.unidade,
+    ativo: true,
+    origem: "ia_sugerido",
+    revisado: false,
+  };
+  const { data, error } = await supabase
+    .from("propostas_produtos" as never)
+    .insert(payload as never)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as unknown as PropostasProduto;
+}
+
+// ---------- CONTEXTO ({contexto}) ----------
+export async function gerarTextoContexto(respostas: Record<string, unknown>, cliente_nome?: string): Promise<string> {
+  const { data, error } = await supabase.functions.invoke("propostas-gerar-contexto", {
+    body: { respostas, cliente_nome },
+  });
+  if (error) throw error;
+  return (data as { texto: string }).texto;
+}
+
 // ---------- SETUP RESPOSTAS (cache) ----------
 export async function salvarSetupRespostas(input: {
   template_id: string;
