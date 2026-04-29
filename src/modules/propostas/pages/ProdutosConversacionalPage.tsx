@@ -199,6 +199,9 @@ export default function ProdutosConversacionalPage() {
   const [input, setInput] = useState("");
   const [enviando, setEnviando] = useState(false);
   const fim = useRef<HTMLDivElement>(null);
+  const catalogoTableScrollRef = useRef<HTMLDivElement>(null);
+  const catalogoBottomScrollRef = useRef<HTMLDivElement>(null);
+  const [catalogoScrollWidth, setCatalogoScrollWidth] = useState(0);
 
   // Nova pergunta padrão
   const [novaPergunta, setNovaPergunta] = useState<{ categoria: PropostasCategoria; pergunta: string }>({ categoria: "infraestrutura", pergunta: "" });
@@ -220,6 +223,33 @@ export default function ProdutosConversacionalPage() {
 
   useEffect(() => { recarregar().catch(e => toast.error(String(e))); }, []);
   useEffect(() => { fim.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
+  useEffect(() => {
+    const atualizarLargura = () => {
+      const el = catalogoTableScrollRef.current;
+      if (el) setCatalogoScrollWidth(el.scrollWidth);
+    };
+
+    atualizarLargura();
+    const el = catalogoTableScrollRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver(atualizarLargura);
+    observer.observe(el);
+    Array.from(el.children).forEach((child) => observer.observe(child));
+    window.addEventListener("resize", atualizarLargura);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", atualizarLargura);
+    };
+  }, [produtos.length, drafts.length, tab]);
+
+  const sincronizarScrollCatalogo = (origem: "tabela" | "barra") => {
+    const source = origem === "tabela" ? catalogoTableScrollRef.current : catalogoBottomScrollRef.current;
+    const target = origem === "tabela" ? catalogoBottomScrollRef.current : catalogoTableScrollRef.current;
+    if (!source || !target || target.scrollLeft === source.scrollLeft) return;
+    target.scrollLeft = source.scrollLeft;
+  };
 
   const categoriasCatalogo = useMemo<Array<{ value: CategoriaCatalogo; label: string }>>(() => {
     const ativas = categoriasSetup
@@ -614,11 +644,16 @@ export default function ProdutosConversacionalPage() {
                       <Plus className="w-4 h-4 mr-1" /> Adicionar linha
                     </Button>
                   </CardHeader>
-                  <CardContent>
+                    <CardContent className="relative pb-9">
                     {produtos.length === 0 && drafts.length === 0 ? (
                       <p className="text-sm text-muted-foreground py-6 text-center">Nenhum produto. Use a conversa ou clique em "Adicionar linha".</p>
                     ) : (
-                      <div className="overflow-auto max-h-[calc(100vh-260px)] border rounded-md">
+                      <>
+                      <div
+                        ref={catalogoTableScrollRef}
+                        onScroll={() => sincronizarScrollCatalogo("tabela")}
+                        className="overflow-y-auto overflow-x-hidden max-h-[calc(100vh-300px)] border rounded-md"
+                      >
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -748,6 +783,14 @@ export default function ProdutosConversacionalPage() {
                         </TableBody>
                       </Table>
                       </div>
+                      <div
+                        ref={catalogoBottomScrollRef}
+                        onScroll={() => sincronizarScrollCatalogo("barra")}
+                        className="absolute inset-x-6 bottom-3 overflow-x-auto overflow-y-hidden h-5"
+                      >
+                        <div style={{ width: catalogoScrollWidth, height: 1 }} />
+                      </div>
+                      </>
                     )}
                     <div className="flex gap-2 mt-3 text-xs text-muted-foreground">
                       <span>Total: {produtos.length}</span>
