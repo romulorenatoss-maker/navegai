@@ -3471,9 +3471,12 @@ export type Database = {
           conteudo_editado: string | null
           conteudo_original: string | null
           created_at: string
+          data_render: string | null
           id: string
+          snapshot_render: Json | null
           status: Database["public"]["Enums"]["propostas_status"]
           template_id: string | null
+          template_versao: string | null
           updated_at: string
           usuario_id: string
           validade: string | null
@@ -3484,9 +3487,12 @@ export type Database = {
           conteudo_editado?: string | null
           conteudo_original?: string | null
           created_at?: string
+          data_render?: string | null
           id?: string
+          snapshot_render?: Json | null
           status?: Database["public"]["Enums"]["propostas_status"]
           template_id?: string | null
+          template_versao?: string | null
           updated_at?: string
           usuario_id: string
           validade?: string | null
@@ -3497,9 +3503,12 @@ export type Database = {
           conteudo_editado?: string | null
           conteudo_original?: string | null
           created_at?: string
+          data_render?: string | null
           id?: string
+          snapshot_render?: Json | null
           status?: Database["public"]["Enums"]["propostas_status"]
           template_id?: string | null
+          template_versao?: string | null
           updated_at?: string
           usuario_id?: string
           validade?: string | null
@@ -3631,6 +3640,7 @@ export type Database = {
           tipo: Database["public"]["Enums"]["propostas_tipo_template"]
           tipo_template: string
           updated_at: string
+          versao: string
         }
         Insert: {
           arquivo_docx_path?: string | null
@@ -3644,6 +3654,7 @@ export type Database = {
           tipo?: Database["public"]["Enums"]["propostas_tipo_template"]
           tipo_template?: string
           updated_at?: string
+          versao?: string
         }
         Update: {
           arquivo_docx_path?: string | null
@@ -3657,6 +3668,7 @@ export type Database = {
           tipo?: Database["public"]["Enums"]["propostas_tipo_template"]
           tipo_template?: string
           updated_at?: string
+          versao?: string
         }
         Relationships: []
       }
