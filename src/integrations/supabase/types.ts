@@ -3224,6 +3224,42 @@ export type Database = {
         }
         Relationships: []
       }
+      propostas_fluxo: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          label: string | null
+          ordem: number
+          referencia: string
+          template_id: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          label?: string | null
+          ordem?: number
+          referencia: string
+          template_id: string
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          label?: string | null
+          ordem?: number
+          referencia?: string
+          template_id?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       propostas_historico: {
         Row: {
           conteudo: string | null
