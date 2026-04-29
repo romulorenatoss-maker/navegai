@@ -184,7 +184,16 @@ export default function PropostasPerguntasPage() {
                     <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => moverPergunta(p.id, 1)}><ArrowDown className="w-3 h-3" /></Button>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{p.pergunta}</div>
+                    <div className="text-sm font-medium truncate flex items-center gap-2">
+                      {p.pergunta}
+                      {p.tipo_pergunta && p.tipo_pergunta !== "input" && (
+                        <Badge variant="secondary" className="text-[10px]">{p.tipo_pergunta}</Badge>
+                      )}
+                      {p.tipo_pergunta === "produto" && p.categoria_produto && (
+                        <Badge variant="outline" className="text-[10px]">{p.categoria_produto}</Badge>
+                      )}
+                      {p.gera_contexto && <Badge variant="outline" className="text-[10px]">IA contexto</Badge>}
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       {nomeCategoria(p.categoria_id)} · {p.tipo} {p.campo_token ? `· token: ${p.campo_token}` : ""} {p.obrigatoria ? "· obrigatória" : ""}
                     </div>
