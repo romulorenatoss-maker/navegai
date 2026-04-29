@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +18,10 @@ import {
   type PropostasCategoriaSetup, type PropostasPerguntaSetup, type PropostasCobranca,
 } from "../services/propostasPerguntasService";
 import { propostasRenderizarTemplate } from "../utils/propostasRender";
+import {
+  buscarRascunhoPorCliente, salvarRascunho, excluirRascunho,
+  type PropostasRascunhoConversa,
+} from "../services/propostasRascunhoService";
 
 interface Msg { role: "user" | "assistant"; content: string }
 interface ItemConv {
@@ -34,12 +38,18 @@ const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u03
 
 export default function PropostaConversacionalPage() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const clienteParam = params.get("cliente");
 
   // Cliente
   const [modalCliente, setModalCliente] = useState(true);
   const [termoCliente, setTermoCliente] = useState("");
   const [clientes, setClientes] = useState<ClienteLite[]>([]);
   const [clienteSel, setClienteSel] = useState<ClienteLite | null>(null);
+
+  // Rascunho
+  const [rascunhoId, setRascunhoId] = useState<string | null>(null);
+  const [retomado, setRetomado] = useState(false);
 
   // Template
   const [templates, setTemplates] = useState<PropostasTemplate[]>([]);
@@ -100,15 +110,77 @@ export default function PropostaConversacionalPage() {
     return acc;
   }, [itens]);
 
-  function confirmarCliente() {
-    if (!clienteSel) { toast.error("Selecione um cliente"); return; }
-    setModalCliente(false);
+  function hidratarRascunho(r: PropostasRascunhoConversa, nomeCliente: string) {
+    setRascunhoId(r.id);
+    setMsgs(r.mensagens);
+    setItens(r.itens);
+    setRespostas(r.respostas);
+    if (r.template_id) setTemplateId(r.template_id);
+    setRetomado(true);
+    toast.success(`Conversa de ${nomeCliente} retomada (${r.mensagens.length} msg, ${r.itens.length} item${r.itens.length !== 1 ? "s" : ""})`);
+  }
+
+  function iniciarConversa(nomeCliente: string) {
     const primeira = perguntasOrdenadas[0];
     const cat = primeira ? categorias.find(c => c.id === primeira.categoria_id) : null;
     setMsgs([{
       role: "assistant",
-      content: `Olá! Vamos montar a proposta para **${clienteSel.nome}**. ${primeira ? `Começando por **${cat?.nome ?? "Contexto"}**:\n\n${primeira.pergunta}` : "Pode descrever o que o cliente precisa (ex.: \"switch 1300\")."}`,
+      content: `Olá! Vamos montar a proposta para **${nomeCliente}**. ${primeira ? `Começando por **${cat?.nome ?? "Contexto"}**:\n\n${primeira.pergunta}` : "Pode descrever o que o cliente precisa (ex.: \"switch 1300\")."}`,
     }]);
+    setRetomado(true);
+  }
+
+  // Retomada via ?cliente= : carrega cliente + rascunho automaticamente
+  useEffect(() => {
+    if (!clienteParam || perguntasOrdenadas.length === 0) return;
+    let cancelado = false;
+    (async () => {
+      try {
+        const [lista, rascunho] = await Promise.all([
+          buscarClientes(""),
+          buscarRascunhoPorCliente(clienteParam),
+        ]);
+        if (cancelado) return;
+        const cli = lista.find(c => c.id === clienteParam) ?? null;
+        if (!cli) { toast.error("Cliente não encontrado"); return; }
+        setClienteSel(cli);
+        setModalCliente(false);
+        if (rascunho) hidratarRascunho(rascunho, cli.nome);
+        else iniciarConversa(cli.nome);
+      } catch (e) { console.error(e); }
+    })();
+    return () => { cancelado = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clienteParam, perguntasOrdenadas.length]);
+
+  // Auto-save com debounce
+  useEffect(() => {
+    if (!clienteSel || !retomado || gerando) return;
+    const t = setTimeout(() => {
+      salvarRascunho({
+        cliente_id: clienteSel.id,
+        cliente_nome: clienteSel.nome,
+        template_id: templateId || null,
+        mensagens: msgs,
+        itens,
+        respostas,
+        finalizado: false,
+      }).then(r => setRascunhoId(r.id)).catch(e => console.error("auto-save", e));
+    }, 800);
+    return () => clearTimeout(t);
+  }, [clienteSel, retomado, gerando, templateId, msgs, itens, respostas]);
+
+  async function confirmarCliente() {
+    if (!clienteSel) { toast.error("Selecione um cliente"); return; }
+    setModalCliente(false);
+    try {
+      const r = await buscarRascunhoPorCliente(clienteSel.id);
+      if (r) hidratarRascunho(r, clienteSel.nome);
+      else iniciarConversa(clienteSel.nome);
+    } catch (e) {
+      console.error(e);
+      iniciarConversa(clienteSel.nome);
+    }
   }
 
   /** Processa fila de novos itens, perguntando sobre duplicatas um a um. */
@@ -273,6 +345,10 @@ export default function PropostaConversacionalPage() {
         })),
       });
 
+      // Remove rascunho ao concluir
+      if (rascunhoId) {
+        try { await excluirRascunho(rascunhoId); } catch (e) { console.error(e); }
+      }
       toast.success("Proposta gerada");
       navigate(`/propostas/${proposta.id}/preview`);
     } catch (e: unknown) {
@@ -324,6 +400,7 @@ export default function PropostaConversacionalPage() {
         </h1>
         <div className="flex gap-2 items-center">
           <Badge variant="outline">Cliente: {clienteSel?.nome}</Badge>
+          {rascunhoId && <Badge variant="secondary" className="text-xs">Auto-salvo</Badge>}
           <select className="border rounded-md p-1.5 text-sm bg-background"
             value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
             <option value="">Selecione template…</option>
@@ -332,6 +409,16 @@ export default function PropostaConversacionalPage() {
           <Button variant="ghost" size="sm" onClick={() => navigate("/propostas/nova")}>
             <ArrowLeft className="w-4 h-4 mr-1" /> Sair
           </Button>
+          {rascunhoId && (
+            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive"
+              onClick={async () => {
+                if (!confirm("Cancelar e descartar esta conversa?")) return;
+                try { await excluirRascunho(rascunhoId); toast.success("Conversa descartada"); navigate("/propostas/nova"); }
+                catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
+              }}>
+              <Trash2 className="w-4 h-4 mr-1" /> Cancelar
+            </Button>
+          )}
         </div>
       </div>
 

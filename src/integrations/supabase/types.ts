@@ -3438,6 +3438,48 @@ export type Database = {
           },
         ]
       }
+      propostas_rascunhos_conversa: {
+        Row: {
+          cliente_id: string
+          cliente_nome: string
+          created_at: string
+          finalizado: boolean
+          id: string
+          itens: Json
+          mensagens: Json
+          respostas: Json
+          template_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cliente_id: string
+          cliente_nome: string
+          created_at?: string
+          finalizado?: boolean
+          id?: string
+          itens?: Json
+          mensagens?: Json
+          respostas?: Json
+          template_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cliente_id?: string
+          cliente_nome?: string
+          created_at?: string
+          finalizado?: boolean
+          id?: string
+          itens?: Json
+          mensagens?: Json
+          respostas?: Json
+          template_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       propostas_setup_respostas: {
         Row: {
           cliente_id: string | null
