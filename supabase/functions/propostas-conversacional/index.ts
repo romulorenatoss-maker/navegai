@@ -141,7 +141,7 @@ Responda SEMPRE com APENAS um JSON válido entre tags <json>...</json>, sem text
   "message": "texto curto para o usuário",
   "actions": [
     { "type": "add_item",
-      "item": { "nome": "Switch 24P", "quantidade": 1, "valor": 1300, "categoria": "infraestrutura", "cobranca": "implantacao" } },
+      "item": { "produto_id": "<uuid do catálogo>", "nome": "Switch 24P", "quantidade": 1, "valor": 1300, "categoria": "infraestrutura", "cobranca": "implantacao" } },
     { "type": "next_step", "proxima_etapa": "dados" }
   ]
 }
