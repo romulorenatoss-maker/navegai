@@ -22,6 +22,17 @@ function jerr(status: number, msg: string, extra?: unknown) {
   });
 }
 
+// Converte Uint8Array → base64 em chunks (evita "Maximum call stack size exceeded")
+function uint8ToBase64(bytes: Uint8Array): string {
+  const CHUNK = 0x8000; // 32KB
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    const slice = bytes.subarray(i, i + CHUNK);
+    binary += String.fromCharCode(...slice);
+  }
+  return btoa(binary);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return jerr(405, "Method not allowed");
@@ -63,7 +74,7 @@ Deno.serve(async (req) => {
       .createSignedUrl(tpl.arquivo_pdf_path, 60 * 60);
     if (cachedBlob) {
       const buf = new Uint8Array(await cachedBlob.arrayBuffer());
-      const b64 = btoa(String.fromCharCode(...buf));
+      const b64 = uint8ToBase64(buf);
       return new Response(
         JSON.stringify({
           pdf_path: tpl.arquivo_pdf_path,
@@ -161,7 +172,7 @@ Deno.serve(async (req) => {
 
   // 10) Signed URL + base64 (para uso em blob URL no front, evita bloqueio do Chrome)
   const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(pdfPath, 60 * 60);
-  const pdfBase64 = btoa(String.fromCharCode(...pdfBuf));
+  const pdfBase64 = uint8ToBase64(pdfBuf);
 
   return new Response(
     JSON.stringify({
