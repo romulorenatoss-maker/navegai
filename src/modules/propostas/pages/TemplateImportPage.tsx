@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileUp, Sparkles, Save, Plus, Pencil, Trash2, X, FileText, Eye } from "lucide-react";
+import { FileUp, Sparkles, Save, Plus, Pencil, Trash2, X, FileText, Eye, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   criarTemplate,
@@ -14,36 +14,12 @@ import {
   type PropostasTemplate,
 } from "../services/propostasService";
 import { analisarTemplate, type AnaliseTemplate } from "../services/propostasIAService";
-import { prepararHtmlParaEditor, substituirPlaceholders } from "../utils/propostasParser";
+import { prepararHtmlParaEditor } from "../utils/propostasParser";
 import { PropostaEditorVisual } from "../components/PropostaEditorVisual";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
 
-// Dados fictícios para preview do template
-const PREVIEW_MOCK: Record<string, string | number> = {
-  cliente_nome: "Empresa Teste Ltda",
-  cliente_cnpj: "00.000.000/0001-00",
-  cnpj: "00.000.000/0001-00",
-  cliente_cpf: "000.000.000-00",
-  cpf: "000.000.000-00",
-  cliente_endereco: "Rua Exemplo, 123 - Centro",
-  endereco: "Rua Exemplo, 123 - Centro",
-  cliente_cidade: "São Paulo - SP",
-  cidade: "São Paulo - SP",
-  cliente_email: "contato@empresateste.com.br",
-  email: "contato@empresateste.com.br",
-  cliente_telefone: "(11) 99999-9999",
-  telefone: "(11) 99999-9999",
-  contexto: "Este é um texto de contexto fictício gerado para fins de visualização do template. Em uma proposta real, este campo conterá a análise comercial do cenário do cliente.",
-  objetivo: "Apresentar uma solução completa adequada às necessidades do cliente.",
-  data: new Date().toLocaleDateString("pt-BR"),
-  data_proposta: new Date().toLocaleDateString("pt-BR"),
-  validade: "30 dias",
-  valor_total: "R$ 9.999,99",
-  valor_mensal: "R$ 1.499,99",
-  valor_implantacao: "R$ 2.500,00",
-  responsavel_nome: "Consultor Exemplo",
-  empresa_nome: "Sua Empresa S/A",
-};
+const BUCKET = "propostas-templates";
 
 export default function TemplateImportPage() {
   const [templates, setTemplates] = useState<PropostasTemplate[]>([]);
@@ -53,8 +29,12 @@ export default function TemplateImportPage() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [nome, setNome] = useState("");
   const [html, setHtml] = useState<string>("");
+  const [docxPath, setDocxPath] = useState<string | null>(null);
+  const [pdfPath, setPdfPath] = useState<string | null>(null);
+  const [pendingDocx, setPendingDocx] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [analisando, setAnalisando] = useState(false);
+  const [convertendo, setConvertendo] = useState(false);
   const [analise, setAnalise] = useState<AnaliseTemplate | null>(null);
 
   async function carregar() {
@@ -71,24 +51,65 @@ export default function TemplateImportPage() {
 
   useEffect(() => { carregar(); }, []);
 
-  // Preview modal
+  // Preview modal (PDF via CloudConvert)
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewHtml, setPreviewHtml] = useState<string>("");
+  const [previewUrl, setPreviewUrl] = useState<string>("");
 
-  function abrirPreview() {
-    if (!html.trim()) {
-      toast.error("Importe ou cole conteúdo primeiro");
+  async function abrirPreview() {
+    if (!editandoId) {
+      toast.error("Salve o template antes de visualizar o preview");
       return;
     }
-    const renderizado = substituirPlaceholders(html, PREVIEW_MOCK);
-    setPreviewHtml(renderizado);
-    setPreviewOpen(true);
+    if (!docxPath && !pendingDocx) {
+      toast.error("Este template não possui arquivo .docx vinculado");
+      return;
+    }
+    setConvertendo(true);
+    try {
+      // Garante que o .docx atual está no storage
+      let pathFinal = docxPath;
+      if (pendingDocx) {
+        pathFinal = await uploadDocx(editandoId, pendingDocx);
+      }
+      const { data, error } = await supabase.functions.invoke("preview-proposta", {
+        body: { template_id: editandoId, docx_path: pathFinal, force: !!pendingDocx },
+      });
+      if (error) throw error;
+      const url = (data as { signed_url?: string })?.signed_url;
+      if (!url) throw new Error("PDF não disponível");
+      setPdfPath((data as { pdf_path?: string }).pdf_path ?? null);
+      setPreviewUrl(url);
+      setPreviewOpen(true);
+      setPendingDocx(null);
+    } catch (e: unknown) {
+      console.error(e);
+      toast.error(e instanceof Error ? e.message : "Falha ao gerar preview");
+    } finally {
+      setConvertendo(false);
+    }
+  }
+
+  async function uploadDocx(templateId: string, file: File): Promise<string> {
+    const path = `templates/${templateId}-${Date.now()}.docx`;
+    const { error: upErr } = await supabase.storage
+      .from(BUCKET)
+      .upload(path, file, {
+        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        upsert: true,
+      });
+    if (upErr) throw upErr;
+    await atualizarTemplate(templateId, { arquivo_docx_path: path, tipo_template: "docx" } as never);
+    setDocxPath(path);
+    return path;
   }
 
   function novoTemplate() {
     setEditandoId(null);
     setNome("");
     setHtml("");
+    setDocxPath(null);
+    setPdfPath(null);
+    setPendingDocx(null);
     setAnalise(null);
     setEditorOpen(true);
   }
@@ -97,6 +118,9 @@ export default function TemplateImportPage() {
     setEditandoId(t.id);
     setNome(t.nome);
     setHtml(t.conteudo_html);
+    setDocxPath((t as unknown as { arquivo_docx_path?: string | null }).arquivo_docx_path ?? null);
+    setPdfPath((t as unknown as { arquivo_pdf_path?: string | null }).arquivo_pdf_path ?? null);
+    setPendingDocx(null);
     setAnalise(null);
     setEditorOpen(true);
   }
@@ -117,6 +141,9 @@ export default function TemplateImportPage() {
     setEditandoId(null);
     setNome("");
     setHtml("");
+    setDocxPath(null);
+    setPdfPath(null);
+    setPendingDocx(null);
     setAnalise(null);
   }
 
@@ -131,7 +158,10 @@ export default function TemplateImportPage() {
       setHtml(prepararHtmlParaEditor(result.value));
       if (!nome) setNome(file.name.replace(/\.(docx?|html?)$/i, ""));
       setAnalise(null);
-      toast.success("Documento importado.");
+      setPendingDocx(file);
+      // Invalida PDF antigo (será regenerado no próximo preview)
+      setPdfPath(null);
+      toast.success("Documento importado. O preview gerará um novo PDF.");
     } catch (err) {
       console.error(err);
       toast.error("Falha ao converter o documento. Use .docx.");
@@ -286,9 +316,15 @@ export default function TemplateImportPage() {
                     <Sparkles className="w-4 h-4 mr-2" />
                     {analisando ? "Analisando..." : "Analisar com IA"}
                   </Button>
-                  <Button variant="outline" size="sm" onClick={abrirPreview}>
-                    <Eye className="w-4 h-4 mr-2" />
-                    Ver preview
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={abrirPreview}
+                    disabled={convertendo || !editandoId}
+                    title={!editandoId ? "Salve o template antes" : ""}
+                  >
+                    {convertendo ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Eye className="w-4 h-4 mr-2" />}
+                    {convertendo ? "Convertendo..." : "Ver preview"}
                   </Button>
                   <Button size="sm" onClick={salvar}>
                     <Save className="w-4 h-4 mr-2" />
@@ -334,17 +370,34 @@ export default function TemplateImportPage() {
       )}
 
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-5xl w-[90vw] max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Eye className="w-5 h-5" /> Preview do template
-              <Badge variant="secondary" className="text-[10px] ml-2">dados fictícios</Badge>
+              <Badge variant="secondary" className="text-[10px] ml-2">PDF gerado</Badge>
+              {previewUrl && (
+                <a
+                  href={previewUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="ml-auto text-xs underline text-primary"
+                >
+                  Abrir em nova aba
+                </a>
+              )}
             </DialogTitle>
           </DialogHeader>
-          <div
-            className="flex-1 overflow-auto border rounded-md p-6 bg-white text-black prose prose-sm max-w-none"
-            dangerouslySetInnerHTML={{ __html: previewHtml }}
-          />
+          {previewUrl ? (
+            <iframe
+              src={previewUrl}
+              title="Preview PDF"
+              className="flex-1 w-full border rounded-md bg-white min-h-[70vh]"
+            />
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+              <Loader2 className="w-5 h-5 mr-2 animate-spin" /> Carregando…
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
