@@ -374,6 +374,20 @@ export default function ProdutosConversacionalPage() {
         }
       }
 
+      // Criação/ativação de categoria — reflete imediato
+      if (resp.criar_categorias?.length) {
+        for (const r of resp.criar_categorias) {
+          const cat = normalizarCategoria(r.categoria);
+          if (!cat || cat === "outros") { toast.error(`Categoria inválida: ${r.categoria}`); continue; }
+          try {
+            await definirCategoriaSetupAtiva(cat, true);
+            toast.success(`Categoria "${cat}" ativada`);
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : `Erro ao criar categoria ${r.categoria}`);
+          }
+        }
+      }
+
       // Remoções de produtos individuais
       if (resp.remover_produtos?.length) {
         for (const r of resp.remover_produtos) {
