@@ -51,18 +51,56 @@ export default function TemplateImportPage() {
 
   useEffect(() => { carregar(); }, []);
 
-  // Preview modal
+  // Preview modal (PDF via CloudConvert)
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewHtml, setPreviewHtml] = useState<string>("");
+  const [previewUrl, setPreviewUrl] = useState<string>("");
 
-  function abrirPreview() {
-    if (!html.trim()) {
-      toast.error("Importe ou cole conteúdo primeiro");
+  async function abrirPreview() {
+    if (!editandoId) {
+      toast.error("Salve o template antes de visualizar o preview");
       return;
     }
-    const renderizado = substituirPlaceholders(html, PREVIEW_MOCK);
-    setPreviewHtml(renderizado);
-    setPreviewOpen(true);
+    if (!docxPath && !pendingDocx) {
+      toast.error("Este template não possui arquivo .docx vinculado");
+      return;
+    }
+    setConvertendo(true);
+    try {
+      // Garante que o .docx atual está no storage
+      let pathFinal = docxPath;
+      if (pendingDocx) {
+        pathFinal = await uploadDocx(editandoId, pendingDocx);
+      }
+      const { data, error } = await supabase.functions.invoke("preview-proposta", {
+        body: { template_id: editandoId, docx_path: pathFinal, force: !!pendingDocx },
+      });
+      if (error) throw error;
+      const url = (data as { signed_url?: string })?.signed_url;
+      if (!url) throw new Error("PDF não disponível");
+      setPdfPath((data as { pdf_path?: string }).pdf_path ?? null);
+      setPreviewUrl(url);
+      setPreviewOpen(true);
+      setPendingDocx(null);
+    } catch (e: unknown) {
+      console.error(e);
+      toast.error(e instanceof Error ? e.message : "Falha ao gerar preview");
+    } finally {
+      setConvertendo(false);
+    }
+  }
+
+  async function uploadDocx(templateId: string, file: File): Promise<string> {
+    const path = `templates/${templateId}-${Date.now()}.docx`;
+    const { error: upErr } = await supabase.storage
+      .from(BUCKET)
+      .upload(path, file, {
+        contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        upsert: true,
+      });
+    if (upErr) throw upErr;
+    await atualizarTemplate(templateId, { arquivo_docx_path: path, tipo_template: "docx" } as never);
+    setDocxPath(path);
+    return path;
   }
 
   function novoTemplate() {
