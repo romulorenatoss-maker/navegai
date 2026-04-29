@@ -108,11 +108,20 @@ interface OSDoAvaliador {
   inicio: string;
   fim: string;
   duracao_seg: number;
+  dia: string; // YYYY-MM-DD em America/Sao_Paulo (com base no início)
 }
 interface FaixaHora {
   faixa: string;
   qtd_os: number;
   tempo_total_seg: number;
+}
+interface DiaAvaliador {
+  dia: string; // YYYY-MM-DD
+  primeira_acao: string;
+  ultima_acao: string;
+  total_os: number;
+  tempo_medio_dentro_os_seg: number;
+  tempo_medio_entre_os_seg: number;
 }
 interface MetricaAvaliador {
   usuario_id: string;
@@ -124,9 +133,21 @@ interface MetricaAvaliador {
   tempo_medio_dentro_os_seg: number;
   faixas: FaixaHora[];
   oss: OSDoAvaliador[];
+  dias: DiaAvaliador[];
 }
 
-function calcularMetricasPorAvaliador(eventos: EventoResposta[], profMap: Record<string, string>, osNumeroMap: Record<string, string | number | null>): MetricaAvaliador[] {
+// Retorna YYYY-MM-DD em America/Sao_Paulo
+function diaBR(iso: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
+}
+
+function calcularMetricasPorAvaliador(
+  eventos: EventoResposta[],
+  eventosEstendidos: EventoResposta[],
+  profMap: Record<string, string>,
+  osNumeroMap: Record<string, string | number | null>,
+): MetricaAvaliador[] {
+  // 1) Agrupar eventos do PERÍODO por usuário/OS (define quais OS aparecem)
   const porUsuario = new Map<string, Map<string, string[]>>();
   for (const e of eventos) {
     if (!e.usuario_id) continue;
@@ -136,18 +157,29 @@ function calcularMetricasPorAvaliador(eventos: EventoResposta[], profMap: Record
     osMap.get(e.ordem_servico_id)!.push(e.respondido_em);
   }
 
+  // 2) Mapa estendido (inclui eventos fora do período) só para corrigir início/fim de OS que cruzam dias
+  const extMap = new Map<string, string[]>();
+  for (const e of eventosEstendidos) {
+    if (!e.usuario_id || !e.ordem_servico_id) continue;
+    const k = `${e.usuario_id}::${e.ordem_servico_id}`;
+    if (!extMap.has(k)) extMap.set(k, []);
+    extMap.get(k)!.push(e.respondido_em);
+  }
+
   const result: MetricaAvaliador[] = [];
   for (const [usuario_id, osMap] of porUsuario.entries()) {
     const oss: OSDoAvaliador[] = [];
     for (const [os_id, timestamps] of osMap.entries()) {
-      timestamps.sort();
-      const inicio = timestamps[0];
-      const fim = timestamps[timestamps.length - 1];
+      // Usar timestamps estendidos quando disponíveis (para refletir cruzamento de dia)
+      const ts = (extMap.get(`${usuario_id}::${os_id}`) ?? timestamps).slice().sort();
+      const inicio = ts[0];
+      const fim = ts[ts.length - 1];
       const dur = (new Date(fim).getTime() - new Date(inicio).getTime()) / 1000;
-      oss.push({ os_id, numero_os: osNumeroMap[os_id] ?? null, inicio, fim, duracao_seg: dur });
+      oss.push({ os_id, numero_os: osNumeroMap[os_id] ?? null, inicio, fim, duracao_seg: dur, dia: diaBR(inicio) });
     }
     oss.sort((a, b) => a.inicio.localeCompare(b.inicio));
 
+    // === Métricas globais do período ===
     const gaps: number[] = [];
     for (let i = 1; i < oss.length; i++) {
       const gap = (new Date(oss[i].inicio).getTime() - new Date(oss[i - 1].fim).getTime()) / 1000;
@@ -156,6 +188,7 @@ function calcularMetricasPorAvaliador(eventos: EventoResposta[], profMap: Record
     const tempo_medio_entre_os_seg = gaps.length ? gaps.reduce((a, b) => a + b, 0) / gaps.length : 0;
     const tempo_medio_dentro_os_seg = oss.length ? oss.reduce((a, o) => a + o.duracao_seg, 0) / oss.length : 0;
 
+    // === Faixas horárias (período) ===
     const faixaMap = new Map<number, { qtd: number; tempo: number }>();
     for (const o of oss) {
       const h = horaBR(o.inicio);
@@ -172,6 +205,31 @@ function calcularMetricasPorAvaliador(eventos: EventoResposta[], profMap: Record
         tempo_total_seg: v.tempo,
       }));
 
+    // === Agregação por DIA (com base no dia da OS = dia do início) ===
+    const porDia = new Map<string, OSDoAvaliador[]>();
+    for (const o of oss) {
+      if (!porDia.has(o.dia)) porDia.set(o.dia, []);
+      porDia.get(o.dia)!.push(o);
+    }
+    const dias: DiaAvaliador[] = Array.from(porDia.entries())
+      .map(([dia, ossDoDia]) => {
+        const ordenadas = ossDoDia.slice().sort((a, b) => a.inicio.localeCompare(b.inicio));
+        const gapsDia: number[] = [];
+        for (let i = 1; i < ordenadas.length; i++) {
+          const gap = (new Date(ordenadas[i].inicio).getTime() - new Date(ordenadas[i - 1].fim).getTime()) / 1000;
+          if (gap >= 0) gapsDia.push(gap);
+        }
+        return {
+          dia,
+          primeira_acao: ordenadas[0].inicio,
+          ultima_acao: ordenadas[ordenadas.length - 1].fim,
+          total_os: ordenadas.length,
+          tempo_medio_dentro_os_seg: ordenadas.reduce((a, o) => a + o.duracao_seg, 0) / ordenadas.length,
+          tempo_medio_entre_os_seg: gapsDia.length ? gapsDia.reduce((a, b) => a + b, 0) / gapsDia.length : 0,
+        };
+      })
+      .sort((a, b) => a.dia.localeCompare(b.dia));
+
     result.push({
       usuario_id,
       nome: profMap[usuario_id] ?? "—",
@@ -182,6 +240,7 @@ function calcularMetricasPorAvaliador(eventos: EventoResposta[], profMap: Record
       tempo_medio_dentro_os_seg,
       faixas,
       oss,
+      dias,
     });
   }
 
@@ -197,6 +256,7 @@ export default function DashboardTempoAvaliacoes() {
   const [gargalos, setGargalos] = useState<GargaloAgg[]>([]);
   const [pausas, setPausas] = useState<PausaItem[]>([]);
   const [eventos, setEventos] = useState<EventoResposta[]>([]);
+  const [eventosExt, setEventosExt] = useState<EventoResposta[]>([]);
   const [profMap, setProfMap] = useState<Record<string, string>>({});
   const [osNumeroMap, setOsNumeroMap] = useState<Record<string, string | number | null>>({});
   const [expandido, setExpandido] = useState<Set<string>>(new Set());
@@ -257,11 +317,12 @@ export default function DashboardTempoAvaliacoes() {
       const sData: MetricaSetor[] = s.data || [];
       const pData: PausaItem[] = (p.data || []) as PausaItem[];
       const seqData: EventoSequencia[] = eventosSeqRes.data || [];
-      let evData: EventoResposta[] = (ev.data || []) as EventoResposta[];
+      const evData: EventoResposta[] = (ev.data || []) as EventoResposta[]; // SOMENTE período
+      let evDataExt: EventoResposta[] = evData.slice(); // período + extensão para OS que cruzam dia
 
       // === Estender eventos: para cada (OS, usuário) que aparece no período,
-      // buscar TODOS os eventos daquela OS/usuário (mesmo fora do período),
-      // assim início/fim/duração refletem avaliações que cruzam dias. ===
+      // buscar TODOS os eventos daquela OS/usuário (mesmo fora do período).
+      // Usado APENAS para corrigir início/fim/duração na tabela detalhada de OSs. ===
       const paresOSUser = Array.from(new Set(
         evData.filter(e => e.ordem_servico_id && e.usuario_id).map(e => `${e.ordem_servico_id}::${e.usuario_id}`)
       ));
@@ -282,7 +343,7 @@ export default function DashboardTempoAvaliacoes() {
             if (!valid.has(k)) continue;
             merged.set(`${k}::${e.respondido_em}`, e);
           }
-          evData = Array.from(merged.values());
+          evDataExt = Array.from(merged.values());
         }
       }
 
@@ -349,6 +410,7 @@ export default function DashboardTempoAvaliacoes() {
       setGargalos(gargalosCalc);
       setPausas(pausasEnriquecidas);
       setEventos(evData);
+      setEventosExt(evDataExt);
 
       setLoading(false);
     })();
@@ -361,8 +423,8 @@ export default function DashboardTempoAvaliacoes() {
   }, [eventos]);
 
   const avaliadores = useMemo(
-    () => calcularMetricasPorAvaliador(eventos, profMap, osNumeroMap),
-    [eventos, profMap, osNumeroMap]
+    () => calcularMetricasPorAvaliador(eventos, eventosExt, profMap, osNumeroMap),
+    [eventos, eventosExt, profMap, osNumeroMap]
   );
 
   const setoresAgregados = useMemo(() => {
@@ -529,8 +591,16 @@ export default function DashboardTempoAvaliacoes() {
                           </TableCell>
                           <TableCell className="font-medium">{a.nome}</TableCell>
                           <TableCell className="text-right">{a.total_os}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{a.primeira_acao ? fmtDataHora(a.primeira_acao) : "—"}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{a.ultima_acao ? fmtDataHora(a.ultima_acao) : "—"}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {a.dias.length > 1 ? (
+                              <span className="italic">{a.dias.length} dias — ver detalhes</span>
+                            ) : a.primeira_acao ? fmtDataHora(a.primeira_acao) : "—"}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {a.dias.length > 1 ? (
+                              <span className="italic">{a.dias.length} dias — ver detalhes</span>
+                            ) : a.ultima_acao ? fmtDataHora(a.ultima_acao) : "—"}
+                          </TableCell>
                           <TableCell className="text-right">{formatDuration(a.tempo_medio_dentro_os_seg)}</TableCell>
                           <TableCell className="text-right">{formatDuration(a.tempo_medio_entre_os_seg)}</TableCell>
                         </TableRow>
@@ -539,6 +609,39 @@ export default function DashboardTempoAvaliacoes() {
                             <TableCell></TableCell>
                             <TableCell colSpan={6} className="py-3">
                               <div className="space-y-3">
+                                <div>
+                                  <p className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Indicadores por dia ({a.dias.length})</p>
+                                  {a.dias.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground">Sem dados.</p>
+                                  ) : (
+                                    <div className="rounded-md border bg-background overflow-x-auto">
+                                      <Table>
+                                        <TableHeader>
+                                          <TableRow>
+                                            <TableHead className="text-xs">Dia</TableHead>
+                                            <TableHead className="text-xs">Primeira ação</TableHead>
+                                            <TableHead className="text-xs">Última ação</TableHead>
+                                            <TableHead className="text-xs text-right">OS</TableHead>
+                                            <TableHead className="text-xs text-right">Médio por OS</TableHead>
+                                            <TableHead className="text-xs text-right">Médio entre OSs</TableHead>
+                                          </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                          {a.dias.map(d => (
+                                            <TableRow key={d.dia}>
+                                              <TableCell className="text-xs font-medium">{fmtData(d.primeira_acao)}</TableCell>
+                                              <TableCell className="text-xs">{fmtHora(d.primeira_acao)}</TableCell>
+                                              <TableCell className="text-xs">{fmtHora(d.ultima_acao)}</TableCell>
+                                              <TableCell className="text-xs text-right">{d.total_os}</TableCell>
+                                              <TableCell className="text-xs text-right">{formatDuration(d.tempo_medio_dentro_os_seg)}</TableCell>
+                                              <TableCell className="text-xs text-right">{formatDuration(d.tempo_medio_entre_os_seg)}</TableCell>
+                                            </TableRow>
+                                          ))}
+                                        </TableBody>
+                                      </Table>
+                                    </div>
+                                  )}
+                                </div>
                                 <div>
                                   <p className="text-xs font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Faixas horárias</p>
                                   {a.faixas.length === 0 ? (
