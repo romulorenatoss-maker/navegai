@@ -90,6 +90,7 @@ function horaBR(iso: string): number {
 // =============================================================
 interface OSDoAvaliador {
   os_id: string;
+  numero_os: string | number | null;
   inicio: string;
   fim: string;
   duracao_seg: number;
@@ -111,7 +112,7 @@ interface MetricaAvaliador {
   oss: OSDoAvaliador[];
 }
 
-function calcularMetricasPorAvaliador(eventos: EventoResposta[], profMap: Record<string, string>): MetricaAvaliador[] {
+function calcularMetricasPorAvaliador(eventos: EventoResposta[], profMap: Record<string, string>, osNumeroMap: Record<string, string | number | null>): MetricaAvaliador[] {
   // Agrupa por usuario → os → eventos
   const porUsuario = new Map<string, Map<string, string[]>>();
   for (const e of eventos) {
@@ -130,7 +131,7 @@ function calcularMetricasPorAvaliador(eventos: EventoResposta[], profMap: Record
       const inicio = timestamps[0];
       const fim = timestamps[timestamps.length - 1];
       const dur = (new Date(fim).getTime() - new Date(inicio).getTime()) / 1000;
-      oss.push({ os_id, inicio, fim, duracao_seg: dur });
+      oss.push({ os_id, numero_os: osNumeroMap[os_id] ?? null, inicio, fim, duracao_seg: dur });
     }
     oss.sort((a, b) => a.inicio.localeCompare(b.inicio));
 
@@ -186,6 +187,7 @@ export default function DashboardTempoAvaliacoes() {
   const [pausas, setPausas] = useState<MetricaPausa[]>([]);
   const [eventos, setEventos] = useState<EventoResposta[]>([]);
   const [profMap, setProfMap] = useState<Record<string, string>>({});
+  const [osNumeroMap, setOsNumeroMap] = useState<Record<string, string | number | null>>({});
   const [expandido, setExpandido] = useState<Set<string>>(new Set());
 
   // Período (default: mês corrente)
@@ -229,17 +231,21 @@ export default function DashboardTempoAvaliacoes() {
         ...pData.map(x => x.setor_id),
       ].filter(Boolean))) as string[];
       const perguntaIds = Array.from(new Set(gData.map(x => x.pergunta_id).filter(Boolean))) as string[];
+      const osIds = Array.from(new Set(evData.map(x => x.ordem_servico_id).filter(Boolean))) as string[];
 
-      const [profsRes, secsRes, perguntasRes] = await Promise.all([
+      const [profsRes, secsRes, perguntasRes, osRes] = await Promise.all([
         userIds.length ? supabase.from("profiles").select("id, nome").in("id", userIds) : Promise.resolve({ data: [] }),
         setorIds.length ? supabase.from("setores").select("id, nome").in("id", setorIds) : Promise.resolve({ data: [] }),
         perguntaIds.length ? supabase.from("perguntas_avaliacao").select("id, pergunta").in("id", perguntaIds) : Promise.resolve({ data: [] }),
+        osIds.length ? supabase.from("ordens_servico").select("id, numero_os").in("id", osIds) : Promise.resolve({ data: [] }),
       ]);
       const pMap = Object.fromEntries(((profsRes as any).data || []).map((x: any) => [x.id, x.nome]));
       const secMap = Object.fromEntries(((secsRes as any).data || []).map((x: any) => [x.id, x.nome]));
       const perguntaMap = Object.fromEntries(((perguntasRes as any).data || []).map((x: any) => [x.id, x.pergunta]));
+      const osMap = Object.fromEntries(((osRes as any).data || []).map((x: any) => [x.id, x.numero_os]));
 
       setProfMap(pMap);
+      setOsNumeroMap(osMap);
       setSetores(sData.map(x => ({ ...x, setor_nome: x.setor_id ? secMap[x.setor_id] ?? "Sem setor" : "Sem setor" })));
       setGargalos(gData.map(x => ({ ...x, pergunta_texto: x.pergunta ?? perguntaMap[x.pergunta_id] ?? x.pergunta_id })));
       setPausas(pData);
@@ -258,8 +264,8 @@ export default function DashboardTempoAvaliacoes() {
 
   // Métricas por avaliador (período)
   const avaliadores = useMemo(
-    () => calcularMetricasPorAvaliador(eventos, profMap),
-    [eventos, profMap]
+    () => calcularMetricasPorAvaliador(eventos, profMap, osNumeroMap),
+    [eventos, profMap, osNumeroMap]
   );
 
   // Setores agregados (já filtrados via query)
@@ -453,7 +459,18 @@ export default function DashboardTempoAvaliacoes() {
                                       <TableBody>
                                         {a.oss.map(o => (
                                           <TableRow key={o.os_id}>
-                                            <TableCell className="font-mono text-xs">{o.os_id.slice(0, 8)}</TableCell>
+                                            <TableCell className="text-xs">
+                                              {o.numero_os ? (
+                                                <a
+                                                  href={`/avaliacoes/pesquisa?os=${encodeURIComponent(String(o.numero_os))}`}
+                                                  className="text-primary hover:underline font-medium"
+                                                >
+                                                  #{o.numero_os}
+                                                </a>
+                                              ) : (
+                                                <span className="font-mono text-muted-foreground">{o.os_id.slice(0, 8)}</span>
+                                              )}
+                                            </TableCell>
                                             <TableCell className="text-xs">{fmtHora(o.inicio)}</TableCell>
                                             <TableCell className="text-xs">{fmtHora(o.fim)}</TableCell>
                                             <TableCell className="text-right text-xs">{formatDuration(o.duracao_seg)}</TableCell>
