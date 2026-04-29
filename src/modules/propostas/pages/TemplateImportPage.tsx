@@ -18,7 +18,7 @@ export default function TemplateImportPage() {
     setLoading(true);
     try {
       // mammoth carregado dinamicamente para não pesar bundle
-      const mammoth = await import("mammoth/mammoth.browser");
+      const mammoth = await import("mammoth");
       const arrayBuffer = await file.arrayBuffer();
       const result = await mammoth.convertToHtml({ arrayBuffer });
       setHtml(result.value);
