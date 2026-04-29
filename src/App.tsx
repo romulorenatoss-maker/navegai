@@ -122,6 +122,7 @@ const App = () => (
               <Route path="/propostas" element={<PropostaHistoricoPage />} />
               <Route path="/propostas/nova" element={<PropostaCreatePage />} />
               <Route path="/propostas/:id/preview" element={<PropostaPreviewPage />} />
+              <Route path="/propostas/:id" element={<PropostaPreviewPage />} />
               <Route path="/propostas/templates" element={<TemplateImportPage />} />
               <Route path="/propostas/produtos" element={<PropostaProdutosPage />} />
               <Route path="/auditoria" element={<PlaceholderPage title="Auditoria" description="Registro completo de todas as ações do sistema." />} />
