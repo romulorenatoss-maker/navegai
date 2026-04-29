@@ -400,6 +400,7 @@ export default function PropostaConversacionalPage() {
         </h1>
         <div className="flex gap-2 items-center">
           <Badge variant="outline">Cliente: {clienteSel?.nome}</Badge>
+          {rascunhoId && <Badge variant="secondary" className="text-xs">Auto-salvo</Badge>}
           <select className="border rounded-md p-1.5 text-sm bg-background"
             value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
             <option value="">Selecione template…</option>
@@ -408,6 +409,16 @@ export default function PropostaConversacionalPage() {
           <Button variant="ghost" size="sm" onClick={() => navigate("/propostas/nova")}>
             <ArrowLeft className="w-4 h-4 mr-1" /> Sair
           </Button>
+          {rascunhoId && (
+            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive"
+              onClick={async () => {
+                if (!confirm("Cancelar e descartar esta conversa?")) return;
+                try { await excluirRascunho(rascunhoId); toast.success("Conversa descartada"); navigate("/propostas/nova"); }
+                catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
+              }}>
+              <Trash2 className="w-4 h-4 mr-1" /> Cancelar
+            </Button>
+          )}
         </div>
       </div>
 
