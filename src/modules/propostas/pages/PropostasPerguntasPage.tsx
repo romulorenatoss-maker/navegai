@@ -237,6 +237,56 @@ export default function PropostasPerguntasPage() {
                 />
               </div>
             )}
+
+            {/* Fase 1 — fluxo simples */}
+            <div className="border-t pt-3 space-y-3">
+              <div>
+                <Label>Tipo de pergunta (fluxo)</Label>
+                <Select
+                  value={dlgPerg?.tipo_pergunta ?? "input"}
+                  onValueChange={(v) => setDlgPerg(d => ({ ...d!, tipo_pergunta: v as PropostasTipoPergunta }))}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {TIPOS_PERGUNTA.map(t => (
+                      <SelectItem key={t.v} value={t.v}>
+                        <span className="font-medium">{t.l}</span>
+                        <span className="text-xs text-muted-foreground ml-2">{t.desc}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {dlgPerg?.tipo_pergunta === "produto" && (
+                <div>
+                  <Label>Categoria de produto</Label>
+                  <Select
+                    value={dlgPerg?.categoria_produto ?? ""}
+                    onValueChange={(v) => setDlgPerg(d => ({ ...d!, categoria_produto: v as PropostasCategoriaProduto }))}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIAS_PRODUTO.map(c => <SelectItem key={c.v} value={c.v}>{c.l}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    O fluxo mostrará produtos do catálogo desta categoria.
+                  </p>
+                </div>
+              )}
+
+              {dlgPerg?.tipo_pergunta === "contexto" && (
+                <label className="flex items-center gap-2 text-sm">
+                  <Switch
+                    checked={dlgPerg?.gera_contexto ?? false}
+                    onCheckedChange={(v) => setDlgPerg(d => ({ ...d!, gera_contexto: v }))}
+                  />
+                  Gerar texto de contexto via IA a partir da resposta
+                </label>
+              )}
+            </div>
+
             <div className="flex gap-4">
               <label className="flex items-center gap-2 text-sm">
                 <Switch checked={dlgPerg?.obrigatoria ?? false} onCheckedChange={(v) => setDlgPerg(d => ({ ...d!, obrigatoria: v }))} />
