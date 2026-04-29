@@ -540,55 +540,8 @@ export default function ProdutosConversacionalPage() {
 
   // ============ RENDER ============
   return (
-    <div className="h-[calc(100vh-4rem)]">
-      <ResizablePanelGroup direction="horizontal">
-        {/* CONVERSA */}
-        <ResizablePanel defaultSize={40} minSize={28}>
-          <Card className="h-full rounded-none border-0 border-r flex flex-col">
-            <CardHeader className="border-b">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Sparkles className="w-4 h-4 text-primary" /> Assistente de Catálogo
-              </CardTitle>
-              <p className="text-xs text-muted-foreground">
-                Conta sobre seus produtos. Eu valido o escopo e cadastro automaticamente.
-              </p>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-y-auto p-4 space-y-3">
-              {msgs.map((m, i) => (
-                <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
-                    <ReactMarkdown
-                      components={{
-                        p: ({ children }) => <p className="leading-snug">{children}</p>,
-                      }}
-                    >{m.content}</ReactMarkdown>
-                  </div>
-                </div>
-              ))}
-              {enviando && <div className="text-xs text-muted-foreground">Pensando…</div>}
-              <div ref={fim} />
-            </CardContent>
-            <div className="border-t p-3 flex gap-2">
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && enviar()}
-                placeholder="Ex: switch 24 portas R$1300"
-                disabled={enviando}
-              />
-              <Button onClick={enviar} disabled={enviando || !input.trim()}>
-                <Send className="w-4 h-4" />
-              </Button>
-            </div>
-          </Card>
-        </ResizablePanel>
-
-        <ResizableHandle withHandle className="w-1.5 bg-primary/30 hover:bg-primary/60 transition-colors" />
-
-        {/* PAINEL */}
-        <ResizablePanel defaultSize={60} minSize={40}>
-          <div className="h-full overflow-y-auto p-4">
-            <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+    <div className="h-[calc(100vh-4rem)] overflow-y-auto p-4">
+      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
               <TabsList className="mb-4">
                 <TabsTrigger value="contexto"><Building2 className="w-4 h-4 mr-1" />Contexto</TabsTrigger>
                 <TabsTrigger value="produtos"><Package className="w-4 h-4 mr-1" />Produtos ({produtos.length})</TabsTrigger>
