@@ -239,18 +239,42 @@ ${escopoTxt}${catalogoTxt}${perguntasProdTxt}${estadoTxt}`;
 
     if (actions.some(a => a.type === "finalizar")) finalizado = true;
 
-    // === SEGURANÇA: filtra add_item que já está no estado (anti-duplicata) ===
+    // === SEGURANÇA: filtra add_item duplicado e força mapeamento por catálogo ===
     const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
     const nomesExistentes = new Set((estado?.itens ?? []).map(i => norm(i.nome)));
-    actions = actions.filter(a => {
-      if (a.type !== "add_item") return true;
-      const n = norm(String(a.item?.nome ?? ""));
-      if (!n) return false;
+    const catalogById = new Map(cat.filter(p => p.id).map(p => [String(p.id), p]));
+    const catalogByName = new Map(cat.map(p => [norm(p.nome), p]));
+
+    actions = actions.flatMap(a => {
+      if (a.type !== "add_item") return [a];
+      const item = a.item ?? {};
+      const n = norm(String(item.nome ?? ""));
+      if (!n) return [];
       if (nomesExistentes.has(n)) {
-        console.log("⚠️ add_item filtrado (já existe no estado):", n);
-        return false;
+        console.log("⚠️ add_item filtrado (duplicado):", n);
+        return [];
       }
-      return true;
+
+      // Resolver produto: por id (preferido) ou por nome (fallback)
+      let prod = item.produto_id ? catalogById.get(String(item.produto_id)) : undefined;
+      if (!prod) prod = catalogByName.get(n);
+
+      if (!prod) {
+        console.log("⚠️ add_item bloqueado (produto fora do catálogo):", item.nome);
+        return [];
+      }
+
+      // Enriquecer com dados canônicos do catálogo (IA não decide categoria/campo_template)
+      const enriched: Partial<ItemAcao> = {
+        ...item,
+        produto_id: String(prod.id),
+        nome: prod.nome,
+        categoria: prod.categoria ?? item.categoria,
+        cobranca: (prod.cobranca_padrao as ItemAcao["cobranca"]) ?? item.cobranca ?? "mensal",
+        campo_template: prod.campo_template ?? undefined,
+        tipo_input: prod.tipo_input ?? "quantidade",
+      };
+      return [{ ...a, item: enriched }];
     });
 
     // Compat: produtos[] (formato antigo) derivado de actions
@@ -262,6 +286,9 @@ ${escopoTxt}${catalogoTxt}${perguntasProdTxt}${estadoTxt}`;
         valor_unitario: a.item!.valor ?? 0,
         cobranca: a.item!.cobranca ?? "mensal",
         categoria: a.item!.categoria,
+        produto_id: a.item!.produto_id,
+        campo_template: a.item!.campo_template,
+        tipo_input: a.item!.tipo_input,
       }));
 
     return new Response(JSON.stringify({
