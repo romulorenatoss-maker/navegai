@@ -3149,6 +3149,39 @@ export type Database = {
         }
         Relationships: []
       }
+      propostas_categorias_setup: {
+        Row: {
+          ativo: boolean
+          cobranca_padrao: string
+          codigo: string
+          created_at: string
+          id: string
+          nome: string
+          ordem: number
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          cobranca_padrao?: string
+          codigo: string
+          created_at?: string
+          id?: string
+          nome: string
+          ordem?: number
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          cobranca_padrao?: string
+          codigo?: string
+          created_at?: string
+          id?: string
+          nome?: string
+          ordem?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       propostas_historico: {
         Row: {
           conteudo: string | null
@@ -3186,6 +3219,8 @@ export type Database = {
       }
       propostas_itens: {
         Row: {
+          categoria: string | null
+          cobranca: string
           created_at: string
           descricao: string
           id: string
@@ -3198,6 +3233,8 @@ export type Database = {
           valor_unitario: number
         }
         Insert: {
+          categoria?: string | null
+          cobranca?: string
           created_at?: string
           descricao: string
           id?: string
@@ -3210,6 +3247,8 @@ export type Database = {
           valor_unitario?: number
         }
         Update: {
+          categoria?: string | null
+          cobranca?: string
           created_at?: string
           descricao?: string
           id?: string
@@ -3238,9 +3277,61 @@ export type Database = {
           },
         ]
       }
+      propostas_perguntas_setup: {
+        Row: {
+          ativo: boolean
+          campo_token: string | null
+          categoria_id: string
+          created_at: string
+          id: string
+          obrigatoria: boolean
+          opcoes: Json | null
+          ordem: number
+          pergunta: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          campo_token?: string | null
+          categoria_id: string
+          created_at?: string
+          id?: string
+          obrigatoria?: boolean
+          opcoes?: Json | null
+          ordem?: number
+          pergunta: string
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          campo_token?: string | null
+          categoria_id?: string
+          created_at?: string
+          id?: string
+          obrigatoria?: boolean
+          opcoes?: Json | null
+          ordem?: number
+          pergunta?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "propostas_perguntas_setup_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "propostas_categorias_setup"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       propostas_produtos: {
         Row: {
           ativo: boolean
+          categoria: string | null
+          cobranca_padrao: string
           created_at: string
           descricao_padrao: string | null
           id: string
@@ -3256,6 +3347,8 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean
+          categoria?: string | null
+          cobranca_padrao?: string
           created_at?: string
           descricao_padrao?: string | null
           id?: string
@@ -3271,6 +3364,8 @@ export type Database = {
         }
         Update: {
           ativo?: boolean
+          categoria?: string | null
+          cobranca_padrao?: string
           created_at?: string
           descricao_padrao?: string | null
           id?: string
