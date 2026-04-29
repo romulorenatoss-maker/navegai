@@ -134,6 +134,15 @@ export default function PropostaProdutosPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
+                  <Label>Categoria</Label>
+                  <Select value={form.tipo ?? "produto"} onValueChange={(v) => setForm({ ...form, tipo: v as PropostasTipoProduto })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {TIPOS_PROD.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
                   <Label>Tipo de cálculo</Label>
                   <Select value={form.tipo_calculo ?? "quantidade"} onValueChange={(v) => setForm({ ...form, tipo_calculo: v as PropostasTipoCalculo })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -142,10 +151,10 @@ export default function PropostaProdutosPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <Label>Unidade</Label>
-                  <Input value={form.unidade ?? ""} onChange={(e) => setForm({ ...form, unidade: e.target.value })} placeholder="un, GB, mês..." />
-                </div>
+              </div>
+              <div>
+                <Label>Unidade</Label>
+                <Input value={form.unidade ?? ""} onChange={(e) => setForm({ ...form, unidade: e.target.value })} placeholder="un, GB, mês..." />
               </div>
               <div>
                 <Label>Valor mínimo (R$)</Label>
@@ -166,18 +175,28 @@ export default function PropostaProdutosPage() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Lista</CardTitle></CardHeader>
+        <CardHeader className="flex-row items-center justify-between">
+          <CardTitle className="text-base">Lista</CardTitle>
+          <Select value={filtroTipo} onValueChange={(v) => setFiltroTipo(v as "todos" | PropostasTipoProduto)}>
+            <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              {TIPOS_PROD.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </CardHeader>
         <CardContent>
           {loading ? (
             <p className="text-sm text-muted-foreground">Carregando...</p>
-          ) : produtos.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum produto cadastrado.</p>
+          ) : produtosFiltrados.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum item encontrado.</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
-                  <TableHead>Tipo</TableHead>
+                  <TableHead>Categoria</TableHead>
+                  <TableHead>Cálculo</TableHead>
                   <TableHead>Unidade</TableHead>
                   <TableHead className="text-right">Valor mín.</TableHead>
                   <TableHead>Status</TableHead>
@@ -185,9 +204,14 @@ export default function PropostaProdutosPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {produtos.map(p => (
+                {produtosFiltrados.map(p => (
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">{p.nome}</TableCell>
+                    <TableCell>
+                      <Badge variant={p.tipo === "servico" ? "secondary" : "default"}>
+                        {p.tipo === "servico" ? "Serviço" : "Produto"}
+                      </Badge>
+                    </TableCell>
                     <TableCell>{TIPOS_CALC.find(t => t.value === p.tipo_calculo)?.label}</TableCell>
                     <TableCell>{p.unidade}</TableCell>
                     <TableCell className="text-right">R$ {Number(p.valor_minimo).toFixed(2)}</TableCell>
