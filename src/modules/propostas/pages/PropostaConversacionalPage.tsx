@@ -390,10 +390,28 @@ export default function PropostaConversacionalPage() {
             cobranca: (a.item.cobranca as PropostasCobranca) ?? "mensal",
             categoria: a.item.categoria,
           });
+        } else if (a.type === "update_item") {
+          // Aplica update no item correspondente (match por nome normalizado)
+          const alvoNome = normalize(String(a.match?.nome ?? ""));
+          if (!alvoNome) continue;
+          setItens(arr => arr.map(it => {
+            if (normalize(it.nome) !== alvoNome) return it;
+            const u = a.updates ?? {};
+            return {
+              ...it,
+              quantidade: u.quantidade !== undefined ? Number(u.quantidade) : it.quantidade,
+              valor_unitario: u.valor !== undefined ? Number(u.valor) : it.valor_unitario,
+              cobranca: (u.cobranca as PropostasCobranca) ?? it.cobranca,
+            };
+          }));
         } else if (a.type === "next_step") {
           avancarEtapa(a.proxima_etapa);
         } else if (a.type === "finalizar") {
           setFinalizado(true);
+        }
+        // Mensagem de validação (preço abaixo do mínimo, etc.)
+        if (a.validacao && a.validacao.ok === false) {
+          toast.error(a.validacao.mensagem);
         }
       }
 
