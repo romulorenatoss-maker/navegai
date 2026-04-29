@@ -27,9 +27,11 @@ import {
   buscarRascunhoPorCliente, salvarRascunho, excluirRascunho,
   type PropostasRascunhoConversa,
 } from "../services/propostasRascunhoService";
+import { PerguntaGuiadaPanel } from "../components/PerguntaGuiadaPanel";
 
 interface Msg { role: "user" | "assistant"; content: string }
 interface ItemConv {
+  produto_id?: string;
   nome: string;
   quantidade: number;
   valor_unitario: number;
@@ -88,6 +90,8 @@ export default function PropostaConversacionalPage() {
   // Estado conversacional (frontend = fonte da verdade)
   const [etapa, setEtapa] = useState<Etapa>("contexto");
   const [perguntasRespondidas, setPerguntasRespondidas] = useState<string[]>([]);
+  // Fase 2 — texto de contexto gerado pela IA (alimenta {contexto} no template)
+  const [contextoIA, setContextoIA] = useState<string>("");
 
   // Contexto da empresa + catálogo + perguntas padrão por categoria
   const [empresa, setEmpresa] = useState<PropostasEmpresaContexto | null>(null);
@@ -280,6 +284,34 @@ export default function PropostaConversacionalPage() {
       const idx = ETAPAS_ORDEM.indexOf(prev);
       return ETAPAS_ORDEM[Math.min(idx + 1, ETAPAS_ORDEM.length - 1)];
     });
+  }
+
+  // ===== Fase 2 — handlers do painel de Pergunta Guiada =====
+  function guiadoAdicionarItem(item: ItemConv) {
+    setItens(prev => {
+      const idx = item.produto_id
+        ? prev.findIndex(i => i.produto_id === item.produto_id)
+        : prev.findIndex(i => normalize(i.nome) === normalize(item.nome));
+      if (idx >= 0) {
+        const arr = [...prev];
+        arr[idx] = { ...arr[idx], ...item };
+        return arr;
+      }
+      return [...prev, item];
+    });
+  }
+  function guiadoRemoverItem(produto_id: string) {
+    setItens(prev => prev.filter(i => i.produto_id !== produto_id));
+  }
+  function guiadoResponder(p: PropostasPerguntaSetup, resposta: string) {
+    const k = p.campo_token ?? p.id;
+    setRespostas(r => ({ ...r, [k]: resposta }));
+    const norm = p.pergunta.trim().toLowerCase();
+    setPerguntasRespondidas(prev => prev.includes(norm) ? prev : [...prev, norm]);
+  }
+  function guiadoAvancar() {
+    // apenas registra mensagem informativa; a próxima pendente vira automaticamente.
+    setMsgs(m => [...m, { role: "assistant", content: "✓ Resposta registrada. Próxima pergunta…" }]);
   }
 
   async function enviar() {
@@ -494,6 +526,8 @@ export default function PropostaConversacionalPage() {
         valor_total: fmtBRL(totais.total),
         valor_implantacao: fmtBRL(totais.implantacao),
         valor_mensal: fmtBRL(totais.mensal),
+        // Fase 2 — texto de contexto gerado pelo fluxo guiado (se houver)
+        ...(contextoIA ? { contexto: contextoIA } : {}),
       };
 
       const html = propostasRenderizarTemplate(tpl.conteudo_html, dados);
@@ -601,6 +635,19 @@ export default function PropostaConversacionalPage() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 flex-1 min-h-0">
         {/* CHAT — 40% */}
         <Card className="lg:col-span-2 flex flex-col min-h-0">
+          {/* Fase 2 — Painel de pergunta guiada (renderiza apenas quando há tipo_pergunta). Fallback automático para o chat IA. */}
+          <div className="p-2">
+            <PerguntaGuiadaPanel
+              pergunta={pendentes[0] ?? null}
+              itens={itens}
+              onAdicionarItem={guiadoAdicionarItem}
+              onRemoverItem={guiadoRemoverItem}
+              onResponder={guiadoResponder}
+              onContexto={setContextoIA}
+              onAvancar={guiadoAvancar}
+              clienteNome={clienteSel?.nome}
+            />
+          </div>
           <CardHeader className="py-2 border-b"><CardTitle className="text-sm">Conversa</CardTitle></CardHeader>
           <CardContent className="flex-1 overflow-auto p-3 space-y-3">
             {msgs.map((m, i) => (
