@@ -189,22 +189,27 @@ export default function PropostaConversacionalPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clienteParam, perguntasOrdenadas.length]);
 
-  // Auto-save com debounce
+  // Auto-save com debounce (inclui etapa + perguntasRespondidas dentro de respostas)
   useEffect(() => {
     if (!clienteSel || !retomado || gerando) return;
     const t = setTimeout(() => {
+      const respostasComEstado = {
+        ...respostas,
+        __etapa: etapa,
+        __perguntas_respondidas: perguntasRespondidas,
+      };
       salvarRascunho({
         cliente_id: clienteSel.id,
         cliente_nome: clienteSel.nome,
         template_id: templateId || null,
         mensagens: msgs,
         itens,
-        respostas,
+        respostas: respostasComEstado,
         finalizado: false,
       }).then(r => setRascunhoId(r.id)).catch(e => console.error("auto-save", e));
     }, 800);
     return () => clearTimeout(t);
-  }, [clienteSel, retomado, gerando, templateId, msgs, itens, respostas]);
+  }, [clienteSel, retomado, gerando, templateId, msgs, itens, respostas, etapa, perguntasRespondidas]);
 
   async function confirmarCliente() {
     if (!clienteSel) { toast.error("Selecione um cliente"); return; }
