@@ -17,6 +17,7 @@ import {
   List, ListOrdered, Heading1, Heading2, Heading3, Table as TableIcon, Plus, Minus,
 } from "lucide-react";
 import { PropostasPlaceholder } from "./PropostasPlaceholderExtension";
+import { PropostaPlaceholderModal, type PlaceholderTipo } from "./PropostaPlaceholderModal";
 import { cn } from "@/lib/utils";
 
 interface Props {
