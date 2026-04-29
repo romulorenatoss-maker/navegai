@@ -3182,6 +3182,48 @@ export type Database = {
         }
         Relationships: []
       }
+      propostas_empresa_contexto: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          descricao_operacional: string | null
+          id: string
+          nome_empresa: string | null
+          o_que_nao_vendemos: string[] | null
+          o_que_vendemos: string[] | null
+          regras_tecnicas: string[] | null
+          singleton: boolean
+          tipo_ambiente: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          descricao_operacional?: string | null
+          id?: string
+          nome_empresa?: string | null
+          o_que_nao_vendemos?: string[] | null
+          o_que_vendemos?: string[] | null
+          regras_tecnicas?: string[] | null
+          singleton?: boolean
+          tipo_ambiente?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          descricao_operacional?: string | null
+          id?: string
+          nome_empresa?: string | null
+          o_que_nao_vendemos?: string[] | null
+          o_que_vendemos?: string[] | null
+          regras_tecnicas?: string[] | null
+          singleton?: boolean
+          tipo_ambiente?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       propostas_historico: {
         Row: {
           conteudo: string | null
@@ -3277,6 +3319,36 @@ export type Database = {
           },
         ]
       }
+      propostas_perguntas_produtos: {
+        Row: {
+          ativo: boolean
+          categoria: string
+          created_at: string
+          id: string
+          ordem: number
+          pergunta: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          categoria: string
+          created_at?: string
+          id?: string
+          ordem?: number
+          pergunta: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          categoria?: string
+          created_at?: string
+          id?: string
+          ordem?: number
+          pergunta?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       propostas_perguntas_setup: {
         Row: {
           ativo: boolean
@@ -3334,6 +3406,7 @@ export type Database = {
           cobranca_padrao: string
           created_at: string
           descricao_padrao: string | null
+          descricao_padrao_extendida: string | null
           id: string
           nome: string
           origem: string
@@ -3343,6 +3416,7 @@ export type Database = {
           tipo_calculo: Database["public"]["Enums"]["propostas_tipo_calculo"]
           unidade: string
           updated_at: string
+          valor_medio: number | null
           valor_minimo: number
         }
         Insert: {
@@ -3351,6 +3425,7 @@ export type Database = {
           cobranca_padrao?: string
           created_at?: string
           descricao_padrao?: string | null
+          descricao_padrao_extendida?: string | null
           id?: string
           nome: string
           origem?: string
@@ -3360,6 +3435,7 @@ export type Database = {
           tipo_calculo?: Database["public"]["Enums"]["propostas_tipo_calculo"]
           unidade?: string
           updated_at?: string
+          valor_medio?: number | null
           valor_minimo?: number
         }
         Update: {
@@ -3368,6 +3444,7 @@ export type Database = {
           cobranca_padrao?: string
           created_at?: string
           descricao_padrao?: string | null
+          descricao_padrao_extendida?: string | null
           id?: string
           nome?: string
           origem?: string
@@ -3377,6 +3454,7 @@ export type Database = {
           tipo_calculo?: Database["public"]["Enums"]["propostas_tipo_calculo"]
           unidade?: string
           updated_at?: string
+          valor_medio?: number | null
           valor_minimo?: number
         }
         Relationships: []

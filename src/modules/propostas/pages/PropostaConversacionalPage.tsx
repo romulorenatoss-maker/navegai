@@ -17,6 +17,11 @@ import {
   listarCategorias, listarPerguntas,
   type PropostasCategoriaSetup, type PropostasPerguntaSetup, type PropostasCobranca,
 } from "../services/propostasPerguntasService";
+import {
+  obterContextoEmpresa, listarPerguntasProduto,
+  type PropostasEmpresaContexto, type PropostasPerguntaProduto,
+} from "../services/propostasContextoService";
+import { listarProdutos, type PropostasProduto } from "../services/propostasService";
 import { propostasRenderizarTemplate } from "../utils/propostasRender";
 import {
   buscarRascunhoPorCliente, salvarRascunho, excluirRascunho,
@@ -68,14 +73,27 @@ export default function PropostaConversacionalPage() {
   const [finalizado, setFinalizado] = useState(false);
   const [gerando, setGerando] = useState(false);
 
+  // Contexto da empresa + catálogo + perguntas padrão por categoria
+  const [empresa, setEmpresa] = useState<PropostasEmpresaContexto | null>(null);
+  const [catalogo, setCatalogo] = useState<PropostasProduto[]>([]);
+  const [perguntasProd, setPerguntasProd] = useState<PropostasPerguntaProduto[]>([]);
+
   // Duplicata pendente (modal de decisão)
   const [duplicata, setDuplicata] = useState<{ existenteIdx: number; novo: ItemConv; fila: ItemConv[] } | null>(null);
 
   const fim = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    Promise.all([listarTemplates(), listarCategorias(true), listarPerguntas(true)])
-      .then(([t, c, p]) => { setTemplates(t); setCategorias(c); setPerguntas(p); })
+    Promise.all([
+      listarTemplates(), listarCategorias(true), listarPerguntas(true),
+      obterContextoEmpresa().catch(() => null),
+      listarProdutos().catch(() => []),
+      listarPerguntasProduto().catch(() => []),
+    ])
+      .then(([t, c, p, emp, cat, pp]) => {
+        setTemplates(t); setCategorias(c); setPerguntas(p);
+        setEmpresa(emp); setCatalogo(cat); setPerguntasProd(pp.filter(q => q.ativo));
+      })
       .catch(e => toast.error(String(e)));
   }, []);
 
@@ -255,6 +273,23 @@ export default function PropostaConversacionalPage() {
             categorias: cat,
             perguntas_pendentes: pend,
             respostas,
+            empresa: empresa ? {
+              nome_empresa: empresa.nome_empresa ?? undefined,
+              descricao_operacional: empresa.descricao_operacional ?? undefined,
+              o_que_vendemos: empresa.o_que_vendemos,
+              o_que_nao_vendemos: empresa.o_que_nao_vendemos,
+              tipo_ambiente: empresa.tipo_ambiente,
+              regras_tecnicas: empresa.regras_tecnicas,
+            } : null,
+            catalogo: catalogo.filter(p => p.ativo).slice(0, 80).map(p => ({
+              nome: p.nome,
+              categoria: (p as unknown as { categoria?: string }).categoria,
+              valor_minimo: Number(p.valor_minimo),
+              valor_medio: Number((p as unknown as { valor_medio?: number }).valor_medio ?? p.valor_minimo),
+              unidade: p.unidade,
+              cobranca_padrao: (p as unknown as { cobranca_padrao?: string }).cobranca_padrao,
+            })),
+            perguntas_produtos: perguntasProd.map(q => ({ categoria: q.categoria, pergunta: q.pergunta })),
           },
         },
       });

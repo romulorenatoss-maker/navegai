@@ -50,6 +50,7 @@ import PropostaCreatePage from "./modules/propostas/pages/PropostaCreatePage";
 import PropostaPreviewPage from "./modules/propostas/pages/PropostaPreviewPage";
 import PropostaHistoricoPage from "./modules/propostas/pages/PropostaHistoricoPage";
 import PropostaProdutosPage from "./modules/propostas/pages/PropostaProdutosPage";
+import ProdutosConversacionalPage from "./modules/propostas/pages/ProdutosConversacionalPage";
 import TemplateImportPage from "./modules/propostas/pages/TemplateImportPage";
 import PropostaSetupPage from "./modules/propostas/pages/PropostaSetupPage";
 import PropostaConversacionalPage from "./modules/propostas/pages/PropostaConversacionalPage";
@@ -130,7 +131,8 @@ const App = () => (
               <Route path="/propostas/:id/preview" element={<PropostaPreviewPage />} />
               <Route path="/propostas/:id" element={<PropostaPreviewPage />} />
               <Route path="/propostas/templates" element={<TemplateImportPage />} />
-              <Route path="/propostas/produtos" element={<PropostaProdutosPage />} />
+              <Route path="/propostas/produtos" element={<ProdutosConversacionalPage />} />
+              <Route path="/propostas/produtos/grid" element={<PropostaProdutosPage />} />
               <Route path="/auditoria" element={<PlaceholderPage title="Auditoria" description="Registro completo de todas as ações do sistema." />} />
               <Route path="/configuracoes" element={<PermissoesPage />} />
             </Route>
