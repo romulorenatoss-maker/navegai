@@ -206,10 +206,11 @@ export default function PropostaConversacionalPage() {
           unidade: "un",
           valor_unitario: i.valor_unitario,
           valor_total: i.quantidade * i.valor_unitario,
-          // @ts-expect-error coluna nova
           cobranca: i.cobranca,
-          // @ts-expect-error coluna nova
           categoria: i.categoria,
+        } as unknown as {
+          descricao: string; quantidade: number; unidade: string;
+          valor_unitario: number; valor_total: number;
         })),
       });
 
