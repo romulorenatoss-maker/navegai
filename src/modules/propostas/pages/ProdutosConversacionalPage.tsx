@@ -677,6 +677,27 @@ export default function ProdutosConversacionalPage() {
                                 </div>
                               </TableCell>
                               <TableCell>
+                                <Input className="h-7 text-xs w-28 font-mono" placeholder="{item_switch}"
+                                  value={d.placeholder_key ?? ""} onChange={(e) => patchDraft(d._key, { placeholder_key: e.target.value })} />
+                              </TableCell>
+                              <TableCell>
+                                <Input className="h-7 text-xs w-24 font-mono" placeholder="{qtd_switch}"
+                                  value={d.placeholder_qtd ?? ""} onChange={(e) => patchDraft(d._key, { placeholder_qtd: e.target.value })} />
+                              </TableCell>
+                              <TableCell>
+                                <Input className="h-7 text-xs w-24 font-mono" placeholder="{valor_switch}"
+                                  value={d.placeholder_valor ?? ""} onChange={(e) => patchDraft(d._key, { placeholder_valor: e.target.value })} />
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={d.is_checkbox ?? false}
+                                  onChange={(e) => patchDraft(d._key, { is_checkbox: e.target.checked })}
+                                  className="w-4 h-4 accent-primary"
+                                  title="Marcar (x) na proposta quando selecionado"
+                                />
+                              </TableCell>
+                              <TableCell>
                                 <div className="flex gap-1">
                                   <Button variant="default" size="icon" className="h-7 w-7" title="Salvar"
                                     disabled={salvandoDraft === d._key} onClick={() => salvarDraft(d._key)}>
