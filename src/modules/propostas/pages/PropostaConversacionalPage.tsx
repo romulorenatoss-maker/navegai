@@ -208,6 +208,12 @@ export default function PropostaConversacionalPage() {
         mensagens: msgs,
         itens,
         respostas: respostasComEstado,
+        estado_proposta: {
+          etapa_atual: etapa,
+          itens,
+          perguntas_respondidas: perguntasRespondidas,
+          totais,
+        },
         finalizado: false,
       }).then(r => setRascunhoId(r.id)).catch(e => console.error("auto-save", e));
     }, 800);
