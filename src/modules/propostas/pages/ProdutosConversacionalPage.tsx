@@ -555,7 +555,7 @@ export default function ProdutosConversacionalPage() {
           </Card>
         </ResizablePanel>
 
-        <ResizableHandle withHandle />
+        <ResizableHandle withHandle className="w-1.5 bg-primary/30 hover:bg-primary/60 transition-colors" />
 
         {/* PAINEL */}
         <ResizablePanel defaultSize={60} minSize={40}>
