@@ -459,7 +459,18 @@ export default function DashboardTempoAvaliacoes() {
                                       <TableBody>
                                         {a.oss.map(o => (
                                           <TableRow key={o.os_id}>
-                                            <TableCell className="font-mono text-xs">{o.os_id.slice(0, 8)}</TableCell>
+                                            <TableCell className="text-xs">
+                                              {o.numero_os ? (
+                                                <a
+                                                  href={`/avaliacoes/pesquisa?os=${encodeURIComponent(String(o.numero_os))}`}
+                                                  className="text-primary hover:underline font-medium"
+                                                >
+                                                  #{o.numero_os}
+                                                </a>
+                                              ) : (
+                                                <span className="font-mono text-muted-foreground">{o.os_id.slice(0, 8)}</span>
+                                              )}
+                                            </TableCell>
                                             <TableCell className="text-xs">{fmtHora(o.inicio)}</TableCell>
                                             <TableCell className="text-xs">{fmtHora(o.fim)}</TableCell>
                                             <TableCell className="text-right text-xs">{formatDuration(o.duracao_seg)}</TableCell>
