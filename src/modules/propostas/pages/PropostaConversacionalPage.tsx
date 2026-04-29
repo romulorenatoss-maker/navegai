@@ -262,6 +262,14 @@ export default function PropostaConversacionalPage() {
     setDuplicata(null);
   }
 
+  function avancarEtapa(prox?: Etapa) {
+    setEtapa(prev => {
+      if (prox && ETAPAS_ORDEM.includes(prox)) return prox;
+      const idx = ETAPAS_ORDEM.indexOf(prev);
+      return ETAPAS_ORDEM[Math.min(idx + 1, ETAPAS_ORDEM.length - 1)];
+    });
+  }
+
   async function enviar() {
     if (!input.trim() || enviando) return;
     const texto = input.trim();
@@ -271,10 +279,17 @@ export default function PropostaConversacionalPage() {
     const novoHistorico = [...msgs, novaMsg];
     setMsgs(novoHistorico);
 
+    // Marca a próxima pergunta pendente como respondida (texto normalizado)
     const proxima = pendentes[0];
+    let novasRespondidas = perguntasRespondidas;
     if (proxima) {
       const k = proxima.campo_token ?? proxima.id;
       setRespostas(r => ({ ...r, [k]: texto }));
+      const norm = proxima.pergunta.trim().toLowerCase();
+      if (!perguntasRespondidas.includes(norm)) {
+        novasRespondidas = [...perguntasRespondidas, norm];
+        setPerguntasRespondidas(novasRespondidas);
+      }
     }
 
     setEnviando(true);
@@ -287,6 +302,21 @@ export default function PropostaConversacionalPage() {
         tipo: p.tipo,
         opcoes: p.opcoes ?? undefined,
       }));
+
+      // === Estado da proposta (frontend = fonte da verdade) ===
+      const estadoProposta = {
+        etapa_atual: etapa,
+        itens: itens.map(i => ({
+          nome: i.nome, quantidade: i.quantidade, valor: i.valor_unitario,
+          cobranca: i.cobranca, categoria: i.categoria,
+        })),
+        perguntas_respondidas: novasRespondidas,
+        totais: {
+          implantacao: totais.implantacao,
+          mensal: totais.mensal,
+          informativo: totais.informativo,
+        },
+      };
 
       const { data, error } = await supabase.functions.invoke("propostas-conversacional", {
         body: {
@@ -313,27 +343,61 @@ export default function PropostaConversacionalPage() {
               cobranca_padrao: (p as unknown as { cobranca_padrao?: string }).cobranca_padrao,
             })),
             perguntas_produtos: perguntasProd.map(q => ({ categoria: q.categoria, pergunta: q.pergunta })),
+            estado_proposta: estadoProposta,
           },
         },
       });
       if (error) throw error;
 
-      const resp = data as { mensagem: string; produtos: ItemConv[]; finalizado: boolean; error?: string };
+      const resp = data as {
+        message?: string; mensagem?: string;
+        actions?: IAAction[];
+        produtos?: Array<{ nome: string; quantidade?: number; valor_unitario?: number; cobranca?: string; categoria?: string }>;
+        finalizado?: boolean;
+        error?: string;
+      };
       if (resp.error) { toast.error(resp.error); return; }
 
-      setMsgs(m => [...m, { role: "assistant", content: resp.mensagem || "…" }]);
+      const message = resp.message ?? resp.mensagem ?? "…";
+      setMsgs(m => [...m, { role: "assistant", content: message }]);
 
-      if (resp.produtos?.length) {
-        const novos = resp.produtos.map(p => ({
-          nome: String(p.nome ?? ""),
-          quantidade: Number(p.quantidade ?? 1),
-          valor_unitario: Number(p.valor_unitario ?? 0),
-          cobranca: (p.cobranca ?? "mensal") as PropostasCobranca,
-          categoria: p.categoria,
-        })).filter(p => p.nome);
+      // === Processa actions[] (preferencial) ===
+      const actions: IAAction[] = Array.isArray(resp.actions) ? resp.actions : [];
+      const novosItens: ItemConv[] = [];
 
-        // Catálogo
-        for (const p of novos) {
+      for (const a of actions) {
+        if (a.type === "add_item" && a.item?.nome) {
+          novosItens.push({
+            nome: String(a.item.nome),
+            quantidade: Number(a.item.quantidade ?? 1),
+            valor_unitario: Number(a.item.valor ?? 0),
+            cobranca: (a.item.cobranca as PropostasCobranca) ?? "mensal",
+            categoria: a.item.categoria,
+          });
+        } else if (a.type === "next_step") {
+          avancarEtapa(a.proxima_etapa);
+        } else if (a.type === "finalizar") {
+          setFinalizado(true);
+        }
+      }
+
+      // === Fallback: se não veio actions mas veio produtos[] (compat) ===
+      if (novosItens.length === 0 && resp.produtos?.length) {
+        for (const p of resp.produtos) {
+          if (!p.nome) continue;
+          novosItens.push({
+            nome: String(p.nome),
+            quantidade: Number(p.quantidade ?? 1),
+            valor_unitario: Number(p.valor_unitario ?? 0),
+            cobranca: (p.cobranca as PropostasCobranca) ?? "mensal",
+            categoria: p.categoria,
+          });
+        }
+      }
+
+      if (novosItens.length) {
+        // Catálogo (ia_sugerido) — silencioso
+        for (const p of novosItens) {
           try {
             await criarProdutoSugerido({
               nome: p.nome, tipo: "produto",
@@ -341,9 +405,8 @@ export default function PropostaConversacionalPage() {
             });
           } catch { /* duplicado */ }
         }
-
-        // Detecta duplicatas (um a um)
-        processarFila(novos, itens);
+        // Detecta duplicatas (um a um) — UI é dona da reconciliação
+        processarFila(novosItens, itens);
       }
 
       if (resp.finalizado) setFinalizado(true);
