@@ -33,6 +33,7 @@ export interface PropostasProduto {
   ativo: boolean;
   origem?: "manual" | "ia_sugerido";
   revisado?: boolean;
+  placeholder_template?: string | null;
   created_at: string;
   updated_at: string;
 }

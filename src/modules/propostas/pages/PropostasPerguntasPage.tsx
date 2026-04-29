@@ -13,6 +13,7 @@ import {
   listarCategorias, listarPerguntas, criarPergunta, atualizarPergunta, excluirPergunta,
   criarCategoria, atualizarCategoria, excluirCategoria, reordenarPerguntas,
   type PropostasCategoriaSetup, type PropostasPerguntaSetup, type PropostasPerguntaTipo, type PropostasCobranca,
+  type PropostasTipoPergunta, type PropostasCategoriaProduto,
 } from "../services/propostasPerguntasService";
 
 const TIPOS: { v: PropostasPerguntaTipo; l: string }[] = [
@@ -21,6 +22,18 @@ const TIPOS: { v: PropostasPerguntaTipo; l: string }[] = [
 ];
 const COBRANCAS: { v: PropostasCobranca; l: string }[] = [
   { v: "implantacao", l: "Implantação" }, { v: "mensal", l: "Mensal" }, { v: "informativo", l: "Informativo" },
+];
+const TIPOS_PERGUNTA: { v: PropostasTipoPergunta; l: string; desc: string }[] = [
+  { v: "input", l: "Input simples", desc: "Resposta direta (texto/número)" },
+  { v: "contexto", l: "Contexto", desc: "Texto livre, pode gerar contexto via IA" },
+  { v: "produto", l: "Produto", desc: "Mostra catálogo da categoria escolhida" },
+];
+const CATEGORIAS_PRODUTO: { v: PropostasCategoriaProduto; l: string }[] = [
+  { v: "infraestrutura", l: "Infraestrutura" },
+  { v: "dados", l: "Dados" },
+  { v: "seguranca", l: "Segurança" },
+  { v: "telefonia", l: "Telefonia" },
+  { v: "outros", l: "Outros" },
 ];
 
 export default function PropostasPerguntasPage() {
@@ -171,7 +184,16 @@ export default function PropostasPerguntasPage() {
                     <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => moverPergunta(p.id, 1)}><ArrowDown className="w-3 h-3" /></Button>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{p.pergunta}</div>
+                    <div className="text-sm font-medium truncate flex items-center gap-2">
+                      {p.pergunta}
+                      {p.tipo_pergunta && p.tipo_pergunta !== "input" && (
+                        <Badge variant="secondary" className="text-[10px]">{p.tipo_pergunta}</Badge>
+                      )}
+                      {p.tipo_pergunta === "produto" && p.categoria_produto && (
+                        <Badge variant="outline" className="text-[10px]">{p.categoria_produto}</Badge>
+                      )}
+                      {p.gera_contexto && <Badge variant="outline" className="text-[10px]">IA contexto</Badge>}
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       {nomeCategoria(p.categoria_id)} · {p.tipo} {p.campo_token ? `· token: ${p.campo_token}` : ""} {p.obrigatoria ? "· obrigatória" : ""}
                     </div>
@@ -224,6 +246,56 @@ export default function PropostasPerguntasPage() {
                 />
               </div>
             )}
+
+            {/* Fase 1 — fluxo simples */}
+            <div className="border-t pt-3 space-y-3">
+              <div>
+                <Label>Tipo de pergunta (fluxo)</Label>
+                <Select
+                  value={dlgPerg?.tipo_pergunta ?? "input"}
+                  onValueChange={(v) => setDlgPerg(d => ({ ...d!, tipo_pergunta: v as PropostasTipoPergunta }))}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {TIPOS_PERGUNTA.map(t => (
+                      <SelectItem key={t.v} value={t.v}>
+                        <span className="font-medium">{t.l}</span>
+                        <span className="text-xs text-muted-foreground ml-2">{t.desc}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {dlgPerg?.tipo_pergunta === "produto" && (
+                <div>
+                  <Label>Categoria de produto</Label>
+                  <Select
+                    value={dlgPerg?.categoria_produto ?? ""}
+                    onValueChange={(v) => setDlgPerg(d => ({ ...d!, categoria_produto: v as PropostasCategoriaProduto }))}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Selecione…" /></SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIAS_PRODUTO.map(c => <SelectItem key={c.v} value={c.v}>{c.l}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    O fluxo mostrará produtos do catálogo desta categoria.
+                  </p>
+                </div>
+              )}
+
+              {dlgPerg?.tipo_pergunta === "contexto" && (
+                <label className="flex items-center gap-2 text-sm">
+                  <Switch
+                    checked={dlgPerg?.gera_contexto ?? false}
+                    onCheckedChange={(v) => setDlgPerg(d => ({ ...d!, gera_contexto: v }))}
+                  />
+                  Gerar texto de contexto via IA a partir da resposta
+                </label>
+              )}
+            </div>
+
             <div className="flex gap-4">
               <label className="flex items-center gap-2 text-sm">
                 <Switch checked={dlgPerg?.obrigatoria ?? false} onCheckedChange={(v) => setDlgPerg(d => ({ ...d!, obrigatoria: v }))} />

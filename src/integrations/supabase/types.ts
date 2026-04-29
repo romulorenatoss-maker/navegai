@@ -3390,39 +3390,48 @@ export type Database = {
           ativo: boolean
           campo_token: string
           categoria_id: string
+          categoria_produto: string | null
           created_at: string
+          gera_contexto: boolean | null
           id: string
           obrigatoria: boolean
           opcoes: Json | null
           ordem: number
           pergunta: string
           tipo: string
+          tipo_pergunta: string | null
           updated_at: string
         }
         Insert: {
           ativo?: boolean
           campo_token: string
           categoria_id: string
+          categoria_produto?: string | null
           created_at?: string
+          gera_contexto?: boolean | null
           id?: string
           obrigatoria?: boolean
           opcoes?: Json | null
           ordem?: number
           pergunta: string
           tipo?: string
+          tipo_pergunta?: string | null
           updated_at?: string
         }
         Update: {
           ativo?: boolean
           campo_token?: string
           categoria_id?: string
+          categoria_produto?: string | null
           created_at?: string
+          gera_contexto?: boolean | null
           id?: string
           obrigatoria?: boolean
           opcoes?: Json | null
           ordem?: number
           pergunta?: string
           tipo?: string
+          tipo_pergunta?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -3447,6 +3456,7 @@ export type Database = {
           id: string
           nome: string
           origem: string
+          placeholder_template: string | null
           regra_json: Json
           revisado: boolean
           tipo: string
@@ -3469,6 +3479,7 @@ export type Database = {
           id?: string
           nome: string
           origem?: string
+          placeholder_template?: string | null
           regra_json?: Json
           revisado?: boolean
           tipo?: string
@@ -3491,6 +3502,7 @@ export type Database = {
           id?: string
           nome?: string
           origem?: string
+          placeholder_template?: string | null
           regra_json?: Json
           revisado?: boolean
           tipo?: string
