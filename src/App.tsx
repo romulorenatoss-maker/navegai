@@ -51,6 +51,7 @@ import PropostaPreviewPage from "./modules/propostas/pages/PropostaPreviewPage";
 import PropostaHistoricoPage from "./modules/propostas/pages/PropostaHistoricoPage";
 import PropostaProdutosPage from "./modules/propostas/pages/PropostaProdutosPage";
 import TemplateImportPage from "./modules/propostas/pages/TemplateImportPage";
+import PropostaSetupPage from "./modules/propostas/pages/PropostaSetupPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -121,6 +122,7 @@ const App = () => (
               {/* MÓDULO PROPOSTAS — isolado */}
               <Route path="/propostas" element={<PropostaHistoricoPage />} />
               <Route path="/propostas/nova" element={<PropostaCreatePage />} />
+              <Route path="/propostas/setup" element={<PropostaSetupPage />} />
               <Route path="/propostas/:id/preview" element={<PropostaPreviewPage />} />
               <Route path="/propostas/:id" element={<PropostaPreviewPage />} />
               <Route path="/propostas/templates" element={<TemplateImportPage />} />
