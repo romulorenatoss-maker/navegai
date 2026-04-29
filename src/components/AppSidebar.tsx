@@ -5,7 +5,7 @@ import {
   BarChart3, Building2, Users, HelpCircle, Wrench, LogOut, Star,
   PanelLeftClose, PanelLeft, UserPlus, ListOrdered, LayoutGrid, Settings, UserCheck, ClipboardList,
   FileUp, MessageSquare, FileBarChart, Archive, MapPin, Megaphone, Bot, Trophy, CheckSquare,
-  AlertTriangle, PieChart, ChevronDown, Clock,
+  AlertTriangle, PieChart, ChevronDown, Clock, FileSignature, Package, FilePlus2, History,
 } from "lucide-react";
 import { Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,15 @@ const allNavSections = [
       { to: "/leads/dashboard-vendas", icon: Trophy, label: "Dashboard Vendas" },
       { to: "/desempenho/tempo-avaliacoes", icon: Clock, label: "Análise Operacional" },
       { to: "/assistente", icon: Bot, label: "Assistente Naví" },
+    ],
+  },
+  {
+    title: "Propostas",
+    items: [
+      { to: "/propostas/nova", icon: FilePlus2, label: "Nova Proposta" },
+      { to: "/propostas/templates", icon: FileSignature, label: "Templates" },
+      { to: "/propostas/produtos", icon: Package, label: "Produtos" },
+      { to: "/propostas", icon: History, label: "Histórico" },
     ],
   },
   {
