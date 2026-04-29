@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileUp, Sparkles, Save, Plus, Pencil, Trash2, X, FileText, Eye } from "lucide-react";
+import { FileUp, Sparkles, Save, Plus, Pencil, Trash2, X, FileText, Eye, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   criarTemplate,
@@ -14,9 +14,10 @@ import {
   type PropostasTemplate,
 } from "../services/propostasService";
 import { analisarTemplate, type AnaliseTemplate } from "../services/propostasIAService";
-import { prepararHtmlParaEditor, substituirPlaceholders } from "../utils/propostasParser";
+import { prepararHtmlParaEditor } from "../utils/propostasParser";
 import { PropostaEditorVisual } from "../components/PropostaEditorVisual";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
 
 // Dados fictícios para preview do template
 const PREVIEW_MOCK: Record<string, string | number> = {
