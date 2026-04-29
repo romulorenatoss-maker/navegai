@@ -147,15 +147,31 @@ Para remover UMA pergunta padrão (use o id):
 \`\`\`remover_pergunta
 {"id":"uuid-aqui"}
 \`\`\`
-Para remover/desativar TODA UMA CATEGORIA SOMENTE quando NÃO houver produto vinculado nela:
+Para CRIAR/ATIVAR uma categoria no catálogo (reflete imediato na lista):
+\`\`\`criar_categoria
+{"categoria":"telefonia"}
+\`\`\`
+Para remover/desativar TODA UMA CATEGORIA SOMENTE quando NÃO houver produto nem pergunta vinculada:
 \`\`\`remover_categoria
+{"categoria":"telefonia"}
+\`\`\`
+Quando o usuário CONFIRMAR EXPLICITAMENTE que quer excluir tudo (produtos + perguntas + categoria):
+\`\`\`remover_categoria_completa
 {"categoria":"telefonia"}
 \`\`\`
 Para migrar todos os produtos de uma categoria antes de remover a categoria antiga do catálogo:
 \`\`\`migrar_categoria
 {"categoria_origem":"telefonia","categoria_destino":"dados","tipo":"servico","cobranca_padrao":"mensal"}
 \`\`\`
-Múltiplos itens = múltiplos blocos. SEMPRE confirme com o usuário ANTES de emitir blocos de remoção em massa (categoria inteira).`;
+
+═══ FLUXO OBRIGATÓRIO PARA REMOÇÃO DE CATEGORIA ═══
+1. Se categoria está VAZIA → emita remover_categoria direto.
+2. Se categoria tem produtos/perguntas vinculados → NÃO emita nada ainda. Liste quantos itens existem e pergunte:
+   "A categoria **X** tem N produto(s) e M pergunta(s). Quer **migrar** para outra categoria ou **excluir tudo** (produtos + perguntas + categoria)?"
+3. Só emita remover_categoria_completa APÓS o usuário confirmar "excluir tudo" / "apagar tudo" / "remove tudo".
+4. Só emita migrar_categoria APÓS receber categoria destino + tipo + cobrança.
+
+Múltiplos itens = múltiplos blocos.`;
 
     const categoriaSolicitada = normalizarCategoria(ultimaMensagemUsuario);
     const textoNormalizado = normalizarTexto(ultimaMensagemUsuario);
@@ -163,27 +179,40 @@ Múltiplos itens = múltiplos blocos. SEMPRE confirme com o usuário ANTES de em
       && Boolean(categoriaSolicitada)
       && (textoNormalizado.includes("categoria")
         || /\b(infraestrutura|dados|seguranca|cftv|telefonia|outros)\b/i.test(textoNormalizado));
+    const perguntasDaCategoria = contexto.perguntas_padrao.filter(q => normalizarCategoria(q.categoria) === categoriaSolicitada);
     const produtosDaCategoria = contexto.catalogo.filter(p => normalizarCategoria(p.categoria) === categoriaSolicitada);
-    if (pediuRemoverCategoria && produtosDaCategoria.length > 0 && !querMigrar) {
+    const confirmouExcluirTudo = /(exclu|apag|remov|delet)[a-z]*\s+(tudo|todos|completa|geral|massa)|tudo\s+(mesmo|junto|de uma vez)|sim,?\s+(exclu|apag|remov|delet)/i.test(textoNormalizado);
+    const categoriaParaExcluirTudo = categoriaSolicitada || normalizarCategoria(ultimaCategoriaComProdutos);
+
+    // Confirmação de exclusão completa (categoria + produtos + perguntas)
+    if (confirmouExcluirTudo && categoriaParaExcluirTudo) {
       return new Response(JSON.stringify({
-        mensagem: `A categoria **${categoriaSolicitada}** tem ${produtosDaCategoria.length} produto(s) vinculado(s). Para qual **nova categoria**, **tipo** (produto/servico) e **cobrança** (implantacao/mensal/informativo) devo migrar antes de remover?`,
-        produtos: [],
-        fora_escopo: [],
-        remover_produtos: [],
-        remover_perguntas: [],
-        remover_categorias: [],
-        migrar_categorias: [],
+        mensagem: `Removendo a categoria **${categoriaParaExcluirTudo}** junto com todos os produtos e perguntas vinculados.`,
+        produtos: [], fora_escopo: [],
+        remover_produtos: [], remover_perguntas: [],
+        remover_categorias: [], migrar_categorias: [],
+        criar_categorias: [],
+        remover_categorias_completa: [{ categoria: categoriaParaExcluirTudo }],
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (pediuRemoverCategoria && (produtosDaCategoria.length > 0 || perguntasDaCategoria.length > 0) && !querMigrar) {
+      return new Response(JSON.stringify({
+        mensagem: `A categoria **${categoriaSolicitada}** tem ${produtosDaCategoria.length} produto(s) e ${perguntasDaCategoria.length} pergunta(s) vinculada(s). Quer **migrar** para outra categoria (informe destino, tipo e cobrança) ou **excluir tudo** (produtos + perguntas + categoria)?`,
+        produtos: [], fora_escopo: [],
+        remover_produtos: [], remover_perguntas: [],
+        remover_categorias: [], migrar_categorias: [],
+        criar_categorias: [], remover_categorias_completa: [],
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     if ((querMigrar || ultimaCategoriaComProdutos) && ultimaCategoriaComProdutos && categoriaDestinoDetectada && tipoDetectado && cobrancaDetectada) {
       return new Response(JSON.stringify({
         mensagem: `Certo, vou migrar os produtos para **${categoriaDestinoDetectada}** e remover a categoria anterior da lista.`,
-        produtos: [],
-        fora_escopo: [],
-        remover_produtos: [],
-        remover_perguntas: [],
+        produtos: [], fora_escopo: [],
+        remover_produtos: [], remover_perguntas: [],
         remover_categorias: [],
         migrar_categorias: [{ categoria_origem: normalizarCategoria(ultimaCategoriaComProdutos), categoria_destino: categoriaDestinoDetectada, tipo: tipoDetectado, cobranca_padrao: cobrancaDetectada }],
+        criar_categorias: [], remover_categorias_completa: [],
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -223,6 +252,8 @@ Múltiplos itens = múltiplos blocos. SEMPRE confirme com o usuário ANTES de em
     const remover_perguntas: Array<{ id: string }> = [];
     const remover_categorias: Array<{ categoria: string }> = [];
     const migrar_categorias: Array<{ categoria_origem: string; categoria_destino: string; tipo: string; cobranca_padrao: string }> = [];
+    const criar_categorias: Array<{ categoria: string }> = [];
+    const remover_categorias_completa: Array<{ categoria: string }> = [];
     let mensagem = raw;
 
     mensagem = mensagem
@@ -242,8 +273,16 @@ Múltiplos itens = múltiplos blocos. SEMPRE confirme com o usuário ANTES de em
         try { remover_perguntas.push(JSON.parse(json.trim())); } catch (e) { console.error("parse remover_pergunta:", e); }
         return "";
       })
+      .replace(/```remover_categoria_completa\s*([\s\S]*?)```/g, (_f, json) => {
+        try { remover_categorias_completa.push(JSON.parse(json.trim())); } catch (e) { console.error("parse remover_categoria_completa:", e); }
+        return "";
+      })
       .replace(/```remover_categoria\s*([\s\S]*?)```/g, (_f, json) => {
         try { remover_categorias.push(JSON.parse(json.trim())); } catch (e) { console.error("parse remover_categoria:", e); }
+        return "";
+      })
+      .replace(/```criar_categoria\s*([\s\S]*?)```/g, (_f, json) => {
+        try { criar_categorias.push(JSON.parse(json.trim())); } catch (e) { console.error("parse criar_categoria:", e); }
         return "";
       })
       .replace(/```migrar_categoria\s*([\s\S]*?)```/g, (_f, json) => {
@@ -252,7 +291,7 @@ Múltiplos itens = múltiplos blocos. SEMPRE confirme com o usuário ANTES de em
       })
       .trim();
 
-    return new Response(JSON.stringify({ mensagem, produtos, fora_escopo, remover_produtos, remover_perguntas, remover_categorias, migrar_categorias }), {
+    return new Response(JSON.stringify({ mensagem, produtos, fora_escopo, remover_produtos, remover_perguntas, remover_categorias, migrar_categorias, criar_categorias, remover_categorias_completa }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

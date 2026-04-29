@@ -358,6 +358,8 @@ export default function ProdutosConversacionalPage() {
         remover_produtos?: Array<{ id?: string; nome?: string }>;
         remover_perguntas?: Array<{ id: string }>;
         remover_categorias?: Array<{ categoria: string }>;
+        remover_categorias_completa?: Array<{ categoria: string }>;
+        criar_categorias?: Array<{ categoria: string }>;
         migrar_categorias?: Array<{ categoria_origem: string; categoria_destino: string; tipo?: string; cobranca_padrao?: string }>;
         error?: string;
       };
@@ -369,6 +371,20 @@ export default function ProdutosConversacionalPage() {
       if (resp.produtos?.length) {
         for (const sug of resp.produtos) {
           await inserirSugerido(sug);
+        }
+      }
+
+      // Criação/ativação de categoria — reflete imediato
+      if (resp.criar_categorias?.length) {
+        for (const r of resp.criar_categorias) {
+          const cat = normalizarCategoria(r.categoria);
+          if (!cat || cat === "outros") { toast.error(`Categoria inválida: ${r.categoria}`); continue; }
+          try {
+            await definirCategoriaSetupAtiva(cat, true);
+            toast.success(`Categoria "${cat}" ativada`);
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : `Erro ao criar categoria ${r.categoria}`);
+          }
         }
       }
 
@@ -459,6 +475,31 @@ export default function ProdutosConversacionalPage() {
             if (cat !== "outros") await definirCategoriaSetupAtiva(cat, false);
             toast.success(`Categoria "${r.categoria}" removida (${pergsDaCat.length} pergunta(s))`);
           } catch (e) {
+            setPerguntas(perguntasAtuais);
+            toast.error(e instanceof Error ? e.message : `Erro ao remover categoria ${r.categoria}`);
+          }
+        }
+      }
+
+      // Remoção COMPLETA: apaga produtos + perguntas vinculados e desativa a categoria.
+      // Aviso é dado pela IA na rodada anterior — aqui só executa quando o usuário confirmou.
+      if (resp.remover_categorias_completa?.length) {
+        for (const r of resp.remover_categorias_completa) {
+          const cat = normalizarCategoria(r.categoria);
+          if (!cat) { toast.error(`Categoria inválida: ${r.categoria}`); continue; }
+          const prodsDaCat = catalogoAtual.filter(p => normalizarCategoria((p as unknown as { categoria?: string }).categoria) === cat);
+          const pergsDaCat = perguntasAtuais.filter(q => normalizarCategoria(q.categoria) === cat);
+          try {
+            setProdutos(ps => ps.filter(p => normalizarCategoria((p as unknown as { categoria?: string }).categoria) !== cat));
+            if (cat !== "outros") setPerguntas(qs => qs.filter(q => normalizarCategoria(q.categoria) !== cat));
+            await Promise.all([
+              ...prodsDaCat.map(p => excluirProduto(p.id)),
+              ...(cat !== "outros" ? pergsDaCat.map(q => excluirPerguntaProduto(q.id)) : []),
+            ]);
+            if (cat !== "outros") await definirCategoriaSetupAtiva(cat, false);
+            toast.success(`Categoria "${cat}" removida (${prodsDaCat.length} produto(s) e ${pergsDaCat.length} pergunta(s))`);
+          } catch (e) {
+            setProdutos(catalogoAtual);
             setPerguntas(perguntasAtuais);
             toast.error(e instanceof Error ? e.message : `Erro ao remover categoria ${r.categoria}`);
           }
