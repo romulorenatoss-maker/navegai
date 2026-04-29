@@ -56,23 +56,41 @@ export default function TemplateImportPage() {
   const [previewUrl, setPreviewUrl] = useState<string>("");
 
   async function abrirPreview() {
-    if (!editandoId) {
-      toast.error("Salve o template antes de visualizar o preview");
-      return;
-    }
-    if (!docxPath && !pendingDocx) {
-      toast.error("Este template não possui arquivo .docx vinculado");
+    if (!pendingDocx && !docxPath) {
+      toast.error(
+        "Este template foi salvo sem o arquivo .docx original. Importe o .docx novamente (campo acima) para gerar o preview.",
+        { duration: 6000 },
+      );
       return;
     }
     setConvertendo(true);
     try {
+      // Se ainda não há template salvo, cria um agora (rascunho) para vincular o .docx
+      let tplId = editandoId;
+      if (!tplId) {
+        if (!nome.trim()) {
+          toast.error("Defina um nome para o template antes do preview");
+          setConvertendo(false);
+          return;
+        }
+        const novo = await criarTemplate({
+          nome,
+          conteudo_html: html,
+          tipo: "proposta",
+          ativo: true,
+          campos_detectados: (analise?.campos ?? []) as never,
+        });
+        tplId = novo.id;
+        setEditandoId(tplId);
+      }
+
       // Garante que o .docx atual está no storage
       let pathFinal = docxPath;
       if (pendingDocx) {
-        pathFinal = await uploadDocx(editandoId, pendingDocx);
+        pathFinal = await uploadDocx(tplId!, pendingDocx);
       }
       const { data, error } = await supabase.functions.invoke("preview-proposta", {
-        body: { template_id: editandoId, docx_path: pathFinal, force: !!pendingDocx },
+        body: { template_id: tplId, docx_path: pathFinal, force: !!pendingDocx },
       });
       if (error) throw error;
       const url = (data as { signed_url?: string })?.signed_url;
