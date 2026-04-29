@@ -338,8 +338,8 @@ export default function TemplateImportPage() {
                     variant="outline"
                     size="sm"
                     onClick={abrirPreview}
-                    disabled={convertendo || !editandoId}
-                    title={!editandoId ? "Salve o template antes" : ""}
+                    disabled={convertendo}
+                    title={!pendingDocx && !docxPath ? "Importe o .docx para gerar preview" : ""}
                   >
                     {convertendo ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Eye className="w-4 h-4 mr-2" />}
                     {convertendo ? "Convertendo..." : "Ver preview"}
