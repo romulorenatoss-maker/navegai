@@ -370,17 +370,34 @@ export default function TemplateImportPage() {
       )}
 
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-5xl w-[90vw] max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Eye className="w-5 h-5" /> Preview do template
-              <Badge variant="secondary" className="text-[10px] ml-2">dados fictícios</Badge>
+              <Badge variant="secondary" className="text-[10px] ml-2">PDF gerado</Badge>
+              {previewUrl && (
+                <a
+                  href={previewUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="ml-auto text-xs underline text-primary"
+                >
+                  Abrir em nova aba
+                </a>
+              )}
             </DialogTitle>
           </DialogHeader>
-          <div
-            className="flex-1 overflow-auto border rounded-md p-6 bg-white text-black prose prose-sm max-w-none"
-            dangerouslySetInnerHTML={{ __html: previewHtml }}
-          />
+          {previewUrl ? (
+            <iframe
+              src={previewUrl}
+              title="Preview PDF"
+              className="flex-1 w-full border rounded-md bg-white min-h-[70vh]"
+            />
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+              <Loader2 className="w-5 h-5 mr-2 animate-spin" /> Carregando…
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
