@@ -332,6 +332,21 @@ export default function TemplateImportPage() {
           )}
         </>
       )}
+
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-5 h-5" /> Preview do template
+              <Badge variant="secondary" className="text-[10px] ml-2">dados fictícios</Badge>
+            </DialogTitle>
+          </DialogHeader>
+          <div
+            className="flex-1 overflow-auto border rounded-md p-6 bg-white text-black prose prose-sm max-w-none"
+            dangerouslySetInnerHTML={{ __html: previewHtml }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
