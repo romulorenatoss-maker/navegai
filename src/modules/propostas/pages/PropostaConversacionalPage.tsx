@@ -314,6 +314,8 @@ export default function PropostaConversacionalPage() {
     setMsgs(m => [...m, { role: "assistant", content: "✓ Resposta registrada. Próxima pergunta…" }]);
   }
 
+  async function enviar() {
+    if (!input.trim() || enviando) return;
     const texto = input.trim();
     setInput("");
 
