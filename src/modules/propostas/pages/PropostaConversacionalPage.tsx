@@ -73,14 +73,27 @@ export default function PropostaConversacionalPage() {
   const [finalizado, setFinalizado] = useState(false);
   const [gerando, setGerando] = useState(false);
 
+  // Contexto da empresa + catálogo + perguntas padrão por categoria
+  const [empresa, setEmpresa] = useState<PropostasEmpresaContexto | null>(null);
+  const [catalogo, setCatalogo] = useState<PropostasProduto[]>([]);
+  const [perguntasProd, setPerguntasProd] = useState<PropostasPerguntaProduto[]>([]);
+
   // Duplicata pendente (modal de decisão)
   const [duplicata, setDuplicata] = useState<{ existenteIdx: number; novo: ItemConv; fila: ItemConv[] } | null>(null);
 
   const fim = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    Promise.all([listarTemplates(), listarCategorias(true), listarPerguntas(true)])
-      .then(([t, c, p]) => { setTemplates(t); setCategorias(c); setPerguntas(p); })
+    Promise.all([
+      listarTemplates(), listarCategorias(true), listarPerguntas(true),
+      obterContextoEmpresa().catch(() => null),
+      listarProdutos().catch(() => []),
+      listarPerguntasProduto().catch(() => []),
+    ])
+      .then(([t, c, p, emp, cat, pp]) => {
+        setTemplates(t); setCategorias(c); setPerguntas(p);
+        setEmpresa(emp); setCatalogo(cat); setPerguntasProd(pp.filter(q => q.ativo));
+      })
       .catch(e => toast.error(String(e)));
   }, []);
 
