@@ -2825,20 +2825,34 @@ export default function AvaliacaoOSPage() {
             </div>
           </div>
 
-          {/* Avaliadores com hora de conclusão */}
+          {/* Avaliadores com hora de conclusão e tempo de avaliação */}
           {osAvaliacoes.length > 0 && (
             <div className="flex flex-col gap-1.5 mt-3 pt-3 border-t border-border">
               <span className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Avaliadores</span>
-              {osAvaliacoes.map((aval: any, idx: number) => (
-                <div key={aval.id} className="flex items-center gap-2 text-sm flex-wrap">
-                  <span className="font-medium text-foreground">Avaliador {idx + 1}: {aval._avaliador_nome}</span>
-                  {aval.concluida_em ? (
-                    <span className="text-caption text-success">• Concluído em {format(new Date(aval.concluida_em), "dd/MM/yyyy HH:mm")}</span>
-                  ) : (
-                    <span className="text-caption text-warning">• Pendente</span>
-                  )}
-                </div>
-              ))}
+              {osAvaliacoes.map((aval: any, idx: number) => {
+                const tempo = tempoPorAvaliador(aval.avaliador_id);
+                return (
+                  <div key={aval.id} className="flex flex-col gap-0.5 text-sm">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-foreground">Avaliador {idx + 1}: {aval._avaliador_nome}</span>
+                      {aval.concluida_em ? (
+                        <span className="text-caption text-success">• Concluído em {format(new Date(aval.concluida_em), "dd/MM/yyyy HH:mm")}</span>
+                      ) : (
+                        <span className="text-caption text-warning">• Pendente</span>
+                      )}
+                    </div>
+                    {tempo && (
+                      <div className="flex items-center gap-2 flex-wrap text-caption text-muted-foreground pl-1">
+                        <span>1ª resposta: <span className="font-medium text-foreground">{tempo.primeira}</span></span>
+                        <span>•</span>
+                        <span>Última resposta: <span className="font-medium text-foreground">{tempo.ultima}</span></span>
+                        <span>•</span>
+                        <span>Tempo total: <span className="font-medium text-foreground">{tempo.duracao}</span> ({tempo.total} {tempo.total === 1 ? "resposta" : "respostas"})</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 
