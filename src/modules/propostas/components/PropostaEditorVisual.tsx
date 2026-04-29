@@ -10,7 +10,7 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import Highlight from "@tiptap/extension-highlight";
 import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Bold, Italic, Underline as UI_Under, Strikethrough, AlignLeft, AlignCenter, AlignRight, AlignJustify,
