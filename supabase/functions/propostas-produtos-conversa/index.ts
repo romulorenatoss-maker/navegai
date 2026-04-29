@@ -179,27 +179,40 @@ Múltiplos itens = múltiplos blocos.`;
       && Boolean(categoriaSolicitada)
       && (textoNormalizado.includes("categoria")
         || /\b(infraestrutura|dados|seguranca|cftv|telefonia|outros)\b/i.test(textoNormalizado));
+    const perguntasDaCategoria = contexto.perguntas_padrao.filter(q => normalizarCategoria(q.categoria) === categoriaSolicitada);
     const produtosDaCategoria = contexto.catalogo.filter(p => normalizarCategoria(p.categoria) === categoriaSolicitada);
-    if (pediuRemoverCategoria && produtosDaCategoria.length > 0 && !querMigrar) {
+    const confirmouExcluirTudo = /(exclu|apag|remov|delet)[a-z]*\s+(tudo|todos|completa|geral|massa)|tudo\s+(mesmo|junto|de uma vez)|sim,?\s+(exclu|apag|remov|delet)/i.test(textoNormalizado);
+    const categoriaParaExcluirTudo = categoriaSolicitada || normalizarCategoria(ultimaCategoriaComProdutos);
+
+    // Confirmação de exclusão completa (categoria + produtos + perguntas)
+    if (confirmouExcluirTudo && categoriaParaExcluirTudo) {
       return new Response(JSON.stringify({
-        mensagem: `A categoria **${categoriaSolicitada}** tem ${produtosDaCategoria.length} produto(s) vinculado(s). Para qual **nova categoria**, **tipo** (produto/servico) e **cobrança** (implantacao/mensal/informativo) devo migrar antes de remover?`,
-        produtos: [],
-        fora_escopo: [],
-        remover_produtos: [],
-        remover_perguntas: [],
-        remover_categorias: [],
-        migrar_categorias: [],
+        mensagem: `Removendo a categoria **${categoriaParaExcluirTudo}** junto com todos os produtos e perguntas vinculados.`,
+        produtos: [], fora_escopo: [],
+        remover_produtos: [], remover_perguntas: [],
+        remover_categorias: [], migrar_categorias: [],
+        criar_categorias: [],
+        remover_categorias_completa: [{ categoria: categoriaParaExcluirTudo }],
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    if (pediuRemoverCategoria && (produtosDaCategoria.length > 0 || perguntasDaCategoria.length > 0) && !querMigrar) {
+      return new Response(JSON.stringify({
+        mensagem: `A categoria **${categoriaSolicitada}** tem ${produtosDaCategoria.length} produto(s) e ${perguntasDaCategoria.length} pergunta(s) vinculada(s). Quer **migrar** para outra categoria (informe destino, tipo e cobrança) ou **excluir tudo** (produtos + perguntas + categoria)?`,
+        produtos: [], fora_escopo: [],
+        remover_produtos: [], remover_perguntas: [],
+        remover_categorias: [], migrar_categorias: [],
+        criar_categorias: [], remover_categorias_completa: [],
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     if ((querMigrar || ultimaCategoriaComProdutos) && ultimaCategoriaComProdutos && categoriaDestinoDetectada && tipoDetectado && cobrancaDetectada) {
       return new Response(JSON.stringify({
         mensagem: `Certo, vou migrar os produtos para **${categoriaDestinoDetectada}** e remover a categoria anterior da lista.`,
-        produtos: [],
-        fora_escopo: [],
-        remover_produtos: [],
-        remover_perguntas: [],
+        produtos: [], fora_escopo: [],
+        remover_produtos: [], remover_perguntas: [],
         remover_categorias: [],
         migrar_categorias: [{ categoria_origem: normalizarCategoria(ultimaCategoriaComProdutos), categoria_destino: categoriaDestinoDetectada, tipo: tipoDetectado, cobranca_padrao: cobrancaDetectada }],
+        criar_categorias: [], remover_categorias_completa: [],
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
