@@ -157,7 +157,11 @@ Para migrar todos os produtos de uma categoria antes de remover a categoria anti
 Múltiplos itens = múltiplos blocos. SEMPRE confirme com o usuário ANTES de emitir blocos de remoção em massa (categoria inteira).`;
 
     const categoriaSolicitada = normalizarCategoria(ultimaMensagemUsuario);
-    const pediuRemoverCategoria = /\b(remov|exclu|apag|tir|delet)/i.test(normalizarTexto(ultimaMensagemUsuario)) && Boolean(categoriaSolicitada);
+    const textoNormalizado = normalizarTexto(ultimaMensagemUsuario);
+    const pediuRemoverCategoria = /\b(remov|exclu|apag|tir|delet)/i.test(textoNormalizado)
+      && Boolean(categoriaSolicitada)
+      && (textoNormalizado.includes("categoria")
+        || /\b(infraestrutura|dados|seguranca|cftv|telefonia|outros)\b/i.test(textoNormalizado));
     const produtosDaCategoria = contexto.catalogo.filter(p => normalizarCategoria(p.categoria) === categoriaSolicitada);
     if (pediuRemoverCategoria && produtosDaCategoria.length > 0 && !querMigrar) {
       return new Response(JSON.stringify({
