@@ -3245,7 +3245,9 @@ export type Database = {
           descricao_padrao: string | null
           id: string
           nome: string
+          origem: string
           regra_json: Json
+          revisado: boolean
           tipo: string
           tipo_calculo: Database["public"]["Enums"]["propostas_tipo_calculo"]
           unidade: string
@@ -3258,7 +3260,9 @@ export type Database = {
           descricao_padrao?: string | null
           id?: string
           nome: string
+          origem?: string
           regra_json?: Json
+          revisado?: boolean
           tipo?: string
           tipo_calculo?: Database["public"]["Enums"]["propostas_tipo_calculo"]
           unidade?: string
@@ -3271,7 +3275,9 @@ export type Database = {
           descricao_padrao?: string | null
           id?: string
           nome?: string
+          origem?: string
           regra_json?: Json
+          revisado?: boolean
           tipo?: string
           tipo_calculo?: Database["public"]["Enums"]["propostas_tipo_calculo"]
           unidade?: string
