@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileUp, Sparkles, Save, Plus, Pencil, Trash2, X, FileText } from "lucide-react";
+import { FileUp, Sparkles, Save, Plus, Pencil, Trash2, X, FileText, Eye } from "lucide-react";
 import { toast } from "sonner";
 import {
   criarTemplate,
@@ -14,8 +14,36 @@ import {
   type PropostasTemplate,
 } from "../services/propostasService";
 import { analisarTemplate, type AnaliseTemplate } from "../services/propostasIAService";
-import { prepararHtmlParaEditor } from "../utils/propostasParser";
+import { prepararHtmlParaEditor, substituirPlaceholders } from "../utils/propostasParser";
 import { PropostaEditorVisual } from "../components/PropostaEditorVisual";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+// Dados fictícios para preview do template
+const PREVIEW_MOCK: Record<string, string | number> = {
+  cliente_nome: "Empresa Teste Ltda",
+  cliente_cnpj: "00.000.000/0001-00",
+  cnpj: "00.000.000/0001-00",
+  cliente_cpf: "000.000.000-00",
+  cpf: "000.000.000-00",
+  cliente_endereco: "Rua Exemplo, 123 - Centro",
+  endereco: "Rua Exemplo, 123 - Centro",
+  cliente_cidade: "São Paulo - SP",
+  cidade: "São Paulo - SP",
+  cliente_email: "contato@empresateste.com.br",
+  email: "contato@empresateste.com.br",
+  cliente_telefone: "(11) 99999-9999",
+  telefone: "(11) 99999-9999",
+  contexto: "Este é um texto de contexto fictício gerado para fins de visualização do template. Em uma proposta real, este campo conterá a análise comercial do cenário do cliente.",
+  objetivo: "Apresentar uma solução completa adequada às necessidades do cliente.",
+  data: new Date().toLocaleDateString("pt-BR"),
+  data_proposta: new Date().toLocaleDateString("pt-BR"),
+  validade: "30 dias",
+  valor_total: "R$ 9.999,99",
+  valor_mensal: "R$ 1.499,99",
+  valor_implantacao: "R$ 2.500,00",
+  responsavel_nome: "Consultor Exemplo",
+  empresa_nome: "Sua Empresa S/A",
+};
 
 export default function TemplateImportPage() {
   const [templates, setTemplates] = useState<PropostasTemplate[]>([]);
@@ -42,6 +70,20 @@ export default function TemplateImportPage() {
   }
 
   useEffect(() => { carregar(); }, []);
+
+  // Preview modal
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState<string>("");
+
+  function abrirPreview() {
+    if (!html.trim()) {
+      toast.error("Importe ou cole conteúdo primeiro");
+      return;
+    }
+    const renderizado = substituirPlaceholders(html, PREVIEW_MOCK);
+    setPreviewHtml(renderizado);
+    setPreviewOpen(true);
+  }
 
   function novoTemplate() {
     setEditandoId(null);
@@ -244,6 +286,10 @@ export default function TemplateImportPage() {
                     <Sparkles className="w-4 h-4 mr-2" />
                     {analisando ? "Analisando..." : "Analisar com IA"}
                   </Button>
+                  <Button variant="outline" size="sm" onClick={abrirPreview}>
+                    <Eye className="w-4 h-4 mr-2" />
+                    Ver preview
+                  </Button>
                   <Button size="sm" onClick={salvar}>
                     <Save className="w-4 h-4 mr-2" />
                     {editandoId ? "Salvar alterações" : "Salvar template"}
@@ -286,6 +332,21 @@ export default function TemplateImportPage() {
           )}
         </>
       )}
+
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-5 h-5" /> Preview do template
+              <Badge variant="secondary" className="text-[10px] ml-2">dados fictícios</Badge>
+            </DialogTitle>
+          </DialogHeader>
+          <div
+            className="flex-1 overflow-auto border rounded-md p-6 bg-white text-black prose prose-sm max-w-none"
+            dangerouslySetInnerHTML={{ __html: previewHtml }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
