@@ -162,7 +162,7 @@ export default function PropostaProdutosPage() {
                   onChange={(e) => setForm({ ...form, valor_minimo: Number(e.target.value) })} />
               </div>
               <div>
-                <Label>Placeholder visual <span className="text-xs text-muted-foreground">(ex: "Switch - {qtd} unidades")</span></Label>
+                <Label>Placeholder visual <span className="text-xs text-muted-foreground">{'(ex: "Switch - {qtd} unidades")'}</span></Label>
                 <Input
                   value={form.placeholder_template ?? ""}
                   onChange={(e) => setForm({ ...form, placeholder_template: e.target.value })}
