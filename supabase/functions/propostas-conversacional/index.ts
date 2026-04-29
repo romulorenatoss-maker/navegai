@@ -33,6 +33,9 @@ interface ItemAcao {
   valor: number;
   categoria: string;
   cobranca: "implantacao" | "mensal" | "informativo";
+  produto_id?: string; // OBRIGATÓRIO no fluxo conversacional — referência ao catálogo
+  campo_template?: string;
+  tipo_input?: "quantidade" | "boolean" | "lista";
 }
 
 interface IAAction {
