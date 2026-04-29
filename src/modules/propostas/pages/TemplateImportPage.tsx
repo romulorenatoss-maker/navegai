@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,8 +18,83 @@ import { prepararHtmlParaEditor } from "../utils/propostasParser";
 import { PropostaEditorVisual } from "../components/PropostaEditorVisual";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import * as pdfjsLib from "pdfjs-dist";
+import pdfjsWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
 
 const BUCKET = "propostas-templates";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
+
+function base64ToBytes(base64: string) {
+  const bin = atob(base64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+function PdfCanvasPreview({ bytes }: { bytes: Uint8Array }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const canvases: HTMLCanvasElement[] = [];
+
+    async function renderPdf() {
+      if (!containerRef.current) return;
+      setLoading(true);
+      setError(null);
+      containerRef.current.innerHTML = "";
+
+      try {
+        const pdf = await pdfjsLib.getDocument({ data: bytes.slice() }).promise;
+        for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+          if (cancelled || !containerRef.current) return;
+          const page = await pdf.getPage(pageNumber);
+          const baseViewport = page.getViewport({ scale: 1 });
+          const width = Math.min(containerRef.current.clientWidth || 900, 1100);
+          const scale = Math.max(0.7, width / baseViewport.width);
+          const viewport = page.getViewport({ scale });
+          const canvas = document.createElement("canvas");
+          const context = canvas.getContext("2d");
+          if (!context) throw new Error("Canvas indisponível");
+          canvas.width = Math.floor(viewport.width);
+          canvas.height = Math.floor(viewport.height);
+          canvas.className = "mx-auto mb-4 block max-w-full rounded-md border bg-background shadow-sm";
+          canvases.push(canvas);
+          containerRef.current.appendChild(canvas);
+          await page.render({ canvasContext: context, viewport }).promise;
+        }
+        if (!cancelled) setLoading(false);
+      } catch (err) {
+        console.error(err);
+        if (!cancelled) {
+          setError("Não foi possível renderizar o PDF gerado.");
+          setLoading(false);
+        }
+      }
+    }
+
+    renderPdf();
+    return () => {
+      cancelled = true;
+      canvases.forEach((canvas) => canvas.remove());
+    };
+  }, [bytes]);
+
+  return (
+    <div className="relative flex-1 overflow-auto rounded-md border bg-muted/30 p-4 min-h-[70vh]">
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+          <Loader2 className="w-5 h-5 mr-2 animate-spin" /> Renderizando PDF…
+        </div>
+      )}
+      {error && <div className="flex min-h-[60vh] items-center justify-center text-sm text-destructive">{error}</div>}
+      <div ref={containerRef} className="mx-auto w-full max-w-[1100px]" />
+    </div>
+  );
+}
 
 export default function TemplateImportPage() {
   const [templates, setTemplates] = useState<PropostasTemplate[]>([]);
