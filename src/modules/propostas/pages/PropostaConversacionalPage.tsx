@@ -521,6 +521,7 @@ export default function PropostaConversacionalPage() {
         </h1>
         <div className="flex gap-2 items-center">
           <Badge variant="outline">Cliente: {clienteSel?.nome}</Badge>
+          <Badge variant="default" className="capitalize">Etapa: {etapa}</Badge>
           {rascunhoId && <Badge variant="secondary" className="text-xs">Auto-salvo</Badge>}
           <select className="border rounded-md p-1.5 text-sm bg-background"
             value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
