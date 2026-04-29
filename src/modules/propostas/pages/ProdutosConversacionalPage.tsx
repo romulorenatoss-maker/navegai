@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { Send, Sparkles, Plus, Trash2, Save, Package, MessageSquare, ListChecks, Building2, X } from "lucide-react";
+import { Send, Sparkles, Plus, Trash2, Save, Package, MessageSquare, ListChecks, Building2, X, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -92,6 +92,70 @@ export default function ProdutosConversacionalPage() {
 
   const [produtos, setProdutos] = useState<PropostasProduto[]>([]);
   const [perguntas, setPerguntas] = useState<PropostasPerguntaProduto[]>([]);
+
+  // Linhas em rascunho (ainda não salvas)
+  type ProdutoDraft = {
+    _key: string;
+    nome: string;
+    categoria: PropostasCategoria | "outros" | "";
+    tipo: "produto" | "servico";
+    cobranca_padrao: "implantacao" | "mensal" | "informativo";
+    unidade: string;
+    valor_minimo: number;
+    valor_medio: number;
+  };
+  const [drafts, setDrafts] = useState<ProdutoDraft[]>([]);
+  const [salvandoDraft, setSalvandoDraft] = useState<string | null>(null);
+
+  function novaLinhaDraft() {
+    setDrafts(d => [
+      {
+        _key: crypto.randomUUID(),
+        nome: "",
+        categoria: "",
+        tipo: "produto",
+        cobranca_padrao: "mensal",
+        unidade: "un",
+        valor_minimo: 0,
+        valor_medio: 0,
+      },
+      ...d,
+    ]);
+  }
+  function patchDraft(key: string, patch: Partial<ProdutoDraft>) {
+    setDrafts(ds => ds.map(d => d._key === key ? { ...d, ...patch } : d));
+  }
+  function removerDraft(key: string) {
+    setDrafts(ds => ds.filter(d => d._key !== key));
+  }
+  async function salvarDraft(key: string) {
+    const d = drafts.find(x => x._key === key);
+    if (!d) return;
+    if (!d.nome.trim()) { toast.error("Informe o nome"); return; }
+    if (!d.categoria) { toast.error("Selecione a categoria"); return; }
+    if (!d.valor_minimo || d.valor_minimo <= 0) { toast.error("Valor mínimo obrigatório"); return; }
+    setSalvandoDraft(key);
+    try {
+      const novo = await criarProduto({
+        nome: d.nome.trim(),
+        tipo: d.tipo,
+        unidade: d.unidade || "un",
+        valor_minimo: Number(d.valor_minimo),
+        ativo: true,
+        tipo_calculo: "quantidade",
+        categoria: d.categoria,
+        valor_medio: Number(d.valor_medio) || Number(d.valor_minimo),
+        cobranca_padrao: d.cobranca_padrao,
+        origem: "manual",
+      } as Partial<PropostasProduto>);
+      setProdutos(ps => [novo, ...ps]);
+      removerDraft(key);
+      toast.success(`"${novo.nome}" cadastrado`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao salvar");
+    } finally { setSalvandoDraft(null); }
+  }
+
 
   // ============ CHAT ============
   const [msgs, setMsgs] = useState<Msg[]>([
@@ -388,13 +452,18 @@ export default function ProdutosConversacionalPage() {
               {/* PRODUTOS */}
               <TabsContent value="produtos">
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Catálogo (edição inline)</CardTitle>
-                    <p className="text-xs text-muted-foreground">Adicione novos via conversa à esquerda; ajuste valores aqui.</p>
+                  <CardHeader className="flex flex-row items-start justify-between gap-3">
+                    <div>
+                      <CardTitle className="text-base">Catálogo (edição inline)</CardTitle>
+                      <p className="text-xs text-muted-foreground">Adicione novos via conversa à esquerda ou diretamente aqui.</p>
+                    </div>
+                    <Button size="sm" onClick={novaLinhaDraft}>
+                      <Plus className="w-4 h-4 mr-1" /> Adicionar linha
+                    </Button>
                   </CardHeader>
                   <CardContent className="overflow-x-auto">
-                    {produtos.length === 0 ? (
-                      <p className="text-sm text-muted-foreground py-6 text-center">Nenhum produto. Use a conversa para cadastrar.</p>
+                    {produtos.length === 0 && drafts.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-6 text-center">Nenhum produto. Use a conversa ou clique em "Adicionar linha".</p>
                     ) : (
                       <Table>
                         <TableHeader>
@@ -406,10 +475,69 @@ export default function ProdutosConversacionalPage() {
                             <TableHead>Unidade</TableHead>
                             <TableHead className="text-right" title="Valor mínimo aceito de venda (piso). A IA nunca sugere abaixo disso.">Valor mín. (R$)</TableHead>
                             <TableHead className="text-right" title="Valor médio praticado. Usado pela IA como sugestão padrão na proposta.">Valor médio (R$)</TableHead>
-                            <TableHead className="w-10" />
+                            <TableHead className="w-20" />
                           </TableRow>
                         </TableHeader>
                         <TableBody>
+                          {/* Linhas em rascunho (não salvas) */}
+                          {drafts.map(d => (
+                            <TableRow key={d._key} className="bg-primary/5">
+                              <TableCell>
+                                <Input autoFocus className="h-8 min-w-[160px]" placeholder="Nome do item"
+                                  value={d.nome} onChange={(e) => patchDraft(d._key, { nome: e.target.value })} />
+                              </TableCell>
+                              <TableCell>
+                                <Select value={d.categoria || undefined} onValueChange={(v) => patchDraft(d._key, { categoria: v as ProdutoDraft["categoria"] })}>
+                                  <SelectTrigger className="h-8 w-36"><SelectValue placeholder="—" /></SelectTrigger>
+                                  <SelectContent>
+                                    {CATEGORIAS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                                    <SelectItem value="outros">Outros</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Select value={d.tipo} onValueChange={(v) => patchDraft(d._key, { tipo: v as ProdutoDraft["tipo"] })}>
+                                  <SelectTrigger className="h-8 w-28"><SelectValue /></SelectTrigger>
+                                  <SelectContent>{TIPOS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Select value={d.cobranca_padrao} onValueChange={(v) => patchDraft(d._key, { cobranca_padrao: v as ProdutoDraft["cobranca_padrao"] })}>
+                                  <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+                                  <SelectContent>{COBRANCAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Input className="h-8 w-20" value={d.unidade} onChange={(e) => patchDraft(d._key, { unidade: e.target.value })} />
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="relative">
+                                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">R$</span>
+                                  <Input type="number" step="0.01" min="0" className="h-8 w-28 pl-8 text-right"
+                                    value={d.valor_minimo || ""} onChange={(e) => patchDraft(d._key, { valor_minimo: Number(e.target.value) })} />
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="relative">
+                                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">R$</span>
+                                  <Input type="number" step="0.01" min="0" className="h-8 w-28 pl-8 text-right"
+                                    value={d.valor_medio || ""} onChange={(e) => patchDraft(d._key, { valor_medio: Number(e.target.value) })} />
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex gap-1">
+                                  <Button variant="default" size="icon" className="h-7 w-7" title="Salvar"
+                                    disabled={salvandoDraft === d._key} onClick={() => salvarDraft(d._key)}>
+                                    {salvandoDraft === d._key ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" title="Descartar"
+                                    onClick={() => removerDraft(d._key)}>
+                                    <X className="w-3.5 h-3.5" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
                           {produtos.map(p => {
                             const ext = p as unknown as { categoria?: string; cobranca_padrao?: string; valor_medio?: number };
                             return (
