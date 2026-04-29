@@ -41,9 +41,12 @@ type Etapa = "contexto" | "infraestrutura" | "dados" | "seguranca" | "telefonia"
 const ETAPAS_ORDEM: Etapa[] = ["contexto", "infraestrutura", "dados", "seguranca", "telefonia", "financeiro", "fechamento"];
 
 interface IAAction {
-  type: "add_item" | "next_step" | "finalizar" | "none";
+  type: "add_item" | "update_item" | "next_step" | "finalizar" | "none";
   item?: { nome?: string; quantidade?: number; valor?: number; categoria?: string; cobranca?: string };
+  match?: { produto_id?: string; nome?: string };
+  updates?: { quantidade?: number; valor?: number; cobranca?: string };
   proxima_etapa?: Etapa;
+  validacao?: { ok: false; mensagem: string };
 }
 
 const COBRANCAS: PropostasCobranca[] = ["implantacao", "mensal", "informativo"];
