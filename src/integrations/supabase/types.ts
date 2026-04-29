@@ -3669,6 +3669,7 @@ export type Database = {
       propostas_templates: {
         Row: {
           arquivo_docx_path: string | null
+          arquivo_pdf_path: string | null
           ativo: boolean
           campos_detectados: Json
           conteudo_html: string
@@ -3683,6 +3684,7 @@ export type Database = {
         }
         Insert: {
           arquivo_docx_path?: string | null
+          arquivo_pdf_path?: string | null
           ativo?: boolean
           campos_detectados?: Json
           conteudo_html?: string
@@ -3697,6 +3699,7 @@ export type Database = {
         }
         Update: {
           arquivo_docx_path?: string | null
+          arquivo_pdf_path?: string | null
           ativo?: boolean
           campos_detectados?: Json
           conteudo_html?: string
