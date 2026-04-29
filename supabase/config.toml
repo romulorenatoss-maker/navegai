@@ -32,3 +32,6 @@ verify_jwt = true
 
 [functions.propostas-conversacional]
 verify_jwt = true
+
+[functions.preview-proposta]
+verify_jwt = true
