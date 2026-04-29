@@ -591,8 +591,16 @@ export default function DashboardTempoAvaliacoes() {
                           </TableCell>
                           <TableCell className="font-medium">{a.nome}</TableCell>
                           <TableCell className="text-right">{a.total_os}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{a.primeira_acao ? fmtDataHora(a.primeira_acao) : "—"}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{a.ultima_acao ? fmtDataHora(a.ultima_acao) : "—"}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {a.dias.length > 1 ? (
+                              <span className="italic">{a.dias.length} dias — ver detalhes</span>
+                            ) : a.primeira_acao ? fmtDataHora(a.primeira_acao) : "—"}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {a.dias.length > 1 ? (
+                              <span className="italic">{a.dias.length} dias — ver detalhes</span>
+                            ) : a.ultima_acao ? fmtDataHora(a.ultima_acao) : "—"}
+                          </TableCell>
                           <TableCell className="text-right">{formatDuration(a.tempo_medio_dentro_os_seg)}</TableCell>
                           <TableCell className="text-right">{formatDuration(a.tempo_medio_entre_os_seg)}</TableCell>
                         </TableRow>
