@@ -87,7 +87,7 @@ export async function salvarRascunho(input: {
 
   const { data, error } = await supabase
     .from("propostas_rascunhos_conversa")
-    .upsert(payload, { onConflict: "user_id,cliente_id" })
+    .upsert([payload], { onConflict: "user_id,cliente_id" })
     .select("*")
     .single();
   if (error) throw error;
