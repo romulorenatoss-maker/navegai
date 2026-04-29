@@ -297,7 +297,15 @@ export default function DashboardTempoAvaliacoes() {
   const [eventos, setEventos] = useState<EventoResposta[]>([]);
   const [profMap, setProfMap] = useState<Record<string, string>>({});
   const [osNumeroMap, setOsNumeroMap] = useState<Record<string, string | number | null>>({});
+  const [aberturaPorSetorOs, setAberturaPorSetorOs] = useState<Map<string, boolean>>(new Map());
+  const [agoraTick, setAgoraTick] = useState<number>(Date.now());
   const [expandido, setExpandido] = useState<Set<string>>(new Set());
+
+  // Tick a cada 60s para atualizar tempo de avaliações em aberto
+  useEffect(() => {
+    const id = setInterval(() => setAgoraTick(Date.now()), 60000);
+    return () => clearInterval(id);
+  }, []);
 
   // Período: estado pendente (que o usuário está editando) e estado APLICADO (o que dispara a busca)
   const hoje = new Date();
