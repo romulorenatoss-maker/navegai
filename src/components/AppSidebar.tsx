@@ -249,7 +249,7 @@ export function AppSidebar({ userName = "Usuário", onSignOut, onNavigate, isAdm
                               key={item.to}
                               to={item.to}
                               onClick={() => {
-                                if (item.to.startsWith("/propostas")) setOpenSection(null);
+                                if (item.to.startsWith("/propostas")) setOpenSection("__closed__");
                                 onNavigate?.();
                               }}
                               className={cn(
