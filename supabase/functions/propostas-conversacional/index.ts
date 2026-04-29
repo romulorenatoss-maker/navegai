@@ -6,15 +6,42 @@ const corsHeaders = {
 };
 
 /**
- * Conversa guiada para construir proposta:
- * - recebe histórico de mensagens, perguntas configuradas e respostas atuais
- * - pergunta o próximo item (categoria → pergunta → produto)
- * - quando o usuário menciona produto, IA extrai {nome, qtd, valor, cobranca}
+ * Conversa guiada para construir proposta.
  *
- * Retorno: { mensagem, action?: { tipo: 'produto', dados }, finalizado: bool }
+ * Contrato (NOVO — JSON estruturado):
+ *  Resposta:
+ *    {
+ *      message: string,
+ *      actions: Array<{ type: "add_item"|"next_step"|"finalizar"|"none",
+ *                       item?: { nome, quantidade, valor, categoria, cobranca },
+ *                       proxima_etapa?: string }>,
+ *      mensagem: string,        // alias legacy
+ *      produtos: Item[],        // alias legacy (compat com frontend antigo)
+ *      finalizado: boolean
+ *    }
+ *
+ * Compatibilidade: aceita também blocos legacy ```produto``` e ```finalizar```.
  */
 
 interface Msg { role: "user" | "assistant"; content: string }
+
+type Etapa = "contexto" | "infraestrutura" | "dados" | "seguranca" | "telefonia" | "financeiro" | "fechamento";
+
+interface ItemAcao {
+  nome: string;
+  quantidade: number;
+  valor: number;
+  categoria: string;
+  cobranca: "implantacao" | "mensal" | "informativo";
+}
+
+interface IAAction {
+  type: "add_item" | "next_step" | "finalizar" | "none";
+  item?: Partial<ItemAcao>;
+  proxima_etapa?: Etapa;
+}
+
+const ETAPAS_ORDEM: Etapa[] = ["contexto", "infraestrutura", "dados", "seguranca", "telefonia", "financeiro", "fechamento"];
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -37,6 +64,13 @@ serve(async (req) => {
         } | null;
         catalogo?: Array<{ nome: string; categoria?: string; valor_minimo: number; valor_medio?: number; unidade: string; cobranca_padrao?: string }>;
         perguntas_produtos?: Array<{ categoria: string; pergunta: string }>;
+        // === NOVO: estado controlado pelo frontend (fonte da verdade) ===
+        estado_proposta?: {
+          etapa_atual: Etapa;
+          itens: Array<{ nome: string; quantidade: number; valor: number; cobranca: string; categoria?: string }>;
+          perguntas_respondidas: string[]; // textos normalizados das perguntas já respondidas
+          totais: { implantacao: number; mensal: number; informativo?: number };
+        };
       };
     };
 
@@ -46,82 +80,84 @@ serve(async (req) => {
     const emp = contexto.empresa ?? null;
     const cat = contexto.catalogo ?? [];
     const ppr = contexto.perguntas_produtos ?? [];
+    const estado = contexto.estado_proposta ?? null;
+
+    // === Filtro server-side: nunca mandar perguntas já respondidas ===
+    const respondidasNorm = new Set((estado?.perguntas_respondidas ?? []).map(p => p.trim().toLowerCase()));
+    const perguntasFiltradas = (contexto.perguntas_pendentes ?? []).filter(
+      p => !respondidasNorm.has(p.pergunta.trim().toLowerCase())
+    );
+    const perguntasProdFiltradas = ppr.filter(p => !respondidasNorm.has(p.pergunta.trim().toLowerCase()));
+
     const escopoTxt = emp
-      ? `\n\n═══ ESCOPO DA EMPRESA "${emp.nome_empresa ?? ""}" ═══\n${emp.descricao_operacional ?? ""}\nVENDEMOS: ${(emp.o_que_vendemos ?? []).join(", ") || "(?)"}\nNÃO VENDEMOS: ${(emp.o_que_nao_vendemos ?? []).join(", ") || "(?)"}\nAMBIENTE: ${(emp.tipo_ambiente ?? []).join(", ") || "(?)"}\nREGRAS: ${(emp.regras_tecnicas ?? []).join(", ") || "(?)"}\n\nSe o cliente pedir algo FORA de "VENDEMOS", responda: "Esse item não está no escopo da empresa. Deseja adicionar como ADENDO (cobranca=informativo, categoria=outros)?" — só emita o produto se o usuário confirmar.`
+      ? `\n\n═══ ESCOPO DA EMPRESA "${emp.nome_empresa ?? ""}" ═══\n${emp.descricao_operacional ?? ""}\nVENDEMOS: ${(emp.o_que_vendemos ?? []).join(", ") || "(?)"}\nNÃO VENDEMOS: ${(emp.o_que_nao_vendemos ?? []).join(", ") || "(?)"}\nAMBIENTE: ${(emp.tipo_ambiente ?? []).join(", ") || "(?)"}\nREGRAS: ${(emp.regras_tecnicas ?? []).join(", ") || "(?)"}\n\nSe o cliente pedir algo FORA de "VENDEMOS", responda: "Esse item não está no escopo da empresa. Deseja adicionar como ADENDO (cobranca=informativo, categoria=outros)?" — só emita add_item se o usuário confirmar.`
       : "";
     const catalogoTxt = cat.length
-      ? `\n\n═══ CATÁLOGO PADRÃO (use estes valores como base) ═══\n${cat.map(p => `- ${p.nome} [${p.categoria ?? "?"}] ${p.unidade} mín=R$${p.valor_minimo} méd=R$${p.valor_medio ?? p.valor_minimo} (${p.cobranca_padrao ?? "?"})`).join("\n")}\n\nQuando o usuário citar um item do catálogo, use o valor_medio como sugestão e PERGUNTE confirmação.`
+      ? `\n\n═══ CATÁLOGO PADRÃO (use estes valores como base) ═══\n${cat.map(p => `- ${p.nome} [${p.categoria ?? "?"}] ${p.unidade} mín=R$${p.valor_minimo} méd=R$${p.valor_medio ?? p.valor_minimo} (${p.cobranca_padrao ?? "?"})`).join("\n")}`
       : "";
-    const perguntasProdTxt = ppr.length
-      ? `\n\n═══ PERGUNTAS PADRÃO POR CATEGORIA (use durante o fluxo) ═══\n${ppr.map(q => `[${q.categoria}] ${q.pergunta}`).join("\n")}`
+    const perguntasProdTxt = perguntasProdFiltradas.length
+      ? `\n\n═══ PERGUNTAS PADRÃO POR CATEGORIA (ainda não respondidas) ═══\n${perguntasProdFiltradas.map(q => `[${q.categoria}] ${q.pergunta}`).join("\n")}`
       : "";
 
-    const sys = `Você é um VENDEDOR TÉCNICO especialista em propostas comerciais de:
-- Infraestrutura de rede
-- Conectividade (internet)
-- Segurança (CFTV)
-- Telefonia
+    const estadoTxt = estado ? `
 
-Você está conduzindo uma conversa para montar a proposta do cliente "${contexto.cliente_nome ?? ''}".
+═══ ESTADO DA PROPOSTA (FONTE DA VERDADE — NÃO IGNORE) ═══
+${JSON.stringify({
+      etapa_atual: estado.etapa_atual,
+      itens_ja_adicionados: estado.itens.map(i => ({ nome: i.nome, qtd: i.quantidade, valor: i.valor, cobranca: i.cobranca })),
+      perguntas_ja_respondidas: estado.perguntas_respondidas,
+      totais: estado.totais,
+    }, null, 2)}
+
+REGRAS DE USO DO ESTADO:
+- Se um item já está em itens_ja_adicionados, NÃO emita add_item para ele de novo (a UI gerencia duplicatas).
+- NUNCA repita uma pergunta de "perguntas_ja_respondidas".
+- Se a etapa_atual já cumpriu seu objetivo (capturou itens necessários ou usuário disse "próximo"), emita action.type="next_step".
+- Quando todas as etapas terminarem (ordem: contexto→infraestrutura→dados→seguranca→telefonia→financeiro→fechamento) e o usuário confirmar, emita action.type="finalizar".
+` : "";
+
+    const sys = `Você é um VENDEDOR TÉCNICO especialista em propostas comerciais (rede, internet, CFTV, telefonia).
+Cliente: "${contexto.cliente_nome ?? ''}".
 
 ═══ REGRAS CRÍTICAS ═══
 - NUNCA gere HTML, layout ou código.
-- NUNCA invente valores. Sempre pergunte ao usuário.
-- NUNCA mencione "Cloud" a menos que o usuário peça.
-- NÃO trate duplicidade: a UI já gerencia itens repetidos.
-- Faça APENAS UMA pergunta por vez.
-- Seja direto, técnico e comercial. Sem prolixidade. Sem repetir info.
-- Markdown leve, no máximo 3 linhas por resposta.
+- NUNCA invente valores. Se faltar valor, PERGUNTE.
+- NUNCA repita perguntas já em "perguntas_ja_respondidas".
+- NUNCA re-emita item já em "itens_ja_adicionados".
+- A UI é dona dos dados; você só interpreta e sugere ação.
+- Faça UMA pergunta por vez. Markdown leve, máximo 3 linhas.
 
-═══ FLUXO OBRIGATÓRIO (ordem fixa) ═══
-1. CONTEXTO do cliente (porte, segmento, dor)
-2. INFRAESTRUTURA → cobrança: implantacao
-3. DADOS (internet/conectividade) → cobrança: mensal
-4. SEGURANÇA (CFTV) → cobrança: mensal
-5. TELEFONIA → cobrança: mensal
-6. FINANCEIRO (validade, condições) → confirmação final
+═══ FLUXO (etapa_atual vem no estado) ═══
+contexto → infraestrutura(implantacao) → dados(mensal) → seguranca(mensal) → telefonia(mensal) → financeiro → fechamento
 
-Em cada etapa: pergunte primeiro o que precisa, depois capture os itens, e só então avance para a próxima.
+═══ FORMATO OBRIGATÓRIO DE RESPOSTA (JSON) ═══
+Responda SEMPRE com APENAS um JSON válido entre tags <json>...</json>, sem texto antes/depois:
 
-═══ CLASSIFICAÇÃO AUTOMÁTICA ═══
-- infraestrutura → implantacao
-- dados → mensal
-- seguranca → mensal
-- telefonia → mensal
-Itens "informativos" (cortesia, brindes) → cobranca: informativo (não somam totais).
+<json>
+{
+  "message": "texto curto para o usuário",
+  "actions": [
+    { "type": "add_item",
+      "item": { "nome": "Switch 24P", "quantidade": 1, "valor": 1300, "categoria": "infraestrutura", "cobranca": "implantacao" } },
+    { "type": "next_step", "proxima_etapa": "dados" }
+  ]
+}
+</json>
 
-═══ INTERPRETAÇÃO DE ENTRADA ═══
-Transforme texto livre em itens estruturados:
-- "switch 1300" → nome=Switch, qtd=1, valor=1300, categoria=infraestrutura, cobranca=implantacao
-- "camera 4 unidades 300 cada" → nome=Câmera, qtd=4, valor=300, categoria=seguranca, cobranca=mensal
-- "internet 2000" → nome=Internet, qtd=1, valor=2000, categoria=dados, cobranca=mensal
-Se faltar valor, pergunte: "Qual o valor unitário?". Default qtd=1.
+Tipos de action:
+- "add_item": novo item identificado (nome + valor confirmados). NÃO usar para itens já no estado.
+- "next_step": avançar etapa. Inclua proxima_etapa.
+- "finalizar": só após confirmação final do usuário.
+- "none": apenas mensagem (perguntas, esclarecimentos).
 
-═══ EMISSÃO DE PRODUTO (formato exato) ═══
-Sempre que identificar um item COM nome E valor confirmados, anexe ao FINAL da resposta:
-\`\`\`produto
-{"nome":"...","quantidade":1,"valor_unitario":0,"cobranca":"implantacao","categoria":"infraestrutura"}
-\`\`\`
-Múltiplos itens = múltiplos blocos. NÃO emita produto sem valor.
-
-═══ CONFIRMAÇÃO FINAL ═══
-Antes de finalizar, mostre:
-- Total de implantação (R$ X)
-- Total mensal (R$ Y)
-- Lista resumida de itens
-E pergunte: "Está correto?"
-Após o "sim" do usuário, finalize com: \`\`\`finalizar\`\`\`
+Pode haver 0..N actions. Se nenhuma action for necessária, use [].
 
 ═══ CONTEXTO DA SESSÃO ═══
-Categorias configuradas (use os códigos nos blocos produto):
-${contexto.categorias.map(c => `- ${c.nome} (codigo=${c.codigo}, cobranca_padrao=${c.cobranca_padrao})`).join("\n")}
+Categorias: ${contexto.categorias.map(c => `${c.codigo}(${c.cobranca_padrao})`).join(", ")}
 
-Perguntas auxiliares já configuradas pelo admin (use como dica de conteúdo, mas siga o FLUXO acima):
-${contexto.perguntas_pendentes.map(p => `- [${p.categoria}] ${p.pergunta}${p.opcoes ? ` (opções: ${p.opcoes.join(", ")})` : ""}`).join("\n") || "(nenhuma pendente)"}
-${escopoTxt}${catalogoTxt}${perguntasProdTxt}
-
-Respostas já coletadas:
-${JSON.stringify(contexto.respostas, null, 2)}`;
+Perguntas pendentes (use como dica, NUNCA repita):
+${perguntasFiltradas.map(p => `- [${p.categoria}] ${p.pergunta}`).join("\n") || "(nenhuma)"}
+${escopoTxt}${catalogoTxt}${perguntasProdTxt}${estadoTxt}`;
 
     const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -153,17 +189,86 @@ ${JSON.stringify(contexto.respostas, null, 2)}`;
     const data = await resp.json();
     const raw: string = data.choices?.[0]?.message?.content ?? "";
 
-    // Extrai blocos ```produto``` e ```finalizar```
-    const produtos: Array<Record<string, unknown>> = [];
+    // === Parse novo formato JSON ===
+    let message = "";
+    let actions: IAAction[] = [];
     let finalizado = false;
-    let mensagem = raw;
 
-    mensagem = mensagem.replace(/```produto\s*([\s\S]*?)```/g, (_full, json) => {
-      try { produtos.push(JSON.parse(json.trim())); } catch (e) { console.error("parse produto:", e); }
+    const jsonMatch = raw.match(/<json>\s*([\s\S]*?)\s*<\/json>/i)
+      ?? raw.match(/```json\s*([\s\S]*?)```/i);
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[1].trim());
+        message = String(parsed.message ?? "");
+        actions = Array.isArray(parsed.actions) ? parsed.actions : [];
+      } catch (e) {
+        console.error("parse JSON IA falhou:", e, "raw:", jsonMatch[1].slice(0, 200));
+      }
+    }
+
+    // === Fallback legacy: blocos ```produto``` e ```finalizar``` ===
+    let mensagemLegacy = raw;
+    const produtosLegacy: Array<Record<string, unknown>> = [];
+    mensagemLegacy = mensagemLegacy.replace(/```produto\s*([\s\S]*?)```/g, (_f, json) => {
+      try { produtosLegacy.push(JSON.parse(json.trim())); } catch (e) { console.error("parse produto:", e); }
       return "";
-    }).replace(/```finalizar```/g, () => { finalizado = true; return ""; }).trim();
+    }).replace(/```finalizar```/g, () => { finalizado = true; return ""; })
+      .replace(/<json>[\s\S]*?<\/json>/gi, "")
+      .replace(/```json[\s\S]*?```/gi, "")
+      .trim();
 
-    return new Response(JSON.stringify({ mensagem, produtos, finalizado }), {
+    // Se IA usou só legacy, converte para actions
+    if (actions.length === 0 && produtosLegacy.length > 0) {
+      actions = produtosLegacy.map(p => ({
+        type: "add_item",
+        item: {
+          nome: String(p.nome ?? ""),
+          quantidade: Number(p.quantidade ?? 1),
+          valor: Number(p.valor_unitario ?? p.valor ?? 0),
+          categoria: String(p.categoria ?? ""),
+          cobranca: (p.cobranca as ItemAcao["cobranca"]) ?? "mensal",
+        },
+      }));
+    }
+
+    // Se ainda não tem message, usa o texto bruto
+    if (!message) message = mensagemLegacy || "…";
+
+    if (actions.some(a => a.type === "finalizar")) finalizado = true;
+
+    // === SEGURANÇA: filtra add_item que já está no estado (anti-duplicata) ===
+    const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    const nomesExistentes = new Set((estado?.itens ?? []).map(i => norm(i.nome)));
+    actions = actions.filter(a => {
+      if (a.type !== "add_item") return true;
+      const n = norm(String(a.item?.nome ?? ""));
+      if (!n) return false;
+      if (nomesExistentes.has(n)) {
+        console.log("⚠️ add_item filtrado (já existe no estado):", n);
+        return false;
+      }
+      return true;
+    });
+
+    // Compat: produtos[] (formato antigo) derivado de actions
+    const produtos = actions
+      .filter(a => a.type === "add_item" && a.item?.nome)
+      .map(a => ({
+        nome: a.item!.nome,
+        quantidade: a.item!.quantidade ?? 1,
+        valor_unitario: a.item!.valor ?? 0,
+        cobranca: a.item!.cobranca ?? "mensal",
+        categoria: a.item!.categoria,
+      }));
+
+    return new Response(JSON.stringify({
+      message,
+      actions,
+      finalizado,
+      // aliases legacy
+      mensagem: message,
+      produtos,
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
