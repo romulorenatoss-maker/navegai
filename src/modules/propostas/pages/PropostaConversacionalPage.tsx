@@ -41,9 +41,12 @@ type Etapa = "contexto" | "infraestrutura" | "dados" | "seguranca" | "telefonia"
 const ETAPAS_ORDEM: Etapa[] = ["contexto", "infraestrutura", "dados", "seguranca", "telefonia", "financeiro", "fechamento"];
 
 interface IAAction {
-  type: "add_item" | "next_step" | "finalizar" | "none";
+  type: "add_item" | "update_item" | "next_step" | "finalizar" | "none";
   item?: { nome?: string; quantidade?: number; valor?: number; categoria?: string; cobranca?: string };
+  match?: { produto_id?: string; nome?: string };
+  updates?: { quantidade?: number; valor?: number; cobranca?: string };
   proxima_etapa?: Etapa;
+  validacao?: { ok: false; mensagem: string };
 }
 
 const COBRANCAS: PropostasCobranca[] = ["implantacao", "mensal", "informativo"];
@@ -344,12 +347,16 @@ export default function PropostaConversacionalPage() {
               regras_tecnicas: empresa.regras_tecnicas,
             } : null,
             catalogo: catalogo.filter(p => p.ativo).slice(0, 80).map(p => ({
+              id: (p as unknown as { id?: string }).id,
               nome: p.nome,
               categoria: (p as unknown as { categoria?: string }).categoria,
               valor_minimo: Number(p.valor_minimo),
               valor_medio: Number((p as unknown as { valor_medio?: number }).valor_medio ?? p.valor_minimo),
+              valor_padrao: Number((p as unknown as { valor_padrao?: number }).valor_padrao ?? 0),
               unidade: p.unidade,
               cobranca_padrao: (p as unknown as { cobranca_padrao?: string }).cobranca_padrao,
+              campo_template: (p as unknown as { campo_template?: string | null }).campo_template ?? null,
+              tipo_input: (p as unknown as { tipo_input?: string }).tipo_input,
             })),
             perguntas_produtos: perguntasProd.map(q => ({ categoria: q.categoria, pergunta: q.pergunta })),
             estado_proposta: estadoProposta,
@@ -383,10 +390,28 @@ export default function PropostaConversacionalPage() {
             cobranca: (a.item.cobranca as PropostasCobranca) ?? "mensal",
             categoria: a.item.categoria,
           });
+        } else if (a.type === "update_item") {
+          // Aplica update no item correspondente (match por nome normalizado)
+          const alvoNome = normalize(String(a.match?.nome ?? ""));
+          if (!alvoNome) continue;
+          setItens(arr => arr.map(it => {
+            if (normalize(it.nome) !== alvoNome) return it;
+            const u = a.updates ?? {};
+            return {
+              ...it,
+              quantidade: u.quantidade !== undefined ? Number(u.quantidade) : it.quantidade,
+              valor_unitario: u.valor !== undefined ? Number(u.valor) : it.valor_unitario,
+              cobranca: (u.cobranca as PropostasCobranca) ?? it.cobranca,
+            };
+          }));
         } else if (a.type === "next_step") {
           avancarEtapa(a.proxima_etapa);
         } else if (a.type === "finalizar") {
           setFinalizado(true);
+        }
+        // Mensagem de validação (preço abaixo do mínimo, etc.)
+        if (a.validacao && a.validacao.ok === false) {
+          toast.error(a.validacao.mensagem);
         }
       }
 

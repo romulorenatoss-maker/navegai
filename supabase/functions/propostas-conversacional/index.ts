@@ -39,9 +39,13 @@ interface ItemAcao {
 }
 
 interface IAAction {
-  type: "add_item" | "next_step" | "finalizar" | "none";
+  type: "add_item" | "update_item" | "next_step" | "finalizar" | "none";
   item?: Partial<ItemAcao>;
+  match?: { produto_id?: string; nome?: string };
+  updates?: { quantidade?: number; valor?: number; cobranca?: ItemAcao["cobranca"] };
   proxima_etapa?: Etapa;
+  // erro de validação devolvido ao frontend
+  validacao?: { ok: false; mensagem: string };
 }
 
 const ETAPAS_ORDEM: Etapa[] = ["contexto", "infraestrutura", "dados", "seguranca", "telefonia", "financeiro", "fechamento"];
@@ -65,7 +69,7 @@ serve(async (req) => {
           tipo_ambiente?: string[];
           regras_tecnicas?: string[];
         } | null;
-        catalogo?: Array<{ id?: string; nome: string; categoria?: string; valor_minimo: number; valor_medio?: number; unidade: string; cobranca_padrao?: string; campo_template?: string | null; tipo_input?: "quantidade" | "boolean" | "lista" }>;
+        catalogo?: Array<{ id?: string; nome: string; categoria?: string; valor_minimo: number; valor_medio?: number; valor_padrao?: number; unidade: string; cobranca_padrao?: string; campo_template?: string | null; tipo_input?: "quantidade" | "boolean" | "lista" }>;
         perguntas_produtos?: Array<{ categoria: string; pergunta: string }>;
         // === NOVO: estado controlado pelo frontend (fonte da verdade) ===
         estado_proposta?: {
@@ -96,7 +100,7 @@ serve(async (req) => {
       ? `\n\n═══ ESCOPO DA EMPRESA "${emp.nome_empresa ?? ""}" ═══\n${emp.descricao_operacional ?? ""}\nVENDEMOS: ${(emp.o_que_vendemos ?? []).join(", ") || "(?)"}\nNÃO VENDEMOS: ${(emp.o_que_nao_vendemos ?? []).join(", ") || "(?)"}\nAMBIENTE: ${(emp.tipo_ambiente ?? []).join(", ") || "(?)"}\nREGRAS: ${(emp.regras_tecnicas ?? []).join(", ") || "(?)"}\n\nSe o cliente pedir algo FORA de "VENDEMOS", responda: "Esse item não está no escopo da empresa. Deseja adicionar como ADENDO (cobranca=informativo, categoria=outros)?" — só emita add_item se o usuário confirmar.`
       : "";
     const catalogoTxt = cat.length
-      ? `\n\n═══ CATÁLOGO PADRÃO (USE EXCLUSIVAMENTE estes produtos — NUNCA invente nome novo) ═══\n${cat.map(p => `- id=${p.id ?? "?"} | ${p.nome} [${p.categoria ?? "?"}] ${p.unidade} mín=R$${p.valor_minimo} méd=R$${p.valor_medio ?? p.valor_minimo} (${p.cobranca_padrao ?? "?"}) campo_template=${p.campo_template ?? "?"} tipo_input=${p.tipo_input ?? "quantidade"}`).join("\n")}\n\nREGRA: ao emitir add_item, SEMPRE preencha "produto_id" com o id exato do catálogo. Use a categoria, campo_template e tipo_input EXATAMENTE como no catálogo. Se não encontrar produto adequado, NÃO emita add_item — pergunte ao usuário se devemos cadastrar um novo produto.`
+      ? `\n\n═══ CATÁLOGO PADRÃO (USE EXCLUSIVAMENTE estes produtos — NUNCA invente nome novo) ═══\n${cat.map(p => `- id=${p.id ?? "?"} | ${p.nome} [${p.categoria ?? "?"}] ${p.unidade} padrão=R$${p.valor_padrao ?? 0} mín=R$${p.valor_minimo} méd=R$${p.valor_medio ?? p.valor_minimo} (${p.cobranca_padrao ?? "?"}) campo_template=${p.campo_template ?? "?"} tipo_input=${p.tipo_input ?? "quantidade"}`).join("\n")}\n\nREGRA: ao emitir add_item, SEMPRE preencha "produto_id" com o id exato do catálogo. Se o usuário NÃO informou um valor, OMITA o campo "valor" — o backend usará valor_padrao. Para alterar item existente use update_item ({ match:{produto_id}, updates:{valor|quantidade} }). Valores abaixo de valor_minimo serão REJEITADOS.`
       : "";
     const perguntasProdTxt = perguntasProdFiltradas.length
       ? `\n\n═══ PERGUNTAS PADRÃO POR CATEGORIA (ainda não respondidas) ═══\n${perguntasProdFiltradas.map(q => `[${q.categoria}] ${q.pergunta}`).join("\n")}`
@@ -239,41 +243,107 @@ ${escopoTxt}${catalogoTxt}${perguntasProdTxt}${estadoTxt}`;
 
     if (actions.some(a => a.type === "finalizar")) finalizado = true;
 
-    // === SEGURANÇA: filtra add_item duplicado e força mapeamento por catálogo ===
+    // === SEGURANÇA + ENRICHMENT + VALIDAÇÃO DE PREÇO ===
     const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-    const nomesExistentes = new Set((estado?.itens ?? []).map(i => norm(i.nome)));
+    const itensEstado = estado?.itens ?? [];
+    const nomesExistentes = new Set(itensEstado.map(i => norm(i.nome)));
     const catalogById = new Map(cat.filter(p => p.id).map(p => [String(p.id), p]));
     const catalogByName = new Map(cat.map(p => [norm(p.nome), p]));
 
+    // Logs de operação (retornados ao frontend)
+    const log = {
+      itens_criados: 0,
+      itens_atualizados: 0,
+      validacoes_rejeitadas: [] as Array<{ produto: string; motivo: string }>,
+    };
+
     actions = actions.flatMap(a => {
+      // ====== UPDATE_ITEM ======
+      if (a.type === "update_item") {
+        const m = a.match ?? {};
+        const u = a.updates ?? {};
+        let prod = m.produto_id ? catalogById.get(String(m.produto_id)) : undefined;
+        if (!prod && m.nome) prod = catalogByName.get(norm(m.nome));
+        if (!prod) {
+          console.log("⚠️ update_item bloqueado (produto fora do catálogo):", m);
+          return [];
+        }
+        // valida valor mínimo
+        if (u.valor !== undefined) {
+          const min = Number(prod.valor_minimo ?? 0);
+          if (Number(u.valor) < min) {
+            const msg = `Valor abaixo do mínimo permitido (R$${min}) para ${prod.nome}`;
+            log.validacoes_rejeitadas.push({ produto: prod.nome, motivo: msg });
+            return [{ type: "none", validacao: { ok: false, mensagem: msg } }];
+          }
+        }
+        log.itens_atualizados++;
+        return [{ ...a, match: { produto_id: String(prod.id), nome: prod.nome } }];
+      }
+
+      // ====== ADD_ITEM ======
       if (a.type !== "add_item") return [a];
       const item = a.item ?? {};
       const n = norm(String(item.nome ?? ""));
       if (!n) return [];
-      if (nomesExistentes.has(n)) {
-        console.log("⚠️ add_item filtrado (duplicado):", n);
-        return [];
-      }
 
-      // Resolver produto: por id (preferido) ou por nome (fallback)
+      // Resolver produto
       let prod = item.produto_id ? catalogById.get(String(item.produto_id)) : undefined;
       if (!prod) prod = catalogByName.get(n);
-
       if (!prod) {
         console.log("⚠️ add_item bloqueado (produto fora do catálogo):", item.nome);
         return [];
       }
 
-      // Enriquecer com dados canônicos do catálogo (IA não decide categoria/campo_template)
+      // Regra de decisão: se item já existe na proposta → converter em update_item
+      if (nomesExistentes.has(norm(prod.nome))) {
+        const updates: { quantidade?: number; valor?: number } = {};
+        if (item.quantidade !== undefined) updates.quantidade = Number(item.quantidade);
+        if (item.valor !== undefined) updates.valor = Number(item.valor);
+        if (Object.keys(updates).length === 0) {
+          console.log("⚠️ add_item filtrado (duplicado, sem updates):", n);
+          return [];
+        }
+        // Validar mínimo
+        if (updates.valor !== undefined) {
+          const min = Number(prod.valor_minimo ?? 0);
+          if (updates.valor < min) {
+            const msg = `Valor abaixo do mínimo permitido (R$${min}) para ${prod.nome}`;
+            log.validacoes_rejeitadas.push({ produto: prod.nome, motivo: msg });
+            return [{ type: "none", validacao: { ok: false, mensagem: msg } }];
+          }
+        }
+        log.itens_atualizados++;
+        return [{
+          type: "update_item",
+          match: { produto_id: String(prod.id), nome: prod.nome },
+          updates,
+        }];
+      }
+
+      // ENRICHMENT: valor_padrao quando IA não informou valor
+      const valorPadrao = Number(prod.valor_padrao ?? 0);
+      const valorMin = Number(prod.valor_minimo ?? 0);
+      const valorRecebido = item.valor !== undefined ? Number(item.valor) : valorPadrao;
+
+      // Validação de mínimo
+      if (valorMin > 0 && valorRecebido < valorMin) {
+        const msg = `Valor abaixo do mínimo permitido (R$${valorMin}) para ${prod.nome}`;
+        log.validacoes_rejeitadas.push({ produto: prod.nome, motivo: msg });
+        return [{ type: "none", validacao: { ok: false, mensagem: msg } }];
+      }
+
       const enriched: Partial<ItemAcao> = {
         ...item,
         produto_id: String(prod.id),
         nome: prod.nome,
+        valor: valorRecebido,
         categoria: prod.categoria ?? item.categoria,
         cobranca: (prod.cobranca_padrao as ItemAcao["cobranca"]) ?? item.cobranca ?? "mensal",
         campo_template: prod.campo_template ?? undefined,
         tipo_input: prod.tipo_input ?? "quantidade",
       };
+      log.itens_criados++;
       return [{ ...a, item: enriched }];
     });
 
@@ -291,10 +361,13 @@ ${escopoTxt}${catalogoTxt}${perguntasProdTxt}${estadoTxt}`;
         tipo_input: a.item!.tipo_input,
       }));
 
+    console.log("[propostas-conversacional] log:", JSON.stringify(log));
+
     return new Response(JSON.stringify({
       message,
       actions,
       finalizado,
+      log,
       // aliases legacy
       mensagem: message,
       produtos,
