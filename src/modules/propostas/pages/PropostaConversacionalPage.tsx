@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Send, Sparkles, ArrowLeft, Trash2, Save } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Send, Sparkles, ArrowLeft, Trash2, Save, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -28,10 +28,14 @@ interface ItemConv {
   categoria?: string;
 }
 
+const COBRANCAS: PropostasCobranca[] = ["implantacao", "mensal", "informativo"];
+const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+
 export default function PropostaConversacionalPage() {
   const navigate = useNavigate();
 
-  // Cliente obrigatório
+  // Cliente
   const [modalCliente, setModalCliente] = useState(true);
   const [termoCliente, setTermoCliente] = useState("");
   const [clientes, setClientes] = useState<ClienteLite[]>([]);
@@ -41,18 +45,22 @@ export default function PropostaConversacionalPage() {
   const [templates, setTemplates] = useState<PropostasTemplate[]>([]);
   const [templateId, setTemplateId] = useState<string>("");
 
-  // Perguntas/categorias
+  // Setup
   const [categorias, setCategorias] = useState<PropostasCategoriaSetup[]>([]);
   const [perguntas, setPerguntas] = useState<PropostasPerguntaSetup[]>([]);
   const [respostas, setRespostas] = useState<Record<string, unknown>>({});
 
-  // Chat
+  // Chat + planilha
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [itens, setItens] = useState<ItemConv[]>([]);
   const [finalizado, setFinalizado] = useState(false);
   const [gerando, setGerando] = useState(false);
+
+  // Duplicata pendente (modal de decisão)
+  const [duplicata, setDuplicata] = useState<{ existenteIdx: number; novo: ItemConv; fila: ItemConv[] } | null>(null);
+
   const fim = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -77,23 +85,68 @@ export default function PropostaConversacionalPage() {
     });
   }, [perguntas, categorias]);
 
-  const pendentes = useMemo(() => {
-    return perguntasOrdenadas.filter(p => {
-      const k = p.campo_token ?? p.id;
-      return respostas[k] === undefined || respostas[k] === "";
+  const pendentes = useMemo(() => perguntasOrdenadas.filter(p => {
+    const k = p.campo_token ?? p.id;
+    return respostas[k] === undefined || respostas[k] === "";
+  }), [perguntasOrdenadas, respostas]);
+
+  const totais = useMemo(() => {
+    const acc = { implantacao: 0, mensal: 0, informativo: 0, total: 0 };
+    itens.forEach(i => {
+      const sub = i.quantidade * i.valor_unitario;
+      acc[i.cobranca] += sub;
+      acc.total += sub;
     });
-  }, [perguntasOrdenadas, respostas]);
+    return acc;
+  }, [itens]);
 
   function confirmarCliente() {
     if (!clienteSel) { toast.error("Selecione um cliente"); return; }
     setModalCliente(false);
-    // Mensagem de boas-vindas + primeira pergunta
     const primeira = perguntasOrdenadas[0];
     const cat = primeira ? categorias.find(c => c.id === primeira.categoria_id) : null;
     setMsgs([{
       role: "assistant",
-      content: `Olá! Vamos montar a proposta para **${clienteSel.nome}**. ${primeira ? `Começando por **${cat?.nome ?? "Contexto"}**:\n\n${primeira.pergunta}` : "Pode começar descrevendo o que o cliente precisa."}`,
+      content: `Olá! Vamos montar a proposta para **${clienteSel.nome}**. ${primeira ? `Começando por **${cat?.nome ?? "Contexto"}**:\n\n${primeira.pergunta}` : "Pode descrever o que o cliente precisa (ex.: \"switch 1300\")."}`,
     }]);
+  }
+
+  /** Processa fila de novos itens, perguntando sobre duplicatas um a um. */
+  function processarFila(fila: ItemConv[], baseItens: ItemConv[]) {
+    const restante = [...fila];
+    let trabalho = [...baseItens];
+    while (restante.length > 0) {
+      const novo = restante.shift()!;
+      const idx = trabalho.findIndex(x => normalize(x.nome) === normalize(novo.nome));
+      if (idx >= 0) {
+        // Pausa para decisão do usuário
+        setItens(trabalho);
+        setDuplicata({ existenteIdx: idx, novo, fila: restante });
+        return;
+      }
+      trabalho.push(novo);
+    }
+    setItens(trabalho);
+    setDuplicata(null);
+  }
+
+  function resolverDuplicata(acao: "incrementar" | "atualizar" | "nova" | "ignorar") {
+    if (!duplicata) return;
+    const { existenteIdx, novo, fila } = duplicata;
+    setItens(prev => {
+      const arr = [...prev];
+      if (acao === "incrementar") {
+        arr[existenteIdx] = { ...arr[existenteIdx], quantidade: arr[existenteIdx].quantidade + novo.quantidade };
+      } else if (acao === "atualizar") {
+        arr[existenteIdx] = { ...arr[existenteIdx], quantidade: novo.quantidade, valor_unitario: novo.valor_unitario, cobranca: novo.cobranca };
+      } else if (acao === "nova") {
+        arr.push(novo);
+      }
+      // continua a fila
+      setTimeout(() => processarFila(fila, arr), 0);
+      return arr;
+    });
+    setDuplicata(null);
   }
 
   async function enviar() {
@@ -105,7 +158,6 @@ export default function PropostaConversacionalPage() {
     const novoHistorico = [...msgs, novaMsg];
     setMsgs(novoHistorico);
 
-    // Heurística: se a primeira pergunta pendente tem campo_token, salva resposta automaticamente
     const proxima = pendentes[0];
     if (proxima) {
       const k = proxima.campo_token ?? proxima.id;
@@ -149,16 +201,19 @@ export default function PropostaConversacionalPage() {
           cobranca: (p.cobranca ?? "mensal") as PropostasCobranca,
           categoria: p.categoria,
         })).filter(p => p.nome);
-        setItens(it => [...it, ...novos]);
-        // Salva produtos novos no catálogo (origem ia_sugerido)
+
+        // Catálogo
         for (const p of novos) {
           try {
             await criarProdutoSugerido({
               nome: p.nome, tipo: "produto",
               valor_minimo: p.valor_unitario, tipo_calculo: "quantidade", unidade: "un",
             });
-          } catch { /* ignora duplicados */ }
+          } catch { /* duplicado */ }
         }
+
+        // Detecta duplicatas (um a um)
+        processarFila(novos, itens);
       }
 
       if (resp.finalizado) setFinalizado(true);
@@ -169,6 +224,14 @@ export default function PropostaConversacionalPage() {
     }
   }
 
+  function atualizarItem<K extends keyof ItemConv>(idx: number, campo: K, valor: ItemConv[K]) {
+    setItens(arr => arr.map((it, i) => i === idx ? { ...it, [campo]: valor } : it));
+  }
+
+  function adicionarLinhaManual() {
+    setItens(arr => [...arr, { nome: "Novo item", quantidade: 1, valor_unitario: 0, cobranca: "mensal" }]);
+  }
+
   async function gerarProposta() {
     if (!clienteSel || !templateId) { toast.error("Selecione cliente e template"); return; }
     setGerando(true);
@@ -176,19 +239,15 @@ export default function PropostaConversacionalPage() {
       const tpl = templates.find(t => t.id === templateId);
       if (!tpl) throw new Error("Template não encontrado");
 
-      // Agrupa por cobrança
-      const grupos: Record<PropostasCobranca, ItemConv[]> = { implantacao: [], mensal: [], informativo: [] };
-      itens.forEach(i => grupos[i.cobranca]?.push(i));
-
-      const total = itens.reduce((s, i) => s + i.quantidade * i.valor_unitario, 0);
-
       const dados: Record<string, unknown> = {
         ...respostas,
         cliente_nome: clienteSel.nome,
         cliente_cpf: clienteSel.cpf ?? "",
         cliente_cidade: clienteSel.cidade ?? "",
         data_emissao: new Date().toLocaleDateString("pt-BR"),
-        valor_total: total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+        valor_total: fmtBRL(totais.total),
+        valor_implantacao: fmtBRL(totais.implantacao),
+        valor_mensal: fmtBRL(totais.mensal),
       };
 
       const html = propostasRenderizarTemplate(tpl.conteudo_html, dados);
@@ -198,7 +257,7 @@ export default function PropostaConversacionalPage() {
         template_id: templateId,
         conteudo_original: html,
         conteudo_editado: html,
-        valor_total: total,
+        valor_total: totais.total,
         validade: null,
         itens: itens.map(i => ({
           descricao: i.nome,
@@ -223,6 +282,7 @@ export default function PropostaConversacionalPage() {
     }
   }
 
+  // Modal cliente
   if (modalCliente) {
     return (
       <Dialog open onOpenChange={(o) => { if (!o) navigate("/propostas/nova"); }}>
@@ -256,23 +316,34 @@ export default function PropostaConversacionalPage() {
   }
 
   return (
-    <div className="p-4 max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <div className="lg:col-span-2 flex flex-col h-[calc(100vh-8rem)]">
-        <div className="flex items-center justify-between mb-2">
-          <h1 className="text-xl font-bold flex items-center gap-2"><Sparkles className="w-5 h-5" /> Conversa Guiada</h1>
-          <div className="flex gap-2 items-center">
-            <Badge variant="outline">Cliente: {clienteSel?.nome}</Badge>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/propostas/nova")}>
-              <ArrowLeft className="w-4 h-4 mr-1" /> Sair
-            </Button>
-          </div>
+    <div className="p-4 mx-auto max-w-[1600px] h-[calc(100vh-6rem)] flex flex-col gap-3">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold flex items-center gap-2">
+          <Sparkles className="w-5 h-5" /> Proposta Conversacional
+        </h1>
+        <div className="flex gap-2 items-center">
+          <Badge variant="outline">Cliente: {clienteSel?.nome}</Badge>
+          <select className="border rounded-md p-1.5 text-sm bg-background"
+            value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
+            <option value="">Selecione template…</option>
+            {templates.filter(t => t.ativo).map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
+          </select>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/propostas/nova")}>
+            <ArrowLeft className="w-4 h-4 mr-1" /> Sair
+          </Button>
         </div>
+      </div>
 
-        <Card className="flex-1 flex flex-col">
-          <CardContent className="flex-1 overflow-auto p-4 space-y-3">
+      {/* Split 40/60 */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 flex-1 min-h-0">
+        {/* CHAT — 40% */}
+        <Card className="lg:col-span-2 flex flex-col min-h-0">
+          <CardHeader className="py-2 border-b"><CardTitle className="text-sm">Conversa</CardTitle></CardHeader>
+          <CardContent className="flex-1 overflow-auto p-3 space-y-3">
             {msgs.map((m, i) => (
               <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                <div className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
                   <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:my-1">
                     <ReactMarkdown>{m.content}</ReactMarkdown>
                   </div>
@@ -284,7 +355,7 @@ export default function PropostaConversacionalPage() {
           </CardContent>
           <div className="border-t p-2 flex gap-2">
             <Input
-              placeholder="Sua resposta..."
+              placeholder='Ex.: "switch 1300", "rack 800 implantação"…'
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviar(); } }}
@@ -295,58 +366,121 @@ export default function PropostaConversacionalPage() {
             </Button>
           </div>
         </Card>
+
+        {/* PLANILHA VIVA — 60% */}
+        <Card className="lg:col-span-3 flex flex-col min-h-0">
+          <CardHeader className="py-2 border-b flex flex-row items-center justify-between">
+            <CardTitle className="text-sm">Planilha viva ({itens.length} item{itens.length !== 1 ? "s" : ""})</CardTitle>
+            <Button size="sm" variant="outline" onClick={adicionarLinhaManual}>
+              <Plus className="w-3 h-3 mr-1" /> Linha
+            </Button>
+          </CardHeader>
+          <CardContent className="flex-1 overflow-auto p-0">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-muted/80 backdrop-blur">
+                <tr className="text-left">
+                  <th className="p-2 font-medium w-28">Categoria</th>
+                  <th className="p-2 font-medium">Item</th>
+                  <th className="p-2 font-medium w-16 text-right">Qtd</th>
+                  <th className="p-2 font-medium w-32">Cobrança</th>
+                  <th className="p-2 font-medium w-32 text-right">Valor unit.</th>
+                  <th className="p-2 font-medium w-32 text-right">Subtotal</th>
+                  <th className="p-2 w-10"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {itens.length === 0 && (
+                  <tr><td colSpan={7} className="p-6 text-center text-muted-foreground text-xs">
+                    Descreva produtos no chat (ex.: <i>"switch 1300"</i>) e eles aparecerão aqui.
+                  </td></tr>
+                )}
+                {itens.map((it, i) => {
+                  const subtotal = it.quantidade * it.valor_unitario;
+                  return (
+                    <tr key={i} className="border-t hover:bg-muted/30">
+                      <td className="p-1">
+                        <input className="w-full bg-transparent px-1 py-1 text-xs rounded focus:bg-background focus:outline-ring focus:ring-1"
+                          value={it.categoria ?? ""} placeholder="—"
+                          onChange={(e) => atualizarItem(i, "categoria", e.target.value)} />
+                      </td>
+                      <td className="p-1">
+                        <input className="w-full bg-transparent px-1 py-1 rounded focus:bg-background focus:outline-ring focus:ring-1"
+                          value={it.nome}
+                          onChange={(e) => atualizarItem(i, "nome", e.target.value)} />
+                      </td>
+                      <td className="p-1">
+                        <input type="number" min={1} className="w-full bg-transparent px-1 py-1 text-right rounded focus:bg-background focus:outline-ring focus:ring-1"
+                          value={it.quantidade}
+                          onChange={(e) => atualizarItem(i, "quantidade", Math.max(1, Number(e.target.value) || 1))} />
+                      </td>
+                      <td className="p-1">
+                        <select className="w-full bg-transparent px-1 py-1 rounded text-xs focus:bg-background focus:outline-ring focus:ring-1"
+                          value={it.cobranca}
+                          onChange={(e) => atualizarItem(i, "cobranca", e.target.value as PropostasCobranca)}>
+                          {COBRANCAS.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </td>
+                      <td className="p-1">
+                        <input type="number" min={0} step="0.01" className="w-full bg-transparent px-1 py-1 text-right rounded focus:bg-background focus:outline-ring focus:ring-1"
+                          value={it.valor_unitario}
+                          onChange={(e) => atualizarItem(i, "valor_unitario", Math.max(0, Number(e.target.value) || 0))} />
+                      </td>
+                      <td className="p-2 text-right tabular-nums font-medium">{fmtBRL(subtotal)}</td>
+                      <td className="p-1 text-center">
+                        <Button size="icon" variant="ghost" className="h-7 w-7"
+                          onClick={() => setItens(arr => arr.filter((_, k) => k !== i))}>
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </CardContent>
+
+          {/* Rodapé com totais */}
+          <div className="border-t p-3 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm bg-muted/20">
+            <div>
+              <div className="text-xs text-muted-foreground">Investimento (implantação)</div>
+              <div className="font-bold tabular-nums">{fmtBRL(totais.implantacao)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Mensal</div>
+              <div className="font-bold tabular-nums">{fmtBRL(totais.mensal)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Informativo</div>
+              <div className="font-bold tabular-nums">{fmtBRL(totais.informativo)}</div>
+            </div>
+            <div className="flex items-end justify-end">
+              <Button onClick={gerarProposta} disabled={!templateId || itens.length === 0 || gerando}>
+                <Save className="w-4 h-4 mr-2" />{gerando ? "Gerando…" : `Gerar proposta${finalizado ? " ✓" : ""}`}
+              </Button>
+            </div>
+          </div>
+        </Card>
       </div>
 
-      {/* Painel lateral */}
-      <div className="space-y-3">
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Template</CardTitle></CardHeader>
-          <CardContent>
-            <select className="w-full border rounded-md p-2 text-sm bg-background"
-              value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
-              <option value="">Selecione…</option>
-              {templates.filter(t => t.ativo).map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
-            </select>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Itens detectados ({itens.length})</CardTitle></CardHeader>
-          <CardContent className="space-y-1 max-h-64 overflow-auto">
-            {itens.length === 0 && <p className="text-xs text-muted-foreground">Nada ainda. Descreva produtos no chat.</p>}
-            {itens.map((it, i) => (
-              <div key={i} className="flex items-center justify-between text-xs border rounded p-2">
-                <div className="min-w-0">
-                  <div className="font-medium truncate">{it.nome}</div>
-                  <div className="text-muted-foreground">{it.quantidade}× R$ {it.valor_unitario.toFixed(2)} <Badge variant="outline" className="ml-1">{it.cobranca}</Badge></div>
-                </div>
-                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setItens(arr => arr.filter((_, k) => k !== i))}>
-                  <Trash2 className="w-3 h-3" />
-                </Button>
-              </div>
-            ))}
-            {itens.length > 0 && (
-              <div className="text-sm font-medium pt-2 border-t">
-                Total: R$ {itens.reduce((s, i) => s + i.quantidade * i.valor_unitario, 0).toFixed(2)}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Respostas coletadas</CardTitle></CardHeader>
-          <CardContent className="text-xs space-y-1 max-h-48 overflow-auto">
-            {Object.entries(respostas).length === 0 && <p className="text-muted-foreground">Nada ainda.</p>}
-            {Object.entries(respostas).map(([k, v]) => (
-              <div key={k}><b>{k}:</b> {String(v)}</div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Button className="w-full" onClick={gerarProposta} disabled={!templateId || itens.length === 0 || gerando}>
-          {gerando ? "Gerando…" : <><Save className="w-4 h-4 mr-2" />Gerar proposta {finalizado ? "✓" : ""}</>}
-        </Button>
-      </div>
+      {/* Modal duplicata */}
+      <Dialog open={!!duplicata} onOpenChange={(o) => { if (!o) resolverDuplicata("ignorar"); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Item já existe</DialogTitle>
+            <DialogDescription>
+              Já existe <b>{duplicata && itens[duplicata.existenteIdx]?.nome}</b> na planilha
+              ({duplicata && itens[duplicata.existenteIdx]?.quantidade}× {duplicata && fmtBRL(itens[duplicata.existenteIdx]?.valor_unitario ?? 0)}).
+              <br />Novo: <b>{duplicata?.novo.nome}</b> ({duplicata?.novo.quantidade}× {duplicata && fmtBRL(duplicata.novo.valor_unitario)}).
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-wrap gap-2">
+            <Button variant="ghost" onClick={() => resolverDuplicata("ignorar")}>Ignorar</Button>
+            <Button variant="outline" onClick={() => resolverDuplicata("nova")}>Adicionar como novo</Button>
+            <Button variant="outline" onClick={() => resolverDuplicata("atualizar")}>Atualizar valor/qtd</Button>
+            <Button onClick={() => resolverDuplicata("incrementar")}>Somar quantidade</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
