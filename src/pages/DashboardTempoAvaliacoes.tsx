@@ -314,7 +314,7 @@ export default function DashboardTempoAvaliacoes() {
       const inicioIso = inicioDiaSaoPauloIso(dataInicio);
       const fimIso = fimDiaSaoPauloIso(dataFim);
 
-      // Base única do dashboard: somente primeiras respostas dentro do período selecionado.
+      // Base inicial: primeiras respostas que caíram no período selecionado.
       const ev = await supabase.from("respostas_eventos")
         .select("ordem_servico_id, usuario_id, setor_id, pergunta_id, respondido_em")
         .eq("is_primeira_resposta", true)
@@ -428,7 +428,7 @@ export default function DashboardTempoAvaliacoes() {
       const perguntaMap = Object.fromEntries(((perguntasRes as { data: { id: string; pergunta: string }[] | null }).data || []).map(x => [x.id, x.pergunta]));
       const osMap = Object.fromEntries(((osRes as { data: { id: string; numero_os: string | number | null }[] | null }).data || []).map(x => [x.id, x.numero_os]));
 
-      // === Derivar GARGALOS no período (a partir de vw_eventos_tempo_sequencia) ===
+      // === Derivar GARGALOS somente a partir das OS válidas no período ===
       const aggMap = new Map<string, { soma: number; n: number; max: number; ocorrencias: number }>();
       for (const e of seqData) {
         if (!e.pergunta_id) continue;
