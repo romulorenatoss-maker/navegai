@@ -46,8 +46,8 @@ serve(async (req) => {
           tipo_ambiente?: string[];
           regras_tecnicas?: string[];
         } | null;
-        catalogo: Array<{ nome: string; categoria?: string; valor_minimo: number; valor_medio?: number; unidade: string; cobranca_padrao?: string }>;
-        perguntas_padrao: Array<{ categoria: string; pergunta: string }>;
+        catalogo: Array<{ id?: string; nome: string; categoria?: string; valor_minimo: number; valor_medio?: number; unidade: string; cobranca_padrao?: string }>;
+        perguntas_padrao: Array<{ id?: string; categoria: string; pergunta: string }>;
       };
     };
 
@@ -65,32 +65,45 @@ NÃO VENDEMOS: ${(emp.o_que_nao_vendemos ?? []).join(", ") || "(não definido)"}
 AMBIENTE: ${(emp.tipo_ambiente ?? []).join(", ") || "(não definido)"}
 REGRAS: ${(emp.regras_tecnicas ?? []).join(", ") || "(não definido)"}
 
-═══ CATÁLOGO ATUAL ═══
-${contexto.catalogo.length === 0 ? "(catálogo vazio)" : contexto.catalogo.map(p => `- ${p.nome} [${p.categoria ?? "?"}] ${p.unidade} mín=R$${p.valor_minimo} méd=R$${p.valor_medio ?? p.valor_minimo} (${p.cobranca_padrao ?? "?"})`).join("\n")}
+═══ CATÁLOGO ATUAL (use o id para remover) ═══
+${contexto.catalogo.length === 0 ? "(catálogo vazio)" : contexto.catalogo.map(p => `- id=${p.id ?? "?"} | ${p.nome} [${p.categoria ?? "?"}] ${p.unidade} mín=R$${p.valor_minimo} méd=R$${p.valor_medio ?? p.valor_minimo} (${p.cobranca_padrao ?? "?"})`).join("\n")}
 
-═══ PERGUNTAS PADRÃO POR CATEGORIA ═══
-${contexto.perguntas_padrao.map(q => `[${q.categoria}] ${q.pergunta}`).join("\n") || "(nenhuma)"}
+═══ PERGUNTAS PADRÃO POR CATEGORIA (use o id para remover) ═══
+${contexto.perguntas_padrao.map(q => `- id=${q.id ?? "?"} [${q.categoria}] ${q.pergunta}`).join("\n") || "(nenhuma)"}
 
 ═══ SUA TAREFA ═══
-Conduza uma conversa para AJUDAR O ADMIN A CADASTRAR/AJUSTAR PRODUTOS do catálogo.
-Para cada item identificado, colete: nome, categoria, tipo (produto|servico), cobrança (implantacao|mensal|informativo), unidade, valor mínimo, valor médio.
+Conduza uma conversa para AJUDAR O ADMIN A GERENCIAR o catálogo: cadastrar, ajustar e REMOVER produtos/perguntas/categorias.
+Para cada item NOVO, colete: nome, categoria, tipo (produto|servico), cobrança (implantacao|mensal|informativo), unidade, valor mínimo, valor médio.
 
 ═══ REGRAS CRÍTICAS ═══
 - NUNCA invente valores. Se faltar valor, PERGUNTE.
+- NUNCA afirme que removeu algo SEM emitir o bloco de remoção correspondente. O frontend só executa via blocos.
 - Faça UMA pergunta por vez. Markdown leve, no máx 3 linhas.
 - Se o item já existe no catálogo, AVISE e pergunte se quer atualizar.
 - CONTROLE DE ESCOPO: se o item NÃO se encaixa em "${(emp.o_que_vendemos ?? []).join(", ") || "escopo da empresa"}", responda:
-  "Esse item parece estar fora do escopo da empresa. Deseja cadastrar mesmo assim como categoria 'outros' (adendo)?"
-  E emita um bloco \`\`\`fora_escopo {"nome":"..."}\`\`\`
+  "Esse item parece estar fora do escopo. Cadastrar como 'outros'?" e emita \`\`\`fora_escopo {"nome":"..."}\`\`\`
 - Categorias válidas: infraestrutura, dados, seguranca, telefonia, outros.
 - Cobrança: infraestrutura→implantacao; dados/seguranca/telefonia→mensal; brindes→informativo.
 
-═══ EMISSÃO DE PRODUTO (formato exato) ═══
-Sempre que tiver TODOS os dados confirmados (incluindo valor):
+═══ EMISSÃO DE PRODUTO NOVO ═══
 \`\`\`produto
 {"nome":"...","categoria":"infraestrutura","tipo":"produto","cobranca_padrao":"implantacao","unidade":"un","valor_minimo":0,"valor_medio":0,"descricao_padrao":"..."}
 \`\`\`
-Múltiplos itens = múltiplos blocos.`;
+
+═══ EMISSÃO DE REMOÇÃO ═══
+Para remover UM produto (use o id do catálogo acima):
+\`\`\`remover_produto
+{"id":"uuid-aqui","nome":"nome para confirmar"}
+\`\`\`
+Para remover UMA pergunta padrão (use o id):
+\`\`\`remover_pergunta
+{"id":"uuid-aqui"}
+\`\`\`
+Para remover/desativar TODA UMA CATEGORIA (remove todos os produtos e perguntas daquela categoria):
+\`\`\`remover_categoria
+{"categoria":"telefonia"}
+\`\`\`
+Múltiplos itens = múltiplos blocos. SEMPRE confirme com o usuário ANTES de emitir blocos de remoção em massa (categoria inteira).`;
 
     const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -124,17 +137,35 @@ Múltiplos itens = múltiplos blocos.`;
 
     const produtos: ProdutoSugerido[] = [];
     const fora_escopo: Array<{ nome: string }> = [];
+    const remover_produtos: Array<{ id: string; nome?: string }> = [];
+    const remover_perguntas: Array<{ id: string }> = [];
+    const remover_categorias: Array<{ categoria: string }> = [];
     let mensagem = raw;
 
-    mensagem = mensagem.replace(/```produto\s*([\s\S]*?)```/g, (_f, json) => {
-      try { produtos.push(JSON.parse(json.trim())); } catch (e) { console.error("parse produto:", e); }
-      return "";
-    }).replace(/```fora_escopo\s*([\s\S]*?)```/g, (_f, json) => {
-      try { fora_escopo.push(JSON.parse(json.trim())); } catch (e) { console.error("parse fora_escopo:", e); }
-      return "";
-    }).trim();
+    mensagem = mensagem
+      .replace(/```produto\s*([\s\S]*?)```/g, (_f, json) => {
+        try { produtos.push(JSON.parse(json.trim())); } catch (e) { console.error("parse produto:", e); }
+        return "";
+      })
+      .replace(/```fora_escopo\s*([\s\S]*?)```/g, (_f, json) => {
+        try { fora_escopo.push(JSON.parse(json.trim())); } catch (e) { console.error("parse fora_escopo:", e); }
+        return "";
+      })
+      .replace(/```remover_produto\s*([\s\S]*?)```/g, (_f, json) => {
+        try { remover_produtos.push(JSON.parse(json.trim())); } catch (e) { console.error("parse remover_produto:", e); }
+        return "";
+      })
+      .replace(/```remover_pergunta\s*([\s\S]*?)```/g, (_f, json) => {
+        try { remover_perguntas.push(JSON.parse(json.trim())); } catch (e) { console.error("parse remover_pergunta:", e); }
+        return "";
+      })
+      .replace(/```remover_categoria\s*([\s\S]*?)```/g, (_f, json) => {
+        try { remover_categorias.push(JSON.parse(json.trim())); } catch (e) { console.error("parse remover_categoria:", e); }
+        return "";
+      })
+      .trim();
 
-    return new Response(JSON.stringify({ mensagem, produtos, fora_escopo }), {
+    return new Response(JSON.stringify({ mensagem, produtos, fora_escopo, remover_produtos, remover_perguntas, remover_categorias }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
