@@ -525,8 +525,8 @@ export default function DashboardTempoAvaliacoes() {
   );
 
   const avaliadores = useMemo(
-    () => calcularMetricasPorAvaliador(eventos, profMap, osNumeroMap, periodoInicioMs, periodoFimMs),
-    [eventos, profMap, osNumeroMap, periodoInicioMs, periodoFimMs]
+    () => calcularMetricasPorAvaliador(eventos, profMap, osNumeroMap, periodoInicioMs, periodoFimMs, aberturaPorSetorOs, new Date(agoraTick).toISOString()),
+    [eventos, profMap, osNumeroMap, periodoInicioMs, periodoFimMs, aberturaPorSetorOs, agoraTick]
   );
 
   // OS avaliadas: aplicar a MESMA regra D — primeira E última resposta dentro do período
