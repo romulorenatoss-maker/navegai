@@ -155,7 +155,7 @@ export default function ProdutosConversacionalPage() {
 
   async function inserirSugerido(s: ProdutoSugerido) {
     try {
-      const novo = await criarProduto({
+      const payload: Record<string, unknown> = {
         nome: s.nome,
         tipo: s.tipo,
         unidade: s.unidade || "un",
@@ -163,13 +163,12 @@ export default function ProdutosConversacionalPage() {
         ativo: true,
         tipo_calculo: "quantidade",
         descricao_padrao: s.descricao_padrao ?? null,
-        ...({
-          categoria: s.categoria,
-          valor_medio: Number(s.valor_medio) || Number(s.valor_minimo) || 0,
-          cobranca_padrao: s.cobranca_padrao,
-          origem: "ia_sugerido",
-        } as never),
-      });
+        categoria: s.categoria,
+        valor_medio: Number(s.valor_medio) || Number(s.valor_minimo) || 0,
+        cobranca_padrao: s.cobranca_padrao,
+        origem: "ia_sugerido",
+      };
+      const novo = await criarProduto(payload as Partial<PropostasProduto>);
       setProdutos(ps => [novo, ...ps]);
       toast.success(`"${novo.nome}" cadastrado`);
     } catch (e) {
