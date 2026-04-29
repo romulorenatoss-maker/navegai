@@ -47,6 +47,7 @@ import CampanhasPage from "./pages/CampanhasPage";
 import PermissoesPage from "./pages/PermissoesPage";
 import AssistentePage from "./pages/AssistentePage";
 import PropostaCreatePage from "./modules/propostas/pages/PropostaCreatePage";
+import PropostaPreviewPage from "./modules/propostas/pages/PropostaPreviewPage";
 import PropostaHistoricoPage from "./modules/propostas/pages/PropostaHistoricoPage";
 import PropostaProdutosPage from "./modules/propostas/pages/PropostaProdutosPage";
 import TemplateImportPage from "./modules/propostas/pages/TemplateImportPage";
@@ -120,6 +121,7 @@ const App = () => (
               {/* MÓDULO PROPOSTAS — isolado */}
               <Route path="/propostas" element={<PropostaHistoricoPage />} />
               <Route path="/propostas/nova" element={<PropostaCreatePage />} />
+              <Route path="/propostas/:id/preview" element={<PropostaPreviewPage />} />
               <Route path="/propostas/templates" element={<TemplateImportPage />} />
               <Route path="/propostas/produtos" element={<PropostaProdutosPage />} />
               <Route path="/auditoria" element={<PlaceholderPage title="Auditoria" description="Registro completo de todas as ações do sistema." />} />
