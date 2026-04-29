@@ -23,6 +23,7 @@ import {
   listarPerguntasProduto, criarPerguntaProduto, atualizarPerguntaProduto, excluirPerguntaProduto,
   type PropostasEmpresaContexto, type PropostasPerguntaProduto, type PropostasCategoria,
 } from "../services/propostasContextoService";
+import { listarCategorias, atualizarCategoria, type PropostasCategoriaSetup } from "../services/propostasPerguntasService";
 
 interface Msg { role: "user" | "assistant"; content: string }
 interface ProdutoSugerido {
@@ -125,6 +126,7 @@ export default function ProdutosConversacionalPage() {
 
   const [produtos, setProdutos] = useState<PropostasProduto[]>([]);
   const [perguntas, setPerguntas] = useState<PropostasPerguntaProduto[]>([]);
+  const [categoriasSetup, setCategoriasSetup] = useState<PropostasCategoriaSetup[]>([]);
 
   // Linhas em rascunho (ainda não salvas)
   type ProdutoDraft = {
@@ -203,19 +205,28 @@ export default function ProdutosConversacionalPage() {
 
   // ============ LOADERS ============
   async function recarregar() {
-    const [emp, prods, perg] = await Promise.all([
+    const [emp, prods, perg, cats] = await Promise.all([
       obterContextoEmpresa(),
       listarProdutos(),
       listarPerguntasProduto(),
+      listarCategorias(),
     ]);
     setEmpresa(emp);
     setEmpresaDraft(emp ?? {});
     setProdutos(prods);
     setPerguntas(perg);
+    setCategoriasSetup(cats);
   }
 
   useEffect(() => { recarregar().catch(e => toast.error(String(e))); }, []);
   useEffect(() => { fim.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
+
+  const categoriasCatalogo = useMemo<Array<{ value: CategoriaCatalogo; label: string }>>(() => {
+    const ativas = categoriasSetup
+      .filter(c => c.ativo && isCategoriaCatalogo(c.codigo) && c.codigo !== "outros")
+      .map(c => ({ value: c.codigo as CategoriaCatalogo, label: c.nome }));
+    return ativas.length ? ativas : CATEGORIAS;
+  }, [categoriasSetup]);
 
   const perguntasPorCategoria = useMemo(() => {
     const map: Record<string, PropostasPerguntaProduto[]> = {};
@@ -243,6 +254,13 @@ export default function ProdutosConversacionalPage() {
       await atualizarProduto(id, patch);
       setProdutos(ps => ps.map(p => p.id === id ? { ...p, ...patch } as PropostasProduto : p));
     } catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
+  }
+
+  async function definirCategoriaSetupAtiva(categoria: string, ativo: boolean) {
+    const cat = categoriasSetup.find(c => normalizarCategoria(c.codigo) === normalizarCategoria(categoria));
+    if (!cat || cat.ativo === ativo) return;
+    setCategoriasSetup(cs => cs.map(c => c.id === cat.id ? { ...c, ativo } : c));
+    await atualizarCategoria(cat.id, { ativo });
   }
   async function deletarProduto(id: string) {
     if (!confirm("Excluir este produto?")) return;
@@ -315,7 +333,7 @@ export default function ProdutosConversacionalPage() {
               tipo_ambiente: empresa.tipo_ambiente,
               regras_tecnicas: empresa.regras_tecnicas,
             } : null,
-            categorias_disponiveis: CATEGORIAS.map(c => ({ codigo: c.value, nome: c.label })),
+            categorias_disponiveis: categoriasCatalogo.map(c => ({ codigo: c.value, nome: c.label })),
             tipos_disponiveis: TIPOS,
             cobrancas_disponiveis: COBRANCAS,
             catalogo: catalogoAtual.filter(p => p.ativo).map(p => ({
@@ -399,6 +417,8 @@ export default function ProdutosConversacionalPage() {
               ...prodsDaCat.map(p => atualizarProduto(p.id, patch)),
               ...(origem !== "outros" ? pergsDaCat.map(q => excluirPerguntaProduto(q.id)) : []),
             ]);
+            await definirCategoriaSetupAtiva(destino, true);
+            if (origem !== "outros") await definirCategoriaSetupAtiva(origem, false);
             toast.success(`Categoria "${r.categoria_origem}" migrada para "${destino}" (${prodsDaCat.length} produto(s))`);
           } catch (e) {
             setProdutos(catalogoAtual);
@@ -436,6 +456,7 @@ export default function ProdutosConversacionalPage() {
           try {
             if (cat !== "outros") setPerguntas(qs => qs.filter(q => normalizarCategoria(q.categoria) !== cat));
             await Promise.all(cat !== "outros" ? pergsDaCat.map(q => excluirPerguntaProduto(q.id)) : []);
+            if (cat !== "outros") await definirCategoriaSetupAtiva(cat, false);
             toast.success(`Categoria "${r.categoria}" removida (${pergsDaCat.length} pergunta(s))`);
           } catch (e) {
             setPerguntas(perguntasAtuais);
@@ -581,7 +602,7 @@ export default function ProdutosConversacionalPage() {
                                 <Select value={d.categoria || undefined} onValueChange={(v) => patchDraft(d._key, { categoria: v as ProdutoDraft["categoria"] })}>
                                   <SelectTrigger className="h-8 w-36"><SelectValue placeholder="—" /></SelectTrigger>
                                   <SelectContent>
-                                    {CATEGORIAS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                                    {categoriasCatalogo.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
                                     <SelectItem value="outros">Outros</SelectItem>
                                   </SelectContent>
                                 </Select>
@@ -640,7 +661,7 @@ export default function ProdutosConversacionalPage() {
                                   <Select defaultValue={ext.categoria ?? ""} onValueChange={(v) => patchProduto(p.id, { categoria: v } as never)}>
                                     <SelectTrigger className="h-8 w-36"><SelectValue placeholder="—" /></SelectTrigger>
                                     <SelectContent>
-                                      {CATEGORIAS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                                      {categoriasCatalogo.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
                                       <SelectItem value="outros">Outros</SelectItem>
                                     </SelectContent>
                                   </Select>
@@ -707,7 +728,7 @@ export default function ProdutosConversacionalPage() {
                         <Label className="text-xs">Categoria</Label>
                         <Select value={novaPergunta.categoria} onValueChange={(v) => setNovaPergunta({ ...novaPergunta, categoria: v as PropostasCategoria })}>
                           <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                          <SelectContent>{CATEGORIAS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
+                          <SelectContent>{categoriasCatalogo.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
                         </Select>
                       </div>
                       <div className="flex-1">
