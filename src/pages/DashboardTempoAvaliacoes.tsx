@@ -278,7 +278,6 @@ export default function DashboardTempoAvaliacoes() {
   const [gargalos, setGargalos] = useState<GargaloAgg[]>([]);
   const [pausas, setPausas] = useState<PausaItem[]>([]);
   const [eventos, setEventos] = useState<EventoResposta[]>([]);
-  const [eventosExt, setEventosExt] = useState<EventoResposta[]>([]);
   const [profMap, setProfMap] = useState<Record<string, string>>({});
   const [osNumeroMap, setOsNumeroMap] = useState<Record<string, string | number | null>>({});
   const [expandido, setExpandido] = useState<Set<string>>(new Set());
@@ -326,7 +325,6 @@ export default function DashboardTempoAvaliacoes() {
 
       const evData: EventoResposta[] = ((ev.data || []) as EventoResposta[])
         .filter(e => Boolean(e.ordem_servico_id && e.respondido_em));
-      let evDataExt: EventoResposta[] = evData.slice();
 
       const seqData: EventoSequenciaPeriodo[] = [];
       const ultimoPorOsSetor = new Map<string, EventoResposta>();
@@ -371,33 +369,6 @@ export default function DashboardTempoAvaliacoes() {
           tempo_entre_respostas: e.tempo_entre_respostas,
         }));
 
-      // === Estender eventos: para cada (OS, usuário) que aparece no período,
-      // buscar TODOS os eventos daquela OS/usuário (mesmo fora do período).
-      // Usado APENAS para corrigir início/fim/duração na tabela detalhada de OSs. ===
-      const paresOSUser = Array.from(new Set(
-        evData.filter(e => e.ordem_servico_id && e.usuario_id).map(e => `${e.ordem_servico_id}::${e.usuario_id}`)
-      ));
-      if (paresOSUser.length > 0) {
-        const osIdsParaExpandir = Array.from(new Set(paresOSUser.map(k => k.split("::")[0])));
-        const userIdsParaExpandir = Array.from(new Set(paresOSUser.map(k => k.split("::")[1])));
-        const { data: evExpand } = await supabase.from("respostas_eventos")
-          .select("ordem_servico_id, usuario_id, respondido_em")
-          .in("ordem_servico_id", osIdsParaExpandir)
-          .in("usuario_id", userIdsParaExpandir)
-          .limit(100000);
-        if (evExpand && evExpand.length) {
-          const valid = new Set(paresOSUser);
-          const merged = new Map<string, EventoResposta>();
-          for (const e of [...evData, ...(evExpand as EventoResposta[])]) {
-            if (!e.ordem_servico_id || !e.usuario_id) continue;
-            const k = `${e.ordem_servico_id}::${e.usuario_id}`;
-            if (!valid.has(k)) continue;
-            merged.set(`${k}::${e.respondido_em}`, e);
-          }
-          evDataExt = Array.from(merged.values());
-        }
-      }
-
       // === Hidratar nomes (profiles, setores, perguntas, OS) ===
       const userIds = Array.from(new Set([
         ...evData.map(x => x.usuario_id),
@@ -430,7 +401,8 @@ export default function DashboardTempoAvaliacoes() {
       // === Derivar GARGALOS no período (a partir de vw_eventos_tempo_sequencia) ===
       const aggMap = new Map<string, { soma: number; n: number; max: number; ocorrencias: number }>();
       for (const e of seqData) {
-        const seg = intervalToSeconds(e.tempo_entre_respostas);
+        if (!e.pergunta_id) continue;
+        const seg = e.tempo_entre_respostas_seg ?? 0;
         if (!aggMap.has(e.pergunta_id)) aggMap.set(e.pergunta_id, { soma: 0, n: 0, max: 0, ocorrencias: 0 });
         const cur = aggMap.get(e.pergunta_id)!;
         cur.ocorrencias += 1;
@@ -461,24 +433,23 @@ export default function DashboardTempoAvaliacoes() {
       setGargalos(gargalosCalc);
       setPausas(pausasEnriquecidas);
       setEventos(evData);
-      setEventosExt(evDataExt);
 
       setLoading(false);
     })();
   }, [dataInicio, dataFim]);
 
   const periodoInicioMs = useMemo(
-    () => new Date(dataInicio.getFullYear(), dataInicio.getMonth(), dataInicio.getDate(), 0, 0, 0, 0).getTime(),
+    () => new Date(inicioDiaSaoPauloIso(dataInicio)).getTime(),
     [dataInicio]
   );
   const periodoFimMs = useMemo(
-    () => new Date(dataFim.getFullYear(), dataFim.getMonth(), dataFim.getDate(), 23, 59, 59, 999).getTime(),
+    () => new Date(fimDiaSaoPauloIso(dataFim)).getTime(),
     [dataFim]
   );
 
   const avaliadores = useMemo(
-    () => calcularMetricasPorAvaliador(eventos, eventosExt, profMap, osNumeroMap, periodoInicioMs, periodoFimMs),
-    [eventos, eventosExt, profMap, osNumeroMap, periodoInicioMs, periodoFimMs]
+    () => calcularMetricasPorAvaliador(eventos, profMap, osNumeroMap, periodoInicioMs, periodoFimMs),
+    [eventos, profMap, osNumeroMap, periodoInicioMs, periodoFimMs]
   );
 
   // OS avaliadas: aplicar a MESMA regra D — primeira E última resposta dentro do período
