@@ -79,9 +79,9 @@ export async function salvarRascunho(input: {
     cliente_id: input.cliente_id,
     cliente_nome: input.cliente_nome,
     template_id: input.template_id,
-    mensagens: input.mensagens as unknown as object,
-    itens: input.itens as unknown as object,
-    respostas: input.respostas as unknown as object,
+    mensagens: input.mensagens as unknown as never,
+    itens: input.itens as unknown as never,
+    respostas: input.respostas as unknown as never,
     finalizado: input.finalizado ?? false,
   };
 
