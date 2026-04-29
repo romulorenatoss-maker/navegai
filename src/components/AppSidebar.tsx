@@ -5,7 +5,7 @@ import {
   BarChart3, Building2, Users, HelpCircle, Wrench, LogOut, Star,
   PanelLeftClose, PanelLeft, UserPlus, ListOrdered, LayoutGrid, Settings, UserCheck, ClipboardList,
   FileUp, MessageSquare, FileBarChart, Archive, MapPin, Megaphone, Bot, Trophy, CheckSquare,
-  AlertTriangle, PieChart, ChevronDown, Clock,
+  AlertTriangle, PieChart, ChevronDown, Clock, FileSignature, Package, FilePlus2, History,
 } from "lucide-react";
 import { Shield } from "lucide-react";
 import { cn } from "@/lib/utils";

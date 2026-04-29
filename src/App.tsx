@@ -46,6 +46,10 @@ import RelatoriosLeadsPage from "./pages/RelatoriosLeadsPage";
 import CampanhasPage from "./pages/CampanhasPage";
 import PermissoesPage from "./pages/PermissoesPage";
 import AssistentePage from "./pages/AssistentePage";
+import PropostaCreatePage from "./modules/propostas/pages/PropostaCreatePage";
+import PropostaHistoricoPage from "./modules/propostas/pages/PropostaHistoricoPage";
+import PropostaProdutosPage from "./modules/propostas/pages/PropostaProdutosPage";
+import TemplateImportPage from "./modules/propostas/pages/TemplateImportPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -113,6 +117,11 @@ const App = () => (
               <Route path="/desempenho/operacional" element={<DesempenhoOperacionalPage />} />
               <Route path="/desempenho/tempo-avaliacoes" element={<DashboardTempoAvaliacoes />} />
               <Route path="/assistente" element={<AssistentePage />} />
+              {/* MÓDULO PROPOSTAS — isolado */}
+              <Route path="/propostas" element={<PropostaHistoricoPage />} />
+              <Route path="/propostas/nova" element={<PropostaCreatePage />} />
+              <Route path="/propostas/templates" element={<TemplateImportPage />} />
+              <Route path="/propostas/produtos" element={<PropostaProdutosPage />} />
               <Route path="/auditoria" element={<PlaceholderPage title="Auditoria" description="Registro completo de todas as ações do sistema." />} />
               <Route path="/configuracoes" element={<PermissoesPage />} />
             </Route>
