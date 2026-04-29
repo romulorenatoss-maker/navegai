@@ -3119,6 +3119,254 @@ export type Database = {
           },
         ]
       }
+      propostas_ajustes_ia: {
+        Row: {
+          contexto: string | null
+          created_at: string
+          frequencia: number
+          id: string
+          trecho_editado: string
+          trecho_original: string
+          updated_at: string
+        }
+        Insert: {
+          contexto?: string | null
+          created_at?: string
+          frequencia?: number
+          id?: string
+          trecho_editado: string
+          trecho_original: string
+          updated_at?: string
+        }
+        Update: {
+          contexto?: string | null
+          created_at?: string
+          frequencia?: number
+          id?: string
+          trecho_editado?: string
+          trecho_original?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      propostas_historico: {
+        Row: {
+          conteudo: string | null
+          created_at: string
+          id: string
+          proposta_id: string
+          tipo: Database["public"]["Enums"]["propostas_tipo_historico"]
+          usuario_id: string | null
+        }
+        Insert: {
+          conteudo?: string | null
+          created_at?: string
+          id?: string
+          proposta_id: string
+          tipo: Database["public"]["Enums"]["propostas_tipo_historico"]
+          usuario_id?: string | null
+        }
+        Update: {
+          conteudo?: string | null
+          created_at?: string
+          id?: string
+          proposta_id?: string
+          tipo?: Database["public"]["Enums"]["propostas_tipo_historico"]
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "propostas_historico_proposta_id_fkey"
+            columns: ["proposta_id"]
+            isOneToOne: false
+            referencedRelation: "propostas_propostas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      propostas_itens: {
+        Row: {
+          created_at: string
+          descricao: string
+          id: string
+          ordem: number
+          produto_id: string | null
+          proposta_id: string
+          quantidade: number
+          unidade: string
+          valor_total: number
+          valor_unitario: number
+        }
+        Insert: {
+          created_at?: string
+          descricao: string
+          id?: string
+          ordem?: number
+          produto_id?: string | null
+          proposta_id: string
+          quantidade?: number
+          unidade?: string
+          valor_total?: number
+          valor_unitario?: number
+        }
+        Update: {
+          created_at?: string
+          descricao?: string
+          id?: string
+          ordem?: number
+          produto_id?: string | null
+          proposta_id?: string
+          quantidade?: number
+          unidade?: string
+          valor_total?: number
+          valor_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "propostas_itens_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "propostas_produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "propostas_itens_proposta_id_fkey"
+            columns: ["proposta_id"]
+            isOneToOne: false
+            referencedRelation: "propostas_propostas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      propostas_produtos: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          descricao_padrao: string | null
+          id: string
+          nome: string
+          regra_json: Json
+          tipo_calculo: Database["public"]["Enums"]["propostas_tipo_calculo"]
+          unidade: string
+          updated_at: string
+          valor_minimo: number
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          descricao_padrao?: string | null
+          id?: string
+          nome: string
+          regra_json?: Json
+          tipo_calculo?: Database["public"]["Enums"]["propostas_tipo_calculo"]
+          unidade?: string
+          updated_at?: string
+          valor_minimo?: number
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          descricao_padrao?: string | null
+          id?: string
+          nome?: string
+          regra_json?: Json
+          tipo_calculo?: Database["public"]["Enums"]["propostas_tipo_calculo"]
+          unidade?: string
+          updated_at?: string
+          valor_minimo?: number
+        }
+        Relationships: []
+      }
+      propostas_propostas: {
+        Row: {
+          cliente_id: string
+          conteudo_editado: string | null
+          conteudo_original: string | null
+          created_at: string
+          id: string
+          status: Database["public"]["Enums"]["propostas_status"]
+          template_id: string | null
+          updated_at: string
+          usuario_id: string
+          validade: string | null
+          valor_total: number
+        }
+        Insert: {
+          cliente_id: string
+          conteudo_editado?: string | null
+          conteudo_original?: string | null
+          created_at?: string
+          id?: string
+          status?: Database["public"]["Enums"]["propostas_status"]
+          template_id?: string | null
+          updated_at?: string
+          usuario_id: string
+          validade?: string | null
+          valor_total?: number
+        }
+        Update: {
+          cliente_id?: string
+          conteudo_editado?: string | null
+          conteudo_original?: string | null
+          created_at?: string
+          id?: string
+          status?: Database["public"]["Enums"]["propostas_status"]
+          template_id?: string | null
+          updated_at?: string
+          usuario_id?: string
+          validade?: string | null
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "propostas_propostas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "propostas_propostas_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "propostas_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      propostas_templates: {
+        Row: {
+          ativo: boolean
+          campos_detectados: Json
+          conteudo_html: string
+          created_at: string
+          id: string
+          nome: string
+          tipo: Database["public"]["Enums"]["propostas_tipo_template"]
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          campos_detectados?: Json
+          conteudo_html?: string
+          created_at?: string
+          id?: string
+          nome: string
+          tipo?: Database["public"]["Enums"]["propostas_tipo_template"]
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          campos_detectados?: Json
+          conteudo_html?: string
+          created_at?: string
+          id?: string
+          nome?: string
+          tipo?: Database["public"]["Enums"]["propostas_tipo_template"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       registro_atraso_tentativa: {
         Row: {
           colaborador_id: string
@@ -4241,6 +4489,10 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       normalize_cpf: { Args: { cpf_input: string }; Returns: string }
+      propostas_user_has_access: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       sync_user_role: {
         Args: { _cargo: string; _user_id: string }
         Returns: undefined
@@ -4254,6 +4506,10 @@ export type Database = {
       app_role: "admin" | "avaliador" | "executor" | "gestor" | "avaliado"
       data_scope: "none" | "own" | "team" | "all"
       os_status: "aberta" | "em_andamento" | "concluida" | "aguardando_numero"
+      propostas_status: "rascunho" | "aprovado" | "cancelado"
+      propostas_tipo_calculo: "quantidade" | "gb_total" | "gb_por_unidade"
+      propostas_tipo_historico: "gerado" | "editado" | "aprovado" | "cancelado"
+      propostas_tipo_template: "proposta" | "contrato"
       recorrencia_tipo:
         | "diaria"
         | "semanal"
@@ -4390,6 +4646,10 @@ export const Constants = {
       app_role: ["admin", "avaliador", "executor", "gestor", "avaliado"],
       data_scope: ["none", "own", "team", "all"],
       os_status: ["aberta", "em_andamento", "concluida", "aguardando_numero"],
+      propostas_status: ["rascunho", "aprovado", "cancelado"],
+      propostas_tipo_calculo: ["quantidade", "gb_total", "gb_por_unidade"],
+      propostas_tipo_historico: ["gerado", "editado", "aprovado", "cancelado"],
+      propostas_tipo_template: ["proposta", "contrato"],
       recorrencia_tipo: [
         "diaria",
         "semanal",
