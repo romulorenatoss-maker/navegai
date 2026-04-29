@@ -19,6 +19,7 @@ export interface PropostasRascunhoConversa {
   mensagens: RascunhoMensagem[];
   itens: RascunhoItem[];
   respostas: Record<string, unknown>;
+  estado_proposta: Record<string, unknown>;
   finalizado: boolean;
   created_at: string;
   updated_at: string;
@@ -27,7 +28,8 @@ export interface PropostasRascunhoConversa {
 type RowJson = {
   id: string; user_id: string; cliente_id: string; cliente_nome: string;
   template_id: string | null; mensagens: unknown; itens: unknown;
-  respostas: unknown; finalizado: boolean; created_at: string; updated_at: string;
+  respostas: unknown; estado_proposta?: unknown;
+  finalizado: boolean; created_at: string; updated_at: string;
 };
 
 function parse(row: RowJson): PropostasRascunhoConversa {
@@ -36,6 +38,7 @@ function parse(row: RowJson): PropostasRascunhoConversa {
     mensagens: (row.mensagens as RascunhoMensagem[]) ?? [],
     itens: (row.itens as RascunhoItem[]) ?? [],
     respostas: (row.respostas as Record<string, unknown>) ?? {},
+    estado_proposta: (row.estado_proposta as Record<string, unknown>) ?? {},
   };
 }
 
@@ -69,6 +72,7 @@ export async function salvarRascunho(input: {
   mensagens: RascunhoMensagem[];
   itens: RascunhoItem[];
   respostas: Record<string, unknown>;
+  estado_proposta?: Record<string, unknown>;
   finalizado?: boolean;
 }): Promise<PropostasRascunhoConversa> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -82,6 +86,7 @@ export async function salvarRascunho(input: {
     mensagens: input.mensagens as unknown as never,
     itens: input.itens as unknown as never,
     respostas: input.respostas as unknown as never,
+    estado_proposta: (input.estado_proposta ?? {}) as unknown as never,
     finalizado: input.finalizado ?? false,
   };
 

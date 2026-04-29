@@ -3527,6 +3527,7 @@ export type Database = {
           cliente_id: string
           cliente_nome: string
           created_at: string
+          estado_proposta: Json
           finalizado: boolean
           id: string
           itens: Json
@@ -3540,6 +3541,7 @@ export type Database = {
           cliente_id: string
           cliente_nome: string
           created_at?: string
+          estado_proposta?: Json
           finalizado?: boolean
           id?: string
           itens?: Json
@@ -3553,6 +3555,7 @@ export type Database = {
           cliente_id?: string
           cliente_nome?: string
           created_at?: string
+          estado_proposta?: Json
           finalizado?: boolean
           id?: string
           itens?: Json

@@ -208,11 +208,17 @@ export default function PropostaConversacionalPage() {
         mensagens: msgs,
         itens,
         respostas: respostasComEstado,
+        estado_proposta: {
+          etapa_atual: etapa,
+          itens,
+          perguntas_respondidas: perguntasRespondidas,
+          totais,
+        },
         finalizado: false,
       }).then(r => setRascunhoId(r.id)).catch(e => console.error("auto-save", e));
     }, 800);
     return () => clearTimeout(t);
-  }, [clienteSel, retomado, gerando, templateId, msgs, itens, respostas, etapa, perguntasRespondidas]);
+  }, [clienteSel, retomado, gerando, templateId, msgs, itens, respostas, etapa, perguntasRespondidas, totais]);
 
   async function confirmarCliente() {
     if (!clienteSel) { toast.error("Selecione um cliente"); return; }
