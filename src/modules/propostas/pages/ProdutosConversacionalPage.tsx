@@ -480,10 +480,6 @@ export default function ProdutosConversacionalPage() {
           }
         }
       }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro");
-    } finally { setEnviando(false); }
-      }
 
       // Remoção COMPLETA: apaga produtos + perguntas vinculados e desativa a categoria.
       // Aviso é dado pela IA na rodada anterior — aqui só executa quando o usuário confirmou.
@@ -494,7 +490,6 @@ export default function ProdutosConversacionalPage() {
           const prodsDaCat = catalogoAtual.filter(p => normalizarCategoria((p as unknown as { categoria?: string }).categoria) === cat);
           const pergsDaCat = perguntasAtuais.filter(q => normalizarCategoria(q.categoria) === cat);
           try {
-            // Optimistic: limpa imediato da listagem
             setProdutos(ps => ps.filter(p => normalizarCategoria((p as unknown as { categoria?: string }).categoria) !== cat));
             if (cat !== "outros") setPerguntas(qs => qs.filter(q => normalizarCategoria(q.categoria) !== cat));
             await Promise.all([
@@ -510,6 +505,11 @@ export default function ProdutosConversacionalPage() {
           }
         }
       }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro");
+    } finally { setEnviando(false); }
+  }
+
   // ============ RENDER ============
   return (
     <div className="h-[calc(100vh-4rem)]">
