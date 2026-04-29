@@ -170,15 +170,17 @@ export default function PropostaConversacionalPage() {
     return () => clearTimeout(t);
   }, [clienteSel, retomado, gerando, templateId, msgs, itens, respostas]);
 
-  function confirmarCliente() {
+  async function confirmarCliente() {
     if (!clienteSel) { toast.error("Selecione um cliente"); return; }
     setModalCliente(false);
-    const primeira = perguntasOrdenadas[0];
-    const cat = primeira ? categorias.find(c => c.id === primeira.categoria_id) : null;
-    setMsgs([{
-      role: "assistant",
-      content: `Olá! Vamos montar a proposta para **${clienteSel.nome}**. ${primeira ? `Começando por **${cat?.nome ?? "Contexto"}**:\n\n${primeira.pergunta}` : "Pode descrever o que o cliente precisa (ex.: \"switch 1300\")."}`,
-    }]);
+    try {
+      const r = await buscarRascunhoPorCliente(clienteSel.id);
+      if (r) hidratarRascunho(r, clienteSel.nome);
+      else iniciarConversa(clienteSel.nome);
+    } catch (e) {
+      console.error(e);
+      iniciarConversa(clienteSel.nome);
+    }
   }
 
   /** Processa fila de novos itens, perguntando sobre duplicatas um a um. */
