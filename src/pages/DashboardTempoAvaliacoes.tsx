@@ -90,6 +90,7 @@ function horaBR(iso: string): number {
 // =============================================================
 interface OSDoAvaliador {
   os_id: string;
+  numero_os: string | number | null;
   inicio: string;
   fim: string;
   duracao_seg: number;
