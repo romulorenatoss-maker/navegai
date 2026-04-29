@@ -218,7 +218,7 @@ export default function PropostaConversacionalPage() {
       }).then(r => setRascunhoId(r.id)).catch(e => console.error("auto-save", e));
     }, 800);
     return () => clearTimeout(t);
-  }, [clienteSel, retomado, gerando, templateId, msgs, itens, respostas, etapa, perguntasRespondidas]);
+  }, [clienteSel, retomado, gerando, templateId, msgs, itens, respostas, etapa, perguntasRespondidas, totais]);
 
   async function confirmarCliente() {
     if (!clienteSel) { toast.error("Selecione um cliente"); return; }
