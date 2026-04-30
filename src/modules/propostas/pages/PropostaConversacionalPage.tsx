@@ -517,36 +517,126 @@ export default function PropostaConversacionalPage() {
       const tpl = templates.find(t => t.id === templateId);
       if (!tpl) throw new Error("Template não encontrado");
 
+      // Carrega responsável principal (e contatos do cliente)
+      const { obterResponsavelPrincipal } = await import("../services/propostasResponsaveisService");
+      const { listarContatosCliente } = await import("../services/propostasResponsaveisService");
+      let responsavel: { nome: string; cargo: string | null; email: string | null; telefone: string | null } | null = null;
+      try {
+        const r = await obterResponsavelPrincipal(clienteSel.id);
+        if (r) responsavel = { nome: r.nome, cargo: r.cargo, email: r.email ?? null, telefone: r.telefone ?? null };
+      } catch (e) { console.warn("[propostas] responsável não carregado:", e); }
+
+      // Hidrata email/telefone direto do cliente via cliente_contatos (fallback)
+      let emailCliente = "";
+      let telefoneCliente = "";
+      try {
+        const contatos = await listarContatosCliente(clienteSel.id);
+        emailCliente = contatos.find(c => c.tipo === "email")?.valor ?? "";
+        telefoneCliente = contatos.find(c => c.tipo === "telefone")?.valor ?? "";
+      } catch (e) { console.warn("[propostas] contatos não carregados:", e); }
+
+      // === ITENS para render (com cálculo total_item) ===
       const itensRender = itens.map((i) => ({
         nome: i.nome,
         quantidade: i.quantidade,
         valor_unitario: fmtBRL(i.valor_unitario),
         valor_total: fmtBRL(i.quantidade * i.valor_unitario),
+        total_item: fmtBRL(i.quantidade * i.valor_unitario),
         categoria: (i.categoria ?? "").toLowerCase(),
         cobranca: i.cobranca,
         descricao: (i as any).descricao ?? "",
       }));
 
+      // === AGRUPAMENTO DINÂMICO POR CATEGORIA (Etapa 3 + 4) ===
+      const NOMES_CATEGORIA: Record<string, string> = {
+        infraestrutura: "Infraestrutura",
+        dados: "Dados / Conectividade",
+        seguranca: "Segurança",
+        telefonia: "Telefonia",
+        outros: "Outros",
+      };
+      const grupos = new Map<string, typeof itensRender>();
+      for (const it of itensRender) {
+        const key = it.categoria || "outros";
+        if (!grupos.has(key)) grupos.set(key, []);
+        grupos.get(key)!.push(it);
+      }
+      const categoriasArr = Array.from(grupos.entries()).map(([codigo, listaItens]) => {
+        const subtotalNum = listaItens.reduce((acc, it) => {
+          // recupera o valor numérico via itens originais
+          const orig = itens.find(o => o.nome === it.nome);
+          return acc + (orig ? orig.quantidade * orig.valor_unitario : 0);
+        }, 0);
+        return {
+          codigo,
+          nome: NOMES_CATEGORIA[codigo] ?? codigo,
+          itens: listaItens,
+          subtotal: fmtBRL(subtotalNum),
+          subtotal_numero: subtotalNum,
+        };
+      });
+
+      const totalGeralNum = totais.total;
+
+      // === PAYLOAD ESTRUTURADO (Etapa 2) — single source of truth por origem de dados ===
+      const payloadEstruturado = {
+        cliente: {
+          nome: clienteSel.nome,
+          cpf: clienteSel.cpf ?? "",
+          cnpj: (clienteSel as any).cnpj ?? "",
+          email: emailCliente,
+          telefone: telefoneCliente,
+          endereco: (clienteSel as any).endereco ?? "",
+          cidade: clienteSel.cidade ?? "",
+        },
+        responsavel: responsavel ?? {
+          nome: clienteSel.nome,
+          cargo: null,
+          email: emailCliente || null,
+          telefone: telefoneCliente || null,
+        },
+        perguntas: { ...respostas },
+        categorias: categoriasArr,
+        totais: {
+          total_geral: fmtBRL(totalGeralNum),
+          total_geral_numero: totalGeralNum,
+          implantacao: fmtBRL(totais.implantacao),
+          mensal: fmtBRL(totais.mensal),
+          informativo: fmtBRL(totais.informativo),
+        },
+      };
+
+      // === COMPAT DUPLA: payload estruturado + tokens planos legados ===
       const dados: Record<string, unknown> = {
         ...respostas,
+        // Estruturado (novo)
+        ...payloadEstruturado,
+        // Planos legados — mantidos para templates existentes (fallback automático no engine)
         cliente_nome: clienteSel.nome,
         cliente_cpf: clienteSel.cpf ?? "",
         cliente_cnpj: (clienteSel as any).cnpj ?? clienteSel.cpf ?? "",
         cliente_endereco: (clienteSel as any).endereco ?? "",
         cliente_cidade: clienteSel.cidade ?? "",
-        cliente_email: (clienteSel as any).email ?? "",
-        cliente_responsavel: (clienteSel as any).responsavel ?? clienteSel.nome,
+        cliente_email: emailCliente,
+        cliente_telefone: telefoneCliente,
+        cliente_responsavel: responsavel?.nome ?? clienteSel.nome,
+        responsavel_nome: responsavel?.nome ?? clienteSel.nome,
+        responsavel_cargo: responsavel?.cargo ?? "",
+        responsavel_email: responsavel?.email ?? emailCliente,
+        responsavel_telefone: responsavel?.telefone ?? telefoneCliente,
         data_emissao: new Date().toLocaleDateString("pt-BR"),
-        valor_total: fmtBRL(totais.total),
+        valor_total: fmtBRL(totalGeralNum),
+        total_geral: fmtBRL(totalGeralNum),
         valor_implantacao: fmtBRL(totais.implantacao),
         valor_mensal: fmtBRL(totais.mensal),
-        // Loops por categoria no template ({#itens_infra}, {#itens_dados}, ...)
+        // Loops legados (compat dupla com templates antigos)
         itens: itensRender,
         itens_infra: itensRender.filter((x) => x.categoria === "infraestrutura"),
         itens_dados: itensRender.filter((x) => x.categoria === "dados"),
         itens_cloud: itensRender.filter((x) => x.categoria === "cloud" || x.categoria === "outros"),
         itens_seguranca: itensRender.filter((x) => x.categoria === "seguranca"),
-        // Textos contratuais com defaults editáveis depois
+        itens_telefonia: itensRender.filter((x) => x.categoria === "telefonia"),
+        // Textos contratuais com defaults
         tipo_servico: (respostas as any).tipo_servico ?? "Solução integrada de conectividade corporativa e infraestrutura de rede.",
         adendo_tecnico: (respostas as any).adendo_tecnico ?? "",
         adendo_ambiental: (respostas as any).adendo_ambiental ?? "",
@@ -556,7 +646,6 @@ export default function PropostaConversacionalPage() {
         mensalidade_descricao: (respostas as any).mensalidade_descricao ?? "A mensalidade contempla suporte técnico, manutenção e operação contínua da solução.",
         multa_rescisoria: (respostas as any).multa_rescisoria ?? "Em caso de rescisão antecipada, será aplicado o pagamento proporcional do saldo referente à infraestrutura fornecida em comodato.",
         garantia_descricao: (respostas as any).garantia_descricao ?? "Equipamentos fornecidos em regime de comodato, com manutenção preventiva e corretiva.",
-        // Fase 2 — texto de contexto gerado pelo fluxo guiado (se houver)
         ...(contextoIA ? { contexto: contextoIA } : {}),
       };
 
@@ -567,7 +656,7 @@ export default function PropostaConversacionalPage() {
         template_id: templateId,
         conteudo_original: html,
         conteudo_editado: html,
-        valor_total: totais.total,
+        valor_total: totalGeralNum,
         validade: null,
         itens: itens.map(i => {
           const catValidas = ["infraestrutura", "dados", "seguranca", "telefonia"];
@@ -588,12 +677,25 @@ export default function PropostaConversacionalPage() {
         }),
       });
 
+      // === ETAPA 8 — SNAPSHOT do payload usado no render ===
+      try {
+        await supabase
+          .from("propostas_propostas" as never)
+          .update({
+            snapshot_render: payloadEstruturado as any,
+            data_render: new Date().toISOString(),
+            template_versao: tpl.id,
+            responsavel_id: null, // será setado quando UI permitir escolha explícita
+          } as never)
+          .eq("id", (proposta as any).id);
+      } catch (e) { console.warn("[propostas] snapshot_render não persistido:", e); }
+
       // Remove rascunho ao concluir
       if (rascunhoId) {
         try { await excluirRascunho(rascunhoId); } catch (e) { console.error(e); }
       }
       toast.success("Proposta gerada");
-      navigate(`/propostas/${proposta.id}/preview`);
+      navigate(`/propostas/${(proposta as any).id}/preview`);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Erro ao gerar");
     } finally {
