@@ -843,6 +843,15 @@ export default function ProdutosConversacionalPage() {
                                     title="Marcar (x) na proposta quando selecionado"
                                   />
                                 </TableCell>
+                                <TableCell className="min-w-[200px] max-w-[280px]">
+                                  {perguntasVinculadas.length === 0 ? (
+                                    <span className="text-xs text-muted-foreground italic">—</span>
+                                  ) : (
+                                    <div className="text-xs text-muted-foreground line-clamp-2" title={perguntasVinculadas.map(pp => pp.pergunta).join(" · ")}>
+                                      {perguntasVinculadas.map(pp => pp.pergunta.length > 30 ? pp.pergunta.slice(0, 30) + "…" : pp.pergunta).join(" · ")}
+                                    </div>
+                                  )}
+                                </TableCell>
                                 <TableCell>
                                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deletarProduto(p.id)}>
                                     <Trash2 className="w-3.5 h-3.5" />
