@@ -746,6 +746,7 @@ export default function ProdutosConversacionalPage() {
                                   title="Marcar (x) na proposta quando selecionado"
                                 />
                               </TableCell>
+                              <TableCell className="text-xs text-muted-foreground italic">—</TableCell>
                               <TableCell>
                                 <div className="flex gap-1">
                                   <Button variant="default" size="icon" className="h-7 w-7" title="Salvar"
