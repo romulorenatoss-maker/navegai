@@ -705,7 +705,7 @@ export default function ProdutosConversacionalPage() {
               </TabsList>
 
               {/* CONTEXTO */}
-              <TabsContent value="contexto" className="space-y-4">
+              <TabsContent value="contexto" className="space-y-4 flex-1 min-h-0 overflow-y-auto">
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">Contexto da empresa</CardTitle>
@@ -740,7 +740,7 @@ export default function ProdutosConversacionalPage() {
               </TabsContent>
 
               {/* PRODUTOS */}
-              <TabsContent value="produtos" className="h-[calc(100vh-9rem)] overflow-hidden">
+              <TabsContent value="produtos" className="flex-1 min-h-0 overflow-hidden mt-0">
                 <Card className="h-full overflow-hidden flex flex-col">
                   <CardHeader className="flex flex-row items-start justify-between gap-3">
                     <div>
@@ -985,7 +985,7 @@ export default function ProdutosConversacionalPage() {
               </TabsContent>
 
               {/* PERGUNTAS */}
-              <TabsContent value="perguntas" className="space-y-4">
+              <TabsContent value="perguntas" className="space-y-4 flex-1 min-h-0 overflow-y-auto">
                 {/* Gerenciar categorias */}
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between gap-2">
