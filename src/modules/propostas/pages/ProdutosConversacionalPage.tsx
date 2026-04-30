@@ -893,7 +893,9 @@ export default function ProdutosConversacionalPage() {
                     </div>
 
                     {CATEGORIAS.map(cat => {
-                      const lista = perguntasPorCategoria[cat.value] ?? [];
+                      const lista = (perguntasPorCategoria[cat.value] ?? [])
+                        .slice()
+                        .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
                       return (
                         <div key={cat.value}>
                           <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
@@ -903,50 +905,71 @@ export default function ProdutosConversacionalPage() {
                           {lista.length === 0 ? (
                             <p className="text-xs text-muted-foreground italic mb-3">Sem perguntas</p>
                           ) : (
-                            <div className="space-y-1.5 mb-3">
-                              {lista.map(q => {
-                                const prodsCat = produtos.filter(prod => normalizarCategoria((prod as unknown as { categoria?: string }).categoria) === normalizarCategoria(q.categoria));
-                                return (
-                                <div key={q.id} className="border rounded-md p-2 space-y-2">
-                                  <div className="flex items-center gap-2">
-                                    <Switch checked={q.ativo} onCheckedChange={(v) => togglePergunta(q.id, v)} />
-                                    <Input className="h-8 flex-1" defaultValue={q.pergunta}
-                                      onBlur={(e) => e.target.value !== q.pergunta && atualizarPerguntaProduto(q.id, { pergunta: e.target.value }).then(() => setPerguntas(ps => ps.map(p => p.id === q.id ? { ...p, pergunta: e.target.value } : p)))} />
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deletarPergunta(q.id)}>
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </Button>
-                                  </div>
-                                  <div className="pl-4 border-l-2 border-muted space-y-1">
-                                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-1">
-                                      Produtos desta categoria:
-                                    </p>
-                                    {prodsCat.length === 0 ? (
-                                      <p className="text-[10px] text-muted-foreground">Nenhum produto cadastrado nesta categoria.</p>
-                                    ) : (
-                                      prodsCat.map(prod => {
-                                        const ext = prod as unknown as { placeholder_key?: string; is_checkbox?: boolean; valor_minimo?: number };
-                                        return (
-                                          <div key={prod.id} className="flex items-center gap-2 text-xs">
-                                            <span className="text-muted-foreground">↳</span>
-                                            <span className="flex-1 truncate">{prod.nome}</span>
-                                            {ext.placeholder_key && (
-                                              <code className="text-[10px] bg-muted px-1 rounded text-muted-foreground">{ext.placeholder_key}</code>
-                                            )}
-                                            {ext.is_checkbox && (
-                                              <Badge variant="outline" className="text-[9px] px-1">checkbox</Badge>
-                                            )}
-                                            <span className="text-muted-foreground font-mono text-[10px]">
-                                              R$ {Number(ext.valor_minimo || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                                            </span>
+                            <DndContext
+                              sensors={dndSensors}
+                              collisionDetection={closestCenter}
+                              onDragEnd={(ev) => reordenarPerguntasCategoria(cat.value, ev)}
+                            >
+                              <SortableContext items={lista.map(q => q.id)} strategy={verticalListSortingStrategy}>
+                                <div className="space-y-1.5 mb-3">
+                                  {lista.map(q => {
+                                    const prodsCat = produtos.filter(prod => normalizarCategoria((prod as unknown as { categoria?: string }).categoria) === normalizarCategoria(q.categoria));
+                                    return (
+                                      <SortablePerguntaItem key={q.id} id={q.id}>
+                                        {({ listeners, attributes }) => (
+                                          <div className="border rounded-md p-2 space-y-2 bg-background">
+                                            <div className="flex items-center gap-2">
+                                              <button
+                                                type="button"
+                                                {...attributes}
+                                                {...listeners}
+                                                className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1"
+                                                title="Arraste para reordenar"
+                                              >
+                                                <GripVertical className="w-4 h-4" />
+                                              </button>
+                                              <Switch checked={q.ativo} onCheckedChange={(v) => togglePergunta(q.id, v)} />
+                                              <Input className="h-8 flex-1" defaultValue={q.pergunta}
+                                                onBlur={(e) => e.target.value !== q.pergunta && atualizarPerguntaProduto(q.id, { pergunta: e.target.value }).then(() => setPerguntas(ps => ps.map(p => p.id === q.id ? { ...p, pergunta: e.target.value } : p)))} />
+                                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deletarPergunta(q.id)} title="Remover apenas esta pergunta">
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                              </Button>
+                                            </div>
+                                            <div className="pl-4 border-l-2 border-muted space-y-1">
+                                              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-1">
+                                                Produtos desta categoria:
+                                              </p>
+                                              {prodsCat.length === 0 ? (
+                                                <p className="text-[10px] text-muted-foreground">Nenhum produto cadastrado nesta categoria.</p>
+                                              ) : (
+                                                prodsCat.map(prod => {
+                                                  const ext = prod as unknown as { placeholder_key?: string; is_checkbox?: boolean; valor_minimo?: number };
+                                                  return (
+                                                    <div key={prod.id} className="flex items-center gap-2 text-xs">
+                                                      <span className="text-muted-foreground">↳</span>
+                                                      <span className="flex-1 truncate">{prod.nome}</span>
+                                                      {ext.placeholder_key && (
+                                                        <code className="text-[10px] bg-muted px-1 rounded text-muted-foreground">{ext.placeholder_key}</code>
+                                                      )}
+                                                      {ext.is_checkbox && (
+                                                        <Badge variant="outline" className="text-[9px] px-1">checkbox</Badge>
+                                                      )}
+                                                      <span className="text-muted-foreground font-mono text-[10px]">
+                                                        R$ {Number(ext.valor_minimo || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                                                      </span>
+                                                    </div>
+                                                  );
+                                                })
+                                              )}
+                                            </div>
                                           </div>
-                                        );
-                                      })
-                                    )}
-                                  </div>
+                                        )}
+                                      </SortablePerguntaItem>
+                                    );
+                                  })}
                                 </div>
-                                );
-                              })}
-                            </div>
+                              </SortableContext>
+                            </DndContext>
                           )}
                         </div>
                       );
