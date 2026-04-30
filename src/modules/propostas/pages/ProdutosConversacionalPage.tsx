@@ -696,9 +696,9 @@ export default function ProdutosConversacionalPage() {
 
   // ============ RENDER ============
   return (
-    <div className="h-[calc(100vh-4rem)] overflow-y-auto p-4">
-      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-              <TabsList className="mb-4">
+    <div className="h-[calc(100vh-4rem)] flex flex-col p-4 overflow-hidden">
+      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="flex-1 min-h-0 flex flex-col">
+              <TabsList className="mb-4 flex-shrink-0 self-start">
                 <TabsTrigger value="contexto"><Building2 className="w-4 h-4 mr-1" />Contexto</TabsTrigger>
                 <TabsTrigger value="produtos"><Package className="w-4 h-4 mr-1" />Produtos ({produtos.length})</TabsTrigger>
                 <TabsTrigger value="perguntas"><ListChecks className="w-4 h-4 mr-1" />Perguntas ({perguntas.length})</TabsTrigger>
