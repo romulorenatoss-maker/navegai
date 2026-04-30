@@ -294,11 +294,12 @@ export default function ProdutosConversacionalPage() {
     target.scrollLeft = source.scrollLeft;
   };
 
-  const categoriasCatalogo = useMemo<Array<{ value: CategoriaCatalogo; label: string }>>(() => {
+  const categoriasCatalogo = useMemo<Array<{ value: string; label: string }>>(() => {
     const ativas = categoriasSetup
-      .filter(c => c.ativo && isCategoriaCatalogo(c.codigo) && c.codigo !== "outros")
-      .map(c => ({ value: c.codigo as CategoriaCatalogo, label: c.nome }));
-    return ativas.length ? ativas : CATEGORIAS;
+      .filter(c => c.ativo && c.codigo !== "outros")
+      .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))
+      .map(c => ({ value: c.codigo, label: c.nome }));
+    return ativas.length ? ativas : CATEGORIAS.map(c => ({ value: c.value as string, label: c.label }));
   }, [categoriasSetup]);
 
   const perguntasPorCategoria = useMemo(() => {
