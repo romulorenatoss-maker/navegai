@@ -740,8 +740,8 @@ export default function ProdutosConversacionalPage() {
               </TabsContent>
 
               {/* PRODUTOS */}
-              <TabsContent value="produtos">
-                <Card>
+              <TabsContent value="produtos" className="h-[calc(100vh-9rem)] overflow-hidden">
+                <Card className="h-full overflow-hidden flex flex-col">
                   <CardHeader className="flex flex-row items-start justify-between gap-3">
                     <div>
                       <CardTitle className="text-base">Catálogo (edição inline)</CardTitle>
@@ -751,16 +751,16 @@ export default function ProdutosConversacionalPage() {
                       <Plus className="w-4 h-4 mr-1" /> Adicionar linha
                     </Button>
                   </CardHeader>
-                    <CardContent className="relative pb-9">
+                    <CardContent className="flex-1 min-h-0 flex flex-col">
                     {produtos.length === 0 && drafts.length === 0 ? (
                       <p className="text-sm text-muted-foreground py-6 text-center">Nenhum produto. Use a conversa ou clique em "Adicionar linha".</p>
                     ) : (
                       <>
-                      <div className="relative border rounded-md">
+                      <div className="relative flex-1 min-h-0 border rounded-md overflow-hidden">
                         <div
                           ref={catalogoTableScrollRef}
                           onScroll={() => sincronizarScrollCatalogo("tabela")}
-                          className="overflow-auto max-h-[calc(100vh-380px)]"
+                          className="h-[calc(100%-0.75rem)] overflow-auto"
                           style={{ overscrollBehavior: "contain" }}
                         >
                         <Table>
@@ -975,7 +975,7 @@ export default function ProdutosConversacionalPage() {
                       </div>
                       </>
                     )}
-                    <div className="flex gap-2 mt-3 text-xs text-muted-foreground">
+                    <div className="flex-shrink-0 flex gap-2 mt-3 text-xs text-muted-foreground">
                       <span>Total: {produtos.length}</span>
                       <span>•</span>
                       <span>Médio: {fmtBRL(produtos.reduce((s, p) => s + Number((p as unknown as { valor_medio?: number }).valor_medio ?? 0), 0))}</span>
