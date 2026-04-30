@@ -675,6 +675,7 @@ export default function ProdutosConversacionalPage() {
                             <TableHead>Placeholder qtd</TableHead>
                             <TableHead>Placeholder valor</TableHead>
                             <TableHead className="text-center">Checkbox?</TableHead>
+                            <TableHead className="min-w-[200px]">Perguntas vinculadas</TableHead>
                             <TableHead className="w-20" />
                           </TableRow>
                         </TableHeader>
