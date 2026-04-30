@@ -9,9 +9,17 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Save, Package, ListChecks, Building2, X, Check, Loader2 } from "lucide-react";
+import { Plus, Trash2, Save, Package, ListChecks, Building2, X, Check, Loader2, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext, verticalListSortingStrategy, useSortable, arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   listarProdutos, criarProduto, atualizarProduto, excluirProduto,
   type PropostasProduto,
@@ -110,6 +118,21 @@ function ChipsEditor({ label, values, onChange, placeholder }: {
           placeholder={placeholder ?? "Adicionar e pressionar Enter"}
         />
       </div>
+    </div>
+  );
+}
+
+// ---------- Item sortable da lista de perguntas ----------
+function SortablePerguntaItem({ id, children }: { id: string; children: (handleProps: { listeners: ReturnType<typeof useSortable>["listeners"]; attributes: ReturnType<typeof useSortable>["attributes"] }) => React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style}>
+      {children({ listeners, attributes })}
     </div>
   );
 }
@@ -346,7 +369,31 @@ export default function ProdutosConversacionalPage() {
     catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
   }
 
-  // ============ CHAT ============
+  // Sensor de drag-and-drop
+  const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  async function reordenarPerguntasCategoria(categoria: string, event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const lista = (perguntasPorCategoria[categoria] ?? []).slice().sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+    const oldIndex = lista.findIndex(q => q.id === active.id);
+    const newIndex = lista.findIndex(q => q.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    const novaLista = arrayMove(lista, oldIndex, newIndex);
+    // Atualiza estado otimista
+    const ordenados = novaLista.map((q, i) => ({ ...q, ordem: i + 1 }));
+    setPerguntas(ps => {
+      const fora = ps.filter(p => p.categoria !== categoria);
+      return [...fora, ...ordenados];
+    });
+    try {
+      await Promise.all(ordenados.map(q => atualizarPerguntaProduto(q.id, { ordem: q.ordem })));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao reordenar");
+    }
+  }
+
+
   async function enviar() {
     const texto = input.trim();
     if (!texto || enviando) return;
@@ -611,7 +658,8 @@ export default function ProdutosConversacionalPage() {
                       <div
                         ref={catalogoTableScrollRef}
                         onScroll={() => sincronizarScrollCatalogo("tabela")}
-                        className="overflow-y-auto overflow-x-hidden max-h-[calc(100vh-300px)] border rounded-md"
+                        className="overflow-auto max-h-[calc(100vh-340px)] border rounded-md"
+                        style={{ overscrollBehavior: "contain" }}
                       >
                       <Table>
                         <TableHeader>
@@ -627,6 +675,7 @@ export default function ProdutosConversacionalPage() {
                             <TableHead>Placeholder qtd</TableHead>
                             <TableHead>Placeholder valor</TableHead>
                             <TableHead className="text-center">Checkbox?</TableHead>
+                            <TableHead className="min-w-[200px]">Perguntas vinculadas</TableHead>
                             <TableHead className="w-20" />
                           </TableRow>
                         </TableHeader>
@@ -697,6 +746,7 @@ export default function ProdutosConversacionalPage() {
                                   title="Marcar (x) na proposta quando selecionado"
                                 />
                               </TableCell>
+                              <TableCell className="text-xs text-muted-foreground italic">—</TableCell>
                               <TableCell>
                                 <div className="flex gap-1">
                                   <Button variant="default" size="icon" className="h-7 w-7" title="Salvar"
@@ -713,6 +763,7 @@ export default function ProdutosConversacionalPage() {
                           ))}
                           {produtos.map(p => {
                             const ext = p as unknown as { categoria?: string; cobranca_padrao?: string; valor_medio?: number };
+                            const perguntasVinculadas = perguntas.filter(pp => normalizarCategoria(pp.categoria) === normalizarCategoria(ext.categoria));
                             return (
                               <TableRow key={p.id}>
                                 <TableCell>
@@ -792,6 +843,15 @@ export default function ProdutosConversacionalPage() {
                                     title="Marcar (x) na proposta quando selecionado"
                                   />
                                 </TableCell>
+                                <TableCell className="min-w-[200px] max-w-[280px]">
+                                  {perguntasVinculadas.length === 0 ? (
+                                    <span className="text-xs text-muted-foreground italic">—</span>
+                                  ) : (
+                                    <div className="text-xs text-muted-foreground line-clamp-2" title={perguntasVinculadas.map(pp => pp.pergunta).join(" · ")}>
+                                      {perguntasVinculadas.map(pp => pp.pergunta.length > 30 ? pp.pergunta.slice(0, 30) + "…" : pp.pergunta).join(" · ")}
+                                    </div>
+                                  )}
+                                </TableCell>
                                 <TableCell>
                                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deletarProduto(p.id)}>
                                     <Trash2 className="w-3.5 h-3.5" />
@@ -806,7 +866,7 @@ export default function ProdutosConversacionalPage() {
                       <div
                         ref={catalogoBottomScrollRef}
                         onScroll={() => sincronizarScrollCatalogo("barra")}
-                        className="absolute inset-x-6 bottom-3 overflow-x-auto overflow-y-hidden h-5"
+                        className="sticky bottom-0 left-0 right-0 mt-1 overflow-x-auto overflow-y-hidden h-3 bg-background/95 backdrop-blur border-t rounded-b-md"
                       >
                         <div style={{ width: catalogoScrollWidth, height: 1 }} />
                       </div>
@@ -846,7 +906,9 @@ export default function ProdutosConversacionalPage() {
                     </div>
 
                     {CATEGORIAS.map(cat => {
-                      const lista = perguntasPorCategoria[cat.value] ?? [];
+                      const lista = (perguntasPorCategoria[cat.value] ?? [])
+                        .slice()
+                        .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
                       return (
                         <div key={cat.value}>
                           <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
@@ -856,50 +918,71 @@ export default function ProdutosConversacionalPage() {
                           {lista.length === 0 ? (
                             <p className="text-xs text-muted-foreground italic mb-3">Sem perguntas</p>
                           ) : (
-                            <div className="space-y-1.5 mb-3">
-                              {lista.map(q => {
-                                const prodsCat = produtos.filter(prod => normalizarCategoria((prod as unknown as { categoria?: string }).categoria) === normalizarCategoria(q.categoria));
-                                return (
-                                <div key={q.id} className="border rounded-md p-2 space-y-2">
-                                  <div className="flex items-center gap-2">
-                                    <Switch checked={q.ativo} onCheckedChange={(v) => togglePergunta(q.id, v)} />
-                                    <Input className="h-8 flex-1" defaultValue={q.pergunta}
-                                      onBlur={(e) => e.target.value !== q.pergunta && atualizarPerguntaProduto(q.id, { pergunta: e.target.value }).then(() => setPerguntas(ps => ps.map(p => p.id === q.id ? { ...p, pergunta: e.target.value } : p)))} />
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deletarPergunta(q.id)}>
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </Button>
-                                  </div>
-                                  <div className="pl-4 border-l-2 border-muted space-y-1">
-                                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-1">
-                                      Produtos desta categoria:
-                                    </p>
-                                    {prodsCat.length === 0 ? (
-                                      <p className="text-[10px] text-muted-foreground">Nenhum produto cadastrado nesta categoria.</p>
-                                    ) : (
-                                      prodsCat.map(prod => {
-                                        const ext = prod as unknown as { placeholder_key?: string; is_checkbox?: boolean; valor_minimo?: number };
-                                        return (
-                                          <div key={prod.id} className="flex items-center gap-2 text-xs">
-                                            <span className="text-muted-foreground">↳</span>
-                                            <span className="flex-1 truncate">{prod.nome}</span>
-                                            {ext.placeholder_key && (
-                                              <code className="text-[10px] bg-muted px-1 rounded text-muted-foreground">{ext.placeholder_key}</code>
-                                            )}
-                                            {ext.is_checkbox && (
-                                              <Badge variant="outline" className="text-[9px] px-1">checkbox</Badge>
-                                            )}
-                                            <span className="text-muted-foreground font-mono text-[10px]">
-                                              R$ {Number(ext.valor_minimo || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                                            </span>
+                            <DndContext
+                              sensors={dndSensors}
+                              collisionDetection={closestCenter}
+                              onDragEnd={(ev) => reordenarPerguntasCategoria(cat.value, ev)}
+                            >
+                              <SortableContext items={lista.map(q => q.id)} strategy={verticalListSortingStrategy}>
+                                <div className="space-y-1.5 mb-3">
+                                  {lista.map(q => {
+                                    const prodsCat = produtos.filter(prod => normalizarCategoria((prod as unknown as { categoria?: string }).categoria) === normalizarCategoria(q.categoria));
+                                    return (
+                                      <SortablePerguntaItem key={q.id} id={q.id}>
+                                        {({ listeners, attributes }) => (
+                                          <div className="border rounded-md p-2 space-y-2 bg-background">
+                                            <div className="flex items-center gap-2">
+                                              <button
+                                                type="button"
+                                                {...attributes}
+                                                {...listeners}
+                                                className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1"
+                                                title="Arraste para reordenar"
+                                              >
+                                                <GripVertical className="w-4 h-4" />
+                                              </button>
+                                              <Switch checked={q.ativo} onCheckedChange={(v) => togglePergunta(q.id, v)} />
+                                              <Input className="h-8 flex-1" defaultValue={q.pergunta}
+                                                onBlur={(e) => e.target.value !== q.pergunta && atualizarPerguntaProduto(q.id, { pergunta: e.target.value }).then(() => setPerguntas(ps => ps.map(p => p.id === q.id ? { ...p, pergunta: e.target.value } : p)))} />
+                                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deletarPergunta(q.id)} title="Remover apenas esta pergunta">
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                              </Button>
+                                            </div>
+                                            <div className="pl-4 border-l-2 border-muted space-y-1">
+                                              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-1">
+                                                Produtos desta categoria:
+                                              </p>
+                                              {prodsCat.length === 0 ? (
+                                                <p className="text-[10px] text-muted-foreground">Nenhum produto cadastrado nesta categoria.</p>
+                                              ) : (
+                                                prodsCat.map(prod => {
+                                                  const ext = prod as unknown as { placeholder_key?: string; is_checkbox?: boolean; valor_minimo?: number };
+                                                  return (
+                                                    <div key={prod.id} className="flex items-center gap-2 text-xs">
+                                                      <span className="text-muted-foreground">↳</span>
+                                                      <span className="flex-1 truncate">{prod.nome}</span>
+                                                      {ext.placeholder_key && (
+                                                        <code className="text-[10px] bg-muted px-1 rounded text-muted-foreground">{ext.placeholder_key}</code>
+                                                      )}
+                                                      {ext.is_checkbox && (
+                                                        <Badge variant="outline" className="text-[9px] px-1">checkbox</Badge>
+                                                      )}
+                                                      <span className="text-muted-foreground font-mono text-[10px]">
+                                                        R$ {Number(ext.valor_minimo || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                                                      </span>
+                                                    </div>
+                                                  );
+                                                })
+                                              )}
+                                            </div>
                                           </div>
-                                        );
-                                      })
-                                    )}
-                                  </div>
+                                        )}
+                                      </SortablePerguntaItem>
+                                    );
+                                  })}
                                 </div>
-                                );
-                              })}
-                            </div>
+                              </SortableContext>
+                            </DndContext>
                           )}
                         </div>
                       );
