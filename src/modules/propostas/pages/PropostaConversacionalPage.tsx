@@ -521,11 +521,25 @@ export default function PropostaConversacionalPage() {
         ...respostas,
         cliente_nome: clienteSel.nome,
         cliente_cpf: clienteSel.cpf ?? "",
+        cliente_cnpj: (clienteSel as any).cnpj ?? clienteSel.cpf ?? "",
+        cliente_endereco: (clienteSel as any).endereco ?? "",
         cliente_cidade: clienteSel.cidade ?? "",
+        cliente_email: (clienteSel as any).email ?? "",
+        cliente_responsavel: (clienteSel as any).responsavel ?? clienteSel.nome,
         data_emissao: new Date().toLocaleDateString("pt-BR"),
         valor_total: fmtBRL(totais.total),
         valor_implantacao: fmtBRL(totais.implantacao),
         valor_mensal: fmtBRL(totais.mensal),
+        // Loop {#itens}...{/itens} no template
+        itens: itens.map((i) => ({
+          nome: i.nome,
+          quantidade: i.quantidade,
+          valor_unitario: fmtBRL(i.valor_unitario),
+          valor_total: fmtBRL(i.quantidade * i.valor_unitario),
+          categoria: i.categoria ?? "",
+          cobranca: i.cobranca,
+          descricao: (i as any).descricao ?? "",
+        })),
         // Fase 2 — texto de contexto gerado pelo fluxo guiado (se houver)
         ...(contextoIA ? { contexto: contextoIA } : {}),
       };
