@@ -379,8 +379,94 @@ export default function ProdutosConversacionalPage() {
     catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
   }
   async function deletarPergunta(id: string) {
-    try { await excluirPerguntaProduto(id); setPerguntas(qs => qs.filter(q => q.id !== id)); }
+    try { await excluirPerguntaProduto(id); setPerguntas(qs => qs.filter(q => q.id !== id)); setLinks(ls => ls.filter(l => l.pergunta_id !== id)); }
     catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
+  }
+  async function setGeraContexto(id: string, gera_contexto: boolean) {
+    try { await atualizarPerguntaProduto(id, { gera_contexto }); setPerguntas(qs => qs.map(q => q.id === id ? { ...q, gera_contexto } : q)); }
+    catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
+  }
+
+  // ============ VÍNCULOS PERGUNTA ↔ PRODUTO ============
+  function produtosVinculadosA(perguntaId: string): PropostasProduto[] {
+    const ids = links.filter(l => l.pergunta_id === perguntaId).map(l => l.produto_id);
+    return produtos.filter(p => ids.includes(p.id));
+  }
+  async function vincular(perguntaId: string, produtoId: string) {
+    if (links.some(l => l.pergunta_id === perguntaId && l.produto_id === produtoId)) return;
+    try {
+      const lk = await vincularProdutoPergunta(perguntaId, produtoId);
+      setLinks(ls => [...ls, lk]);
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Erro ao vincular"); }
+  }
+  async function desvincular(perguntaId: string, produtoId: string) {
+    try {
+      await desvincularProdutoPergunta(perguntaId, produtoId);
+      setLinks(ls => ls.filter(l => !(l.pergunta_id === perguntaId && l.produto_id === produtoId)));
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Erro ao desvincular"); }
+  }
+  async function criarProdutoEVincular(pergunta: PropostasPerguntaProduto) {
+    if (!novoProdDraft) return;
+    if (!novoProdDraft.nome.trim()) { toast.error("Informe o nome"); return; }
+    if (!novoProdDraft.valor_minimo || novoProdDraft.valor_minimo <= 0) { toast.error("Valor mínimo obrigatório"); return; }
+    try {
+      const novo = await criarProduto({
+        nome: novoProdDraft.nome.trim(),
+        tipo: novoProdDraft.tipo,
+        unidade: novoProdDraft.unidade || "un",
+        valor_minimo: Number(novoProdDraft.valor_minimo),
+        ativo: true,
+        tipo_calculo: "quantidade",
+        categoria: pergunta.categoria,
+        valor_medio: Number(novoProdDraft.valor_minimo),
+        cobranca_padrao: novoProdDraft.cobranca_padrao,
+        origem: "manual",
+      } as Partial<PropostasProduto>);
+      setProdutos(ps => [novo, ...ps]);
+      await vincular(pergunta.id, novo.id);
+      setNovoProdDraft(null);
+      toast.success(`"${novo.nome}" criado e vinculado`);
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
+  }
+
+  // ============ CATEGORIAS (CRUD) ============
+  async function salvarCategoriaDlg() {
+    if (!dlgCat) return;
+    const codigo = (dlgCat.codigo ?? "").trim().toLowerCase().replace(/[^a-z0-9_]+/g, "_");
+    const nome = (dlgCat.nome ?? "").trim();
+    if (!codigo || !nome) { toast.error("Código e nome são obrigatórios"); return; }
+    setSalvandoCat(true);
+    try {
+      if (dlgCat.id) {
+        await atualizarCategoria(dlgCat.id, { codigo, nome, ordem: dlgCat.ordem ?? 0, cobranca_padrao: dlgCat.cobranca_padrao ?? "mensal", ativo: dlgCat.ativo ?? true });
+        setCategoriasSetup(cs => cs.map(c => c.id === dlgCat.id ? { ...c, codigo, nome, ordem: dlgCat.ordem ?? c.ordem, cobranca_padrao: dlgCat.cobranca_padrao ?? c.cobranca_padrao, ativo: dlgCat.ativo ?? c.ativo } : c));
+        toast.success("Categoria atualizada");
+      } else {
+        const nova = await criarCategoria({
+          codigo, nome,
+          ordem: (categoriasSetup.length + 1) * 10,
+          cobranca_padrao: dlgCat.cobranca_padrao ?? "mensal",
+          ativo: true,
+        });
+        setCategoriasSetup(cs => [...cs, nova]);
+        toast.success("Categoria criada");
+      }
+      setDlgCat(null);
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
+    finally { setSalvandoCat(false); }
+  }
+  async function removerCategoria(cat: PropostasCategoriaSetup) {
+    try {
+      const uso = await categoriaEmUso(cat.codigo);
+      if (uso.total_perguntas > 0 || uso.total_produtos > 0) {
+        toast.error(`Não é possível remover "${cat.nome}": ${uso.total_perguntas} pergunta(s) e ${uso.total_produtos} produto(s) vinculado(s).`);
+        return;
+      }
+      if (!confirm(`Remover categoria "${cat.nome}"?`)) return;
+      await excluirCategoria(cat.id);
+      setCategoriasSetup(cs => cs.filter(c => c.id !== cat.id));
+      toast.success("Categoria removida");
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
   }
 
   // Sensor de drag-and-drop
