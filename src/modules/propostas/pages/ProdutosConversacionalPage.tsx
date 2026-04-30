@@ -773,9 +773,6 @@ export default function ProdutosConversacionalPage() {
                               <TableHead>Unidade</TableHead>
                               <TableHead className="text-right" title="Valor mínimo aceito de venda (piso). A IA nunca sugere abaixo disso.">Valor mín. (R$)</TableHead>
                               <TableHead className="text-right" title="Valor médio praticado. Usado pela IA como sugestão padrão na proposta.">Valor médio (R$)</TableHead>
-                              <TableHead>Placeholder item</TableHead>
-                              <TableHead>Placeholder qtd</TableHead>
-                              <TableHead>Placeholder valor</TableHead>
                               <TableHead className="text-center">Checkbox?</TableHead>
                               <TableHead className="min-w-[200px]">Perguntas vinculadas</TableHead>
                               <TableHead className="w-20" />
@@ -826,18 +823,6 @@ export default function ProdutosConversacionalPage() {
                                     <Input type="number" step="0.01" min="0" className="h-8 w-28 pl-8 text-right"
                                       value={d.valor_medio || ""} onChange={(e) => patchDraft(d._key, { valor_medio: Number(e.target.value) })} />
                                   </div>
-                                </TableCell>
-                                <TableCell>
-                                  <Input className="h-7 text-xs w-28 font-mono" placeholder="{item_switch}"
-                                    value={d.placeholder_key ?? ""} onChange={(e) => patchDraft(d._key, { placeholder_key: e.target.value })} />
-                                </TableCell>
-                                <TableCell>
-                                  <Input className="h-7 text-xs w-24 font-mono" placeholder="{qtd_switch}"
-                                    value={d.placeholder_qtd ?? ""} onChange={(e) => patchDraft(d._key, { placeholder_qtd: e.target.value })} />
-                                </TableCell>
-                                <TableCell>
-                                  <Input className="h-7 text-xs w-24 font-mono" placeholder="{valor_switch}"
-                                    value={d.placeholder_valor ?? ""} onChange={(e) => patchDraft(d._key, { placeholder_valor: e.target.value })} />
                                 </TableCell>
                                 <TableCell className="text-center">
                                   <input
@@ -908,33 +893,6 @@ export default function ProdutosConversacionalPage() {
                                       <Input type="number" step="0.01" min="0" className="h-8 w-28 pl-8 text-right" defaultValue={ext.valor_medio ?? 0}
                                         onBlur={(e) => Number(e.target.value) !== (ext.valor_medio ?? 0) && patchProduto(p.id, { valor_medio: Number(e.target.value) } as never)} />
                                     </div>
-                                  </TableCell>
-                                  <TableCell>
-                                    <Input className="h-7 text-xs w-28 font-mono" placeholder="{item_switch}"
-                                      defaultValue={(p as unknown as { placeholder_key?: string }).placeholder_key ?? ""}
-                                      onBlur={(e) => {
-                                        const v = e.target.value || null;
-                                        const cur = (p as unknown as { placeholder_key?: string | null }).placeholder_key ?? null;
-                                        if (v !== cur) patchProduto(p.id, { placeholder_key: v } as never);
-                                      }} />
-                                  </TableCell>
-                                  <TableCell>
-                                    <Input className="h-7 text-xs w-24 font-mono" placeholder="{qtd_switch}"
-                                      defaultValue={(p as unknown as { placeholder_qtd?: string }).placeholder_qtd ?? ""}
-                                      onBlur={(e) => {
-                                        const v = e.target.value || null;
-                                        const cur = (p as unknown as { placeholder_qtd?: string | null }).placeholder_qtd ?? null;
-                                        if (v !== cur) patchProduto(p.id, { placeholder_qtd: v } as never);
-                                      }} />
-                                  </TableCell>
-                                  <TableCell>
-                                    <Input className="h-7 text-xs w-24 font-mono" placeholder="{valor_switch}"
-                                      defaultValue={(p as unknown as { placeholder_valor?: string }).placeholder_valor ?? ""}
-                                      onBlur={(e) => {
-                                        const v = e.target.value || null;
-                                        const cur = (p as unknown as { placeholder_valor?: string | null }).placeholder_valor ?? null;
-                                        if (v !== cur) patchProduto(p.id, { placeholder_valor: v } as never);
-                                      }} />
                                   </TableCell>
                                   <TableCell className="text-center">
                                     <input
