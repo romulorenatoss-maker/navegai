@@ -122,6 +122,21 @@ function ChipsEditor({ label, values, onChange, placeholder }: {
   );
 }
 
+// ---------- Item sortable da lista de perguntas ----------
+function SortablePerguntaItem({ id, children }: { id: string; children: (handleProps: { listeners: ReturnType<typeof useSortable>["listeners"]; attributes: ReturnType<typeof useSortable>["attributes"] }) => React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style}>
+      {children({ listeners, attributes })}
+    </div>
+  );
+}
+
 export default function ProdutosConversacionalPage() {
   const [tab, setTab] = useState<"contexto" | "produtos" | "perguntas">("contexto");
 
