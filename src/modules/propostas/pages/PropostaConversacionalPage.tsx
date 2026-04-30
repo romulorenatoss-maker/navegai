@@ -517,15 +517,45 @@ export default function PropostaConversacionalPage() {
       const tpl = templates.find(t => t.id === templateId);
       if (!tpl) throw new Error("Template não encontrado");
 
+      const itensRender = itens.map((i) => ({
+        nome: i.nome,
+        quantidade: i.quantidade,
+        valor_unitario: fmtBRL(i.valor_unitario),
+        valor_total: fmtBRL(i.quantidade * i.valor_unitario),
+        categoria: (i.categoria ?? "").toLowerCase(),
+        cobranca: i.cobranca,
+        descricao: (i as any).descricao ?? "",
+      }));
+
       const dados: Record<string, unknown> = {
         ...respostas,
         cliente_nome: clienteSel.nome,
         cliente_cpf: clienteSel.cpf ?? "",
+        cliente_cnpj: (clienteSel as any).cnpj ?? clienteSel.cpf ?? "",
+        cliente_endereco: (clienteSel as any).endereco ?? "",
         cliente_cidade: clienteSel.cidade ?? "",
+        cliente_email: (clienteSel as any).email ?? "",
+        cliente_responsavel: (clienteSel as any).responsavel ?? clienteSel.nome,
         data_emissao: new Date().toLocaleDateString("pt-BR"),
         valor_total: fmtBRL(totais.total),
         valor_implantacao: fmtBRL(totais.implantacao),
         valor_mensal: fmtBRL(totais.mensal),
+        // Loops por categoria no template ({#itens_infra}, {#itens_dados}, ...)
+        itens: itensRender,
+        itens_infra: itensRender.filter((x) => x.categoria === "infraestrutura"),
+        itens_dados: itensRender.filter((x) => x.categoria === "dados"),
+        itens_cloud: itensRender.filter((x) => x.categoria === "cloud" || x.categoria === "outros"),
+        itens_seguranca: itensRender.filter((x) => x.categoria === "seguranca"),
+        // Textos contratuais com defaults editáveis depois
+        tipo_servico: (respostas as any).tipo_servico ?? "Solução integrada de conectividade corporativa e infraestrutura de rede.",
+        adendo_tecnico: (respostas as any).adendo_tecnico ?? "",
+        adendo_ambiental: (respostas as any).adendo_ambiental ?? "",
+        validade_contrato: (respostas as any).validade_contrato ?? "24 Meses",
+        forma_pagamento: (respostas as any).forma_pagamento ?? "Boleto bancário até o décimo dia de cada mês.",
+        prazo_inicio: (respostas as any).prazo_inicio ?? "A combinar, após aprovação e assinatura contratual.",
+        mensalidade_descricao: (respostas as any).mensalidade_descricao ?? "A mensalidade contempla suporte técnico, manutenção e operação contínua da solução.",
+        multa_rescisoria: (respostas as any).multa_rescisoria ?? "Em caso de rescisão antecipada, será aplicado o pagamento proporcional do saldo referente à infraestrutura fornecida em comodato.",
+        garantia_descricao: (respostas as any).garantia_descricao ?? "Equipamentos fornecidos em regime de comodato, com manutenção preventiva e corretiva.",
         // Fase 2 — texto de contexto gerado pelo fluxo guiado (se houver)
         ...(contextoIA ? { contexto: contextoIA } : {}),
       };

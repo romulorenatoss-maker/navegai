@@ -70,6 +70,33 @@ function substituirTokensTexto(html: string, dados: Record<string, unknown>): st
 }
 
 /**
+ * Suporte a loops: {#chave} ... {/chave}
+ * O bloco interno é repetido para cada item do array dados[chave],
+ * substituindo {campo} pelos campos do item.
+ * Os marcadores podem estar dentro de qualquer estrutura HTML (ex: <tr>),
+ * o regex captura tudo entre eles preservando o markup.
+ */
+function expandirLoops(html: string, dados: Record<string, unknown>): string {
+  return html.replace(
+    /\{#([a-zA-Z0-9_]+)\}([\s\S]*?)\{\/\1\}/g,
+    (_full, chave: string, bloco: string) => {
+      const lista = dados[chave];
+      if (!Array.isArray(lista) || lista.length === 0) return "";
+      return lista
+        .map((item) => {
+          const itemDados = (item && typeof item === "object" ? item : {}) as Record<string, unknown>;
+          // Substitui apenas tokens locais do item dentro do bloco
+          return bloco.replace(TOKEN_RX, (full, k: string) => {
+            if (!(k in itemDados)) return full;
+            return renderValor(itemDados[k]);
+          });
+        })
+        .join("");
+    },
+  );
+}
+
+/**
  * propostas_renderizar_template — função pública canônica.
  * Mantém 100% do layout original (estilos, alinhamento, cores, tabelas).
  */
@@ -79,6 +106,8 @@ export function propostasRenderizarTemplate(
 ): string {
   if (!templateHtml) return "";
   let out = templateHtml;
+  // Loops primeiro: produzem markup que ainda pode conter tokens globais
+  out = expandirLoops(out, dados);
   out = substituirSpans(out, dados);
   out = substituirSpansLegacy(out, dados);
   out = substituirTokensTexto(out, dados);
