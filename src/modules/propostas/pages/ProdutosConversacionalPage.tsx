@@ -763,6 +763,7 @@ export default function ProdutosConversacionalPage() {
                           ))}
                           {produtos.map(p => {
                             const ext = p as unknown as { categoria?: string; cobranca_padrao?: string; valor_medio?: number };
+                            const perguntasVinculadas = perguntas.filter(pp => normalizarCategoria(pp.categoria) === normalizarCategoria(ext.categoria));
                             return (
                               <TableRow key={p.id}>
                                 <TableCell>
