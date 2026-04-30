@@ -55,6 +55,7 @@ import TemplateImportPage from "./modules/propostas/pages/TemplateImportPage";
 import PropostaSetupPage from "./modules/propostas/pages/PropostaSetupPage";
 import PropostaConversacionalPage from "./modules/propostas/pages/PropostaConversacionalPage";
 import PropostasPerguntasPage from "./modules/propostas/pages/PropostasPerguntasPage";
+import PropostaDadosRenderPage from "./modules/propostas/pages/PropostaDadosRenderPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -127,6 +128,7 @@ const App = () => (
               <Route path="/propostas/nova" element={<PropostaCreatePage />} />
               <Route path="/propostas/setup" element={<PropostaSetupPage />} />
               <Route path="/propostas/conversa" element={<PropostaConversacionalPage />} />
+              <Route path="/propostas/dados-render" element={<PropostaDadosRenderPage />} />
               <Route path="/propostas/perguntas" element={<PropostasPerguntasPage />} />
               <Route path="/propostas/:id/preview" element={<PropostaPreviewPage />} />
               <Route path="/propostas/:id" element={<PropostaPreviewPage />} />
