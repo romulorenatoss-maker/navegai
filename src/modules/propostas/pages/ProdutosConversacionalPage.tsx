@@ -756,122 +756,41 @@ export default function ProdutosConversacionalPage() {
                       <p className="text-sm text-muted-foreground py-6 text-center">Nenhum produto. Use a conversa ou clique em "Adicionar linha".</p>
                     ) : (
                       <>
-                      <div
-                        ref={catalogoTableScrollRef}
-                        onScroll={() => sincronizarScrollCatalogo("tabela")}
-                        className="overflow-auto max-h-[calc(100vh-340px)] border rounded-md"
-                        style={{ overscrollBehavior: "contain" }}
-                      >
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Nome</TableHead>
-                            <TableHead>Categoria</TableHead>
-                            <TableHead>Tipo</TableHead>
-                            <TableHead>Cobrança</TableHead>
-                            <TableHead>Unidade</TableHead>
-                            <TableHead className="text-right" title="Valor mínimo aceito de venda (piso). A IA nunca sugere abaixo disso.">Valor mín. (R$)</TableHead>
-                            <TableHead className="text-right" title="Valor médio praticado. Usado pela IA como sugestão padrão na proposta.">Valor médio (R$)</TableHead>
-                            <TableHead>Placeholder item</TableHead>
-                            <TableHead>Placeholder qtd</TableHead>
-                            <TableHead>Placeholder valor</TableHead>
-                            <TableHead className="text-center">Checkbox?</TableHead>
-                            <TableHead className="min-w-[200px]">Perguntas vinculadas</TableHead>
-                            <TableHead className="w-20" />
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {/* Linhas em rascunho (não salvas) */}
-                          {drafts.map(d => (
-                            <TableRow key={d._key} className="bg-primary/5">
-                              <TableCell>
-                                <Input autoFocus className="h-8 min-w-[160px]" placeholder="Nome do item"
-                                  value={d.nome} onChange={(e) => patchDraft(d._key, { nome: e.target.value })} />
-                              </TableCell>
-                              <TableCell>
-                                <Select value={d.categoria || undefined} onValueChange={(v) => patchDraft(d._key, { categoria: v as ProdutoDraft["categoria"] })}>
-                                  <SelectTrigger className="h-8 w-36"><SelectValue placeholder="—" /></SelectTrigger>
-                                  <SelectContent>
-                                    {categoriasCatalogo.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-                                    <SelectItem value="outros">Outros</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </TableCell>
-                              <TableCell>
-                                <Select value={d.tipo} onValueChange={(v) => patchDraft(d._key, { tipo: v as ProdutoDraft["tipo"] })}>
-                                  <SelectTrigger className="h-8 w-28"><SelectValue /></SelectTrigger>
-                                  <SelectContent>{TIPOS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                                </Select>
-                              </TableCell>
-                              <TableCell>
-                                <Select value={d.cobranca_padrao} onValueChange={(v) => patchDraft(d._key, { cobranca_padrao: v as ProdutoDraft["cobranca_padrao"] })}>
-                                  <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
-                                  <SelectContent>{COBRANCAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                                </Select>
-                              </TableCell>
-                              <TableCell>
-                                <Input className="h-8 w-20" value={d.unidade} onChange={(e) => patchDraft(d._key, { unidade: e.target.value })} />
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="relative">
-                                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">R$</span>
-                                  <Input type="number" step="0.01" min="0" className="h-8 w-28 pl-8 text-right"
-                                    value={d.valor_minimo || ""} onChange={(e) => patchDraft(d._key, { valor_minimo: Number(e.target.value) })} />
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="relative">
-                                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">R$</span>
-                                  <Input type="number" step="0.01" min="0" className="h-8 w-28 pl-8 text-right"
-                                    value={d.valor_medio || ""} onChange={(e) => patchDraft(d._key, { valor_medio: Number(e.target.value) })} />
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <Input className="h-7 text-xs w-28 font-mono" placeholder="{item_switch}"
-                                  value={d.placeholder_key ?? ""} onChange={(e) => patchDraft(d._key, { placeholder_key: e.target.value })} />
-                              </TableCell>
-                              <TableCell>
-                                <Input className="h-7 text-xs w-24 font-mono" placeholder="{qtd_switch}"
-                                  value={d.placeholder_qtd ?? ""} onChange={(e) => patchDraft(d._key, { placeholder_qtd: e.target.value })} />
-                              </TableCell>
-                              <TableCell>
-                                <Input className="h-7 text-xs w-24 font-mono" placeholder="{valor_switch}"
-                                  value={d.placeholder_valor ?? ""} onChange={(e) => patchDraft(d._key, { placeholder_valor: e.target.value })} />
-                              </TableCell>
-                              <TableCell className="text-center">
-                                <input
-                                  type="checkbox"
-                                  checked={d.is_checkbox ?? false}
-                                  onChange={(e) => patchDraft(d._key, { is_checkbox: e.target.checked })}
-                                  className="w-4 h-4 accent-primary"
-                                  title="Marcar (x) na proposta quando selecionado"
-                                />
-                              </TableCell>
-                              <TableCell className="text-xs text-muted-foreground italic">—</TableCell>
-                              <TableCell>
-                                <div className="flex gap-1">
-                                  <Button variant="default" size="icon" className="h-7 w-7" title="Salvar"
-                                    disabled={salvandoDraft === d._key} onClick={() => salvarDraft(d._key)}>
-                                    {salvandoDraft === d._key ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                                  </Button>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" title="Descartar"
-                                    onClick={() => removerDraft(d._key)}>
-                                    <X className="w-3.5 h-3.5" />
-                                  </Button>
-                                </div>
-                              </TableCell>
+                      <div className="relative border rounded-md">
+                        <div
+                          ref={catalogoTableScrollRef}
+                          onScroll={() => sincronizarScrollCatalogo("tabela")}
+                          className="overflow-auto max-h-[calc(100vh-380px)]"
+                          style={{ overscrollBehavior: "contain" }}
+                        >
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Nome</TableHead>
+                              <TableHead>Categoria</TableHead>
+                              <TableHead>Tipo</TableHead>
+                              <TableHead>Cobrança</TableHead>
+                              <TableHead>Unidade</TableHead>
+                              <TableHead className="text-right" title="Valor mínimo aceito de venda (piso). A IA nunca sugere abaixo disso.">Valor mín. (R$)</TableHead>
+                              <TableHead className="text-right" title="Valor médio praticado. Usado pela IA como sugestão padrão na proposta.">Valor médio (R$)</TableHead>
+                              <TableHead>Placeholder item</TableHead>
+                              <TableHead>Placeholder qtd</TableHead>
+                              <TableHead>Placeholder valor</TableHead>
+                              <TableHead className="text-center">Checkbox?</TableHead>
+                              <TableHead className="min-w-[200px]">Perguntas vinculadas</TableHead>
+                              <TableHead className="w-20" />
                             </TableRow>
-                          ))}
-                          {produtos.map(p => {
-                            const ext = p as unknown as { categoria?: string; cobranca_padrao?: string; valor_medio?: number };
-                            const perguntasVinculadas = perguntas.filter(pp => normalizarCategoria(pp.categoria) === normalizarCategoria(ext.categoria));
-                            return (
-                              <TableRow key={p.id}>
+                          </TableHeader>
+                          <TableBody>
+                            {/* Linhas em rascunho (não salvas) */}
+                            {drafts.map(d => (
+                              <TableRow key={d._key} className="bg-primary/5">
                                 <TableCell>
-                                  <Input className="h-8 min-w-[160px]" defaultValue={p.nome} onBlur={(e) => e.target.value !== p.nome && patchProduto(p.id, { nome: e.target.value })} />
+                                  <Input autoFocus className="h-8 min-w-[160px]" placeholder="Nome do item"
+                                    value={d.nome} onChange={(e) => patchDraft(d._key, { nome: e.target.value })} />
                                 </TableCell>
                                 <TableCell>
-                                  <Select defaultValue={ext.categoria ?? ""} onValueChange={(v) => patchProduto(p.id, { categoria: v } as never)}>
+                                  <Select value={d.categoria || undefined} onValueChange={(v) => patchDraft(d._key, { categoria: v as ProdutoDraft["categoria"] })}>
                                     <SelectTrigger className="h-8 w-36"><SelectValue placeholder="—" /></SelectTrigger>
                                     <SelectContent>
                                       {categoriasCatalogo.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
@@ -880,96 +799,179 @@ export default function ProdutosConversacionalPage() {
                                   </Select>
                                 </TableCell>
                                 <TableCell>
-                                  <Select defaultValue={p.tipo} onValueChange={(v) => patchProduto(p.id, { tipo: v as typeof TIPOS[number] })}>
+                                  <Select value={d.tipo} onValueChange={(v) => patchDraft(d._key, { tipo: v as ProdutoDraft["tipo"] })}>
                                     <SelectTrigger className="h-8 w-28"><SelectValue /></SelectTrigger>
                                     <SelectContent>{TIPOS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                                   </Select>
                                 </TableCell>
                                 <TableCell>
-                                  <Select defaultValue={ext.cobranca_padrao ?? "mensal"} onValueChange={(v) => patchProduto(p.id, { cobranca_padrao: v } as never)}>
+                                  <Select value={d.cobranca_padrao} onValueChange={(v) => patchDraft(d._key, { cobranca_padrao: v as ProdutoDraft["cobranca_padrao"] })}>
                                     <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
                                     <SelectContent>{COBRANCAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                                   </Select>
                                 </TableCell>
                                 <TableCell>
-                                  <Input className="h-8 w-20" defaultValue={p.unidade} onBlur={(e) => e.target.value !== p.unidade && patchProduto(p.id, { unidade: e.target.value })} />
+                                  <Input className="h-8 w-20" value={d.unidade} onChange={(e) => patchDraft(d._key, { unidade: e.target.value })} />
                                 </TableCell>
                                 <TableCell className="text-right">
                                   <div className="relative">
                                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">R$</span>
-                                    <Input type="number" step="0.01" min="0" className="h-8 w-28 pl-8 text-right" defaultValue={p.valor_minimo}
-                                      onBlur={(e) => Number(e.target.value) !== p.valor_minimo && patchProduto(p.id, { valor_minimo: Number(e.target.value) })} />
+                                    <Input type="number" step="0.01" min="0" className="h-8 w-28 pl-8 text-right"
+                                      value={d.valor_minimo || ""} onChange={(e) => patchDraft(d._key, { valor_minimo: Number(e.target.value) })} />
                                   </div>
                                 </TableCell>
                                 <TableCell className="text-right">
                                   <div className="relative">
                                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">R$</span>
-                                    <Input type="number" step="0.01" min="0" className="h-8 w-28 pl-8 text-right" defaultValue={ext.valor_medio ?? 0}
-                                      onBlur={(e) => Number(e.target.value) !== (ext.valor_medio ?? 0) && patchProduto(p.id, { valor_medio: Number(e.target.value) } as never)} />
+                                    <Input type="number" step="0.01" min="0" className="h-8 w-28 pl-8 text-right"
+                                      value={d.valor_medio || ""} onChange={(e) => patchDraft(d._key, { valor_medio: Number(e.target.value) })} />
                                   </div>
                                 </TableCell>
                                 <TableCell>
                                   <Input className="h-7 text-xs w-28 font-mono" placeholder="{item_switch}"
-                                    defaultValue={(p as unknown as { placeholder_key?: string }).placeholder_key ?? ""}
-                                    onBlur={(e) => {
-                                      const v = e.target.value || null;
-                                      const cur = (p as unknown as { placeholder_key?: string | null }).placeholder_key ?? null;
-                                      if (v !== cur) patchProduto(p.id, { placeholder_key: v } as never);
-                                    }} />
+                                    value={d.placeholder_key ?? ""} onChange={(e) => patchDraft(d._key, { placeholder_key: e.target.value })} />
                                 </TableCell>
                                 <TableCell>
                                   <Input className="h-7 text-xs w-24 font-mono" placeholder="{qtd_switch}"
-                                    defaultValue={(p as unknown as { placeholder_qtd?: string }).placeholder_qtd ?? ""}
-                                    onBlur={(e) => {
-                                      const v = e.target.value || null;
-                                      const cur = (p as unknown as { placeholder_qtd?: string | null }).placeholder_qtd ?? null;
-                                      if (v !== cur) patchProduto(p.id, { placeholder_qtd: v } as never);
-                                    }} />
+                                    value={d.placeholder_qtd ?? ""} onChange={(e) => patchDraft(d._key, { placeholder_qtd: e.target.value })} />
                                 </TableCell>
                                 <TableCell>
                                   <Input className="h-7 text-xs w-24 font-mono" placeholder="{valor_switch}"
-                                    defaultValue={(p as unknown as { placeholder_valor?: string }).placeholder_valor ?? ""}
-                                    onBlur={(e) => {
-                                      const v = e.target.value || null;
-                                      const cur = (p as unknown as { placeholder_valor?: string | null }).placeholder_valor ?? null;
-                                      if (v !== cur) patchProduto(p.id, { placeholder_valor: v } as never);
-                                    }} />
+                                    value={d.placeholder_valor ?? ""} onChange={(e) => patchDraft(d._key, { placeholder_valor: e.target.value })} />
                                 </TableCell>
                                 <TableCell className="text-center">
                                   <input
                                     type="checkbox"
-                                    checked={(p as unknown as { is_checkbox?: boolean }).is_checkbox ?? false}
-                                    onChange={(e) => patchProduto(p.id, { is_checkbox: e.target.checked } as never)}
+                                    checked={d.is_checkbox ?? false}
+                                    onChange={(e) => patchDraft(d._key, { is_checkbox: e.target.checked })}
                                     className="w-4 h-4 accent-primary"
                                     title="Marcar (x) na proposta quando selecionado"
                                   />
                                 </TableCell>
-                                <TableCell className="min-w-[200px] max-w-[280px]">
-                                  {perguntasVinculadas.length === 0 ? (
-                                    <span className="text-xs text-muted-foreground italic">—</span>
-                                  ) : (
-                                    <div className="text-xs text-muted-foreground line-clamp-2" title={perguntasVinculadas.map(pp => pp.pergunta).join(" · ")}>
-                                      {perguntasVinculadas.map(pp => pp.pergunta.length > 30 ? pp.pergunta.slice(0, 30) + "…" : pp.pergunta).join(" · ")}
-                                    </div>
-                                  )}
-                                </TableCell>
+                                <TableCell className="text-xs text-muted-foreground italic">—</TableCell>
                                 <TableCell>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deletarProduto(p.id)}>
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </Button>
+                                  <div className="flex gap-1">
+                                    <Button variant="default" size="icon" className="h-7 w-7" title="Salvar"
+                                      disabled={salvandoDraft === d._key} onClick={() => salvarDraft(d._key)}>
+                                      {salvandoDraft === d._key ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" title="Descartar"
+                                      onClick={() => removerDraft(d._key)}>
+                                      <X className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </div>
                                 </TableCell>
                               </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                      </div>
-                      <div
-                        ref={catalogoBottomScrollRef}
-                        onScroll={() => sincronizarScrollCatalogo("barra")}
-                        className="sticky bottom-0 left-0 right-0 mt-1 overflow-x-auto overflow-y-hidden h-3 bg-background/95 backdrop-blur border-t rounded-b-md"
-                      >
-                        <div style={{ width: catalogoScrollWidth, height: 1 }} />
+                            ))}
+                            {produtos.map(p => {
+                              const ext = p as unknown as { categoria?: string; cobranca_padrao?: string; valor_medio?: number };
+                              const perguntasVinculadas = perguntas.filter(pp => normalizarCategoria(pp.categoria) === normalizarCategoria(ext.categoria));
+                              return (
+                                <TableRow key={p.id}>
+                                  <TableCell>
+                                    <Input className="h-8 min-w-[160px]" defaultValue={p.nome} onBlur={(e) => e.target.value !== p.nome && patchProduto(p.id, { nome: e.target.value })} />
+                                  </TableCell>
+                                  <TableCell>
+                                    <Select defaultValue={ext.categoria ?? ""} onValueChange={(v) => patchProduto(p.id, { categoria: v } as never)}>
+                                      <SelectTrigger className="h-8 w-36"><SelectValue placeholder="—" /></SelectTrigger>
+                                      <SelectContent>
+                                        {categoriasCatalogo.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                                        <SelectItem value="outros">Outros</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Select defaultValue={p.tipo} onValueChange={(v) => patchProduto(p.id, { tipo: v as typeof TIPOS[number] })}>
+                                      <SelectTrigger className="h-8 w-28"><SelectValue /></SelectTrigger>
+                                      <SelectContent>{TIPOS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Select defaultValue={ext.cobranca_padrao ?? "mensal"} onValueChange={(v) => patchProduto(p.id, { cobranca_padrao: v } as never)}>
+                                      <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+                                      <SelectContent>{COBRANCAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Input className="h-8 w-20" defaultValue={p.unidade} onBlur={(e) => e.target.value !== p.unidade && patchProduto(p.id, { unidade: e.target.value })} />
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <div className="relative">
+                                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">R$</span>
+                                      <Input type="number" step="0.01" min="0" className="h-8 w-28 pl-8 text-right" defaultValue={p.valor_minimo}
+                                        onBlur={(e) => Number(e.target.value) !== p.valor_minimo && patchProduto(p.id, { valor_minimo: Number(e.target.value) })} />
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <div className="relative">
+                                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">R$</span>
+                                      <Input type="number" step="0.01" min="0" className="h-8 w-28 pl-8 text-right" defaultValue={ext.valor_medio ?? 0}
+                                        onBlur={(e) => Number(e.target.value) !== (ext.valor_medio ?? 0) && patchProduto(p.id, { valor_medio: Number(e.target.value) } as never)} />
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Input className="h-7 text-xs w-28 font-mono" placeholder="{item_switch}"
+                                      defaultValue={(p as unknown as { placeholder_key?: string }).placeholder_key ?? ""}
+                                      onBlur={(e) => {
+                                        const v = e.target.value || null;
+                                        const cur = (p as unknown as { placeholder_key?: string | null }).placeholder_key ?? null;
+                                        if (v !== cur) patchProduto(p.id, { placeholder_key: v } as never);
+                                      }} />
+                                  </TableCell>
+                                  <TableCell>
+                                    <Input className="h-7 text-xs w-24 font-mono" placeholder="{qtd_switch}"
+                                      defaultValue={(p as unknown as { placeholder_qtd?: string }).placeholder_qtd ?? ""}
+                                      onBlur={(e) => {
+                                        const v = e.target.value || null;
+                                        const cur = (p as unknown as { placeholder_qtd?: string | null }).placeholder_qtd ?? null;
+                                        if (v !== cur) patchProduto(p.id, { placeholder_qtd: v } as never);
+                                      }} />
+                                  </TableCell>
+                                  <TableCell>
+                                    <Input className="h-7 text-xs w-24 font-mono" placeholder="{valor_switch}"
+                                      defaultValue={(p as unknown as { placeholder_valor?: string }).placeholder_valor ?? ""}
+                                      onBlur={(e) => {
+                                        const v = e.target.value || null;
+                                        const cur = (p as unknown as { placeholder_valor?: string | null }).placeholder_valor ?? null;
+                                        if (v !== cur) patchProduto(p.id, { placeholder_valor: v } as never);
+                                      }} />
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <input
+                                      type="checkbox"
+                                      checked={(p as unknown as { is_checkbox?: boolean }).is_checkbox ?? false}
+                                      onChange={(e) => patchProduto(p.id, { is_checkbox: e.target.checked } as never)}
+                                      className="w-4 h-4 accent-primary"
+                                      title="Marcar (x) na proposta quando selecionado"
+                                    />
+                                  </TableCell>
+                                  <TableCell className="min-w-[200px] max-w-[280px]">
+                                    {perguntasVinculadas.length === 0 ? (
+                                      <span className="text-xs text-muted-foreground italic">—</span>
+                                    ) : (
+                                      <div className="text-xs text-muted-foreground line-clamp-2" title={perguntasVinculadas.map(pp => pp.pergunta).join(" · ")}>
+                                        {perguntasVinculadas.map(pp => pp.pergunta.length > 30 ? pp.pergunta.slice(0, 30) + "…" : pp.pergunta).join(" · ")}
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deletarProduto(p.id)}>
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                        </div>
+                        <div
+                          ref={catalogoBottomScrollRef}
+                          onScroll={() => sincronizarScrollCatalogo("barra")}
+                          className="overflow-x-auto overflow-y-hidden h-3 bg-background border-t rounded-b-md"
+                        >
+                          <div style={{ width: catalogoScrollWidth, height: 1 }} />
+                        </div>
                       </div>
                       </>
                     )}
