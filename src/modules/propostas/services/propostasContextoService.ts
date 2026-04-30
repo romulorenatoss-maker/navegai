@@ -19,10 +19,18 @@ export interface PropostasEmpresaContexto {
 
 export interface PropostasPerguntaProduto {
   id: string;
-  categoria: PropostasCategoria;
+  categoria: PropostasCategoria | string;
   pergunta: string;
   ordem: number;
   ativo: boolean;
+  gera_contexto?: boolean;
+}
+
+export interface PropostasPerguntaProdutoLink {
+  id: string;
+  pergunta_id: string;
+  produto_id: string;
+  ordem: number;
 }
 
 // ---------- CONTEXTO ----------
