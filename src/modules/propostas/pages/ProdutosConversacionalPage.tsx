@@ -28,9 +28,13 @@ import {
 import {
   obterContextoEmpresa, salvarContextoEmpresa,
   listarPerguntasProduto, criarPerguntaProduto, atualizarPerguntaProduto, excluirPerguntaProduto,
-  type PropostasEmpresaContexto, type PropostasPerguntaProduto, type PropostasCategoria,
+  listarLinksPerguntaProduto, vincularProdutoPergunta, desvincularProdutoPergunta, categoriaEmUso,
+  type PropostasEmpresaContexto, type PropostasPerguntaProduto, type PropostasCategoria, type PropostasPerguntaProdutoLink,
 } from "../services/propostasContextoService";
-import { listarCategorias, atualizarCategoria, type PropostasCategoriaSetup } from "../services/propostasPerguntasService";
+import {
+  listarCategorias, atualizarCategoria, criarCategoria, excluirCategoria,
+  type PropostasCategoriaSetup, type PropostasCobranca,
+} from "../services/propostasPerguntasService";
 
 interface Msg { role: "user" | "assistant"; content: string }
 interface ProdutoSugerido {
