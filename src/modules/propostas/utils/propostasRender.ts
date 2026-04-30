@@ -6,9 +6,14 @@
  *  - O template é a fonte da verdade do layout.
  *  - Esta função apenas SUBSTITUI:
  *      • <span data-token="x">…</span>      → valor do token "x"
- *      • {x}                                 → valor do token "x" (compat)
- *      • <span data-propostas-placeholder>   → valor (compat com parser antigo)
- *  - Tokens de tabela (ex: itens_tabela) recebem HTML <table> renderizado.
+ *      • {x}                                 → valor do token "x" (compat plano)
+ *      • {x.y}                               → valor de dados.x.y (acesso aninhado, ex.: cliente.nome)
+ *      • <span data-propostas-placeholder>   → valor (compat parser antigo)
+ *      • {#chave}…{/chave}                   → loop simples (1 nível)
+ *      • {#categorias}…{#itens}…{/itens}…{/categorias} → loop aninhado 2 níveis FIXO
+ *  - Fallback de tokens legados:
+ *      {cliente_nome}, {cliente_cnpj}, {cliente_email}, ... → mapeados para cliente.*
+ *      {responsavel_nome}, {responsavel_email}, ...        → mapeados para responsavel.*
  *  - Tokens não preenchidos: span vira "" e {x} permanece visível para o usuário identificar lacuna.
  */
 
@@ -31,20 +36,81 @@ function renderValor(v: unknown): string {
     return escapeHtml(v).replace(/\n/g, "<br/>");
   }
   if (typeof v === "number") return String(v);
+  if (typeof v === "boolean") return v ? "Sim" : "Não";
   return escapeHtml(String(v));
 }
 
+/** Resolve "a.b.c" em um objeto aninhado. Retorna undefined se qualquer trecho faltar. */
+function resolverPath(dados: Record<string, unknown>, path: string): unknown {
+  const partes = path.split(".");
+  let atual: unknown = dados;
+  for (const p of partes) {
+    if (atual === null || atual === undefined) return undefined;
+    if (typeof atual !== "object") return undefined;
+    atual = (atual as Record<string, unknown>)[p];
+  }
+  return atual;
+}
+
 /**
- * Substitui spans <span data-token="x">…</span> pelo valor de dados[x].
- * Se o token não existe nos dados, mantém o conteúdo atual do span (preservação).
+ * Mapeia tokens legados (planos) para suas contrapartidas estruturadas.
+ * Garante compatibilidade reversa com templates como {cliente_nome}.
+ */
+function aplicarFallbacksLegados(
+  dados: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...dados };
+
+  const cliente = (dados.cliente && typeof dados.cliente === "object")
+    ? dados.cliente as Record<string, unknown>
+    : null;
+  const responsavel = (dados.responsavel && typeof dados.responsavel === "object")
+    ? dados.responsavel as Record<string, unknown>
+    : null;
+  const totais = (dados.totais && typeof dados.totais === "object")
+    ? dados.totais as Record<string, unknown>
+    : null;
+
+  // cliente_*
+  if (cliente) {
+    if (out.cliente_nome === undefined && cliente.nome !== undefined) out.cliente_nome = cliente.nome;
+    if (out.cliente_cnpj === undefined && cliente.cnpj !== undefined) out.cliente_cnpj = cliente.cnpj;
+    if (out.cliente_cpf === undefined && cliente.cpf !== undefined) out.cliente_cpf = cliente.cpf;
+    if (out.cliente_email === undefined && cliente.email !== undefined) out.cliente_email = cliente.email;
+    if (out.cliente_telefone === undefined && cliente.telefone !== undefined) out.cliente_telefone = cliente.telefone;
+    if (out.cliente_endereco === undefined && cliente.endereco !== undefined) out.cliente_endereco = cliente.endereco;
+    if (out.cliente_cidade === undefined && cliente.cidade !== undefined) out.cliente_cidade = cliente.cidade;
+  }
+
+  // responsavel_*
+  if (responsavel) {
+    if (out.responsavel_nome === undefined && responsavel.nome !== undefined) out.responsavel_nome = responsavel.nome;
+    if (out.responsavel_email === undefined && responsavel.email !== undefined) out.responsavel_email = responsavel.email;
+    if (out.responsavel_telefone === undefined && responsavel.telefone !== undefined) out.responsavel_telefone = responsavel.telefone;
+    if (out.responsavel_cargo === undefined && responsavel.cargo !== undefined) out.responsavel_cargo = responsavel.cargo;
+  }
+
+  // totais.*
+  if (totais) {
+    if (out.total_geral === undefined && totais.total_geral !== undefined) out.total_geral = totais.total_geral;
+    if (out.valor_total === undefined && totais.total_geral !== undefined) out.valor_total = totais.total_geral;
+    if (out.valor_implantacao === undefined && totais.implantacao !== undefined) out.valor_implantacao = totais.implantacao;
+    if (out.valor_mensal === undefined && totais.mensal !== undefined) out.valor_mensal = totais.mensal;
+  }
+
+  return out;
+}
+
+/**
+ * Substitui spans <span data-token="x">…</span> pelo valor de dados[x] (suporta x.y.z).
  */
 function substituirSpans(html: string, dados: Record<string, unknown>): string {
   return html.replace(
     /<span\b[^>]*\bdata-token=["']([a-zA-Z0-9_.]+)["'][^>]*>[\s\S]*?<\/span>/g,
     (full, chave: string) => {
-      if (!(chave in dados)) return full;
-      const v = renderValor(dados[chave]);
-      return `<span data-token="${escapeHtml(chave)}">${v}</span>`;
+      const v = resolverPath(dados, chave);
+      if (v === undefined) return full;
+      return `<span data-token="${escapeHtml(chave)}">${renderValor(v)}</span>`;
     }
   );
 }
@@ -54,41 +120,89 @@ function substituirSpansLegacy(html: string, dados: Record<string, unknown>): st
   return html.replace(
     /<span\b[^>]*\bdata-propostas-placeholder[^>]*\bdata-chave=["']([a-zA-Z0-9_.]+)["'][^>]*>[\s\S]*?<\/span>/g,
     (full, chave: string) => {
-      if (!(chave in dados)) return full;
-      const v = renderValor(dados[chave]);
-      return `<span data-propostas-placeholder="true" data-chave="${escapeHtml(chave)}">${v}</span>`;
+      const v = resolverPath(dados, chave);
+      if (v === undefined) return full;
+      return `<span data-propostas-placeholder="true" data-chave="${escapeHtml(chave)}">${renderValor(v)}</span>`;
     }
   );
 }
 
-/** Substitui {token} fora de spans (compat). */
+/** Substitui {token} fora de spans (compat). Suporta paths aninhados (cliente.nome). */
 function substituirTokensTexto(html: string, dados: Record<string, unknown>): string {
   return html.replace(TOKEN_RX, (full, chave: string) => {
-    if (!(chave in dados)) return full; // mantém visível
-    return renderValor(dados[chave]);
+    const v = resolverPath(dados, chave);
+    if (v === undefined) return full; // mantém visível
+    return renderValor(v);
   });
 }
 
 /**
- * Suporte a loops: {#chave} ... {/chave}
- * O bloco interno é repetido para cada item do array dados[chave],
- * substituindo {campo} pelos campos do item.
- * Os marcadores podem estar dentro de qualquer estrutura HTML (ex: <tr>),
- * o regex captura tudo entre eles preservando o markup.
+ * Loop ANINHADO FIXO 2 níveis: {#categorias}…{#itens}…{/itens}…{/categorias}
+ * - dados.categorias deve ser Array<{ nome, subtotal, itens: [...] }>
+ * - O bloco interno {#itens}…{/itens} é repetido para cada item da categoria atual,
+ *   com tokens locais do item ({nome}, {quantidade}, {valor_total}, etc).
+ * - Tokens da categoria ({nome}, {subtotal}) também são substituídos no escopo da categoria.
+ * - Pais externos ainda são processados pelo loop simples padrão.
  */
-function expandirLoops(html: string, dados: Record<string, unknown>): string {
+function expandirLoopCategoriasItens(html: string, dados: Record<string, unknown>): string {
+  return html.replace(
+    /\{#categorias\}([\s\S]*?)\{\/categorias\}/g,
+    (_full, blocoCategoria: string) => {
+      const lista = dados.categorias;
+      if (!Array.isArray(lista) || lista.length === 0) return "";
+      return lista
+        .map((cat) => {
+          const catObj = (cat && typeof cat === "object" ? cat : {}) as Record<string, unknown>;
+          // 1) Expande {#itens}…{/itens} dentro do bloco da categoria
+          let saida = blocoCategoria.replace(
+            /\{#itens\}([\s\S]*?)\{\/itens\}/g,
+            (_f2, blocoItem: string) => {
+              const itens = catObj.itens;
+              if (!Array.isArray(itens) || itens.length === 0) return "";
+              return itens
+                .map((it) => {
+                  const itemObj = (it && typeof it === "object" ? it : {}) as Record<string, unknown>;
+                  return blocoItem.replace(TOKEN_RX, (full, k: string) => {
+                    const v = resolverPath(itemObj, k);
+                    if (v === undefined) return full;
+                    return renderValor(v);
+                  });
+                })
+                .join("");
+            },
+          );
+          // 2) Substitui tokens da categoria no restante do bloco (fora dos itens)
+          saida = saida.replace(TOKEN_RX, (full, k: string) => {
+            const v = resolverPath(catObj, k);
+            if (v === undefined) return full;
+            return renderValor(v);
+          });
+          return saida;
+        })
+        .join("");
+    },
+  );
+}
+
+/**
+ * Loop simples 1 nível: {#chave} ... {/chave}
+ * (mantido para compat: itens_infra, itens_dados, etc.)
+ * NÃO se aplica a {#categorias} (já consumido por expandirLoopCategoriasItens).
+ */
+function expandirLoopsSimples(html: string, dados: Record<string, unknown>): string {
   return html.replace(
     /\{#([a-zA-Z0-9_]+)\}([\s\S]*?)\{\/\1\}/g,
     (_full, chave: string, bloco: string) => {
-      const lista = dados[chave];
+      if (chave === "categorias" || chave === "itens") return _full; // já tratados
+      const lista = resolverPath(dados, chave);
       if (!Array.isArray(lista) || lista.length === 0) return "";
       return lista
         .map((item) => {
           const itemDados = (item && typeof item === "object" ? item : {}) as Record<string, unknown>;
-          // Substitui apenas tokens locais do item dentro do bloco
           return bloco.replace(TOKEN_RX, (full, k: string) => {
-            if (!(k in itemDados)) return full;
-            return renderValor(itemDados[k]);
+            const v = resolverPath(itemDados, k);
+            if (v === undefined) return full;
+            return renderValor(v);
           });
         })
         .join("");
@@ -105,12 +219,19 @@ export function propostasRenderizarTemplate(
   dados: Record<string, unknown>,
 ): string {
   if (!templateHtml) return "";
+  // Aplica fallbacks legados (cliente_nome → cliente.nome, etc.) ANTES de substituir
+  const dadosFinais = aplicarFallbacksLegados(dados);
   let out = templateHtml;
-  // Loops primeiro: produzem markup que ainda pode conter tokens globais
-  out = expandirLoops(out, dados);
-  out = substituirSpans(out, dados);
-  out = substituirSpansLegacy(out, dados);
-  out = substituirTokensTexto(out, dados);
+  // 1) Loop aninhado fixo categorias→itens (tem prioridade)
+  out = expandirLoopCategoriasItens(out, dadosFinais);
+  // 2) Loops simples (compat: itens_infra, itens_dados, ...)
+  out = expandirLoopsSimples(out, dadosFinais);
+  // 3) Spans com data-token
+  out = substituirSpans(out, dadosFinais);
+  // 4) Spans legados
+  out = substituirSpansLegacy(out, dadosFinais);
+  // 5) Tokens texto {x} e {x.y}
+  out = substituirTokensTexto(out, dadosFinais);
   return out;
 }
 
