@@ -539,15 +539,20 @@ export default function PropostaConversacionalPage() {
         conteudo_editado: html,
         valor_total: totais.total,
         validade: null,
-        itens: itens.map(i => ({
+        itens: itens.map(i => {
+          const catValidas = ["infraestrutura", "dados", "seguranca", "telefonia"] as const;
+          const catNorm = (i.categoria ?? "").toLowerCase();
+          const categoria = (catValidas as readonly string[]).includes(catNorm) ? catNorm : "dados";
+          return ({
           descricao: i.nome,
           quantidade: i.quantidade,
           unidade: "un",
           valor_unitario: i.valor_unitario,
           valor_total: i.quantidade * i.valor_unitario,
           cobranca: i.cobranca,
-          categoria: i.categoria,
-        } as unknown as {
+          categoria,
+        });
+        }).map(x => x as unknown as {
           descricao: string; quantidade: number; unidade: string;
           valor_unitario: number; valor_total: number;
         })),
