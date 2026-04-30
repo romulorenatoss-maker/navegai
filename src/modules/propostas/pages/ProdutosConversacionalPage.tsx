@@ -249,17 +249,19 @@ export default function ProdutosConversacionalPage() {
 
   // ============ LOADERS ============
   async function recarregar() {
-    const [emp, prods, perg, cats] = await Promise.all([
+    const [emp, prods, perg, cats, lks] = await Promise.all([
       obterContextoEmpresa(),
       listarProdutos(),
       listarPerguntasProduto(),
       listarCategorias(),
+      listarLinksPerguntaProduto(),
     ]);
     setEmpresa(emp);
     setEmpresaDraft(emp ?? {});
     setProdutos(prods);
     setPerguntas(perg);
     setCategoriasSetup(cats);
+    setLinks(lks);
   }
 
   useEffect(() => { recarregar().catch(e => toast.error(String(e))); }, []);
