@@ -866,7 +866,7 @@ export default function ProdutosConversacionalPage() {
                       <div
                         ref={catalogoBottomScrollRef}
                         onScroll={() => sincronizarScrollCatalogo("barra")}
-                        className="absolute inset-x-6 bottom-3 overflow-x-auto overflow-y-hidden h-5"
+                        className="sticky bottom-0 left-0 right-0 mt-1 overflow-x-auto overflow-y-hidden h-3 bg-background/95 backdrop-blur border-t rounded-b-md"
                       >
                         <div style={{ width: catalogoScrollWidth, height: 1 }} />
                       </div>
