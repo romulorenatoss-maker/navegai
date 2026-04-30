@@ -152,7 +152,14 @@ export default function ProdutosConversacionalPage() {
 
   const [produtos, setProdutos] = useState<PropostasProduto[]>([]);
   const [perguntas, setPerguntas] = useState<PropostasPerguntaProduto[]>([]);
+  const [links, setLinks] = useState<PropostasPerguntaProdutoLink[]>([]);
   const [categoriasSetup, setCategoriasSetup] = useState<PropostasCategoriaSetup[]>([]);
+
+  // Dialogs de categoria e produto-pergunta
+  const [dlgCat, setDlgCat] = useState<Partial<PropostasCategoriaSetup> | null>(null);
+  const [salvandoCat, setSalvandoCat] = useState(false);
+  const [dlgProdPerg, setDlgProdPerg] = useState<{ pergunta: PropostasPerguntaProduto } | null>(null);
+  const [novoProdDraft, setNovoProdDraft] = useState<{ nome: string; valor_minimo: number; cobranca_padrao: "implantacao" | "mensal" | "informativo"; tipo: "produto" | "servico"; unidade: string } | null>(null);
 
   // Linhas em rascunho (ainda não salvas)
   type ProdutoDraft = {
