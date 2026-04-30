@@ -517,6 +517,16 @@ export default function PropostaConversacionalPage() {
       const tpl = templates.find(t => t.id === templateId);
       if (!tpl) throw new Error("Template não encontrado");
 
+      const itensRender = itens.map((i) => ({
+        nome: i.nome,
+        quantidade: i.quantidade,
+        valor_unitario: fmtBRL(i.valor_unitario),
+        valor_total: fmtBRL(i.quantidade * i.valor_unitario),
+        categoria: (i.categoria ?? "").toLowerCase(),
+        cobranca: i.cobranca,
+        descricao: (i as any).descricao ?? "",
+      }));
+
       const dados: Record<string, unknown> = {
         ...respostas,
         cliente_nome: clienteSel.nome,
