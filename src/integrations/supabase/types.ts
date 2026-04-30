@@ -3355,11 +3355,51 @@ export type Database = {
           },
         ]
       }
+      propostas_pergunta_produto_link: {
+        Row: {
+          created_at: string
+          id: string
+          ordem: number
+          pergunta_id: string
+          produto_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ordem?: number
+          pergunta_id: string
+          produto_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ordem?: number
+          pergunta_id?: string
+          produto_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "propostas_pergunta_produto_link_pergunta_id_fkey"
+            columns: ["pergunta_id"]
+            isOneToOne: false
+            referencedRelation: "propostas_perguntas_produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "propostas_pergunta_produto_link_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "propostas_produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       propostas_perguntas_produtos: {
         Row: {
           ativo: boolean
           categoria: string
           created_at: string
+          gera_contexto: boolean
           id: string
           ordem: number
           pergunta: string
@@ -3369,6 +3409,7 @@ export type Database = {
           ativo?: boolean
           categoria: string
           created_at?: string
+          gera_contexto?: boolean
           id?: string
           ordem?: number
           pergunta: string
@@ -3378,6 +3419,7 @@ export type Database = {
           ativo?: boolean
           categoria?: string
           created_at?: string
+          gera_contexto?: boolean
           id?: string
           ordem?: number
           pergunta?: string
@@ -4860,6 +4902,13 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       normalize_cpf: { Args: { cpf_input: string }; Returns: string }
+      propostas_categoria_em_uso: {
+        Args: { _codigo: string }
+        Returns: {
+          total_perguntas: number
+          total_produtos: number
+        }[]
+      }
       propostas_user_has_access: {
         Args: { _user_id: string }
         Returns: boolean

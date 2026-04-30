@@ -9,9 +9,10 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Save, Package, ListChecks, Building2, X, Check, Loader2, GripVertical } from "lucide-react";
+import { Plus, Trash2, Save, Package, ListChecks, Building2, X, Check, Loader2, GripVertical, Pencil, Tag, Link2, Unlink } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
   type DragEndEvent,
@@ -27,9 +28,13 @@ import {
 import {
   obterContextoEmpresa, salvarContextoEmpresa,
   listarPerguntasProduto, criarPerguntaProduto, atualizarPerguntaProduto, excluirPerguntaProduto,
-  type PropostasEmpresaContexto, type PropostasPerguntaProduto, type PropostasCategoria,
+  listarLinksPerguntaProduto, vincularProdutoPergunta, desvincularProdutoPergunta, categoriaEmUso,
+  type PropostasEmpresaContexto, type PropostasPerguntaProduto, type PropostasCategoria, type PropostasPerguntaProdutoLink,
 } from "../services/propostasContextoService";
-import { listarCategorias, atualizarCategoria, type PropostasCategoriaSetup } from "../services/propostasPerguntasService";
+import {
+  listarCategorias, atualizarCategoria, criarCategoria, excluirCategoria,
+  type PropostasCategoriaSetup, type PropostasCobranca,
+} from "../services/propostasPerguntasService";
 
 interface Msg { role: "user" | "assistant"; content: string }
 interface ProdutoSugerido {
@@ -147,7 +152,14 @@ export default function ProdutosConversacionalPage() {
 
   const [produtos, setProdutos] = useState<PropostasProduto[]>([]);
   const [perguntas, setPerguntas] = useState<PropostasPerguntaProduto[]>([]);
+  const [links, setLinks] = useState<PropostasPerguntaProdutoLink[]>([]);
   const [categoriasSetup, setCategoriasSetup] = useState<PropostasCategoriaSetup[]>([]);
+
+  // Dialogs de categoria e produto-pergunta
+  const [dlgCat, setDlgCat] = useState<Partial<PropostasCategoriaSetup> | null>(null);
+  const [salvandoCat, setSalvandoCat] = useState(false);
+  const [dlgProdPerg, setDlgProdPerg] = useState<{ pergunta: PropostasPerguntaProduto } | null>(null);
+  const [novoProdDraft, setNovoProdDraft] = useState<{ nome: string; valor_minimo: number; cobranca_padrao: "implantacao" | "mensal" | "informativo"; tipo: "produto" | "servico"; unidade: string } | null>(null);
 
   // Linhas em rascunho (ainda não salvas)
   type ProdutoDraft = {
@@ -237,17 +249,19 @@ export default function ProdutosConversacionalPage() {
 
   // ============ LOADERS ============
   async function recarregar() {
-    const [emp, prods, perg, cats] = await Promise.all([
+    const [emp, prods, perg, cats, lks] = await Promise.all([
       obterContextoEmpresa(),
       listarProdutos(),
       listarPerguntasProduto(),
       listarCategorias(),
+      listarLinksPerguntaProduto(),
     ]);
     setEmpresa(emp);
     setEmpresaDraft(emp ?? {});
     setProdutos(prods);
     setPerguntas(perg);
     setCategoriasSetup(cats);
+    setLinks(lks);
   }
 
   useEffect(() => { recarregar().catch(e => toast.error(String(e))); }, []);
@@ -280,11 +294,12 @@ export default function ProdutosConversacionalPage() {
     target.scrollLeft = source.scrollLeft;
   };
 
-  const categoriasCatalogo = useMemo<Array<{ value: CategoriaCatalogo; label: string }>>(() => {
+  const categoriasCatalogo = useMemo<Array<{ value: string; label: string }>>(() => {
     const ativas = categoriasSetup
-      .filter(c => c.ativo && isCategoriaCatalogo(c.codigo) && c.codigo !== "outros")
-      .map(c => ({ value: c.codigo as CategoriaCatalogo, label: c.nome }));
-    return ativas.length ? ativas : CATEGORIAS;
+      .filter(c => c.ativo && c.codigo !== "outros")
+      .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))
+      .map(c => ({ value: c.codigo, label: c.nome }));
+    return ativas.length ? ativas : CATEGORIAS.map(c => ({ value: c.value as string, label: c.label }));
   }, [categoriasSetup]);
 
   const perguntasPorCategoria = useMemo(() => {
@@ -365,8 +380,94 @@ export default function ProdutosConversacionalPage() {
     catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
   }
   async function deletarPergunta(id: string) {
-    try { await excluirPerguntaProduto(id); setPerguntas(qs => qs.filter(q => q.id !== id)); }
+    try { await excluirPerguntaProduto(id); setPerguntas(qs => qs.filter(q => q.id !== id)); setLinks(ls => ls.filter(l => l.pergunta_id !== id)); }
     catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
+  }
+  async function setGeraContexto(id: string, gera_contexto: boolean) {
+    try { await atualizarPerguntaProduto(id, { gera_contexto }); setPerguntas(qs => qs.map(q => q.id === id ? { ...q, gera_contexto } : q)); }
+    catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
+  }
+
+  // ============ VÍNCULOS PERGUNTA ↔ PRODUTO ============
+  function produtosVinculadosA(perguntaId: string): PropostasProduto[] {
+    const ids = links.filter(l => l.pergunta_id === perguntaId).map(l => l.produto_id);
+    return produtos.filter(p => ids.includes(p.id));
+  }
+  async function vincular(perguntaId: string, produtoId: string) {
+    if (links.some(l => l.pergunta_id === perguntaId && l.produto_id === produtoId)) return;
+    try {
+      const lk = await vincularProdutoPergunta(perguntaId, produtoId);
+      setLinks(ls => [...ls, lk]);
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Erro ao vincular"); }
+  }
+  async function desvincular(perguntaId: string, produtoId: string) {
+    try {
+      await desvincularProdutoPergunta(perguntaId, produtoId);
+      setLinks(ls => ls.filter(l => !(l.pergunta_id === perguntaId && l.produto_id === produtoId)));
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Erro ao desvincular"); }
+  }
+  async function criarProdutoEVincular(pergunta: PropostasPerguntaProduto) {
+    if (!novoProdDraft) return;
+    if (!novoProdDraft.nome.trim()) { toast.error("Informe o nome"); return; }
+    if (!novoProdDraft.valor_minimo || novoProdDraft.valor_minimo <= 0) { toast.error("Valor mínimo obrigatório"); return; }
+    try {
+      const novo = await criarProduto({
+        nome: novoProdDraft.nome.trim(),
+        tipo: novoProdDraft.tipo,
+        unidade: novoProdDraft.unidade || "un",
+        valor_minimo: Number(novoProdDraft.valor_minimo),
+        ativo: true,
+        tipo_calculo: "quantidade",
+        categoria: pergunta.categoria,
+        valor_medio: Number(novoProdDraft.valor_minimo),
+        cobranca_padrao: novoProdDraft.cobranca_padrao,
+        origem: "manual",
+      } as Partial<PropostasProduto>);
+      setProdutos(ps => [novo, ...ps]);
+      await vincular(pergunta.id, novo.id);
+      setNovoProdDraft(null);
+      toast.success(`"${novo.nome}" criado e vinculado`);
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
+  }
+
+  // ============ CATEGORIAS (CRUD) ============
+  async function salvarCategoriaDlg() {
+    if (!dlgCat) return;
+    const codigo = (dlgCat.codigo ?? "").trim().toLowerCase().replace(/[^a-z0-9_]+/g, "_");
+    const nome = (dlgCat.nome ?? "").trim();
+    if (!codigo || !nome) { toast.error("Código e nome são obrigatórios"); return; }
+    setSalvandoCat(true);
+    try {
+      if (dlgCat.id) {
+        await atualizarCategoria(dlgCat.id, { codigo, nome, ordem: dlgCat.ordem ?? 0, cobranca_padrao: dlgCat.cobranca_padrao ?? "mensal", ativo: dlgCat.ativo ?? true });
+        setCategoriasSetup(cs => cs.map(c => c.id === dlgCat.id ? { ...c, codigo, nome, ordem: dlgCat.ordem ?? c.ordem, cobranca_padrao: dlgCat.cobranca_padrao ?? c.cobranca_padrao, ativo: dlgCat.ativo ?? c.ativo } : c));
+        toast.success("Categoria atualizada");
+      } else {
+        const nova = await criarCategoria({
+          codigo, nome,
+          ordem: (categoriasSetup.length + 1) * 10,
+          cobranca_padrao: dlgCat.cobranca_padrao ?? "mensal",
+          ativo: true,
+        });
+        setCategoriasSetup(cs => [...cs, nova]);
+        toast.success("Categoria criada");
+      }
+      setDlgCat(null);
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
+    finally { setSalvandoCat(false); }
+  }
+  async function removerCategoria(cat: PropostasCategoriaSetup) {
+    try {
+      const uso = await categoriaEmUso(cat.codigo);
+      if (uso.total_perguntas > 0 || uso.total_produtos > 0) {
+        toast.error(`Não é possível remover "${cat.nome}": ${uso.total_perguntas} pergunta(s) e ${uso.total_produtos} produto(s) vinculado(s).`);
+        return;
+      }
+      if (!confirm(`Remover categoria "${cat.nome}"?`)) return;
+      await excluirCategoria(cat.id);
+      setCategoriasSetup(cs => cs.filter(c => c.id !== cat.id));
+      toast.success("Categoria removida");
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
   }
 
   // Sensor de drag-and-drop
@@ -883,10 +984,44 @@ export default function ProdutosConversacionalPage() {
 
               {/* PERGUNTAS */}
               <TabsContent value="perguntas" className="space-y-4">
+                {/* Gerenciar categorias */}
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between gap-2">
+                    <div>
+                      <CardTitle className="text-base flex items-center gap-2"><Tag className="w-4 h-4" /> Categorias</CardTitle>
+                      <p className="text-xs text-muted-foreground">As mesmas categorias aparecem em Produtos. Não é possível remover categoria com pergunta ou produto vinculado.</p>
+                    </div>
+                    <Button size="sm" onClick={() => setDlgCat({ codigo: "", nome: "", cobranca_padrao: "mensal", ativo: true })}>
+                      <Plus className="w-4 h-4 mr-1" /> Nova categoria
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {categoriasSetup.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma categoria.</p>}
+                      {categoriasSetup.slice().sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0)).map(c => (
+                        <div key={c.id} className="flex items-center justify-between border rounded-md p-2 bg-background">
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium truncate flex items-center gap-1.5">
+                              {c.nome}
+                              <Badge variant="outline" className="text-[10px]">{c.codigo}</Badge>
+                              {!c.ativo && <Badge variant="secondary" className="text-[10px]">inativa</Badge>}
+                            </div>
+                            <div className="text-[11px] text-muted-foreground">ordem {c.ordem} · {c.cobranca_padrao}</div>
+                          </div>
+                          <div className="flex gap-0.5">
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setDlgCat(c)} title="Editar"><Pencil className="w-3.5 h-3.5" /></Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => removerCategoria(c)} title="Excluir"><Trash2 className="w-3.5 h-3.5" /></Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">Perguntas padrão por categoria</CardTitle>
-                    <p className="text-xs text-muted-foreground">A IA usa estas perguntas durante a conversa de proposta.</p>
+                    <p className="text-xs text-muted-foreground">Cada pergunta pode <b>gerar contexto</b> (a resposta vira contexto para a IA) e/ou <b>vincular produtos específicos</b>.</p>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex gap-2 items-end p-3 border rounded-md bg-muted/40">
@@ -905,10 +1040,11 @@ export default function ProdutosConversacionalPage() {
                       <Button onClick={addPergunta}><Plus className="w-4 h-4 mr-1" />Adicionar</Button>
                     </div>
 
-                    {CATEGORIAS.map(cat => {
+                    {categoriasCatalogo.map(cat => {
                       const lista = (perguntasPorCategoria[cat.value] ?? [])
                         .slice()
                         .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+                      const prodsDaCategoria = produtos.filter(prod => normalizarCategoria((prod as unknown as { categoria?: string }).categoria) === normalizarCategoria(cat.value));
                       return (
                         <div key={cat.value}>
                           <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
@@ -926,7 +1062,8 @@ export default function ProdutosConversacionalPage() {
                               <SortableContext items={lista.map(q => q.id)} strategy={verticalListSortingStrategy}>
                                 <div className="space-y-1.5 mb-3">
                                   {lista.map(q => {
-                                    const prodsCat = produtos.filter(prod => normalizarCategoria((prod as unknown as { categoria?: string }).categoria) === normalizarCategoria(q.categoria));
+                                    const vinculados = produtosVinculadosA(q.id);
+                                    const naoVinculados = prodsDaCategoria.filter(p => !vinculados.some(v => v.id === p.id));
                                     return (
                                       <SortablePerguntaItem key={q.id} id={q.id}>
                                         {({ listeners, attributes }) => (
@@ -944,18 +1081,27 @@ export default function ProdutosConversacionalPage() {
                                               <Switch checked={q.ativo} onCheckedChange={(v) => togglePergunta(q.id, v)} />
                                               <Input className="h-8 flex-1" defaultValue={q.pergunta}
                                                 onBlur={(e) => e.target.value !== q.pergunta && atualizarPerguntaProduto(q.id, { pergunta: e.target.value }).then(() => setPerguntas(ps => ps.map(p => p.id === q.id ? { ...p, pergunta: e.target.value } : p)))} />
+                                              <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground whitespace-nowrap" title="Resposta gera contexto para a IA">
+                                                <Switch checked={!!q.gera_contexto} onCheckedChange={(v) => setGeraContexto(q.id, v)} />
+                                                Contexto
+                                              </label>
+                                              <Button variant="outline" size="sm" className="h-7" onClick={() => { setDlgProdPerg({ pergunta: q }); setNovoProdDraft(null); }} title="Adicionar / vincular produtos">
+                                                <Plus className="w-3.5 h-3.5 mr-1" />Produto
+                                              </Button>
                                               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deletarPergunta(q.id)} title="Remover apenas esta pergunta">
                                                 <Trash2 className="w-3.5 h-3.5" />
                                               </Button>
                                             </div>
                                             <div className="pl-4 border-l-2 border-muted space-y-1">
                                               <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-1">
-                                                Produtos desta categoria:
+                                                Produtos vinculados ({vinculados.length})
                                               </p>
-                                              {prodsCat.length === 0 ? (
-                                                <p className="text-[10px] text-muted-foreground">Nenhum produto cadastrado nesta categoria.</p>
+                                              {vinculados.length === 0 ? (
+                                                <p className="text-[10px] text-muted-foreground italic">
+                                                  {q.gera_contexto ? "Apenas contextual — sem produtos vinculados." : "Nenhum produto vinculado. Use o botão + Produto."}
+                                                </p>
                                               ) : (
-                                                prodsCat.map(prod => {
+                                                vinculados.map(prod => {
                                                   const ext = prod as unknown as { placeholder_key?: string; is_checkbox?: boolean; valor_minimo?: number };
                                                   return (
                                                     <div key={prod.id} className="flex items-center gap-2 text-xs">
@@ -970,9 +1116,17 @@ export default function ProdutosConversacionalPage() {
                                                       <span className="text-muted-foreground font-mono text-[10px]">
                                                         R$ {Number(ext.valor_minimo || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                                                       </span>
+                                                      <Button size="icon" variant="ghost" className="h-5 w-5" title="Desvincular" onClick={() => desvincular(q.id, prod.id)}>
+                                                        <Unlink className="w-3 h-3" />
+                                                      </Button>
                                                     </div>
                                                   );
                                                 })
+                                              )}
+                                              {naoVinculados.length > 0 && (
+                                                <p className="text-[10px] text-muted-foreground/60 mt-1">
+                                                  {naoVinculados.length} produto(s) na categoria ainda não vinculado(s).
+                                                </p>
                                               )}
                                             </div>
                                           </div>
@@ -991,6 +1145,156 @@ export default function ProdutosConversacionalPage() {
                 </Card>
               </TabsContent>
             </Tabs>
+
+            {/* Dialog Categoria */}
+            <Dialog open={!!dlgCat} onOpenChange={(o) => !o && setDlgCat(null)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{dlgCat?.id ? "Editar categoria" : "Nova categoria"}</DialogTitle>
+                  <DialogDescription>Categorias são compartilhadas entre Perguntas e Produtos.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Código</Label>
+                      <Input placeholder="ex: cabeamento" value={dlgCat?.codigo ?? ""} onChange={(e) => setDlgCat(d => ({ ...d!, codigo: e.target.value }))} />
+                      <p className="text-[10px] text-muted-foreground mt-0.5">só letras minúsculas e _</p>
+                    </div>
+                    <div>
+                      <Label>Nome</Label>
+                      <Input placeholder="ex: Cabeamento estruturado" value={dlgCat?.nome ?? ""} onChange={(e) => setDlgCat(d => ({ ...d!, nome: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Ordem</Label>
+                      <Input type="number" value={dlgCat?.ordem ?? 0} onChange={(e) => setDlgCat(d => ({ ...d!, ordem: Number(e.target.value) }))} />
+                    </div>
+                    <div>
+                      <Label>Cobrança padrão</Label>
+                      <Select value={dlgCat?.cobranca_padrao ?? "mensal"} onValueChange={(v) => setDlgCat(d => ({ ...d!, cobranca_padrao: v as PropostasCobranca }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="implantacao">Implantação</SelectItem>
+                          <SelectItem value="mensal">Mensal</SelectItem>
+                          <SelectItem value="informativo">Informativo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Switch checked={dlgCat?.ativo ?? true} onCheckedChange={(v) => setDlgCat(d => ({ ...d!, ativo: v }))} />
+                    Ativa
+                  </label>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setDlgCat(null)}>Cancelar</Button>
+                  <Button onClick={salvarCategoriaDlg} disabled={salvandoCat}>
+                    {salvandoCat ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                    Salvar
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Dialog Vincular/Criar Produto na Pergunta */}
+            <Dialog open={!!dlgProdPerg} onOpenChange={(o) => !o && (setDlgProdPerg(null), setNovoProdDraft(null))}>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Produtos da pergunta</DialogTitle>
+                  <DialogDescription className="line-clamp-2">{dlgProdPerg?.pergunta.pergunta}</DialogDescription>
+                </DialogHeader>
+                {dlgProdPerg && (() => {
+                  const q = dlgProdPerg.pergunta;
+                  const vinculados = produtosVinculadosA(q.id);
+                  const todosDaCategoria = produtos.filter(prod => normalizarCategoria((prod as unknown as { categoria?: string }).categoria) === normalizarCategoria(q.categoria));
+                  const naoVinculados = todosDaCategoria.filter(p => !vinculados.some(v => v.id === p.id));
+                  return (
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="text-xs">Vinculados a esta pergunta ({vinculados.length})</Label>
+                        <div className="border rounded-md max-h-44 overflow-auto divide-y">
+                          {vinculados.length === 0 && <p className="text-xs text-muted-foreground p-2 italic">Nenhum produto vinculado.</p>}
+                          {vinculados.map(p => (
+                            <div key={p.id} className="flex items-center gap-2 p-2 text-sm">
+                              <Link2 className="w-3.5 h-3.5 text-primary" />
+                              <span className="flex-1 truncate">{p.nome}</span>
+                              <span className="text-xs text-muted-foreground font-mono">{fmtBRL(Number(p.valor_minimo))}</span>
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => desvincular(q.id, p.id)} title="Desvincular">
+                                <Unlink className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label className="text-xs">Produtos disponíveis na categoria "{q.categoria}" ({naoVinculados.length})</Label>
+                        <div className="border rounded-md max-h-44 overflow-auto divide-y">
+                          {naoVinculados.length === 0 && <p className="text-xs text-muted-foreground p-2 italic">Todos os produtos da categoria já estão vinculados.</p>}
+                          {naoVinculados.map(p => (
+                            <div key={p.id} className="flex items-center gap-2 p-2 text-sm">
+                              <Package className="w-3.5 h-3.5 text-muted-foreground" />
+                              <span className="flex-1 truncate">{p.nome}</span>
+                              <span className="text-xs text-muted-foreground font-mono">{fmtBRL(Number(p.valor_minimo))}</span>
+                              <Button size="sm" variant="outline" className="h-7" onClick={() => vincular(q.id, p.id)}>
+                                <Link2 className="w-3.5 h-3.5 mr-1" />Vincular
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="border-t pt-3">
+                        {!novoProdDraft ? (
+                          <Button variant="outline" size="sm" onClick={() => setNovoProdDraft({ nome: "", valor_minimo: 0, cobranca_padrao: "mensal", tipo: "produto", unidade: "un" })}>
+                            <Plus className="w-3.5 h-3.5 mr-1" /> Criar novo produto e vincular
+                          </Button>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-3 p-3 bg-muted/40 rounded-md">
+                            <div className="col-span-2">
+                              <Label className="text-xs">Nome do produto</Label>
+                              <Input value={novoProdDraft.nome} onChange={(e) => setNovoProdDraft(d => ({ ...d!, nome: e.target.value }))} placeholder={`Item para "${q.pergunta.slice(0, 30)}..."`} autoFocus />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Valor mínimo (R$)</Label>
+                              <Input type="number" step="0.01" value={novoProdDraft.valor_minimo || ""} onChange={(e) => setNovoProdDraft(d => ({ ...d!, valor_minimo: Number(e.target.value) }))} />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Cobrança</Label>
+                              <Select value={novoProdDraft.cobranca_padrao} onValueChange={(v) => setNovoProdDraft(d => ({ ...d!, cobranca_padrao: v as "implantacao" | "mensal" | "informativo" }))}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>{COBRANCAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label className="text-xs">Tipo</Label>
+                              <Select value={novoProdDraft.tipo} onValueChange={(v) => setNovoProdDraft(d => ({ ...d!, tipo: v as "produto" | "servico" }))}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>{TIPOS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label className="text-xs">Unidade</Label>
+                              <Input value={novoProdDraft.unidade} onChange={(e) => setNovoProdDraft(d => ({ ...d!, unidade: e.target.value }))} />
+                            </div>
+                            <div className="col-span-2 flex justify-end gap-2">
+                              <Button size="sm" variant="ghost" onClick={() => setNovoProdDraft(null)}>Cancelar</Button>
+                              <Button size="sm" onClick={() => criarProdutoEVincular(q)}>
+                                <Check className="w-3.5 h-3.5 mr-1" /> Criar e vincular
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => { setDlgProdPerg(null); setNovoProdDraft(null); }}>Fechar</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
     </div>
   );
 }
