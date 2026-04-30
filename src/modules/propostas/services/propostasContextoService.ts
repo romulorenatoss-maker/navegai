@@ -136,6 +136,7 @@ export async function desvincularProdutoPergunta(pergunta_id: string, produto_id
 export async function categoriaEmUso(codigo: string): Promise<{ total_perguntas: number; total_produtos: number }> {
   const { data, error } = await supabase.rpc("propostas_categoria_em_uso" as never, { _codigo: codigo } as never);
   if (error) throw error;
-  const row = Array.isArray(data) ? (data[0] as { total_perguntas: number; total_produtos: number } | undefined) : undefined;
+  const arr = (data ?? []) as Array<{ total_perguntas: number; total_produtos: number }>;
+  const row = arr[0];
   return { total_perguntas: Number(row?.total_perguntas ?? 0), total_produtos: Number(row?.total_produtos ?? 0) };
 }
