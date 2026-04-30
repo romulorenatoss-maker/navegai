@@ -106,6 +106,8 @@ export function propostasRenderizarTemplate(
 ): string {
   if (!templateHtml) return "";
   let out = templateHtml;
+  // Loops primeiro: produzem markup que ainda pode conter tokens globais
+  out = expandirLoops(out, dados);
   out = substituirSpans(out, dados);
   out = substituirSpansLegacy(out, dados);
   out = substituirTokensTexto(out, dados);
