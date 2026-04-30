@@ -658,7 +658,8 @@ export default function ProdutosConversacionalPage() {
                       <div
                         ref={catalogoTableScrollRef}
                         onScroll={() => sincronizarScrollCatalogo("tabela")}
-                        className="overflow-y-auto overflow-x-hidden max-h-[calc(100vh-300px)] border rounded-md"
+                        className="overflow-auto max-h-[calc(100vh-340px)] border rounded-md"
+                        style={{ overscrollBehavior: "contain" }}
                       >
                       <Table>
                         <TableHeader>
