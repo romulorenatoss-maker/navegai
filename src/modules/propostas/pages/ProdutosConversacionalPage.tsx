@@ -369,7 +369,31 @@ export default function ProdutosConversacionalPage() {
     catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
   }
 
-  // ============ CHAT ============
+  // Sensor de drag-and-drop
+  const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  async function reordenarPerguntasCategoria(categoria: string, event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const lista = (perguntasPorCategoria[categoria] ?? []).slice().sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+    const oldIndex = lista.findIndex(q => q.id === active.id);
+    const newIndex = lista.findIndex(q => q.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    const novaLista = arrayMove(lista, oldIndex, newIndex);
+    // Atualiza estado otimista
+    const ordenados = novaLista.map((q, i) => ({ ...q, ordem: i + 1 }));
+    setPerguntas(ps => {
+      const fora = ps.filter(p => p.categoria !== categoria);
+      return [...fora, ...ordenados];
+    });
+    try {
+      await Promise.all(ordenados.map(q => atualizarPerguntaProduto(q.id, { ordem: q.ordem })));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao reordenar");
+    }
+  }
+
+
   async function enviar() {
     const texto = input.trim();
     if (!texto || enviando) return;
