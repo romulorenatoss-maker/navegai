@@ -40,7 +40,13 @@ export default function PropostaDadosRenderPage() {
   const [perguntas, setPerguntas] = useState<PropostasPerguntaSetup[]>([]);
   const [respostas] = useState<Record<string, string>>({});
 
-  const [novoResp, setNovoResp] = useState({ nome: "", cargo: "", contato_id: "", principal: false });
+  const [novoResp, setNovoResp] = useState({
+    nome: "",
+    cargo: "",
+    contato_telefone_id: "",
+    contato_email_id: "",
+    principal: false,
+  });
 
   // Busca de cliente
   useEffect(() => {
@@ -85,13 +91,14 @@ export default function PropostaDadosRenderPage() {
         cliente_id: clienteSel.id,
         nome: novoResp.nome.trim(),
         cargo: novoResp.cargo.trim() || null,
-        contato_id: novoResp.contato_id || null,
+        contato_telefone_id: novoResp.contato_telefone_id || null,
+        contato_email_id: novoResp.contato_email_id || null,
         principal: novoResp.principal,
       });
       const lista = await listarResponsaveis(clienteSel.id);
       setResponsaveis(lista);
       setResponsavelSel(r.id);
-      setNovoResp({ nome: "", cargo: "", contato_id: "", principal: false });
+      setNovoResp({ nome: "", cargo: "", contato_telefone_id: "", contato_email_id: "", principal: false });
       toast.success("Responsável adicionado");
     } catch (e) { toast.error(e instanceof Error ? e.message : "Erro"); }
   }
@@ -252,16 +259,29 @@ export default function PropostaDadosRenderPage() {
                     <Label>Cargo</Label>
                     <Input value={novoResp.cargo} onChange={e => setNovoResp(s => ({ ...s, cargo: e.target.value }))} />
                   </div>
-                  <div className="md:col-span-2">
-                    <Label>Contato vinculado (de cliente_contatos)</Label>
+                  <div>
+                    <Label>Telefone vinculado</Label>
                     <select
                       className="w-full border rounded-md p-2 text-sm bg-background"
-                      value={novoResp.contato_id}
-                      onChange={e => setNovoResp(s => ({ ...s, contato_id: e.target.value }))}
+                      value={novoResp.contato_telefone_id}
+                      onChange={e => setNovoResp(s => ({ ...s, contato_telefone_id: e.target.value }))}
                     >
                       <option value="">— sem vínculo —</option>
-                      {contatos.map(c => (
+                      {contatos.filter(c => c.tipo !== "email").map(c => (
                         <option key={c.id} value={c.id}>{c.tipo}: {c.valor}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label>E-mail vinculado</Label>
+                    <select
+                      className="w-full border rounded-md p-2 text-sm bg-background"
+                      value={novoResp.contato_email_id}
+                      onChange={e => setNovoResp(s => ({ ...s, contato_email_id: e.target.value }))}
+                    >
+                      <option value="">— sem vínculo —</option>
+                      {contatos.filter(c => c.tipo === "email").map(c => (
+                        <option key={c.id} value={c.id}>{c.valor}</option>
                       ))}
                     </select>
                   </div>
