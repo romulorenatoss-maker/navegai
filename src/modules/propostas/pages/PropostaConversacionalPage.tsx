@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Send, Sparkles, ArrowLeft, Trash2, Save, Plus } from "lucide-react";
+import NovoClienteModal from "@/components/clientes/NovoClienteModal";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -62,6 +63,7 @@ export default function PropostaConversacionalPage() {
 
   // Cliente
   const [modalCliente, setModalCliente] = useState(true);
+  const [showNovoCliente, setShowNovoCliente] = useState(false);
   const [termoCliente, setTermoCliente] = useState("");
   const [clientes, setClientes] = useState<ClienteLite[]>([]);
   const [clienteSel, setClienteSel] = useState<ClienteLite | null>(null);
@@ -706,33 +708,50 @@ export default function PropostaConversacionalPage() {
   // Modal cliente
   if (modalCliente) {
     return (
-      <Dialog open onOpenChange={(o) => { if (!o) navigate("/propostas/nova"); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Selecione o cliente</DialogTitle>
-            <DialogDescription>O modo conversacional começa pela escolha do cliente.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <Input placeholder="Buscar por nome..." value={termoCliente} onChange={(e) => setTermoCliente(e.target.value)} autoFocus />
-            <div className="max-h-64 overflow-auto border rounded-md divide-y">
-              {clientes.length === 0
-                ? <p className="p-3 text-sm text-muted-foreground">Nenhum cliente encontrado.</p>
-                : clientes.map(c => (
-                  <button key={c.id}
-                    className={`w-full text-left p-3 text-sm hover:bg-accent ${clienteSel?.id === c.id ? "bg-accent" : ""}`}
-                    onClick={() => setClienteSel(c)}>
-                    <div className="font-medium">{c.nome}</div>
-                    <div className="text-xs text-muted-foreground">{c.cpf ?? "—"}{c.cidade ? ` · ${c.cidade}` : ""}</div>
-                  </button>
-                ))}
+      <>
+        <Dialog open onOpenChange={(o) => { if (!o) navigate("/propostas/nova"); }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Selecione o cliente</DialogTitle>
+              <DialogDescription>O modo conversacional começa pela escolha do cliente.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <Input placeholder="Buscar por nome..." value={termoCliente} onChange={(e) => setTermoCliente(e.target.value)} autoFocus />
+                <Button variant="outline" size="sm" onClick={() => setShowNovoCliente(true)}>
+                  <Plus className="w-4 h-4 mr-1" /> Novo
+                </Button>
+              </div>
+              <div className="max-h-64 overflow-auto border rounded-md divide-y">
+                {clientes.length === 0
+                  ? <p className="p-3 text-sm text-muted-foreground">Nenhum cliente encontrado.</p>
+                  : clientes.map(c => (
+                    <button key={c.id}
+                      className={`w-full text-left p-3 text-sm hover:bg-accent ${clienteSel?.id === c.id ? "bg-accent" : ""}`}
+                      onClick={() => setClienteSel(c)}>
+                      <div className="font-medium">{c.nome}</div>
+                      <div className="text-xs text-muted-foreground">{c.cpf ?? "—"}{c.cidade ? ` · ${c.cidade}` : ""}</div>
+                    </button>
+                  ))}
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => navigate("/propostas/nova")}>Cancelar</Button>
+                <Button onClick={confirmarCliente} disabled={!clienteSel}>Continuar</Button>
+              </div>
             </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => navigate("/propostas/nova")}>Cancelar</Button>
-              <Button onClick={confirmarCliente} disabled={!clienteSel}>Continuar</Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+
+        <NovoClienteModal
+          open={showNovoCliente}
+          onOpenChange={setShowNovoCliente}
+          onCreated={(novo) => {
+            const lite: ClienteLite = { id: novo.id, nome: novo.nome, cpf: novo.cpf ?? null, cidade: novo.cidade ?? null } as ClienteLite;
+            setClienteSel(lite);
+            setClientes(prev => [lite, ...prev.filter(c => c.id !== lite.id)]);
+          }}
+        />
+      </>
     );
   }
 
