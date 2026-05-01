@@ -17,6 +17,7 @@ import {
 } from "../services/propostasResponsaveisService";
 import { listarPerguntas, type PropostasPerguntaSetup } from "../services/propostasPerguntasService";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import NovoClienteModal from "@/components/clientes/NovoClienteModal";
 
 /**
  * Nova UI estruturada por origem de dados.
