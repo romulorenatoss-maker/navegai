@@ -62,6 +62,7 @@ export default function PropostaConversacionalPage() {
 
   // Cliente
   const [modalCliente, setModalCliente] = useState(true);
+  const [showNovoCliente, setShowNovoCliente] = useState(false);
   const [termoCliente, setTermoCliente] = useState("");
   const [clientes, setClientes] = useState<ClienteLite[]>([]);
   const [clienteSel, setClienteSel] = useState<ClienteLite | null>(null);
