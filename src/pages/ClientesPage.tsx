@@ -474,20 +474,7 @@ export default function ClientesPage() {
                     })()}
                   </div>
 
-                  {clienteContatos.length > 0 && (
-                    <div className="bg-muted/30 rounded-lg p-4 space-y-2">
-                      <h3 className="text-caption font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" /> Contatos</h3>
-                      <div className="space-y-1">
-                        {clienteContatos.map((ct: any) => (
-                          <div key={ct.id} className="flex items-center gap-2 text-body text-foreground">
-                            <span>{ct.valor}</span>
-                            {ct.tem_whatsapp && <span className="text-caption text-success font-medium">WhatsApp</span>}
-                            <span className="text-caption text-muted-foreground">({ct.tipo})</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  <ClienteContatosResponsaveis clienteId={selectedId!} />
                 </TabsContent>
 
                 <TabsContent value="os">
