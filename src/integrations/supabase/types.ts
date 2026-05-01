@@ -488,22 +488,92 @@ export type Database = {
           },
         ]
       }
+      cliente_responsaveis: {
+        Row: {
+          cargo: string | null
+          cliente_id: string
+          contato_email_id: string | null
+          contato_telefone_id: string | null
+          cpf: string | null
+          created_at: string
+          id: string
+          nome: string
+          observacoes: string | null
+          principal: boolean
+          updated_at: string
+        }
+        Insert: {
+          cargo?: string | null
+          cliente_id: string
+          contato_email_id?: string | null
+          contato_telefone_id?: string | null
+          cpf?: string | null
+          created_at?: string
+          id?: string
+          nome: string
+          observacoes?: string | null
+          principal?: boolean
+          updated_at?: string
+        }
+        Update: {
+          cargo?: string | null
+          cliente_id?: string
+          contato_email_id?: string | null
+          contato_telefone_id?: string | null
+          cpf?: string | null
+          created_at?: string
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          principal?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cliente_responsaveis_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cliente_responsaveis_contato_email_id_fkey"
+            columns: ["contato_email_id"]
+            isOneToOne: false
+            referencedRelation: "cliente_contatos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cliente_responsaveis_contato_telefone_id_fkey"
+            columns: ["contato_telefone_id"]
+            isOneToOne: false
+            referencedRelation: "cliente_contatos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clientes: {
         Row: {
           bairro_id: string | null
           cep: string | null
           cidade: string | null
           cidade_id: string | null
+          cnpj: string | null
           cpf: string | null
           created_at: string
           endereco: string | null
           id: string
+          inscricao_estadual: string | null
+          inscricao_municipal: string | null
           nome: string
+          nome_fantasia: string | null
           nome_mae: string | null
           numero: string | null
+          razao_social: string | null
           referencia: string | null
           rg: string | null
           rua_id: string | null
+          tipo_pessoa: string
           updated_at: string
         }
         Insert: {
@@ -511,16 +581,22 @@ export type Database = {
           cep?: string | null
           cidade?: string | null
           cidade_id?: string | null
+          cnpj?: string | null
           cpf?: string | null
           created_at?: string
           endereco?: string | null
           id?: string
+          inscricao_estadual?: string | null
+          inscricao_municipal?: string | null
           nome: string
+          nome_fantasia?: string | null
           nome_mae?: string | null
           numero?: string | null
+          razao_social?: string | null
           referencia?: string | null
           rg?: string | null
           rua_id?: string | null
+          tipo_pessoa?: string
           updated_at?: string
         }
         Update: {
@@ -528,16 +604,22 @@ export type Database = {
           cep?: string | null
           cidade?: string | null
           cidade_id?: string | null
+          cnpj?: string | null
           cpf?: string | null
           created_at?: string
           endereco?: string | null
           id?: string
+          inscricao_estadual?: string | null
+          inscricao_municipal?: string | null
           nome?: string
+          nome_fantasia?: string | null
           nome_mae?: string | null
           numero?: string | null
+          razao_social?: string | null
           referencia?: string | null
           rg?: string | null
           rua_id?: string | null
+          tipo_pessoa?: string
           updated_at?: string
         }
         Relationships: [
@@ -3578,6 +3660,7 @@ export type Database = {
           created_at: string
           data_render: string | null
           id: string
+          responsavel_id: string | null
           snapshot_render: Json | null
           status: Database["public"]["Enums"]["propostas_status"]
           template_id: string | null
@@ -3594,6 +3677,7 @@ export type Database = {
           created_at?: string
           data_render?: string | null
           id?: string
+          responsavel_id?: string | null
           snapshot_render?: Json | null
           status?: Database["public"]["Enums"]["propostas_status"]
           template_id?: string | null
@@ -3610,6 +3694,7 @@ export type Database = {
           created_at?: string
           data_render?: string | null
           id?: string
+          responsavel_id?: string | null
           snapshot_render?: Json | null
           status?: Database["public"]["Enums"]["propostas_status"]
           template_id?: string | null
@@ -3625,6 +3710,13 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "propostas_propostas_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "cliente_responsaveis"
             referencedColumns: ["id"]
           },
           {
