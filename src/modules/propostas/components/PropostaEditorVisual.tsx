@@ -10,7 +10,7 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import Highlight from "@tiptap/extension-highlight";
 import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Bold, Italic, Underline as UI_Under, Strikethrough, AlignLeft, AlignCenter, AlignRight, AlignJustify,
@@ -31,6 +31,8 @@ interface Props {
 
 export function PropostaEditorVisual({ value, onChange, className, onReady, editable = true }: Props) {
   const [phModalOpen, setPhModalOpen] = useState(false);
+  // Guarda o último HTML emitido pelo próprio editor para evitar loop com o pai
+  const lastEmittedRef = useRef<string>(value);
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -54,17 +56,35 @@ export function PropostaEditorVisual({ value, onChange, className, onReady, edit
           "prose prose-sm max-w-none focus:outline-none min-h-[420px] p-4 [&_table]:border-collapse [&_td]:border [&_td]:p-2 [&_th]:border [&_th]:p-2 [&_th]:bg-muted",
       },
     },
-    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      lastEmittedRef.current = html;
+      onChange(html);
+    },
   });
 
   useEffect(() => {
     if (editor && onReady) onReady(editor);
   }, [editor, onReady]);
 
-  // Sincroniza valor externo somente se diferir (evita loop)
+  // Sincroniza valor externo SOMENTE quando ele veio de fora (não do próprio editor).
+  // Isso impede o loop: digitar -> onChange -> pai atualiza state -> efeito reescreve conteúdo
+  // -> reset de cursor/seleção -> "tela atualizando".
   useEffect(() => {
-    if (editor && value !== editor.getHTML()) {
-      editor.commands.setContent(value, { emitUpdate: false });
+    if (!editor) return;
+    if (value === lastEmittedRef.current) return; // veio do próprio editor: ignorar
+    if (value === editor.getHTML()) return; // já sincronizado
+    lastEmittedRef.current = value;
+    const { from, to } = editor.state.selection;
+    editor.commands.setContent(value, { emitUpdate: false });
+    // Tenta restaurar a seleção se ainda for válida
+    try {
+      const size = editor.state.doc.content.size;
+      if (from <= size && to <= size) {
+        editor.commands.setTextSelection({ from, to });
+      }
+    } catch {
+      /* noop */
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
