@@ -20,7 +20,12 @@ export default function ClientesPage() {
   const selectedId = searchParams.get("id");
   const [search, setSearch] = useState("");
   const [showNew, setShowNew] = useState(false);
-  const [newForm, setNewForm] = useState({ nome: "", cpf: "", rg: "", nome_mae: "", numero: "", referencia: "" });
+  const [newForm, setNewForm] = useState({
+    tipo_pessoa: "PF" as "PF" | "PJ",
+    nome: "", cpf: "", rg: "", nome_mae: "",
+    cnpj: "", razao_social: "", nome_fantasia: "", inscricao_estadual: "", inscricao_municipal: "",
+    numero: "", referencia: "",
+  });
   const [newCidadeId, setNewCidadeId] = useState("");
   const [newBairroId, setNewBairroId] = useState("");
   const [newRuaId, setNewRuaId] = useState("");
@@ -29,7 +34,12 @@ export default function ClientesPage() {
 
   // Edit state
   const [editOpen, setEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState({ nome: "", cpf: "", rg: "", nome_mae: "", numero: "", referencia: "" });
+  const [editForm, setEditForm] = useState({
+    tipo_pessoa: "PF" as "PF" | "PJ",
+    nome: "", cpf: "", rg: "", nome_mae: "",
+    cnpj: "", razao_social: "", nome_fantasia: "", inscricao_estadual: "", inscricao_municipal: "",
+    numero: "", referencia: "",
+  });
   const [editCidadeId, setEditCidadeId] = useState("");
   const [editBairroId, setEditBairroId] = useState("");
   const [editRuaId, setEditRuaId] = useState("");
@@ -103,15 +113,30 @@ export default function ClientesPage() {
 
   const handleCreate = async () => {
     if (!newForm.nome.trim()) { toast.error("Nome obrigatório"); return; }
+    const isPJ = newForm.tipo_pessoa === "PJ";
     const { error } = await supabase.from("clientes").insert({
-      nome: newForm.nome.trim(), cpf: newForm.cpf.trim() || null, rg: newForm.rg.trim() || null,
-      nome_mae: newForm.nome_mae.trim() || null, numero: newForm.numero.trim() || null, referencia: newForm.referencia.trim() || null,
+      tipo_pessoa: newForm.tipo_pessoa,
+      nome: newForm.nome.trim(),
+      cpf: !isPJ ? (newForm.cpf.trim() || null) : null,
+      rg: !isPJ ? (newForm.rg.trim() || null) : null,
+      nome_mae: !isPJ ? (newForm.nome_mae.trim() || null) : null,
+      cnpj: isPJ ? (newForm.cnpj.trim() || null) : null,
+      razao_social: isPJ ? (newForm.razao_social.trim() || null) : null,
+      nome_fantasia: isPJ ? (newForm.nome_fantasia.trim() || null) : null,
+      inscricao_estadual: isPJ ? (newForm.inscricao_estadual.trim() || null) : null,
+      inscricao_municipal: isPJ ? (newForm.inscricao_municipal.trim() || null) : null,
+      numero: newForm.numero.trim() || null,
+      referencia: newForm.referencia.trim() || null,
       cidade_id: newCidadeId || null, bairro_id: newBairroId || null, rua_id: newRuaId || null,
     } as any);
     if (error) { toast.error("Erro: " + error.message); return; }
     toast.success("Cliente criado!");
     setShowNew(false);
-    setNewForm({ nome: "", cpf: "", rg: "", nome_mae: "", numero: "", referencia: "" });
+    setNewForm({
+      tipo_pessoa: "PF", nome: "", cpf: "", rg: "", nome_mae: "",
+      cnpj: "", razao_social: "", nome_fantasia: "", inscricao_estadual: "", inscricao_municipal: "",
+      numero: "", referencia: "",
+    });
     setNewCidadeId(""); setNewBairroId(""); setNewRuaId(""); setNewBairroSearch(""); setNewRuaSearch("");
     refetch();
   };
@@ -119,8 +144,18 @@ export default function ClientesPage() {
   const openEdit = () => {
     if (!selectedCliente) return;
     setEditForm({
-      nome: selectedCliente.nome || "", cpf: selectedCliente.cpf || "", rg: selectedCliente.rg || "",
-      nome_mae: selectedCliente.nome_mae || "", numero: selectedCliente.numero || "", referencia: selectedCliente.referencia || "",
+      tipo_pessoa: (selectedCliente.tipo_pessoa as "PF" | "PJ") || "PF",
+      nome: selectedCliente.nome || "",
+      cpf: selectedCliente.cpf || "",
+      rg: selectedCliente.rg || "",
+      nome_mae: selectedCliente.nome_mae || "",
+      cnpj: selectedCliente.cnpj || "",
+      razao_social: selectedCliente.razao_social || "",
+      nome_fantasia: selectedCliente.nome_fantasia || "",
+      inscricao_estadual: selectedCliente.inscricao_estadual || "",
+      inscricao_municipal: selectedCliente.inscricao_municipal || "",
+      numero: selectedCliente.numero || "",
+      referencia: selectedCliente.referencia || "",
     });
     setEditCidadeId(selectedCliente.cidade_id || "");
     setEditBairroId(selectedCliente.bairro_id || "");
@@ -134,9 +169,20 @@ export default function ClientesPage() {
 
   const handleEdit = async () => {
     if (!selectedId || !editForm.nome.trim()) { toast.error("Nome obrigatório"); return; }
+    const isPJ = editForm.tipo_pessoa === "PJ";
     const { error } = await supabase.from("clientes").update({
-      nome: editForm.nome.trim(), cpf: editForm.cpf.trim() || null, rg: editForm.rg.trim() || null,
-      nome_mae: editForm.nome_mae.trim() || null, numero: editForm.numero.trim() || null, referencia: editForm.referencia.trim() || null,
+      tipo_pessoa: editForm.tipo_pessoa,
+      nome: editForm.nome.trim(),
+      cpf: !isPJ ? (editForm.cpf.trim() || null) : null,
+      rg: !isPJ ? (editForm.rg.trim() || null) : null,
+      nome_mae: !isPJ ? (editForm.nome_mae.trim() || null) : null,
+      cnpj: isPJ ? (editForm.cnpj.trim() || null) : null,
+      razao_social: isPJ ? (editForm.razao_social.trim() || null) : null,
+      nome_fantasia: isPJ ? (editForm.nome_fantasia.trim() || null) : null,
+      inscricao_estadual: isPJ ? (editForm.inscricao_estadual.trim() || null) : null,
+      inscricao_municipal: isPJ ? (editForm.inscricao_municipal.trim() || null) : null,
+      numero: editForm.numero.trim() || null,
+      referencia: editForm.referencia.trim() || null,
       cidade_id: editCidadeId || null, bairro_id: editBairroId || null, rua_id: editRuaId || null,
     } as any).eq("id", selectedId);
     if (error) { toast.error("Erro: " + error.message); return; }
