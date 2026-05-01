@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Send, Sparkles, ArrowLeft, Trash2, Save, Plus } from "lucide-react";
+import NovoClienteModal from "@/components/clientes/NovoClienteModal";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
