@@ -17,6 +17,7 @@ import {
 } from "../services/propostasResponsaveisService";
 import { listarPerguntas, type PropostasPerguntaSetup } from "../services/propostasPerguntasService";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import NovoClienteModal from "@/components/clientes/NovoClienteModal";
 
 /**
  * Nova UI estruturada por origem de dados.
@@ -29,6 +30,7 @@ export default function PropostaDadosRenderPage() {
   const clienteParam = params.get("cliente");
 
   const [modalCliente, setModalCliente] = useState(!clienteParam);
+  const [showNovoCliente, setShowNovoCliente] = useState(false);
   const [termoCliente, setTermoCliente] = useState("");
   const [clientes, setClientes] = useState<ClienteLite[]>([]);
   const [clienteSel, setClienteSel] = useState<ClienteLite | null>(null);
@@ -126,33 +128,51 @@ export default function PropostaDadosRenderPage() {
 
   if (modalCliente) {
     return (
-      <Dialog open onOpenChange={(o) => { if (!o) navigate("/propostas"); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Selecione o cliente</DialogTitle>
-            <DialogDescription>Esta tela mostra os dados estruturados que vão para o template.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <Input placeholder="Buscar por nome..." value={termoCliente} onChange={(e) => setTermoCliente(e.target.value)} autoFocus />
-            <div className="max-h-64 overflow-auto border rounded-md divide-y">
-              {clientes.length === 0
-                ? <p className="p-3 text-sm text-muted-foreground">Nenhum cliente encontrado.</p>
-                : clientes.map(c => (
-                  <button key={c.id}
-                    className={`w-full text-left p-3 text-sm hover:bg-accent ${clienteSel?.id === c.id ? "bg-accent" : ""}`}
-                    onClick={() => setClienteSel(c)}>
-                    <div className="font-medium">{c.nome}</div>
-                    <div className="text-xs text-muted-foreground">{c.cpf ?? "—"}{c.cidade ? ` · ${c.cidade}` : ""}</div>
-                  </button>
-                ))}
+      <>
+        <Dialog open onOpenChange={(o) => { if (!o) navigate("/propostas"); }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Selecione o cliente</DialogTitle>
+              <DialogDescription>Esta tela mostra os dados estruturados que vão para o template.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <Input placeholder="Buscar por nome..." value={termoCliente} onChange={(e) => setTermoCliente(e.target.value)} autoFocus />
+                <Button variant="outline" size="sm" onClick={() => setShowNovoCliente(true)}>
+                  <Plus className="w-4 h-4 mr-1" /> Novo
+                </Button>
+              </div>
+              <div className="max-h-64 overflow-auto border rounded-md divide-y">
+                {clientes.length === 0
+                  ? <p className="p-3 text-sm text-muted-foreground">Nenhum cliente encontrado.</p>
+                  : clientes.map(c => (
+                    <button key={c.id}
+                      className={`w-full text-left p-3 text-sm hover:bg-accent ${clienteSel?.id === c.id ? "bg-accent" : ""}`}
+                      onClick={() => setClienteSel(c)}>
+                      <div className="font-medium">{c.nome}</div>
+                      <div className="text-xs text-muted-foreground">{c.cpf ?? "—"}{c.cidade ? ` · ${c.cidade}` : ""}</div>
+                    </button>
+                  ))}
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => navigate("/propostas")}>Cancelar</Button>
+                <Button onClick={() => setModalCliente(false)} disabled={!clienteSel}>Continuar</Button>
+              </div>
             </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => navigate("/propostas")}>Cancelar</Button>
-              <Button onClick={() => setModalCliente(false)} disabled={!clienteSel}>Continuar</Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+
+        <NovoClienteModal
+          open={showNovoCliente}
+          onOpenChange={setShowNovoCliente}
+          onCreated={(novo) => {
+            const lite: ClienteLite = { id: novo.id, nome: novo.nome, cpf: novo.cpf ?? null, cidade: novo.cidade ?? null } as ClienteLite;
+            setClienteSel(lite);
+            setClientes(prev => [lite, ...prev.filter(c => c.id !== lite.id)]);
+            setModalCliente(false);
+          }}
+        />
+      </>
     );
   }
 
