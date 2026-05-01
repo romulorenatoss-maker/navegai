@@ -402,8 +402,13 @@ export default function ClientesPage() {
               <div className="p-4 border-b border-border flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center"><User className="w-5 h-5 text-primary" /></div>
                 <div className="flex-1">
-                  <h2 className="text-body font-semibold text-foreground">{selectedCliente.nome}</h2>
-                  <p className="text-caption text-muted-foreground">{selectedCliente.cpf || "Sem CPF"}</p>
+                  <h2 className="text-body font-semibold text-foreground flex items-center gap-2">
+                    {selectedCliente.tipo_pessoa === "PJ" && (selectedCliente.nome_fantasia || selectedCliente.razao_social) ? (selectedCliente.nome_fantasia || selectedCliente.razao_social) : selectedCliente.nome}
+                    <Badge variant="outline" className="text-xs">{selectedCliente.tipo_pessoa === "PJ" ? "PJ" : "PF"}</Badge>
+                  </h2>
+                  <p className="text-caption text-muted-foreground">
+                    {selectedCliente.tipo_pessoa === "PJ" ? (selectedCliente.cnpj || "Sem CNPJ") : (selectedCliente.cpf || "Sem CPF")}
+                  </p>
                 </div>
                 <div className="flex items-center gap-1">
                   <Button variant="ghost" size="sm" onClick={openEdit} className="press-effect"><Pencil className="w-4 h-4" /></Button>
@@ -420,12 +425,27 @@ export default function ClientesPage() {
                 <TabsContent value="dados" className="mt-3 space-y-4">
                   <div className="bg-muted/30 rounded-lg p-4 space-y-2">
                     <h3 className="text-caption font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> Documentos</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-                      <InfoRow label="CPF" value={selectedCliente.cpf} />
-                      <InfoRow label="RG" value={selectedCliente.rg} />
-                      <InfoRow label="Nome da Mãe" value={selectedCliente.nome_mae} />
-                    </div>
-                    {!selectedCliente.cpf && !selectedCliente.rg && !selectedCliente.nome_mae && <p className="text-caption text-muted-foreground italic">Nenhum documento cadastrado.</p>}
+                    {selectedCliente.tipo_pessoa === "PJ" ? (
+                      <>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                          <InfoRow label="CNPJ" value={selectedCliente.cnpj} />
+                          <InfoRow label="Razão Social" value={selectedCliente.razao_social} />
+                          <InfoRow label="Nome Fantasia" value={selectedCliente.nome_fantasia} />
+                          <InfoRow label="Insc. Estadual" value={selectedCliente.inscricao_estadual} />
+                          <InfoRow label="Insc. Municipal" value={selectedCliente.inscricao_municipal} />
+                        </div>
+                        {!selectedCliente.cnpj && !selectedCliente.razao_social && !selectedCliente.nome_fantasia && <p className="text-caption text-muted-foreground italic">Nenhum documento cadastrado.</p>}
+                      </>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                          <InfoRow label="CPF" value={selectedCliente.cpf} />
+                          <InfoRow label="RG" value={selectedCliente.rg} />
+                          <InfoRow label="Nome da Mãe" value={selectedCliente.nome_mae} />
+                        </div>
+                        {!selectedCliente.cpf && !selectedCliente.rg && !selectedCliente.nome_mae && <p className="text-caption text-muted-foreground italic">Nenhum documento cadastrado.</p>}
+                      </>
+                    )}
                   </div>
 
                   <div className="bg-muted/30 rounded-lg p-4 space-y-2">
@@ -519,14 +539,43 @@ export default function ClientesPage() {
           <DialogHeader><DialogTitle>Novo Cliente</DialogTitle></DialogHeader>
           <ScrollArea className="max-h-[60vh] pr-3">
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>Nome *</Label><Input value={newForm.nome} onChange={e => setNewForm({ ...newForm, nome: e.target.value })} placeholder="Nome completo" /></div>
-                <div><Label>CPF</Label><Input value={newForm.cpf} onChange={e => setNewForm({ ...newForm, cpf: e.target.value })} placeholder="000.000.000-00" /></div>
+              <div>
+                <Label>Tipo de pessoa *</Label>
+                <Select value={newForm.tipo_pessoa} onValueChange={(v: "PF" | "PJ") => setNewForm({ ...newForm, tipo_pessoa: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PF">Pessoa Física</SelectItem>
+                    <SelectItem value="PJ">Pessoa Jurídica</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>RG</Label><Input value={newForm.rg} onChange={e => setNewForm({ ...newForm, rg: e.target.value })} placeholder="RG" /></div>
-                <div><Label>Nome da Mãe</Label><Input value={newForm.nome_mae} onChange={e => setNewForm({ ...newForm, nome_mae: e.target.value })} placeholder="Nome da mãe" /></div>
-              </div>
+              {newForm.tipo_pessoa === "PF" ? (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Nome *</Label><Input value={newForm.nome} onChange={e => setNewForm({ ...newForm, nome: e.target.value })} placeholder="Nome completo" /></div>
+                    <div><Label>CPF</Label><Input value={newForm.cpf} onChange={e => setNewForm({ ...newForm, cpf: e.target.value })} placeholder="000.000.000-00" /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>RG</Label><Input value={newForm.rg} onChange={e => setNewForm({ ...newForm, rg: e.target.value })} placeholder="RG" /></div>
+                    <div><Label>Nome da Mãe</Label><Input value={newForm.nome_mae} onChange={e => setNewForm({ ...newForm, nome_mae: e.target.value })} placeholder="Nome da mãe" /></div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Nome (exibição) *</Label><Input value={newForm.nome} onChange={e => setNewForm({ ...newForm, nome: e.target.value })} placeholder="Nome de exibição" /></div>
+                    <div><Label>CNPJ</Label><Input value={newForm.cnpj} onChange={e => setNewForm({ ...newForm, cnpj: e.target.value })} placeholder="00.000.000/0000-00" /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Razão Social</Label><Input value={newForm.razao_social} onChange={e => setNewForm({ ...newForm, razao_social: e.target.value })} /></div>
+                    <div><Label>Nome Fantasia</Label><Input value={newForm.nome_fantasia} onChange={e => setNewForm({ ...newForm, nome_fantasia: e.target.value })} /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Insc. Estadual</Label><Input value={newForm.inscricao_estadual} onChange={e => setNewForm({ ...newForm, inscricao_estadual: e.target.value })} /></div>
+                    <div><Label>Insc. Municipal</Label><Input value={newForm.inscricao_municipal} onChange={e => setNewForm({ ...newForm, inscricao_municipal: e.target.value })} /></div>
+                  </div>
+                </>
+              )}
               <div className="border-t pt-3">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Endereço</p>
                 <AddressFields cidadeId={newCidadeId} setCidadeId={setNewCidadeId} bairroId={newBairroId} setBairroId={setNewBairroId}
@@ -552,14 +601,43 @@ export default function ClientesPage() {
           <DialogHeader><DialogTitle>Editar Cliente</DialogTitle></DialogHeader>
           <ScrollArea className="max-h-[60vh] pr-3">
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>Nome *</Label><Input value={editForm.nome} onChange={e => setEditForm({ ...editForm, nome: e.target.value })} /></div>
-                <div><Label>CPF</Label><Input value={editForm.cpf} onChange={e => setEditForm({ ...editForm, cpf: e.target.value })} placeholder="000.000.000-00" /></div>
+              <div>
+                <Label>Tipo de pessoa *</Label>
+                <Select value={editForm.tipo_pessoa} onValueChange={(v: "PF" | "PJ") => setEditForm({ ...editForm, tipo_pessoa: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PF">Pessoa Física</SelectItem>
+                    <SelectItem value="PJ">Pessoa Jurídica</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>RG</Label><Input value={editForm.rg} onChange={e => setEditForm({ ...editForm, rg: e.target.value })} /></div>
-                <div><Label>Nome da Mãe</Label><Input value={editForm.nome_mae} onChange={e => setEditForm({ ...editForm, nome_mae: e.target.value })} /></div>
-              </div>
+              {editForm.tipo_pessoa === "PF" ? (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Nome *</Label><Input value={editForm.nome} onChange={e => setEditForm({ ...editForm, nome: e.target.value })} /></div>
+                    <div><Label>CPF</Label><Input value={editForm.cpf} onChange={e => setEditForm({ ...editForm, cpf: e.target.value })} placeholder="000.000.000-00" /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>RG</Label><Input value={editForm.rg} onChange={e => setEditForm({ ...editForm, rg: e.target.value })} /></div>
+                    <div><Label>Nome da Mãe</Label><Input value={editForm.nome_mae} onChange={e => setEditForm({ ...editForm, nome_mae: e.target.value })} /></div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Nome (exibição) *</Label><Input value={editForm.nome} onChange={e => setEditForm({ ...editForm, nome: e.target.value })} /></div>
+                    <div><Label>CNPJ</Label><Input value={editForm.cnpj} onChange={e => setEditForm({ ...editForm, cnpj: e.target.value })} placeholder="00.000.000/0000-00" /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Razão Social</Label><Input value={editForm.razao_social} onChange={e => setEditForm({ ...editForm, razao_social: e.target.value })} /></div>
+                    <div><Label>Nome Fantasia</Label><Input value={editForm.nome_fantasia} onChange={e => setEditForm({ ...editForm, nome_fantasia: e.target.value })} /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Insc. Estadual</Label><Input value={editForm.inscricao_estadual} onChange={e => setEditForm({ ...editForm, inscricao_estadual: e.target.value })} /></div>
+                    <div><Label>Insc. Municipal</Label><Input value={editForm.inscricao_municipal} onChange={e => setEditForm({ ...editForm, inscricao_municipal: e.target.value })} /></div>
+                  </div>
+                </>
+              )}
               <div className="border-t pt-3">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Endereço</p>
                 <AddressFields cidadeId={editCidadeId} setCidadeId={setEditCidadeId} bairroId={editBairroId} setBairroId={setEditBairroId}
