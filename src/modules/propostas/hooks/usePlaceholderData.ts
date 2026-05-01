@@ -10,9 +10,16 @@ export interface PlaceholderOpcao {
 export type PlaceholderData = Record<PlaceholderTipo, PlaceholderOpcao[]>;
 
 /**
- * Etapa 2 — Carrega placeholders reais do banco (perguntas + produtos).
- * Mantém fallback para PLACEHOLDER_MOCK em caso de erro ou listas vazias.
- * Não altera tabelas, backend ou comportamento atual do editor.
+ * Carrega placeholders do banco.
+ *
+ * CLIENTE: lista 100% derivada do schema real de `clientes` + `cliente_contatos` + `cliente_responsaveis`.
+ *   - Tokens correspondem ao payload estruturado montado em PropostaConversacionalPage:
+ *     cliente.{nome,cnpj,cpf,razao_social,nome_fantasia,inscricao_estadual,inscricao_municipal,
+ *              endereco,numero,bairro,cidade,cep,referencia,telefone,celular,fixo,telefone_0800,email}
+ *     responsavel.{nome,cargo,cpf,telefone,email}
+ *   - Mantém também os tokens legados planos ({cliente_nome}, etc.) para compat.
+ *
+ * PERGUNTA / PRODUTO / BOOLEAN: vêm do banco. Fallback para MOCK só se vazio.
  */
 export function usePlaceholderData() {
   const [data, setData] = useState<PlaceholderData | null>(null);
@@ -26,13 +33,52 @@ export function usePlaceholderData() {
       setLoading(true);
       setErro(null);
 
-      // CLIENTE (fixo — não vem do banco nesta etapa)
+      // ===== CLIENTE (estrutura derivada do banco) =====
+      // Tokens estruturados (preferenciais — usam o payload aninhado)
       const cliente: PlaceholderOpcao[] = [
-        { label: "Nome do cliente", value: "cliente_nome" },
-        { label: "CNPJ", value: "cliente_cnpj" },
-        { label: "Endereço", value: "cliente_endereco" },
-        { label: "Responsável", value: "cliente_responsavel" },
-        { label: "E-mail", value: "cliente_email" },
+        // Identificação
+        { label: "Tipo de pessoa (PF/PJ)", value: "cliente.tipo_pessoa" },
+        { label: "Nome / Razão social", value: "cliente.nome" },
+        { label: "CPF", value: "cliente.cpf" },
+        { label: "RG", value: "cliente.rg" },
+        { label: "Nome da mãe", value: "cliente.nome_mae" },
+        // PJ
+        { label: "CNPJ", value: "cliente.cnpj" },
+        { label: "Razão social", value: "cliente.razao_social" },
+        { label: "Nome fantasia", value: "cliente.nome_fantasia" },
+        { label: "Inscrição estadual", value: "cliente.inscricao_estadual" },
+        { label: "Inscrição municipal", value: "cliente.inscricao_municipal" },
+        // Endereço
+        { label: "Endereço (rua)", value: "cliente.endereco" },
+        { label: "Número", value: "cliente.numero" },
+        { label: "Bairro", value: "cliente.bairro" },
+        { label: "Cidade", value: "cliente.cidade" },
+        { label: "CEP", value: "cliente.cep" },
+        { label: "Ponto de referência", value: "cliente.referencia" },
+        // Contatos (derivados de cliente_contatos)
+        { label: "E-mail principal", value: "cliente.email" },
+        { label: "Telefone principal", value: "cliente.telefone" },
+        { label: "Celular", value: "cliente.celular" },
+        { label: "Telefone fixo", value: "cliente.fixo" },
+        { label: "0800 / Especial", value: "cliente.telefone_0800" },
+        // Responsável principal (derivado de cliente_responsaveis principal=true)
+        { label: "Responsável — nome", value: "responsavel.nome" },
+        { label: "Responsável — cargo", value: "responsavel.cargo" },
+        { label: "Responsável — CPF", value: "responsavel.cpf" },
+        { label: "Responsável — telefone", value: "responsavel.telefone" },
+        { label: "Responsável — e-mail", value: "responsavel.email" },
+        // Tokens planos legados (compat com templates antigos)
+        { label: "[legado] {cliente_nome}", value: "cliente_nome" },
+        { label: "[legado] {cliente_cnpj}", value: "cliente_cnpj" },
+        { label: "[legado] {cliente_cpf}", value: "cliente_cpf" },
+        { label: "[legado] {cliente_email}", value: "cliente_email" },
+        { label: "[legado] {cliente_telefone}", value: "cliente_telefone" },
+        { label: "[legado] {cliente_endereco}", value: "cliente_endereco" },
+        { label: "[legado] {cliente_cidade}", value: "cliente_cidade" },
+        { label: "[legado] {responsavel_nome}", value: "responsavel_nome" },
+        { label: "[legado] {responsavel_email}", value: "responsavel_email" },
+        { label: "[legado] {responsavel_telefone}", value: "responsavel_telefone" },
+        { label: "[legado] {responsavel_cargo}", value: "responsavel_cargo" },
       ];
 
       let pergunta: PlaceholderOpcao[] = [];
@@ -40,7 +86,7 @@ export function usePlaceholderData() {
       let boolean: PlaceholderOpcao[] = [];
 
       try {
-        // PERGUNTAS (somente as que têm campo_token)
+        // PERGUNTAS
         const { data: perguntas, error: errPerg } = await supabase
           .from("propostas_perguntas_setup" as never)
           .select("campo_token, pergunta, ativo")
@@ -77,13 +123,16 @@ export function usePlaceholderData() {
         for (const cat of categorias) {
           produto.push({ label: `Loop ${cat}`, value: `#${cat}` });
         }
+
+        // Loop genérico de categorias→itens (recomendado pelo template novo)
+        produto.unshift({ label: "Loop categorias → itens (recomendado)", value: "#categorias" });
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
         console.warn("[placeholder] erro ao carregar do banco, usando MOCK", msg);
         setErro(msg);
       }
 
-      // FALLBACK: se vazio, recorre ao MOCK (idempotente, não quebra UI)
+      // FALLBACK
       if (pergunta.length === 0) pergunta = PLACEHOLDER_MOCK.pergunta;
       if (produto.length === 0) produto = PLACEHOLDER_MOCK.produto;
       if (boolean.length === 0) boolean = PLACEHOLDER_MOCK.boolean;
@@ -95,6 +144,7 @@ export function usePlaceholderData() {
       setLoading(false);
 
       console.log("[placeholder] dados carregados", {
+        cliente: cliente.length,
         perguntas: pergunta.length,
         produtos: produto.length,
         boolean: boolean.length,

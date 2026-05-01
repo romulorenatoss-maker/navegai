@@ -2,17 +2,21 @@ import { supabase } from "@/integrations/supabase/client";
 
 // =====================================================
 // Single source of truth para responsáveis do cliente.
-// Reaproveita cliente_contatos (existente) para email/telefone via FK opcional.
+// Email/telefone vêm de `cliente_contatos` via FK (sem duplicar dados).
+// Schema novo: contato_telefone_id + contato_email_id (separados).
 // =====================================================
 
 export interface ClienteResponsavel {
   id: string;
   cliente_id: string;
-  contato_id: string | null;
+  contato_telefone_id: string | null;
+  contato_email_id: string | null;
   nome: string;
   cargo: string | null;
+  cpf: string | null;
   principal: boolean;
-  // Hidratado em runtime a partir de cliente_contatos (quando contato_id está setado):
+  observacoes: string | null;
+  // Hidratados em runtime a partir de cliente_contatos:
   email?: string | null;
   telefone?: string | null;
   created_at: string;
@@ -22,7 +26,7 @@ export interface ClienteResponsavel {
 export interface ContatoLite {
   id: string;
   cliente_id: string;
-  tipo: string;     // 'email' | 'telefone' | ...
+  tipo: string;     // 'email' | 'telefone' | 'celular' | 'fixo' | '0800' | ...
   valor: string;
   tem_whatsapp: boolean;
 }
@@ -41,24 +45,25 @@ export async function listarResponsaveis(cliente_id: string): Promise<ClienteRes
   if (lista.length === 0) return [];
 
   // Hidrata email/telefone a partir de cliente_contatos (1 query só)
-  const contatoIds = lista.map(r => r.contato_id).filter((x): x is string => !!x);
-  if (contatoIds.length === 0) return lista;
+  const ids = new Set<string>();
+  lista.forEach(r => {
+    if (r.contato_telefone_id) ids.add(r.contato_telefone_id);
+    if (r.contato_email_id) ids.add(r.contato_email_id);
+  });
+  if (ids.size === 0) return lista;
 
   const { data: contatos } = await supabase
     .from("cliente_contatos")
     .select("id, tipo, valor")
-    .in("id", contatoIds);
+    .in("id", Array.from(ids));
 
   const map = new Map<string, ContatoLite>();
   (contatos ?? []).forEach(c => map.set((c as ContatoLite).id, c as ContatoLite));
 
   return lista.map(r => {
-    if (!r.contato_id) return r;
-    const c = map.get(r.contato_id);
-    if (!c) return r;
-    if (c.tipo === "email") return { ...r, email: c.valor };
-    if (c.tipo === "telefone") return { ...r, telefone: c.valor };
-    return r;
+    const tel = r.contato_telefone_id ? map.get(r.contato_telefone_id)?.valor ?? null : null;
+    const eml = r.contato_email_id ? map.get(r.contato_email_id)?.valor ?? null : null;
+    return { ...r, telefone: tel, email: eml };
   });
 }
 
@@ -77,14 +82,19 @@ export async function listarContatosCliente(cliente_id: string): Promise<Contato
   return (data ?? []) as ContatoLite[];
 }
 
-export async function criarResponsavel(input: {
+export interface NovoResponsavelInput {
   cliente_id: string;
   nome: string;
   cargo?: string | null;
-  contato_id?: string | null;
+  cpf?: string | null;
+  observacoes?: string | null;
+  contato_telefone_id?: string | null;
+  contato_email_id?: string | null;
   principal?: boolean;
-}): Promise<ClienteResponsavel> {
-  // Se for marcado como principal, desmarca os outros antes
+}
+
+export async function criarResponsavel(input: NovoResponsavelInput): Promise<ClienteResponsavel> {
+  // Se for principal, desmarca os outros antes (índice único parcial garante isso)
   if (input.principal) {
     await supabase
       .from("cliente_responsaveis" as never)
@@ -97,7 +107,10 @@ export async function criarResponsavel(input: {
       cliente_id: input.cliente_id,
       nome: input.nome,
       cargo: input.cargo ?? null,
-      contato_id: input.contato_id ?? null,
+      cpf: input.cpf ?? null,
+      observacoes: input.observacoes ?? null,
+      contato_telefone_id: input.contato_telefone_id ?? null,
+      contato_email_id: input.contato_email_id ?? null,
       principal: input.principal ?? false,
     } as never)
     .select()
@@ -106,9 +119,13 @@ export async function criarResponsavel(input: {
   return data as unknown as ClienteResponsavel;
 }
 
+export type AtualizarResponsavelPayload = Partial<
+  Pick<ClienteResponsavel, "nome" | "cargo" | "cpf" | "observacoes" | "contato_telefone_id" | "contato_email_id" | "principal">
+>;
+
 export async function atualizarResponsavel(
   id: string,
-  payload: Partial<Pick<ClienteResponsavel, "nome" | "cargo" | "contato_id" | "principal">>,
+  payload: AtualizarResponsavelPayload,
   cliente_id?: string,
 ) {
   if (payload.principal && cliente_id) {
