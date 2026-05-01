@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import ClienteContatosResponsaveis from "@/components/clientes/ClienteContatosResponsaveis";
 
 export default function ClientesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
