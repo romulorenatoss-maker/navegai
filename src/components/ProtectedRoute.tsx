@@ -53,8 +53,10 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const currentPath = location.pathname;
   const searchParams = new URLSearchParams(location.search);
   const isEvalMode = currentPath === "/avaliacoes/pesquisa" && searchParams.get("mode") === "eval";
-  // Liberado a todos: criação de tarefa individual ad-hoc
-  const isOpenForAll = currentPath === "/operacional/cadastro";
+  // Liberado a todos: criação de tarefa individual ad-hoc + drill-down de desempenho
+  const isOpenForAll =
+    currentPath === "/operacional/cadastro" ||
+    currentPath === "/desempenho";
 
   if (!isEvalMode && !isOpenForAll && !canViewPath(currentPath)) {
     // Redirect to the user's first allowed screen, falling back to /avaliacoes/minhas.
