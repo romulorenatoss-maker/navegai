@@ -900,7 +900,7 @@ export default function OperationalExecucaoPage() {
             <SelectItem value="movimento">Última movimentação</SelectItem>
           </SelectContent>
         </Select>
-        <Button type="button" size="icon" className="h-9 w-9 shrink-0" onClick={() => setTaskTypePickerOpen(true)} title="Nova Tarefa">
+        <Button type="button" size="icon" className="h-9 w-9 shrink-0" onClick={() => setQuickTaskOpen(true)} title="Nova Tarefa">
           <Plus className="w-4 h-4" />
         </Button>
       </div>
