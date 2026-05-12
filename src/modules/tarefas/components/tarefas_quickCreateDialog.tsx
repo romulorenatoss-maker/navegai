@@ -327,7 +327,8 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
         // Recorrente vai pra "Rotinas Operacionais" (origem rotina); pontual permanece ad_hoc
         // Tarefa avulsa (botão "+" da Minhas Tarefas) NUNCA vira rotina.
         origem: isAvulsa ? "ad_hoc" : (recorrenciaAtiva ? "rotina" : "ad_hoc"),
-        created_by: profile.id,
+        // NOTE: operational_templates não possui coluna created_by.
+        // Autoria do criador é registrada em operational_assignments.created_by (linha abaixo).
       };
 
       const { data: tpl, error: tplErr } = await (supabase as any)
