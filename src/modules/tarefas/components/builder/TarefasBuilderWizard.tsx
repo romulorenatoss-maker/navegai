@@ -26,6 +26,7 @@ interface Props {
   setSteps: React.Dispatch<React.SetStateAction<StepForm[]>>;
   checkItems: CheckItemForm[];
   setCheckItems: React.Dispatch<React.SetStateAction<CheckItemForm[]>>;
+  protectedCheckIds?: Set<string>;
   setores: any[];
   colaboradores: any[];
   templateId: string | null;
@@ -36,7 +37,7 @@ interface Props {
 export function TarefasBuilderWizard(props: Props) {
   const {
     isEditing, saving, form, set, sections, setSections, fields, setFields,
-    steps, setSteps, checkItems, setCheckItems, setores, colaboradores,
+    steps, setSteps, checkItems, setCheckItems, protectedCheckIds, setores, colaboradores,
     templateId, onCancel, onSubmit,
   } = props;
 
@@ -95,7 +96,7 @@ export function TarefasBuilderWizard(props: Props) {
         )}
 
         {current === "checklist" && (
-          <StepChecklist items={checkItems} setItems={setCheckItems} />
+          <StepChecklist items={checkItems} setItems={setCheckItems} protectedIds={protectedCheckIds} />
         )}
 
         {current === "fluxo" && (

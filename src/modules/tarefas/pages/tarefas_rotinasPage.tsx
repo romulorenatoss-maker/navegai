@@ -23,6 +23,7 @@ export default function OperationalCadastroPage() {
   const [fields, setFields] = useState<FieldForm[]>([]);
   const [steps, setSteps] = useState<StepForm[]>([]);
   const [checkItems, setCheckItems] = useState<CheckItemForm[]>([]);
+  const [protectedCheckIds, setProtectedCheckIds] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState("geral");
   const [filterExecutor, setFilterExecutor] = useState("__all");
   const [filterAvaliador, setFilterAvaliador] = useState("__all");
@@ -307,11 +308,30 @@ export default function OperationalCadastroPage() {
       }
 
       // Sync check_items (preserve existing ids → preserva respostas)
+      // RISCO: operational_execution_check_answers tem FK ON DELETE CASCADE → deletar item apaga histórico.
+      // Estratégia (sem migration): só deletar fisicamente itens SEM respostas.
       if (editingId) {
         const { data: existingChks } = await (supabase as any)
           .from("operational_template_check_items").select("id").eq("template_id", templateId);
         const keepIds = new Set(checkItems.filter(c => c.id).map(c => c.id as string));
-        const toDelete = (existingChks || []).filter((c: any) => !keepIds.has(c.id)).map((c: any) => c.id);
+        const candidatesToDelete = (existingChks || [])
+          .filter((c: any) => !keepIds.has(c.id))
+          .map((c: any) => c.id);
+        let toDelete: string[] = candidatesToDelete;
+        if (candidatesToDelete.length > 0) {
+          const { data: answered } = await (supabase as any)
+            .from("operational_execution_check_answers")
+            .select("check_item_id")
+            .in("check_item_id", candidatesToDelete);
+          const answeredSet = new Set((answered || []).map((a: any) => a.check_item_id));
+          toDelete = candidatesToDelete.filter((id: string) => !answeredSet.has(id));
+          const blocked = candidatesToDelete.length - toDelete.length;
+          if (blocked > 0) {
+            toast.warning(
+              `${blocked} item(s) do checklist possuem respostas e foram preservados (não removidos) para manter o histórico.`
+            );
+          }
+        }
         if (toDelete.length > 0) {
           await (supabase as any).from("operational_template_check_items").delete().in("id", toDelete);
         }
@@ -394,6 +414,7 @@ export default function OperationalCadastroPage() {
     setFields([]);
     setSteps([]);
     setCheckItems([]);
+    setProtectedCheckIds(new Set());
     setActiveTab("geral");
     setTaskTypePickerOpen(false);
     setDialogOpen(true);
@@ -483,14 +504,27 @@ export default function OperationalCadastroPage() {
     // Load check items
     const { data: chks } = await (supabase as any).from("operational_template_check_items")
       .select("*").eq("template_id", t.id).order("ordem");
-    setCheckItems((chks || []).map((c: any) => ({
+    const checkItemsLoaded = (chks || []).map((c: any) => ({
       id: c.id, tempId: c.id, pergunta: c.pergunta, ordem: c.ordem,
       tipo_resposta: c.tipo_resposta, exige_foto: !!c.exige_foto,
       exige_observacao: !!c.exige_observacao,
       gera_contingencia_se_reprovado: !!c.gera_contingencia_se_reprovado,
       peso: Number(c.peso) || 1, nota_maxima: Number(c.nota_maxima) || 100,
       penalidade_reprovacao: Number(c.penalidade_reprovacao) || 100,
-    })));
+    }));
+    setCheckItems(checkItemsLoaded);
+
+    // Detect which check items already have execution answers (cannot be deleted without losing history)
+    const checkIds = checkItemsLoaded.map((c: any) => c.id).filter(Boolean);
+    if (checkIds.length > 0) {
+      const { data: answered } = await (supabase as any)
+        .from("operational_execution_check_answers")
+        .select("check_item_id")
+        .in("check_item_id", checkIds);
+      setProtectedCheckIds(new Set((answered || []).map((a: any) => a.check_item_id)));
+    } else {
+      setProtectedCheckIds(new Set());
+    }
 
     setActiveTab("geral");
     setDialogOpen(true);
@@ -624,6 +658,7 @@ export default function OperationalCadastroPage() {
               fields={fields} setFields={setFields}
               steps={steps} setSteps={setSteps}
               checkItems={checkItems} setCheckItems={setCheckItems}
+              protectedCheckIds={protectedCheckIds}
               setores={setores} colaboradores={colaboradores}
               templateId={editingId}
               onCancel={closeDialog}
