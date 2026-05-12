@@ -1117,6 +1117,21 @@ export default function OperationalExecucaoPage() {
               </div>
             )}
 
+            {/* Fase 1B.3 — Router declarativo dos painéis embarcados (aceite/validação/plano).
+                Aditivo: legados continuam funcionando. Renderiza só quando o registry casar. */}
+            {selectedAssignment && (
+              <div className="bg-card border border-border rounded-lg p-3">
+                <DrawerActionRouter
+                  assignment={selectedAssignment}
+                  origem="drawer"
+                  onClose={closeExecution}
+                  onActionDone={() => {
+                    qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
+                  }}
+                />
+              </div>
+            )}
+
             {isEditable && selectedAssignment?.status !== "pendente" && (
               <>
                 {snapshotSections.length === 0 ? (
