@@ -471,9 +471,10 @@ export default function OperationalExecucaoPage() {
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [quickTaskOpen, setQuickTaskOpen] = useState(false);
-  const [taskTypePickerOpen, setTaskTypePickerOpen] = useState(false);
-  const [pickedTaskType, setPickedTaskType] = useState<TaskType>("simples");
-  const [pickedSetorId, setPickedSetorId] = useState<string>("");
+  // (Removido) seletor "Tipo de tarefa" — abre o builder unificado direto.
+  // Mantemos defaults para o QuickTaskDialog (taskType="inspecao" cobre simples + por etapas).
+  const [pickedTaskType] = useState<TaskType>("inspecao");
+  const [pickedSetorId] = useState<string>("");
   const isMobile = useIsMobile();
   // Visão ativa (executor/avaliador/aprovador/designador/setor/admin) — dinâmica por contexto real
   const [visao, setVisao] = useState<VisaoKey>("executor");
@@ -899,7 +900,7 @@ export default function OperationalExecucaoPage() {
             <SelectItem value="movimento">Última movimentação</SelectItem>
           </SelectContent>
         </Select>
-        <Button type="button" size="icon" className="h-9 w-9 shrink-0" onClick={() => setTaskTypePickerOpen(true)} title="Nova Tarefa">
+        <Button type="button" size="icon" className="h-9 w-9 shrink-0" onClick={() => setQuickTaskOpen(true)} title="Nova Tarefa">
           <Plus className="w-4 h-4" />
         </Button>
       </div>
@@ -1280,16 +1281,7 @@ export default function OperationalExecucaoPage() {
         </SheetContent>
       </Sheet>
 
-      <TaskTypeSelectorDialog
-        open={taskTypePickerOpen}
-        onOpenChange={setTaskTypePickerOpen}
-        onPick={({ type, setorId }) => {
-          setPickedTaskType(type);
-          setPickedSetorId(setorId);
-          setTaskTypePickerOpen(false);
-          setQuickTaskOpen(true);
-        }}
-      />
+      {/* (Removido) TaskTypeSelectorDialog — botão "+" abre o builder direto. */}
 
       <QuickTaskDialog
         open={quickTaskOpen}

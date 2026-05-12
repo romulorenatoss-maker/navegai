@@ -17,7 +17,7 @@ export default function OperationalCadastroPage() {
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [taskTypePickerOpen, setTaskTypePickerOpen] = useState(false);
+  // (Removido) seletor "Tipo de tarefa" — abre o builder direto.
   
   const [form, setForm] = useState<TemplateForm>(defaultTemplate);
   const [sections, setSections] = useState<SectionForm[]>([]);
@@ -408,8 +408,9 @@ export default function OperationalCadastroPage() {
   });
 
   const openCreate = () => {
-    // Abre o wizard 2-passos (Tipo + Setor) antes do builder
-    setTaskTypePickerOpen(true);
+    // Abre o builder unificado direto (sem seletor de tipo).
+    // O usuário define simples vs por etapas no próprio builder, criando agrupadores ou só perguntas.
+    handleWizardPick({ type: "inspecao", setorId: "" });
   };
 
   const handleWizardPick = ({ type, setorId }: { type: TaskType; setorId: string }) => {
@@ -426,7 +427,6 @@ export default function OperationalCadastroPage() {
     setCheckItems([]);
     setProtectedCheckIds(new Set());
     setActiveTab("geral");
-    setTaskTypePickerOpen(false);
     // Detect existing draft for new template
     const existing = loadDraft(null);
     setPendingDraft(existing);
@@ -704,11 +704,7 @@ export default function OperationalCadastroPage() {
         </DialogContent>
       </Dialog>
 
-      <TaskTypeSelectorDialog
-        open={taskTypePickerOpen}
-        onOpenChange={setTaskTypePickerOpen}
-        onPick={handleWizardPick}
-      />
+      {/* (Removido) TaskTypeSelectorDialog — botão "+" abre o builder direto. */}
     </div>
   );
 }
