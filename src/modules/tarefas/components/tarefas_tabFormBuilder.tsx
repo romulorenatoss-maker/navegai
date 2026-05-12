@@ -73,6 +73,30 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
     setFields(prev => [...prev, defaultField(sectionTempId, sectionFields.length)]);
   };
 
+  /** Abre a Configuração do Campo já para uma nova pergunta (sem pré-criar no estado).
+   * O save commita; cancelar descarta. Substitui o antigo modal "Novo Campo". */
+  const startNewField = (sectionTempId: string) => {
+    const ordem = fields.filter(f => f.sectionTempId === sectionTempId).length;
+    const f = defaultField(sectionTempId, ordem);
+    setEditingField(f);
+    setEditingIsNew(true);
+  };
+
+  const closeEditingField = () => {
+    setEditingField(null);
+    setEditingIsNew(false);
+  };
+
+  const commitEditingField = (updates: Partial<FieldForm>) => {
+    if (!editingField) return;
+    if (editingIsNew) {
+      setFields(prev => [...prev, { ...editingField, ...updates }]);
+    } else {
+      updateField(editingField.tempId, updates);
+    }
+    closeEditingField();
+  };
+
   const removeField = (tempId: string) => {
     setFields(prev => prev.filter(f => f.tempId !== tempId));
   };
