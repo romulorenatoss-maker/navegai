@@ -2,35 +2,33 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Play, Send, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock, RotateCcw, CheckCheck, CalendarClock, ListTodo, Hourglass, Filter, History, Plus } from "lucide-react";
+import { Play, Send, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock, RotateCcw, CheckCheck, CalendarClock, ListTodo, Hourglass, Filter, History, Plus, Users, Activity, ArrowDownUp } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { EmbeddedContingencyPanel } from "@/modules/tarefas/components/tarefas_embeddedContingencyPanel";
 import { EmbeddedReviewPanel, EmbeddedApprovalPanel } from "@/modules/tarefas/components/tarefas_embeddedActionPanels";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Progress } from "@/components/ui/progress";
-import { OperationalChipFilterBar, type OperationalChipFilter } from "@/modules/tarefas/components/tarefas_chipFilterBar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { STATUS_CONFIG } from "@/modules/tarefas/hooks/tarefas_useScoring";
 import { AssignmentCard } from "@/modules/tarefas/components/tarefas_tarefaCard";
-import { DynamicFieldRenderer, SnapshotField, FieldAnswer, evaluateVisibility } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
+import { DynamicFieldRenderer, SnapshotField, evaluateVisibility } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
 import { useAssignmentExecution } from "@/modules/tarefas/hooks/tarefas_useAssignmentExecution";
 import { useOperationalTransition } from "@/modules/tarefas/hooks/tarefas_useTransition";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MinhasTarefasTab from "@/modules/tarefas/components/tarefas_minhasTarefasTab";
 import QuickTaskDialog from "@/modules/tarefas/components/tarefas_quickCreateDialog";
 import TaskTypeSelectorDialog, { type TaskType } from "@/components/TaskTypeSelectorDialog";
-import { MinhasTarefasPendentesPanel } from "@/modules/tarefas/components/tarefas_minhasTarefasPendentesPanel";
-import { AguardandoAvaliacaoPanel } from "@/modules/tarefas/components/tarefas_aguardandoAvaliacaoPanel";
-import { useContingencyManagement } from "@/modules/tarefas/hooks/tarefas_useContingencyManagement";
 import { ListChecks, Trophy } from "lucide-react";
+import { bucketize, sortAssignments, availableVisoes, computeSla, isLate, isSemMovimento, type SortKey, type VisaoKey } from "@/modules/tarefas/services/tarefas_bucketize";
+import { VisaoSwitcher } from "@/modules/tarefas/components/tarefas_visaoSwitcher";
+import { PainelRetornoCard } from "@/modules/tarefas/components/tarefas_painelRetornoCard";
 
 interface AccordionSectionProps {
   title: string;
@@ -44,45 +42,7 @@ interface AccordionSectionProps {
   children: React.ReactNode;
 }
 
-interface MineOthersTabsProps {
-  mine: any[];
-  others: any[];
-  showOthers: boolean;
-  renderItem: (a: any) => React.ReactNode;
-  emptyMine: string;
-  emptyOthers?: string;
-}
-
-function MineOthersTabs({ mine, others, showOthers, renderItem, emptyMine, emptyOthers = "Nenhuma tarefa de outros." }: MineOthersTabsProps) {
-  const [tab, setTab] = useState<"minhas" | "outros">("minhas");
-  if (!showOthers) {
-    return (
-      <>
-        {mine.length === 0
-          ? <p className="text-xs text-muted-foreground text-center py-4">{emptyMine}</p>
-          : mine.map(renderItem)}
-      </>
-    );
-  }
-  return (
-    <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="w-full">
-      <TabsList className="h-8 mb-2">
-        <TabsTrigger value="minhas" className="text-xs h-6 px-2">Minhas ({mine.length})</TabsTrigger>
-        <TabsTrigger value="outros" className="text-xs h-6 px-2">Outros ({others.length})</TabsTrigger>
-      </TabsList>
-      <TabsContent value="minhas" className="mt-0 space-y-2">
-        {mine.length === 0
-          ? <p className="text-xs text-muted-foreground text-center py-4">{emptyMine}</p>
-          : mine.map(renderItem)}
-      </TabsContent>
-      <TabsContent value="outros" className="mt-0 space-y-2">
-        {others.length === 0
-          ? <p className="text-xs text-muted-foreground text-center py-4">{emptyOthers}</p>
-          : others.map(renderItem)}
-      </TabsContent>
-    </Tabs>
-  );
-}
+// MineOthersTabs removido — separação por papel agora é feita via VisaoSwitcher.
 
 function AccordionSection({ title, count, icon, borderColor, badgeBg, badgeText, isOpen, onToggle, children }: AccordionSectionProps) {
   return (
@@ -107,6 +67,293 @@ function AccordionSection({ title, count, icon, borderColor, badgeBg, badgeText,
         </div>
       </div>
     </div>
+  );
+}
+
+// === RenderVisao: organização por papel reutilizando AccordionSection + bucketize ===
+interface RenderVisaoProps {
+  visao: VisaoKey;
+  buckets: ReturnType<typeof bucketize>;
+  sorted: (l: any[]) => any[];
+  openAccordion: string | null;
+  setOpenAccordion: (k: string | null) => void;
+  openExecution: (a: any) => void;
+  hojeFiltrado: any[];
+  lateInHojeCount: number;
+  showOnlyLate: boolean;
+  setShowOnlyLate: (b: boolean | ((p: boolean) => boolean)) => void;
+}
+
+function listOrEmpty(list: any[], openExecution: (a: any) => void, emptyMsg: string, designador = false) {
+  if (list.length === 0) return <p className="text-xs text-muted-foreground text-center py-4">{emptyMsg}</p>;
+  return (
+    <div className="space-y-2">
+      {list.map((a) =>
+        designador
+          ? <PainelRetornoCard key={a.id} assignment={a} onClick={openExecution} />
+          : <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />
+      )}
+    </div>
+  );
+}
+
+function Section({ id, title, count, color, badgeBg, badgeText, icon, openAccordion, setOpenAccordion, children, highlight }: any) {
+  return (
+    <AccordionSection
+      title={title}
+      count={count}
+      icon={icon}
+      borderColor={color}
+      badgeBg={badgeBg}
+      badgeText={badgeText}
+      isOpen={openAccordion === id}
+      onToggle={() => setOpenAccordion(openAccordion === id ? null : id)}
+    >
+      {highlight}
+      {children}
+    </AccordionSection>
+  );
+}
+
+function RenderVisao({ visao, buckets, sorted, openAccordion, setOpenAccordion, openExecution, hojeFiltrado, lateInHojeCount, showOnlyLate, setShowOnlyLate }: RenderVisaoProps) {
+  const it = (a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />;
+
+  if (visao === "executor") {
+    return (
+      <>
+        <Section id="hoje" title="Tarefas de Hoje" count={hojeFiltrado.length}
+          color="#f97316" badgeBg="bg-orange-500/15" badgeText="text-orange-700 dark:text-orange-400"
+          icon={<CalendarClock className="w-4 h-4" style={{ color: "#f97316" }} />}
+          openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}
+          highlight={lateInHojeCount > 0 && (
+            <div className="flex items-center justify-between mb-2 px-1">
+              <button type="button" onClick={() => setShowOnlyLate((v) => !v)}
+                className={cn("inline-flex items-center gap-1.5 h-7 px-2 rounded-full text-[11px] font-medium border transition-colors",
+                  showOnlyLate ? "bg-destructive text-destructive-foreground border-destructive" : "bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/20"
+                )} aria-pressed={showOnlyLate}>
+                <Clock className="w-3 h-3" /> {showOnlyLate ? "Só atrasadas" : "Atrasadas"}: {lateInHojeCount}
+              </button>
+              {showOnlyLate && <button type="button" onClick={() => setShowOnlyLate(false)} className="text-[11px] text-muted-foreground hover:text-foreground underline">Limpar</button>}
+            </div>
+          )}>
+          {listOrEmpty(hojeFiltrado, openExecution, showOnlyLate ? "Nenhuma tarefa atrasada." : "Nenhuma tarefa para hoje.")}
+        </Section>
+        <Section id="emExecucao" title="Em Execução" count={buckets.emExecucao.length}
+          color="#3b82f6" badgeBg="bg-blue-500/15" badgeText="text-blue-700 dark:text-blue-400"
+          icon={<Activity className="w-4 h-4" style={{ color: "#3b82f6" }} />}
+          openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+          {listOrEmpty(sorted(buckets.emExecucao), openExecution, "Nenhuma tarefa em execução.")}
+        </Section>
+        <Section id="devolvidas" title="Devolvidas" count={buckets.devolvidas.length}
+          color="#ef4444" badgeBg="bg-red-500/15" badgeText="text-red-700 dark:text-red-400"
+          icon={<RotateCcw className="w-4 h-4" style={{ color: "#ef4444" }} />}
+          openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+          {listOrEmpty(sorted(buckets.devolvidas), openExecution, "Nenhuma tarefa devolvida.")}
+        </Section>
+        <Section id="planoAcao" title="Plano de Ação" count={buckets.planoAcao.length}
+          color="#f59e0b" badgeBg="bg-amber-500/15" badgeText="text-amber-700 dark:text-amber-400"
+          icon={<AlertTriangle className="w-4 h-4" style={{ color: "#f59e0b" }} />}
+          openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+          {listOrEmpty(sorted(buckets.planoAcao), openExecution, "Nenhum plano de ação pendente.")}
+        </Section>
+        <Section id="contingencias" title="Contingências" count={buckets.contingencias.length}
+          color="#f97316" badgeBg="bg-orange-500/15" badgeText="text-orange-700 dark:text-orange-400"
+          icon={<AlertTriangle className="w-4 h-4 animate-pulse" style={{ color: "#f97316" }} />}
+          openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+          {listOrEmpty(sorted(buckets.contingencias), openExecution, "Sem contingências.")}
+        </Section>
+        <Section id="concluidas" title="Concluídas" count={buckets.concluidas.length}
+          color="#22c55e" badgeBg="bg-green-500/15" badgeText="text-green-700 dark:text-green-400"
+          icon={<CheckCheck className="w-4 h-4" style={{ color: "#22c55e" }} />}
+          openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+          {listOrEmpty(sorted(buckets.concluidas).slice(0, 50), openExecution, "Nenhuma tarefa concluída.")}
+        </Section>
+      </>
+    );
+  }
+
+  if (visao === "avaliador") {
+    return (
+      <>
+        <Section id="aguardandoAvaliacao" title="Aguardando Avaliação" count={buckets.aguardandoAvaliacao.length}
+          color="#8b5cf6" badgeBg="bg-violet-500/15" badgeText="text-violet-700 dark:text-violet-400"
+          icon={<Hourglass className="w-4 h-4" style={{ color: "#8b5cf6" }} />}
+          openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+          {listOrEmpty(sorted(buckets.aguardandoAvaliacao), openExecution, "Nada aguardando avaliação.")}
+        </Section>
+        <Section id="reavaliar" title="Reavaliar" count={buckets.reavaliar.length}
+          color="#eab308" badgeBg="bg-yellow-500/15" badgeText="text-yellow-700 dark:text-yellow-400"
+          icon={<RotateCcw className="w-4 h-4" style={{ color: "#eab308" }} />}
+          openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+          {listOrEmpty(sorted(buckets.reavaliar), openExecution, "Nada para reavaliar.")}
+        </Section>
+        <Section id="avaliadas" title="Avaliadas" count={buckets.avaliadas.length}
+          color="#22c55e" badgeBg="bg-green-500/15" badgeText="text-green-700 dark:text-green-400"
+          icon={<CheckCircle2 className="w-4 h-4" style={{ color: "#22c55e" }} />}
+          openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+          {listOrEmpty(sorted(buckets.avaliadas).slice(0, 50), openExecution, "Nenhuma avaliação registrada.")}
+        </Section>
+      </>
+    );
+  }
+
+  if (visao === "aprovador") {
+    return (
+      <>
+        <Section id="aguardandoAprovacao" title="Aguardando Aprovação" count={buckets.aguardandoAprovacao.length}
+          color="#8b5cf6" badgeBg="bg-violet-500/15" badgeText="text-violet-700 dark:text-violet-400"
+          icon={<Hourglass className="w-4 h-4" style={{ color: "#8b5cf6" }} />}
+          openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+          {listOrEmpty(sorted(buckets.aguardandoAprovacao), openExecution, "Nada aguardando aprovação.")}
+        </Section>
+        <Section id="reprovadas" title="Reprovadas" count={buckets.reprovadas.length}
+          color="#ef4444" badgeBg="bg-red-500/15" badgeText="text-red-700 dark:text-red-400"
+          icon={<AlertTriangle className="w-4 h-4" style={{ color: "#ef4444" }} />}
+          openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+          {listOrEmpty(sorted(buckets.reprovadas), openExecution, "Nada reprovado.")}
+        </Section>
+        <Section id="aprovadas" title="Aprovadas" count={buckets.aprovadas.length}
+          color="#22c55e" badgeBg="bg-green-500/15" badgeText="text-green-700 dark:text-green-400"
+          icon={<CheckCheck className="w-4 h-4" style={{ color: "#22c55e" }} />}
+          openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+          {listOrEmpty(sorted(buckets.aprovadas).slice(0, 50), openExecution, "Nenhuma aprovada.")}
+        </Section>
+      </>
+    );
+  }
+
+  if (visao === "designador") {
+    return (
+      <>
+        <Section id="criadasPorMim" title="Criadas por Mim" count={buckets.criadasPorMim.length}
+          color="#06b6d4" badgeBg="bg-cyan-500/15" badgeText="text-cyan-700 dark:text-cyan-400"
+          icon={<ListTodo className="w-4 h-4" style={{ color: "#06b6d4" }} />}
+          openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+          {listOrEmpty(sorted(buckets.criadasPorMim), openExecution, "Você não criou tarefas para outros.", true)}
+        </Section>
+        <Section id="aguardandoRetorno" title="Aguardando Retorno" count={buckets.aguardandoRetorno.length}
+          color="#8b5cf6" badgeBg="bg-violet-500/15" badgeText="text-violet-700 dark:text-violet-400"
+          icon={<Hourglass className="w-4 h-4" style={{ color: "#8b5cf6" }} />}
+          openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+          {listOrEmpty(sorted(buckets.aguardandoRetorno), openExecution, "Nada aguardando retorno.", true)}
+        </Section>
+        <Section id="atrasadas" title="Atrasadas" count={buckets.atrasadas.length}
+          color="#ef4444" badgeBg="bg-red-500/15" badgeText="text-red-700 dark:text-red-400"
+          icon={<Clock className="w-4 h-4" style={{ color: "#ef4444" }} />}
+          openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+          {listOrEmpty(sorted(buckets.atrasadas), openExecution, "Nenhuma atrasada.", true)}
+        </Section>
+        <Section id="slaEstourado" title="SLA Estourado" count={buckets.slaEstourado.length}
+          color="#dc2626" badgeBg="bg-red-600/15" badgeText="text-red-800 dark:text-red-300"
+          icon={<AlertTriangle className="w-4 h-4" style={{ color: "#dc2626" }} />}
+          openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+          {listOrEmpty(sorted(buckets.slaEstourado), openExecution, "Nenhum SLA estourado.", true)}
+        </Section>
+        <Section id="semMovimento" title="Sem Movimento (>48h)" count={buckets.semMovimento.length}
+          color="#f59e0b" badgeBg="bg-amber-500/15" badgeText="text-amber-700 dark:text-amber-400"
+          icon={<Activity className="w-4 h-4" style={{ color: "#f59e0b" }} />}
+          openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+          {listOrEmpty(sorted(buckets.semMovimento), openExecution, "Tudo movimentado recentemente.", true)}
+        </Section>
+        <Section id="contingenciasDes" title="Contingências" count={buckets.contingencias.length}
+          color="#f97316" badgeBg="bg-orange-500/15" badgeText="text-orange-700 dark:text-orange-400"
+          icon={<AlertTriangle className="w-4 h-4 animate-pulse" style={{ color: "#f97316" }} />}
+          openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+          {listOrEmpty(sorted(buckets.contingencias), openExecution, "Sem contingências.", true)}
+        </Section>
+        <Section id="acompanhamento" title="Acompanhamento Geral" count={buckets.acompanhamentoGeral.length}
+          color="#64748b" badgeBg="bg-slate-500/15" badgeText="text-slate-700 dark:text-slate-400"
+          icon={<ListChecks className="w-4 h-4" style={{ color: "#64748b" }} />}
+          openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+          {listOrEmpty(sorted(buckets.acompanhamentoGeral).slice(0, 100), openExecution, "Nada para acompanhar.", true)}
+        </Section>
+      </>
+    );
+  }
+
+  if (visao === "setor") {
+    return (
+      <>
+        <Section id="doMeuSetor" title="Do Meu Setor" count={buckets.doMeuSetor.length}
+          color="#3b82f6" badgeBg="bg-blue-500/15" badgeText="text-blue-700 dark:text-blue-400"
+          icon={<Users className="w-4 h-4" style={{ color: "#3b82f6" }} />}
+          openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+          {listOrEmpty(sorted(buckets.doMeuSetor), openExecution, "Sem tarefas no setor.")}
+        </Section>
+        <Section id="pendentesSetor" title="Pendentes do Setor" count={buckets.pendentesSetor.length}
+          color="#f97316" badgeBg="bg-orange-500/15" badgeText="text-orange-700 dark:text-orange-400"
+          icon={<CalendarClock className="w-4 h-4" style={{ color: "#f97316" }} />}
+          openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+          {listOrEmpty(sorted(buckets.pendentesSetor), openExecution, "Sem pendentes.")}
+        </Section>
+        <Section id="emAvaliacaoSetor" title="Em Avaliação do Setor" count={buckets.emAvaliacaoSetor.length}
+          color="#8b5cf6" badgeBg="bg-violet-500/15" badgeText="text-violet-700 dark:text-violet-400"
+          icon={<Hourglass className="w-4 h-4" style={{ color: "#8b5cf6" }} />}
+          openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+          {listOrEmpty(sorted(buckets.emAvaliacaoSetor), openExecution, "Nada em avaliação.")}
+        </Section>
+        <Section id="emAprovacaoSetor" title="Em Aprovação do Setor" count={buckets.emAprovacaoSetor.length}
+          color="#a855f7" badgeBg="bg-purple-500/15" badgeText="text-purple-700 dark:text-purple-400"
+          icon={<CheckCircle2 className="w-4 h-4" style={{ color: "#a855f7" }} />}
+          openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+          {listOrEmpty(sorted(buckets.emAprovacaoSetor), openExecution, "Nada em aprovação.")}
+        </Section>
+      </>
+    );
+  }
+
+  // visao === "admin": expõe todas as derivações com filtros aplicados
+  return (
+    <>
+      <Section id="adminPendentes" title="Pendentes" count={buckets.pendentes.length}
+        color="#f97316" badgeBg="bg-orange-500/15" badgeText="text-orange-700 dark:text-orange-400"
+        icon={<CalendarClock className="w-4 h-4" style={{ color: "#f97316" }} />}
+        openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+        {listOrEmpty(sorted(buckets.pendentes), openExecution, "Sem pendentes.")}
+      </Section>
+      <Section id="adminEmExecucao" title="Em Execução" count={buckets.emExecucao.length}
+        color="#3b82f6" badgeBg="bg-blue-500/15" badgeText="text-blue-700 dark:text-blue-400"
+        icon={<Activity className="w-4 h-4" style={{ color: "#3b82f6" }} />}
+        openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+        {listOrEmpty(sorted(buckets.emExecucao), openExecution, "Sem tarefas em execução.")}
+      </Section>
+      <Section id="adminAval" title="Aguardando Avaliação" count={buckets.aguardandoAvaliacao.length}
+        color="#8b5cf6" badgeBg="bg-violet-500/15" badgeText="text-violet-700 dark:text-violet-400"
+        icon={<Hourglass className="w-4 h-4" style={{ color: "#8b5cf6" }} />}
+        openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+        {listOrEmpty(sorted(buckets.aguardandoAvaliacao), openExecution, "Nada aguardando avaliação.")}
+      </Section>
+      <Section id="adminAprov" title="Aguardando Aprovação" count={buckets.aguardandoAprovacao.length}
+        color="#a855f7" badgeBg="bg-purple-500/15" badgeText="text-purple-700 dark:text-purple-400"
+        icon={<CheckCircle2 className="w-4 h-4" style={{ color: "#a855f7" }} />}
+        openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+        {listOrEmpty(sorted(buckets.aguardandoAprovacao), openExecution, "Nada aguardando aprovação.")}
+      </Section>
+      <Section id="adminCont" title="Contingências" count={buckets.contingencias.length}
+        color="#f97316" badgeBg="bg-orange-500/15" badgeText="text-orange-700 dark:text-orange-400"
+        icon={<AlertTriangle className="w-4 h-4 animate-pulse" style={{ color: "#f97316" }} />}
+        openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+        {listOrEmpty(sorted(buckets.contingencias), openExecution, "Sem contingências.")}
+      </Section>
+      <Section id="adminSla" title="SLA Estourado" count={buckets.slaEstourado.length}
+        color="#dc2626" badgeBg="bg-red-600/15" badgeText="text-red-800 dark:text-red-300"
+        icon={<AlertTriangle className="w-4 h-4" style={{ color: "#dc2626" }} />}
+        openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+        {listOrEmpty(sorted(buckets.slaEstourado), openExecution, "Nenhum SLA estourado.")}
+      </Section>
+      <Section id="adminSem" title="Sem Movimento" count={buckets.semMovimento.length}
+        color="#f59e0b" badgeBg="bg-amber-500/15" badgeText="text-amber-700 dark:text-amber-400"
+        icon={<Activity className="w-4 h-4" style={{ color: "#f59e0b" }} />}
+        openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+        {listOrEmpty(sorted(buckets.semMovimento), openExecution, "Tudo movimentado.")}
+      </Section>
+      <Section id="adminConc" title="Concluídas" count={buckets.concluidas.length}
+        color="#22c55e" badgeBg="bg-green-500/15" badgeText="text-green-700 dark:text-green-400"
+        icon={<CheckCheck className="w-4 h-4" style={{ color: "#22c55e" }} />}
+        openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+        {listOrEmpty(sorted(buckets.concluidas).slice(0, 50), openExecution, "Nada concluído.")}
+      </Section>
+    </>
   );
 }
 
@@ -186,36 +433,45 @@ export default function OperationalExecucaoPage() {
   const [taskTypePickerOpen, setTaskTypePickerOpen] = useState(false);
   const [pickedTaskType, setPickedTaskType] = useState<TaskType>("simples");
   const [pickedSetorId, setPickedSetorId] = useState<string>("");
-  const [chipFilter, setChipFilter] = useState<OperationalChipFilter>("todas");
   const isMobile = useIsMobile();
-  // Toggle "Só atrasadas" dentro do acordeão Hoje
+  // Visão ativa (executor/avaliador/aprovador/designador/setor/admin) — dinâmica por contexto real
+  const [visao, setVisao] = useState<VisaoKey>("executor");
+  // Ordenação por seção (única para todas as listas da visão atual)
+  const [sortKey, setSortKey] = useState<SortKey>("sla");
+  // Toggle "Só atrasadas" dentro do acordeão Hoje (executor)
   const [showOnlyLate, setShowOnlyLate] = useState(false);
-  // Compat com wrappers das rotas legadas: ?chip= mapeia para o acordeão correspondente
+  // Filtros admin
+  const [adminSetor, setAdminSetor] = useState<string>("__all");
+  const [adminExecutor, setAdminExecutor] = useState<string>("__all");
+
+  // Compat com wrappers das rotas legadas: ?chip= mapeia para visão + acordeão
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const chipParam = searchParams.get("chip");
-    const valid: OperationalChipFilter[] = ["todas", "executar", "avaliar", "aprovar", "plano_acao", "contingencias", "atrasadas", "concluidas"];
-    if (chipParam && valid.includes(chipParam as OperationalChipFilter)) {
-      const chipToAccordion: Record<OperationalChipFilter, string | null> = {
-        todas: "hoje",
-        executar: "hoje",
-        avaliar: "aguardando",
-        aprovar: "aguardando",
-        plano_acao: "contingenciados",
-        contingencias: "contingenciados",
-        atrasadas: "hoje",
-        concluidas: "finalizadas",
-      };
-      const targetAcc = chipToAccordion[chipParam as OperationalChipFilter];
-      if (targetAcc) setOpenAccordion(targetAcc);
+    if (!chipParam) return;
+    const chipToVisao: Record<string, { v: VisaoKey; acc: string }> = {
+      todas: { v: "executor", acc: "hoje" },
+      executar: { v: "executor", acc: "hoje" },
+      avaliar: { v: "avaliador", acc: "aguardandoAvaliacao" },
+      aprovar: { v: "aprovador", acc: "aguardandoAprovacao" },
+      plano_acao: { v: "executor", acc: "planoAcao" },
+      contingencias: { v: "executor", acc: "contingencias" },
+      atrasadas: { v: "executor", acc: "hoje" },
+      concluidas: { v: "executor", acc: "concluidas" },
+    };
+    const target = chipToVisao[chipParam];
+    if (target) {
+      setVisao(target.v);
+      setOpenAccordion(target.acc);
       if (chipParam === "atrasadas") setShowOnlyLate(true);
-      const next = new URLSearchParams(searchParams);
-      next.delete("chip");
-      next.delete("from");
-      setSearchParams(next, { replace: true });
     }
+    const next = new URLSearchParams(searchParams);
+    next.delete("chip");
+    next.delete("from");
+    setSearchParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
   const effectiveFilterProfileId = isAdmin && filterResponsavel !== "__all" ? filterResponsavel : profile?.id;
 
   const { data: allProfilesRaw = [] } = useQuery({
@@ -233,10 +489,9 @@ export default function OperationalExecucaoPage() {
     queryFn: async () => {
       if (!profile?.id) return [];
       let q = (supabase as any).from("operational_assignments")
-        .select("*, operational_templates(nome, tipo_execucao), profiles:responsavel_id(id, nome, foto_url), criador:created_by(id, nome)")
+        .select("*, operational_templates(nome, tipo_execucao), profiles:responsavel_id(id, nome, foto_url), criador:created_by(id, nome), avaliador:profiles!operational_assignments_avaliador_id_fkey(nome), aprovador:profiles!operational_assignments_aprovador_id_fkey(nome)")
         .order("data_prevista", { ascending: true });
       if (!isAdmin) {
-        // Inclui também tarefas onde sou o CRIADOR (created_by) — necessário para "Designadas" e "Validação"
         q = q.or(`responsavel_id.eq.${profile.id},avaliador_id.eq.${profile.id},aprovador_id.eq.${profile.id},avaliado_id.eq.${profile.id},validador_contingencia_id.eq.${profile.id},created_by.eq.${profile.id}`);
       }
       const { data, error } = await q.limit(500);
@@ -247,210 +502,95 @@ export default function OperationalExecucaoPage() {
     staleTime: 300000,
   });
 
-  // Contingências (planos de ação) abertas onde sou responsável e prazo_sla < 24h
-  const { data: contingenciasUrgentes = [] } = useQuery({
-    queryKey: ["operational_contingencies_urgent", profile?.id],
+  // Setores do usuário (para visão Setor) — derivado de permissões com escopo team
+  const { getScope } = usePermissions(profile?.id ?? null);
+  const hasSetorScope = getScope("executar_tarefa") === "team";
+  const { data: meusSetorIds = [] } = useQuery({
+    queryKey: ["my_setor_ids", profile?.id],
     queryFn: async () => {
       if (!profile?.id) return [];
-      const limite = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
-      const { data, error } = await (supabase as any)
-        .from("operational_contingencies")
-        .select("assignment_id, prazo_sla, status")
-        .in("status", ["aberta", "em_andamento"])
-        .eq("responsavel_id", profile.id)
-        .lte("prazo_sla", limite);
-      if (error) return [];
-      return data || [];
+      const { data } = await (supabase as any)
+        .from("profile_setores")
+        .select("setor_id")
+        .eq("profile_id", profile.id);
+      return (data || []).map((r: any) => r.setor_id);
     },
-    enabled: !!profile?.id,
-    staleTime: 60000,
+    enabled: !!profile?.id && hasSetorScope,
+    staleTime: 300000,
   });
-
-  const urgentContingencyAssignmentIds = useMemo(
-    () => new Set(contingenciasUrgentes.map((c: any) => c.assignment_id)),
-    [contingenciasUrgentes]
-  );
 
   const profilesWithTasks = useMemo(() => {
     if (!isAdmin) return [];
     const openStatuses = ["pendente", "em_andamento", "devolvida", "aguardando_avaliacao", "aguardando_aprovacao", "contingenciado", "contingencia"];
     const idsWithTasks = new Set(
-      assignments
-        .filter((a: any) => openStatuses.includes(a.status))
-        .map((a: any) => a.responsavel_id)
-        .filter(Boolean)
+      assignments.filter((a: any) => openStatuses.includes(a.status)).map((a: any) => a.responsavel_id).filter(Boolean)
     );
-    // Sempre incluir o próprio usuário logado no filtro, mesmo sem tarefas em aberto
     if (profile?.id) idsWithTasks.add(profile.id);
     return allProfilesRaw.filter((p: any) => idsWithTasks.has(p.id));
   }, [isAdmin, assignments, allProfilesRaw, profile?.id]);
 
+  // Lista de setores únicos presentes nas tarefas (para filtro admin)
+  const setoresEmAssignments = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const a of assignments) {
+      if (a.setor_id) map.set(a.setor_id, a.setor_nome || a.setor_id);
+    }
+    return Array.from(map.entries()).map(([id, nome]) => ({ id, nome }));
+  }, [assignments]);
+
+  // === Filtragem base (busca + admin filtros) ===
   const filteredAssignments = useMemo(() => {
-    let list = assignments;
-    if (isAdmin && filterResponsavel !== "__all") {
-      // Visão "como executor X": inclui tarefas onde X é responsável, avaliado ou criador.
-      // Mantém também tarefas que EU criei (designadas).
-      list = list.filter((a: any) =>
-        a.responsavel_id === filterResponsavel ||
-        a.avaliado_id === filterResponsavel ||
-        a.created_by === filterResponsavel ||
-        a.created_by === profile?.id
+    let list = assignments as any[];
+    if (isAdmin && adminExecutor !== "__all") {
+      list = list.filter((a) => a.responsavel_id === adminExecutor);
+    } else if (isAdmin && filterResponsavel !== "__all") {
+      list = list.filter((a) =>
+        a.responsavel_id === filterResponsavel || a.avaliado_id === filterResponsavel || a.created_by === filterResponsavel || a.created_by === profile?.id
       );
+    }
+    if (isAdmin && adminSetor !== "__all") {
+      list = list.filter((a) => a.setor_id === adminSetor);
     }
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
-      list = list.filter((a: any) => {
-        const nome = a.template_snapshot?.nome || a.operational_templates?.nome || "";
-        return nome.toLowerCase().includes(term);
-      });
-    }
-    if (filterDate) {
-      list = list.filter((a: any) => {
-        // Tarefas designadas por mim (created_by) sempre passam, independente de data
-        if (a.created_by === profile?.id && a.responsavel_id !== profile?.id) return true;
-        if (["concluida", "aprovada", "aguardando_avaliacao", "em_avaliacao", "avaliada", "aguardando_aprovacao", "reprovada", "nao_executada", "contingenciado", "contingencia"].includes(a.status)) return true;
-        if (a.status === "devolvida") return true;
-        return a.data_prevista === filterDate || (a.data_prevista < filterDate && !["concluida", "aprovada"].includes(a.status));
-      });
+      list = list.filter((a) => (a.template_snapshot?.nome || a.operational_templates?.nome || "").toLowerCase().includes(term));
     }
     return list;
-  }, [assignments, isAdmin, filterResponsavel, searchTerm, filterDate, profile?.id]);
+  }, [assignments, isAdmin, filterResponsavel, adminExecutor, adminSetor, searchTerm, profile?.id]);
 
-  // "Tarefas de Hoje" includes: today's tasks + em_andamento (any date) + atrasadas + contingências com SLA < 24h
-   const hoje = filteredAssignments.filter((a: any) => {
-    if (["em_andamento"].includes(a.status)) return true;
-    if (["pendente", "devolvida"].includes(a.status) && a.data_prevista <= filterDate && a.responsavel_id === profile?.id) return true;
-    // Contingências (planos de ação) prioridade: aparecem no dia se SLA expira em <24h
-    if (["contingenciado", "contingencia"].includes(a.status) && urgentContingencyAssignmentIds.has(a.id)) return true;
-    return false;
-  });
-  // NOVO: "Tarefas Designadas" — tarefas que EU criei para outras pessoas (apenas em aberto/ativas)
-  const tarefasDesignadas = filteredAssignments.filter((a: any) =>
-    a.created_by === profile?.id &&
-    a.responsavel_id !== profile?.id &&
-    !["concluida", "aprovada", "reprovada", "nao_executada"].includes(a.status)
+  // === BUCKETIZE — núcleo único ===
+  const buckets = useMemo(
+    () => bucketize(filteredAssignments, { profileId: effectiveFilterProfileId, isAdmin }, meusSetorIds),
+    [filteredAssignments, effectiveFilterProfileId, isAdmin, meusSetorIds]
   );
-  // NOVO: "Aguardando Minha Validação" — tarefas designadas por mim que aguardam minha validação
-  const aguardandoMinhaValidacao = filteredAssignments.filter((a: any) =>
-    a.created_by === profile?.id &&
-    a.responsavel_id !== profile?.id &&
-    a.status === "aguardando_validacao"
-  );
-  // Devolvidas — separado em duas sub-listas
-  const minhasDevolucoes = filteredAssignments.filter((a: any) =>
-    a.status === "devolvida" && a.responsavel_id === profile?.id
-  );
-  const devolvidasParaOutros = filteredAssignments.filter((a: any) =>
-    a.status === "devolvida" && a.created_by === profile?.id && a.responsavel_id !== profile?.id
-  );
-  const devolvidas = [...minhasDevolucoes, ...filteredAssignments.filter((a: any) =>
-    ["contingenciado", "contingencia"].includes(a.status) && a.avaliado_id === profile?.id
-  )];
-  const contingenciados = filteredAssignments.filter((a: any) => ["contingenciado", "contingencia"].includes(a.status));
-  const aguardandoAvaliacao = filteredAssignments.filter((a: any) => ["aguardando_avaliacao", "aguardando_aprovacao"].includes(a.status));
-  // NOVO: separar Finalizadas em "Em Aberto" (não foram feitas) e "Concluídas" (efetivamente concluídas/aprovadas)
-  const emAberto = filteredAssignments.filter((a: any) => ["nao_executada", "reprovada"].includes(a.status)).slice(0, 50);
-  const concluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 50);
 
-  // === CHIPS (Central Operacional) — listas planas por papel ===
-  const chipMyId = effectiveFilterProfileId || profile?.id;
-  const isLateAssignment = (a: any) => {
-    if (["concluida", "aprovada", "nao_executada"].includes(a.status)) return false;
-    if (!a.data_prevista) return false;
-    const limite = a.horario_limite
-      ? new Date(`${a.data_prevista}T${a.horario_limite}`)
-      : new Date(`${a.data_prevista}T23:59:59`);
-    return new Date() > limite;
-  };
-  const chipExecutar = filteredAssignments.filter((a: any) =>
-    (a.responsavel_id === chipMyId || isAdmin) &&
-    ["pendente", "em_andamento", "devolvida", "reaberta"].includes(a.status)
+  // Visões disponíveis (dinâmico por contexto)
+  const visoes = useMemo(
+    () => availableVisoes(buckets, { isAdmin, hasSetor: hasSetorScope && meusSetorIds.length > 0 }),
+    [buckets, isAdmin, hasSetorScope, meusSetorIds.length]
   );
-  const chipAvaliar = filteredAssignments.filter((a: any) =>
-    ["aguardando_avaliacao", "em_avaliacao"].includes(a.status) && (a.avaliador_id === chipMyId || isAdmin)
-  );
-  const chipAprovar = filteredAssignments.filter((a: any) =>
-    a.status === "aguardando_aprovacao" && (a.aprovador_id === chipMyId || isAdmin)
-  );
-  // Plano de Ação (B3): correções pendentes do executor — reprovada/devolvida (NÃO inclui contingências, que têm chip próprio)
-  const chipPlanoAcao = filteredAssignments.filter((a: any) =>
-    ["reprovada", "devolvida"].includes(a.status) &&
-    (a.responsavel_id === chipMyId || isAdmin)
-  );
-  const chipContingencias = filteredAssignments.filter((a: any) =>
-    ["contingenciado", "contingencia"].includes(a.status) &&
-    (a.responsavel_id === chipMyId || a.avaliado_id === chipMyId || a.validador_contingencia_id === chipMyId || isAdmin)
-  );
-  const chipAtrasadas = filteredAssignments.filter(isLateAssignment);
-  const chipConcluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 100);
 
-  const chipCounts: Partial<Record<OperationalChipFilter, number>> = {
-    executar: chipExecutar.length,
-    avaliar: chipAvaliar.length,
-    aprovar: chipAprovar.length,
-    plano_acao: chipPlanoAcao.length,
-    contingencias: chipContingencias.length,
-    atrasadas: chipAtrasadas.length,
-    concluidas: chipConcluidas.length,
-  };
-  const chipFlatList: any[] =
-    chipFilter === "executar" ? chipExecutar :
-    chipFilter === "avaliar" ? chipAvaliar :
-    chipFilter === "aprovar" ? chipAprovar :
-    chipFilter === "plano_acao" ? chipPlanoAcao :
-    chipFilter === "contingencias" ? chipContingencias :
-    chipFilter === "atrasadas" ? chipAtrasadas :
-    chipFilter === "concluidas" ? chipConcluidas : [];
+  // Ajusta visão se a atual sumir do contexto
+  useEffect(() => {
+    if (visoes.length === 0) return;
+    if (!visoes.find((v) => v.key === visao)) setVisao(visoes[0].key);
+  }, [visoes, visao]);
 
-  // Sub-abas Minhas/Outros — split por usuário logado OU pelo usuário em "Modo Visão" do admin
-  const myId = effectiveFilterProfileId || profile?.id;
-  const splitByResp = (list: any[]) => ({
-    mine: list.filter((a: any) => a.responsavel_id === myId),
-    others: list.filter((a: any) => a.responsavel_id !== myId),
-  });
-  const splitByCreator = (list: any[]) => ({
-    mine: list.filter((a: any) => a.created_by === myId),
-    others: list.filter((a: any) => a.created_by !== myId),
-  });
-  const splitByAvaliado = (list: any[]) => ({
-    mine: list.filter((a: any) => a.avaliado_id === myId),
-    others: list.filter((a: any) => a.avaliado_id !== myId),
-  });
+  // Helper de ordenação
+  const sorted = useCallback((list: any[]) => sortAssignments(list, sortKey), [sortKey]);
 
-  const hojeSplit = splitByResp(hoje);
-  const designadasSplit = splitByCreator(tarefasDesignadas);
-  const devolvidasAll = [...devolvidas, ...devolvidasParaOutros];
-  const devolvidasSplit = splitByResp(devolvidasAll);
-  const contingenciadosSplit = splitByResp(contingenciados);
-  const aguardandoSplit = splitByAvaliado(aguardandoAvaliacao);
-  const emAbertoSplit = splitByResp(emAberto);
-  const concluidasSplit = splitByResp(concluidas);
-
-  // Contagem para "Tarefas Pendentes" — usa Planos de Ação (contingências).
-  // Admin: total de todas; usuário comum: apenas onde é responsável.
-  const cmCount = useContingencyManagement();
-  const pendentesCount = useMemo(() => {
-    const all = [...cmCount.abertas, ...cmCount.emTratamento, ...cmCount.vencidas, ...cmCount.validadas];
-    return isAdmin ? all.length : all.filter((c: any) => c.responsavel_id === myId).length;
-  }, [cmCount.abertas, cmCount.emTratamento, cmCount.vencidas, cmCount.validadas, isAdmin, myId]);
-
-  // === Flags de papel para mostrar/ocultar acordeões (sem perder função do menu superior) ===
-  const hasAvaliarRole = isAdmin || chipAvaliar.length > 0
-    || assignments.some((a: any) => a.avaliador_id === profile?.id);
-  const hasAprovarRole = isAdmin || chipAprovar.length > 0
-    || assignments.some((a: any) => a.aprovador_id === profile?.id);
-  const hasPlanoAcaoRole = isAdmin || chipPlanoAcao.length > 0 || pendentesCount > 0;
-  const hasContingenciaRole = isAdmin || chipContingencias.length > 0;
-  const hasDesignadasRole = isAdmin || tarefasDesignadas.length > 0
-    || assignments.some((a: any) => a.created_by === profile?.id && a.responsavel_id !== profile?.id);
-  // "Atrasadas" só é visível para perfis específicos
-  const hasAtrasadasView = isAdmin
-    || chipAtrasadas.some((a: any) =>
-      a.responsavel_id === profile?.id || a.created_by === profile?.id
-    );
-  const lateInHojeCount = hoje.filter(isLateAssignment).length;
-  const hojeFiltrado = showOnlyLate ? hoje.filter(isLateAssignment) : hoje;
-  const hojeFiltradoSplit = splitByResp(hojeFiltrado);
+  // Tarefas de Hoje (executor) — pendentes do dia + em execução + atrasadas
+  const hojeBase = useMemo(() => {
+    const me = effectiveFilterProfileId || profile?.id;
+    return filteredAssignments.filter((a: any) => {
+      if (a.status === "em_andamento" || a.status === "reaberta") return true;
+      if (["pendente", "devolvida"].includes(a.status) && a.data_prevista <= filterDate && (a.responsavel_id === me || isAdmin)) return true;
+      if (["contingenciado", "contingencia"].includes(a.status) && (a.responsavel_id === me || isAdmin)) return true;
+      return false;
+    });
+  }, [filteredAssignments, filterDate, effectiveFilterProfileId, profile?.id, isAdmin]);
+  const lateInHojeCount = useMemo(() => hojeBase.filter(isLate).length, [hojeBase]);
+  const hojeFiltrado = useMemo(() => sorted(showOnlyLate ? hojeBase.filter(isLate) : hojeBase), [hojeBase, showOnlyLate, sorted]);
 
   const exec = useAssignmentExecution(selectedAssignment?.id || null);
 
@@ -677,40 +817,10 @@ export default function OperationalExecucaoPage() {
         <div>
           <h1 className="text-lg font-semibold text-foreground">Minhas Tarefas</h1>
           <p className="text-xs text-muted-foreground">
-            {isAdmin ? "Visualização administrativa de todas as rotinas." : "Formulários e rotinas atribuídos a você."}
+            {isAdmin ? "Hub operacional administrativo." : "Hub operacional por papel."}
           </p>
         </div>
-        {isAdmin && (
-          <Select value={filterResponsavel} onValueChange={setFilterResponsavel}>
-            <SelectTrigger className="w-[240px] h-9">
-              <Filter className="w-3.5 h-3.5 mr-1" />
-              <SelectValue placeholder="Visão de..." />
-            </SelectTrigger>
-            <SelectContent>
-              {profile?.id && (
-                <SelectItem value={profile.id}>👤 Meu Usuário</SelectItem>
-              )}
-              <SelectItem value="__all">🌐 Todos os Executores</SelectItem>
-              {profilesWithTasks
-                .filter((p: any) => p.id !== profile?.id)
-                .map((p: any) => (
-                  <SelectItem key={p.id} value={p.id}>👁 {p.nome}</SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
-        )}
       </div>
-
-      {isAdmin && filterResponsavel !== "__all" && filterResponsavel !== profile?.id && (
-        <div className="mb-4 flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-lg px-3 py-2">
-          <span className="text-sm font-medium text-primary">
-            👁 Modo Visão: {profilesWithTasks.find((p: any) => p.id === filterResponsavel)?.nome || "Colaborador"}
-          </span>
-          <Button size="sm" variant="ghost" className="ml-auto h-7 text-xs" onClick={() => setFilterResponsavel(profile?.id || "__all")}>
-            Sair da visão
-          </Button>
-        </div>
-      )}
 
       <Tabs defaultValue="operacionais" className="w-full">
         <TabsList className="w-full sm:w-auto mb-4">
@@ -724,141 +834,85 @@ export default function OperationalExecucaoPage() {
 
         <TabsContent value="operacionais" className="space-y-0 mt-0">
 
-      <div className="flex items-center gap-2 mb-4">
-        <div className="relative flex-1">
+      {/* Visão por papel — dinâmica conforme contexto real */}
+      <div className="mb-3">
+        <VisaoSwitcher visoes={visoes} value={visao} onChange={setVisao} isMobile={isMobile} />
+      </div>
+
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        <div className="relative flex-1 min-w-[160px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Pesquisar" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9 h-9 text-sm" />
         </div>
-        <Input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value || today)} className="w-[160px] h-9 text-sm" />
-        <Button
-          type="button"
-          size="icon"
-          className="h-9 w-9 shrink-0"
-          onClick={() => setTaskTypePickerOpen(true)}
-          title="Nova Tarefa"
-          aria-label="Nova Tarefa"
-        >
+        <Input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value || today)} className="w-[140px] h-9 text-sm" />
+        <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+          <SelectTrigger className="w-[150px] h-9 text-sm">
+            <ArrowDownUp className="w-3.5 h-3.5 mr-1" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="sla">SLA</SelectItem>
+            <SelectItem value="atraso">Atraso</SelectItem>
+            <SelectItem value="prioridade">Prioridade</SelectItem>
+            <SelectItem value="criacao">Criação</SelectItem>
+            <SelectItem value="movimento">Última movimentação</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button type="button" size="icon" className="h-9 w-9 shrink-0" onClick={() => setTaskTypePickerOpen(true)} title="Nova Tarefa">
           <Plus className="w-4 h-4" />
         </Button>
       </div>
 
-      {/* Menu horizontal de chips removido — funções redistribuídas nos acordeões abaixo.
-          Compat: rotas legadas com ?chip= abrem o acordeão correspondente (ver useEffect acima). */}
+      {isAdmin && visao === "admin" && (
+        <div className="flex items-center gap-2 mb-3 flex-wrap p-2 rounded-lg bg-muted/40 border border-border">
+          <Select value={adminExecutor} onValueChange={setAdminExecutor}>
+            <SelectTrigger className="w-[200px] h-8 text-xs">
+              <Users className="w-3 h-3 mr-1" />
+              <SelectValue placeholder="Executor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">Todos os executores</SelectItem>
+              {profilesWithTasks.map((p: any) => (
+                <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={adminSetor} onValueChange={setAdminSetor}>
+            <SelectTrigger className="w-[180px] h-8 text-xs">
+              <Filter className="w-3 h-3 mr-1" />
+              <SelectValue placeholder="Setor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">Todos os setores</SelectItem>
+              {setoresEmAssignments.map((s) => (
+                <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {(adminExecutor !== "__all" || adminSetor !== "__all") && (
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setAdminExecutor("__all"); setAdminSetor("__all"); }}>
+              Limpar
+            </Button>
+          )}
+        </div>
+      )}
 
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground text-sm">Carregando...</div>
       ) : (
         <div className="space-y-3">
-          <AccordionSection
-            title="Tarefas de Hoje"
-            count={isAdmin ? hojeFiltrado.length : hojeFiltradoSplit.mine.length}
-            icon={<CalendarClock className="w-4 h-4" style={{ color: "#f97316" }} />}
-            borderColor="#f97316" badgeBg="bg-orange-500/15" badgeText="text-orange-700 dark:text-orange-400"
-            isOpen={openAccordion === "hoje"} onToggle={() => setOpenAccordion(openAccordion === "hoje" ? null : "hoje")}>
-            {hasAtrasadasView && lateInHojeCount > 0 && (
-              <div className="flex items-center justify-between mb-2 px-1">
-                <button
-                  type="button"
-                  onClick={() => setShowOnlyLate(v => !v)}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 h-7 px-2 rounded-full text-[11px] font-medium border transition-colors",
-                    showOnlyLate
-                      ? "bg-destructive text-destructive-foreground border-destructive"
-                      : "bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/20"
-                  )}
-                  aria-pressed={showOnlyLate}
-                  title={showOnlyLate ? "Mostrar todas" : "Mostrar só atrasadas"}
-                >
-                  <Clock className="w-3 h-3" />
-                  {showOnlyLate ? "Só atrasadas" : "Atrasadas"}: {lateInHojeCount}
-                </button>
-                {showOnlyLate && (
-                  <button type="button" onClick={() => setShowOnlyLate(false)}
-                    className="text-[11px] text-muted-foreground hover:text-foreground underline">
-                    Limpar filtro
-                  </button>
-                )}
-              </div>
-            )}
-            <MineOthersTabs
-              mine={hojeFiltradoSplit.mine} others={hojeFiltradoSplit.others} showOthers={isAdmin}
-              renderItem={(a) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />}
-              emptyMine={showOnlyLate ? "Nenhuma tarefa atrasada." : "Nenhuma tarefa para hoje."} />
-          </AccordionSection>
-
-          {aguardandoMinhaValidacao.length > 0 && (
-            <AccordionSection title="Aguardando Minha Validação" count={aguardandoMinhaValidacao.length}
-              icon={<CheckCircle2 className="w-4 h-4" style={{ color: "#06b6d4" }} />}
-              borderColor="#06b6d4" badgeBg="bg-cyan-500/15" badgeText="text-cyan-700 dark:text-cyan-400"
-              isOpen={openAccordion === "validacao"} onToggle={() => setOpenAccordion(openAccordion === "validacao" ? null : "validacao")}>
-              {aguardandoMinhaValidacao.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
-            </AccordionSection>
-          )}
-
-          {hasDesignadasRole && (
-            <AccordionSection title="Tarefas Designadas por mim" count={isAdmin ? tarefasDesignadas.length : designadasSplit.mine.length}
-              icon={<ListTodo className="w-4 h-4" style={{ color: "#eab308" }} />}
-              borderColor="#eab308" badgeBg="bg-yellow-500/15" badgeText="text-yellow-700 dark:text-yellow-400"
-              isOpen={openAccordion === "designadas"} onToggle={() => setOpenAccordion(openAccordion === "designadas" ? null : "designadas")}>
-              <MineOthersTabs
-                mine={designadasSplit.mine} others={designadasSplit.others} showOthers={isAdmin}
-                renderItem={(a) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />}
-                emptyMine="Você não designou tarefas para outros." />
-            </AccordionSection>
-          )}
-
-          {(devolvidasAll.length > 0 || isAdmin) && (
-            <AccordionSection title="Devolvidas / Plano de Ação do Executor" count={isAdmin ? devolvidasAll.length : devolvidasSplit.mine.length}
-              icon={<RotateCcw className="w-4 h-4" style={{ color: "#ef4444" }} />}
-              borderColor="#ef4444" badgeBg="bg-red-500/15" badgeText="text-red-700 dark:text-red-400"
-              isOpen={openAccordion === "devolvidas"} onToggle={() => setOpenAccordion(openAccordion === "devolvidas" ? null : "devolvidas")}>
-              <MineOthersTabs
-                mine={devolvidasSplit.mine} others={devolvidasSplit.others} showOthers={isAdmin}
-                renderItem={(a) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />}
-                emptyMine="Nenhuma rotina devolvida." />
-            </AccordionSection>
-          )}
-
-          {hasPlanoAcaoRole && (
-            <AccordionSection title="Plano de Ação (Contingências)" count={pendentesCount}
-              icon={<AlertTriangle className="w-4 h-4" style={{ color: "#f97316" }} />}
-              borderColor="#f97316" badgeBg="bg-orange-500/15" badgeText="text-orange-700 dark:text-orange-400"
-              isOpen={openAccordion === "contingenciados"} onToggle={() => setOpenAccordion(openAccordion === "contingenciados" ? null : "contingenciados")}>
-              <MinhasTarefasPendentesPanel viewAsProfileId={isAdmin && filterResponsavel !== "__all" ? filterResponsavel : null} />
-            </AccordionSection>
-          )}
-
-          {(hasAvaliarRole || hasAprovarRole) && (
-            <AccordionSection title="Para Avaliar / Aprovar" count={isAdmin ? aguardandoAvaliacao.length : aguardandoSplit.mine.length}
-              icon={<Hourglass className="w-4 h-4" style={{ color: "#8b5cf6" }} />}
-              borderColor="#8b5cf6" badgeBg="bg-violet-500/15" badgeText="text-violet-700 dark:text-violet-400"
-              isOpen={openAccordion === "aguardando"} onToggle={() => setOpenAccordion(openAccordion === "aguardando" ? null : "aguardando")}>
-              <AguardandoAvaliacaoPanel
-                viewAsProfileId={isAdmin && filterResponsavel !== "__all" ? filterResponsavel : null}
-                onOpen={openExecution}
-              />
-            </AccordionSection>
-          )}
-
-          <AccordionSection title="Em Aberto" count={isAdmin ? emAberto.length : emAbertoSplit.mine.length}
-            icon={<AlertTriangle className="w-4 h-4" style={{ color: "#f59e0b" }} />}
-            borderColor="#f59e0b" badgeBg="bg-amber-500/15" badgeText="text-amber-700 dark:text-amber-400"
-            isOpen={openAccordion === "em_aberto"} onToggle={() => setOpenAccordion(openAccordion === "em_aberto" ? null : "em_aberto")}>
-            <MineOthersTabs
-              mine={emAbertoSplit.mine} others={emAbertoSplit.others} showOthers={isAdmin}
-              renderItem={(a) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />}
-              emptyMine="Nenhuma rotina em aberto." />
-          </AccordionSection>
-
-          <AccordionSection title="Concluídas" count={isAdmin ? concluidas.length : concluidasSplit.mine.length}
-            icon={<CheckCheck className="w-4 h-4" style={{ color: "#22c55e" }} />}
-            borderColor="#22c55e" badgeBg="bg-green-500/15" badgeText="text-green-700 dark:text-green-400"
-            isOpen={openAccordion === "finalizadas"} onToggle={() => setOpenAccordion(openAccordion === "finalizadas" ? null : "finalizadas")}>
-            <MineOthersTabs
-              mine={concluidasSplit.mine} others={concluidasSplit.others} showOthers={isAdmin}
-              renderItem={(a) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />}
-              emptyMine="Nenhuma rotina concluída." />
-          </AccordionSection>
+          <RenderVisao
+            visao={visao}
+            buckets={buckets}
+            sorted={sorted}
+            openAccordion={openAccordion}
+            setOpenAccordion={setOpenAccordion}
+            openExecution={openExecution}
+            hojeFiltrado={hojeFiltrado}
+            lateInHojeCount={lateInHojeCount}
+            showOnlyLate={showOnlyLate}
+            setShowOnlyLate={setShowOnlyLate}
+          />
         </div>
       )}
         </TabsContent>
