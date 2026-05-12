@@ -1030,8 +1030,8 @@ export default function OperationalExecucaoPage() {
               )}
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       <TaskTypeSelectorDialog
         open={taskTypePickerOpen}
