@@ -359,6 +359,7 @@ export default function OperationalCadastroPage() {
     setSections([]);
     setFields([]);
     setSteps([]);
+    setCheckItems([]);
     setActiveTab("geral");
     setTaskTypePickerOpen(false);
     setDialogOpen(true);
