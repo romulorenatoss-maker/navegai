@@ -13,7 +13,7 @@ import { SectionForm, FieldForm, OpcaoRegra, FIELD_TYPES, SECTION_COLORS, defaul
 import { FieldVisibilityEditor } from "@/modules/tarefas/components/builder/FieldVisibilityEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import QuickFieldDialog from "@/modules/tarefas/components/tarefas_quickFieldDialog";
+
 
 /**
  * Configuração extra por agrupador (etapas) — vai para template_snapshot.agrupadores_config[].
@@ -50,11 +50,8 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
   };
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<FieldForm | null>(null);
-  const [quickAddSectionId, setQuickAddSectionId] = useState<string | null>(null);
+  const [editingIsNew, setEditingIsNew] = useState(false);
   const [forceAdvanced, setForceAdvanced] = useState(false);
-  // Simple-mode quick add (tarefa simples)
-  const [simpleLabel, setSimpleLabel] = useState("");
-  const [simpleTipo, setSimpleTipo] = useState<string>("texto");
 
   const addSection = () => {
     const s = defaultSection(sections.length);
@@ -74,6 +71,30 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
   const addField = (sectionTempId: string) => {
     const sectionFields = fields.filter(f => f.sectionTempId === sectionTempId);
     setFields(prev => [...prev, defaultField(sectionTempId, sectionFields.length)]);
+  };
+
+  /** Abre a Configuração do Campo já para uma nova pergunta (sem pré-criar no estado).
+   * O save commita; cancelar descarta. Substitui o antigo modal "Novo Campo". */
+  const startNewField = (sectionTempId: string) => {
+    const ordem = fields.filter(f => f.sectionTempId === sectionTempId).length;
+    const f = defaultField(sectionTempId, ordem);
+    setEditingField(f);
+    setEditingIsNew(true);
+  };
+
+  const closeEditingField = () => {
+    setEditingField(null);
+    setEditingIsNew(false);
+  };
+
+  const commitEditingField = (updates: Partial<FieldForm>) => {
+    if (!editingField) return;
+    if (editingIsNew) {
+      setFields(prev => [...prev, { ...editingField, ...updates }]);
+    } else {
+      updateField(editingField.tempId, updates);
+    }
+    closeEditingField();
   };
 
   const removeField = (tempId: string) => {
@@ -159,16 +180,6 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
     !forceAdvanced &&
     sections.length <= 1;
 
-  const SIMPLE_TIPOS: { value: string; label: string }[] = [
-    { value: "texto", label: "Texto livre" },
-    { value: "sim_nao", label: "Sim / Não" },
-    { value: "conforme", label: "Conforme / Não conforme" },
-    { value: "foto", label: "Imagem" },
-    { value: "numero", label: "Número" },
-    { value: "data", label: "Data" },
-    { value: "arquivo", label: "Arquivo" },
-  ];
-
   const ensureDefaultSection = (): string => {
     if (sections.length > 0) return sections[0].tempId;
     const s = defaultSection(0);
@@ -177,24 +188,9 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
     return s.tempId;
   };
 
-  const addSimpleField = () => {
-    const label = simpleLabel.trim();
-    if (!label) return;
+  const startNewSimpleField = () => {
     const sectionTempId = ensureDefaultSection();
-    const ordem = fields.filter(f => f.sectionTempId === sectionTempId).length;
-    const f = defaultField(sectionTempId, ordem);
-    f.label = label;
-    f.tipo = simpleTipo;
-    if (simpleTipo === "conforme" || simpleTipo === "sim_nao") {
-      f.opcoes_regras = getDefaultOpcoesRegras(simpleTipo);
-      f.opcoes = f.opcoes_regras.map(o => o.label);
-    }
-    if (simpleTipo === "foto") {
-      f.exige_evidencia = true;
-      f.tipo_evidencia = "foto";
-    }
-    setFields(prev => [...prev, f]);
-    setSimpleLabel("");
+    startNewField(sectionTempId);
   };
 
   if (isSimpleMode) {
@@ -205,38 +201,24 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
 
     return (
       <div className="space-y-3">
-        {/* Quick add row */}
-        <div className="border border-border rounded-lg p-3 bg-card space-y-2">
-          <Label className="text-sm font-medium">O que precisa ser respondido?</Label>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Input
-              value={simpleLabel}
-              onChange={e => setSimpleLabel(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addSimpleField(); } }}
-              placeholder="Ex: Local higienizado?"
-              maxLength={255}
-              className="flex-1"
-            />
-            <Select value={simpleTipo} onValueChange={setSimpleTipo}>
-              <SelectTrigger className="sm:w-[200px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {SIMPLE_TIPOS.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Button type="button" onClick={addSimpleField} disabled={!simpleLabel.trim()}>
-              <Plus className="w-4 h-4 mr-1" /> Adicionar Pergunta
-            </Button>
+        {/* Add row — abre Configuração do Campo direto */}
+        <div className="border border-border rounded-lg p-3 bg-card flex items-center justify-between gap-3">
+          <div>
+            <Label className="text-sm font-medium">Perguntas / itens da tarefa</Label>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Cada pergunta abre a Configuração do Campo completa (tipo, regras, evidência, plano de ação).
+            </p>
           </div>
-          <p className="text-[11px] text-muted-foreground">
-            Para configurações avançadas (peso, evidência, plano de ação), clique no ícone de ajustes ao lado do campo.
-          </p>
+          <Button type="button" onClick={startNewSimpleField}>
+            <Plus className="w-4 h-4 mr-1" /> Adicionar Pergunta
+          </Button>
         </div>
 
         {/* Lista flat */}
         {simpleFields.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground border border-dashed border-border rounded-lg">
             <p className="text-sm">Nenhum item adicionado ainda.</p>
-            <p className="text-caption">Use o campo acima para adicionar perguntas/itens.</p>
+            <p className="text-caption">Clique em "Adicionar Pergunta" para começar.</p>
           </div>
         ) : (
           <div className="space-y-1.5">
@@ -294,8 +276,8 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
             setores={setores}
             planoAcaoEnabled={planoAcaoEnabled}
             requireFieldHorario={requireFieldHorario}
-            onSave={(updates) => { updateField(editingField.tempId, updates); setEditingField(null); }}
-            onClose={() => setEditingField(null)}
+            onSave={commitEditingField}
+            onClose={closeEditingField}
           />
         )}
       </div>
@@ -470,7 +452,7 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                               variant="outline"
                               size="sm"
                               className="w-full mt-2"
-                              onClick={() => setQuickAddSectionId(section.tempId)}
+                              onClick={() => startNewField(section.tempId)}
                               disabled={!section.nome.trim()}
                               title={!section.nome.trim() ? "Defina o nome da etapa antes de adicionar campos" : undefined}
                             >
@@ -496,18 +478,10 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
           setores={setores}
           planoAcaoEnabled={planoAcaoEnabled}
           requireFieldHorario={requireFieldHorario}
-          onSave={(updates) => { updateField(editingField.tempId, updates); setEditingField(null); }}
-          onClose={() => setEditingField(null)}
+          onSave={commitEditingField}
+          onClose={closeEditingField}
         />
       )}
-
-      <QuickFieldDialog
-        open={!!quickAddSectionId}
-        onOpenChange={(o) => { if (!o) setQuickAddSectionId(null); }}
-        sectionTempId={quickAddSectionId || ""}
-        nextOrdem={fields.filter(f => f.sectionTempId === quickAddSectionId).length}
-        onAdd={(f) => setFields(prev => [...prev, f])}
-      />
     </div>
   );
 }
