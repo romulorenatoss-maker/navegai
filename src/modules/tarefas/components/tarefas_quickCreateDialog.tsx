@@ -649,8 +649,55 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                 <div className="border-t border-border/60 pt-3 space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <div>
-                      <Label className="text-sm">Aprovador</Label>
-                      <p className="text-[11px] text-muted-foreground">Valida a nota final. Não pode ser o próprio avaliado. Pode ser uma pessoa ou um setor.</p>
+                      <Label className="text-sm">Avaliação técnica (quem confere a execução?)</Label>
+                      <p className="text-[11px] text-muted-foreground">
+                        Confere se a tarefa foi feita corretamente. Pode confirmar, devolver com observação ou solicitar ajuste. <strong>Não aplica nota.</strong> Não pode ser o próprio avaliado.
+                      </p>
+                    </div>
+                    <Switch checked={requerValidacao} onCheckedChange={setRequerValidacao} />
+                  </div>
+                  {requerValidacao && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 text-xs">
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input type="radio" checked={validadorMode === "individual"} onChange={() => setValidadorMode("individual")} />
+                          Individual
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input type="radio" checked={validadorMode === "setor"} onChange={() => setValidadorMode("setor")} />
+                          Setorial
+                        </label>
+                      </div>
+                      {validadorMode === "individual" ? (
+                        <Select value={validadorId} onValueChange={setValidadorId} disabled={!avaliadoId}>
+                          <SelectTrigger><SelectValue placeholder={avaliadoId ? "Selecionar conferente..." : "Escolha o avaliado primeiro"} /></SelectTrigger>
+                          <SelectContent>
+                            {validadorOptions.map((c: any) => (
+                              <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Select value={validadorSetorId} onValueChange={setValidadorSetorId}>
+                          <SelectTrigger><SelectValue placeholder="Selecionar setor..." /></SelectTrigger>
+                          <SelectContent>
+                            {(setores as any[]).map((s) => (
+                              <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t border-border/60 pt-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <Label className="text-sm">Aprovação final e pontuação (quem aprova e pontua?)</Label>
+                      <p className="text-[11px] text-muted-foreground">
+                        Faz a aprovação final, aplica nota e penalidades automáticas. Não pode ser o próprio avaliado. Pode ser uma pessoa ou um setor.
+                      </p>
                     </div>
                     <Switch checked={requerAprovacao} onCheckedChange={setRequerAprovacao} />
                   </div>
@@ -668,7 +715,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                       </div>
                       {aprovadorMode === "individual" ? (
                         <Select value={aprovadorId} onValueChange={setAprovadorId} disabled={!avaliadoId}>
-                          <SelectTrigger><SelectValue placeholder={avaliadoId ? "Selecionar colaborador..." : "Escolha o avaliado primeiro"} /></SelectTrigger>
+                          <SelectTrigger><SelectValue placeholder={avaliadoId ? "Selecionar aprovador..." : "Escolha o avaliado primeiro"} /></SelectTrigger>
                           <SelectContent>
                             {aprovadorOptions.map((c: any) => (
                               <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
