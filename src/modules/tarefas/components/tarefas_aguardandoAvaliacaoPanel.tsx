@@ -73,7 +73,10 @@ export function AguardandoAvaliacaoPanel({
     );
   }, [assignments, targetId]);
 
-  const openItem = (_a: any) => navigate("/tarefas/aprovacao");
+  const openItem = (a: any) => {
+    if (onOpen) return onOpen(a);
+    navigate("/tarefas/minhas?chip=aprovar");
+  };
 
   const renderList = (list: any[], emptyMsg: string) => {
     if (isLoading) return <p className="text-xs text-muted-foreground text-center py-4">Carregando...</p>;
