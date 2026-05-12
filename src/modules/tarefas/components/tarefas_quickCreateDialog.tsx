@@ -549,17 +549,12 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          {step === 1 && (
+          {step === 2 && (
             <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>Nome da tarefa *</Label>
-                <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex: Limpar entrada principal" maxLength={120} />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Descrição</Label>
-                <Textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Detalhes (opcional)" rows={2} maxLength={500} />
-              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Título derivado: <strong>{derivedNome}</strong>
+                {nome.trim() ? " (override manual ativo)" : ""}
+              </p>
 
               {/* Responsáveis */}
               <div className="border border-border rounded-lg p-3 space-y-3 bg-muted/30">
