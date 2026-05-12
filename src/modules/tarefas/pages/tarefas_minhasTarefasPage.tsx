@@ -24,7 +24,8 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MinhasTarefasTab from "@/modules/tarefas/components/tarefas_minhasTarefasTab";
 import QuickTaskDialog from "@/modules/tarefas/components/tarefas_quickCreateDialog";
-import TaskTypeSelectorDialog, { type TaskType } from "@/components/TaskTypeSelectorDialog";
+// (Removido) TaskTypeSelectorDialog — builder único, sem seletor prévio.
+type TaskType = "simples" | "inspecao";
 import { ListChecks, Trophy } from "lucide-react";
 import { bucketize, sortAssignments, availableVisoes, computeSla, isLate, isSemMovimento, type SortKey, type VisaoKey } from "@/modules/tarefas/services/tarefas_bucketize";
 import { VisaoSwitcher } from "@/modules/tarefas/components/tarefas_visaoSwitcher";
