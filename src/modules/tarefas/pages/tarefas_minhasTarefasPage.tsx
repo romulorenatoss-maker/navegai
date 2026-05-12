@@ -498,14 +498,26 @@ export default function OperationalExecucaoPage() {
     setActiveSection(sections?.[0]?.id || null);
 
     if (profile?.id) {
+      // Auditoria enriquecida: papel_usado derivado do contexto
+      const papelUsado =
+        a.responsavel_id === profile.id ? "executor"
+        : a.avaliador_id === profile.id ? "avaliador"
+        : a.aprovador_id === profile.id ? "aprovador"
+        : a.created_by === profile.id ? "designador"
+        : isAdmin ? "admin"
+        : "visualizador";
       (supabase as any).from("operational_execution_logs").insert({
         assignment_id: a.id,
         acao: "visualizou",
         executado_por: profile.id,
-        detalhes: { viewed_at: new Date().toISOString() },
+        detalhes: {
+          viewed_at: new Date().toISOString(),
+          papel_usado: papelUsado,
+          status_atual: a.status,
+        },
       }).then(() => {});
     }
-  }, [profile?.id]);
+  }, [profile?.id, isAdmin]);
 
   const closeExecution = async () => {
     if (exec.dirty) await exec.saveDraft();
