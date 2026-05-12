@@ -457,6 +457,22 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
           aprovador_exige_evidencia_nao: f.aprovador_exige_evidencia_nao,
           aprovador_tipos_evidencia: f.aprovador_tipos_evidencia,
         })),
+        // Builder único — configs extras por agrupador (SLA próprio, observação).
+        // Modo simples: ainda gravamos o array para compatibilidade futura, com herança implícita (sla_horas=null).
+        // Responsável/status próprio por etapa: chaves reservadas, NÃO ativadas nesta fase.
+        agrupadores_config: insertedSections.map((s: any, idx: number) => {
+          const tempId = sections[idx]?.tempId;
+          const extra = tempId ? agrupadorExtras[tempId] : undefined;
+          return {
+            section_id: s.id,
+            section_index: idx,
+            sla_horas: taskType === "simples" ? null : (extra?.sla_horas ?? null),
+            observacao: extra?.observacao || null,
+            // reservados (não ativados):
+            responsavel_profile_id: null,
+            status: null,
+          };
+        }),
         // Fase 1B.3 — Fluxo Operacional para tarefa avulsa (sem migration; lido em runtime).
         ...(isAvulsa ? { solicitacao_config: solicitacaoConfig } : {}),
       };
