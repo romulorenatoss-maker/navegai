@@ -31,8 +31,6 @@ export interface SectionForm {
   cor: string;
   horario_inicio: string;
   horario_fim: string;
-  /** Flag transiente — indica seção implícita "Itens da tarefa" (oculta enquanto for única). Não persistir no save. */
-  _implicit?: boolean;
 }
 
 export interface OpcaoRegra {
