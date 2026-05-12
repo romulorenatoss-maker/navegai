@@ -1161,8 +1161,17 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                     <p><strong>Tarefa:</strong> {derivedNome}</p>
                     <p><strong>Avaliado:</strong> {(colaboradores as any[]).find((c) => c.id === avaliadoId)?.nome || "—"}</p>
                     <p><strong>Data:</strong> {dataPrevista} • limite {horarioLimite}</p>
-                    <p><strong>Pontuação:</strong> {temPerguntasAprovador ? `Ativa — ${totalGeral} pontos totais` : "Desativada (lembrete)"}</p>
-                    <p><strong>Aprovação:</strong> {temPerguntasAprovador && requerAprovacao ? ((colaboradores as any[]).find((c) => c.id === aprovadorId)?.nome || "—") : "Não"}</p>
+                    <p><strong>Avaliador (conferência):</strong> {requerValidacao
+                      ? (validadorMode === "individual"
+                          ? ((colaboradores as any[]).find((c) => c.id === validadorId)?.nome || "—")
+                          : ((setores as any[]).find((s) => s.id === validadorSetorId)?.nome || "—") + " (setor)")
+                      : "Não"}</p>
+                    <p><strong>Aprovador (pontuação):</strong> {requerAprovacao
+                      ? (aprovadorMode === "individual"
+                          ? ((colaboradores as any[]).find((c) => c.id === aprovadorId)?.nome || "—")
+                          : ((setores as any[]).find((s) => s.id === aprovadorSetorId)?.nome || "—") + " (setor)")
+                      : "Não"}</p>
+                    <p><strong>Pontuação:</strong> {mostrarPontuacao ? `Ativa — ${totalGeral} pontos totais` : "Desativada (lembrete)"}</p>
                     <p><strong>Campos:</strong> {fields.length} em {sections.length} seção(ões)</p>
                   </div>
                 </div>
