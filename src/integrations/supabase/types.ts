@@ -4266,6 +4266,88 @@ export type Database = {
         }
         Relationships: []
       }
+      tarefas_anexos: {
+        Row: {
+          assignment_id: string | null
+          checksum: string | null
+          contexto_ref_id: string | null
+          contexto_tipo: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          metadados: Json
+          mime_type: string | null
+          nome_original: string
+          path_relativo: string
+          provider: string
+          provider_file_id: string | null
+          tamanho_bytes: number | null
+          template_id: string | null
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          assignment_id?: string | null
+          checksum?: string | null
+          contexto_ref_id?: string | null
+          contexto_tipo: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          metadados?: Json
+          mime_type?: string | null
+          nome_original: string
+          path_relativo: string
+          provider?: string
+          provider_file_id?: string | null
+          tamanho_bytes?: number | null
+          template_id?: string | null
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          assignment_id?: string | null
+          checksum?: string | null
+          contexto_ref_id?: string | null
+          contexto_tipo?: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          metadados?: Json
+          mime_type?: string | null
+          nome_original?: string
+          path_relativo?: string
+          provider?: string
+          provider_file_id?: string | null
+          tamanho_bytes?: number | null
+          template_id?: string | null
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tarefas_anexos_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "operational_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tarefas_anexos_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "operational_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tarefas_anexos_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_assignments: {
         Row: {
           created_at: string
