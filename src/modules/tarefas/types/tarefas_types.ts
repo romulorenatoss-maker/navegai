@@ -12,20 +12,12 @@ export interface StepForm {
   exige_video: boolean;
 }
 
-export interface SectionInstrucaoMidia {
-  tipo: "foto" | "video" | "documento";
-  url: string;
-  nome?: string;
-}
-
 export interface SectionForm {
   id?: string;
   tempId: string;
   nome: string;
-  /** Texto livre — antiga "Descrição da seção", agora "Instruções da Etapa". */
+  /** Texto livre — antes "Descrição da seção", agora exibido como "Instruções da Etapa". */
   descricao: string;
-  /** Mídia anexada às instruções (foto/vídeo/documento). Visível ao executor antes das perguntas. */
-  instrucoes_midia?: SectionInstrucaoMidia[];
   peso: number;
   ordem: number;
   cor: string;
