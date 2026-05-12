@@ -170,6 +170,17 @@ export function StepChecklist({ items, setItems, protectedIds }: Props) {
                                 </label>
                               </div>
                             </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => duplicate(it.tempId)}
+                              className="text-muted-foreground shrink-0"
+                              aria-label="Duplicar item"
+                              title="Duplicar item"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </Button>
                             <TooltipProvider delayDuration={200}>
                               <Tooltip>
                                 <TooltipTrigger asChild>
