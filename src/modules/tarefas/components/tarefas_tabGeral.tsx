@@ -149,6 +149,11 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
                     <SelectContent>
                       {colaboradores
                         .filter((c: any) => {
+                          // "Quem recebe a nota": se setor da rotina selecionado, só lista membros desse setor
+                          if (r.profileKey === "executor_profile_id" && form.setor_id) {
+                            const ids = setorMembros.get(form.setor_id) || [];
+                            if (!ids.includes(c.id)) return false;
+                          }
                           // Avaliador não pode ser o mesmo que executor (quem recebe a nota) nem que avaliado
                           if (r.profileKey === "avaliador_profile_id") {
                             if (form.executor_profile_id && c.id === form.executor_profile_id) return false;
@@ -159,6 +164,13 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
                         .map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  {r.profileKey === "executor_profile_id" && form.setor_id && (() => {
+                    const ids = setorMembros.get(form.setor_id) || [];
+                    if (ids.length === 0) {
+                      return <p className="text-[10px] text-destructive mt-1">Nenhum colaborador associado ao setor da rotina.</p>;
+                    }
+                    return <p className="text-[10px] text-muted-foreground mt-1">Listando apenas membros do setor da rotina.</p>;
+                  })()}
                   {r.profileKey === "avaliador_profile_id" && form.avaliador_profile_id && (
                     (form.avaliador_profile_id === form.executor_profile_id ||
                      form.avaliador_profile_id === form.avaliado_profile_id) && (
