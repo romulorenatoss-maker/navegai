@@ -36,7 +36,6 @@ const allNavSections = [
       { to: "/avaliacoes/pesquisa", icon: FileSearch, label: "Criar OS / Buscar" },
       { to: "/avaliacoes/minhas", icon: Star, label: "Minhas Avaliações" },
       { to: "/avaliacoes/tempo-avaliacoes", icon: Clock, label: "Tempo de Avaliações" },
-      { to: "/leads", icon: UserPlus, label: "Meus Leads" },
     ],
   },
   {
@@ -47,6 +46,8 @@ const allNavSections = [
       { to: "/leads/importador", icon: FileUp, label: "Importador de Leads" },
       { to: "/leads/gerenciamento", icon: CheckSquare, label: "Gerenciamento de Leads" },
       { to: "/leads/campanhas", icon: Megaphone, label: "Campanhas" },
+      { to: "/leads", icon: UserPlus, label: "Meus Leads" },
+      { to: "/leads/rotina", icon: Settings, label: "Rotina de Tentativas" },
     ],
   },
   {
@@ -62,7 +63,6 @@ const allNavSections = [
   {
     title: "Cadastros",
     items: [
-      { to: "/cadastros/setores", icon: Building2, label: "Setores" },
       { to: "/cadastros/servicos", icon: Wrench, label: "Tipos de Serviço" },
       { to: "/avaliacoes/perguntas", icon: HelpCircle, label: "Perguntas" },
       { to: "/leads/objecoes", icon: MessageSquare, label: "Objeções" },
@@ -74,7 +74,7 @@ const allNavSections = [
     title: "Configurações",
     items: [
       { to: "/cadastros/colaboradores", icon: Users, label: "Colaboradores" },
-      { to: "/leads/rotina", icon: Settings, label: "Rotina de Tentativas" },
+      { to: "/cadastros/setores", icon: Building2, label: "Setores" },
     ],
   },
   {
