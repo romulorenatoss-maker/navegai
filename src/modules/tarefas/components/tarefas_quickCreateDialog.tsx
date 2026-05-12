@@ -554,7 +554,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          {step === 2 && (
+          {step === 1 && (
             <div className="space-y-4">
               <p className="text-[11px] text-muted-foreground">
                 Título derivado: <strong>{derivedNome}</strong>
