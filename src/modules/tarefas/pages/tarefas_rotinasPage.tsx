@@ -38,6 +38,9 @@ export default function OperationalCadastroPage() {
     queryFn: async () => {
       const { data, error } = await (supabase as any).from("operational_templates")
         .select("*, setores!operational_templates_setor_id_fkey(nome)")
+        // LEGADO: origem.is.null incluído por compat com templates antigos sem o campo origem.
+        // Tarefas avulsas novas são sempre gravadas com origem='ad_hoc' e NÃO aparecem aqui.
+        // TODO(rotinas): após migration backfill (origem='rotina' onde recorrencia_tipo!='unica'), remover origem.is.null.
         .or("origem.eq.rotina,origem.is.null")
         .order("ordem", { ascending: true })
         .order("created_at", { ascending: false });
