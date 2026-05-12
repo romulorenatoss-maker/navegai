@@ -51,11 +51,19 @@ interface Props {
   taskType?: "simples" | "inspecao";
   /** Setor pré-selecionado no wizard inicial (trava o campo Setor no Step 1 e filtra avaliados). */
   initialSetorId?: string;
+  /**
+   * Contexto de origem da criação:
+   * - "rotina": permite ativar recorrência (vira rotina em /tarefas/rotinas).
+   * - "avulsa": oculta bloco de recorrência e força origem='ad_hoc'. Usado pelo botão "+" de /tarefas/minhas.
+   * Default "rotina" para compat com chamadas existentes.
+   */
+  origemContexto?: "rotina" | "avulsa";
 }
 
 type Step = 1 | 2 | 3;
 
-export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId, taskType = "inspecao", initialSetorId = "" }: Props) {
+export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId, taskType = "inspecao", initialSetorId = "", origemContexto = "rotina" }: Props) {
+  const isAvulsa = origemContexto === "avulsa";
   const qc = useQueryClient();
   const { profile } = useAuth();
   const [step, setStep] = useState<Step>(1);
