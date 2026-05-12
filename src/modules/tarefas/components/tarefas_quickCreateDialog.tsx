@@ -251,6 +251,10 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     || (aprovadorMode === "individual" && !!aprovadorId && aprovadorId !== avaliadoId && (!isSelfTask || aprovadorId !== profile?.id))
     || (aprovadorMode === "setor" && !!aprovadorSetorId);
 
+  const validadorOk = !requerValidacao
+    || (validadorMode === "individual" && !!validadorId && validadorId !== avaliadoId)
+    || (validadorMode === "setor" && !!validadorSetorId);
+
   // Derivação automática do título da tarefa.
   // Prioridade: override manual (nome) → primeiro agrupador → primeira pergunta → fallback.
   const derivedNome = useMemo(() => {
@@ -297,6 +301,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   const canAdvanceStep2 = !!avaliadoId
     && !!dataPrevista
     && planoAcaoOk
+    && validadorOk
     && aprovadorOk;
 
   const create = useMutation({
@@ -644,8 +649,55 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                 <div className="border-t border-border/60 pt-3 space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <div>
-                      <Label className="text-sm">Aprovador</Label>
-                      <p className="text-[11px] text-muted-foreground">Valida a nota final. Não pode ser o próprio avaliado. Pode ser uma pessoa ou um setor.</p>
+                      <Label className="text-sm">Avaliação técnica (quem confere a execução?)</Label>
+                      <p className="text-[11px] text-muted-foreground">
+                        Confere se a tarefa foi feita corretamente. Pode confirmar, devolver com observação ou solicitar ajuste. <strong>Não aplica nota.</strong> Não pode ser o próprio avaliado.
+                      </p>
+                    </div>
+                    <Switch checked={requerValidacao} onCheckedChange={setRequerValidacao} />
+                  </div>
+                  {requerValidacao && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3 text-xs">
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input type="radio" checked={validadorMode === "individual"} onChange={() => setValidadorMode("individual")} />
+                          Individual
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input type="radio" checked={validadorMode === "setor"} onChange={() => setValidadorMode("setor")} />
+                          Setorial
+                        </label>
+                      </div>
+                      {validadorMode === "individual" ? (
+                        <Select value={validadorId} onValueChange={setValidadorId} disabled={!avaliadoId}>
+                          <SelectTrigger><SelectValue placeholder={avaliadoId ? "Selecionar conferente..." : "Escolha o avaliado primeiro"} /></SelectTrigger>
+                          <SelectContent>
+                            {validadorOptions.map((c: any) => (
+                              <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Select value={validadorSetorId} onValueChange={setValidadorSetorId}>
+                          <SelectTrigger><SelectValue placeholder="Selecionar setor..." /></SelectTrigger>
+                          <SelectContent>
+                            {(setores as any[]).map((s) => (
+                              <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t border-border/60 pt-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <Label className="text-sm">Aprovação final e pontuação (quem aprova e pontua?)</Label>
+                      <p className="text-[11px] text-muted-foreground">
+                        Faz a aprovação final, aplica nota e penalidades automáticas. Não pode ser o próprio avaliado. Pode ser uma pessoa ou um setor.
+                      </p>
                     </div>
                     <Switch checked={requerAprovacao} onCheckedChange={setRequerAprovacao} />
                   </div>
@@ -663,7 +715,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                       </div>
                       {aprovadorMode === "individual" ? (
                         <Select value={aprovadorId} onValueChange={setAprovadorId} disabled={!avaliadoId}>
-                          <SelectTrigger><SelectValue placeholder={avaliadoId ? "Selecionar colaborador..." : "Escolha o avaliado primeiro"} /></SelectTrigger>
+                          <SelectTrigger><SelectValue placeholder={avaliadoId ? "Selecionar aprovador..." : "Escolha o avaliado primeiro"} /></SelectTrigger>
                           <SelectContent>
                             {aprovadorOptions.map((c: any) => (
                               <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
@@ -975,6 +1027,8 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
             const totalPenalidades = habilitarPerguntasAutomaticas ? autoQuestions.reduce((s, q) => s + q.pontos, 0) : 0;
             const totalCampos = uniqueAprovadorFields.reduce((s, f) => s + f.aprovador_peso, 0);
             const totalGeral = totalCampos + totalPenalidades;
+            // Pontuação só aparece quando há aprovador ativo OU perguntas configuradas OU automáticas habilitadas.
+            const mostrarPontuacao = requerAprovacao || temPerguntasAprovador || habilitarPerguntasAutomaticas;
 
             const setAsDefault = (key: keyof WorkflowDefaults, value: number) => {
               const current = loadDefaults();
@@ -984,19 +1038,30 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
 
             return (
               <div className="space-y-4">
-                {/* Aviso quando não há perguntas de aprovador */}
-                {!temPerguntasAprovador && (
+                {/* Aviso: aprovador ativo mas sem perguntas configuradas */}
+                {requerAprovacao && !temPerguntasAprovador && (
                   <div className="flex items-start gap-2 p-3 rounded-lg border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700/40">
                     <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                     <div className="text-xs text-amber-800 dark:text-amber-200">
-                      <p className="font-semibold">Tarefa sem pontuação</p>
-                      <p>Esta tarefa não terá nota nem etapa de aprovação porque não há perguntas configuradas para o aprovador responder. Será criada apenas como lembrete. Para habilitar pontuação, volte à etapa <strong>Campos</strong> e ative <em>"Aprovador deve verificar"</em> em pelo menos um campo.</p>
+                      <p className="font-semibold">Aprovador sem perguntas de pontuação</p>
+                      <p>O aprovador foi designado mas nenhum campo está marcado como <em>"Aprovador deve verificar"</em>. Volte à etapa <strong>Estrutura</strong> para configurar perguntas de pontuação, ou use as perguntas automáticas abaixo.</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Aviso: tarefa sem nenhuma pontuação configurada */}
+                {!mostrarPontuacao && (
+                  <div className="flex items-start gap-2 p-3 rounded-lg border border-border bg-muted/40">
+                    <AlertCircle className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                    <div className="text-xs text-muted-foreground">
+                      <p className="font-semibold text-foreground">Tarefa sem nota nem aprovação</p>
+                      <p>Esta tarefa será criada apenas como execução/lembrete, com prazo e SLA operacional. Para habilitar pontuação, ative <strong>"Aprovação final e pontuação"</strong> na etapa <strong>Designação</strong>.</p>
                     </div>
                   </div>
                 )}
 
                 {/* Alerta quando ultrapassa 100 pontos */}
-                {temPerguntasAprovador && totalGeral > 100 && (
+                {mostrarPontuacao && totalGeral > 100 && (
                   <div className="flex items-start gap-2 p-3 rounded-lg border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700/40">
                     <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                     <div className="text-xs text-amber-800 dark:text-amber-200">
@@ -1006,8 +1071,9 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                   </div>
                 )}
 
-                {/* Perguntas de Aprovação Final — replica TabWorkflow */}
-                <div className={cn("bg-muted/50 rounded-lg border border-border p-4 space-y-4", !temPerguntasAprovador && "opacity-50 pointer-events-none")}>
+                {/* Perguntas de Aprovação Final — só renderiza quando há pontuação ativa */}
+                {mostrarPontuacao && (
+                <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-4">
                   <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Perguntas de Aprovação Final</p>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -1058,43 +1124,18 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                           <TableRow key={`auto-${i}`} className="bg-destructive/5">
                             <TableCell className="text-center text-xs text-muted-foreground">{i + 1}</TableCell>
                             <TableCell className="text-xs font-medium">{q.label}</TableCell>
-                            <TableCell className="text-center">
-                              <Badge variant="destructive" className="text-[10px]">Automática</Badge>
-                            </TableCell>
-                            <TableCell className="text-right text-xs font-medium text-destructive">-{q.pontos}</TableCell>
+                            <TableCell className="text-center text-xs"><Badge variant="outline" className="text-[10px]">Automática</Badge></TableCell>
+                            <TableCell className="text-right text-xs">{q.pontos}</TableCell>
                           </TableRow>
                         ))}
-
-                        {habilitarPerguntasAutomaticas && (
-                          <TableRow className="bg-muted/30">
-                            <TableCell colSpan={3} className="text-[10px] font-medium text-right text-muted-foreground">Subtotal Penalidades</TableCell>
-                            <TableCell className="text-right text-xs font-bold text-destructive">-{totalPenalidades}</TableCell>
+                        {uniqueAprovadorFields.map((f, i) => (
+                          <TableRow key={`field-${f.tempId}`}>
+                            <TableCell className="text-center text-xs text-muted-foreground">{(habilitarPerguntasAutomaticas ? autoQuestions.length : 0) + i + 1}</TableCell>
+                            <TableCell className="text-xs">{f.aprovador_pergunta}</TableCell>
+                            <TableCell className="text-center text-xs"><Badge variant="secondary" className="text-[10px]">{f.aprovador_tipo_resposta}</Badge></TableCell>
+                            <TableCell className="text-right text-xs">{f.aprovador_peso}</TableCell>
                           </TableRow>
-                        )}
-
-                        {uniqueAprovadorFields.map((f, i) => {
-                          const idx = (habilitarPerguntasAutomaticas ? autoQuestions.length : 0) + i + 1;
-                          return (
-                            <TableRow key={f.tempId}>
-                              <TableCell className="text-center text-xs text-muted-foreground">{idx}</TableCell>
-                              <TableCell className="text-xs">
-                                <div className="font-medium">{f.aprovador_pergunta}</div>
-                                <div className="text-[10px] text-muted-foreground">Campo: {f.label || "(sem nome)"}</div>
-                              </TableCell>
-                              <TableCell className="text-center">
-                                <Badge variant="outline" className="text-[10px]">Aprovador</Badge>
-                              </TableCell>
-                              <TableCell className="text-right text-xs font-medium">{f.aprovador_peso}</TableCell>
-                            </TableRow>
-                          );
-                        })}
-
-                        {uniqueAprovadorFields.length > 0 && (
-                          <TableRow className="bg-muted/30">
-                            <TableCell colSpan={3} className="text-[10px] font-medium text-right text-muted-foreground">Subtotal Campos</TableCell>
-                            <TableCell className="text-right text-xs font-bold">{totalCampos}</TableCell>
-                          </TableRow>
-                        )}
+                        ))}
                       </TableBody>
                       <TableFooter>
                         <TableRow>
@@ -1111,6 +1152,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                     )}
                   </div>
                 </div>
+                )}
 
                 {/* Resumo */}
                 <div className="bg-muted/40 border border-border rounded-md p-3 space-y-1">
@@ -1119,8 +1161,17 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                     <p><strong>Tarefa:</strong> {derivedNome}</p>
                     <p><strong>Avaliado:</strong> {(colaboradores as any[]).find((c) => c.id === avaliadoId)?.nome || "—"}</p>
                     <p><strong>Data:</strong> {dataPrevista} • limite {horarioLimite}</p>
-                    <p><strong>Pontuação:</strong> {temPerguntasAprovador ? `Ativa — ${totalGeral} pontos totais` : "Desativada (lembrete)"}</p>
-                    <p><strong>Aprovação:</strong> {temPerguntasAprovador && requerAprovacao ? ((colaboradores as any[]).find((c) => c.id === aprovadorId)?.nome || "—") : "Não"}</p>
+                    <p><strong>Avaliador (conferência):</strong> {requerValidacao
+                      ? (validadorMode === "individual"
+                          ? ((colaboradores as any[]).find((c) => c.id === validadorId)?.nome || "—")
+                          : ((setores as any[]).find((s) => s.id === validadorSetorId)?.nome || "—") + " (setor)")
+                      : "Não"}</p>
+                    <p><strong>Aprovador (pontuação):</strong> {requerAprovacao
+                      ? (aprovadorMode === "individual"
+                          ? ((colaboradores as any[]).find((c) => c.id === aprovadorId)?.nome || "—")
+                          : ((setores as any[]).find((s) => s.id === aprovadorSetorId)?.nome || "—") + " (setor)")
+                      : "Não"}</p>
+                    <p><strong>Pontuação:</strong> {mostrarPontuacao ? `Ativa — ${totalGeral} pontos totais` : "Desativada (lembrete)"}</p>
                     <p><strong>Campos:</strong> {fields.length} em {sections.length} seção(ões)</p>
                   </div>
                 </div>
