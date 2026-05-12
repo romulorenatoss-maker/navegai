@@ -20,6 +20,7 @@ import { Plus, Trash2, Settings2, Copy, Settings, AlertCircle, Clock } from "luc
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DEFAULT_SOLICITACAO_CONFIG, type SolicitacaoConfig } from "@/modules/tarefas/services/tarefas_solicitacaoConfig";
 
 // localStorage keys for default penalty values (per-user defaults set via gear icon)
 const LS_DEFAULTS_KEY = "quicktask_workflow_defaults_v1";
