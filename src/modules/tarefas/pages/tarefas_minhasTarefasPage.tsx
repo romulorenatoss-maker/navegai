@@ -234,6 +234,41 @@ function RenderVisao({ visao, buckets, sorted, openAccordion, setOpenAccordion, 
   if (visao === "designador") {
     return (
       <>
+  if (visao === "designador") {
+    return (
+      <>
+        {buckets.respostaRecebida.length > 0 && (
+          <Section id="respostaRecebida" title="Resposta Recebida" count={buckets.respostaRecebida.length}
+            color="#10b981" badgeBg="bg-emerald-500/15" badgeText="text-emerald-700 dark:text-emerald-400"
+            icon={<CheckCircle2 className="w-4 h-4" style={{ color: "#10b981" }} />}
+            openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+            {listOrEmpty(sorted(buckets.respostaRecebida), openExecution, "Nada novo.", true)}
+          </Section>
+        )}
+        {buckets.aguardandoValidacaoMinha.length > 0 && (
+          <Section id="aguardandoValidacaoMinha" title="Aguardando Minha Validação" count={buckets.aguardandoValidacaoMinha.length}
+            color="#8b5cf6" badgeBg="bg-violet-500/15" badgeText="text-violet-700 dark:text-violet-400"
+            icon={<Hourglass className="w-4 h-4" style={{ color: "#8b5cf6" }} />}
+            openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+            {listOrEmpty(sorted(buckets.aguardandoValidacaoMinha), openExecution, "Nada para validar.", true)}
+          </Section>
+        )}
+        {buckets.renegociacaoPendente.length > 0 && (
+          <Section id="renegociacaoPendente" title="Renegociação Pendente" count={buckets.renegociacaoPendente.length}
+            color="#eab308" badgeBg="bg-yellow-500/15" badgeText="text-yellow-700 dark:text-yellow-400"
+            icon={<RotateCcw className="w-4 h-4" style={{ color: "#eab308" }} />}
+            openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+            {listOrEmpty(sorted(buckets.renegociacaoPendente), openExecution, "Sem renegociações.", true)}
+          </Section>
+        )}
+        {buckets.limiteRenegociacao.length > 0 && (
+          <Section id="limiteRenegociacao" title="Limite de Renegociação Excedido" count={buckets.limiteRenegociacao.length}
+            color="#dc2626" badgeBg="bg-red-600/15" badgeText="text-red-800 dark:text-red-300"
+            icon={<AlertTriangle className="w-4 h-4" style={{ color: "#dc2626" }} />}
+            openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+            {listOrEmpty(sorted(buckets.limiteRenegociacao), openExecution, "Nada no limite.", true)}
+          </Section>
+        )}
         <Section id="criadasPorMim" title="Criadas por Mim" count={buckets.criadasPorMim.length}
           color="#06b6d4" badgeBg="bg-cyan-500/15" badgeText="text-cyan-700 dark:text-cyan-400"
           icon={<ListTodo className="w-4 h-4" style={{ color: "#06b6d4" }} />}
