@@ -301,6 +301,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   const canAdvanceStep2 = !!avaliadoId
     && !!dataPrevista
     && planoAcaoOk
+    && validadorOk
     && aprovadorOk;
 
   const create = useMutation({
