@@ -45,7 +45,7 @@ export function TarefasBuilderWizard(props: Props) {
     templateId, draftToRestore, onRestoreDraft, onDiscardDraft, onCancel, onSubmit,
   } = props;
 
-  const [current, setCurrent] = useState<WizardStepId>("geral"); // tipo é resolvido antes (TaskTypeSelector)
+  const [current, setCurrent] = useState<WizardStepId>("geral"); // tipo definido no próprio builder
   const [completed, setCompleted] = useState<Set<WizardStepId>>(new Set(["tipo"]));
 
   const idx = WIZARD_STEPS.findIndex(s => s.id === current);
