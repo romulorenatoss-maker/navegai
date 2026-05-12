@@ -14,7 +14,7 @@ import { ContingencyDetailDialog } from "@/modules/tarefas/components/tarefas_co
  *  - Abertas | Em Tratamento | Vencidas | Concluídas: visão completa
  *    (admin vê tudo; usuário comum vê apenas o que tem acesso pelo hook).
  *
- * Clique em um card navega para /operacional/contingencias preservando as
+ * Clique em um card navega para /tarefas/contingencias preservando as
  * ações/regras existentes.
  */
 export function MinhasTarefasPendentesPanel({ viewAsProfileId }: { viewAsProfileId?: string | null } = {}) {

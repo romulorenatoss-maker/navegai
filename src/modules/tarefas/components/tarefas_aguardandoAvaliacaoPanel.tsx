@@ -14,7 +14,7 @@ import { AssignmentCard } from "@/modules/tarefas/components/tarefas_tarefaCard"
  *  - As 3 demais espelham as abas da página "Aprovação Final" (mesmo fluxo/dados).
  *
  * Usuário comum vê apenas "Minhas". Admin vê todas.
- * Clique em um card navega para /operacional/aprovacao para preservar as ações.
+ * Clique em um card navega para /tarefas/aprovacao para preservar as ações.
  */
 export function AguardandoAvaliacaoPanel({ viewAsProfileId }: { viewAsProfileId?: string | null } = {}) {
   const navigate = useNavigate();
@@ -63,7 +63,7 @@ export function AguardandoAvaliacaoPanel({ viewAsProfileId }: { viewAsProfileId?
     );
   }, [assignments, targetId]);
 
-  const openItem = (_a: any) => navigate("/operacional/aprovacao");
+  const openItem = (_a: any) => navigate("/tarefas/aprovacao");
 
   const renderList = (list: any[], emptyMsg: string) => {
     if (isLoading) return <p className="text-xs text-muted-foreground text-center py-4">Carregando...</p>;
