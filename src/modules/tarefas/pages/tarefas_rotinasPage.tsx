@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TIPO_EXECUCAO_LABELS, RECORRENCIA_LABELS } from "@/modules/tarefas/hooks/tarefas_useScoring";
 import { TemplateForm, SectionForm, FieldForm, StepForm, defaultTemplate, defaultSection, defaultField, defaultStep } from "@/modules/tarefas/types/tarefas_types";
-import TaskTypeSelectorDialog, { type TaskType } from "@/components/TaskTypeSelectorDialog";
+// (Removido) TaskTypeSelectorDialog — builder único, sem seletor prévio.
+type TaskType = "simples" | "inspecao";
 import { TarefasBuilderWizard } from "@/modules/tarefas/components/builder/TarefasBuilderWizard";
 import { CheckItemForm } from "@/modules/tarefas/components/builder/types";
 import { useDraftAutosave, loadDraft, clearDraft, type BuilderDraftPayload } from "@/modules/tarefas/components/builder/useBuilderDraft";
