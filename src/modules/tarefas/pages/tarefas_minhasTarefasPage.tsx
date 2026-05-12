@@ -29,6 +29,7 @@ import { ListChecks, Trophy } from "lucide-react";
 import { bucketize, sortAssignments, availableVisoes, computeSla, isLate, isSemMovimento, type SortKey, type VisaoKey } from "@/modules/tarefas/services/tarefas_bucketize";
 import { VisaoSwitcher } from "@/modules/tarefas/components/tarefas_visaoSwitcher";
 import { PainelRetornoCard } from "@/modules/tarefas/components/tarefas_painelRetornoCard";
+import { DrawerActionRouter } from "@/modules/tarefas/components/painels/tarefas_drawerActionRouter";
 
 interface AccordionSectionProps {
   title: string;
