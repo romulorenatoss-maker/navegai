@@ -4,7 +4,7 @@
  * Regra: UI e hooks devem preferir chamar estes métodos em vez de acessar supabase direto.
  */
 import { supabase } from "@/integrations/supabase/client";
-import { logSystem } from "./systemLogger";
+import { logSystem } from "./tarefas_systemLogger";
 
 function ensure<T>(label: string, error: any, data: T): T {
   if (error) {

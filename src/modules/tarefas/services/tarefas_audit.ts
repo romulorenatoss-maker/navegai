@@ -8,7 +8,7 @@
  * Nunca joga exceção para fora (auditoria não deve quebrar a UX).
  */
 import { supabase } from "@/integrations/supabase/client";
-import { logSystem } from "./systemLogger";
+import { logSystem } from "./tarefas_systemLogger";
 
 export type AuditEvent =
   | "status_changed"

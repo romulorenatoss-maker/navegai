@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Settings } from "lucide-react";
 import { toast } from "sonner";
-import { TemplateForm, FieldForm } from "../types";
+import { TemplateForm, FieldForm } from "../types/tarefas_types";
 
 const LS_DEFAULTS_KEY = "quicktask_workflow_defaults_v1";
 type DefKey = "penalidade_fora_prazo" | "penalidade_contingencia" | "penalidade_sla_contingencia";

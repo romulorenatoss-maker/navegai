@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { SnapshotField } from "./DynamicFieldRenderer";
+import { SnapshotField } from "./tarefas_dynamicFieldRenderer";
 import { FieldReviewDraft } from "@/modules/tarefas/hooks/tarefas_useAssignmentReview";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";

@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Users } from "lucide-react";
-import { TemplateForm } from "../types";
+import { TemplateForm } from "../types/tarefas_types";
 import { TIPO_EXECUCAO_LABELS } from "@/modules/tarefas/hooks/tarefas_useScoring";
 
 interface Props {

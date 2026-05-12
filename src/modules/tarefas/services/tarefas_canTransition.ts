@@ -5,7 +5,7 @@
  * O hook continua sendo o executor real. Este arquivo é apenas verificação pura
  * (sem I/O) usada para desabilitar botões/validar antes de chamar a mutation.
  */
-import type { OperationalRole } from "./operationalRbac";
+import type { OperationalRole } from "./tarefas_rbac";
 
 export const VALID_TRANSITIONS: Record<string, string[]> = {
   pendente: ["em_andamento"],
