@@ -146,36 +146,45 @@ export default function OperationalExecucaoPage() {
   const [taskTypePickerOpen, setTaskTypePickerOpen] = useState(false);
   const [pickedTaskType, setPickedTaskType] = useState<TaskType>("simples");
   const [pickedSetorId, setPickedSetorId] = useState<string>("");
-  const [chipFilter, setChipFilter] = useState<OperationalChipFilter>("todas");
   const isMobile = useIsMobile();
-  // Toggle "Só atrasadas" dentro do acordeão Hoje
+  // Visão ativa (executor/avaliador/aprovador/designador/setor/admin) — dinâmica por contexto real
+  const [visao, setVisao] = useState<VisaoKey>("executor");
+  // Ordenação por seção (única para todas as listas da visão atual)
+  const [sortKey, setSortKey] = useState<SortKey>("sla");
+  // Toggle "Só atrasadas" dentro do acordeão Hoje (executor)
   const [showOnlyLate, setShowOnlyLate] = useState(false);
-  // Compat com wrappers das rotas legadas: ?chip= mapeia para o acordeão correspondente
+  // Filtros admin
+  const [adminSetor, setAdminSetor] = useState<string>("__all");
+  const [adminExecutor, setAdminExecutor] = useState<string>("__all");
+
+  // Compat com wrappers das rotas legadas: ?chip= mapeia para visão + acordeão
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const chipParam = searchParams.get("chip");
-    const valid: OperationalChipFilter[] = ["todas", "executar", "avaliar", "aprovar", "plano_acao", "contingencias", "atrasadas", "concluidas"];
-    if (chipParam && valid.includes(chipParam as OperationalChipFilter)) {
-      const chipToAccordion: Record<OperationalChipFilter, string | null> = {
-        todas: "hoje",
-        executar: "hoje",
-        avaliar: "aguardando",
-        aprovar: "aguardando",
-        plano_acao: "contingenciados",
-        contingencias: "contingenciados",
-        atrasadas: "hoje",
-        concluidas: "finalizadas",
-      };
-      const targetAcc = chipToAccordion[chipParam as OperationalChipFilter];
-      if (targetAcc) setOpenAccordion(targetAcc);
+    if (!chipParam) return;
+    const chipToVisao: Record<string, { v: VisaoKey; acc: string }> = {
+      todas: { v: "executor", acc: "hoje" },
+      executar: { v: "executor", acc: "hoje" },
+      avaliar: { v: "avaliador", acc: "aguardandoAvaliacao" },
+      aprovar: { v: "aprovador", acc: "aguardandoAprovacao" },
+      plano_acao: { v: "executor", acc: "planoAcao" },
+      contingencias: { v: "executor", acc: "contingencias" },
+      atrasadas: { v: "executor", acc: "hoje" },
+      concluidas: { v: "executor", acc: "concluidas" },
+    };
+    const target = chipToVisao[chipParam];
+    if (target) {
+      setVisao(target.v);
+      setOpenAccordion(target.acc);
       if (chipParam === "atrasadas") setShowOnlyLate(true);
-      const next = new URLSearchParams(searchParams);
-      next.delete("chip");
-      next.delete("from");
-      setSearchParams(next, { replace: true });
     }
+    const next = new URLSearchParams(searchParams);
+    next.delete("chip");
+    next.delete("from");
+    setSearchParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
   const effectiveFilterProfileId = isAdmin && filterResponsavel !== "__all" ? filterResponsavel : profile?.id;
 
   const { data: allProfilesRaw = [] } = useQuery({
@@ -193,10 +202,9 @@ export default function OperationalExecucaoPage() {
     queryFn: async () => {
       if (!profile?.id) return [];
       let q = (supabase as any).from("operational_assignments")
-        .select("*, operational_templates(nome, tipo_execucao), profiles:responsavel_id(id, nome, foto_url), criador:created_by(id, nome)")
+        .select("*, operational_templates(nome, tipo_execucao), profiles:responsavel_id(id, nome, foto_url), criador:created_by(id, nome), avaliador:profiles!operational_assignments_avaliador_id_fkey(nome), aprovador:profiles!operational_assignments_aprovador_id_fkey(nome)")
         .order("data_prevista", { ascending: true });
       if (!isAdmin) {
-        // Inclui também tarefas onde sou o CRIADOR (created_by) — necessário para "Designadas" e "Validação"
         q = q.or(`responsavel_id.eq.${profile.id},avaliador_id.eq.${profile.id},aprovador_id.eq.${profile.id},avaliado_id.eq.${profile.id},validador_contingencia_id.eq.${profile.id},created_by.eq.${profile.id}`);
       }
       const { data, error } = await q.limit(500);
@@ -207,210 +215,95 @@ export default function OperationalExecucaoPage() {
     staleTime: 300000,
   });
 
-  // Contingências (planos de ação) abertas onde sou responsável e prazo_sla < 24h
-  const { data: contingenciasUrgentes = [] } = useQuery({
-    queryKey: ["operational_contingencies_urgent", profile?.id],
+  // Setores do usuário (para visão Setor) — derivado de permissões com escopo team
+  const { getScope } = usePermissions(profile?.id ?? null);
+  const hasSetorScope = getScope("executar_tarefa") === "team";
+  const { data: meusSetorIds = [] } = useQuery({
+    queryKey: ["my_setor_ids", profile?.id],
     queryFn: async () => {
       if (!profile?.id) return [];
-      const limite = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
-      const { data, error } = await (supabase as any)
-        .from("operational_contingencies")
-        .select("assignment_id, prazo_sla, status")
-        .in("status", ["aberta", "em_andamento"])
-        .eq("responsavel_id", profile.id)
-        .lte("prazo_sla", limite);
-      if (error) return [];
-      return data || [];
+      const { data } = await (supabase as any)
+        .from("profile_setores")
+        .select("setor_id")
+        .eq("profile_id", profile.id);
+      return (data || []).map((r: any) => r.setor_id);
     },
-    enabled: !!profile?.id,
-    staleTime: 60000,
+    enabled: !!profile?.id && hasSetorScope,
+    staleTime: 300000,
   });
-
-  const urgentContingencyAssignmentIds = useMemo(
-    () => new Set(contingenciasUrgentes.map((c: any) => c.assignment_id)),
-    [contingenciasUrgentes]
-  );
 
   const profilesWithTasks = useMemo(() => {
     if (!isAdmin) return [];
     const openStatuses = ["pendente", "em_andamento", "devolvida", "aguardando_avaliacao", "aguardando_aprovacao", "contingenciado", "contingencia"];
     const idsWithTasks = new Set(
-      assignments
-        .filter((a: any) => openStatuses.includes(a.status))
-        .map((a: any) => a.responsavel_id)
-        .filter(Boolean)
+      assignments.filter((a: any) => openStatuses.includes(a.status)).map((a: any) => a.responsavel_id).filter(Boolean)
     );
-    // Sempre incluir o próprio usuário logado no filtro, mesmo sem tarefas em aberto
     if (profile?.id) idsWithTasks.add(profile.id);
     return allProfilesRaw.filter((p: any) => idsWithTasks.has(p.id));
   }, [isAdmin, assignments, allProfilesRaw, profile?.id]);
 
+  // Lista de setores únicos presentes nas tarefas (para filtro admin)
+  const setoresEmAssignments = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const a of assignments) {
+      if (a.setor_id) map.set(a.setor_id, a.setor_nome || a.setor_id);
+    }
+    return Array.from(map.entries()).map(([id, nome]) => ({ id, nome }));
+  }, [assignments]);
+
+  // === Filtragem base (busca + admin filtros) ===
   const filteredAssignments = useMemo(() => {
-    let list = assignments;
-    if (isAdmin && filterResponsavel !== "__all") {
-      // Visão "como executor X": inclui tarefas onde X é responsável, avaliado ou criador.
-      // Mantém também tarefas que EU criei (designadas).
-      list = list.filter((a: any) =>
-        a.responsavel_id === filterResponsavel ||
-        a.avaliado_id === filterResponsavel ||
-        a.created_by === filterResponsavel ||
-        a.created_by === profile?.id
+    let list = assignments as any[];
+    if (isAdmin && adminExecutor !== "__all") {
+      list = list.filter((a) => a.responsavel_id === adminExecutor);
+    } else if (isAdmin && filterResponsavel !== "__all") {
+      list = list.filter((a) =>
+        a.responsavel_id === filterResponsavel || a.avaliado_id === filterResponsavel || a.created_by === filterResponsavel || a.created_by === profile?.id
       );
+    }
+    if (isAdmin && adminSetor !== "__all") {
+      list = list.filter((a) => a.setor_id === adminSetor);
     }
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
-      list = list.filter((a: any) => {
-        const nome = a.template_snapshot?.nome || a.operational_templates?.nome || "";
-        return nome.toLowerCase().includes(term);
-      });
-    }
-    if (filterDate) {
-      list = list.filter((a: any) => {
-        // Tarefas designadas por mim (created_by) sempre passam, independente de data
-        if (a.created_by === profile?.id && a.responsavel_id !== profile?.id) return true;
-        if (["concluida", "aprovada", "aguardando_avaliacao", "em_avaliacao", "avaliada", "aguardando_aprovacao", "reprovada", "nao_executada", "contingenciado", "contingencia"].includes(a.status)) return true;
-        if (a.status === "devolvida") return true;
-        return a.data_prevista === filterDate || (a.data_prevista < filterDate && !["concluida", "aprovada"].includes(a.status));
-      });
+      list = list.filter((a) => (a.template_snapshot?.nome || a.operational_templates?.nome || "").toLowerCase().includes(term));
     }
     return list;
-  }, [assignments, isAdmin, filterResponsavel, searchTerm, filterDate, profile?.id]);
+  }, [assignments, isAdmin, filterResponsavel, adminExecutor, adminSetor, searchTerm, profile?.id]);
 
-  // "Tarefas de Hoje" includes: today's tasks + em_andamento (any date) + atrasadas + contingências com SLA < 24h
-   const hoje = filteredAssignments.filter((a: any) => {
-    if (["em_andamento"].includes(a.status)) return true;
-    if (["pendente", "devolvida"].includes(a.status) && a.data_prevista <= filterDate && a.responsavel_id === profile?.id) return true;
-    // Contingências (planos de ação) prioridade: aparecem no dia se SLA expira em <24h
-    if (["contingenciado", "contingencia"].includes(a.status) && urgentContingencyAssignmentIds.has(a.id)) return true;
-    return false;
-  });
-  // NOVO: "Tarefas Designadas" — tarefas que EU criei para outras pessoas (apenas em aberto/ativas)
-  const tarefasDesignadas = filteredAssignments.filter((a: any) =>
-    a.created_by === profile?.id &&
-    a.responsavel_id !== profile?.id &&
-    !["concluida", "aprovada", "reprovada", "nao_executada"].includes(a.status)
+  // === BUCKETIZE — núcleo único ===
+  const buckets = useMemo(
+    () => bucketize(filteredAssignments, { profileId: effectiveFilterProfileId, isAdmin }, meusSetorIds),
+    [filteredAssignments, effectiveFilterProfileId, isAdmin, meusSetorIds]
   );
-  // NOVO: "Aguardando Minha Validação" — tarefas designadas por mim que aguardam minha validação
-  const aguardandoMinhaValidacao = filteredAssignments.filter((a: any) =>
-    a.created_by === profile?.id &&
-    a.responsavel_id !== profile?.id &&
-    a.status === "aguardando_validacao"
-  );
-  // Devolvidas — separado em duas sub-listas
-  const minhasDevolucoes = filteredAssignments.filter((a: any) =>
-    a.status === "devolvida" && a.responsavel_id === profile?.id
-  );
-  const devolvidasParaOutros = filteredAssignments.filter((a: any) =>
-    a.status === "devolvida" && a.created_by === profile?.id && a.responsavel_id !== profile?.id
-  );
-  const devolvidas = [...minhasDevolucoes, ...filteredAssignments.filter((a: any) =>
-    ["contingenciado", "contingencia"].includes(a.status) && a.avaliado_id === profile?.id
-  )];
-  const contingenciados = filteredAssignments.filter((a: any) => ["contingenciado", "contingencia"].includes(a.status));
-  const aguardandoAvaliacao = filteredAssignments.filter((a: any) => ["aguardando_avaliacao", "aguardando_aprovacao"].includes(a.status));
-  // NOVO: separar Finalizadas em "Em Aberto" (não foram feitas) e "Concluídas" (efetivamente concluídas/aprovadas)
-  const emAberto = filteredAssignments.filter((a: any) => ["nao_executada", "reprovada"].includes(a.status)).slice(0, 50);
-  const concluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 50);
 
-  // === CHIPS (Central Operacional) — listas planas por papel ===
-  const chipMyId = effectiveFilterProfileId || profile?.id;
-  const isLateAssignment = (a: any) => {
-    if (["concluida", "aprovada", "nao_executada"].includes(a.status)) return false;
-    if (!a.data_prevista) return false;
-    const limite = a.horario_limite
-      ? new Date(`${a.data_prevista}T${a.horario_limite}`)
-      : new Date(`${a.data_prevista}T23:59:59`);
-    return new Date() > limite;
-  };
-  const chipExecutar = filteredAssignments.filter((a: any) =>
-    (a.responsavel_id === chipMyId || isAdmin) &&
-    ["pendente", "em_andamento", "devolvida", "reaberta"].includes(a.status)
+  // Visões disponíveis (dinâmico por contexto)
+  const visoes = useMemo(
+    () => availableVisoes(buckets, { isAdmin, hasSetor: hasSetorScope && meusSetorIds.length > 0 }),
+    [buckets, isAdmin, hasSetorScope, meusSetorIds.length]
   );
-  const chipAvaliar = filteredAssignments.filter((a: any) =>
-    ["aguardando_avaliacao", "em_avaliacao"].includes(a.status) && (a.avaliador_id === chipMyId || isAdmin)
-  );
-  const chipAprovar = filteredAssignments.filter((a: any) =>
-    a.status === "aguardando_aprovacao" && (a.aprovador_id === chipMyId || isAdmin)
-  );
-  // Plano de Ação (B3): correções pendentes do executor — reprovada/devolvida (NÃO inclui contingências, que têm chip próprio)
-  const chipPlanoAcao = filteredAssignments.filter((a: any) =>
-    ["reprovada", "devolvida"].includes(a.status) &&
-    (a.responsavel_id === chipMyId || isAdmin)
-  );
-  const chipContingencias = filteredAssignments.filter((a: any) =>
-    ["contingenciado", "contingencia"].includes(a.status) &&
-    (a.responsavel_id === chipMyId || a.avaliado_id === chipMyId || a.validador_contingencia_id === chipMyId || isAdmin)
-  );
-  const chipAtrasadas = filteredAssignments.filter(isLateAssignment);
-  const chipConcluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 100);
 
-  const chipCounts: Partial<Record<OperationalChipFilter, number>> = {
-    executar: chipExecutar.length,
-    avaliar: chipAvaliar.length,
-    aprovar: chipAprovar.length,
-    plano_acao: chipPlanoAcao.length,
-    contingencias: chipContingencias.length,
-    atrasadas: chipAtrasadas.length,
-    concluidas: chipConcluidas.length,
-  };
-  const chipFlatList: any[] =
-    chipFilter === "executar" ? chipExecutar :
-    chipFilter === "avaliar" ? chipAvaliar :
-    chipFilter === "aprovar" ? chipAprovar :
-    chipFilter === "plano_acao" ? chipPlanoAcao :
-    chipFilter === "contingencias" ? chipContingencias :
-    chipFilter === "atrasadas" ? chipAtrasadas :
-    chipFilter === "concluidas" ? chipConcluidas : [];
+  // Ajusta visão se a atual sumir do contexto
+  useEffect(() => {
+    if (visoes.length === 0) return;
+    if (!visoes.find((v) => v.key === visao)) setVisao(visoes[0].key);
+  }, [visoes, visao]);
 
-  // Sub-abas Minhas/Outros — split por usuário logado OU pelo usuário em "Modo Visão" do admin
-  const myId = effectiveFilterProfileId || profile?.id;
-  const splitByResp = (list: any[]) => ({
-    mine: list.filter((a: any) => a.responsavel_id === myId),
-    others: list.filter((a: any) => a.responsavel_id !== myId),
-  });
-  const splitByCreator = (list: any[]) => ({
-    mine: list.filter((a: any) => a.created_by === myId),
-    others: list.filter((a: any) => a.created_by !== myId),
-  });
-  const splitByAvaliado = (list: any[]) => ({
-    mine: list.filter((a: any) => a.avaliado_id === myId),
-    others: list.filter((a: any) => a.avaliado_id !== myId),
-  });
+  // Helper de ordenação
+  const sorted = useCallback((list: any[]) => sortAssignments(list, sortKey), [sortKey]);
 
-  const hojeSplit = splitByResp(hoje);
-  const designadasSplit = splitByCreator(tarefasDesignadas);
-  const devolvidasAll = [...devolvidas, ...devolvidasParaOutros];
-  const devolvidasSplit = splitByResp(devolvidasAll);
-  const contingenciadosSplit = splitByResp(contingenciados);
-  const aguardandoSplit = splitByAvaliado(aguardandoAvaliacao);
-  const emAbertoSplit = splitByResp(emAberto);
-  const concluidasSplit = splitByResp(concluidas);
-
-  // Contagem para "Tarefas Pendentes" — usa Planos de Ação (contingências).
-  // Admin: total de todas; usuário comum: apenas onde é responsável.
-  const cmCount = useContingencyManagement();
-  const pendentesCount = useMemo(() => {
-    const all = [...cmCount.abertas, ...cmCount.emTratamento, ...cmCount.vencidas, ...cmCount.validadas];
-    return isAdmin ? all.length : all.filter((c: any) => c.responsavel_id === myId).length;
-  }, [cmCount.abertas, cmCount.emTratamento, cmCount.vencidas, cmCount.validadas, isAdmin, myId]);
-
-  // === Flags de papel para mostrar/ocultar acordeões (sem perder função do menu superior) ===
-  const hasAvaliarRole = isAdmin || chipAvaliar.length > 0
-    || assignments.some((a: any) => a.avaliador_id === profile?.id);
-  const hasAprovarRole = isAdmin || chipAprovar.length > 0
-    || assignments.some((a: any) => a.aprovador_id === profile?.id);
-  const hasPlanoAcaoRole = isAdmin || chipPlanoAcao.length > 0 || pendentesCount > 0;
-  const hasContingenciaRole = isAdmin || chipContingencias.length > 0;
-  const hasDesignadasRole = isAdmin || tarefasDesignadas.length > 0
-    || assignments.some((a: any) => a.created_by === profile?.id && a.responsavel_id !== profile?.id);
-  // "Atrasadas" só é visível para perfis específicos
-  const hasAtrasadasView = isAdmin
-    || chipAtrasadas.some((a: any) =>
-      a.responsavel_id === profile?.id || a.created_by === profile?.id
-    );
-  const lateInHojeCount = hoje.filter(isLateAssignment).length;
-  const hojeFiltrado = showOnlyLate ? hoje.filter(isLateAssignment) : hoje;
-  const hojeFiltradoSplit = splitByResp(hojeFiltrado);
+  // Tarefas de Hoje (executor) — pendentes do dia + em execução + atrasadas
+  const hojeBase = useMemo(() => {
+    const me = effectiveFilterProfileId || profile?.id;
+    return filteredAssignments.filter((a: any) => {
+      if (a.status === "em_andamento" || a.status === "reaberta") return true;
+      if (["pendente", "devolvida"].includes(a.status) && a.data_prevista <= filterDate && (a.responsavel_id === me || isAdmin)) return true;
+      if (["contingenciado", "contingencia"].includes(a.status) && (a.responsavel_id === me || isAdmin)) return true;
+      return false;
+    });
+  }, [filteredAssignments, filterDate, effectiveFilterProfileId, profile?.id, isAdmin]);
+  const lateInHojeCount = useMemo(() => hojeBase.filter(isLate).length, [hojeBase]);
+  const hojeFiltrado = useMemo(() => sorted(showOnlyLate ? hojeBase.filter(isLate) : hojeBase), [hojeBase, showOnlyLate, sorted]);
 
   const exec = useAssignmentExecution(selectedAssignment?.id || null);
 
