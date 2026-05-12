@@ -95,15 +95,15 @@ const App = () => (
               <Route path="/operacional/cadastro" element={<Navigate to="/tarefas/rotinas" replace />} />
               <Route path="/operacional/execucao" element={<Navigate to="/tarefas/minhas" replace />} />
               <Route path="/operacional/gestao" element={<Navigate to="/tarefas/gestao" replace />} />
-              <Route path="/operacional/avaliacao" element={<Navigate to="/tarefas/avaliacao" replace />} />
-              <Route path="/operacional/aprovacao" element={<Navigate to="/tarefas/aprovacao" replace />} />
-              <Route path="/operacional/contingencias" element={<Navigate to="/tarefas/contingencias" replace />} />
+              <Route path="/operacional/avaliacao" element={<Navigate to="/tarefas/minhas?chip=avaliar&from=operacional_avaliacao" replace />} />
+              <Route path="/operacional/aprovacao" element={<Navigate to="/tarefas/minhas?chip=aprovar&from=operacional_aprovacao" replace />} />
+              <Route path="/operacional/contingencias" element={<Navigate to="/tarefas/minhas?chip=contingencias&from=operacional_contingencias" replace />} />
               <Route path="/checklists/execucao" element={<Navigate to="/tarefas/minhas" replace />} />
               <Route path="/checklists/gestao" element={<Navigate to="/tarefas/gestao" replace />} />
               <Route path="/checklists/cadastro" element={<Navigate to="/tarefas/rotinas" replace />} />
-              <Route path="/checklists/avaliacao" element={<Navigate to="/tarefas/avaliacao" replace />} />
-              <Route path="/checklists/aprovacao" element={<Navigate to="/tarefas/aprovacao" replace />} />
-              <Route path="/checklists/contingencias" element={<Navigate to="/tarefas/contingencias" replace />} />
+              <Route path="/checklists/avaliacao" element={<Navigate to="/tarefas/minhas?chip=avaliar&from=checklists_avaliacao" replace />} />
+              <Route path="/checklists/aprovacao" element={<Navigate to="/tarefas/minhas?chip=aprovar&from=checklists_aprovacao" replace />} />
+              <Route path="/checklists/contingencias" element={<Navigate to="/tarefas/minhas?chip=contingencias&from=checklists_contingencias" replace />} />
               
               
               <Route path="/cadastros/setores" element={<SetoresPage />} />
