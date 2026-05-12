@@ -446,6 +446,18 @@ export default function OperationalCadastroPage() {
       exige_observacao: s.exige_observacao || false, exige_video: s.exige_video || false,
     })));
 
+    // Load check items
+    const { data: chks } = await (supabase as any).from("operational_template_check_items")
+      .select("*").eq("template_id", t.id).order("ordem");
+    setCheckItems((chks || []).map((c: any) => ({
+      id: c.id, tempId: c.id, pergunta: c.pergunta, ordem: c.ordem,
+      tipo_resposta: c.tipo_resposta, exige_foto: !!c.exige_foto,
+      exige_observacao: !!c.exige_observacao,
+      gera_contingencia_se_reprovado: !!c.gera_contingencia_se_reprovado,
+      peso: Number(c.peso) || 1, nota_maxima: Number(c.nota_maxima) || 100,
+      penalidade_reprovacao: Number(c.penalidade_reprovacao) || 100,
+    })));
+
     setActiveTab("geral");
     setDialogOpen(true);
   };
