@@ -478,18 +478,10 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
           setores={setores}
           planoAcaoEnabled={planoAcaoEnabled}
           requireFieldHorario={requireFieldHorario}
-          onSave={(updates) => { updateField(editingField.tempId, updates); setEditingField(null); }}
-          onClose={() => setEditingField(null)}
+          onSave={commitEditingField}
+          onClose={closeEditingField}
         />
       )}
-
-      <QuickFieldDialog
-        open={!!quickAddSectionId}
-        onOpenChange={(o) => { if (!o) setQuickAddSectionId(null); }}
-        sectionTempId={quickAddSectionId || ""}
-        nextOrdem={fields.filter(f => f.sectionTempId === quickAddSectionId).length}
-        onAdd={(f) => setFields(prev => [...prev, f])}
-      />
     </div>
   );
 }
