@@ -13,7 +13,7 @@ import { SectionForm, FieldForm, OpcaoRegra, FIELD_TYPES, SECTION_COLORS, defaul
 import { FieldVisibilityEditor } from "@/modules/tarefas/components/builder/FieldVisibilityEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import QuickFieldDialog from "@/modules/tarefas/components/tarefas_quickFieldDialog";
+
 
 /**
  * Configuração extra por agrupador (etapas) — vai para template_snapshot.agrupadores_config[].
