@@ -434,6 +434,24 @@ export default function OperationalExecucaoPage() {
     return isAdmin ? all.length : all.filter((c: any) => c.responsavel_id === myId).length;
   }, [cmCount.abertas, cmCount.emTratamento, cmCount.vencidas, cmCount.validadas, isAdmin, myId]);
 
+  // === Flags de papel para mostrar/ocultar acordeões (sem perder função do menu superior) ===
+  const hasAvaliarRole = isAdmin || chipAvaliar.length > 0
+    || assignments.some((a: any) => a.avaliador_id === profile?.id);
+  const hasAprovarRole = isAdmin || chipAprovar.length > 0
+    || assignments.some((a: any) => a.aprovador_id === profile?.id);
+  const hasPlanoAcaoRole = isAdmin || chipPlanoAcao.length > 0 || pendentesCount > 0;
+  const hasContingenciaRole = isAdmin || chipContingencias.length > 0;
+  const hasDesignadasRole = isAdmin || tarefasDesignadas.length > 0
+    || assignments.some((a: any) => a.created_by === profile?.id && a.responsavel_id !== profile?.id);
+  // "Atrasadas" só é visível para perfis específicos
+  const hasAtrasadasView = isAdmin
+    || chipAtrasadas.some((a: any) =>
+      a.responsavel_id === profile?.id || a.created_by === profile?.id
+    );
+  const lateInHojeCount = hoje.filter(isLateAssignment).length;
+  const hojeFiltrado = showOnlyLate ? hoje.filter(isLateAssignment) : hoje;
+  const hojeFiltradoSplit = splitByResp(hojeFiltrado);
+
   const exec = useAssignmentExecution(selectedAssignment?.id || null);
 
   const snapshot = selectedAssignment?.template_snapshot;
