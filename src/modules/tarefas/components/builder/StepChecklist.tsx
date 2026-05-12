@@ -1,4 +1,4 @@
-import { Plus, Trash2, GripVertical, Camera, MessageSquare, AlertTriangle, Lock } from "lucide-react";
+import { Plus, Trash2, GripVertical, Camera, MessageSquare, AlertTriangle, Lock, Copy } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,20 @@ export function StepChecklist({ items, setItems, protectedIds }: Props) {
   };
   const update = (tempId: string, patch: Partial<CheckItemForm>) =>
     setItems(prev => prev.map(i => (i.tempId === tempId ? { ...i, ...patch } : i)));
+  const duplicate = (tempId: string) => {
+    setItems(prev => {
+      const src = prev.find(i => i.tempId === tempId);
+      if (!src) return prev;
+      const copy: CheckItemForm = {
+        ...src,
+        id: undefined,
+        tempId: crypto.randomUUID(),
+        pergunta: src.pergunta ? `${src.pergunta} (cópia)` : "",
+        ordem: prev.length,
+      };
+      return [...prev, copy];
+    });
+  };
 
   const onDragEnd = (r: DropResult) => {
     if (!r.destination) return;
@@ -156,6 +170,17 @@ export function StepChecklist({ items, setItems, protectedIds }: Props) {
                                 </label>
                               </div>
                             </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => duplicate(it.tempId)}
+                              className="text-muted-foreground shrink-0"
+                              aria-label="Duplicar item"
+                              title="Duplicar item"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </Button>
                             <TooltipProvider delayDuration={200}>
                               <Tooltip>
                                 <TooltipTrigger asChild>

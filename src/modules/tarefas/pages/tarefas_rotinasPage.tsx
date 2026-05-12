@@ -11,6 +11,7 @@ import { TemplateForm, SectionForm, FieldForm, StepForm, defaultTemplate, defaul
 import TaskTypeSelectorDialog, { type TaskType } from "@/components/TaskTypeSelectorDialog";
 import { TarefasBuilderWizard } from "@/modules/tarefas/components/builder/TarefasBuilderWizard";
 import { CheckItemForm } from "@/modules/tarefas/components/builder/types";
+import { useDraftAutosave, loadDraft, clearDraft, type BuilderDraftPayload } from "@/modules/tarefas/components/builder/useBuilderDraft";
 
 export default function OperationalCadastroPage() {
   const qc = useQueryClient();
@@ -27,6 +28,10 @@ export default function OperationalCadastroPage() {
   const [activeTab, setActiveTab] = useState("geral");
   const [filterExecutor, setFilterExecutor] = useState("__all");
   const [filterAvaliador, setFilterAvaliador] = useState("__all");
+  const [pendingDraft, setPendingDraft] = useState<BuilderDraftPayload | null>(null);
+
+  // Autosave (localStorage only — sem banco)
+  useDraftAutosave(editingId, dialogOpen, { form, sections, fields, steps, checkItems });
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ["operational_templates"],
@@ -362,6 +367,8 @@ export default function OperationalCadastroPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["operational_templates"] });
       toast.success(editingId ? "Template atualizado (versão incrementada)." : "Template criado.");
+      clearDraft(editingId);
+      setPendingDraft(null);
       closeDialog();
     },
     onError: (e: any) => toast.error(e.message),
@@ -417,6 +424,9 @@ export default function OperationalCadastroPage() {
     setProtectedCheckIds(new Set());
     setActiveTab("geral");
     setTaskTypePickerOpen(false);
+    // Detect existing draft for new template
+    const existing = loadDraft(null);
+    setPendingDraft(existing);
     setDialogOpen(true);
   };
 
@@ -527,10 +537,30 @@ export default function OperationalCadastroPage() {
     }
 
     setActiveTab("geral");
+    // Detect existing draft for this template id
+    const existing = loadDraft(t.id);
+    setPendingDraft(existing);
     setDialogOpen(true);
   };
 
-  const closeDialog = () => { setDialogOpen(false); setEditingId(null); };
+  const restoreDraft = () => {
+    if (!pendingDraft) return;
+    setForm(pendingDraft.form);
+    setSections(pendingDraft.sections);
+    setFields(pendingDraft.fields);
+    setSteps(pendingDraft.steps);
+    setCheckItems(pendingDraft.checkItems);
+    setPendingDraft(null);
+    toast.success("Rascunho restaurado.");
+  };
+
+  const discardDraft = () => {
+    clearDraft(editingId);
+    setPendingDraft(null);
+    toast.message("Rascunho descartado.");
+  };
+
+  const closeDialog = () => { setDialogOpen(false); setEditingId(null); setPendingDraft(null); };
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -659,6 +689,9 @@ export default function OperationalCadastroPage() {
               steps={steps} setSteps={setSteps}
               checkItems={checkItems} setCheckItems={setCheckItems}
               protectedCheckIds={protectedCheckIds}
+              draftToRestore={pendingDraft}
+              onRestoreDraft={restoreDraft}
+              onDiscardDraft={discardDraft}
               setores={setores} colaboradores={colaboradores}
               templateId={editingId}
               onCancel={closeDialog}

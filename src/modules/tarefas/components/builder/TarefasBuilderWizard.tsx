@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ArrowRight, Save } from "lucide-react";
+import { ArrowLeft, ArrowRight, Save, Workflow, CalendarClock, CheckCircle2 } from "lucide-react";
 import { TabGeral } from "@/modules/tarefas/components/tarefas_tabGeral";
 import { TabFormBuilder } from "@/modules/tarefas/components/tarefas_tabFormBuilder";
 import { TabWorkflow } from "@/modules/tarefas/components/tarefas_tabWorkflow";
@@ -10,8 +10,9 @@ import { TemplateForm, SectionForm, FieldForm, StepForm } from "@/modules/tarefa
 import { BuilderStepper } from "./BuilderStepper";
 import { StepChecklist } from "./StepChecklist";
 import { StepResumo } from "./StepResumo";
+import { DraftRestoreBanner } from "./DraftRestoreBanner";
+import type { BuilderDraftPayload } from "./useBuilderDraft";
 import { CheckItemForm, WIZARD_STEPS, WizardStepId } from "./types";
-import { CheckCircle2 } from "lucide-react";
 
 interface Props {
   isEditing: boolean;
@@ -30,6 +31,9 @@ interface Props {
   setores: any[];
   colaboradores: any[];
   templateId: string | null;
+  draftToRestore?: BuilderDraftPayload | null;
+  onRestoreDraft?: () => void;
+  onDiscardDraft?: () => void;
   onCancel: () => void;
   onSubmit: () => void;
 }
@@ -38,7 +42,7 @@ export function TarefasBuilderWizard(props: Props) {
   const {
     isEditing, saving, form, set, sections, setSections, fields, setFields,
     steps, setSteps, checkItems, setCheckItems, protectedCheckIds, setores, colaboradores,
-    templateId, onCancel, onSubmit,
+    templateId, draftToRestore, onRestoreDraft, onDiscardDraft, onCancel, onSubmit,
   } = props;
 
   const [current, setCurrent] = useState<WizardStepId>("geral"); // tipo é resolvido antes (TaskTypeSelector)
@@ -74,6 +78,14 @@ export function TarefasBuilderWizard(props: Props) {
     <div className="flex flex-col h-full min-h-0">
       <BuilderStepper current={current} completed={completed} onJump={jump} isEditing={isEditing} />
 
+      {draftToRestore && onRestoreDraft && onDiscardDraft && (
+        <DraftRestoreBanner
+          savedAt={draftToRestore.savedAt}
+          onRestore={onRestoreDraft}
+          onDiscard={onDiscardDraft}
+        />
+      )}
+
       <div className="flex-1 overflow-y-auto px-1 py-4 md:px-2">
         {current === "tipo" && (
           <div className="text-center py-8">
@@ -101,10 +113,11 @@ export function TarefasBuilderWizard(props: Props) {
 
         {current === "fluxo" && (
           <div className="space-y-6">
+            <SectionDivider icon={<Workflow className="w-3.5 h-3.5" />} title="Workflow, aprovação, SLA & automação" subtitle="Quem aprova, regras de SLA, contingência e plano de ação." />
             <TabWorkflow form={form} set={set} fields={fields} />
-            <div className="border-t border-border pt-6">
-              <TabRecorrencia form={form} set={set} />
-            </div>
+
+            <SectionDivider icon={<CalendarClock className="w-3.5 h-3.5" />} title="Recorrência" subtitle="Quando esta tarefa será gerada automaticamente." />
+            <TabRecorrencia form={form} set={set} />
           </div>
         )}
 
@@ -146,6 +159,20 @@ export function TarefasBuilderWizard(props: Props) {
             </Button>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function SectionDivider({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle?: string }) {
+  return (
+    <div className="flex items-start gap-2 pb-2 border-b border-border">
+      <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-primary/10 text-primary mt-0.5 shrink-0">
+        {icon}
+      </span>
+      <div>
+        <p className="text-sm font-semibold text-foreground leading-tight">{title}</p>
+        {subtitle && <p className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</p>}
       </div>
     </div>
   );

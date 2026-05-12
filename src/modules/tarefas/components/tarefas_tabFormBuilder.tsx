@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SectionForm, FieldForm, OpcaoRegra, FIELD_TYPES, SECTION_COLORS, defaultField, defaultSection, getDefaultOpcoesRegras } from "../types/tarefas_types";
+import { FieldVisibilityEditor } from "@/modules/tarefas/components/builder/FieldVisibilityEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import QuickFieldDialog from "@/modules/tarefas/components/tarefas_quickFieldDialog";
@@ -64,6 +65,29 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
     const sectionFields = fields.filter(f => f.sectionTempId === field.sectionTempId);
     const newField: FieldForm = { ...field, tempId: crypto.randomUUID(), id: undefined, label: field.label + " (cópia)", ordem: sectionFields.length };
     setFields(prev => [...prev, newField]);
+  };
+
+  const duplicateSection = (section: SectionForm) => {
+    const newSection: SectionForm = {
+      ...section,
+      id: undefined,
+      tempId: crypto.randomUUID(),
+      nome: section.nome ? `${section.nome} (cópia)` : "",
+      ordem: sections.length,
+    };
+    const sectionFields = fields.filter(f => f.sectionTempId === section.tempId);
+    const clonedFields: FieldForm[] = sectionFields.map((f, idx) => ({
+      ...f,
+      id: undefined,
+      tempId: crypto.randomUUID(),
+      sectionTempId: newSection.tempId,
+      ordem: idx,
+      // Reset condicao_visibilidade pois aponta para tempIds antigos
+      condicao_visibilidade: null,
+    }));
+    setSections(prev => [...prev, newSection]);
+    setFields(prev => [...prev, ...clonedFields]);
+    setExpandedSection(newSection.tempId);
   };
 
   const onDragEnd = (result: DropResult) => {
@@ -157,6 +181,9 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                           </Select>
                           <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setExpandedSection(isExpanded ? null : section.tempId)}>
                             {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </Button>
+                          <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground" onClick={() => duplicateSection(section)} title="Duplicar seção (com campos)" aria-label="Duplicar seção">
+                            <Copy className="w-3.5 h-3.5" />
                           </Button>
                           <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive" onClick={() => removeSection(section.tempId)}>
                             <Trash2 className="w-3.5 h-3.5" />
@@ -265,6 +292,7 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
       {editingField && (
         <FieldDetailDialog
           field={editingField}
+          allFields={fields}
           setores={setores}
           planoAcaoEnabled={planoAcaoEnabled}
           requireFieldHorario={requireFieldHorario}
@@ -284,7 +312,7 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
   );
 }
 
-export function FieldDetailDialog({ field, setores, onSave, onClose, planoAcaoEnabled = true, requireFieldHorario = false }: { field: FieldForm; setores: any[]; onSave: (u: Partial<FieldForm>) => void; onClose: () => void; planoAcaoEnabled?: boolean; requireFieldHorario?: boolean }) {
+export function FieldDetailDialog({ field, allFields = [], setores, onSave, onClose, planoAcaoEnabled = true, requireFieldHorario = false }: { field: FieldForm; allFields?: FieldForm[]; setores: any[]; onSave: (u: Partial<FieldForm>) => void; onClose: () => void; planoAcaoEnabled?: boolean; requireFieldHorario?: boolean }) {
   const [local, setLocal] = useState<FieldForm>({ ...field });
   const upd = <K extends keyof FieldForm>(k: K, v: FieldForm[K]) => setLocal(f => ({ ...f, [k]: v }));
   const [previewAnswer, setPreviewAnswer] = useState<string | null>(null);
@@ -675,6 +703,13 @@ export function FieldDetailDialog({ field, setores, onSave, onClose, planoAcaoEn
               </div>
             )}
           </div>
+
+          <FieldVisibilityEditor
+            currentTempId={local.tempId}
+            allFields={allFields}
+            value={local.condicao_visibilidade}
+            onChange={(v) => upd("condicao_visibilidade", v)}
+          />
 
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
