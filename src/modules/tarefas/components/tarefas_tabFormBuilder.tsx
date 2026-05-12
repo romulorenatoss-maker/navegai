@@ -66,6 +66,29 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
     setFields(prev => [...prev, newField]);
   };
 
+  const duplicateSection = (section: SectionForm) => {
+    const newSection: SectionForm = {
+      ...section,
+      id: undefined,
+      tempId: crypto.randomUUID(),
+      nome: section.nome ? `${section.nome} (cópia)` : "",
+      ordem: sections.length,
+    };
+    const sectionFields = fields.filter(f => f.sectionTempId === section.tempId);
+    const clonedFields: FieldForm[] = sectionFields.map((f, idx) => ({
+      ...f,
+      id: undefined,
+      tempId: crypto.randomUUID(),
+      sectionTempId: newSection.tempId,
+      ordem: idx,
+      // Reset condicao_visibilidade pois aponta para tempIds antigos
+      condicao_visibilidade: null,
+    }));
+    setSections(prev => [...prev, newSection]);
+    setFields(prev => [...prev, ...clonedFields]);
+    setExpandedSection(newSection.tempId);
+  };
+
   const onDragEnd = (result: DropResult) => {
     if (!result.destination) return;
     const { source, destination, type } = result;
