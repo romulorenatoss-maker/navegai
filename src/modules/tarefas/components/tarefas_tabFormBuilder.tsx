@@ -291,6 +291,7 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
       {editingField && (
         <FieldDetailDialog
           field={editingField}
+          allFields={fields}
           setores={setores}
           planoAcaoEnabled={planoAcaoEnabled}
           requireFieldHorario={requireFieldHorario}
