@@ -60,7 +60,8 @@ function passesRbac(entry: PanelEntry, ctx: ResolveCtx, perms: any[]): boolean {
 
 export function DrawerActionRouter({ assignment, origem = "drawer", onClose, onActionDone }: Props) {
   const { profile, isAdmin } = useAuth() as any;
-  const { permissions } = useEffectivePermissions();
+  const perms = usePermissions(profile?.id ?? null);
+  const permissions = (perms as any).permissions ?? [];
   const [forcedId, setForcedId] = useState<string | null>(null);
 
   const ctx = useMemo(
