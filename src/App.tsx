@@ -26,10 +26,10 @@ import ClientesPage from "./pages/ClientesPage";
 import MinhasAvaliacoesPage from "./pages/MinhasAvaliacoesPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import RelatoriosPage from "./pages/RelatoriosPage";
-import RelatorioTarefasPage from "./pages/RelatorioTarefasPage";
+import RelatorioTarefasPage from "./modules/tarefas/pages/tarefas_relatoriosPage";
 import DesempenhoColaboradorPage from "./pages/DesempenhoColaboradorPage";
-import DesempenhoOperacionalPage from "./pages/DesempenhoOperacionalPage";
-import DashboardTempoAvaliacoes from "./pages/DashboardTempoAvaliacoes";
+import DesempenhoOperacionalPage from "./modules/tarefas/pages/tarefas_desempenhoPage";
+import DashboardTempoAvaliacoes from "./modules/tarefas/pages/tarefas_tempoAvaliacoesPage";
 
 import LeadsPage from "./pages/LeadsPage";
 import FilaLeadsPage from "./pages/FilaLeadsPage";
