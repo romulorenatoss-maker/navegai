@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Check, ListChecks, Users, Sliders, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, ListChecks, Users, Sliders, Loader2, ChevronDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FieldDetailDialog, TabFormBuilder } from "@/modules/tarefas/components/tarefas_tabFormBuilder";
+import { FieldDetailDialog, TabFormBuilder, type AgrupadorExtra } from "@/modules/tarefas/components/tarefas_tabFormBuilder";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DynamicFieldRenderer, SnapshotField } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
 import { FIELD_TYPES, SectionForm, FieldForm, defaultSection, getLocalToday, defaultTemplate } from "@/modules/tarefas/types/tarefas_types";
 import { cn } from "@/lib/utils";
@@ -118,6 +119,12 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   const updateSolicitacaoConfig = (patch: Partial<SolicitacaoConfig>) =>
     setSolicitacaoConfig((prev) => ({ ...prev, ...patch }));
 
+  // Configurações extras por agrupador (apenas modo etapas). Vão em template_snapshot.agrupadores_config[].
+  // Responsável/status próprio por etapa: chaves reservadas no JSON, NÃO ativadas nesta fase.
+  const [agrupadorExtras, setAgrupadorExtras] = useState<Record<string, AgrupadorExtra>>({});
+  // Toggle "Opções avançadas" do Step 1 (título/descrição manuais).
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
   const reset = () => {
     setStep(1);
     setNome(""); setDescricao(""); setSetorId(initialSetorId || "");
@@ -136,6 +143,8 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     setHabilitarPerguntasAutomaticas(true);
     setPesoNotaMaxima(100);
     setSolicitacaoConfig(DEFAULT_SOLICITACAO_CONFIG);
+    setAgrupadorExtras({});
+    setAdvancedOpen(false);
   };
 
   useEffect(() => {
@@ -242,11 +251,18 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     || (aprovadorMode === "individual" && !!aprovadorId && aprovadorId !== avaliadoId && (!isSelfTask || aprovadorId !== profile?.id))
     || (aprovadorMode === "setor" && !!aprovadorSetorId);
 
-  const canAdvanceStep1 = nome.trim().length > 0
-    && !!avaliadoId
-    && !!dataPrevista
-    && planoAcaoOk
-    && aprovadorOk;
+  // Derivação automática do título da tarefa.
+  // Prioridade: override manual (nome) → primeiro agrupador → primeira pergunta → fallback.
+  const derivedNome = useMemo(() => {
+    const t = nome.trim();
+    if (t) return t;
+    const s0 = sections[0]?.nome?.trim();
+    if (s0 && s0 !== "Itens da tarefa") return s0;
+    const f0 = fields[0]?.label?.trim();
+    if (f0) return f0;
+    if (s0) return s0; // "Itens da tarefa" como último recurso de seção
+    return "Tarefa sem título";
+  }, [nome, sections, fields]);
 
   // Quando o responsável pelo plano de ação é desabilitado, limpa qualquer
   // regra "gera_contingencia" que tenha sido configurada nos campos.
@@ -259,9 +275,8 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     }));
   }, [planoAcaoEnabled]);
 
-  // Validação Step 2:
-  // - precisa ter pelo menos 1 campo
-  // - se modo individual: cada etapa precisa ter horário PRÓPRIO OU TODAS as perguntas dessa etapa precisam ter horário (em validacao.horario_inicio/horario_fim)
+  // Validação do builder (modo individual em etapas):
+  // cada etapa precisa de horário próprio OU todas as perguntas com horário.
   const horarioValidationError = useMemo(() => {
     if (taskType === "simples" || horarioModo === "global") return null;
     for (const sec of sections) {
@@ -277,13 +292,18 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     return null;
   }, [sections, fields, horarioModo, taskType]);
 
-  const canAdvanceStep2 = fields.length > 0 && !horarioValidationError;
+  // Step 1 = Estrutura (builder). Step 2 = Designação. Step 3 = Prazos & Notas.
+  const canAdvanceStep1 = fields.length > 0 && !horarioValidationError;
+  const canAdvanceStep2 = !!avaliadoId
+    && !!dataPrevista
+    && planoAcaoOk
+    && aprovadorOk;
 
   const create = useMutation({
     mutationFn: async () => {
       if (!profile?.id) throw new Error("Sessão inválida");
-      if (!canAdvanceStep1) throw new Error("Preencha os dados de designação");
-      if (!canAdvanceStep2) throw new Error("Adicione ao menos 1 campo com nome");
+      if (!canAdvanceStep1) throw new Error("Adicione ao menos 1 pergunta na estrutura");
+      if (!canAdvanceStep2) throw new Error("Preencha os dados de designação");
 
       // Determinar se a tarefa terá pontuação válida:
       // só pontua se houver perguntas configuradas para o aprovador responder
@@ -293,7 +313,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
 
       // 1) cria template (ad-hoc se única; rotina recorrente se ativa)
       const templatePayload: any = {
-        nome: nome.trim(),
+        nome: derivedNome,
         descricao: descricao.trim() || null,
         tipo_execucao: taskType === "simples" ? "tarefa_simples" : "checklist_inspecao",
         setor_id: setorId || null,
@@ -437,6 +457,22 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
           aprovador_exige_evidencia_nao: f.aprovador_exige_evidencia_nao,
           aprovador_tipos_evidencia: f.aprovador_tipos_evidencia,
         })),
+        // Builder único — configs extras por agrupador (SLA próprio, observação).
+        // Modo simples: ainda gravamos o array para compatibilidade futura, com herança implícita (sla_horas=null).
+        // Responsável/status próprio por etapa: chaves reservadas, NÃO ativadas nesta fase.
+        agrupadores_config: insertedSections.map((s: any, idx: number) => {
+          const tempId = sections[idx]?.tempId;
+          const extra = tempId ? agrupadorExtras[tempId] : undefined;
+          return {
+            section_id: s.id,
+            section_index: idx,
+            sla_horas: taskType === "simples" ? null : (extra?.sla_horas ?? null),
+            observacao: extra?.observacao || null,
+            // reservados (não ativados):
+            responsavel_profile_id: null,
+            status: null,
+          };
+        }),
         // Fase 1B.3 — Fluxo Operacional para tarefa avulsa (sem migration; lido em runtime).
         ...(isAvulsa ? { solicitacao_config: solicitacaoConfig } : {}),
       };
@@ -486,8 +522,8 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
           {/* Stepper */}
           <div className="flex items-center gap-2 mt-3">
             {[
-              { n: 1, label: "Designação", icon: Users },
-              { n: 2, label: "Campos", icon: ListChecks },
+              { n: 1, label: "Estrutura", icon: ListChecks },
+              { n: 2, label: "Designação", icon: Users },
               { n: 3, label: "Prazo & Notas", icon: Sliders },
             ].map((s, i) => {
               const Icon = s.icon;
@@ -513,17 +549,12 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          {step === 1 && (
+          {step === 2 && (
             <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>Nome da tarefa *</Label>
-                <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex: Limpar entrada principal" maxLength={120} />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Descrição</Label>
-                <Textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Detalhes (opcional)" rows={2} maxLength={500} />
-              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Título derivado: <strong>{derivedNome}</strong>
+                {nome.trim() ? " (override manual ativo)" : ""}
+              </p>
 
               {/* Responsáveis */}
               <div className="border border-border rounded-lg p-3 space-y-3 bg-muted/30">
@@ -878,7 +909,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
             </div>
           )}
 
-          {step === 2 && (
+          {step === 1 && (
             <div className="space-y-3">
               {horarioValidationError && (
                 <div className="flex items-start gap-2 p-3 rounded-lg border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700/40">
@@ -899,7 +930,37 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                 tipoExecucao={taskType === "simples" ? "tarefa_simples" : "etapas"}
                 requireFieldHorario={taskType !== "simples" && horarioModo === "individual"}
                 planoAcaoEnabled={planoAcaoEnabled}
+                agrupadorExtras={agrupadorExtras}
+                setAgrupadorExtras={setAgrupadorExtras}
               />
+
+              {/* Opções avançadas — título manual e descrição (recolhido) */}
+              <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button type="button" variant="ghost" size="sm" className="text-xs text-muted-foreground">
+                    <ChevronDown className={cn("w-3.5 h-3.5 mr-1 transition-transform", advancedOpen && "rotate-180")} />
+                    Opções avançadas (título manual, descrição)
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-3 pt-2 border-t border-border mt-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Título manual (opcional — sobrescreve a derivação)</Label>
+                    <Input
+                      value={nome}
+                      onChange={(e) => setNome(e.target.value)}
+                      placeholder={`Auto: "${derivedNome}"`}
+                      maxLength={120}
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Em branco → usa o nome do primeiro agrupador → primeira pergunta → "Tarefa sem título".
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Descrição (opcional)</Label>
+                    <Textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Detalhes da tarefa" rows={2} maxLength={500} />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             </div>
           )}
 
@@ -1055,7 +1116,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                 <div className="bg-muted/40 border border-border rounded-md p-3 space-y-1">
                   <p className="text-xs font-semibold text-foreground">Resumo</p>
                   <div className="text-[11px] text-muted-foreground space-y-0.5">
-                    <p><strong>Tarefa:</strong> {nome || "—"}</p>
+                    <p><strong>Tarefa:</strong> {derivedNome}</p>
                     <p><strong>Avaliado:</strong> {(colaboradores as any[]).find((c) => c.id === avaliadoId)?.nome || "—"}</p>
                     <p><strong>Data:</strong> {dataPrevista} • limite {horarioLimite}</p>
                     <p><strong>Pontuação:</strong> {temPerguntasAprovador ? `Ativa — ${totalGeral} pontos totais` : "Desativada (lembrete)"}</p>

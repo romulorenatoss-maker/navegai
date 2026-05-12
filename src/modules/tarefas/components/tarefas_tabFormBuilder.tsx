@@ -15,6 +15,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import QuickFieldDialog from "@/modules/tarefas/components/tarefas_quickFieldDialog";
 
+/**
+ * Configuração extra por agrupador (etapas) — vai para template_snapshot.agrupadores_config[].
+ * Responsavel/status reservados, não ativados nesta fase.
+ */
+export interface AgrupadorExtra {
+  sla_horas: number | null;
+  observacao: string;
+}
+
 interface Props {
   sections: SectionForm[];
   setSections: React.Dispatch<React.SetStateAction<SectionForm[]>>;
@@ -26,9 +35,19 @@ interface Props {
   requireFieldHorario?: boolean;
   /** Propaga para FieldDetailDialog: habilita "gera plano de ação" nas opções. */
   planoAcaoEnabled?: boolean;
+  /** Configurações extras por agrupador (somente etapas). */
+  agrupadorExtras?: Record<string, AgrupadorExtra>;
+  setAgrupadorExtras?: React.Dispatch<React.SetStateAction<Record<string, AgrupadorExtra>>>;
 }
 
-export function TabFormBuilder({ sections, setSections, fields, setFields, setores = [], tipoExecucao = "checklist_inspecao", requireFieldHorario = false, planoAcaoEnabled = true }: Props) {
+export function TabFormBuilder({ sections, setSections, fields, setFields, setores = [], tipoExecucao = "checklist_inspecao", requireFieldHorario = false, planoAcaoEnabled = true, agrupadorExtras = {}, setAgrupadorExtras }: Props) {
+  const updateAgrupadorExtra = (tempId: string, patch: Partial<AgrupadorExtra>) => {
+    if (!setAgrupadorExtras) return;
+    setAgrupadorExtras(prev => ({
+      ...prev,
+      [tempId]: { sla_horas: prev[tempId]?.sla_horas ?? null, observacao: prev[tempId]?.observacao ?? "", ...patch },
+    }));
+  };
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<FieldForm | null>(null);
   const [quickAddSectionId, setQuickAddSectionId] = useState<string | null>(null);
@@ -205,7 +224,7 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
               </SelectContent>
             </Select>
             <Button type="button" onClick={addSimpleField} disabled={!simpleLabel.trim()}>
-              <Plus className="w-4 h-4 mr-1" /> Adicionar Campo
+              <Plus className="w-4 h-4 mr-1" /> Adicionar Pergunta
             </Button>
           </div>
           <p className="text-[11px] text-muted-foreground">
@@ -264,7 +283,7 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
             onClick={() => { setForceAdvanced(true); addSection(); }}
             title="Crie seções/formulários para agrupar perguntas"
           >
-            <Plus className="w-3.5 h-3.5 mr-1" /> Nova seção (avançado)
+            <Plus className="w-3.5 h-3.5 mr-1" /> Novo Grupo/Etapa (avançado)
           </Button>
         </div>
 
@@ -286,16 +305,16 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-foreground">Formulários e Campos</p>
+        <p className="text-sm font-medium text-foreground">Estrutura da Tarefa — agrupadores e perguntas</p>
         <Button type="button" variant="outline" size="sm" onClick={addSection}>
-          <Plus className="w-3.5 h-3.5 mr-1" /> Novo Formulário
+          <Plus className="w-3.5 h-3.5 mr-1" /> Novo Grupo/Etapa
         </Button>
       </div>
 
       {sections.length === 0 && (
         <div className="text-center py-8 text-muted-foreground border border-dashed border-border rounded-lg">
-          <p className="text-sm">Nenhum formulário criado.</p>
-          <p className="text-caption">Clique em "Novo Formulário" para começar.</p>
+          <p className="text-sm">Nenhum agrupador criado.</p>
+          <p className="text-caption">Clique em "Novo Grupo/Etapa" para começar.</p>
         </div>
       )}
 
@@ -374,6 +393,32 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                               </div>
                             )}
 
+                            {tipoExecucao === "etapas" && setAgrupadorExtras && (
+                              <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-2 mb-2">
+                                <div className="space-y-0.5">
+                                  <Label className="text-[10px] text-muted-foreground">SLA da etapa (h)</Label>
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    placeholder="Herda global"
+                                    value={agrupadorExtras[section.tempId]?.sla_horas ?? ""}
+                                    onChange={e => updateAgrupadorExtra(section.tempId, { sla_horas: e.target.value === "" ? null : Math.max(0, +e.target.value || 0) })}
+                                    className="h-7 text-xs"
+                                  />
+                                </div>
+                                <div className="space-y-0.5">
+                                  <Label className="text-[10px] text-muted-foreground">Observação da etapa</Label>
+                                  <Input
+                                    value={agrupadorExtras[section.tempId]?.observacao ?? ""}
+                                    onChange={e => updateAgrupadorExtra(section.tempId, { observacao: e.target.value })}
+                                    placeholder="Opcional"
+                                    className="h-7 text-xs"
+                                    maxLength={500}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
                             {!section.nome.trim() && (
                               <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/30 rounded-md p-2 text-[11px] text-amber-700 dark:text-amber-300">
                                 <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
@@ -429,7 +474,7 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                               disabled={!section.nome.trim()}
                               title={!section.nome.trim() ? "Defina o nome da etapa antes de adicionar campos" : undefined}
                             >
-                              <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Campo
+                              <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Pergunta
                             </Button>
                           </div>
                         )}
