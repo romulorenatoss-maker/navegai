@@ -36,6 +36,20 @@ export function StepChecklist({ items, setItems, protectedIds }: Props) {
   };
   const update = (tempId: string, patch: Partial<CheckItemForm>) =>
     setItems(prev => prev.map(i => (i.tempId === tempId ? { ...i, ...patch } : i)));
+  const duplicate = (tempId: string) => {
+    setItems(prev => {
+      const src = prev.find(i => i.tempId === tempId);
+      if (!src) return prev;
+      const copy: CheckItemForm = {
+        ...src,
+        id: undefined,
+        tempId: crypto.randomUUID(),
+        pergunta: src.pergunta ? `${src.pergunta} (cópia)` : "",
+        ordem: prev.length,
+      };
+      return [...prev, copy];
+    });
+  };
 
   const onDragEnd = (r: DropResult) => {
     if (!r.destination) return;
