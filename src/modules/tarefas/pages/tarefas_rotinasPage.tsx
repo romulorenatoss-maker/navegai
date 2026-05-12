@@ -689,6 +689,9 @@ export default function OperationalCadastroPage() {
               steps={steps} setSteps={setSteps}
               checkItems={checkItems} setCheckItems={setCheckItems}
               protectedCheckIds={protectedCheckIds}
+              draftToRestore={pendingDraft}
+              onRestoreDraft={restoreDraft}
+              onDiscardDraft={discardDraft}
               setores={setores} colaboradores={colaboradores}
               templateId={editingId}
               onCancel={closeDialog}
