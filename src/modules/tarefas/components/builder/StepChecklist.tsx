@@ -156,16 +156,30 @@ export function StepChecklist({ items, setItems, protectedIds }: Props) {
                                 </label>
                               </div>
                             </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => remove(it.tempId)}
-                              className="text-destructive shrink-0"
-                              aria-label="Remover"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            <TooltipProvider delayDuration={200}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => remove(it.tempId)}
+                                      disabled={isProtected(it)}
+                                      className={isProtected(it) ? "text-muted-foreground shrink-0" : "text-destructive shrink-0"}
+                                      aria-label={isProtected(it) ? "Bloqueado (possui respostas)" : "Remover"}
+                                    >
+                                      {isProtected(it) ? <Lock className="w-4 h-4" /> : <Trash2 className="w-4 h-4" />}
+                                    </Button>
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="left" className="text-xs">
+                                  {isProtected(it)
+                                    ? "Item já possui respostas. Para preservar o histórico, não pode ser removido."
+                                    : "Remover item"}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           </div>
                         </div>
                       )}
