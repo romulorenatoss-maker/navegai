@@ -315,7 +315,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
       const templatePayload: any = {
         nome: derivedNome,
         descricao: descricao.trim() || null,
-        tipo_execucao: taskType === "simples" ? "tarefa_simples" : "checklist_inspecao",
+        tipo_execucao: taskType === "simples" ? "simples" : "checklist_inspecao",
         setor_id: setorId || null,
         responsavel_id: avaliadoId,
         recorrencia_tipo: recorrenciaAtiva ? recorrenciaTipo : "unica",
