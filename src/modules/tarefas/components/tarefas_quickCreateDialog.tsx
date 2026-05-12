@@ -266,16 +266,8 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     return "Tarefa sem título";
   }, [nome, sections, fields]);
 
-  // Quando o responsável pelo plano de ação é desabilitado, limpa qualquer
-  // regra "gera_contingencia" que tenha sido configurada nos campos.
-  useEffect(() => {
-    if (planoAcaoEnabled) return;
-    setFields(prev => prev.map(f => {
-      if (!f.opcoes_regras?.length) return f;
-      const cleaned = f.opcoes_regras.map((o: any) => o.gera_contingencia ? { ...o, gera_contingencia: false, requer_evidencia: true } : o);
-      return { ...f, opcoes_regras: cleaned, gera_contingencia: false };
-    }));
-  }, [planoAcaoEnabled]);
+  // (Removido) cleanup que desabilitava gera_contingencia quando não havia
+  // responsável global pelo plano de ação. Agora a regra é por pergunta.
 
   // Validação do builder (modo individual em etapas):
   // cada etapa precisa de horário próprio OU todas as perguntas com horário.
