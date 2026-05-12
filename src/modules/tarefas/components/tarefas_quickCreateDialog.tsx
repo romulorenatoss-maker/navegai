@@ -909,7 +909,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
             </div>
           )}
 
-          {step === 2 && (
+          {step === 1 && (
             <div className="space-y-3">
               {horarioValidationError && (
                 <div className="flex items-start gap-2 p-3 rounded-lg border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700/40">
@@ -930,7 +930,37 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                 tipoExecucao={taskType === "simples" ? "tarefa_simples" : "etapas"}
                 requireFieldHorario={taskType !== "simples" && horarioModo === "individual"}
                 planoAcaoEnabled={planoAcaoEnabled}
+                agrupadorExtras={agrupadorExtras}
+                setAgrupadorExtras={setAgrupadorExtras}
               />
+
+              {/* Opções avançadas — título manual e descrição (recolhido) */}
+              <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button type="button" variant="ghost" size="sm" className="text-xs text-muted-foreground">
+                    <ChevronDown className={cn("w-3.5 h-3.5 mr-1 transition-transform", advancedOpen && "rotate-180")} />
+                    Opções avançadas (título manual, descrição)
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-3 pt-2 border-t border-border mt-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Título manual (opcional — sobrescreve a derivação)</Label>
+                    <Input
+                      value={nome}
+                      onChange={(e) => setNome(e.target.value)}
+                      placeholder={`Auto: "${derivedNome}"`}
+                      maxLength={120}
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Em branco → usa o nome do primeiro agrupador → primeira pergunta → "Tarefa sem título".
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Descrição (opcional)</Label>
+                    <Textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Detalhes da tarefa" rows={2} maxLength={500} />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             </div>
           )}
 
