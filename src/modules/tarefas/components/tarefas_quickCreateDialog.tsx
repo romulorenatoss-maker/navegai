@@ -302,8 +302,8 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   const create = useMutation({
     mutationFn: async () => {
       if (!profile?.id) throw new Error("Sessão inválida");
-      if (!canAdvanceStep1) throw new Error("Preencha os dados de designação");
-      if (!canAdvanceStep2) throw new Error("Adicione ao menos 1 campo com nome");
+      if (!canAdvanceStep1) throw new Error("Adicione ao menos 1 pergunta na estrutura");
+      if (!canAdvanceStep2) throw new Error("Preencha os dados de designação");
 
       // Determinar se a tarefa terá pontuação válida:
       // só pontua se houver perguntas configuradas para o aprovador responder
@@ -313,7 +313,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
 
       // 1) cria template (ad-hoc se única; rotina recorrente se ativa)
       const templatePayload: any = {
-        nome: nome.trim(),
+        nome: derivedNome,
         descricao: descricao.trim() || null,
         tipo_execucao: taskType === "simples" ? "tarefa_simples" : "checklist_inspecao",
         setor_id: setorId || null,
