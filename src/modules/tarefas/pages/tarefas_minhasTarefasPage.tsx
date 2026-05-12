@@ -223,7 +223,7 @@ export default function OperationalExecucaoPage() {
         .order("data_prevista", { ascending: true });
       if (!isAdmin) {
         // Inclui também tarefas onde sou o CRIADOR (created_by) — necessário para "Designadas" e "Validação"
-        q = q.or(`responsavel_id.eq.${profile.id},avaliador_id.eq.${profile.id},avaliado_id.eq.${profile.id},validador_contingencia_id.eq.${profile.id},created_by.eq.${profile.id}`);
+        q = q.or(`responsavel_id.eq.${profile.id},avaliador_id.eq.${profile.id},aprovador_id.eq.${profile.id},avaliado_id.eq.${profile.id},validador_contingencia_id.eq.${profile.id},created_by.eq.${profile.id}`);
       }
       const { data, error } = await q.limit(500);
       if (error) throw error;
@@ -350,7 +350,7 @@ export default function OperationalExecucaoPage() {
     a.status === "aguardando_avaliacao" && (a.avaliador_id === chipMyId || isAdmin)
   );
   const chipAprovar = filteredAssignments.filter((a: any) =>
-    a.status === "aguardando_aprovacao" && (a.avaliador_id === chipMyId || a.created_by === chipMyId || isAdmin)
+    a.status === "aguardando_aprovacao" && (a.aprovador_id === chipMyId || isAdmin)
   );
   const chipContingencias = filteredAssignments.filter((a: any) =>
     ["contingenciado", "contingencia"].includes(a.status) &&
