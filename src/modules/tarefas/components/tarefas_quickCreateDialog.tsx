@@ -142,6 +142,11 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     }
   }, [open, defaultAvaliadoId]);
 
+  // Em contexto avulsa: blindagem — recorrência sempre desligada.
+  useEffect(() => {
+    if (isAvulsa && recorrenciaAtiva) setRecorrenciaAtiva(false);
+  }, [isAvulsa, recorrenciaAtiva]);
+
   const { data: colaboradores = [] } = useQuery({
     queryKey: ["profiles_quicktask"],
     queryFn: async () => {
