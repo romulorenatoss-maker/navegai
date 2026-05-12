@@ -1,43 +1,84 @@
 /**
  * Guard central de transição de status (camada declarativa).
  *
- * Espelha VALID_TRANSITIONS do useOperationalTransition + adiciona checagem de papel.
- * O hook continua sendo o executor real. Este arquivo é apenas verificação pura
- * (sem I/O) usada para desabilitar botões/validar antes de chamar a mutation.
+ * Espelha VALID_TRANSITIONS + checagem de papel.
+ * Hook useOperationalTransition é o executor real.
+ *
+ * Adições da Fase 1 são puramente aditivas — fluxo legado intacto.
  */
 import type { OperationalRole } from "./tarefas_rbac";
+import { TASK_STATUS } from "./tarefas_statusConstants";
 
 export const VALID_TRANSITIONS: Record<string, string[]> = {
-  pendente: ["em_andamento"],
-  em_andamento: ["aguardando_avaliacao", "aguardando_validacao", "contingenciado"],
-  aguardando_avaliacao: ["em_avaliacao"],
-  em_avaliacao: ["aguardando_aprovacao", "concluida", "devolvida", "contingenciado", "reprovada"],
-  contingenciado: ["aguardando_aprovacao"],
-  aguardando_aprovacao: ["aprovada", "devolvida", "concluida"],
-  // Novo fluxo "tarefa designada": criador valida ou devolve
-  aguardando_validacao: ["aprovada", "devolvida"],
-  devolvida: ["em_andamento"],
-  concluida: ["em_andamento"],
-  aprovada: ["em_andamento"],
-  reprovada: ["em_andamento"],
-  nao_executada: ["em_andamento"],
+  // Legado
+  [TASK_STATUS.PENDENTE]: [TASK_STATUS.EM_ANDAMENTO, TASK_STATUS.AGUARDANDO_ACEITE_PRAZO, TASK_STATUS.CANCELADA],
+  [TASK_STATUS.EM_ANDAMENTO]: [
+    TASK_STATUS.AGUARDANDO_AVALIACAO,
+    TASK_STATUS.AGUARDANDO_VALIDACAO,
+    TASK_STATUS.CONTINGENCIADO,
+    TASK_STATUS.AGUARDANDO_ACEITE_PRAZO, // renegociação no meio da execução
+    TASK_STATUS.CANCELADA,                // cancelar pelo solicitante
+  ],
+  [TASK_STATUS.AGUARDANDO_AVALIACAO]: [TASK_STATUS.EM_AVALIACAO],
+  [TASK_STATUS.EM_AVALIACAO]: [
+    TASK_STATUS.AGUARDANDO_APROVACAO,
+    TASK_STATUS.CONCLUIDA,
+    TASK_STATUS.DEVOLVIDA,
+    TASK_STATUS.CONTINGENCIADO,
+    TASK_STATUS.REPROVADA,
+    TASK_STATUS.EM_PLANO_ACAO,
+  ],
+  [TASK_STATUS.CONTINGENCIADO]: [TASK_STATUS.AGUARDANDO_APROVACAO, TASK_STATUS.EM_ANDAMENTO],
+  [TASK_STATUS.AGUARDANDO_APROVACAO]: [TASK_STATUS.APROVADA, TASK_STATUS.DEVOLVIDA, TASK_STATUS.CONCLUIDA],
+  [TASK_STATUS.AGUARDANDO_VALIDACAO]: [
+    TASK_STATUS.APROVADA,
+    TASK_STATUS.CONCLUIDA,
+    TASK_STATUS.DEVOLVIDA,
+    TASK_STATUS.EM_PLANO_ACAO,
+    TASK_STATUS.AGUARDANDO_AVALIACAO,
+  ],
+  [TASK_STATUS.DEVOLVIDA]: [TASK_STATUS.EM_ANDAMENTO, TASK_STATUS.CANCELADA],
+  [TASK_STATUS.CONCLUIDA]: [TASK_STATUS.EM_ANDAMENTO],
+  [TASK_STATUS.APROVADA]: [TASK_STATUS.EM_ANDAMENTO],
+  [TASK_STATUS.REPROVADA]: [TASK_STATUS.EM_ANDAMENTO],
+  [TASK_STATUS.NAO_EXECUTADA]: [TASK_STATUS.EM_ANDAMENTO],
+
+  // Fase 1
+  [TASK_STATUS.ABERTA]: [
+    TASK_STATUS.EM_ANDAMENTO,
+    TASK_STATUS.AGUARDANDO_ACEITE_PRAZO,
+    TASK_STATUS.CANCELADA,
+  ],
+  [TASK_STATUS.AGUARDANDO_ACEITE_PRAZO]: [
+    TASK_STATUS.EM_ANDAMENTO,
+    TASK_STATUS.ABERTA,
+    TASK_STATUS.CANCELADA,
+  ],
+  [TASK_STATUS.EM_PLANO_ACAO]: [
+    TASK_STATUS.EM_ANDAMENTO,
+    TASK_STATUS.AGUARDANDO_VALIDACAO,
+  ],
+  [TASK_STATUS.REABERTA]: [TASK_STATUS.EM_ANDAMENTO],
+  [TASK_STATUS.CANCELADA]: [TASK_STATUS.EM_ANDAMENTO], // somente admin pode "des-cancelar"
 };
 
-/** Quem pode disparar cada transição de destino. ADMIN sempre permitido.
- *  CRIADOR_DESIGNANTE = quem criou a tarefa para outra pessoa (created_by). */
+/** Quem pode disparar cada transição de destino. ADMIN sempre permitido. */
 const ROLE_FOR_TARGET: Record<string, OperationalRole[]> = {
-  em_andamento:          ["EXECUTOR", "ADMIN"],
-  aguardando_avaliacao:  ["EXECUTOR", "ADMIN"],
-  aguardando_validacao:  ["EXECUTOR", "ADMIN"],
-  em_avaliacao:          ["AVALIADOR", "ADMIN"],
-  contingenciado:        ["EXECUTOR", "AVALIADOR", "ADMIN"],
-  aguardando_aprovacao:  ["AVALIADOR", "ADMIN"],
-  // aprovada agora pode vir do APROVADOR (fluxo antigo) OU do CRIADOR_DESIGNANTE (novo)
-  aprovada:              ["APROVADOR", "CRIADOR_DESIGNANTE", "ADMIN"],
-  concluida:             ["AVALIADOR", "APROVADOR", "ADMIN"],
-  // devolvida pode ser feita pelo avaliador, aprovador OU criador-designante
-  devolvida:             ["AVALIADOR", "APROVADOR", "CRIADOR_DESIGNANTE", "ADMIN"],
-  reprovada:             ["AVALIADOR", "ADMIN"],
+  [TASK_STATUS.EM_ANDAMENTO]:           ["EXECUTOR", "CRIADOR_DESIGNANTE", "ADMIN"],
+  [TASK_STATUS.AGUARDANDO_AVALIACAO]:   ["EXECUTOR", "CRIADOR_DESIGNANTE", "ADMIN"],
+  [TASK_STATUS.AGUARDANDO_VALIDACAO]:   ["EXECUTOR", "ADMIN"],
+  [TASK_STATUS.AGUARDANDO_ACEITE_PRAZO]:["EXECUTOR", "CRIADOR_DESIGNANTE", "ADMIN"],
+  [TASK_STATUS.EM_AVALIACAO]:           ["AVALIADOR", "ADMIN"],
+  [TASK_STATUS.CONTINGENCIADO]:         ["EXECUTOR", "AVALIADOR", "ADMIN"],
+  [TASK_STATUS.AGUARDANDO_APROVACAO]:   ["AVALIADOR", "ADMIN"],
+  [TASK_STATUS.APROVADA]:               ["APROVADOR", "CRIADOR_DESIGNANTE", "ADMIN"],
+  [TASK_STATUS.CONCLUIDA]:              ["AVALIADOR", "APROVADOR", "CRIADOR_DESIGNANTE", "EXECUTOR", "ADMIN"],
+  [TASK_STATUS.DEVOLVIDA]:              ["AVALIADOR", "APROVADOR", "CRIADOR_DESIGNANTE", "ADMIN"],
+  [TASK_STATUS.REPROVADA]:              ["AVALIADOR", "ADMIN"],
+  [TASK_STATUS.EM_PLANO_ACAO]:          ["CRIADOR_DESIGNANTE", "AVALIADOR", "ADMIN"],
+  [TASK_STATUS.CANCELADA]:              ["CRIADOR_DESIGNANTE", "ADMIN"], // restrição extra de status atual no service
+  [TASK_STATUS.REABERTA]:               ["CRIADOR_DESIGNANTE", "ADMIN"],
+  [TASK_STATUS.ABERTA]:                 ["EXECUTOR", "CRIADOR_DESIGNANTE", "ADMIN"],
 };
 
 export interface TransitionCheck {
