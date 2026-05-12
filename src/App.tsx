@@ -17,9 +17,10 @@ import PerguntasPage from "./pages/PerguntasPage";
 import OperationalCadastroPage from "./modules/tarefas/pages/tarefas_rotinasPage";
 import OperationalExecucaoPage from "./modules/tarefas/pages/tarefas_minhasTarefasPage";
 import OperationalGestaoPage from "./modules/tarefas/pages/tarefas_gestaoPage";
-import OperationalAvaliacaoPage from "./modules/tarefas/pages/tarefas_avaliacaoPage";
-import OperationalAprovacaoPage from "./modules/tarefas/pages/tarefas_aprovacaoPage";
-import OperationalContingenciasPage from "./modules/tarefas/pages/tarefas_contingenciasPage";
+// Fase B: páginas legadas mantidas no repo mas não roteadas (rotas viraram wrappers)
+// import OperationalAvaliacaoPage from "./modules/tarefas/pages/tarefas_avaliacaoPage";
+// import OperationalAprovacaoPage from "./modules/tarefas/pages/tarefas_aprovacaoPage";
+// import OperationalContingenciasPage from "./modules/tarefas/pages/tarefas_contingenciasPage";
 
 import CadastroEnderecosPage from "./pages/CadastroEnderecosPage";
 import ClientesPage from "./pages/ClientesPage";
