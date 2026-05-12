@@ -37,7 +37,7 @@ interface Props {
 export function TarefasBuilderWizard(props: Props) {
   const {
     isEditing, saving, form, set, sections, setSections, fields, setFields,
-    steps, setSteps, checkItems, setCheckItems, setores, colaboradores,
+    steps, setSteps, checkItems, setCheckItems, protectedCheckIds, setores, colaboradores,
     templateId, onCancel, onSubmit,
   } = props;
 
