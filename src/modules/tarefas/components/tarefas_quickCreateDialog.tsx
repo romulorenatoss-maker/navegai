@@ -436,6 +436,8 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
           aprovador_exige_evidencia_nao: f.aprovador_exige_evidencia_nao,
           aprovador_tipos_evidencia: f.aprovador_tipos_evidencia,
         })),
+        // Fase 1B.3 — Fluxo Operacional para tarefa avulsa (sem migration; lido em runtime).
+        ...(isAvulsa ? { solicitacao_config: solicitacaoConfig } : {}),
       };
 
       // 4) cria assignment imediato para o avaliado (executor + recebe nota)
