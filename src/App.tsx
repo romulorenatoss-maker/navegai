@@ -29,7 +29,7 @@ import RelatoriosPage from "./pages/RelatoriosPage";
 import RelatorioTarefasPage from "./modules/tarefas/pages/tarefas_relatoriosPage";
 import DesempenhoColaboradorPage from "./pages/DesempenhoColaboradorPage";
 import DesempenhoOperacionalPage from "./modules/tarefas/pages/tarefas_desempenhoPage";
-import DashboardTempoAvaliacoes from "./modules/tarefas/pages/tarefas_tempoAvaliacoesPage";
+import DashboardTempoAvaliacoes from "./modules/avaliacoes/pages/avaliacoes_tempoAvaliacoesPage";
 
 import LeadsPage from "./pages/LeadsPage";
 import FilaLeadsPage from "./pages/FilaLeadsPage";
