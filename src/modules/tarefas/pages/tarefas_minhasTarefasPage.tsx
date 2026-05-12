@@ -122,6 +122,14 @@ function RenderVisao({ visao, buckets, sorted, openAccordion, setOpenAccordion, 
   if (visao === "executor") {
     return (
       <>
+        {buckets.aguardandoAceite.length > 0 && (
+          <Section id="aguardandoAceite" title="Aguardando Aceite" count={buckets.aguardandoAceite.length}
+            color="#eab308" badgeBg="bg-yellow-500/15" badgeText="text-yellow-700 dark:text-yellow-400"
+            icon={<Hourglass className="w-4 h-4" style={{ color: "#eab308" }} />}
+            openAccordion={openAccordion} setOpenAccordion={setOpenAccordion}>
+            {listOrEmpty(sorted(buckets.aguardandoAceite), openExecution, "Nada aguardando aceite.")}
+          </Section>
+        )}
         <Section id="hoje" title="Tarefas de Hoje" count={hojeFiltrado.length}
           color="#f97316" badgeBg="bg-orange-500/15" badgeText="text-orange-700 dark:text-orange-400"
           icon={<CalendarClock className="w-4 h-4" style={{ color: "#f97316" }} />}
