@@ -41,7 +41,8 @@ const LEGACY_PATH_MAP: Record<string, string> = {
   // outros legados
   "/relatorios/tarefas": "/tarefas/relatorios",
   "/desempenho/operacional": "/tarefas/desempenho",
-  "/desempenho/tempo-avaliacoes": "/tarefas/tempo-avaliacoes",
+  "/desempenho/tempo-avaliacoes": "/avaliacoes/tempo-avaliacoes",
+  "/tarefas/tempo-avaliacoes": "/avaliacoes/tempo-avaliacoes",
 };
 
 function normalizeAllowedScreens(paths: string[]) {
