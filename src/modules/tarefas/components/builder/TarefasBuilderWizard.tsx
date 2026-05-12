@@ -78,6 +78,14 @@ export function TarefasBuilderWizard(props: Props) {
     <div className="flex flex-col h-full min-h-0">
       <BuilderStepper current={current} completed={completed} onJump={jump} isEditing={isEditing} />
 
+      {draftToRestore && onRestoreDraft && onDiscardDraft && (
+        <DraftRestoreBanner
+          savedAt={draftToRestore.savedAt}
+          onRestore={onRestoreDraft}
+          onDiscard={onDiscardDraft}
+        />
+      )}
+
       <div className="flex-1 overflow-y-auto px-1 py-4 md:px-2">
         {current === "tipo" && (
           <div className="text-center py-8">
