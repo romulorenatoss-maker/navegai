@@ -1,7 +1,8 @@
-import { Clock, AlertTriangle, RotateCcw, User as UserIcon, Activity } from "lucide-react";
+import { Clock, AlertTriangle, RotateCcw, User as UserIcon, Activity, Hourglass, MessageSquare, Ban, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { computeSla, isSemMovimento, type AssignmentSla } from "@/modules/tarefas/services/tarefas_bucketize";
+import { computeSla, isSemMovimento, isLate, isLimiteRenegociacaoExcedido, type AssignmentSla } from "@/modules/tarefas/services/tarefas_bucketize";
 import { STATUS_CONFIG } from "@/modules/tarefas/hooks/tarefas_useScoring";
+import { TASK_STATUS } from "@/modules/tarefas/services/tarefas_statusConstants";
 
 function fmtRemaining(ms: number | null): string {
   if (ms === null) return "—";
