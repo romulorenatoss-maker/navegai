@@ -350,13 +350,18 @@ export default function OperationalExecucaoPage() {
   };
   const chipExecutar = filteredAssignments.filter((a: any) =>
     (a.responsavel_id === chipMyId || isAdmin) &&
-    ["pendente", "em_andamento", "devolvida"].includes(a.status)
+    ["pendente", "em_andamento", "devolvida", "reaberta"].includes(a.status)
   );
   const chipAvaliar = filteredAssignments.filter((a: any) =>
-    a.status === "aguardando_avaliacao" && (a.avaliador_id === chipMyId || isAdmin)
+    ["aguardando_avaliacao", "em_avaliacao"].includes(a.status) && (a.avaliador_id === chipMyId || isAdmin)
   );
   const chipAprovar = filteredAssignments.filter((a: any) =>
     a.status === "aguardando_aprovacao" && (a.aprovador_id === chipMyId || isAdmin)
+  );
+  // Plano de Ação (B3): correções pendentes do executor — reprovada/devolvida (NÃO inclui contingências, que têm chip próprio)
+  const chipPlanoAcao = filteredAssignments.filter((a: any) =>
+    ["reprovada", "devolvida"].includes(a.status) &&
+    (a.responsavel_id === chipMyId || isAdmin)
   );
   const chipContingencias = filteredAssignments.filter((a: any) =>
     ["contingenciado", "contingencia"].includes(a.status) &&
@@ -369,6 +374,7 @@ export default function OperationalExecucaoPage() {
     executar: chipExecutar.length,
     avaliar: chipAvaliar.length,
     aprovar: chipAprovar.length,
+    plano_acao: chipPlanoAcao.length,
     contingencias: chipContingencias.length,
     atrasadas: chipAtrasadas.length,
     concluidas: chipConcluidas.length,
@@ -377,6 +383,7 @@ export default function OperationalExecucaoPage() {
     chipFilter === "executar" ? chipExecutar :
     chipFilter === "avaliar" ? chipAvaliar :
     chipFilter === "aprovar" ? chipAprovar :
+    chipFilter === "plano_acao" ? chipPlanoAcao :
     chipFilter === "contingencias" ? chipContingencias :
     chipFilter === "atrasadas" ? chipAtrasadas :
     chipFilter === "concluidas" ? chipConcluidas : [];
