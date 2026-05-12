@@ -367,6 +367,8 @@ export default function OperationalCadastroPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["operational_templates"] });
       toast.success(editingId ? "Template atualizado (versão incrementada)." : "Template criado.");
+      clearDraft(editingId);
+      setPendingDraft(null);
       closeDialog();
     },
     onError: (e: any) => toast.error(e.message),
