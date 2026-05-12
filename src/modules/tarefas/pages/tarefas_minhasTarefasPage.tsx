@@ -234,9 +234,6 @@ function RenderVisao({ visao, buckets, sorted, openAccordion, setOpenAccordion, 
   if (visao === "designador") {
     return (
       <>
-  if (visao === "designador") {
-    return (
-      <>
         {buckets.respostaRecebida.length > 0 && (
           <Section id="respostaRecebida" title="Resposta Recebida" count={buckets.respostaRecebida.length}
             color="#10b981" badgeBg="bg-emerald-500/15" badgeText="text-emerald-700 dark:text-emerald-400"
