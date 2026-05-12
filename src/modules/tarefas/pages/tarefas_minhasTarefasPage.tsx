@@ -471,9 +471,10 @@ export default function OperationalExecucaoPage() {
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [quickTaskOpen, setQuickTaskOpen] = useState(false);
-  const [taskTypePickerOpen, setTaskTypePickerOpen] = useState(false);
-  const [pickedTaskType, setPickedTaskType] = useState<TaskType>("simples");
-  const [pickedSetorId, setPickedSetorId] = useState<string>("");
+  // (Removido) seletor "Tipo de tarefa" — abre o builder unificado direto.
+  // Mantemos defaults para o QuickTaskDialog (taskType="inspecao" cobre simples + por etapas).
+  const [pickedTaskType] = useState<TaskType>("inspecao");
+  const [pickedSetorId] = useState<string>("");
   const isMobile = useIsMobile();
   // Visão ativa (executor/avaliador/aprovador/designador/setor/admin) — dinâmica por contexto real
   const [visao, setVisao] = useState<VisaoKey>("executor");
