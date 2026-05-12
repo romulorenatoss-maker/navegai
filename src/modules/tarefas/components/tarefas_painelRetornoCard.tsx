@@ -39,7 +39,12 @@ interface Props {
 export function PainelRetornoCard({ assignment, onClick }: Props) {
   const sla = computeSla(assignment);
   const sem = isSemMovimento(assignment);
-  const cont = ["contingenciado", "contingencia"].includes(assignment.status);
+  const cont = [TASK_STATUS.CONTINGENCIADO, "contingencia"].includes(assignment.status);
+  const late = isLate(assignment);
+  const limiteExc = isLimiteRenegociacaoExcedido(assignment);
+  const isRenegPend = assignment.status === TASK_STATUS.AGUARDANDO_ACEITE_PRAZO;
+  const isAguardValid = assignment.status === TASK_STATUS.AGUARDANDO_VALIDACAO;
+  const isRespondida = isAguardValid && !assignment.seen_by_solicitante;
   const statusConf = STATUS_CONFIG[assignment.status];
   const responsavel = assignment.profiles?.nome || "—";
   const titulo = assignment.template_snapshot?.nome || assignment.operational_templates?.nome || "Tarefa";
