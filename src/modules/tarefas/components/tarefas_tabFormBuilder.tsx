@@ -50,11 +50,8 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
   };
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<FieldForm | null>(null);
-  const [quickAddSectionId, setQuickAddSectionId] = useState<string | null>(null);
+  const [editingIsNew, setEditingIsNew] = useState(false);
   const [forceAdvanced, setForceAdvanced] = useState(false);
-  // Simple-mode quick add (tarefa simples)
-  const [simpleLabel, setSimpleLabel] = useState("");
-  const [simpleTipo, setSimpleTipo] = useState<string>("texto");
 
   const addSection = () => {
     const s = defaultSection(sections.length);
