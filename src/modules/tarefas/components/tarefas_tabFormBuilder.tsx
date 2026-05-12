@@ -283,7 +283,7 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
             onClick={() => { setForceAdvanced(true); addSection(); }}
             title="Crie seções/formulários para agrupar perguntas"
           >
-            <Plus className="w-3.5 h-3.5 mr-1" /> Nova seção (avançado)
+            <Plus className="w-3.5 h-3.5 mr-1" /> Novo Grupo/Etapa (avançado)
           </Button>
         </div>
 
