@@ -15,6 +15,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import QuickFieldDialog from "@/modules/tarefas/components/tarefas_quickFieldDialog";
 
+/**
+ * Configuração extra por agrupador (etapas) — vai para template_snapshot.agrupadores_config[].
+ * Responsavel/status reservados, não ativados nesta fase.
+ */
+export interface AgrupadorExtra {
+  sla_horas: number | null;
+  observacao: string;
+}
+
 interface Props {
   sections: SectionForm[];
   setSections: React.Dispatch<React.SetStateAction<SectionForm[]>>;
@@ -26,9 +35,19 @@ interface Props {
   requireFieldHorario?: boolean;
   /** Propaga para FieldDetailDialog: habilita "gera plano de ação" nas opções. */
   planoAcaoEnabled?: boolean;
+  /** Configurações extras por agrupador (somente etapas). */
+  agrupadorExtras?: Record<string, AgrupadorExtra>;
+  setAgrupadorExtras?: React.Dispatch<React.SetStateAction<Record<string, AgrupadorExtra>>>;
 }
 
-export function TabFormBuilder({ sections, setSections, fields, setFields, setores = [], tipoExecucao = "checklist_inspecao", requireFieldHorario = false, planoAcaoEnabled = true }: Props) {
+export function TabFormBuilder({ sections, setSections, fields, setFields, setores = [], tipoExecucao = "checklist_inspecao", requireFieldHorario = false, planoAcaoEnabled = true, agrupadorExtras = {}, setAgrupadorExtras }: Props) {
+  const updateAgrupadorExtra = (tempId: string, patch: Partial<AgrupadorExtra>) => {
+    if (!setAgrupadorExtras) return;
+    setAgrupadorExtras(prev => ({
+      ...prev,
+      [tempId]: { sla_horas: prev[tempId]?.sla_horas ?? null, observacao: prev[tempId]?.observacao ?? "", ...patch },
+    }));
+  };
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<FieldForm | null>(null);
   const [quickAddSectionId, setQuickAddSectionId] = useState<string | null>(null);
