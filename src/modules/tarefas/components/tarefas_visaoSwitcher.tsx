@@ -1,3 +1,10 @@
+/**
+ * VisaoSwitcher — chips/select de visões disponíveis.
+ *
+ * Fase 1B.1: agnóstico aos novos buckets — counts derivados em
+ * `availableVisoes()` (tarefas_bucketize.ts). Nenhuma string de status
+ * referenciada aqui; a fonte de verdade é o núcleo de bucketize.
+ */
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { VisaoMeta, VisaoKey } from "@/modules/tarefas/services/tarefas_bucketize";
