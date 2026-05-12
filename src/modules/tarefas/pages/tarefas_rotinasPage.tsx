@@ -308,11 +308,30 @@ export default function OperationalCadastroPage() {
       }
 
       // Sync check_items (preserve existing ids → preserva respostas)
+      // RISCO: operational_execution_check_answers tem FK ON DELETE CASCADE → deletar item apaga histórico.
+      // Estratégia (sem migration): só deletar fisicamente itens SEM respostas.
       if (editingId) {
         const { data: existingChks } = await (supabase as any)
           .from("operational_template_check_items").select("id").eq("template_id", templateId);
         const keepIds = new Set(checkItems.filter(c => c.id).map(c => c.id as string));
-        const toDelete = (existingChks || []).filter((c: any) => !keepIds.has(c.id)).map((c: any) => c.id);
+        const candidatesToDelete = (existingChks || [])
+          .filter((c: any) => !keepIds.has(c.id))
+          .map((c: any) => c.id);
+        let toDelete: string[] = candidatesToDelete;
+        if (candidatesToDelete.length > 0) {
+          const { data: answered } = await (supabase as any)
+            .from("operational_execution_check_answers")
+            .select("check_item_id")
+            .in("check_item_id", candidatesToDelete);
+          const answeredSet = new Set((answered || []).map((a: any) => a.check_item_id));
+          toDelete = candidatesToDelete.filter((id: string) => !answeredSet.has(id));
+          const blocked = candidatesToDelete.length - toDelete.length;
+          if (blocked > 0) {
+            toast.warning(
+              `${blocked} item(s) do checklist possuem respostas e foram preservados (não removidos) para manter o histórico.`
+            );
+          }
+        }
         if (toDelete.length > 0) {
           await (supabase as any).from("operational_template_check_items").delete().in("id", toDelete);
         }
