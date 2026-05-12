@@ -1194,7 +1194,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
             <Button
               type="button"
               onClick={() => setStep((step + 1) as Step)}
-              disabled={(step === 1 && !canAdvanceStep1) || (step === 2 && !canAdvanceStep2)}
+              disabled={(step === 1 && !canAdvanceStep2) || (step === 2 && !canAdvanceStep1)}
             >
               Avançar <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
