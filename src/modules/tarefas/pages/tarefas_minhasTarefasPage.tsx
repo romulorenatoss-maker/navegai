@@ -187,6 +187,21 @@ export default function OperationalExecucaoPage() {
   const [pickedSetorId, setPickedSetorId] = useState<string>("");
   const [chipFilter, setChipFilter] = useState<OperationalChipFilter>("todas");
   const isMobile = useIsMobile();
+  // Fase B: leitura do query param ?chip= para wrappers das rotas legadas
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const chipParam = searchParams.get("chip");
+    const valid: OperationalChipFilter[] = ["todas", "executar", "avaliar", "aprovar", "contingencias", "atrasadas", "concluidas"];
+    if (chipParam && valid.includes(chipParam as OperationalChipFilter)) {
+      setChipFilter(chipParam as OperationalChipFilter);
+      // Limpa o query param depois de aplicar para não persistir no histórico/refresh
+      const next = new URLSearchParams(searchParams);
+      next.delete("chip");
+      next.delete("from");
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const effectiveFilterProfileId = isAdmin && filterResponsavel !== "__all" ? filterResponsavel : profile?.id;
 
   const { data: allProfilesRaw = [] } = useQuery({
