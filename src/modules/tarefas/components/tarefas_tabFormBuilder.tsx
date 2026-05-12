@@ -305,16 +305,16 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-foreground">Formulários e Campos</p>
+        <p className="text-sm font-medium text-foreground">Estrutura da Tarefa — agrupadores e perguntas</p>
         <Button type="button" variant="outline" size="sm" onClick={addSection}>
-          <Plus className="w-3.5 h-3.5 mr-1" /> Novo Formulário
+          <Plus className="w-3.5 h-3.5 mr-1" /> Novo Grupo/Etapa
         </Button>
       </div>
 
       {sections.length === 0 && (
         <div className="text-center py-8 text-muted-foreground border border-dashed border-border rounded-lg">
-          <p className="text-sm">Nenhum formulário criado.</p>
-          <p className="text-caption">Clique em "Novo Formulário" para começar.</p>
+          <p className="text-sm">Nenhum agrupador criado.</p>
+          <p className="text-caption">Clique em "Novo Grupo/Etapa" para começar.</p>
         </div>
       )}
 
