@@ -452,7 +452,7 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                               variant="outline"
                               size="sm"
                               className="w-full mt-2"
-                              onClick={() => setQuickAddSectionId(section.tempId)}
+                              onClick={() => startNewField(section.tempId)}
                               disabled={!section.nome.trim()}
                               title={!section.nome.trim() ? "Defina o nome da etapa antes de adicionar campos" : undefined}
                             >
