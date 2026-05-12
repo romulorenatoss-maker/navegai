@@ -87,9 +87,10 @@ const App = () => (
               <Route path="/tarefas/rotinas" element={<OperationalCadastroPage />} />
               <Route path="/tarefas/minhas" element={<OperationalExecucaoPage />} />
               <Route path="/tarefas/gestao" element={<OperationalGestaoPage />} />
-              <Route path="/tarefas/avaliacao" element={<OperationalAvaliacaoPage />} />
-              <Route path="/tarefas/aprovacao" element={<OperationalAprovacaoPage />} />
-              <Route path="/tarefas/contingencias" element={<OperationalContingenciasPage />} />
+              {/* Fase B: rotas legadas viram wrappers que abrem /tarefas/minhas com chip pré-selecionado */}
+              <Route path="/tarefas/avaliacao" element={<Navigate to="/tarefas/minhas?chip=avaliar&from=avaliacao" replace />} />
+              <Route path="/tarefas/aprovacao" element={<Navigate to="/tarefas/minhas?chip=aprovar&from=aprovacao" replace />} />
+              <Route path="/tarefas/contingencias" element={<Navigate to="/tarefas/minhas?chip=contingencias&from=contingencias" replace />} />
               {/* Redirects legados (/operacional/* e /checklists/*) */}
               <Route path="/operacional/cadastro" element={<Navigate to="/tarefas/rotinas" replace />} />
               <Route path="/operacional/execucao" element={<Navigate to="/tarefas/minhas" replace />} />
