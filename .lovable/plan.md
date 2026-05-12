@@ -1,97 +1,72 @@
-## Causa raiz
 
-Hoje, no `tarefas_quickCreateDialog.tsx`:
-- A etapa **Designação** só expõe o toggle **Aprovador**. O state `requerValidacao` (que mapeia para `avaliador_profile_id`) existe mas **não tem UI** — sempre fica `false`. Resultado: a tarefa nunca tem "avaliador conferente", e o que se chama de "Aprovador" hoje mistura os dois papéis.
-- A etapa **Prazo & Notas** sempre renderiza o bloco de pontuação (perguntas automáticas + tabela de penalidades), apenas esmaecido (`opacity-50`) quando não há perguntas de aprovador. O bloco aparece mesmo sem aprovador/nota configurados.
-- Texto de ajuda do Aprovador diz "Valida a nota final" — confunde com "valida execução".
+## Causa / contexto
 
-## Arquivos impactados
+Você pediu uma limpeza ampla do módulo Tarefas alinhando ao novo conceito (conformidade por item, plano de ação por pergunta, builder único). Antes de aplicar você pediu explicitamente para eu confirmar **o que será removido**, **quais arquivos serão alterados**, **o que fica só por compatibilidade** e **como o plano de ação por item será representado**. Esta é a leitura prévia.
 
-Apenas frontend, presentation/UX. Sem banco, sem migration, sem RPC, sem trigger.
+## Arquivos impactados (somente UI/presentation; sem banco/RPC/trigger)
 
-- `src/modules/tarefas/components/tarefas_quickCreateDialog.tsx`
-  - Adicionar bloco UI **Avaliador** (toggle + Individual/Setor) usando o state existente `requerValidacao / validadorMode / validadorId / validadorSetorId` (já cabeado no payload — linhas 333‑334, 488‑492).
-  - Renomear/reescrever labels do bloco **Aprovador** para deixar claro que é "aprovação final + pontuação".
-  - Tornar a etapa 3 condicional: bloco de pontuação só renderiza se `requerAprovacao || temPerguntasAprovador || habilitarPerguntasAutomaticas`. Caso contrário mostrar apenas o card de Prazo/SLA operacional já existente acima.
-  - Aviso "Tarefa sem pontuação" só aparece quando o usuário **ativou** Aprovador mas não configurou perguntas (e não em todo caso sem aprovador).
-  - Texto novo dos toggles, conforme regra oficial:
-    - Avaliador: "Quem vai conferir se a tarefa foi feita corretamente?" / ações: confirmar, devolver com observação, liberar.
-    - Aprovador: "Quem vai aprovar e pontuar esta tarefa?" / ações: aprovar, reprovar, aplicar nota e penalidades.
-  - Resumo final (linha ~1123) passa a listar Avaliador e Aprovador separadamente.
+**Alterar (UI/regra do builder):**
+- `src/modules/tarefas/components/tarefas_quickCreateDialog.tsx` — bloco principal a limpar.
+- `src/modules/tarefas/components/tarefas_tabFormBuilder.tsx` — habilitar config por pergunta: `gera_contingencia`, `exige_evidencia`, `gera_plano_acao` (campo no form da pergunta), `bloqueia_conclusao`, `responsavel_plano_acao_id` (herda da designação).
+- `src/modules/tarefas/components/tarefas_quickFieldDialog.tsx` — adicionar/expor toggles por pergunta acima.
+- `src/modules/tarefas/components/builder/StepResumo.tsx` — refletir avaliador/aprovador/itens com NC/PA.
 
-Nada muda em:
-- `tarefas_tabFormBuilder.tsx` (builder)
-- `tarefas_service.ts`, `tarefas_bucketize.ts`, `tarefas_rbac.ts`, `drawerActionRouter`
-- Hooks de execução/avaliação/aprovação (`tarefas_useAssignmentExecution`, `useAssignmentReview`, `useApprovalFlow`)
-- Trigger `enforce_*_distinto_avaliado` (já garante que avaliador ≠ avaliado e aprovador ≠ avaliado, então o novo bloco "Avaliador" respeita as regras existentes do banco).
+**Não alterar agora (apenas leitura/compatibilidade):**
+- `tarefas_solicitacaoConfig.ts` — schema mantido; deixamos os defaults antigos para não quebrar tarefas avulsas já criadas (`exige_aceite_executor`, `exige_validacao_solicitante`, `permite_devolver`, `permite_plano_acao`, `renegociacao`). **Apenas escondemos da UI** no QuickCreateDialog; ainda gravados com defaults para legado de leitura/execução.
+- `tarefas_useContingencyManagement.ts`, `tarefas_embeddedContingencyPanel.tsx`, `tarefas_contingencyDetailDialog.tsx`, `painels/*` — execução/avaliação/aprovação **não muda**. Seguem operando NC e PA por item via `field_id` (já é o modelo atual).
+- `tarefas_bucketize.ts`, `tarefas_rbac.ts`, `tarefas_service.ts`, hooks `useAssignmentExecution/Review/ApprovalFlow` — não tocados.
+- `TarefasBuilderWizard.tsx` (rotinas) — apenas confirmação de que continua usando os mesmos componentes; sem refactor agora.
 
-## Mudanças concretas
+## Regras antigas a remover **da UI** do QuickCreateDialog
 
-### 1. Etapa 2 — Designação (quebra em três blocos visuais)
+1. Toggle global "Plano de ação" no nível da tarefa (linhas ~610–650 — `requerPlanoAcao`/`planoAcaoMode`/`planoAcaoId/Setor`). Move-se para **por pergunta** no FormBuilder. O state continua existindo apenas como **fallback de responsável padrão** (herdado pela pergunta quando a pergunta não definir o seu próprio).
+2. Bloco "Fluxo Operacional" da avulsa que expõe `exige_aceite_executor`, `exige_validacao_solicitante`, `permite_devolver`, `permite_renegociacao` e similares (linhas ~840–900). Some da UI; gravamos `solicitacao_config` com defaults atuais para não quebrar leitura.
+3. Perguntas automáticas de pontuação quando **não há aprovador nem nota ativa** (já estava parcialmente condicional via `mostrarPontuacao` — reforçar e remover qualquer ramo que ainda renderize esmaecido).
+4. Labels/textos que sugerem "plano de ação da tarefa". Substituir por "plano de ação por item".
+5. `permite_devolucao_parcial` e `bloquear_fechamento_com_contingencia` continuam sendo gravados como `false` no payload (já hoje), mas removemos qualquer label residual.
 
-```text
-[ Responsáveis ]
-  - Setor / Avaliado / Plano de Ação (já existe)
+## Por pergunta (FormBuilder)
 
-[ Avaliação técnica (opcional) ]   ← NOVO bloco UI usando requerValidacao
-  Switch "Quem confere a execução?"
-  Texto: "Confere se a tarefa foi feita corretamente.
-          Pode confirmar, devolver com observação ou solicitar ajuste.
-          NÃO aplica nota."
-  Individual | Setor → validadorId / validadorSetorId
-  (validadorOptions já filtra: nunca o próprio avaliado)
+Expor por pergunta no editor (`tarefas_quickFieldDialog`):
+- `exige_evidencia` + `tipo_evidencia` (já existem).
+- `gera_contingencia` (já existe; exibir explicitamente).
+- `gera_plano_acao` (novo flag local, gravado em `field.config_extra.gera_plano_acao` do snapshot — sem migration).
+- `bloqueia_conclusao` (novo flag em `field.config_extra.bloqueia_conclusao`).
+- `responsavel_plano_acao_id` por pergunta (opcional; default = herdar da designação).
 
-[ Aprovação final e pontuação (opcional) ]   ← rótulo reescrito
-  Switch "Quem aprova e pontua?"
-  Texto: "Faz a aprovação final, aplica nota e penalidades.
-          Não pode ser o próprio avaliado."
-  Individual | Setor → aprovadorId / aprovadorSetorId
-```
+Snapshot da pergunta passa a carregar esses campos em `template_snapshot.sections[].fields[].config_extra` — estrutura JSON já tolerada pelo backend.
 
-### 2. Etapa 3 — Prazo & Notas (renderização condicional)
+## Designação primeiro
 
-Critério de exibição do bloco de pontuação:
+Já foi aplicado (etapa 1 = Designação, etapa 2 = Estrutura, etapa 3 = Prazo & Notas). Mantido.
 
-```ts
-const mostrarPontuacao =
-  requerAprovacao
-  || temPerguntasAprovador
-  || habilitarPerguntasAutomaticas;
-```
+## Prazo / SLA por agrupador
 
-- Se `mostrarPontuacao === false` → renderizar apenas:
-  - Card de Prazo / SLA operacional (já existe nessa etapa);
-  - Mensagem informativa: "Esta tarefa não terá nota nem aprovação. Para habilitar pontuação, ative *Aprovação final e pontuação* na etapa Designação."
-- Se `mostrarPontuacao === true` → mantém o bloco atual (perguntas automáticas + tabela de pontuação) sem alterações funcionais.
+Já existe via `template_snapshot.agrupadores_config[]` (Etapa anterior). Sem mudanças.
 
-### 3. Resumo / payload
+## Compatibilidade
 
-- Nenhuma mudança de payload: campos `avaliador_*` e `aprovador_*` continuam separados como já estão; o builder UI agora apenas torna o `avaliador_*` controlável pelo usuário.
-- `pontuacaoValida`, `aprovacaoAtiva`, `requer_aprovacao_gestor`, `modo_pontuacao`, `penalidade_*` → mantidos como hoje.
-- Resumo da revisão final passa a mostrar duas linhas: **Avaliador:** … / **Aprovador:** …
+- Tarefas antigas com `solicitacao_config` continuam sendo lidas pelos painéis existentes (parser tolerante).
+- Tarefas antigas com `requer_planoAcao` global continuam funcionando porque `tarefas_useContingencyManagement` lê `responsavel_contingencia_id` do assignment.
+- Novas tarefas: plano de ação nasce no item; o `responsavel_contingencia_id` da assignment passa a ser o "responsável padrão" (herdado da designação) e cada item pode sobrescrever via `config_extra.responsavel_plano_acao_id`.
 
-## Validação após aplicar
+## O que NÃO será feito
 
-- Sem aprovador e sem avaliador → cria tarefa simples sem nota; etapa 3 só mostra prazo.
-- Só com avaliador → tarefa entra em fila do avaliador para conferência (status já existente), sem pontuação.
-- Só com aprovador → comportamento atual de pontuação preservado.
-- Avaliador + aprovador → fluxo completo (executor → conferência → aprovação/nota).
-- Trigger do banco continua bloqueando avaliador = avaliado e aprovador = avaliado.
-- `tsc --noEmit` limpo.
+- Nenhuma migration, RPC, trigger, RLS.
+- Nenhuma alteração em execução/avaliação/aprovação/bucketize/RBAC/drawer.
+- Nenhum builder paralelo.
+- Não unifico agora `TarefasBuilderWizard` (rotinas) com o QuickCreate — eles já usam o mesmo `TabFormBuilder`. A unificação completa exigiria refactor maior; fora do escopo desta limpeza.
 
-## Entregáveis
+## Riscos
 
-ZIP com:
-- `tarefas_quickCreateDialog.tsx` alterado
-- `diff_alteracao.md`
-- `manifest_arquivos.md`
-- `checklist_validacao.md`
-- `rollback.md`
-- `mapa_avaliador_vs_aprovador.md`
+- Esconder toggles do "Fluxo Operacional" da avulsa pode confundir quem usava `exige_aceite_executor=false`. Mitigação: defaults atuais preservados no JSON.
+- Adicionar `config_extra` por pergunta exige que `tabFormBuilder`/`quickFieldDialog` passem o objeto adiante no save do snapshot. Vou verificar o caminho do save antes de tocar.
 
-## Confirmação necessária
+## Confirme antes de eu aplicar
 
-Aplico exatamente esse escopo? Em particular confirme:
-1. **Avaliador** vira um bloco UI novo controlado pelo usuário (estado `requerValidacao` já existe e já é gravado em `avaliador_profile_id/setor_id`). OK?
-2. Bloco de pontuação some completamente quando não houver aprovador nem perguntas automáticas (não mais "esmaecido"). OK?
-3. Sem mexer em hooks de execução/avaliação/aprovação nem em painéis (`PainelRetornoCard`, `drawerActionRouter`) — só labels/condicional no QuickCreateDialog. OK?
+1. **OK remover da UI** o bloco global "Plano de ação" da tarefa, mantendo o state apenas como fallback de responsável padrão herdado pela pergunta?
+2. **OK esconder da UI** o bloco "Fluxo Operacional" (aceite/validação/devolução/renegociação) da avulsa, **mantendo** os defaults gravados em `solicitacao_config` para compatibilidade?
+3. **OK adicionar por pergunta** os campos `gera_plano_acao`, `bloqueia_conclusao`, `responsavel_plano_acao_id` em `config_extra` do snapshot (sem migration)?
+4. **OK não unificar agora** `TarefasBuilderWizard` (rotinas) com o QuickCreate — apenas garantir que ambos usam o mesmo `TabFormBuilder` (já usam)?
+
+Responda 1–4 (ou ajustes) que aplico em uma única passagem com o ZIP solicitado.
