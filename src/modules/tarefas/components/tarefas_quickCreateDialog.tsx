@@ -251,11 +251,18 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     || (aprovadorMode === "individual" && !!aprovadorId && aprovadorId !== avaliadoId && (!isSelfTask || aprovadorId !== profile?.id))
     || (aprovadorMode === "setor" && !!aprovadorSetorId);
 
-  const canAdvanceStep1 = nome.trim().length > 0
-    && !!avaliadoId
-    && !!dataPrevista
-    && planoAcaoOk
-    && aprovadorOk;
+  // Derivação automática do título da tarefa.
+  // Prioridade: override manual (nome) → primeiro agrupador → primeira pergunta → fallback.
+  const derivedNome = useMemo(() => {
+    const t = nome.trim();
+    if (t) return t;
+    const s0 = sections[0]?.nome?.trim();
+    if (s0 && s0 !== "Itens da tarefa") return s0;
+    const f0 = fields[0]?.label?.trim();
+    if (f0) return f0;
+    if (s0) return s0; // "Itens da tarefa" como último recurso de seção
+    return "Tarefa sem título";
+  }, [nome, sections, fields]);
 
   // Quando o responsável pelo plano de ação é desabilitado, limpa qualquer
   // regra "gera_contingencia" que tenha sido configurada nos campos.
@@ -268,9 +275,8 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     }));
   }, [planoAcaoEnabled]);
 
-  // Validação Step 2:
-  // - precisa ter pelo menos 1 campo
-  // - se modo individual: cada etapa precisa ter horário PRÓPRIO OU TODAS as perguntas dessa etapa precisam ter horário (em validacao.horario_inicio/horario_fim)
+  // Validação do builder (modo individual em etapas):
+  // cada etapa precisa de horário próprio OU todas as perguntas com horário.
   const horarioValidationError = useMemo(() => {
     if (taskType === "simples" || horarioModo === "global") return null;
     for (const sec of sections) {
@@ -286,7 +292,12 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     return null;
   }, [sections, fields, horarioModo, taskType]);
 
-  const canAdvanceStep2 = fields.length > 0 && !horarioValidationError;
+  // Step 1 = Estrutura (builder). Step 2 = Designação. Step 3 = Prazos & Notas.
+  const canAdvanceStep1 = fields.length > 0 && !horarioValidationError;
+  const canAdvanceStep2 = !!avaliadoId
+    && !!dataPrevista
+    && planoAcaoOk
+    && aprovadorOk;
 
   const create = useMutation({
     mutationFn: async () => {
