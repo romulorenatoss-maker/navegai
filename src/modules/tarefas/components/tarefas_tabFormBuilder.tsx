@@ -180,16 +180,6 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
     !forceAdvanced &&
     sections.length <= 1;
 
-  const SIMPLE_TIPOS: { value: string; label: string }[] = [
-    { value: "texto", label: "Texto livre" },
-    { value: "sim_nao", label: "Sim / Não" },
-    { value: "conforme", label: "Conforme / Não conforme" },
-    { value: "foto", label: "Imagem" },
-    { value: "numero", label: "Número" },
-    { value: "data", label: "Data" },
-    { value: "arquivo", label: "Arquivo" },
-  ];
-
   const ensureDefaultSection = (): string => {
     if (sections.length > 0) return sections[0].tempId;
     const s = defaultSection(0);
@@ -198,24 +188,9 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
     return s.tempId;
   };
 
-  const addSimpleField = () => {
-    const label = simpleLabel.trim();
-    if (!label) return;
+  const startNewSimpleField = () => {
     const sectionTempId = ensureDefaultSection();
-    const ordem = fields.filter(f => f.sectionTempId === sectionTempId).length;
-    const f = defaultField(sectionTempId, ordem);
-    f.label = label;
-    f.tipo = simpleTipo;
-    if (simpleTipo === "conforme" || simpleTipo === "sim_nao") {
-      f.opcoes_regras = getDefaultOpcoesRegras(simpleTipo);
-      f.opcoes = f.opcoes_regras.map(o => o.label);
-    }
-    if (simpleTipo === "foto") {
-      f.exige_evidencia = true;
-      f.tipo_evidencia = "foto";
-    }
-    setFields(prev => [...prev, f]);
-    setSimpleLabel("");
+    startNewField(sectionTempId);
   };
 
   if (isSimpleMode) {
