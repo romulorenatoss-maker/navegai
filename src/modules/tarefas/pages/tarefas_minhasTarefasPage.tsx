@@ -538,6 +538,7 @@ export default function OperationalExecucaoPage() {
   // Criador validando recebimento de tarefa designada
   const isCriadorValidando = !!selectedAssignment
     && selectedAssignment.status === "aguardando_validacao"
+    && selectedAssignment.created_by === profile?.id;
 
   // Modos de papel ativo no drawer (mutuamente exclusivos com edição do executor):
   //  - Avaliador: status aguardando_avaliacao | em_avaliacao
