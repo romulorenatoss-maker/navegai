@@ -230,44 +230,59 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                   <Draggable key={section.tempId} draggableId={section.tempId} index={sIdx}>
                     {(dragProvided) => (
                       <div ref={dragProvided.innerRef} {...dragProvided.draggableProps}
-                        className="border border-border rounded-lg overflow-hidden bg-card">
-                        <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b border-border">
-                          <div {...dragProvided.dragHandleProps}>
-                            <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab" />
+                        className={isImplicitMode ? "" : "border border-border rounded-lg overflow-hidden bg-card"}>
+                        {!isImplicitMode && (
+                          <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b border-border">
+                            <div {...dragProvided.dragHandleProps}>
+                              <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab" />
+                            </div>
+                            <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: section.cor }} />
+                            <Input value={section.nome} onChange={e => updateSection(section.tempId, "nome", e.target.value)}
+                              placeholder="Nome da etapa/formulário" className="h-7 text-sm font-medium flex-1" maxLength={100} />
+                            <span className="text-[10px] text-muted-foreground whitespace-nowrap">{sectionFields.length} campo{sectionFields.length !== 1 ? "s" : ""}</span>
+                            <Input type="number" min={0.1} step={0.1} value={section.peso} onChange={e => updateSection(section.tempId, "peso", +e.target.value)}
+                              className="h-7 w-16 text-sm text-center" title="Peso da etapa" />
+                            <Select value={section.cor} onValueChange={v => updateSection(section.tempId, "cor", v)}>
+                              <SelectTrigger className="h-7 w-10 p-1">
+                                <div className="w-4 h-4 rounded-full" style={{ backgroundColor: section.cor }} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {SECTION_COLORS.map(c => (
+                                  <SelectItem key={c} value={c}>
+                                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={{ backgroundColor: c }} />{c}</div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setExpandedSection(isExpanded ? null : section.tempId)}>
+                              {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                            </Button>
+                            <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground" onClick={() => duplicateSection(section)} title="Duplicar etapa (com campos)" aria-label="Duplicar etapa">
+                              <Copy className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive" onClick={() => removeSection(section.tempId)}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
                           </div>
-                          <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: section.cor }} />
-                          <Input value={section.nome} onChange={e => updateSection(section.tempId, "nome", e.target.value)}
-                            placeholder="Nome da seção" className="h-7 text-sm font-medium flex-1" maxLength={100} />
-                          <span className="text-[10px] text-muted-foreground whitespace-nowrap">{sectionFields.length} campo{sectionFields.length !== 1 ? "s" : ""}</span>
-                          <Input type="number" min={0.1} step={0.1} value={section.peso} onChange={e => updateSection(section.tempId, "peso", +e.target.value)}
-                            className="h-7 w-16 text-sm text-center" title="Peso da seção" />
-                          <Select value={section.cor} onValueChange={v => updateSection(section.tempId, "cor", v)}>
-                            <SelectTrigger className="h-7 w-10 p-1">
-                              <div className="w-4 h-4 rounded-full" style={{ backgroundColor: section.cor }} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {SECTION_COLORS.map(c => (
-                                <SelectItem key={c} value={c}>
-                                  <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={{ backgroundColor: c }} />{c}</div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setExpandedSection(isExpanded ? null : section.tempId)}>
-                            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                          </Button>
-                          <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground" onClick={() => duplicateSection(section)} title="Duplicar seção (com campos)" aria-label="Duplicar seção">
-                            <Copy className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive" onClick={() => removeSection(section.tempId)}>
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
+                        )}
 
-                        {isExpanded && (
-                          <div className="p-3 space-y-2">
-                            <Input value={section.descricao} onChange={e => updateSection(section.tempId, "descricao", e.target.value)}
-                              placeholder="Descrição da seção (opcional)" className="text-sm mb-2" maxLength={500} />
+                        {(isExpanded || isImplicitMode) && (
+                          <div className={isImplicitMode ? "space-y-2" : "p-3 space-y-2"}>
+                            {!isImplicitMode && (
+                              <div className="space-y-1">
+                                <Label className="text-xs font-medium text-foreground">Instruções da Etapa</Label>
+                                <Textarea
+                                  value={section.descricao}
+                                  onChange={e => updateSection(section.tempId, "descricao", e.target.value)}
+                                  placeholder="Orientação textual exibida ao executor antes das perguntas (opcional)."
+                                  className="text-sm min-h-[64px]"
+                                  maxLength={2000}
+                                />
+                                <p className="text-[10px] text-muted-foreground">
+                                  Suporte a foto/vídeo/documento será habilitado em breve.
+                                </p>
+                              </div>
+                            )}
 
                             {tipoExecucao === "etapas" && (
                               <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-md p-2 mb-2">
