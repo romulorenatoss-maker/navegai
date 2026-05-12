@@ -228,7 +228,6 @@ export const defaultSection = (ordem: number): SectionForm => ({
   tempId: crypto.randomUUID(),
   nome: "",
   descricao: "",
-  instrucoes_midia: [],
   peso: 1,
   ordem,
   cor: SECTION_COLORS[ordem % SECTION_COLORS.length],
