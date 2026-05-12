@@ -135,6 +135,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     setPenalidadeSlaContingencia(d.penalidade_sla_contingencia);
     setHabilitarPerguntasAutomaticas(true);
     setPesoNotaMaxima(100);
+    setSolicitacaoConfig(DEFAULT_SOLICITACAO_CONFIG);
   };
 
   useEffect(() => {
