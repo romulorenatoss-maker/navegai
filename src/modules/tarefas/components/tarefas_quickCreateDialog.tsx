@@ -113,6 +113,11 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   const [habilitarPerguntasAutomaticas, setHabilitarPerguntasAutomaticas] = useState(true);
   const [pesoNotaMaxima, setPesoNotaMaxima] = useState(100);
 
+  // Fase 1B.3 — Fluxo Operacional (somente avulsa). Persistido em template_snapshot.solicitacao_config.
+  const [solicitacaoConfig, setSolicitacaoConfig] = useState<SolicitacaoConfig>(DEFAULT_SOLICITACAO_CONFIG);
+  const updateSolicitacaoConfig = (patch: Partial<SolicitacaoConfig>) =>
+    setSolicitacaoConfig((prev) => ({ ...prev, ...patch }));
+
   const reset = () => {
     setStep(1);
     setNome(""); setDescricao(""); setSetorId(initialSetorId || "");
