@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ArrowRight, Save } from "lucide-react";
+import { ArrowLeft, ArrowRight, Save, Workflow, CalendarClock, CheckCircle2 } from "lucide-react";
 import { TabGeral } from "@/modules/tarefas/components/tarefas_tabGeral";
 import { TabFormBuilder } from "@/modules/tarefas/components/tarefas_tabFormBuilder";
 import { TabWorkflow } from "@/modules/tarefas/components/tarefas_tabWorkflow";
@@ -10,8 +10,9 @@ import { TemplateForm, SectionForm, FieldForm, StepForm } from "@/modules/tarefa
 import { BuilderStepper } from "./BuilderStepper";
 import { StepChecklist } from "./StepChecklist";
 import { StepResumo } from "./StepResumo";
+import { DraftRestoreBanner } from "./DraftRestoreBanner";
+import type { BuilderDraftPayload } from "./useBuilderDraft";
 import { CheckItemForm, WIZARD_STEPS, WizardStepId } from "./types";
-import { CheckCircle2 } from "lucide-react";
 
 interface Props {
   isEditing: boolean;
