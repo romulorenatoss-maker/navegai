@@ -143,6 +143,8 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     setHabilitarPerguntasAutomaticas(true);
     setPesoNotaMaxima(100);
     setSolicitacaoConfig(DEFAULT_SOLICITACAO_CONFIG);
+    setAgrupadorExtras({});
+    setAdvancedOpen(false);
   };
 
   useEffect(() => {
