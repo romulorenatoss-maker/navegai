@@ -619,15 +619,20 @@ export default function OperationalExecucaoPage() {
         </div>
         {isAdmin && (
           <Select value={filterResponsavel} onValueChange={setFilterResponsavel}>
-            <SelectTrigger className="w-[220px] h-9">
+            <SelectTrigger className="w-[240px] h-9">
               <Filter className="w-3.5 h-3.5 mr-1" />
               <SelectValue placeholder="Visão de..." />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="__all">Todos os executores</SelectItem>
-              {profilesWithTasks.map((p: any) => (
-                <SelectItem key={p.id} value={p.id}>👁 {p.nome}</SelectItem>
-              ))}
+              {profile?.id && (
+                <SelectItem value={profile.id}>👤 Meu Usuário</SelectItem>
+              )}
+              <SelectItem value="__all">🌐 Todos os Executores</SelectItem>
+              {profilesWithTasks
+                .filter((p: any) => p.id !== profile?.id)
+                .map((p: any) => (
+                  <SelectItem key={p.id} value={p.id}>👁 {p.nome}</SelectItem>
+                ))}
             </SelectContent>
           </Select>
         )}
