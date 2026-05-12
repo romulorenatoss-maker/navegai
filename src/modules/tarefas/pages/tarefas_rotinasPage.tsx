@@ -305,6 +305,39 @@ export default function OperationalCadastroPage() {
         );
         if (error) throw error;
       }
+
+      // Sync check_items (preserve existing ids → preserva respostas)
+      if (editingId) {
+        const { data: existingChks } = await (supabase as any)
+          .from("operational_template_check_items").select("id").eq("template_id", templateId);
+        const keepIds = new Set(checkItems.filter(c => c.id).map(c => c.id as string));
+        const toDelete = (existingChks || []).filter((c: any) => !keepIds.has(c.id)).map((c: any) => c.id);
+        if (toDelete.length > 0) {
+          await (supabase as any).from("operational_template_check_items").delete().in("id", toDelete);
+        }
+      }
+      for (let i = 0; i < checkItems.length; i++) {
+        const c = checkItems[i];
+        const payloadCi = {
+          template_id: templateId,
+          pergunta: c.pergunta?.trim() || `Item ${i + 1}`,
+          ordem: i,
+          tipo_resposta: c.tipo_resposta,
+          exige_foto: c.exige_foto,
+          exige_observacao: c.exige_observacao,
+          gera_contingencia_se_reprovado: c.gera_contingencia_se_reprovado,
+          peso: c.peso,
+          nota_maxima: c.nota_maxima,
+          penalidade_reprovacao: c.penalidade_reprovacao,
+        };
+        if (c.id) {
+          const { error } = await (supabase as any).from("operational_template_check_items").update(payloadCi).eq("id", c.id);
+          if (error) throw error;
+        } else {
+          const { error } = await (supabase as any).from("operational_template_check_items").insert(payloadCi);
+          if (error) throw error;
+        }
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["operational_templates"] });
