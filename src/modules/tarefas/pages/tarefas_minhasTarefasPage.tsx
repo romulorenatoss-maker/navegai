@@ -350,7 +350,7 @@ export default function OperationalExecucaoPage() {
     a.status === "aguardando_avaliacao" && (a.avaliador_id === chipMyId || isAdmin)
   );
   const chipAprovar = filteredAssignments.filter((a: any) =>
-    a.status === "aguardando_aprovacao" && (a.avaliador_id === chipMyId || a.created_by === chipMyId || isAdmin)
+    a.status === "aguardando_aprovacao" && (a.aprovador_id === chipMyId || isAdmin)
   );
   const chipContingencias = filteredAssignments.filter((a: any) =>
     ["contingenciado", "contingencia"].includes(a.status) &&
