@@ -759,6 +759,121 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                   )}
                 </div>
               )}
+
+              {/* Fase 1B.3 — Fluxo Operacional (apenas avulsa) */}
+              {isAvulsa && (
+                <div className="border border-border rounded-lg p-3 space-y-3 bg-muted/30">
+                  <div>
+                    <Label className="text-sm font-semibold">Fluxo Operacional</Label>
+                    <p className="text-[11px] text-muted-foreground">Como o executor recebe e devolve esta tarefa avulsa. Persistido no snapshot da tarefa.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <label className="flex items-start gap-2 text-xs cursor-pointer p-2 rounded border border-border bg-card">
+                      <Switch
+                        checked={solicitacaoConfig.exige_aceite_executor}
+                        onCheckedChange={(v) => updateSolicitacaoConfig({ exige_aceite_executor: v })}
+                      />
+                      <span><strong>Exige aceite do executor</strong><br /><span className="text-muted-foreground">Tarefa abre como "Aguardando aceite".</span></span>
+                    </label>
+                    <label className="flex items-start gap-2 text-xs cursor-pointer p-2 rounded border border-border bg-card">
+                      <Switch
+                        checked={solicitacaoConfig.exige_validacao_solicitante}
+                        onCheckedChange={(v) => updateSolicitacaoConfig({ exige_validacao_solicitante: v })}
+                      />
+                      <span><strong>Exige validação do solicitante</strong><br /><span className="text-muted-foreground">Após o executor responder, eu valido antes de fechar.</span></span>
+                    </label>
+                    <label className="flex items-start gap-2 text-xs cursor-pointer p-2 rounded border border-border bg-card">
+                      <Switch
+                        checked={solicitacaoConfig.permite_devolver}
+                        onCheckedChange={(v) => updateSolicitacaoConfig({ permite_devolver: v })}
+                      />
+                      <span><strong>Permite devolver ao executor</strong></span>
+                    </label>
+                    <label className="flex items-start gap-2 text-xs cursor-pointer p-2 rounded border border-border bg-card">
+                      <Switch
+                        checked={solicitacaoConfig.permite_plano_acao}
+                        onCheckedChange={(v) => updateSolicitacaoConfig({ permite_plano_acao: v })}
+                      />
+                      <span><strong>Permite plano de ação</strong></span>
+                    </label>
+                    <label className="flex items-start gap-2 text-xs cursor-pointer p-2 rounded border border-border bg-card">
+                      <Switch
+                        checked={solicitacaoConfig.renegociacao.permite}
+                        onCheckedChange={(v) => updateSolicitacaoConfig({ renegociacao: { ...solicitacaoConfig.renegociacao, permite: v } })}
+                      />
+                      <span><strong>Permite renegociação de prazo</strong></span>
+                    </label>
+                    <label className="flex items-start gap-2 text-xs cursor-pointer p-2 rounded border border-border bg-card">
+                      <Switch
+                        checked={solicitacaoConfig.exige_reauth_reabertura}
+                        onCheckedChange={(v) => updateSolicitacaoConfig({ exige_reauth_reabertura: v })}
+                      />
+                      <span><strong>Exige re-autenticação para reabrir</strong></span>
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-[11px]">Limite de renegociações</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={10}
+                        value={solicitacaoConfig.renegociacao.limite}
+                        onChange={(e) => updateSolicitacaoConfig({ renegociacao: { ...solicitacaoConfig.renegociacao, limite: Math.max(0, +e.target.value || 0) } })}
+                        disabled={!solicitacaoConfig.renegociacao.permite}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[11px]">Janela reabertura (h)</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={solicitacaoConfig.janela_reabertura_horas}
+                        onChange={(e) => updateSolicitacaoConfig({ janela_reabertura_horas: Math.max(0, +e.target.value || 0) })}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[11px]">Sem movimento (h, opcional)</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        placeholder="Global"
+                        value={solicitacaoConfig.sem_movimento_horas ?? ""}
+                        onChange={(e) => updateSolicitacaoConfig({ sem_movimento_horas: e.target.value === "" ? null : Math.max(0, +e.target.value || 0) })}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-[11px]">Quem pode reabrir</Label>
+                      <Select
+                        value={solicitacaoConfig.quem_pode_reabrir}
+                        onValueChange={(v: any) => updateSolicitacaoConfig({ quem_pode_reabrir: v })}
+                      >
+                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ambos">Ambos (padrão)</SelectItem>
+                          <SelectItem value="solicitante">Apenas solicitante</SelectItem>
+                          <SelectItem value="admin">Apenas admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <label className="flex items-end gap-2 text-xs cursor-pointer p-2 rounded border border-border bg-card">
+                      <Switch
+                        checked={solicitacaoConfig.exigir_justificativa_atraso}
+                        onCheckedChange={(v) => updateSolicitacaoConfig({ exigir_justificativa_atraso: v })}
+                      />
+                      <span><strong>Exigir justificativa em atraso</strong></span>
+                    </label>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
