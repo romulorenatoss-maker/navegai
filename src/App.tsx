@@ -129,8 +129,10 @@ const App = () => (
               <Route path="/leads/objecoes" element={<ObjecoesLeadsPage />} />
               <Route path="/leads/relatorios" element={<RelatoriosLeadsPage />} />
               <Route path="/desempenho" element={<DesempenhoColaboradorPage />} />
-              <Route path="/desempenho/operacional" element={<DesempenhoOperacionalPage />} />
-              <Route path="/desempenho/tempo-avaliacoes" element={<DashboardTempoAvaliacoes />} />
+              <Route path="/tarefas/desempenho" element={<DesempenhoOperacionalPage />} />
+              <Route path="/tarefas/tempo-avaliacoes" element={<DashboardTempoAvaliacoes />} />
+              <Route path="/desempenho/operacional" element={<Navigate to="/tarefas/desempenho" replace />} />
+              <Route path="/desempenho/tempo-avaliacoes" element={<Navigate to="/tarefas/tempo-avaliacoes" replace />} />
               <Route path="/assistente" element={<AssistentePage />} />
               {/* MÓDULO PROPOSTAS — isolado */}
               <Route path="/propostas" element={<PropostaHistoricoPage />} />
