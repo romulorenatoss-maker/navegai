@@ -11,6 +11,7 @@ import { TemplateForm, SectionForm, FieldForm, StepForm, defaultTemplate, defaul
 import TaskTypeSelectorDialog, { type TaskType } from "@/components/TaskTypeSelectorDialog";
 import { TarefasBuilderWizard } from "@/modules/tarefas/components/builder/TarefasBuilderWizard";
 import { CheckItemForm } from "@/modules/tarefas/components/builder/types";
+import { useDraftAutosave, loadDraft, clearDraft, type BuilderDraftPayload } from "@/modules/tarefas/components/builder/useBuilderDraft";
 
 export default function OperationalCadastroPage() {
   const qc = useQueryClient();
