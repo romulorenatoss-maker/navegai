@@ -96,7 +96,7 @@ export function TarefasBuilderWizard(props: Props) {
         )}
 
         {current === "checklist" && (
-          <StepChecklist items={checkItems} setItems={setCheckItems} />
+          <StepChecklist items={checkItems} setItems={setCheckItems} protectedIds={protectedCheckIds} />
         )}
 
         {current === "fluxo" && (
