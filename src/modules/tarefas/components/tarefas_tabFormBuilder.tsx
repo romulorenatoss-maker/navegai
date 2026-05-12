@@ -201,38 +201,24 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
 
     return (
       <div className="space-y-3">
-        {/* Quick add row */}
-        <div className="border border-border rounded-lg p-3 bg-card space-y-2">
-          <Label className="text-sm font-medium">O que precisa ser respondido?</Label>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Input
-              value={simpleLabel}
-              onChange={e => setSimpleLabel(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addSimpleField(); } }}
-              placeholder="Ex: Local higienizado?"
-              maxLength={255}
-              className="flex-1"
-            />
-            <Select value={simpleTipo} onValueChange={setSimpleTipo}>
-              <SelectTrigger className="sm:w-[200px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {SIMPLE_TIPOS.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Button type="button" onClick={addSimpleField} disabled={!simpleLabel.trim()}>
-              <Plus className="w-4 h-4 mr-1" /> Adicionar Pergunta
-            </Button>
+        {/* Add row — abre Configuração do Campo direto */}
+        <div className="border border-border rounded-lg p-3 bg-card flex items-center justify-between gap-3">
+          <div>
+            <Label className="text-sm font-medium">Perguntas / itens da tarefa</Label>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Cada pergunta abre a Configuração do Campo completa (tipo, regras, evidência, plano de ação).
+            </p>
           </div>
-          <p className="text-[11px] text-muted-foreground">
-            Para configurações avançadas (peso, evidência, plano de ação), clique no ícone de ajustes ao lado do campo.
-          </p>
+          <Button type="button" onClick={startNewSimpleField}>
+            <Plus className="w-4 h-4 mr-1" /> Adicionar Pergunta
+          </Button>
         </div>
 
         {/* Lista flat */}
         {simpleFields.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground border border-dashed border-border rounded-lg">
             <p className="text-sm">Nenhum item adicionado ainda.</p>
-            <p className="text-caption">Use o campo acima para adicionar perguntas/itens.</p>
+            <p className="text-caption">Clique em "Adicionar Pergunta" para começar.</p>
           </div>
         ) : (
           <div className="space-y-1.5">
