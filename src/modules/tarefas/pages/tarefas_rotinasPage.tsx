@@ -4,17 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Filter, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TIPO_EXECUCAO_LABELS, RECORRENCIA_LABELS } from "@/modules/tarefas/hooks/tarefas_useScoring";
 import { TemplateForm, SectionForm, FieldForm, StepForm, defaultTemplate, defaultSection, defaultField, defaultStep } from "@/modules/tarefas/types/tarefas_types";
-import { TabGeral } from "@/modules/tarefas/components/tarefas_tabGeral";
-import { TabFormBuilder } from "@/modules/tarefas/components/tarefas_tabFormBuilder";
-import { TabWorkflow } from "@/modules/tarefas/components/tarefas_tabWorkflow";
-import { TabRecorrencia } from "@/modules/tarefas/components/tarefas_tabRecorrencia";
-import { TabTarefasExecutadas } from "@/modules/tarefas/components/tarefas_tabTarefasExecutadas";
 import TaskTypeSelectorDialog, { type TaskType } from "@/components/TaskTypeSelectorDialog";
+import { TarefasBuilderWizard } from "@/modules/tarefas/components/builder/TarefasBuilderWizard";
+import { CheckItemForm } from "@/modules/tarefas/components/builder/types";
 
 export default function OperationalCadastroPage() {
   const qc = useQueryClient();
@@ -26,6 +22,7 @@ export default function OperationalCadastroPage() {
   const [sections, setSections] = useState<SectionForm[]>([]);
   const [fields, setFields] = useState<FieldForm[]>([]);
   const [steps, setSteps] = useState<StepForm[]>([]);
+  const [checkItems, setCheckItems] = useState<CheckItemForm[]>([]);
   const [activeTab, setActiveTab] = useState("geral");
   const [filterExecutor, setFilterExecutor] = useState("__all");
   const [filterAvaliador, setFilterAvaliador] = useState("__all");
@@ -245,6 +242,7 @@ export default function OperationalCadastroPage() {
         await (supabase as any).from("operational_template_fields").delete().eq("template_id", templateId);
         await (supabase as any).from("operational_template_sections").delete().eq("template_id", templateId);
         await (supabase as any).from("operational_template_steps").delete().eq("template_id", templateId);
+        // NOTE: check_items NÃO são deletados em massa para preservar respostas (operational_execution_check_answers FK ON DELETE CASCADE).
       } else {
         const { data, error } = await (supabase as any).from("operational_templates").insert(payload).select().single();
         if (error) throw error;
@@ -307,6 +305,39 @@ export default function OperationalCadastroPage() {
         );
         if (error) throw error;
       }
+
+      // Sync check_items (preserve existing ids → preserva respostas)
+      if (editingId) {
+        const { data: existingChks } = await (supabase as any)
+          .from("operational_template_check_items").select("id").eq("template_id", templateId);
+        const keepIds = new Set(checkItems.filter(c => c.id).map(c => c.id as string));
+        const toDelete = (existingChks || []).filter((c: any) => !keepIds.has(c.id)).map((c: any) => c.id);
+        if (toDelete.length > 0) {
+          await (supabase as any).from("operational_template_check_items").delete().in("id", toDelete);
+        }
+      }
+      for (let i = 0; i < checkItems.length; i++) {
+        const c = checkItems[i];
+        const payloadCi = {
+          template_id: templateId,
+          pergunta: c.pergunta?.trim() || `Item ${i + 1}`,
+          ordem: i,
+          tipo_resposta: c.tipo_resposta,
+          exige_foto: c.exige_foto,
+          exige_observacao: c.exige_observacao,
+          gera_contingencia_se_reprovado: c.gera_contingencia_se_reprovado,
+          peso: c.peso,
+          nota_maxima: c.nota_maxima,
+          penalidade_reprovacao: c.penalidade_reprovacao,
+        };
+        if (c.id) {
+          const { error } = await (supabase as any).from("operational_template_check_items").update(payloadCi).eq("id", c.id);
+          if (error) throw error;
+        } else {
+          const { error } = await (supabase as any).from("operational_template_check_items").insert(payloadCi);
+          if (error) throw error;
+        }
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["operational_templates"] });
@@ -362,6 +393,7 @@ export default function OperationalCadastroPage() {
     setSections([]);
     setFields([]);
     setSteps([]);
+    setCheckItems([]);
     setActiveTab("geral");
     setTaskTypePickerOpen(false);
     setDialogOpen(true);
@@ -446,6 +478,18 @@ export default function OperationalCadastroPage() {
       horario_inicio: s.horario_inicio || "08:00", horario_fim: s.horario_fim || "09:00",
       prazo_limite_minutos: s.prazo_limite_minutos, exige_foto: s.exige_foto || false,
       exige_observacao: s.exige_observacao || false, exige_video: s.exige_video || false,
+    })));
+
+    // Load check items
+    const { data: chks } = await (supabase as any).from("operational_template_check_items")
+      .select("*").eq("template_id", t.id).order("ordem");
+    setCheckItems((chks || []).map((c: any) => ({
+      id: c.id, tempId: c.id, pergunta: c.pergunta, ordem: c.ordem,
+      tipo_resposta: c.tipo_resposta, exige_foto: !!c.exige_foto,
+      exige_observacao: !!c.exige_observacao,
+      gera_contingencia_se_reprovado: !!c.gera_contingencia_se_reprovado,
+      peso: Number(c.peso) || 1, nota_maxima: Number(c.nota_maxima) || 100,
+      penalidade_reprovacao: Number(c.penalidade_reprovacao) || 100,
     })));
 
     setActiveTab("geral");
@@ -565,48 +609,27 @@ export default function OperationalCadastroPage() {
         })}
       </div>
 
-      {/* Builder Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingId ? "Editar Tarefa" : "Nova Tarefa"}</DialogTitle>
+      {/* Builder Wizard */}
+      <Dialog open={dialogOpen} onOpenChange={(o) => { if (!o) closeDialog(); }}>
+        <DialogContent className="max-w-5xl w-[96vw] h-[92vh] p-0 flex flex-col gap-0 overflow-hidden">
+          <DialogHeader className="px-4 py-3 border-b border-border">
+            <DialogTitle className="text-base">{editingId ? "Editar Tarefa" : "Nova Tarefa"}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={e => { e.preventDefault(); upsert.mutate(); }}>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="w-full mb-4 flex-wrap h-auto gap-1">
-                <TabsTrigger value="geral" className="flex-1 min-w-[60px]">Geral</TabsTrigger>
-                <TabsTrigger value="campos" className="flex-1 min-w-[80px]">Campos</TabsTrigger>
-                <TabsTrigger value="workflow" className="flex-1 min-w-[70px]">Workflow</TabsTrigger>
-                <TabsTrigger value="recorrencia" className="flex-1 min-w-[80px]">Recorrência</TabsTrigger>
-                {editingId && <TabsTrigger value="tarefas" className="flex-1 min-w-[100px]">Tarefas Executadas</TabsTrigger>}
-              </TabsList>
-
-              <TabsContent value="geral">
-                <TabGeral form={form} set={set} setores={setores} colaboradores={colaboradores} />
-              </TabsContent>
-              <TabsContent value="campos">
-                <TabFormBuilder sections={sections} setSections={setSections} fields={fields} setFields={setFields} setores={setores} tipoExecucao={form.tipo_execucao} />
-              </TabsContent>
-              <TabsContent value="workflow">
-                <TabWorkflow form={form} set={set} fields={fields} />
-              </TabsContent>
-              <TabsContent value="recorrencia">
-                <TabRecorrencia form={form} set={set} />
-              </TabsContent>
-              {editingId && (
-                <TabsContent value="tarefas">
-                  <TabTarefasExecutadas templateId={editingId} />
-                </TabsContent>
-              )}
-            </Tabs>
-
-            <DialogFooter className="mt-4">
-              <Button type="button" variant="outline" onClick={closeDialog}>Cancelar</Button>
-              <Button type="submit" disabled={upsert.isPending}>
-                {upsert.isPending ? "Salvando..." : editingId ? "Atualizar Template" : "Criar Template"}
-              </Button>
-            </DialogFooter>
-          </form>
+          <div className="flex-1 min-h-0">
+            <TarefasBuilderWizard
+              isEditing={!!editingId}
+              saving={upsert.isPending}
+              form={form} set={set}
+              sections={sections} setSections={setSections}
+              fields={fields} setFields={setFields}
+              steps={steps} setSteps={setSteps}
+              checkItems={checkItems} setCheckItems={setCheckItems}
+              setores={setores} colaboradores={colaboradores}
+              templateId={editingId}
+              onCancel={closeDialog}
+              onSubmit={() => upsert.mutate()}
+            />
+          </div>
         </DialogContent>
       </Dialog>
 
