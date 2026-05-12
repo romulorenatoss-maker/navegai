@@ -316,6 +316,49 @@ export default function OperationalExecucaoPage() {
   const emAberto = filteredAssignments.filter((a: any) => ["nao_executada", "reprovada"].includes(a.status)).slice(0, 50);
   const concluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 50);
 
+  // === CHIPS (Central Operacional) — listas planas por papel ===
+  const chipMyId = effectiveFilterProfileId || profile?.id;
+  const isLateAssignment = (a: any) => {
+    if (["concluida", "aprovada", "nao_executada"].includes(a.status)) return false;
+    if (!a.data_prevista) return false;
+    const limite = a.horario_limite
+      ? new Date(`${a.data_prevista}T${a.horario_limite}`)
+      : new Date(`${a.data_prevista}T23:59:59`);
+    return new Date() > limite;
+  };
+  const chipExecutar = filteredAssignments.filter((a: any) =>
+    (a.responsavel_id === chipMyId || isAdmin) &&
+    ["pendente", "em_andamento", "devolvida"].includes(a.status)
+  );
+  const chipAvaliar = filteredAssignments.filter((a: any) =>
+    a.status === "aguardando_avaliacao" && (a.avaliador_id === chipMyId || isAdmin)
+  );
+  const chipAprovar = filteredAssignments.filter((a: any) =>
+    a.status === "aguardando_aprovacao" && (a.avaliador_id === chipMyId || a.created_by === chipMyId || isAdmin)
+  );
+  const chipContingencias = filteredAssignments.filter((a: any) =>
+    ["contingenciado", "contingencia"].includes(a.status) &&
+    (a.responsavel_id === chipMyId || a.avaliado_id === chipMyId || a.validador_contingencia_id === chipMyId || isAdmin)
+  );
+  const chipAtrasadas = filteredAssignments.filter(isLateAssignment);
+  const chipConcluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 100);
+
+  const chipCounts: Partial<Record<OperationalChipFilter, number>> = {
+    executar: chipExecutar.length,
+    avaliar: chipAvaliar.length,
+    aprovar: chipAprovar.length,
+    contingencias: chipContingencias.length,
+    atrasadas: chipAtrasadas.length,
+    concluidas: chipConcluidas.length,
+  };
+  const chipFlatList: any[] =
+    chipFilter === "executar" ? chipExecutar :
+    chipFilter === "avaliar" ? chipAvaliar :
+    chipFilter === "aprovar" ? chipAprovar :
+    chipFilter === "contingencias" ? chipContingencias :
+    chipFilter === "atrasadas" ? chipAtrasadas :
+    chipFilter === "concluidas" ? chipConcluidas : [];
+
   // Sub-abas Minhas/Outros — split por usuário logado OU pelo usuário em "Modo Visão" do admin
   const myId = effectiveFilterProfileId || profile?.id;
   const splitByResp = (list: any[]) => ({
