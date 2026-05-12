@@ -474,7 +474,7 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                               disabled={!section.nome.trim()}
                               title={!section.nome.trim() ? "Defina o nome da etapa antes de adicionar campos" : undefined}
                             >
-                              <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Campo
+                              <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Pergunta
                             </Button>
                           </div>
                         )}
