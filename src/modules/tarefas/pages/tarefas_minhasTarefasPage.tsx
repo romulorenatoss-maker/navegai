@@ -753,9 +753,17 @@ export default function OperationalExecucaoPage() {
       </Tabs>
 
       {/* Execution Dialog */}
-      <Dialog open={execDialogOpen} onOpenChange={v => { if (!v) closeExecution(); }}>
-        <DialogContent className="max-w-2xl max-h-[95vh] overflow-hidden flex flex-col p-0">
-          <VisuallyHidden><DialogTitle>{snapshot?.nome || "Rotina"}</DialogTitle></VisuallyHidden>
+      <Sheet open={execDialogOpen} onOpenChange={v => { if (!v) closeExecution(); }}>
+        <SheetContent
+          side={isMobile ? "bottom" : "right"}
+          className={cn(
+            "p-0 flex flex-col gap-0 border-l",
+            isMobile
+              ? "h-[100dvh] w-full max-w-full inset-0 rounded-none"
+              : "h-full w-full sm:max-w-2xl"
+          )}
+        >
+          <VisuallyHidden><SheetTitle>{snapshot?.nome || "Rotina"}</SheetTitle></VisuallyHidden>
           {/* Header */}
           <div className="p-4 border-b border-border">
             <div className="flex items-center gap-2">
