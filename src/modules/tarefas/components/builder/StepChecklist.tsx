@@ -23,10 +23,17 @@ const TIPO_LABELS: Record<CheckItemForm["tipo_resposta"], string> = {
   numero: "Número",
 };
 
-export function StepChecklist({ items, setItems }: Props) {
+export function StepChecklist({ items, setItems, protectedIds }: Props) {
+  const isProtected = (it: CheckItemForm) => !!(it.id && protectedIds?.has(it.id));
   const add = () => setItems(prev => [...prev, defaultCheckItem(prev.length)]);
-  const remove = (tempId: string) =>
+  const remove = (tempId: string) => {
+    const target = items.find(i => i.tempId === tempId);
+    if (target && isProtected(target)) {
+      toast.warning("Este item já possui respostas e não pode ser removido (preserva o histórico).");
+      return;
+    }
     setItems(prev => prev.filter(i => i.tempId !== tempId).map((i, idx) => ({ ...i, ordem: idx })));
+  };
   const update = (tempId: string, patch: Partial<CheckItemForm>) =>
     setItems(prev => prev.map(i => (i.tempId === tempId ? { ...i, ...patch } : i)));
 
