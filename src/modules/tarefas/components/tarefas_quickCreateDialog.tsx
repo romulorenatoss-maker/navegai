@@ -527,8 +527,8 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
           {/* Stepper */}
           <div className="flex items-center gap-2 mt-3">
             {[
-              { n: 1, label: "Estrutura", icon: ListChecks },
-              { n: 2, label: "Designação", icon: Users },
+              { n: 1, label: "Designação", icon: Users },
+              { n: 2, label: "Estrutura", icon: ListChecks },
               { n: 3, label: "Prazo & Notas", icon: Sliders },
             ].map((s, i) => {
               const Icon = s.icon;
