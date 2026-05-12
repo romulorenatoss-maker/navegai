@@ -251,6 +251,10 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     || (aprovadorMode === "individual" && !!aprovadorId && aprovadorId !== avaliadoId && (!isSelfTask || aprovadorId !== profile?.id))
     || (aprovadorMode === "setor" && !!aprovadorSetorId);
 
+  const validadorOk = !requerValidacao
+    || (validadorMode === "individual" && !!validadorId && validadorId !== avaliadoId)
+    || (validadorMode === "setor" && !!validadorSetorId);
+
   // Derivação automática do título da tarefa.
   // Prioridade: override manual (nome) → primeiro agrupador → primeira pergunta → fallback.
   const derivedNome = useMemo(() => {
