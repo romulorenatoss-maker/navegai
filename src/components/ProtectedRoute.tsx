@@ -55,7 +55,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isEvalMode = currentPath === "/avaliacoes/pesquisa" && searchParams.get("mode") === "eval";
   // Liberado a todos: criação de tarefa individual ad-hoc + drill-down de desempenho
   const isOpenForAll =
-    currentPath === "/operacional/cadastro" ||
+    currentPath === "/tarefas/rotinas" ||
     currentPath === "/desempenho";
 
   if (!isEvalMode && !isOpenForAll && !canViewPath(currentPath)) {
