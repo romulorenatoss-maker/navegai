@@ -652,10 +652,23 @@ export default function OperationalExecucaoPage() {
         </Button>
       </div>
 
-
+      {/* Central Operacional — chips */}
+      <OperationalChipFilterBar value={chipFilter} onChange={setChipFilter} counts={chipCounts} />
 
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground text-sm">Carregando...</div>
+      ) : chipFilter !== "todas" ? (
+        <div className="space-y-2">
+          {chipFlatList.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground text-sm">
+              Nenhuma tarefa neste filtro.
+            </div>
+          ) : (
+            chipFlatList.map((a: any) => (
+              <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />
+            ))
+          )}
+        </div>
       ) : (
         <div className="space-y-3">
           <AccordionSection title="Tarefas de Hoje" count={isAdmin ? hoje.length : hojeSplit.mine.length}
