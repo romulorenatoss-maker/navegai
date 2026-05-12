@@ -1116,7 +1116,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                 <div className="bg-muted/40 border border-border rounded-md p-3 space-y-1">
                   <p className="text-xs font-semibold text-foreground">Resumo</p>
                   <div className="text-[11px] text-muted-foreground space-y-0.5">
-                    <p><strong>Tarefa:</strong> {nome || "—"}</p>
+                    <p><strong>Tarefa:</strong> {derivedNome}</p>
                     <p><strong>Avaliado:</strong> {(colaboradores as any[]).find((c) => c.id === avaliadoId)?.nome || "—"}</p>
                     <p><strong>Data:</strong> {dataPrevista} • limite {horarioLimite}</p>
                     <p><strong>Pontuação:</strong> {temPerguntasAprovador ? `Ativa — ${totalGeral} pontos totais` : "Desativada (lembrete)"}</p>
