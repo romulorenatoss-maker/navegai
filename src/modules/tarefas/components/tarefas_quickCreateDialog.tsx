@@ -596,6 +596,11 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                 {/* (Removido) Bloco global "Responsável pelo Plano de Ação".
                     A geração de plano de ação agora é configurada por pergunta no FormBuilder
                     (cada item não conforme abre seu próprio plano). */}
+
+                <div className="border-t border-border/60 pt-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <Label className="text-sm">Avaliação técnica (quem confere a execução?)</Label>
                       <p className="text-[11px] text-muted-foreground">
                         Confere se a tarefa foi feita corretamente. Pode confirmar, devolver com observação ou solicitar ajuste. <strong>Não aplica nota.</strong> Não pode ser o próprio avaliado.
                       </p>
