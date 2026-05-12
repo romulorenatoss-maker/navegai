@@ -9,7 +9,7 @@
  */
 import { Suspense, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffectivePermissions } from "@/hooks/usePermissions";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
   resolveAssignmentRole,
   hasOperationalPermission,
