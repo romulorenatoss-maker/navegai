@@ -489,7 +489,7 @@ export default function OperationalExecucaoPage() {
     queryFn: async () => {
       if (!profile?.id) return [];
       let q = (supabase as any).from("operational_assignments")
-        .select("*, operational_templates(nome, tipo_execucao), profiles:responsavel_id(id, nome, foto_url), criador:created_by(id, nome), avaliador:profiles!operational_assignments_avaliador_id_fkey(nome), aprovador:profiles!operational_assignments_aprovador_id_fkey(nome)")
+        .select("*, operational_templates(nome, tipo_execucao, origem), profiles:responsavel_id(id, nome, foto_url), criador:created_by(id, nome), avaliador:profiles!operational_assignments_avaliador_id_fkey(nome), aprovador:profiles!operational_assignments_aprovador_id_fkey(nome)")
         .order("data_prevista", { ascending: true });
       if (!isAdmin) {
         q = q.or(`responsavel_id.eq.${profile.id},avaliador_id.eq.${profile.id},aprovador_id.eq.${profile.id},avaliado_id.eq.${profile.id},validador_contingencia_id.eq.${profile.id},created_by.eq.${profile.id}`);
