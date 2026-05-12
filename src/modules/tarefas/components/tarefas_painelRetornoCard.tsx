@@ -105,9 +105,34 @@ export function PainelRetornoCard({ assignment, onClick }: Props) {
         {sla.avaliacao.due && <SlaBadge sla={sla.avaliacao} label="Av" />}
         {sla.aprovacao.due && <SlaBadge sla={sla.aprovacao} label="Apr" />}
         {sla.total.due && <SlaBadge sla={sla.total} label="Total" />}
+        {late && !cont && (
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border bg-destructive/10 text-destructive border-destructive/30 text-[10px] font-medium">
+            <Clock className="w-3 h-3" /> Atrasada
+          </span>
+        )}
         {sem && (
           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-400 text-[10px] font-medium">
             <Activity className="w-3 h-3" /> Sem movimento
+          </span>
+        )}
+        {isRenegPend && (
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border bg-yellow-500/10 text-yellow-700 border-yellow-500/30 dark:text-yellow-400 text-[10px] font-medium">
+            <Hourglass className="w-3 h-3" /> Renegociação Pendente
+          </span>
+        )}
+        {limiteExc && (
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border bg-red-600/10 text-red-700 border-red-600/40 dark:text-red-300 text-[10px] font-medium">
+            <Ban className="w-3 h-3" /> Limite Excedido
+          </span>
+        )}
+        {isRespondida && (
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-400 text-[10px] font-medium">
+            <MessageSquare className="w-3 h-3" /> Respondida pelo Executor
+          </span>
+        )}
+        {isAguardValid && !isRespondida && (
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border bg-violet-500/10 text-violet-700 border-violet-500/30 dark:text-violet-400 text-[10px] font-medium">
+            <Timer className="w-3 h-3" /> Aguardando Validação
           </span>
         )}
         {assignment.rodada_atual > 1 && (
