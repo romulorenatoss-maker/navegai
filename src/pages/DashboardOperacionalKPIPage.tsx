@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useOperationalDashboard } from "@/hooks/useOperationalDashboard";
+import { useOperationalDashboard } from "@/modules/tarefas/hooks/tarefas_useDashboard";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { CONTINGENCY_STATUS } from "@/modules/operacional/hooks/useOperationalScoring";
+import { CONTINGENCY_STATUS } from "@/modules/tarefas/hooks/tarefas_useScoring";
 
 const scoreColor = (v: number) => {
   if (v >= 90) return "text-emerald-600";

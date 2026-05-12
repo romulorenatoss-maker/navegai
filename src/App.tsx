@@ -14,22 +14,22 @@ import ColaboradoresPage from "./pages/ColaboradoresPage";
 import TiposServicoPage from "./pages/TiposServicoPage";
 
 import PerguntasPage from "./pages/PerguntasPage";
-import OperationalCadastroPage from "./modules/operacional/pages/OperationalCadastroPage";
-import OperationalExecucaoPage from "./modules/operacional/pages/OperationalExecucaoPage";
-import OperationalGestaoPage from "./modules/operacional/pages/OperationalGestaoPage";
-import OperationalAvaliacaoPage from "./modules/operacional/pages/OperationalAvaliacaoPage";
-import OperationalAprovacaoPage from "./modules/operacional/pages/OperationalAprovacaoPage";
-import OperationalContingenciasPage from "./modules/operacional/pages/OperationalContingenciasPage";
+import OperationalCadastroPage from "./modules/tarefas/pages/tarefas_rotinasPage";
+import OperationalExecucaoPage from "./modules/tarefas/pages/tarefas_minhasTarefasPage";
+import OperationalGestaoPage from "./modules/tarefas/pages/tarefas_gestaoPage";
+import OperationalAvaliacaoPage from "./modules/tarefas/pages/tarefas_avaliacaoPage";
+import OperationalAprovacaoPage from "./modules/tarefas/pages/tarefas_aprovacaoPage";
+import OperationalContingenciasPage from "./modules/tarefas/pages/tarefas_contingenciasPage";
 
 import CadastroEnderecosPage from "./pages/CadastroEnderecosPage";
 import ClientesPage from "./pages/ClientesPage";
 import MinhasAvaliacoesPage from "./pages/MinhasAvaliacoesPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import RelatoriosPage from "./pages/RelatoriosPage";
-import RelatorioTarefasPage from "./pages/RelatorioTarefasPage";
+import RelatorioTarefasPage from "./modules/tarefas/pages/tarefas_relatoriosPage";
 import DesempenhoColaboradorPage from "./pages/DesempenhoColaboradorPage";
-import DesempenhoOperacionalPage from "./pages/DesempenhoOperacionalPage";
-import DashboardTempoAvaliacoes from "./pages/DashboardTempoAvaliacoes";
+import DesempenhoOperacionalPage from "./modules/tarefas/pages/tarefas_desempenhoPage";
+import DashboardTempoAvaliacoes from "./modules/tarefas/pages/tarefas_tempoAvaliacoesPage";
 
 import LeadsPage from "./pages/LeadsPage";
 import FilaLeadsPage from "./pages/FilaLeadsPage";
@@ -83,18 +83,26 @@ const App = () => (
               <Route path="/avaliacoes/pesquisa" element={<AvaliacaoOSPage />} />
               <Route path="/avaliacoes/perguntas" element={<PerguntasPage />} />
               <Route path="/avaliacoes/minhas" element={<MinhasAvaliacoesPage />} />
-              <Route path="/operacional/cadastro" element={<OperationalCadastroPage />} />
-              <Route path="/operacional/execucao" element={<OperationalExecucaoPage />} />
-              <Route path="/operacional/gestao" element={<OperationalGestaoPage />} />
-              <Route path="/operacional/avaliacao" element={<OperationalAvaliacaoPage />} />
-              <Route path="/operacional/aprovacao" element={<OperationalAprovacaoPage />} />
-              <Route path="/operacional/contingencias" element={<OperationalContingenciasPage />} />
-              <Route path="/checklists/execucao" element={<Navigate to="/operacional/execucao" replace />} />
-              <Route path="/checklists/gestao" element={<Navigate to="/operacional/gestao" replace />} />
-              <Route path="/checklists/cadastro" element={<Navigate to="/operacional/cadastro" replace />} />
-              <Route path="/checklists/avaliacao" element={<Navigate to="/operacional/avaliacao" replace />} />
-              <Route path="/checklists/aprovacao" element={<Navigate to="/operacional/aprovacao" replace />} />
-              <Route path="/checklists/contingencias" element={<Navigate to="/operacional/contingencias" replace />} />
+              {/* MÓDULO TAREFAS */}
+              <Route path="/tarefas/rotinas" element={<OperationalCadastroPage />} />
+              <Route path="/tarefas/minhas" element={<OperationalExecucaoPage />} />
+              <Route path="/tarefas/gestao" element={<OperationalGestaoPage />} />
+              <Route path="/tarefas/avaliacao" element={<OperationalAvaliacaoPage />} />
+              <Route path="/tarefas/aprovacao" element={<OperationalAprovacaoPage />} />
+              <Route path="/tarefas/contingencias" element={<OperationalContingenciasPage />} />
+              {/* Redirects legados (/operacional/* e /checklists/*) */}
+              <Route path="/operacional/cadastro" element={<Navigate to="/tarefas/rotinas" replace />} />
+              <Route path="/operacional/execucao" element={<Navigate to="/tarefas/minhas" replace />} />
+              <Route path="/operacional/gestao" element={<Navigate to="/tarefas/gestao" replace />} />
+              <Route path="/operacional/avaliacao" element={<Navigate to="/tarefas/avaliacao" replace />} />
+              <Route path="/operacional/aprovacao" element={<Navigate to="/tarefas/aprovacao" replace />} />
+              <Route path="/operacional/contingencias" element={<Navigate to="/tarefas/contingencias" replace />} />
+              <Route path="/checklists/execucao" element={<Navigate to="/tarefas/minhas" replace />} />
+              <Route path="/checklists/gestao" element={<Navigate to="/tarefas/gestao" replace />} />
+              <Route path="/checklists/cadastro" element={<Navigate to="/tarefas/rotinas" replace />} />
+              <Route path="/checklists/avaliacao" element={<Navigate to="/tarefas/avaliacao" replace />} />
+              <Route path="/checklists/aprovacao" element={<Navigate to="/tarefas/aprovacao" replace />} />
+              <Route path="/checklists/contingencias" element={<Navigate to="/tarefas/contingencias" replace />} />
               
               
               <Route path="/cadastros/setores" element={<SetoresPage />} />
@@ -105,7 +113,8 @@ const App = () => (
               <Route path="/cadastros/enderecos" element={<CadastroEnderecosPage />} />
               
               <Route path="/relatorios" element={<RelatoriosPage />} />
-              <Route path="/relatorios/tarefas" element={<RelatorioTarefasPage />} />
+              <Route path="/tarefas/relatorios" element={<RelatorioTarefasPage />} />
+              <Route path="/relatorios/tarefas" element={<Navigate to="/tarefas/relatorios" replace />} />
               <Route path="/leads" element={<LeadsPage />} />
               <Route path="/leads/fila" element={<FilaLeadsPage />} />
               <Route path="/leads/fila-tarefas" element={<FilaLeadsPage />} />
@@ -120,8 +129,10 @@ const App = () => (
               <Route path="/leads/objecoes" element={<ObjecoesLeadsPage />} />
               <Route path="/leads/relatorios" element={<RelatoriosLeadsPage />} />
               <Route path="/desempenho" element={<DesempenhoColaboradorPage />} />
-              <Route path="/desempenho/operacional" element={<DesempenhoOperacionalPage />} />
-              <Route path="/desempenho/tempo-avaliacoes" element={<DashboardTempoAvaliacoes />} />
+              <Route path="/tarefas/desempenho" element={<DesempenhoOperacionalPage />} />
+              <Route path="/tarefas/tempo-avaliacoes" element={<DashboardTempoAvaliacoes />} />
+              <Route path="/desempenho/operacional" element={<Navigate to="/tarefas/desempenho" replace />} />
+              <Route path="/desempenho/tempo-avaliacoes" element={<Navigate to="/tarefas/tempo-avaliacoes" replace />} />
               <Route path="/assistente" element={<AssistentePage />} />
               {/* MÓDULO PROPOSTAS — isolado */}
               <Route path="/propostas" element={<PropostaHistoricoPage />} />

@@ -7,7 +7,7 @@ import { useIdleTimeout } from "@/hooks/useIdleTimeout";
 import { useSessionTracker } from "@/hooks/useSessionTracker";
 import { useRealtimeConnectionMonitor } from "@/hooks/useRealtimeConnectionMonitor";
 import { useLeadsRealtime } from "@/hooks/useLeadsRealtime";
-import { useOperationalRealtime } from "@/modules/operacional/hooks/useOperationalRealtime";
+import { useOperationalRealtime } from "@/modules/tarefas/hooks/tarefas_useRealtime";
 import { usePendingNotifications } from "@/hooks/usePendingNotifications";
 import { Menu, User, Settings } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -45,9 +45,9 @@ export function AppLayout() {
     if (pendingEvaluations > 0) counts["/avaliacoes/pesquisa"] = pendingEvaluations;
     if (pendingLeadDecisions > 0) counts["/leads/fila"] = pendingLeadDecisions;
     if (pendingMyLeads > 0) counts["/leads"] = pendingMyLeads;
-    if (pendingDesignadas > 0) counts["/operacional/execucao"] = pendingDesignadas;
-    if (pendingContingencias > 0) counts["/operacional/contingencias"] = pendingContingencias;
-    if (pendingAprovacoes > 0) counts["/operacional/aprovacao"] = pendingAprovacoes;
+    if (pendingDesignadas > 0) counts["/tarefas/minhas"] = pendingDesignadas;
+    if (pendingContingencias > 0) counts["/tarefas/contingencias"] = pendingContingencias;
+    if (pendingAprovacoes > 0) counts["/tarefas/aprovacao"] = pendingAprovacoes;
     return counts;
   }, [pendingEvaluations, pendingLeadDecisions, pendingMyLeads, pendingDesignadas, pendingContingencias, pendingAprovacoes]);
 

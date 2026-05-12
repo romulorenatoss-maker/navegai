@@ -16,7 +16,7 @@ import {
   Eye, MessageSquare, Loader2, FileText, Download, TrendingUp, ListChecks
 } from "lucide-react";
 import MinhasVendasTab from "@/components/MinhasVendasTab";
-import MinhasTarefasTab from "@/components/MinhasTarefasTab";
+import MinhasTarefasTab from "@/modules/tarefas/components/tarefas_minhasTarefasTab";
 import { exportOSPdf } from "@/lib/export-os-pdf";
 import { cn } from "@/lib/utils";
 import { format, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";

@@ -52,9 +52,15 @@ const allNavSections = [
   {
     title: "Tarefas",
     items: [
-      { to: "/operacional/gestao", icon: FolderKanban, label: "Dash de Tarefas" },
-      { to: "/operacional/execucao", icon: PlayCircle, label: "Minhas Tarefas" },
-      { to: "/operacional/cadastro", icon: ListChecks, label: "Rotinas Operacionais" },
+      { to: "/tarefas/gestao", icon: FolderKanban, label: "Dash de Tarefas" },
+      { to: "/tarefas/minhas", icon: PlayCircle, label: "Minhas Tarefas" },
+      { to: "/tarefas/rotinas", icon: ListChecks, label: "Rotinas Operacionais" },
+      { to: "/tarefas/avaliacao", icon: ClipboardCheck, label: "Avaliação de Tarefas" },
+      { to: "/tarefas/aprovacao", icon: CheckSquare, label: "Aprovação de Tarefas" },
+      { to: "/tarefas/contingencias", icon: AlertTriangle, label: "Contingências" },
+      { to: "/tarefas/relatorios", icon: FileBarChart, label: "Relatórios de Tarefas" },
+      { to: "/tarefas/desempenho", icon: PieChart, label: "Desempenho de Tarefas" },
+      { to: "/tarefas/tempo-avaliacoes", icon: Clock, label: "Tempo de Avaliações" },
     ],
   },
   {
