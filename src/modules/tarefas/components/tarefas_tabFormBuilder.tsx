@@ -181,6 +181,9 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                           <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setExpandedSection(isExpanded ? null : section.tempId)}>
                             {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                           </Button>
+                          <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground" onClick={() => duplicateSection(section)} title="Duplicar seção (com campos)" aria-label="Duplicar seção">
+                            <Copy className="w-3.5 h-3.5" />
+                          </Button>
                           <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive" onClick={() => removeSection(section.tempId)}>
                             <Trash2 className="w-3.5 h-3.5" />
                           </Button>
