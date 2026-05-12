@@ -224,7 +224,7 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
               </SelectContent>
             </Select>
             <Button type="button" onClick={addSimpleField} disabled={!simpleLabel.trim()}>
-              <Plus className="w-4 h-4 mr-1" /> Adicionar Campo
+              <Plus className="w-4 h-4 mr-1" /> Adicionar Pergunta
             </Button>
           </div>
           <p className="text-[11px] text-muted-foreground">
