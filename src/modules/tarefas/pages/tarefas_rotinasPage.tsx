@@ -242,6 +242,7 @@ export default function OperationalCadastroPage() {
         await (supabase as any).from("operational_template_fields").delete().eq("template_id", templateId);
         await (supabase as any).from("operational_template_sections").delete().eq("template_id", templateId);
         await (supabase as any).from("operational_template_steps").delete().eq("template_id", templateId);
+        // NOTE: check_items NÃO são deletados em massa para preservar respostas (operational_execution_check_answers FK ON DELETE CASCADE).
       } else {
         const { data, error } = await (supabase as any).from("operational_templates").insert(payload).select().single();
         if (error) throw error;
