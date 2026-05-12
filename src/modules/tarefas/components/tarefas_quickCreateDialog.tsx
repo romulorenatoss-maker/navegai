@@ -313,7 +313,8 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
         habilitar_perguntas_automaticas: pontuacaoValida ? habilitarPerguntasAutomaticas : false,
         ativo: true,
         // Recorrente vai pra "Rotinas Operacionais" (origem rotina); pontual permanece ad_hoc
-        origem: recorrenciaAtiva ? "rotina" : "ad_hoc",
+        // Tarefa avulsa (botão "+" da Minhas Tarefas) NUNCA vira rotina.
+        origem: isAvulsa ? "ad_hoc" : (recorrenciaAtiva ? "rotina" : "ad_hoc"),
         created_by: profile.id,
       };
 
