@@ -414,6 +414,7 @@ export default function OperationalCadastroPage() {
     setFields([]);
     setSteps([]);
     setCheckItems([]);
+    setProtectedCheckIds(new Set());
     setActiveTab("geral");
     setTaskTypePickerOpen(false);
     setDialogOpen(true);
