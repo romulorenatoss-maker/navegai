@@ -9,7 +9,11 @@ import { useNavigate } from "react-router-dom";
 import { EmbeddedContingencyPanel } from "@/modules/tarefas/components/tarefas_embeddedContingencyPanel";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Progress } from "@/components/ui/progress";
+import { OperationalChipFilterBar, type OperationalChipFilter } from "@/modules/tarefas/components/tarefas_chipFilterBar";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { STATUS_CONFIG } from "@/modules/tarefas/hooks/tarefas_useScoring";
 import { AssignmentCard } from "@/modules/tarefas/components/tarefas_tarefaCard";
@@ -181,6 +185,8 @@ export default function OperationalExecucaoPage() {
   const [taskTypePickerOpen, setTaskTypePickerOpen] = useState(false);
   const [pickedTaskType, setPickedTaskType] = useState<TaskType>("simples");
   const [pickedSetorId, setPickedSetorId] = useState<string>("");
+  const [chipFilter, setChipFilter] = useState<OperationalChipFilter>("todas");
+  const isMobile = useIsMobile();
   const effectiveFilterProfileId = isAdmin && filterResponsavel !== "__all" ? filterResponsavel : profile?.id;
 
   const { data: allProfilesRaw = [] } = useQuery({
@@ -310,6 +316,49 @@ export default function OperationalExecucaoPage() {
   // NOVO: separar Finalizadas em "Em Aberto" (não foram feitas) e "Concluídas" (efetivamente concluídas/aprovadas)
   const emAberto = filteredAssignments.filter((a: any) => ["nao_executada", "reprovada"].includes(a.status)).slice(0, 50);
   const concluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 50);
+
+  // === CHIPS (Central Operacional) — listas planas por papel ===
+  const chipMyId = effectiveFilterProfileId || profile?.id;
+  const isLateAssignment = (a: any) => {
+    if (["concluida", "aprovada", "nao_executada"].includes(a.status)) return false;
+    if (!a.data_prevista) return false;
+    const limite = a.horario_limite
+      ? new Date(`${a.data_prevista}T${a.horario_limite}`)
+      : new Date(`${a.data_prevista}T23:59:59`);
+    return new Date() > limite;
+  };
+  const chipExecutar = filteredAssignments.filter((a: any) =>
+    (a.responsavel_id === chipMyId || isAdmin) &&
+    ["pendente", "em_andamento", "devolvida"].includes(a.status)
+  );
+  const chipAvaliar = filteredAssignments.filter((a: any) =>
+    a.status === "aguardando_avaliacao" && (a.avaliador_id === chipMyId || isAdmin)
+  );
+  const chipAprovar = filteredAssignments.filter((a: any) =>
+    a.status === "aguardando_aprovacao" && (a.avaliador_id === chipMyId || a.created_by === chipMyId || isAdmin)
+  );
+  const chipContingencias = filteredAssignments.filter((a: any) =>
+    ["contingenciado", "contingencia"].includes(a.status) &&
+    (a.responsavel_id === chipMyId || a.avaliado_id === chipMyId || a.validador_contingencia_id === chipMyId || isAdmin)
+  );
+  const chipAtrasadas = filteredAssignments.filter(isLateAssignment);
+  const chipConcluidas = filteredAssignments.filter((a: any) => ["concluida", "aprovada"].includes(a.status)).slice(0, 100);
+
+  const chipCounts: Partial<Record<OperationalChipFilter, number>> = {
+    executar: chipExecutar.length,
+    avaliar: chipAvaliar.length,
+    aprovar: chipAprovar.length,
+    contingencias: chipContingencias.length,
+    atrasadas: chipAtrasadas.length,
+    concluidas: chipConcluidas.length,
+  };
+  const chipFlatList: any[] =
+    chipFilter === "executar" ? chipExecutar :
+    chipFilter === "avaliar" ? chipAvaliar :
+    chipFilter === "aprovar" ? chipAprovar :
+    chipFilter === "contingencias" ? chipContingencias :
+    chipFilter === "atrasadas" ? chipAtrasadas :
+    chipFilter === "concluidas" ? chipConcluidas : [];
 
   // Sub-abas Minhas/Outros — split por usuário logado OU pelo usuário em "Modo Visão" do admin
   const myId = effectiveFilterProfileId || profile?.id;
@@ -604,10 +653,23 @@ export default function OperationalExecucaoPage() {
         </Button>
       </div>
 
-
+      {/* Central Operacional — chips */}
+      <OperationalChipFilterBar value={chipFilter} onChange={setChipFilter} counts={chipCounts} />
 
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground text-sm">Carregando...</div>
+      ) : chipFilter !== "todas" ? (
+        <div className="space-y-2">
+          {chipFlatList.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground text-sm">
+              Nenhuma tarefa neste filtro.
+            </div>
+          ) : (
+            chipFlatList.map((a: any) => (
+              <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />
+            ))
+          )}
+        </div>
       ) : (
         <div className="space-y-3">
           <AccordionSection title="Tarefas de Hoje" count={isAdmin ? hoje.length : hojeSplit.mine.length}
@@ -692,9 +754,17 @@ export default function OperationalExecucaoPage() {
       </Tabs>
 
       {/* Execution Dialog */}
-      <Dialog open={execDialogOpen} onOpenChange={v => { if (!v) closeExecution(); }}>
-        <DialogContent className="max-w-2xl max-h-[95vh] overflow-hidden flex flex-col p-0">
-          <VisuallyHidden><DialogTitle>{snapshot?.nome || "Rotina"}</DialogTitle></VisuallyHidden>
+      <Sheet open={execDialogOpen} onOpenChange={v => { if (!v) closeExecution(); }}>
+        <SheetContent
+          side={isMobile ? "bottom" : "right"}
+          className={cn(
+            "p-0 flex flex-col gap-0 border-l",
+            isMobile
+              ? "h-[100dvh] w-full max-w-full inset-0 rounded-none"
+              : "h-full w-full sm:max-w-2xl"
+          )}
+        >
+          <VisuallyHidden><SheetTitle>{snapshot?.nome || "Rotina"}</SheetTitle></VisuallyHidden>
           {/* Header */}
           <div className="p-4 border-b border-border">
             <div className="flex items-center gap-2">
@@ -961,8 +1031,8 @@ export default function OperationalExecucaoPage() {
               )}
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       <TaskTypeSelectorDialog
         open={taskTypePickerOpen}
