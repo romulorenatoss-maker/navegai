@@ -42,7 +42,7 @@ export function TarefasBuilderWizard(props: Props) {
   const {
     isEditing, saving, form, set, sections, setSections, fields, setFields,
     steps, setSteps, checkItems, setCheckItems, protectedCheckIds, setores, colaboradores,
-    templateId, onCancel, onSubmit,
+    templateId, draftToRestore, onRestoreDraft, onDiscardDraft, onCancel, onSubmit,
   } = props;
 
   const [current, setCurrent] = useState<WizardStepId>("geral"); // tipo é resolvido antes (TaskTypeSelector)
