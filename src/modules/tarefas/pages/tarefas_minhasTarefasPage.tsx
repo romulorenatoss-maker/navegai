@@ -530,40 +530,10 @@ export default function OperationalExecucaoPage() {
         <div>
           <h1 className="text-lg font-semibold text-foreground">Minhas Tarefas</h1>
           <p className="text-xs text-muted-foreground">
-            {isAdmin ? "Visualização administrativa de todas as rotinas." : "Formulários e rotinas atribuídos a você."}
+            {isAdmin ? "Hub operacional administrativo." : "Hub operacional por papel."}
           </p>
         </div>
-        {isAdmin && (
-          <Select value={filterResponsavel} onValueChange={setFilterResponsavel}>
-            <SelectTrigger className="w-[240px] h-9">
-              <Filter className="w-3.5 h-3.5 mr-1" />
-              <SelectValue placeholder="Visão de..." />
-            </SelectTrigger>
-            <SelectContent>
-              {profile?.id && (
-                <SelectItem value={profile.id}>👤 Meu Usuário</SelectItem>
-              )}
-              <SelectItem value="__all">🌐 Todos os Executores</SelectItem>
-              {profilesWithTasks
-                .filter((p: any) => p.id !== profile?.id)
-                .map((p: any) => (
-                  <SelectItem key={p.id} value={p.id}>👁 {p.nome}</SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
-        )}
       </div>
-
-      {isAdmin && filterResponsavel !== "__all" && filterResponsavel !== profile?.id && (
-        <div className="mb-4 flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-lg px-3 py-2">
-          <span className="text-sm font-medium text-primary">
-            👁 Modo Visão: {profilesWithTasks.find((p: any) => p.id === filterResponsavel)?.nome || "Colaborador"}
-          </span>
-          <Button size="sm" variant="ghost" className="ml-auto h-7 text-xs" onClick={() => setFilterResponsavel(profile?.id || "__all")}>
-            Sair da visão
-          </Button>
-        </div>
-      )}
 
       <Tabs defaultValue="operacionais" className="w-full">
         <TabsList className="w-full sm:w-auto mb-4">
@@ -577,141 +547,85 @@ export default function OperationalExecucaoPage() {
 
         <TabsContent value="operacionais" className="space-y-0 mt-0">
 
-      <div className="flex items-center gap-2 mb-4">
-        <div className="relative flex-1">
+      {/* Visão por papel — dinâmica conforme contexto real */}
+      <div className="mb-3">
+        <VisaoSwitcher visoes={visoes} value={visao} onChange={setVisao} isMobile={isMobile} />
+      </div>
+
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        <div className="relative flex-1 min-w-[160px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Pesquisar" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9 h-9 text-sm" />
         </div>
-        <Input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value || today)} className="w-[160px] h-9 text-sm" />
-        <Button
-          type="button"
-          size="icon"
-          className="h-9 w-9 shrink-0"
-          onClick={() => setTaskTypePickerOpen(true)}
-          title="Nova Tarefa"
-          aria-label="Nova Tarefa"
-        >
+        <Input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value || today)} className="w-[140px] h-9 text-sm" />
+        <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+          <SelectTrigger className="w-[150px] h-9 text-sm">
+            <ArrowDownUp className="w-3.5 h-3.5 mr-1" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="sla">SLA</SelectItem>
+            <SelectItem value="atraso">Atraso</SelectItem>
+            <SelectItem value="prioridade">Prioridade</SelectItem>
+            <SelectItem value="criacao">Criação</SelectItem>
+            <SelectItem value="movimento">Última movimentação</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button type="button" size="icon" className="h-9 w-9 shrink-0" onClick={() => setTaskTypePickerOpen(true)} title="Nova Tarefa">
           <Plus className="w-4 h-4" />
         </Button>
       </div>
 
-      {/* Menu horizontal de chips removido — funções redistribuídas nos acordeões abaixo.
-          Compat: rotas legadas com ?chip= abrem o acordeão correspondente (ver useEffect acima). */}
+      {isAdmin && visao === "admin" && (
+        <div className="flex items-center gap-2 mb-3 flex-wrap p-2 rounded-lg bg-muted/40 border border-border">
+          <Select value={adminExecutor} onValueChange={setAdminExecutor}>
+            <SelectTrigger className="w-[200px] h-8 text-xs">
+              <Users className="w-3 h-3 mr-1" />
+              <SelectValue placeholder="Executor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">Todos os executores</SelectItem>
+              {profilesWithTasks.map((p: any) => (
+                <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={adminSetor} onValueChange={setAdminSetor}>
+            <SelectTrigger className="w-[180px] h-8 text-xs">
+              <Filter className="w-3 h-3 mr-1" />
+              <SelectValue placeholder="Setor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">Todos os setores</SelectItem>
+              {setoresEmAssignments.map((s) => (
+                <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {(adminExecutor !== "__all" || adminSetor !== "__all") && (
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setAdminExecutor("__all"); setAdminSetor("__all"); }}>
+              Limpar
+            </Button>
+          )}
+        </div>
+      )}
 
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground text-sm">Carregando...</div>
       ) : (
         <div className="space-y-3">
-          <AccordionSection
-            title="Tarefas de Hoje"
-            count={isAdmin ? hojeFiltrado.length : hojeFiltradoSplit.mine.length}
-            icon={<CalendarClock className="w-4 h-4" style={{ color: "#f97316" }} />}
-            borderColor="#f97316" badgeBg="bg-orange-500/15" badgeText="text-orange-700 dark:text-orange-400"
-            isOpen={openAccordion === "hoje"} onToggle={() => setOpenAccordion(openAccordion === "hoje" ? null : "hoje")}>
-            {hasAtrasadasView && lateInHojeCount > 0 && (
-              <div className="flex items-center justify-between mb-2 px-1">
-                <button
-                  type="button"
-                  onClick={() => setShowOnlyLate(v => !v)}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 h-7 px-2 rounded-full text-[11px] font-medium border transition-colors",
-                    showOnlyLate
-                      ? "bg-destructive text-destructive-foreground border-destructive"
-                      : "bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/20"
-                  )}
-                  aria-pressed={showOnlyLate}
-                  title={showOnlyLate ? "Mostrar todas" : "Mostrar só atrasadas"}
-                >
-                  <Clock className="w-3 h-3" />
-                  {showOnlyLate ? "Só atrasadas" : "Atrasadas"}: {lateInHojeCount}
-                </button>
-                {showOnlyLate && (
-                  <button type="button" onClick={() => setShowOnlyLate(false)}
-                    className="text-[11px] text-muted-foreground hover:text-foreground underline">
-                    Limpar filtro
-                  </button>
-                )}
-              </div>
-            )}
-            <MineOthersTabs
-              mine={hojeFiltradoSplit.mine} others={hojeFiltradoSplit.others} showOthers={isAdmin}
-              renderItem={(a) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />}
-              emptyMine={showOnlyLate ? "Nenhuma tarefa atrasada." : "Nenhuma tarefa para hoje."} />
-          </AccordionSection>
-
-          {aguardandoMinhaValidacao.length > 0 && (
-            <AccordionSection title="Aguardando Minha Validação" count={aguardandoMinhaValidacao.length}
-              icon={<CheckCircle2 className="w-4 h-4" style={{ color: "#06b6d4" }} />}
-              borderColor="#06b6d4" badgeBg="bg-cyan-500/15" badgeText="text-cyan-700 dark:text-cyan-400"
-              isOpen={openAccordion === "validacao"} onToggle={() => setOpenAccordion(openAccordion === "validacao" ? null : "validacao")}>
-              {aguardandoMinhaValidacao.map((a: any) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
-            </AccordionSection>
-          )}
-
-          {hasDesignadasRole && (
-            <AccordionSection title="Tarefas Designadas por mim" count={isAdmin ? tarefasDesignadas.length : designadasSplit.mine.length}
-              icon={<ListTodo className="w-4 h-4" style={{ color: "#eab308" }} />}
-              borderColor="#eab308" badgeBg="bg-yellow-500/15" badgeText="text-yellow-700 dark:text-yellow-400"
-              isOpen={openAccordion === "designadas"} onToggle={() => setOpenAccordion(openAccordion === "designadas" ? null : "designadas")}>
-              <MineOthersTabs
-                mine={designadasSplit.mine} others={designadasSplit.others} showOthers={isAdmin}
-                renderItem={(a) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />}
-                emptyMine="Você não designou tarefas para outros." />
-            </AccordionSection>
-          )}
-
-          {(devolvidasAll.length > 0 || isAdmin) && (
-            <AccordionSection title="Devolvidas / Plano de Ação do Executor" count={isAdmin ? devolvidasAll.length : devolvidasSplit.mine.length}
-              icon={<RotateCcw className="w-4 h-4" style={{ color: "#ef4444" }} />}
-              borderColor="#ef4444" badgeBg="bg-red-500/15" badgeText="text-red-700 dark:text-red-400"
-              isOpen={openAccordion === "devolvidas"} onToggle={() => setOpenAccordion(openAccordion === "devolvidas" ? null : "devolvidas")}>
-              <MineOthersTabs
-                mine={devolvidasSplit.mine} others={devolvidasSplit.others} showOthers={isAdmin}
-                renderItem={(a) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />}
-                emptyMine="Nenhuma rotina devolvida." />
-            </AccordionSection>
-          )}
-
-          {hasPlanoAcaoRole && (
-            <AccordionSection title="Plano de Ação (Contingências)" count={pendentesCount}
-              icon={<AlertTriangle className="w-4 h-4" style={{ color: "#f97316" }} />}
-              borderColor="#f97316" badgeBg="bg-orange-500/15" badgeText="text-orange-700 dark:text-orange-400"
-              isOpen={openAccordion === "contingenciados"} onToggle={() => setOpenAccordion(openAccordion === "contingenciados" ? null : "contingenciados")}>
-              <MinhasTarefasPendentesPanel viewAsProfileId={isAdmin && filterResponsavel !== "__all" ? filterResponsavel : null} />
-            </AccordionSection>
-          )}
-
-          {(hasAvaliarRole || hasAprovarRole) && (
-            <AccordionSection title="Para Avaliar / Aprovar" count={isAdmin ? aguardandoAvaliacao.length : aguardandoSplit.mine.length}
-              icon={<Hourglass className="w-4 h-4" style={{ color: "#8b5cf6" }} />}
-              borderColor="#8b5cf6" badgeBg="bg-violet-500/15" badgeText="text-violet-700 dark:text-violet-400"
-              isOpen={openAccordion === "aguardando"} onToggle={() => setOpenAccordion(openAccordion === "aguardando" ? null : "aguardando")}>
-              <AguardandoAvaliacaoPanel
-                viewAsProfileId={isAdmin && filterResponsavel !== "__all" ? filterResponsavel : null}
-                onOpen={openExecution}
-              />
-            </AccordionSection>
-          )}
-
-          <AccordionSection title="Em Aberto" count={isAdmin ? emAberto.length : emAbertoSplit.mine.length}
-            icon={<AlertTriangle className="w-4 h-4" style={{ color: "#f59e0b" }} />}
-            borderColor="#f59e0b" badgeBg="bg-amber-500/15" badgeText="text-amber-700 dark:text-amber-400"
-            isOpen={openAccordion === "em_aberto"} onToggle={() => setOpenAccordion(openAccordion === "em_aberto" ? null : "em_aberto")}>
-            <MineOthersTabs
-              mine={emAbertoSplit.mine} others={emAbertoSplit.others} showOthers={isAdmin}
-              renderItem={(a) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />}
-              emptyMine="Nenhuma rotina em aberto." />
-          </AccordionSection>
-
-          <AccordionSection title="Concluídas" count={isAdmin ? concluidas.length : concluidasSplit.mine.length}
-            icon={<CheckCheck className="w-4 h-4" style={{ color: "#22c55e" }} />}
-            borderColor="#22c55e" badgeBg="bg-green-500/15" badgeText="text-green-700 dark:text-green-400"
-            isOpen={openAccordion === "finalizadas"} onToggle={() => setOpenAccordion(openAccordion === "finalizadas" ? null : "finalizadas")}>
-            <MineOthersTabs
-              mine={concluidasSplit.mine} others={concluidasSplit.others} showOthers={isAdmin}
-              renderItem={(a) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />}
-              emptyMine="Nenhuma rotina concluída." />
-          </AccordionSection>
+          <RenderVisao
+            visao={visao}
+            buckets={buckets}
+            sorted={sorted}
+            openAccordion={openAccordion}
+            setOpenAccordion={setOpenAccordion}
+            openExecution={openExecution}
+            hojeFiltrado={hojeFiltrado}
+            lateInHojeCount={lateInHojeCount}
+            showOnlyLate={showOnlyLate}
+            setShowOnlyLate={setShowOnlyLate}
+          />
         </div>
       )}
         </TabsContent>
