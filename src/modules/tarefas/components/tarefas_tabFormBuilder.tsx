@@ -393,6 +393,32 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                               </div>
                             )}
 
+                            {tipoExecucao === "etapas" && setAgrupadorExtras && (
+                              <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-2 mb-2">
+                                <div className="space-y-0.5">
+                                  <Label className="text-[10px] text-muted-foreground">SLA da etapa (h)</Label>
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    placeholder="Herda global"
+                                    value={agrupadorExtras[section.tempId]?.sla_horas ?? ""}
+                                    onChange={e => updateAgrupadorExtra(section.tempId, { sla_horas: e.target.value === "" ? null : Math.max(0, +e.target.value || 0) })}
+                                    className="h-7 text-xs"
+                                  />
+                                </div>
+                                <div className="space-y-0.5">
+                                  <Label className="text-[10px] text-muted-foreground">Observação da etapa</Label>
+                                  <Input
+                                    value={agrupadorExtras[section.tempId]?.observacao ?? ""}
+                                    onChange={e => updateAgrupadorExtra(section.tempId, { observacao: e.target.value })}
+                                    placeholder="Opcional"
+                                    className="h-7 text-xs"
+                                    maxLength={500}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
                             {!section.nome.trim() && (
                               <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/30 rounded-md p-2 text-[11px] text-amber-700 dark:text-amber-300">
                                 <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
