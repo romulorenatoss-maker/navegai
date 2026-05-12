@@ -188,14 +188,27 @@ export default function OperationalExecucaoPage() {
   const [pickedSetorId, setPickedSetorId] = useState<string>("");
   const [chipFilter, setChipFilter] = useState<OperationalChipFilter>("todas");
   const isMobile = useIsMobile();
-  // Fase B: leitura do query param ?chip= para wrappers das rotas legadas
+  // Toggle "Só atrasadas" dentro do acordeão Hoje
+  const [showOnlyLate, setShowOnlyLate] = useState(false);
+  // Compat com wrappers das rotas legadas: ?chip= mapeia para o acordeão correspondente
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const chipParam = searchParams.get("chip");
     const valid: OperationalChipFilter[] = ["todas", "executar", "avaliar", "aprovar", "plano_acao", "contingencias", "atrasadas", "concluidas"];
     if (chipParam && valid.includes(chipParam as OperationalChipFilter)) {
-      setChipFilter(chipParam as OperationalChipFilter);
-      // Limpa o query param depois de aplicar para não persistir no histórico/refresh
+      const chipToAccordion: Record<OperationalChipFilter, string | null> = {
+        todas: "hoje",
+        executar: "hoje",
+        avaliar: "aguardando",
+        aprovar: "aguardando",
+        plano_acao: "contingenciados",
+        contingencias: "contingenciados",
+        atrasadas: "hoje",
+        concluidas: "finalizadas",
+      };
+      const targetAcc = chipToAccordion[chipParam as OperationalChipFilter];
+      if (targetAcc) setOpenAccordion(targetAcc);
+      if (chipParam === "atrasadas") setShowOnlyLate(true);
       const next = new URLSearchParams(searchParams);
       next.delete("chip");
       next.delete("from");
