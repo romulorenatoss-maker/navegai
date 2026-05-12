@@ -240,12 +240,10 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     });
   }, [colaboradores, isSelfTask, profile?.id, avaliadoId]);
 
-  const planoAcaoOk = !requerPlanoAcao
-    || (planoAcaoMode === "individual" && !!planoAcaoId && planoAcaoId !== avaliadoId)
-    || (planoAcaoMode === "setor" && !!planoAcaoSetorId);
-
-  const planoAcaoEnabled = requerPlanoAcao
-    && ((planoAcaoMode === "individual" && !!planoAcaoId) || (planoAcaoMode === "setor" && !!planoAcaoSetorId));
+  // Cleanup pós-realinhamento: o "Plano de ação" agora é configurado por pergunta no FormBuilder.
+  // Mantemos o state legado apenas como fallback opcional (sem UI no QuickCreate).
+  const planoAcaoOk = true;
+  const planoAcaoEnabled = true; // habilita "gera plano de ação" em qualquer pergunta
 
   const aprovadorOk = !requerAprovacao
     || (aprovadorMode === "individual" && !!aprovadorId && aprovadorId !== avaliadoId && (!isSelfTask || aprovadorId !== profile?.id))
@@ -268,16 +266,8 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     return "Tarefa sem título";
   }, [nome, sections, fields]);
 
-  // Quando o responsável pelo plano de ação é desabilitado, limpa qualquer
-  // regra "gera_contingencia" que tenha sido configurada nos campos.
-  useEffect(() => {
-    if (planoAcaoEnabled) return;
-    setFields(prev => prev.map(f => {
-      if (!f.opcoes_regras?.length) return f;
-      const cleaned = f.opcoes_regras.map((o: any) => o.gera_contingencia ? { ...o, gera_contingencia: false, requer_evidencia: true } : o);
-      return { ...f, opcoes_regras: cleaned, gera_contingencia: false };
-    }));
-  }, [planoAcaoEnabled]);
+  // (Removido) cleanup que desabilitava gera_contingencia quando não havia
+  // responsável global pelo plano de ação. Agora a regra é por pergunta.
 
   // Validação do builder (modo individual em etapas):
   // cada etapa precisa de horário próprio OU todas as perguntas com horário.
@@ -603,48 +593,9 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                   </p>
                 </div>
 
-                <div className="border-t border-border/60 pt-3 space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <Label className="text-sm">Responsável pelo Plano de Ação</Label>
-                      <p className="text-[11px] text-muted-foreground">Quem trata o plano de ação gerado por este formulário. Sem responsável, os campos não poderão "gerar plano de ação" — apenas exigir evidência obrigatória.</p>
-                    </div>
-                    <Switch checked={requerPlanoAcao} onCheckedChange={setRequerPlanoAcao} />
-                  </div>
-                  {requerPlanoAcao && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-3 text-xs">
-                        <label className="flex items-center gap-1.5 cursor-pointer">
-                          <input type="radio" checked={planoAcaoMode === "individual"} onChange={() => setPlanoAcaoMode("individual")} />
-                          Individual
-                        </label>
-                        <label className="flex items-center gap-1.5 cursor-pointer">
-                          <input type="radio" checked={planoAcaoMode === "setor"} onChange={() => setPlanoAcaoMode("setor")} />
-                          Setorial
-                        </label>
-                      </div>
-                      {planoAcaoMode === "individual" ? (
-                        <Select value={planoAcaoId} onValueChange={setPlanoAcaoId} disabled={!avaliadoId}>
-                          <SelectTrigger><SelectValue placeholder={avaliadoId ? "Selecionar colaborador..." : "Escolha o avaliado primeiro"} /></SelectTrigger>
-                          <SelectContent>
-                            {planoAcaoOptions.map((c: any) => (
-                              <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Select value={planoAcaoSetorId} onValueChange={setPlanoAcaoSetorId}>
-                          <SelectTrigger><SelectValue placeholder="Selecionar setor..." /></SelectTrigger>
-                          <SelectContent>
-                            {(setores as any[]).map((s) => (
-                              <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </div>
-                  )}
-                </div>
+                {/* (Removido) Bloco global "Responsável pelo Plano de Ação".
+                    A geração de plano de ação agora é configurada por pergunta no FormBuilder
+                    (cada item não conforme abre seu próprio plano). */}
 
                 <div className="border-t border-border/60 pt-3 space-y-2">
                   <div className="flex items-center justify-between gap-2">
@@ -844,120 +795,13 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                 </div>
               )}
 
-              {/* Fase 1B.3 — Fluxo Operacional (apenas avulsa) */}
-              {isAvulsa && (
-                <div className="border border-border rounded-lg p-3 space-y-3 bg-muted/30">
-                  <div>
-                    <Label className="text-sm font-semibold">Fluxo Operacional</Label>
-                    <p className="text-[11px] text-muted-foreground">Como o executor recebe e devolve esta tarefa avulsa. Persistido no snapshot da tarefa.</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <label className="flex items-start gap-2 text-xs cursor-pointer p-2 rounded border border-border bg-card">
-                      <Switch
-                        checked={solicitacaoConfig.exige_aceite_executor}
-                        onCheckedChange={(v) => updateSolicitacaoConfig({ exige_aceite_executor: v })}
-                      />
-                      <span><strong>Exige aceite do executor</strong><br /><span className="text-muted-foreground">Tarefa abre como "Aguardando aceite".</span></span>
-                    </label>
-                    <label className="flex items-start gap-2 text-xs cursor-pointer p-2 rounded border border-border bg-card">
-                      <Switch
-                        checked={solicitacaoConfig.exige_validacao_solicitante}
-                        onCheckedChange={(v) => updateSolicitacaoConfig({ exige_validacao_solicitante: v })}
-                      />
-                      <span><strong>Exige validação do solicitante</strong><br /><span className="text-muted-foreground">Após o executor responder, eu valido antes de fechar.</span></span>
-                    </label>
-                    <label className="flex items-start gap-2 text-xs cursor-pointer p-2 rounded border border-border bg-card">
-                      <Switch
-                        checked={solicitacaoConfig.permite_devolver}
-                        onCheckedChange={(v) => updateSolicitacaoConfig({ permite_devolver: v })}
-                      />
-                      <span><strong>Permite devolver ao executor</strong></span>
-                    </label>
-                    <label className="flex items-start gap-2 text-xs cursor-pointer p-2 rounded border border-border bg-card">
-                      <Switch
-                        checked={solicitacaoConfig.permite_plano_acao}
-                        onCheckedChange={(v) => updateSolicitacaoConfig({ permite_plano_acao: v })}
-                      />
-                      <span><strong>Permite plano de ação</strong></span>
-                    </label>
-                    <label className="flex items-start gap-2 text-xs cursor-pointer p-2 rounded border border-border bg-card">
-                      <Switch
-                        checked={solicitacaoConfig.renegociacao.permite}
-                        onCheckedChange={(v) => updateSolicitacaoConfig({ renegociacao: { ...solicitacaoConfig.renegociacao, permite: v } })}
-                      />
-                      <span><strong>Permite renegociação de prazo</strong></span>
-                    </label>
-                    <label className="flex items-start gap-2 text-xs cursor-pointer p-2 rounded border border-border bg-card">
-                      <Switch
-                        checked={solicitacaoConfig.exige_reauth_reabertura}
-                        onCheckedChange={(v) => updateSolicitacaoConfig({ exige_reauth_reabertura: v })}
-                      />
-                      <span><strong>Exige re-autenticação para reabrir</strong></span>
-                    </label>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-[11px]">Limite de renegociações</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={10}
-                        value={solicitacaoConfig.renegociacao.limite}
-                        onChange={(e) => updateSolicitacaoConfig({ renegociacao: { ...solicitacaoConfig.renegociacao, limite: Math.max(0, +e.target.value || 0) } })}
-                        disabled={!solicitacaoConfig.renegociacao.permite}
-                        className="h-8 text-xs"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-[11px]">Janela reabertura (h)</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={solicitacaoConfig.janela_reabertura_horas}
-                        onChange={(e) => updateSolicitacaoConfig({ janela_reabertura_horas: Math.max(0, +e.target.value || 0) })}
-                        className="h-8 text-xs"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-[11px]">Sem movimento (h, opcional)</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        placeholder="Global"
-                        value={solicitacaoConfig.sem_movimento_horas ?? ""}
-                        onChange={(e) => updateSolicitacaoConfig({ sem_movimento_horas: e.target.value === "" ? null : Math.max(0, +e.target.value || 0) })}
-                        className="h-8 text-xs"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-[11px]">Quem pode reabrir</Label>
-                      <Select
-                        value={solicitacaoConfig.quem_pode_reabrir}
-                        onValueChange={(v: any) => updateSolicitacaoConfig({ quem_pode_reabrir: v })}
-                      >
-                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="ambos">Ambos (padrão)</SelectItem>
-                          <SelectItem value="solicitante">Apenas solicitante</SelectItem>
-                          <SelectItem value="admin">Apenas admin</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <label className="flex items-end gap-2 text-xs cursor-pointer p-2 rounded border border-border bg-card">
-                      <Switch
-                        checked={solicitacaoConfig.exigir_justificativa_atraso}
-                        onCheckedChange={(v) => updateSolicitacaoConfig({ exigir_justificativa_atraso: v })}
-                      />
-                      <span><strong>Exigir justificativa em atraso</strong></span>
-                    </label>
-                  </div>
-                </div>
-              )}
+              {/* (Removido) Bloco "Fluxo Operacional" da avulsa.
+                  Os toggles antigos (exige_aceite_executor, exige_validacao_solicitante,
+                  permite_devolver, permite_plano_acao, renegociacao, etc.) saíram da UI
+                  para alinhar ao novo conceito de conformidade por item.
+                  O JSON `solicitacao_config` continua sendo gravado com os defaults
+                  preservados (DEFAULT_SOLICITACAO_CONFIG) para compatibilidade de leitura
+                  com tarefas avulsas legadas. */}
             </div>
           )}
 
