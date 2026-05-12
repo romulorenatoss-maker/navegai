@@ -42,6 +42,9 @@ export function PainelRetornoCard({ assignment, onClick }: Props) {
   const statusConf = STATUS_CONFIG[assignment.status];
   const responsavel = assignment.profiles?.nome || "—";
   const titulo = assignment.template_snapshot?.nome || assignment.operational_templates?.nome || "Tarefa";
+  // Origem: null tratado como "avulsa" por compat com dados legados (sem migration).
+  const origem = assignment.operational_templates?.origem ?? "ad_hoc";
+  const isRotina = origem === "rotina";
 
   return (
     <button
@@ -62,6 +65,14 @@ export function PainelRetornoCard({ assignment, onClick }: Props) {
               </span>
             )}
             <span className="text-sm font-semibold truncate">{titulo}</span>
+            <span className={cn(
+              "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold border shrink-0",
+              isRotina
+                ? "bg-blue-500/10 text-blue-700 border-blue-500/30 dark:text-blue-400"
+                : "bg-purple-500/10 text-purple-700 border-purple-500/30 dark:text-purple-400"
+            )}>
+              {isRotina ? "Rotina" : "Avulsa"}
+            </span>
             {cont && (
               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-orange-500 text-white animate-pulse">
                 <AlertTriangle className="w-3 h-3" /> CONTINGÊNCIA
