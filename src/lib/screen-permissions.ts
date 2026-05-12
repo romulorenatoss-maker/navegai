@@ -12,12 +12,13 @@ export const ALL_SCREENS: ScreenDef[] = [
   { path: "/", label: "Dashboard OS", group: "Dashboards" },
   { path: "/leads/dashboard", label: "Dashboard de Leads", group: "Dashboards" },
   { path: "/leads/dashboard-vendas", label: "Dashboard Vendas", group: "Dashboards" },
-  { path: "/desempenho/tempo-avaliacoes", label: "Análise Operacional", group: "Dashboards" },
+  { path: "/avaliacoes/tempo-avaliacoes", label: "Análise Operacional", group: "Dashboards" },
   { path: "/assistente", label: "Assistente Naví", group: "Dashboards" },
 
   // Avaliações
   { path: "/avaliacoes/pesquisa", label: "Criar OS / Buscar", group: "Avaliações" },
   { path: "/avaliacoes/minhas", label: "Minhas Avaliações", group: "Avaliações" },
+  { path: "/avaliacoes/tempo-avaliacoes", label: "Tempo de Avaliações", group: "Avaliações" },
   { path: "/leads", label: "Meus Leads", group: "Avaliações" },
   // Propostas (módulo isolado)
   { path: "/propostas/nova", label: "Nova Proposta", group: "Propostas" },
@@ -30,16 +31,16 @@ export const ALL_SCREENS: ScreenDef[] = [
   { path: "/leads/importador", label: "Importador de Leads", group: "Leads" },
   { path: "/leads/gerenciamento", label: "Gerenciamento de Leads", group: "Leads" },
   { path: "/leads/campanhas", label: "Campanhas", group: "Leads" },
-  // Tarefas
+  // Tarefas (menu principal)
   { path: "/tarefas/gestao", label: "Dash de Tarefas", group: "Tarefas" },
   { path: "/tarefas/minhas", label: "Minhas Tarefas", group: "Tarefas" },
   { path: "/tarefas/rotinas", label: "Rotinas Operacionais", group: "Tarefas" },
-  { path: "/tarefas/avaliacao", label: "Avaliação de Tarefas", group: "Tarefas" },
-  { path: "/tarefas/aprovacao", label: "Aprovação de Tarefas", group: "Tarefas" },
-  { path: "/tarefas/contingencias", label: "Contingências", group: "Tarefas" },
   { path: "/tarefas/relatorios", label: "Relatórios de Tarefas", group: "Tarefas" },
   { path: "/tarefas/desempenho", label: "Desempenho de Tarefas", group: "Tarefas" },
-  { path: "/tarefas/tempo-avaliacoes", label: "Tempo de Avaliações", group: "Tarefas" },
+  // Tarefas — rotas internas (acessadas via /tarefas/minhas, mantidas para permissionamento e links diretos)
+  { path: "/tarefas/avaliacao", label: "Avaliação de Tarefas (interna)", group: "Tarefas" },
+  { path: "/tarefas/aprovacao", label: "Aprovação de Tarefas (interna)", group: "Tarefas" },
+  { path: "/tarefas/contingencias", label: "Contingências (interna)", group: "Tarefas" },
   // Cadastros
   { path: "/cadastros/setores", label: "Setores", group: "Cadastros" },
   { path: "/cadastros/servicos", label: "Tipos de Serviço", group: "Cadastros" },
