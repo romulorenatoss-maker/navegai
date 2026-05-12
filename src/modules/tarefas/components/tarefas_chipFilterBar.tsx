@@ -1,4 +1,4 @@
-import { ListChecks, Play, Eye, ShieldCheck, AlertTriangle, Clock, CheckCheck } from "lucide-react";
+import { ListChecks, Play, Eye, ShieldCheck, AlertTriangle, Clock, CheckCheck, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type OperationalChipFilter =
@@ -6,6 +6,7 @@ export type OperationalChipFilter =
   | "executar"
   | "avaliar"
   | "aprovar"
+  | "plano_acao"
   | "contingencias"
   | "atrasadas"
   | "concluidas";
@@ -22,6 +23,7 @@ const CHIPS: ChipDef[] = [
   { key: "executar",      label: "Para Executar", icon: Play,           color: "#f97316" },
   { key: "avaliar",       label: "Para Avaliar",  icon: Eye,            color: "#8b5cf6" },
   { key: "aprovar",       label: "Para Aprovar",  icon: ShieldCheck,    color: "#06b6d4" },
+  { key: "plano_acao",    label: "Plano de Ação", icon: ClipboardList,  color: "#f59e0b" },
   { key: "contingencias", label: "Contingências", icon: AlertTriangle,  color: "#ef4444" },
   { key: "atrasadas",     label: "Atrasadas",     icon: Clock,          color: "#dc2626" },
   { key: "concluidas",    label: "Concluídas",    icon: CheckCheck,     color: "#22c55e" },

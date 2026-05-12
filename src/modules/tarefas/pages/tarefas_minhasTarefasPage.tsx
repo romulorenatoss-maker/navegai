@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Play, Send, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock, RotateCcw, CheckCheck, CalendarClock, ListTodo, Hourglass, Filter, History, Plus } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { EmbeddedContingencyPanel } from "@/modules/tarefas/components/tarefas_embeddedContingencyPanel";
+import { EmbeddedReviewPanel, EmbeddedApprovalPanel } from "@/modules/tarefas/components/tarefas_embeddedActionPanels";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -191,7 +192,7 @@ export default function OperationalExecucaoPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const chipParam = searchParams.get("chip");
-    const valid: OperationalChipFilter[] = ["todas", "executar", "avaliar", "aprovar", "contingencias", "atrasadas", "concluidas"];
+    const valid: OperationalChipFilter[] = ["todas", "executar", "avaliar", "aprovar", "plano_acao", "contingencias", "atrasadas", "concluidas"];
     if (chipParam && valid.includes(chipParam as OperationalChipFilter)) {
       setChipFilter(chipParam as OperationalChipFilter);
       // Limpa o query param depois de aplicar para não persistir no histórico/refresh
@@ -350,13 +351,18 @@ export default function OperationalExecucaoPage() {
   };
   const chipExecutar = filteredAssignments.filter((a: any) =>
     (a.responsavel_id === chipMyId || isAdmin) &&
-    ["pendente", "em_andamento", "devolvida"].includes(a.status)
+    ["pendente", "em_andamento", "devolvida", "reaberta"].includes(a.status)
   );
   const chipAvaliar = filteredAssignments.filter((a: any) =>
-    a.status === "aguardando_avaliacao" && (a.avaliador_id === chipMyId || isAdmin)
+    ["aguardando_avaliacao", "em_avaliacao"].includes(a.status) && (a.avaliador_id === chipMyId || isAdmin)
   );
   const chipAprovar = filteredAssignments.filter((a: any) =>
     a.status === "aguardando_aprovacao" && (a.aprovador_id === chipMyId || isAdmin)
+  );
+  // Plano de Ação (B3): correções pendentes do executor — reprovada/devolvida (NÃO inclui contingências, que têm chip próprio)
+  const chipPlanoAcao = filteredAssignments.filter((a: any) =>
+    ["reprovada", "devolvida"].includes(a.status) &&
+    (a.responsavel_id === chipMyId || isAdmin)
   );
   const chipContingencias = filteredAssignments.filter((a: any) =>
     ["contingenciado", "contingencia"].includes(a.status) &&
@@ -369,6 +375,7 @@ export default function OperationalExecucaoPage() {
     executar: chipExecutar.length,
     avaliar: chipAvaliar.length,
     aprovar: chipAprovar.length,
+    plano_acao: chipPlanoAcao.length,
     contingencias: chipContingencias.length,
     atrasadas: chipAtrasadas.length,
     concluidas: chipConcluidas.length,
@@ -377,6 +384,7 @@ export default function OperationalExecucaoPage() {
     chipFilter === "executar" ? chipExecutar :
     chipFilter === "avaliar" ? chipAvaliar :
     chipFilter === "aprovar" ? chipAprovar :
+    chipFilter === "plano_acao" ? chipPlanoAcao :
     chipFilter === "contingencias" ? chipContingencias :
     chipFilter === "atrasadas" ? chipAtrasadas :
     chipFilter === "concluidas" ? chipConcluidas : [];
@@ -532,6 +540,18 @@ export default function OperationalExecucaoPage() {
   const isCriadorValidando = !!selectedAssignment
     && selectedAssignment.status === "aguardando_validacao"
     && selectedAssignment.created_by === profile?.id;
+
+  // Modos de papel ativo no drawer (mutuamente exclusivos com edição do executor):
+  //  - Avaliador: status aguardando_avaliacao | em_avaliacao
+  //  - Aprovador: status aguardando_aprovacao
+  // Admin sem ser avaliador/aprovador da tarefa NÃO entra nesses modos automaticamente
+  // (evita atropelar o reabrir-para-edição). Usa-se apenas a igualdade de id.
+  const isAvaliadorMode = !!selectedAssignment
+    && selectedAssignment.avaliador_id === profile?.id
+    && ["aguardando_avaliacao", "em_avaliacao"].includes(selectedAssignment.status);
+  const isAprovadorMode = !!selectedAssignment
+    && selectedAssignment.aprovador_id === profile?.id
+    && selectedAssignment.status === "aguardando_aprovacao";
 
   const handleStart = () => {
     if (selectedAssignment) exec.startTask.mutate({
@@ -826,7 +846,7 @@ export default function OperationalExecucaoPage() {
                       <AlertTriangle className="w-3 h-3" /> Rodada {selectedAssignment?.rodada_atual}
                     </span>
                   )}
-                  {!isEditable && selectedAssignment && !isCriadorValidando && (
+                  {!isEditable && selectedAssignment && !isCriadorValidando && !isAvaliadorMode && !isAprovadorMode && (
                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border border-muted-foreground/30 bg-muted/50 text-muted-foreground">
                       🔒 Somente leitura
                     </span>
@@ -998,7 +1018,23 @@ export default function OperationalExecucaoPage() {
               </>
             )}
 
-            {!isEditable && selectedAssignment && (
+            {!isEditable && selectedAssignment && isAvaliadorMode && (
+              <EmbeddedReviewPanel
+                assignment={selectedAssignment}
+                fields={effectiveFields}
+                onClose={closeExecution}
+              />
+            )}
+
+            {!isEditable && selectedAssignment && isAprovadorMode && (
+              <EmbeddedApprovalPanel
+                assignment={selectedAssignment}
+                fields={effectiveFields}
+                onClose={closeExecution}
+              />
+            )}
+
+            {!isEditable && selectedAssignment && !isAvaliadorMode && !isAprovadorMode && (
               <div className="space-y-3">
                 {effectiveFields.map(f => (
                   <DynamicFieldRenderer key={f.id} field={f} answer={exec.answers[f.id]}
