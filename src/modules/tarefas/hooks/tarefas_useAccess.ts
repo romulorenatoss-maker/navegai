@@ -15,7 +15,7 @@ import {
   type OperationalAction,
   type OperationalRole,
   type TransitionCheck,
-} from "@/modules/operacional/services";
+} from "@/modules/tarefas/services";
 
 interface AssignmentLike {
   responsavel_id?: string | null;

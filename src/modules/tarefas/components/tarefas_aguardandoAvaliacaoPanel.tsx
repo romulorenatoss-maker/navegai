@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { AssignmentCard } from "@/modules/operacional/components/AssignmentCard";
+import { AssignmentCard } from "@/modules/tarefas/components/tarefas_tarefaCard";
 
 /**
  * Painel embutido na seção "Aguardando Avaliação" da página de Execução.

@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { getScoreColorClass } from "@/lib/score-colors";
 import { cn } from "@/lib/utils";
-import AssignmentQuickViewDialog from "@/components/AssignmentQuickViewDialog";
+import AssignmentQuickViewDialog from "@/modules/tarefas/components/tarefas_quickViewDialog";
 
 const COMPLETED_STATUSES = ["concluida", "aprovada"];
 

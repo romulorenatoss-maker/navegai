@@ -16,10 +16,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { STATUS_CONFIG, CONTINGENCY_STATUS, AUDIT_EVENT_LABELS } from "@/modules/operacional/hooks/useOperationalScoring";
-import { AssignmentCard } from "@/modules/operacional/components/AssignmentCard";
-import { SnapshotField, evaluateVisibility } from "@/modules/operacional/components/DynamicFieldRenderer";
-import { useAssignmentReview } from "@/modules/operacional/hooks/useAssignmentReview";
+import { STATUS_CONFIG, CONTINGENCY_STATUS, AUDIT_EVENT_LABELS } from "@/modules/tarefas/hooks/tarefas_useScoring";
+import { AssignmentCard } from "@/modules/tarefas/components/tarefas_tarefaCard";
+import { SnapshotField, evaluateVisibility } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
+import { useAssignmentReview } from "@/modules/tarefas/hooks/tarefas_useAssignmentReview";
 
 // ── Answer value renderer ──
 function renderAnswerValue(field: SnapshotField, answer: any) {

@@ -15,8 +15,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { CONTINGENCY_STATUS } from "@/modules/operacional/hooks/useOperationalScoring";
-import { useContingencyManagement, uploadContingencyAttachment } from "@/modules/operacional/hooks/useContingencyManagement";
+import { CONTINGENCY_STATUS } from "@/modules/tarefas/hooks/tarefas_useScoring";
+import { useContingencyManagement, uploadContingencyAttachment } from "@/modules/tarefas/hooks/tarefas_useContingencyManagement";
 import { toast } from "sonner";
 
 function SlaCountdown({ prazoSla }: { prazoSla: string }) {

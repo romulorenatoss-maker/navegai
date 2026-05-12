@@ -6,25 +6,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { Play, Send, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock, RotateCcw, CheckCheck, CalendarClock, ListTodo, Hourglass, Filter, History, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { EmbeddedContingencyPanel } from "@/modules/operacional/components/EmbeddedContingencyPanel";
+import { EmbeddedContingencyPanel } from "@/modules/tarefas/components/tarefas_embeddedContingencyPanel";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { STATUS_CONFIG } from "@/modules/operacional/hooks/useOperationalScoring";
-import { AssignmentCard } from "@/modules/operacional/components/AssignmentCard";
-import { DynamicFieldRenderer, SnapshotField, FieldAnswer, evaluateVisibility } from "@/modules/operacional/components/DynamicFieldRenderer";
-import { useAssignmentExecution } from "@/modules/operacional/hooks/useAssignmentExecution";
-import { useOperationalTransition } from "@/modules/operacional/hooks/useOperationalTransition";
+import { STATUS_CONFIG } from "@/modules/tarefas/hooks/tarefas_useScoring";
+import { AssignmentCard } from "@/modules/tarefas/components/tarefas_tarefaCard";
+import { DynamicFieldRenderer, SnapshotField, FieldAnswer, evaluateVisibility } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
+import { useAssignmentExecution } from "@/modules/tarefas/hooks/tarefas_useAssignmentExecution";
+import { useOperationalTransition } from "@/modules/tarefas/hooks/tarefas_useTransition";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import MinhasTarefasTab from "@/components/MinhasTarefasTab";
-import QuickTaskDialog from "@/components/QuickTaskDialog";
+import MinhasTarefasTab from "@/modules/tarefas/components/tarefas_minhasTarefasTab";
+import QuickTaskDialog from "@/modules/tarefas/components/tarefas_quickCreateDialog";
 import TaskTypeSelectorDialog, { type TaskType } from "@/components/TaskTypeSelectorDialog";
-import { MinhasTarefasPendentesPanel } from "@/modules/operacional/components/MinhasTarefasPendentesPanel";
-import { AguardandoAvaliacaoPanel } from "@/modules/operacional/components/AguardandoAvaliacaoPanel";
-import { useContingencyManagement } from "@/modules/operacional/hooks/useContingencyManagement";
+import { MinhasTarefasPendentesPanel } from "@/modules/tarefas/components/tarefas_minhasTarefasPendentesPanel";
+import { AguardandoAvaliacaoPanel } from "@/modules/tarefas/components/tarefas_aguardandoAvaliacaoPanel";
+import { useContingencyManagement } from "@/modules/tarefas/hooks/tarefas_useContingencyManagement";
 import { ListChecks, Trophy } from "lucide-react";
 
 interface AccordionSectionProps {

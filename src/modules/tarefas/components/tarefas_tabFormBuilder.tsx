@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { SectionForm, FieldForm, OpcaoRegra, FIELD_TYPES, SECTION_COLORS, defaultField, defaultSection, getDefaultOpcoesRegras } from "../types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import QuickFieldDialog from "@/components/QuickFieldDialog";
+import QuickFieldDialog from "@/modules/tarefas/components/tarefas_quickFieldDialog";
 
 interface Props {
   sections: SectionForm[];

@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
-import { useContingencyManagement } from "@/modules/operacional/hooks/useContingencyManagement";
-import { CONTINGENCY_STATUS } from "@/modules/operacional/hooks/useOperationalScoring";
+import { useContingencyManagement } from "@/modules/tarefas/hooks/tarefas_useContingencyManagement";
+import { CONTINGENCY_STATUS } from "@/modules/tarefas/hooks/tarefas_useScoring";
 import { Camera, Video, File as FileIcon, Clock } from "lucide-react";
-import { ContingencyDetailDialog } from "@/modules/operacional/components/ContingencyDetailDialog";
+import { ContingencyDetailDialog } from "@/modules/tarefas/components/tarefas_contingencyDetailDialog";
 
 /**
  * Painel embutido em "Tarefas Pendentes" da página de Execução.

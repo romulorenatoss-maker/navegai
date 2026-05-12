@@ -5,8 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, X, Eye, Check } from "lucide-react";
-import { FieldForm, defaultField, getDefaultOpcoesRegras, FIELD_TYPES } from "@/modules/operacional/types";
-import { DynamicFieldRenderer, SnapshotField } from "@/modules/operacional/components/DynamicFieldRenderer";
+import { FieldForm, defaultField, getDefaultOpcoesRegras, FIELD_TYPES } from "@/modules/tarefas/types/tarefas_types";
+import { DynamicFieldRenderer, SnapshotField } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
 
 interface Props {
   open: boolean;

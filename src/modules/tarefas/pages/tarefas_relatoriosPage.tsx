@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon, Trash2, FileBarChart, Search, Eye, ChevronLeft, ChevronRight } from "lucide-react";
-import AssignmentQuickViewDialog from "@/components/AssignmentQuickViewDialog";
+import AssignmentQuickViewDialog from "@/modules/tarefas/components/tarefas_quickViewDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { logSystem } from "@/modules/operacional/services/systemLogger";
+import { logSystem } from "@/modules/tarefas/services/tarefas_systemLogger";
 
 interface AssignmentRow {
   id: string;

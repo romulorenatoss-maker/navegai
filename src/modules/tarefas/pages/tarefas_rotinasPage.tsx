@@ -7,13 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TIPO_EXECUCAO_LABELS, RECORRENCIA_LABELS } from "@/modules/operacional/hooks/useOperationalScoring";
-import { TemplateForm, SectionForm, FieldForm, StepForm, defaultTemplate, defaultSection, defaultField, defaultStep } from "@/modules/operacional/types";
-import { TabGeral } from "@/modules/operacional/components/TabGeral";
-import { TabFormBuilder } from "@/modules/operacional/components/TabFormBuilder";
-import { TabWorkflow } from "@/modules/operacional/components/TabWorkflow";
-import { TabRecorrencia } from "@/modules/operacional/components/TabRecorrencia";
-import { TabTarefasExecutadas } from "@/modules/operacional/components/TabTarefasExecutadas";
+import { TIPO_EXECUCAO_LABELS, RECORRENCIA_LABELS } from "@/modules/tarefas/hooks/tarefas_useScoring";
+import { TemplateForm, SectionForm, FieldForm, StepForm, defaultTemplate, defaultSection, defaultField, defaultStep } from "@/modules/tarefas/types/tarefas_types";
+import { TabGeral } from "@/modules/tarefas/components/tarefas_tabGeral";
+import { TabFormBuilder } from "@/modules/tarefas/components/tarefas_tabFormBuilder";
+import { TabWorkflow } from "@/modules/tarefas/components/tarefas_tabWorkflow";
+import { TabRecorrencia } from "@/modules/tarefas/components/tarefas_tabRecorrencia";
+import { TabTarefasExecutadas } from "@/modules/tarefas/components/tarefas_tabTarefasExecutadas";
 import TaskTypeSelectorDialog, { type TaskType } from "@/components/TaskTypeSelectorDialog";
 
 export default function OperationalCadastroPage() {

@@ -10,11 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { STATUS_CONFIG, CONTINGENCY_STATUS, AUDIT_EVENT_LABELS } from "@/modules/operacional/hooks/useOperationalScoring";
+import { STATUS_CONFIG, CONTINGENCY_STATUS, AUDIT_EVENT_LABELS } from "@/modules/tarefas/hooks/tarefas_useScoring";
 import { BarChart3, AlertTriangle, CheckCircle2, Clock, Users, Shield, RotateCcw, History, ThumbsUp, ThumbsDown, Pencil } from "lucide-react";
-import { useApprovalFlow } from "@/modules/operacional/hooks/useApprovalFlow";
-import { useContingencyManagement } from "@/modules/operacional/hooks/useContingencyManagement";
-import { useOperationalTransition } from "@/modules/operacional/hooks/useOperationalTransition";
+import { useApprovalFlow } from "@/modules/tarefas/hooks/tarefas_useApprovalFlow";
+import { useContingencyManagement } from "@/modules/tarefas/hooks/tarefas_useContingencyManagement";
+import { useOperationalTransition } from "@/modules/tarefas/hooks/tarefas_useTransition";
 
 export default function OperationalGestaoPage() {
   const { profile } = useAuth();

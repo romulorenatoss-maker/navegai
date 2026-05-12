@@ -3,8 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { SnapshotField } from "@/modules/operacional/components/DynamicFieldRenderer";
-import { useOperationalTransition } from "@/modules/operacional/hooks/useOperationalTransition";
+import { SnapshotField } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
+import { useOperationalTransition } from "@/modules/tarefas/hooks/tarefas_useTransition";
 
 export interface FieldReviewDraft {
   field_id: string;

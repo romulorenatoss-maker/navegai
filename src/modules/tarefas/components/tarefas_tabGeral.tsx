@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Users } from "lucide-react";
 import { TemplateForm } from "../types";
-import { TIPO_EXECUCAO_LABELS } from "@/modules/operacional/hooks/useOperationalScoring";
+import { TIPO_EXECUCAO_LABELS } from "@/modules/tarefas/hooks/tarefas_useScoring";
 
 interface Props {
   form: TemplateForm;

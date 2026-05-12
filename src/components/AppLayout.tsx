@@ -7,7 +7,7 @@ import { useIdleTimeout } from "@/hooks/useIdleTimeout";
 import { useSessionTracker } from "@/hooks/useSessionTracker";
 import { useRealtimeConnectionMonitor } from "@/hooks/useRealtimeConnectionMonitor";
 import { useLeadsRealtime } from "@/hooks/useLeadsRealtime";
-import { useOperationalRealtime } from "@/modules/operacional/hooks/useOperationalRealtime";
+import { useOperationalRealtime } from "@/modules/tarefas/hooks/tarefas_useRealtime";
 import { usePendingNotifications } from "@/hooks/usePendingNotifications";
 import { Menu, User, Settings } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";

@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Loader2, Clock, Users, Activity, AlertTriangle, TrendingDown, CalendarCheck, CalendarIcon, ChevronDown, ChevronRight, Search } from "lucide-react";
-import DesempenhoOperacionalPage from "@/pages/DesempenhoOperacionalPage";
+import DesempenhoOperacionalPage from "@/modules/tarefas/pages/tarefas_desempenhoPage";
 
 // =============================================================
 // Tipos
