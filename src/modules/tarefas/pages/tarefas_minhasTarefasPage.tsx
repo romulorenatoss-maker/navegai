@@ -1017,7 +1017,23 @@ export default function OperationalExecucaoPage() {
               </>
             )}
 
-            {!isEditable && selectedAssignment && (
+            {!isEditable && selectedAssignment && isAvaliadorMode && (
+              <EmbeddedReviewPanel
+                assignment={selectedAssignment}
+                fields={effectiveFields}
+                onClose={closeExecution}
+              />
+            )}
+
+            {!isEditable && selectedAssignment && isAprovadorMode && (
+              <EmbeddedApprovalPanel
+                assignment={selectedAssignment}
+                fields={effectiveFields}
+                onClose={closeExecution}
+              />
+            )}
+
+            {!isEditable && selectedAssignment && !isAvaliadorMode && !isAprovadorMode && (
               <div className="space-y-3">
                 {effectiveFields.map(f => (
                   <DynamicFieldRenderer key={f.id} field={f} answer={exec.answers[f.id]}
