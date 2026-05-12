@@ -184,6 +184,8 @@ export default function OperationalExecucaoPage() {
   const [taskTypePickerOpen, setTaskTypePickerOpen] = useState(false);
   const [pickedTaskType, setPickedTaskType] = useState<TaskType>("simples");
   const [pickedSetorId, setPickedSetorId] = useState<string>("");
+  const [chipFilter, setChipFilter] = useState<OperationalChipFilter>("todas");
+  const isMobile = useIsMobile();
   const effectiveFilterProfileId = isAdmin && filterResponsavel !== "__all" ? filterResponsavel : profile?.id;
 
   const { data: allProfilesRaw = [] } = useQuery({
