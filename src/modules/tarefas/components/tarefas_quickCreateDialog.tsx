@@ -527,8 +527,8 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
           {/* Stepper */}
           <div className="flex items-center gap-2 mt-3">
             {[
-              { n: 1, label: "Estrutura", icon: ListChecks },
-              { n: 2, label: "Designação", icon: Users },
+              { n: 1, label: "Designação", icon: Users },
+              { n: 2, label: "Estrutura", icon: ListChecks },
               { n: 3, label: "Prazo & Notas", icon: Sliders },
             ].map((s, i) => {
               const Icon = s.icon;
@@ -554,7 +554,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          {step === 2 && (
+          {step === 1 && (
             <div className="space-y-4">
               <p className="text-[11px] text-muted-foreground">
                 Título derivado: <strong>{derivedNome}</strong>
@@ -961,7 +961,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
             </div>
           )}
 
-          {step === 1 && (
+          {step === 2 && (
             <div className="space-y-3">
               {horarioValidationError && (
                 <div className="flex items-start gap-2 p-3 rounded-lg border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700/40">
@@ -1194,7 +1194,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
             <Button
               type="button"
               onClick={() => setStep((step + 1) as Step)}
-              disabled={(step === 1 && !canAdvanceStep1) || (step === 2 && !canAdvanceStep2)}
+              disabled={(step === 1 && !canAdvanceStep2) || (step === 2 && !canAdvanceStep1)}
             >
               Avançar <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
