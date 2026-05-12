@@ -1241,6 +1241,7 @@ export default function OperationalExecucaoPage() {
         defaultAvaliadoId={effectiveFilterProfileId}
         taskType={pickedTaskType}
         initialSetorId={pickedSetorId}
+        origemContexto="avulsa"
       />
     </div>
   );
