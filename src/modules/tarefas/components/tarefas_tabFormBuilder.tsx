@@ -130,7 +130,158 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
     });
   };
 
-  
+  // ============================================================
+  // Modo SIMPLES (tarefa avulsa) — UX direto: pergunta + tipo + adicionar.
+  // Mantém a mesma estrutura interna (sections + fields) usando uma seção
+  // padrão "Itens da tarefa" criada implicitamente. Não altera o save.
+  // ============================================================
+  const isSimpleMode =
+    tipoExecucao === "tarefa_simples" &&
+    !forceAdvanced &&
+    sections.length <= 1;
+
+  const SIMPLE_TIPOS: { value: string; label: string }[] = [
+    { value: "texto", label: "Texto livre" },
+    { value: "sim_nao", label: "Sim / Não" },
+    { value: "conforme", label: "Conforme / Não conforme" },
+    { value: "foto", label: "Imagem" },
+    { value: "numero", label: "Número" },
+    { value: "data", label: "Data" },
+    { value: "arquivo", label: "Arquivo" },
+  ];
+
+  const ensureDefaultSection = (): string => {
+    if (sections.length > 0) return sections[0].tempId;
+    const s = defaultSection(0);
+    s.nome = "Itens da tarefa";
+    setSections([s]);
+    return s.tempId;
+  };
+
+  const addSimpleField = () => {
+    const label = simpleLabel.trim();
+    if (!label) return;
+    const sectionTempId = ensureDefaultSection();
+    const ordem = fields.filter(f => f.sectionTempId === sectionTempId).length;
+    const f = defaultField(sectionTempId, ordem);
+    f.label = label;
+    f.tipo = simpleTipo;
+    if (simpleTipo === "conforme" || simpleTipo === "sim_nao") {
+      f.opcoes_regras = getDefaultOpcoesRegras(simpleTipo);
+      f.opcoes = f.opcoes_regras.map(o => o.label);
+    }
+    if (simpleTipo === "foto") {
+      f.exige_evidencia = true;
+      f.tipo_evidencia = "foto";
+    }
+    setFields(prev => [...prev, f]);
+    setSimpleLabel("");
+  };
+
+  if (isSimpleMode) {
+    const sectionTempId = sections[0]?.tempId;
+    const simpleFields = sectionTempId
+      ? fields.filter(f => f.sectionTempId === sectionTempId).sort((a, b) => a.ordem - b.ordem)
+      : [];
+
+    return (
+      <div className="space-y-3">
+        {/* Quick add row */}
+        <div className="border border-border rounded-lg p-3 bg-card space-y-2">
+          <Label className="text-sm font-medium">O que precisa ser respondido?</Label>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Input
+              value={simpleLabel}
+              onChange={e => setSimpleLabel(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addSimpleField(); } }}
+              placeholder="Ex: Local higienizado?"
+              maxLength={255}
+              className="flex-1"
+            />
+            <Select value={simpleTipo} onValueChange={setSimpleTipo}>
+              <SelectTrigger className="sm:w-[200px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {SIMPLE_TIPOS.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Button type="button" onClick={addSimpleField} disabled={!simpleLabel.trim()}>
+              <Plus className="w-4 h-4 mr-1" /> Adicionar Campo
+            </Button>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Para configurações avançadas (peso, evidência, plano de ação), clique no ícone de ajustes ao lado do campo.
+          </p>
+        </div>
+
+        {/* Lista flat */}
+        {simpleFields.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground border border-dashed border-border rounded-lg">
+            <p className="text-sm">Nenhum item adicionado ainda.</p>
+            <p className="text-caption">Use o campo acima para adicionar perguntas/itens.</p>
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {simpleFields.map((field, fIdx) => (
+              <div key={field.tempId}
+                className="flex items-center gap-2 bg-background border border-border rounded-md px-2 py-1.5 group hover:border-primary/30 transition-colors">
+                <span className="text-caption text-muted-foreground font-tabular w-5">{fIdx + 1}.</span>
+                <Input
+                  value={field.label}
+                  onChange={e => updateField(field.tempId, { label: e.target.value })}
+                  placeholder="Pergunta / item"
+                  className="h-7 text-sm flex-1"
+                  maxLength={255}
+                />
+                <Select value={field.tipo} onValueChange={v => updateField(field.tempId, { tipo: v })}>
+                  <SelectTrigger className="h-7 w-[140px] text-caption"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(FIELD_TYPES).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {field.gera_contingencia && <span className="text-[10px] px-1.5 py-0.5 rounded border border-orange-200 bg-orange-100 text-orange-700">Conting.</span>}
+                {field.aprovador_verificar && <span className="text-[10px] px-1.5 py-0.5 rounded border border-primary/30 bg-primary/10 text-primary">Aprovador</span>}
+                <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setEditingField(field)} title="Configurações avançadas">
+                  <Settings2 className="w-3.5 h-3.5" />
+                </Button>
+                <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => duplicateField(field)} title="Duplicar">
+                  <Copy className="w-3 h-3" />
+                </Button>
+                <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive" onClick={() => removeField(field.tempId)} title="Remover">
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Avançado: organizar por seções */}
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => { setForceAdvanced(true); addSection(); }}
+            title="Crie seções/formulários para agrupar perguntas"
+          >
+            <Plus className="w-3.5 h-3.5 mr-1" /> Nova seção (avançado)
+          </Button>
+        </div>
+
+        {editingField && (
+          <FieldDetailDialog
+            field={editingField}
+            allFields={fields}
+            setores={setores}
+            planoAcaoEnabled={planoAcaoEnabled}
+            requireFieldHorario={requireFieldHorario}
+            onSave={(updates) => { updateField(editingField.tempId, updates); setEditingField(null); }}
+            onClose={() => setEditingField(null)}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
