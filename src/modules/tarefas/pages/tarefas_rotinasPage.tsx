@@ -658,6 +658,7 @@ export default function OperationalCadastroPage() {
               fields={fields} setFields={setFields}
               steps={steps} setSteps={setSteps}
               checkItems={checkItems} setCheckItems={setCheckItems}
+              protectedCheckIds={protectedCheckIds}
               setores={setores} colaboradores={colaboradores}
               templateId={editingId}
               onCancel={closeDialog}
