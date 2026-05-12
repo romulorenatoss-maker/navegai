@@ -18,7 +18,6 @@ const allNavSections = [
       { to: "/", icon: LayoutDashboard, label: "Dashboard OS" },
       { to: "/leads/dashboard", icon: LayoutGrid, label: "Dashboard de Leads" },
       { to: "/leads/dashboard-vendas", icon: Trophy, label: "Dashboard Vendas" },
-      { to: "/avaliacoes/tempo-avaliacoes", icon: Clock, label: "Análise Operacional" },
       { to: "/assistente", icon: Bot, label: "Assistente Naví" },
     ],
   },
@@ -57,7 +56,7 @@ const allNavSections = [
       { to: "/tarefas/minhas", icon: PlayCircle, label: "Minhas Tarefas" },
       { to: "/tarefas/rotinas", icon: ListChecks, label: "Rotinas Operacionais" },
       { to: "/tarefas/relatorios", icon: FileBarChart, label: "Relatórios de Tarefas" },
-      { to: "/tarefas/desempenho", icon: PieChart, label: "Desempenho de Tarefas" },
+      { to: "/tarefas/desempenho", icon: PieChart, label: "Desempenho" },
     ],
   },
   {
