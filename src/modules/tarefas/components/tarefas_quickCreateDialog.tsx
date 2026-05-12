@@ -142,7 +142,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     if (open) {
       reset();
       const s = defaultSection(0);
-      s.nome = "Itens";
+      s.nome = "Itens da tarefa";
       setSections([s]);
       // Pré-seleciona o avaliado quando há um default (visão admin de outro user)
       if (defaultAvaliadoId) setAvaliadoId(defaultAvaliadoId);
