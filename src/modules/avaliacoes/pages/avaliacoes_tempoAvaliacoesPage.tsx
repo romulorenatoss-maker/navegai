@@ -11,7 +11,6 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Loader2, Clock, Users, Activity, AlertTriangle, TrendingDown, CalendarCheck, CalendarIcon, ChevronDown, ChevronRight, Search } from "lucide-react";
-import DesempenhoOperacionalPage from "@/modules/tarefas/pages/tarefas_desempenhoPage";
 
 // =============================================================
 // Tipos
@@ -651,19 +650,14 @@ export default function DashboardTempoAvaliacoes() {
     <div className="container mx-auto py-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Clock className="w-6 h-6" /> Análise Operacional
+          <Clock className="w-6 h-6" /> Tempo de Avaliações
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Métricas de tempo de avaliações e desempenho operacional consolidados.
+          Métricas de tempo e SLA das avaliações por perguntas.
         </p>
       </div>
 
       <Tabs defaultValue="tempo" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="tempo">Tempo</TabsTrigger>
-          <TabsTrigger value="operacional">Operacional</TabsTrigger>
-        </TabsList>
-
         <TabsContent value="tempo" className="space-y-6">
 
           {/* Seletor de período + botão Buscar */}
@@ -1059,10 +1053,6 @@ export default function DashboardTempoAvaliacoes() {
           </Card>
           </>
           )}
-        </TabsContent>
-
-        <TabsContent value="operacional">
-          <DesempenhoOperacionalPage />
         </TabsContent>
       </Tabs>
     </div>

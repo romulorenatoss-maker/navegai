@@ -12,7 +12,6 @@ export const ALL_SCREENS: ScreenDef[] = [
   { path: "/", label: "Dashboard OS", group: "Dashboards" },
   { path: "/leads/dashboard", label: "Dashboard de Leads", group: "Dashboards" },
   { path: "/leads/dashboard-vendas", label: "Dashboard Vendas", group: "Dashboards" },
-  { path: "/avaliacoes/tempo-avaliacoes", label: "Análise Operacional", group: "Dashboards" },
   { path: "/assistente", label: "Assistente Naví", group: "Dashboards" },
 
   // Avaliações
@@ -36,7 +35,7 @@ export const ALL_SCREENS: ScreenDef[] = [
   { path: "/tarefas/minhas", label: "Minhas Tarefas", group: "Tarefas" },
   { path: "/tarefas/rotinas", label: "Rotinas Operacionais", group: "Tarefas" },
   { path: "/tarefas/relatorios", label: "Relatórios de Tarefas", group: "Tarefas" },
-  { path: "/tarefas/desempenho", label: "Desempenho de Tarefas", group: "Tarefas" },
+  { path: "/tarefas/desempenho", label: "Desempenho", group: "Tarefas" },
   // Tarefas — rotas internas (acessadas via /tarefas/minhas, mantidas para permissionamento e links diretos)
   { path: "/tarefas/avaliacao", label: "Avaliação de Tarefas (interna)", group: "Tarefas" },
   { path: "/tarefas/aprovacao", label: "Aprovação de Tarefas (interna)", group: "Tarefas" },
