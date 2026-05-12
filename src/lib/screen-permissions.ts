@@ -31,9 +31,15 @@ export const ALL_SCREENS: ScreenDef[] = [
   { path: "/leads/gerenciamento", label: "Gerenciamento de Leads", group: "Leads" },
   { path: "/leads/campanhas", label: "Campanhas", group: "Leads" },
   // Tarefas
-  { path: "/operacional/gestao", label: "Dash de Tarefas", group: "Tarefas" },
-  { path: "/operacional/execucao", label: "Minhas Tarefas", group: "Tarefas" },
-  { path: "/operacional/cadastro", label: "Rotinas Operacionais", group: "Tarefas" },
+  { path: "/tarefas/gestao", label: "Dash de Tarefas", group: "Tarefas" },
+  { path: "/tarefas/minhas", label: "Minhas Tarefas", group: "Tarefas" },
+  { path: "/tarefas/rotinas", label: "Rotinas Operacionais", group: "Tarefas" },
+  { path: "/tarefas/avaliacao", label: "Avaliação de Tarefas", group: "Tarefas" },
+  { path: "/tarefas/aprovacao", label: "Aprovação de Tarefas", group: "Tarefas" },
+  { path: "/tarefas/contingencias", label: "Contingências", group: "Tarefas" },
+  { path: "/tarefas/relatorios", label: "Relatórios de Tarefas", group: "Tarefas" },
+  { path: "/tarefas/desempenho", label: "Desempenho de Tarefas", group: "Tarefas" },
+  { path: "/tarefas/tempo-avaliacoes", label: "Tempo de Avaliações", group: "Tarefas" },
   // Cadastros
   { path: "/cadastros/setores", label: "Setores", group: "Cadastros" },
   { path: "/cadastros/servicos", label: "Tipos de Serviço", group: "Cadastros" },
