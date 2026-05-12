@@ -26,6 +26,7 @@ interface Props {
   setSteps: React.Dispatch<React.SetStateAction<StepForm[]>>;
   checkItems: CheckItemForm[];
   setCheckItems: React.Dispatch<React.SetStateAction<CheckItemForm[]>>;
+  protectedCheckIds?: Set<string>;
   setores: any[];
   colaboradores: any[];
   templateId: string | null;
