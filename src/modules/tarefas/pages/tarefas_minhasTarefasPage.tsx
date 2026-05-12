@@ -274,8 +274,14 @@ export default function OperationalExecucaoPage() {
   const filteredAssignments = useMemo(() => {
     let list = assignments;
     if (isAdmin && filterResponsavel !== "__all") {
-      // Mantém também tarefas que EU criei (designadas), mesmo ao filtrar por responsável
-      list = list.filter((a: any) => a.responsavel_id === filterResponsavel || a.created_by === profile?.id);
+      // Visão "como executor X": inclui tarefas onde X é responsável, avaliado ou criador.
+      // Mantém também tarefas que EU criei (designadas).
+      list = list.filter((a: any) =>
+        a.responsavel_id === filterResponsavel ||
+        a.avaliado_id === filterResponsavel ||
+        a.created_by === filterResponsavel ||
+        a.created_by === profile?.id
+      );
     }
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
@@ -288,7 +294,7 @@ export default function OperationalExecucaoPage() {
       list = list.filter((a: any) => {
         // Tarefas designadas por mim (created_by) sempre passam, independente de data
         if (a.created_by === profile?.id && a.responsavel_id !== profile?.id) return true;
-        if (["concluida", "aprovada", "aguardando_avaliacao", "aguardando_aprovacao", "nao_executada", "contingenciado", "contingencia"].includes(a.status)) return true;
+        if (["concluida", "aprovada", "aguardando_avaliacao", "em_avaliacao", "avaliada", "aguardando_aprovacao", "reprovada", "nao_executada", "contingenciado", "contingencia"].includes(a.status)) return true;
         if (a.status === "devolvida") return true;
         return a.data_prevista === filterDate || (a.data_prevista < filterDate && !["concluida", "aprovada"].includes(a.status));
       });
