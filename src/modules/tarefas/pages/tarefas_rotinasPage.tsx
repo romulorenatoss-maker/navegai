@@ -28,6 +28,10 @@ export default function OperationalCadastroPage() {
   const [activeTab, setActiveTab] = useState("geral");
   const [filterExecutor, setFilterExecutor] = useState("__all");
   const [filterAvaliador, setFilterAvaliador] = useState("__all");
+  const [pendingDraft, setPendingDraft] = useState<BuilderDraftPayload | null>(null);
+
+  // Autosave (localStorage only — sem banco)
+  useDraftAutosave(editingId, dialogOpen, { form, sections, fields, steps, checkItems });
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ["operational_templates"],
