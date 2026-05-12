@@ -4,8 +4,22 @@
  * Toda regra de filtro/status/SLA/ordenação da Central Operacional
  * (/tarefas/minhas) deve passar por aqui. Componentes não duplicam lógica.
  *
+ * Fase 1B.1 — adições aditivas para o motor da tarefa avulsa:
+ *  - novos buckets: aguardandoAceite, renegociacaoPendente,
+ *    aguardandoValidacaoMinha, respostaRecebida, limiteRenegociacao
+ *  - planoAcao agora reconhece status em_plano_acao
+ *  - sem_movimento_horas hierárquico (template > global)
+ *  - SLA continua rodando em em_plano_acao (via SLA_RUNNING_STATUSES)
+ *
+ * Buckets antigos preservados (compatibilidade total).
  * Sem alterações de banco/RPC/triggers.
  */
+import {
+  TASK_STATUS,
+  FINAL_STATUSES as STATUS_FINAIS,
+  isSlaRunning,
+} from "@/modules/tarefas/services/tarefas_statusConstants";
+import { getSolicitacaoConfig } from "@/modules/tarefas/services/tarefas_solicitacaoConfig";
 
 export type SlaKind = "operacional" | "avaliacao" | "aprovacao" | "total";
 
@@ -31,7 +45,8 @@ export interface AssignmentSla {
 export interface BucketizeOptions {
   profileId: string | null | undefined;
   isAdmin: boolean;
-  /** Sem movimento: período em horas sem updated_at. Default 48h. */
+  /** Sem movimento: período em horas sem updated_at. Default 48h.
+   *  Pode ser sobrescrito por template_snapshot.solicitacao_config.sem_movimento_horas. */
   semMovimentoHours?: number;
   /** Janelas de SLA (horas) para etapas que não têm prazo explícito. */
   slaAvaliacaoHours?: number;
@@ -50,7 +65,7 @@ const DEFAULTS = {
   nearMs: 2 * 3600 * 1000,
 };
 
-const FINAL_STATUSES = new Set(["concluida", "aprovada", "nao_executada", "reprovada"]);
+const FINAL_STATUS_SET = new Set<string>(STATUS_FINAIS as ReadonlyArray<string>);
 
 function buildDue(dateIso: string | null, addHours = 0): string | null {
   if (!dateIso) return null;
@@ -67,6 +82,17 @@ function makeSla(kind: SlaKind, due: string | null, nearMs: number): SlaInfo {
   return { kind, due, msRemaining: ms, status };
 }
 
+/** Resolve sem_movimento_horas hierárquico: template > opção > default. */
+export function resolveSemMovimentoHours(a: any, opts?: { semMovimentoHours?: number }): number {
+  try {
+    const cfg = getSolicitacaoConfig(a);
+    if (cfg.sem_movimento_horas != null && Number.isFinite(cfg.sem_movimento_horas)) {
+      return Number(cfg.sem_movimento_horas);
+    }
+  } catch { /* tolerante */ }
+  return opts?.semMovimentoHours ?? DEFAULTS.semMovimentoHours;
+}
+
 export function computeSla(a: any, opts: BucketizeOptions = { profileId: null, isAdmin: false }): AssignmentSla {
   const o = { ...DEFAULTS, ...opts };
   // Operacional: data_prevista + horario_limite (ou 23:59:59)
@@ -75,16 +101,18 @@ export function computeSla(a: any, opts: BucketizeOptions = { profileId: null, i
     : null;
   const operacional = makeSla("operacional", opDueRaw ? new Date(opDueRaw).toISOString() : null, o.nearMs);
 
-  const avaliacao = ["aguardando_avaliacao", "em_avaliacao"].includes(a.status)
+  const avaliacao = [TASK_STATUS.AGUARDANDO_AVALIACAO, TASK_STATUS.EM_AVALIACAO].includes(a.status)
     ? makeSla("avaliacao", buildDue(a.updated_at, o.slaAvaliacaoHours), o.nearMs)
     : makeSla("avaliacao", null, o.nearMs);
 
-  const aprovacao = a.status === "aguardando_aprovacao"
+  const aprovacao = a.status === TASK_STATUS.AGUARDANDO_APROVACAO
     ? makeSla("aprovacao", buildDue(a.updated_at, o.slaAprovacaoHours), o.nearMs)
     : makeSla("aprovacao", null, o.nearMs);
 
   const total = makeSla("total", buildDue(a.created_at, o.slaTotalHours), o.nearMs);
 
+  // SLA atual: prioriza etapa de avaliação/aprovação se ativa; senão, operacional.
+  // Operacional continua rodando em em_plano_acao (SLA_RUNNING_STATUSES inclui EM_PLANO_ACAO).
   let current = operacional;
   if (avaliacao.due) current = avaliacao;
   else if (aprovacao.due) current = aprovacao;
@@ -93,16 +121,32 @@ export function computeSla(a: any, opts: BucketizeOptions = { profileId: null, i
 }
 
 export function isLate(a: any): boolean {
-  if (FINAL_STATUSES.has(a.status)) return false;
+  if (FINAL_STATUS_SET.has(a.status)) return false;
+  if (!isSlaRunning(a.status)) {
+    // status onde SLA não corre (ex.: aguardando_aceite_prazo, aguardando_validacao)
+    // ainda consideramos prazo operacional original
+  }
   const sla = computeSla(a);
   return sla.current.status === "estourado";
 }
 
-export function isSemMovimento(a: any, hours = DEFAULTS.semMovimentoHours): boolean {
-  if (FINAL_STATUSES.has(a.status)) return false;
+export function isSemMovimento(a: any, hoursOverride?: number): boolean {
+  if (FINAL_STATUS_SET.has(a.status)) return false;
   if (!a.updated_at) return false;
+  const hours = hoursOverride ?? resolveSemMovimentoHours(a);
   const ageMs = Date.now() - new Date(a.updated_at).getTime();
   return ageMs > hours * 3600 * 1000;
+}
+
+/** Renegociação atingiu/excedeu o limite configurado.
+ *  Lê de a.rodada_renegociacao (se exposto) ou de a.template_snapshot ... .renegociacao.limite. */
+export function isLimiteRenegociacaoExcedido(a: any): boolean {
+  try {
+    const cfg = getSolicitacaoConfig(a);
+    if (!cfg.renegociacao.permite) return false;
+    const rodadas = Number(a.rodada_renegociacao ?? 0);
+    return rodadas >= Number(cfg.renegociacao.limite ?? 3);
+  } catch { return false; }
 }
 
 // ============================================================
@@ -155,28 +199,44 @@ export function sortAssignments(list: any[], key: SortKey): any[] {
 // BUCKETS
 // ============================================================
 export interface Buckets {
-  // Executor
+  // Executor (legado)
   pendentes: any[];
   emExecucao: any[];
   devolvidas: any[];
   planoAcao: any[];
   contingencias: any[];
   concluidas: any[];
+  // Executor (Fase 1B — novos)
+  /** Tarefas avulsas chegando para o executor decidir aceitar/negociar. */
+  aguardandoAceite: any[];
+
   // Avaliador
   aguardandoAvaliacao: any[];
   reavaliar: any[];
   avaliadas: any[];
+
   // Aprovador
   aguardandoAprovacao: any[];
   reprovadas: any[];
   aprovadas: any[];
-  // Designador
+
+  // Designador (criadas por mim)
   criadasPorMim: any[];
   aguardandoRetorno: any[];
   atrasadas: any[];
   slaEstourado: any[];
   semMovimento: any[];
   acompanhamentoGeral: any[];
+  // Designador (Fase 1B — novos)
+  /** Renegociação proposta pelo executor aguardando minha decisão. */
+  renegociacaoPendente: any[];
+  /** Tarefas em aguardando_validacao onde EU sou o solicitante. */
+  aguardandoValidacaoMinha: any[];
+  /** Subset de aguardandoValidacaoMinha — resposta nova ainda não vista (placeholder). */
+  respostaRecebida: any[];
+  /** Atingiu o limite de rodadas de renegociação configurado. */
+  limiteRenegociacao: any[];
+
   // Setor
   doMeuSetor: any[];
   pendentesSetor: any[];
@@ -186,9 +246,11 @@ export interface Buckets {
 
 const empty = (): Buckets => ({
   pendentes: [], emExecucao: [], devolvidas: [], planoAcao: [], contingencias: [], concluidas: [],
+  aguardandoAceite: [],
   aguardandoAvaliacao: [], reavaliar: [], avaliadas: [],
   aguardandoAprovacao: [], reprovadas: [], aprovadas: [],
   criadasPorMim: [], aguardandoRetorno: [], atrasadas: [], slaEstourado: [], semMovimento: [], acompanhamentoGeral: [],
+  renegociacaoPendente: [], aguardandoValidacaoMinha: [], respostaRecebida: [], limiteRenegociacao: [],
   doMeuSetor: [], pendentesSetor: [], emAvaliacaoSetor: [], emAprovacaoSetor: [],
 });
 
@@ -202,6 +264,21 @@ export function bucketize(
   const b = empty();
   const setorSet = new Set(setorIds);
 
+  // Status que indicam "aguardando retorno do executor" para o solicitante (compat + novos)
+  const AGUARDANDO_RETORNO_STATUSES: string[] = [
+    TASK_STATUS.PENDENTE,
+    TASK_STATUS.EM_ANDAMENTO,
+    TASK_STATUS.AGUARDANDO_AVALIACAO,
+    TASK_STATUS.EM_AVALIACAO,
+    TASK_STATUS.AGUARDANDO_APROVACAO,
+    TASK_STATUS.DEVOLVIDA,
+    TASK_STATUS.REABERTA,
+    // Fase 1B
+    TASK_STATUS.ABERTA,
+    TASK_STATUS.AGUARDANDO_ACEITE_PRAZO,
+    TASK_STATUS.EM_PLANO_ACAO,
+  ];
+
   for (const a of assignments) {
     const isResp = a.responsavel_id === me;
     const isAval = a.avaliador_id === me;
@@ -211,47 +288,61 @@ export function bucketize(
 
     // === Executor ===
     if (isResp || isAdmin) {
-      if (a.status === "pendente") b.pendentes.push(a);
-      if (["em_andamento", "reaberta"].includes(a.status)) b.emExecucao.push(a);
-      if (a.status === "devolvida") b.devolvidas.push(a);
-      if (["reprovada", "devolvida"].includes(a.status)) b.planoAcao.push(a);
-      if (["contingenciado", "contingencia"].includes(a.status)) b.contingencias.push(a);
-      if (["concluida", "aprovada"].includes(a.status)) b.concluidas.push(a);
+      if (a.status === TASK_STATUS.PENDENTE) b.pendentes.push(a);
+      if ([TASK_STATUS.EM_ANDAMENTO, TASK_STATUS.REABERTA].includes(a.status)) b.emExecucao.push(a);
+      if (a.status === TASK_STATUS.DEVOLVIDA) b.devolvidas.push(a);
+      if ([TASK_STATUS.REPROVADA, TASK_STATUS.DEVOLVIDA, TASK_STATUS.EM_PLANO_ACAO].includes(a.status)) b.planoAcao.push(a);
+      if ([TASK_STATUS.CONTINGENCIADO, "contingencia"].includes(a.status)) b.contingencias.push(a);
+      if ([TASK_STATUS.CONCLUIDA, TASK_STATUS.APROVADA].includes(a.status)) b.concluidas.push(a);
+      // Fase 1B: aguardando aceite (nova tarefa avulsa) ou aguardando aceite de novo prazo
+      if ([TASK_STATUS.ABERTA, TASK_STATUS.AGUARDANDO_ACEITE_PRAZO].includes(a.status)) b.aguardandoAceite.push(a);
     }
 
     // === Avaliador ===
     if (isAval || isAdmin) {
-      if (a.status === "aguardando_avaliacao") b.aguardandoAvaliacao.push(a);
-      if (a.status === "em_avaliacao") b.reavaliar.push(a);
-      if (["avaliada", "aguardando_aprovacao", "aprovada"].includes(a.status) && (isAval || isAdmin)) b.avaliadas.push(a);
+      if (a.status === TASK_STATUS.AGUARDANDO_AVALIACAO) b.aguardandoAvaliacao.push(a);
+      if (a.status === TASK_STATUS.EM_AVALIACAO) b.reavaliar.push(a);
+      if (["avaliada", TASK_STATUS.AGUARDANDO_APROVACAO, TASK_STATUS.APROVADA].includes(a.status) && (isAval || isAdmin)) b.avaliadas.push(a);
     }
 
     // === Aprovador ===
     if (isAprov || isAdmin) {
-      if (a.status === "aguardando_aprovacao") b.aguardandoAprovacao.push(a);
-      if (a.status === "reprovada") b.reprovadas.push(a);
-      if (a.status === "aprovada") b.aprovadas.push(a);
+      if (a.status === TASK_STATUS.AGUARDANDO_APROVACAO) b.aguardandoAprovacao.push(a);
+      if (a.status === TASK_STATUS.REPROVADA) b.reprovadas.push(a);
+      if (a.status === TASK_STATUS.APROVADA) b.aprovadas.push(a);
     }
 
-    // === Designador ===
+    // === Designador (criou e não é o executor) ===
     if ((isCriador && !isResp) || isAdmin) {
       if (isCriador && !isResp) b.criadasPorMim.push(a);
-      if (
-        isCriador && !isResp &&
-        ["pendente", "em_andamento", "aguardando_avaliacao", "em_avaliacao", "aguardando_aprovacao", "devolvida", "reaberta"].includes(a.status)
-      ) b.aguardandoRetorno.push(a);
+      if (isCriador && !isResp && AGUARDANDO_RETORNO_STATUSES.includes(a.status)) b.aguardandoRetorno.push(a);
       if (isCriador && !isResp && isLate(a)) b.atrasadas.push(a);
       if (isCriador && !isResp && computeSla(a).current.status === "estourado") b.slaEstourado.push(a);
-      if (isCriador && !isResp && isSemMovimento(a, opts.semMovimentoHours)) b.semMovimento.push(a);
+      if (isCriador && !isResp && isSemMovimento(a)) b.semMovimento.push(a);
       if (isCriador && !isResp) b.acompanhamentoGeral.push(a);
+
+      // Fase 1B — novos
+      if (isCriador && !isResp && a.status === TASK_STATUS.AGUARDANDO_ACEITE_PRAZO) {
+        // Renegociação: solicitante precisa decidir
+        b.renegociacaoPendente.push(a);
+      }
+      if (isCriador && !isResp && a.status === TASK_STATUS.AGUARDANDO_VALIDACAO) {
+        b.aguardandoValidacaoMinha.push(a);
+        // respostaRecebida = subset "novo" — placeholder usa flag opcional `seen_by_solicitante`
+        // (sem schema change; trata ausente como "não vista").
+        if (!a.seen_by_solicitante) b.respostaRecebida.push(a);
+      }
+      if (isCriador && !isResp && isLimiteRenegociacaoExcedido(a)) {
+        b.limiteRenegociacao.push(a);
+      }
     }
 
     // === Setor ===
     if (inMySetor) {
       b.doMeuSetor.push(a);
-      if (["pendente", "em_andamento", "devolvida", "reaberta"].includes(a.status)) b.pendentesSetor.push(a);
-      if (["aguardando_avaliacao", "em_avaliacao"].includes(a.status)) b.emAvaliacaoSetor.push(a);
-      if (a.status === "aguardando_aprovacao") b.emAprovacaoSetor.push(a);
+      if ([TASK_STATUS.PENDENTE, TASK_STATUS.EM_ANDAMENTO, TASK_STATUS.DEVOLVIDA, TASK_STATUS.REABERTA, TASK_STATUS.ABERTA].includes(a.status)) b.pendentesSetor.push(a);
+      if ([TASK_STATUS.AGUARDANDO_AVALIACAO, TASK_STATUS.EM_AVALIACAO].includes(a.status)) b.emAvaliacaoSetor.push(a);
+      if (a.status === TASK_STATUS.AGUARDANDO_APROVACAO) b.emAprovacaoSetor.push(a);
     }
   }
 
@@ -271,17 +362,30 @@ export interface VisaoMeta {
 
 export function availableVisoes(b: Buckets, ctx: { isAdmin: boolean; hasSetor: boolean }): VisaoMeta[] {
   const out: VisaoMeta[] = [];
-  const exec = b.pendentes.length + b.emExecucao.length + b.devolvidas.length + b.planoAcao.length + b.contingencias.length;
-  if (exec > 0 || true) out.push({ key: "executor", label: "Executor", count: exec });
+  // Executor — soma legado + aguardandoAceite (Fase 1B)
+  const exec = b.pendentes.length + b.emExecucao.length + b.devolvidas.length
+    + b.planoAcao.length + b.contingencias.length + b.aguardandoAceite.length;
+  out.push({ key: "executor", label: "Executor", count: exec });
+
   if (b.aguardandoAvaliacao.length + b.reavaliar.length + b.avaliadas.length > 0)
     out.push({ key: "avaliador", label: "Avaliador", count: b.aguardandoAvaliacao.length + b.reavaliar.length });
+
   if (b.aguardandoAprovacao.length + b.reprovadas.length + b.aprovadas.length > 0)
     out.push({ key: "aprovador", label: "Aprovador", count: b.aguardandoAprovacao.length });
-  if (b.criadasPorMim.length > 0)
-    out.push({ key: "designador", label: "Criadas por Mim", count: b.aguardandoRetorno.length });
+
+  if (b.criadasPorMim.length > 0) {
+    // Designador — destaca pendências exigindo MINHA ação como solicitante
+    const pendenciasMinhas = b.aguardandoRetorno.length
+      + b.renegociacaoPendente.length
+      + b.aguardandoValidacaoMinha.length;
+    out.push({ key: "designador", label: "Criadas por Mim", count: pendenciasMinhas });
+  }
+
   if (ctx.hasSetor && b.doMeuSetor.length > 0)
     out.push({ key: "setor", label: "Setor", count: b.pendentesSetor.length });
+
   if (ctx.isAdmin)
     out.push({ key: "admin", label: "Admin", count: 0 });
+
   return out;
 }
