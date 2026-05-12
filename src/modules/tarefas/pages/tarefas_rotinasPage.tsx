@@ -424,6 +424,9 @@ export default function OperationalCadastroPage() {
     setProtectedCheckIds(new Set());
     setActiveTab("geral");
     setTaskTypePickerOpen(false);
+    // Detect existing draft for new template
+    const existing = loadDraft(null);
+    setPendingDraft(existing);
     setDialogOpen(true);
   };
 
