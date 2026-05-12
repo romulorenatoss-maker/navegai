@@ -17,7 +17,7 @@ export default function OperationalCadastroPage() {
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [taskTypePickerOpen, setTaskTypePickerOpen] = useState(false);
+  // (Removido) seletor "Tipo de tarefa" — abre o builder direto.
   
   const [form, setForm] = useState<TemplateForm>(defaultTemplate);
   const [sections, setSections] = useState<SectionForm[]>([]);
