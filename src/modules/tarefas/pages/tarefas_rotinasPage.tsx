@@ -562,48 +562,27 @@ export default function OperationalCadastroPage() {
         })}
       </div>
 
-      {/* Builder Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingId ? "Editar Tarefa" : "Nova Tarefa"}</DialogTitle>
+      {/* Builder Wizard */}
+      <Dialog open={dialogOpen} onOpenChange={(o) => { if (!o) closeDialog(); }}>
+        <DialogContent className="max-w-5xl w-[96vw] h-[92vh] p-0 flex flex-col gap-0 overflow-hidden">
+          <DialogHeader className="px-4 py-3 border-b border-border">
+            <DialogTitle className="text-base">{editingId ? "Editar Tarefa" : "Nova Tarefa"}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={e => { e.preventDefault(); upsert.mutate(); }}>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="w-full mb-4 flex-wrap h-auto gap-1">
-                <TabsTrigger value="geral" className="flex-1 min-w-[60px]">Geral</TabsTrigger>
-                <TabsTrigger value="campos" className="flex-1 min-w-[80px]">Campos</TabsTrigger>
-                <TabsTrigger value="workflow" className="flex-1 min-w-[70px]">Workflow</TabsTrigger>
-                <TabsTrigger value="recorrencia" className="flex-1 min-w-[80px]">Recorrência</TabsTrigger>
-                {editingId && <TabsTrigger value="tarefas" className="flex-1 min-w-[100px]">Tarefas Executadas</TabsTrigger>}
-              </TabsList>
-
-              <TabsContent value="geral">
-                <TabGeral form={form} set={set} setores={setores} colaboradores={colaboradores} />
-              </TabsContent>
-              <TabsContent value="campos">
-                <TabFormBuilder sections={sections} setSections={setSections} fields={fields} setFields={setFields} setores={setores} tipoExecucao={form.tipo_execucao} />
-              </TabsContent>
-              <TabsContent value="workflow">
-                <TabWorkflow form={form} set={set} fields={fields} />
-              </TabsContent>
-              <TabsContent value="recorrencia">
-                <TabRecorrencia form={form} set={set} />
-              </TabsContent>
-              {editingId && (
-                <TabsContent value="tarefas">
-                  <TabTarefasExecutadas templateId={editingId} />
-                </TabsContent>
-              )}
-            </Tabs>
-
-            <DialogFooter className="mt-4">
-              <Button type="button" variant="outline" onClick={closeDialog}>Cancelar</Button>
-              <Button type="submit" disabled={upsert.isPending}>
-                {upsert.isPending ? "Salvando..." : editingId ? "Atualizar Template" : "Criar Template"}
-              </Button>
-            </DialogFooter>
-          </form>
+          <div className="flex-1 min-h-0">
+            <TarefasBuilderWizard
+              isEditing={!!editingId}
+              saving={upsert.isPending}
+              form={form} set={set}
+              sections={sections} setSections={setSections}
+              fields={fields} setFields={setFields}
+              steps={steps} setSteps={setSteps}
+              checkItems={checkItems} setCheckItems={setCheckItems}
+              setores={setores} colaboradores={colaboradores}
+              templateId={editingId}
+              onCancel={closeDialog}
+              onSubmit={() => upsert.mutate()}
+            />
+          </div>
         </DialogContent>
       </Dialog>
 
