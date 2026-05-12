@@ -704,11 +704,7 @@ export default function OperationalCadastroPage() {
         </DialogContent>
       </Dialog>
 
-      <TaskTypeSelectorDialog
-        open={taskTypePickerOpen}
-        onOpenChange={setTaskTypePickerOpen}
-        onPick={handleWizardPick}
-      />
+      {/* (Removido) TaskTypeSelectorDialog — botão "+" abre o builder direto. */}
     </div>
   );
 }
