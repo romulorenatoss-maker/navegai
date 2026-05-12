@@ -191,7 +191,7 @@ export default function OperationalExecucaoPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const chipParam = searchParams.get("chip");
-    const valid: OperationalChipFilter[] = ["todas", "executar", "avaliar", "aprovar", "contingencias", "atrasadas", "concluidas"];
+    const valid: OperationalChipFilter[] = ["todas", "executar", "avaliar", "aprovar", "plano_acao", "contingencias", "atrasadas", "concluidas"];
     if (chipParam && valid.includes(chipParam as OperationalChipFilter)) {
       setChipFilter(chipParam as OperationalChipFilter);
       // Limpa o query param depois de aplicar para não persistir no histórico/refresh
