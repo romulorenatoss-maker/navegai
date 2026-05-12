@@ -276,8 +276,8 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
             setores={setores}
             planoAcaoEnabled={planoAcaoEnabled}
             requireFieldHorario={requireFieldHorario}
-            onSave={(updates) => { updateField(editingField.tempId, updates); setEditingField(null); }}
-            onClose={() => setEditingField(null)}
+            onSave={commitEditingField}
+            onClose={closeEditingField}
           />
         )}
       </div>
