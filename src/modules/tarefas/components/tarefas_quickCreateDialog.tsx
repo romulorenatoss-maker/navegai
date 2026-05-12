@@ -119,6 +119,12 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   const updateSolicitacaoConfig = (patch: Partial<SolicitacaoConfig>) =>
     setSolicitacaoConfig((prev) => ({ ...prev, ...patch }));
 
+  // Configurações extras por agrupador (apenas modo etapas). Vão em template_snapshot.agrupadores_config[].
+  // Responsável/status próprio por etapa: chaves reservadas no JSON, NÃO ativadas nesta fase.
+  const [agrupadorExtras, setAgrupadorExtras] = useState<Record<string, AgrupadorExtra>>({});
+  // Toggle "Opções avançadas" do Step 1 (título/descrição manuais).
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
   const reset = () => {
     setStep(1);
     setNome(""); setDescricao(""); setSetorId(initialSetorId || "");
