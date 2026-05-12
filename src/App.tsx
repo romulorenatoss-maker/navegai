@@ -113,7 +113,8 @@ const App = () => (
               <Route path="/cadastros/enderecos" element={<CadastroEnderecosPage />} />
               
               <Route path="/relatorios" element={<RelatoriosPage />} />
-              <Route path="/relatorios/tarefas" element={<RelatorioTarefasPage />} />
+              <Route path="/tarefas/relatorios" element={<RelatorioTarefasPage />} />
+              <Route path="/relatorios/tarefas" element={<Navigate to="/tarefas/relatorios" replace />} />
               <Route path="/leads" element={<LeadsPage />} />
               <Route path="/leads/fila" element={<FilaLeadsPage />} />
               <Route path="/leads/fila-tarefas" element={<FilaLeadsPage />} />
