@@ -12,16 +12,27 @@ export interface StepForm {
   exige_video: boolean;
 }
 
+export interface SectionInstrucaoMidia {
+  tipo: "foto" | "video" | "documento";
+  url: string;
+  nome?: string;
+}
+
 export interface SectionForm {
   id?: string;
   tempId: string;
   nome: string;
+  /** Texto livre — antiga "Descrição da seção", agora "Instruções da Etapa". */
   descricao: string;
+  /** Mídia anexada às instruções (foto/vídeo/documento). Visível ao executor antes das perguntas. */
+  instrucoes_midia?: SectionInstrucaoMidia[];
   peso: number;
   ordem: number;
   cor: string;
   horario_inicio: string;
   horario_fim: string;
+  /** Flag transiente — indica seção implícita "Itens da tarefa" (oculta enquanto for única). Não persistir no save. */
+  _implicit?: boolean;
 }
 
 export interface OpcaoRegra {
