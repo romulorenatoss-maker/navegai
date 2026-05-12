@@ -91,6 +91,11 @@ export function StepChecklist({ items, setItems, protectedIds }: Props) {
                               <GripVertical className="w-4 h-4" />
                             </button>
                             <div className="flex-1 space-y-2.5">
+                              {isProtected(it) && (
+                                <Badge variant="outline" className="text-[10px] gap-1 border-amber-300 text-amber-700 bg-amber-50">
+                                  <Lock className="w-3 h-3" /> Possui respostas — não pode ser removido
+                                </Badge>
+                              )}
                               <Input
                                 value={it.pergunta}
                                 onChange={e => update(it.tempId, { pergunta: e.target.value })}
