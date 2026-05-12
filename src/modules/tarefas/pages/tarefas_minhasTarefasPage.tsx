@@ -274,8 +274,14 @@ export default function OperationalExecucaoPage() {
   const filteredAssignments = useMemo(() => {
     let list = assignments;
     if (isAdmin && filterResponsavel !== "__all") {
-      // Mantém também tarefas que EU criei (designadas), mesmo ao filtrar por responsável
-      list = list.filter((a: any) => a.responsavel_id === filterResponsavel || a.created_by === profile?.id);
+      // Visão "como executor X": inclui tarefas onde X é responsável, avaliado ou criador.
+      // Mantém também tarefas que EU criei (designadas).
+      list = list.filter((a: any) =>
+        a.responsavel_id === filterResponsavel ||
+        a.avaliado_id === filterResponsavel ||
+        a.created_by === filterResponsavel ||
+        a.created_by === profile?.id
+      );
     }
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
@@ -288,7 +294,7 @@ export default function OperationalExecucaoPage() {
       list = list.filter((a: any) => {
         // Tarefas designadas por mim (created_by) sempre passam, independente de data
         if (a.created_by === profile?.id && a.responsavel_id !== profile?.id) return true;
-        if (["concluida", "aprovada", "aguardando_avaliacao", "aguardando_aprovacao", "nao_executada", "contingenciado", "contingencia"].includes(a.status)) return true;
+        if (["concluida", "aprovada", "aguardando_avaliacao", "em_avaliacao", "avaliada", "aguardando_aprovacao", "reprovada", "nao_executada", "contingenciado", "contingencia"].includes(a.status)) return true;
         if (a.status === "devolvida") return true;
         return a.data_prevista === filterDate || (a.data_prevista < filterDate && !["concluida", "aprovada"].includes(a.status));
       });
@@ -613,26 +619,31 @@ export default function OperationalExecucaoPage() {
         </div>
         {isAdmin && (
           <Select value={filterResponsavel} onValueChange={setFilterResponsavel}>
-            <SelectTrigger className="w-[220px] h-9">
+            <SelectTrigger className="w-[240px] h-9">
               <Filter className="w-3.5 h-3.5 mr-1" />
               <SelectValue placeholder="Visão de..." />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="__all">Todos os executores</SelectItem>
-              {profilesWithTasks.map((p: any) => (
-                <SelectItem key={p.id} value={p.id}>👁 {p.nome}</SelectItem>
-              ))}
+              {profile?.id && (
+                <SelectItem value={profile.id}>👤 Meu Usuário</SelectItem>
+              )}
+              <SelectItem value="__all">🌐 Todos os Executores</SelectItem>
+              {profilesWithTasks
+                .filter((p: any) => p.id !== profile?.id)
+                .map((p: any) => (
+                  <SelectItem key={p.id} value={p.id}>👁 {p.nome}</SelectItem>
+                ))}
             </SelectContent>
           </Select>
         )}
       </div>
 
-      {isAdmin && filterResponsavel !== "__all" && (
+      {isAdmin && filterResponsavel !== "__all" && filterResponsavel !== profile?.id && (
         <div className="mb-4 flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-lg px-3 py-2">
           <span className="text-sm font-medium text-primary">
             👁 Modo Visão: {profilesWithTasks.find((p: any) => p.id === filterResponsavel)?.nome || "Colaborador"}
           </span>
-          <Button size="sm" variant="ghost" className="ml-auto h-7 text-xs" onClick={() => setFilterResponsavel("__all")}>
+          <Button size="sm" variant="ghost" className="ml-auto h-7 text-xs" onClick={() => setFilterResponsavel(profile?.id || "__all")}>
             Sair da visão
           </Button>
         </div>
@@ -737,7 +748,10 @@ export default function OperationalExecucaoPage() {
             icon={<Hourglass className="w-4 h-4" style={{ color: "#8b5cf6" }} />}
             borderColor="#8b5cf6" badgeBg="bg-violet-500/15" badgeText="text-violet-700 dark:text-violet-400"
             isOpen={openAccordion === "aguardando"} onToggle={() => setOpenAccordion(openAccordion === "aguardando" ? null : "aguardando")}>
-            <AguardandoAvaliacaoPanel viewAsProfileId={isAdmin && filterResponsavel !== "__all" ? filterResponsavel : null} />
+            <AguardandoAvaliacaoPanel
+              viewAsProfileId={isAdmin && filterResponsavel !== "__all" ? filterResponsavel : null}
+              onOpen={openExecution}
+            />
           </AccordionSection>
 
           <AccordionSection title="Em Aberto" count={isAdmin ? emAberto.length : emAbertoSplit.mine.length}
@@ -810,6 +824,11 @@ export default function OperationalExecucaoPage() {
                   {isDevolvida && (
                     <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
                       <AlertTriangle className="w-3 h-3" /> Rodada {selectedAssignment?.rodada_atual}
+                    </span>
+                  )}
+                  {!isEditable && selectedAssignment && !isCriadorValidando && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border border-muted-foreground/30 bg-muted/50 text-muted-foreground">
+                      🔒 Somente leitura
                     </span>
                   )}
                 </div>

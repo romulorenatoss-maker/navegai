@@ -16,7 +16,13 @@ import { AssignmentCard } from "@/modules/tarefas/components/tarefas_tarefaCard"
  * Usuário comum vê apenas "Minhas". Admin vê todas.
  * Clique em um card navega para /tarefas/aprovacao para preservar as ações.
  */
-export function AguardandoAvaliacaoPanel({ viewAsProfileId }: { viewAsProfileId?: string | null } = {}) {
+export function AguardandoAvaliacaoPanel({
+  viewAsProfileId,
+  onOpen,
+}: {
+  viewAsProfileId?: string | null;
+  onOpen?: (a: any) => void;
+} = {}) {
   const navigate = useNavigate();
   const { profile, isAdmin } = useAuth();
   const targetId = viewAsProfileId || profile?.id;
@@ -28,10 +34,11 @@ export function AguardandoAvaliacaoPanel({ viewAsProfileId }: { viewAsProfileId?
       let query = (supabase as any)
         .from("operational_assignments")
         .select(`*, operational_templates(nome, tipo_execucao),
+          profiles:responsavel_id(id, nome, foto_url),
           executor:profiles!operational_assignments_responsavel_id_fkey(nome),
           avaliador:profiles!operational_assignments_avaliador_id_fkey(nome),
           avaliado:profiles!operational_assignments_avaliado_id_fkey(nome)`)
-        .in("status", ["aguardando_aprovacao", "aprovada", "reprovada", "concluida", "devolvida"])
+        .in("status", ["aguardando_avaliacao", "em_avaliacao", "avaliada", "aguardando_aprovacao", "aprovada", "reprovada", "concluida", "devolvida"])
         .order("updated_at", { ascending: false });
       if (!isAdmin) {
         query = query.or(
@@ -46,7 +53,10 @@ export function AguardandoAvaliacaoPanel({ viewAsProfileId }: { viewAsProfileId?
     staleTime: 15000,
   });
 
-  const pendentes = useMemo(() => assignments.filter((a: any) => a.status === "aguardando_aprovacao"), [assignments]);
+  const pendentes = useMemo(
+    () => assignments.filter((a: any) => ["aguardando_avaliacao", "em_avaliacao", "aguardando_aprovacao"].includes(a.status)),
+    [assignments]
+  );
   const aprovados = useMemo(() => assignments.filter((a: any) => a.status === "aprovada"), [assignments]);
   const historico = useMemo(
     () => assignments.filter((a: any) => ["concluida", "reprovada", "devolvida"].includes(a.status)).slice(0, 50),
@@ -63,7 +73,10 @@ export function AguardandoAvaliacaoPanel({ viewAsProfileId }: { viewAsProfileId?
     );
   }, [assignments, targetId]);
 
-  const openItem = (_a: any) => navigate("/tarefas/aprovacao");
+  const openItem = (a: any) => {
+    if (onOpen) return onOpen(a);
+    navigate("/tarefas/minhas?chip=aprovar");
+  };
 
   const renderList = (list: any[], emptyMsg: string) => {
     if (isLoading) return <p className="text-xs text-muted-foreground text-center py-4">Carregando...</p>;
