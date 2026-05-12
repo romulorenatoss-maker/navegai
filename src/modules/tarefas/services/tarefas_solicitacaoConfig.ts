@@ -23,7 +23,13 @@ export interface SolicitacaoConfig {
     avaliacao_horas: number;
     aprovacao_horas: number;
   };
-  /** Quem pode reabrir após terminal: 'solicitante' | 'admin' | 'ambos'. */
+  /**
+   * Quem pode reabrir após status terminal.
+   * P4 (travado Fase 1): default 'ambos'.
+   *  - 'solicitante': dentro de janela_reabertura_horas; exige justificativa.
+   *  - 'admin': sempre; exige reauth quando exige_reauth_reabertura.
+   *  - 'ambos': solicitante (na janela) + admin (sempre). Executor solicita via mensagem.
+   */
   quem_pode_reabrir: "solicitante" | "admin" | "ambos";
   /** Responsável pelo plano de ação (profile_id). */
   responsavel_plano_acao_id: string | null;

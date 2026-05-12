@@ -5,6 +5,65 @@
  *
  * Fluxo legado (rotina/inspeção) preservado.
  * Fase 1 (avulsa) adicionada de forma aditiva.
+ *
+ * ============================================================================
+ * CONTRATO `extraData` (P3 — travado na Fase 1)
+ * ============================================================================
+ * Campos canônicos aceitos por TransitionAction. Sempre opcionais a menos que
+ * indicado. Snake_case obrigatório (espelha persistência em audit/history).
+ * Toda chave fora desta lista é IGNORADA pelo hook (mas registrada em audit).
+ *
+ * Campos comuns (qualquer ação):
+ *   - origem_acao: string  // ex.: "minhas_tarefas_drawer", "avaliador_tab"
+ *   - papel_usado: "EXECUTOR"|"AVALIADOR"|"APROVADOR"|"GESTOR"|"ADMIN"|"CRIADOR_DESIGNANTE"
+ *   - mensagem: string     // texto livre do usuário (vai para audit, NÃO grava em messages)
+ *   - justificativa: string // sinônimo aceito de `motivo` quando enviado em extraData
+ *
+ * Campos por TransitionAction:
+ *   responder_executor:
+ *     - autoConcluir: boolean    (decidido por canAutoConclude no chamador)
+ *     - tempoGasto: number       (minutos)
+ *     - nota: number|null        (quando cfg.nota.obrigatoria — armazenada em audit)
+ *   negociar_prazo_executor:
+ *     - prazo_proposto: string   (ISO; obrigatório)
+ *     - prazo_anterior: string   (ISO; obrigatório p/ histórico)
+ *     - rodada_renegociacao: number
+ *   aceitar_renegociacao_solicitante:
+ *     - novoPrazo: string        (ISO; aplicado em data_prevista)
+ *     - prazo_anterior: string   (ISO)
+ *   manter_prazo_solicitante / recusar_renegociacao_solicitante:
+ *     - prazo_anterior: string
+ *   validar_solicitante_aprovar:
+ *     - requerAvaliacao: boolean
+ *     - requerAprovacao: boolean
+ *     - avaliador_id: string
+ *     - aprovador_id: string
+ *     - nota: number|null
+ *   validar_solicitante_devolver:
+ *     - rodadaAtual: number
+ *   solicitar_plano_acao:
+ *     - plano_acao_responsavel_id: string  (preferencial)
+ *     - prazo_proposto: string             (ISO opcional)
+ *   concluir_plano_acao:
+ *     - resumo: string
+ *   avaliar_aprovar:
+ *     - requerAprovacao: boolean
+ *     - aprovadorProfileId: string
+ *   aprovar_final / encerrar_final:
+ *     - aprovadorId: string
+ *     - scoreFinal: number
+ *   reabrir_solicitante / reabrir_admin:
+ *     - quem_pode_reabrir: "solicitante"|"admin"|"ambos"  (snapshot da config no momento)
+ *     - dentro_da_janela: boolean
+ *   cancelar_solicitante / cancelar_admin:
+ *     - reauth_token: string  (presente quando exige_reauth_reabertura aplicável)
+ *
+ * Persistência:
+ *   - Tudo em extraData é serializado em operational_audit_trail.dados_novos
+ *     e em operational_assignment_history.detalhes_json.extra.
+ *   - NÃO entra em operational_assignments (exceto novoPrazo→data_prevista,
+ *     aprovadorId, scoreFinal, tempoGasto e flags de reabertura).
+ * ============================================================================
  */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
