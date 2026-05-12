@@ -537,10 +537,30 @@ export default function OperationalCadastroPage() {
     }
 
     setActiveTab("geral");
+    // Detect existing draft for this template id
+    const existing = loadDraft(t.id);
+    setPendingDraft(existing);
     setDialogOpen(true);
   };
 
-  const closeDialog = () => { setDialogOpen(false); setEditingId(null); };
+  const restoreDraft = () => {
+    if (!pendingDraft) return;
+    setForm(pendingDraft.form);
+    setSections(pendingDraft.sections);
+    setFields(pendingDraft.fields);
+    setSteps(pendingDraft.steps);
+    setCheckItems(pendingDraft.checkItems);
+    setPendingDraft(null);
+    toast.success("Rascunho restaurado.");
+  };
+
+  const discardDraft = () => {
+    clearDraft(editingId);
+    setPendingDraft(null);
+    toast.message("Rascunho descartado.");
+  };
+
+  const closeDialog = () => { setDialogOpen(false); setEditingId(null); setPendingDraft(null); };
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
