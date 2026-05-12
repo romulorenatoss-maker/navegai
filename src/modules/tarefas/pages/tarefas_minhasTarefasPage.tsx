@@ -1281,16 +1281,7 @@ export default function OperationalExecucaoPage() {
         </SheetContent>
       </Sheet>
 
-      <TaskTypeSelectorDialog
-        open={taskTypePickerOpen}
-        onOpenChange={setTaskTypePickerOpen}
-        onPick={({ type, setorId }) => {
-          setPickedTaskType(type);
-          setPickedSetorId(setorId);
-          setTaskTypePickerOpen(false);
-          setQuickTaskOpen(true);
-        }}
-      />
+      {/* (Removido) TaskTypeSelectorDialog — botão "+" abre o builder direto. */}
 
       <QuickTaskDialog
         open={quickTaskOpen}
