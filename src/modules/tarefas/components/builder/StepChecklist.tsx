@@ -1,4 +1,4 @@
-import { Plus, Trash2, GripVertical, Camera, MessageSquare, AlertTriangle, Lock } from "lucide-react";
+import { Plus, Trash2, GripVertical, Camera, MessageSquare, AlertTriangle, Lock, Copy } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
