@@ -51,12 +51,14 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<FieldForm | null>(null);
   const [editingIsNew, setEditingIsNew] = useState(false);
-  const [forceAdvanced, setForceAdvanced] = useState(false);
+  /** Quando true, força exibir o card da etapa mesmo se houver apenas uma. Ativado pelo botão "Adicionar Etapa/Formulário". */
+  const [etapaModeForced, setEtapaModeForced] = useState(false);
 
-  const addSection = () => {
+  const addSection = (opts?: { fromUser?: boolean }) => {
     const s = defaultSection(sections.length);
     setSections(prev => [...prev, s]);
     setExpandedSection(s.tempId);
+    if (opts?.fromUser) setEtapaModeForced(true);
   };
 
   const removeSection = (tempId: string) => {
