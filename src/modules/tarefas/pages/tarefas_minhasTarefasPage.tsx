@@ -826,6 +826,11 @@ export default function OperationalExecucaoPage() {
                       <AlertTriangle className="w-3 h-3" /> Rodada {selectedAssignment?.rodada_atual}
                     </span>
                   )}
+                  {!isEditable && selectedAssignment && !isCriadorValidando && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border border-muted-foreground/30 bg-muted/50 text-muted-foreground">
+                      🔒 Somente leitura
+                    </span>
+                  )}
                 </div>
               </div>
               {/* History icon replacing "Não salvo" / rascunho */}
