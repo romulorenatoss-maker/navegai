@@ -703,6 +703,13 @@ export function FieldDetailDialog({ field, allFields = [], setores, onSave, onCl
             )}
           </div>
 
+          <FieldVisibilityEditor
+            currentTempId={local.tempId}
+            allFields={allFields}
+            value={local.condicao_visibilidade}
+            onChange={(v) => upd("condicao_visibilidade", v)}
+          />
+
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
             <Button type="button" onClick={() => onSave(local)}>Salvar Campo</Button>
