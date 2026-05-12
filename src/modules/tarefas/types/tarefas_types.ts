@@ -16,6 +16,7 @@ export interface SectionForm {
   id?: string;
   tempId: string;
   nome: string;
+  /** Texto livre — antes "Descrição da seção", agora exibido como "Instruções da Etapa". */
   descricao: string;
   peso: number;
   ordem: number;

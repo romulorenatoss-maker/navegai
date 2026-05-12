@@ -51,12 +51,14 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<FieldForm | null>(null);
   const [editingIsNew, setEditingIsNew] = useState(false);
-  const [forceAdvanced, setForceAdvanced] = useState(false);
+  /** Quando true, força exibir o card da etapa mesmo se houver apenas uma. Ativado pelo botão "Adicionar Etapa/Formulário". */
+  const [etapaModeForced, setEtapaModeForced] = useState(false);
 
-  const addSection = () => {
+  const addSection = (opts?: { fromUser?: boolean }) => {
     const s = defaultSection(sections.length);
     setSections(prev => [...prev, s]);
     setExpandedSection(s.tempId);
+    if (opts?.fromUser) setEtapaModeForced(true);
   };
 
   const removeSection = (tempId: string) => {
@@ -171,15 +173,11 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
   };
 
   // ============================================================
-  // Modo SIMPLES (tarefa avulsa) — UX direto: pergunta + tipo + adicionar.
-  // Mantém a mesma estrutura interna (sections + fields) usando uma seção
-  // padrão "Itens da tarefa" criada implicitamente. Não altera o save.
+  // Etapa implícita: quando há 0 ou 1 seção e o usuário ainda não clicou
+  // "Adicionar Etapa/Formulário", as perguntas vivem dentro de uma seção
+  // padrão "Itens da tarefa" — porém renderizadas SEM o card de etapa.
+  // Ao clicar Adicionar Etapa, a seção implícita "vira visível" naturalmente.
   // ============================================================
-  const isSimpleMode =
-    tipoExecucao === "tarefa_simples" &&
-    !forceAdvanced &&
-    sections.length <= 1;
-
   const ensureDefaultSection = (): string => {
     if (sections.length > 0) return sections[0].tempId;
     const s = defaultSection(0);
@@ -188,117 +186,37 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
     return s.tempId;
   };
 
-  const startNewSimpleField = () => {
+  const handleAddPergunta = () => {
     const sectionTempId = ensureDefaultSection();
     startNewField(sectionTempId);
   };
 
-  if (isSimpleMode) {
-    const sectionTempId = sections[0]?.tempId;
-    const simpleFields = sectionTempId
-      ? fields.filter(f => f.sectionTempId === sectionTempId).sort((a, b) => a.ordem - b.ordem)
-      : [];
+  const handleAddEtapa = () => addSection({ fromUser: true });
 
-    return (
-      <div className="space-y-3">
-        {/* Add row — abre Configuração do Campo direto */}
-        <div className="border border-border rounded-lg p-3 bg-card flex items-center justify-between gap-3">
-          <div>
-            <Label className="text-sm font-medium">Perguntas / itens da tarefa</Label>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              Cada pergunta abre a Configuração do Campo completa (tipo, regras, evidência, plano de ação).
-            </p>
-          </div>
-          <Button type="button" onClick={startNewSimpleField}>
-            <Plus className="w-4 h-4 mr-1" /> Adicionar Pergunta
-          </Button>
-        </div>
-
-        {/* Lista flat */}
-        {simpleFields.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground border border-dashed border-border rounded-lg">
-            <p className="text-sm">Nenhum item adicionado ainda.</p>
-            <p className="text-caption">Clique em "Adicionar Pergunta" para começar.</p>
-          </div>
-        ) : (
-          <div className="space-y-1.5">
-            {simpleFields.map((field, fIdx) => (
-              <div key={field.tempId}
-                className="flex items-center gap-2 bg-background border border-border rounded-md px-2 py-1.5 group hover:border-primary/30 transition-colors">
-                <span className="text-caption text-muted-foreground font-tabular w-5">{fIdx + 1}.</span>
-                <Input
-                  value={field.label}
-                  onChange={e => updateField(field.tempId, { label: e.target.value })}
-                  placeholder="Pergunta / item"
-                  className="h-7 text-sm flex-1"
-                  maxLength={255}
-                />
-                <Select value={field.tipo} onValueChange={v => updateField(field.tempId, { tipo: v })}>
-                  <SelectTrigger className="h-7 w-[140px] text-caption"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(FIELD_TYPES).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                {field.gera_contingencia && <span className="text-[10px] px-1.5 py-0.5 rounded border border-orange-200 bg-orange-100 text-orange-700">Conting.</span>}
-                {field.aprovador_verificar && <span className="text-[10px] px-1.5 py-0.5 rounded border border-primary/30 bg-primary/10 text-primary">Aprovador</span>}
-                <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setEditingField(field)} title="Configurações avançadas">
-                  <Settings2 className="w-3.5 h-3.5" />
-                </Button>
-                <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => duplicateField(field)} title="Duplicar">
-                  <Copy className="w-3 h-3" />
-                </Button>
-                <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive" onClick={() => removeField(field.tempId)} title="Remover">
-                  <Trash2 className="w-3 h-3" />
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Avançado: organizar por seções */}
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => { setForceAdvanced(true); addSection(); }}
-            title="Crie seções/formulários para agrupar perguntas"
-          >
-            <Plus className="w-3.5 h-3.5 mr-1" /> Novo Grupo/Etapa (avançado)
-          </Button>
-        </div>
-
-        {editingField && (
-          <FieldDetailDialog
-            field={editingField}
-            allFields={fields}
-            setores={setores}
-            planoAcaoEnabled={planoAcaoEnabled}
-            requireFieldHorario={requireFieldHorario}
-            onSave={commitEditingField}
-            onClose={closeEditingField}
-          />
-        )}
-      </div>
-    );
-  }
+  // Modo "implícito": somente uma seção, e usuário não promoveu para etapas.
+  const isImplicitMode = !etapaModeForced && sections.length <= 1;
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-foreground">Estrutura da Tarefa — agrupadores e perguntas</p>
-        <Button type="button" variant="outline" size="sm" onClick={addSection}>
-          <Plus className="w-3.5 h-3.5 mr-1" /> Novo Grupo/Etapa
-        </Button>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <p className="text-sm font-medium text-foreground">Estrutura da Tarefa</p>
+        <div className="flex items-center gap-2">
+          <Button type="button" size="sm" onClick={handleAddPergunta}>
+            <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Pergunta
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={handleAddEtapa}>
+            <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Etapa/Formulário
+          </Button>
+        </div>
       </div>
 
       {sections.length === 0 && (
         <div className="text-center py-8 text-muted-foreground border border-dashed border-border rounded-lg">
-          <p className="text-sm">Nenhum agrupador criado.</p>
-          <p className="text-caption">Clique em "Novo Grupo/Etapa" para começar.</p>
+          <p className="text-sm">Nenhuma pergunta adicionada ainda.</p>
+          <p className="text-caption">Clique em "Adicionar Pergunta" para começar.</p>
         </div>
       )}
+
 
       <DragDropContext onDragEnd={onDragEnd}>
         <Droppable droppableId="sections" type="SECTION">
@@ -312,44 +230,59 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                   <Draggable key={section.tempId} draggableId={section.tempId} index={sIdx}>
                     {(dragProvided) => (
                       <div ref={dragProvided.innerRef} {...dragProvided.draggableProps}
-                        className="border border-border rounded-lg overflow-hidden bg-card">
-                        <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b border-border">
-                          <div {...dragProvided.dragHandleProps}>
-                            <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab" />
+                        className={isImplicitMode ? "" : "border border-border rounded-lg overflow-hidden bg-card"}>
+                        {!isImplicitMode && (
+                          <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b border-border">
+                            <div {...dragProvided.dragHandleProps}>
+                              <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab" />
+                            </div>
+                            <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: section.cor }} />
+                            <Input value={section.nome} onChange={e => updateSection(section.tempId, "nome", e.target.value)}
+                              placeholder="Nome da etapa/formulário" className="h-7 text-sm font-medium flex-1" maxLength={100} />
+                            <span className="text-[10px] text-muted-foreground whitespace-nowrap">{sectionFields.length} campo{sectionFields.length !== 1 ? "s" : ""}</span>
+                            <Input type="number" min={0.1} step={0.1} value={section.peso} onChange={e => updateSection(section.tempId, "peso", +e.target.value)}
+                              className="h-7 w-16 text-sm text-center" title="Peso da etapa" />
+                            <Select value={section.cor} onValueChange={v => updateSection(section.tempId, "cor", v)}>
+                              <SelectTrigger className="h-7 w-10 p-1">
+                                <div className="w-4 h-4 rounded-full" style={{ backgroundColor: section.cor }} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {SECTION_COLORS.map(c => (
+                                  <SelectItem key={c} value={c}>
+                                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={{ backgroundColor: c }} />{c}</div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setExpandedSection(isExpanded ? null : section.tempId)}>
+                              {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                            </Button>
+                            <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground" onClick={() => duplicateSection(section)} title="Duplicar etapa (com campos)" aria-label="Duplicar etapa">
+                              <Copy className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive" onClick={() => removeSection(section.tempId)}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
                           </div>
-                          <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: section.cor }} />
-                          <Input value={section.nome} onChange={e => updateSection(section.tempId, "nome", e.target.value)}
-                            placeholder="Nome da seção" className="h-7 text-sm font-medium flex-1" maxLength={100} />
-                          <span className="text-[10px] text-muted-foreground whitespace-nowrap">{sectionFields.length} campo{sectionFields.length !== 1 ? "s" : ""}</span>
-                          <Input type="number" min={0.1} step={0.1} value={section.peso} onChange={e => updateSection(section.tempId, "peso", +e.target.value)}
-                            className="h-7 w-16 text-sm text-center" title="Peso da seção" />
-                          <Select value={section.cor} onValueChange={v => updateSection(section.tempId, "cor", v)}>
-                            <SelectTrigger className="h-7 w-10 p-1">
-                              <div className="w-4 h-4 rounded-full" style={{ backgroundColor: section.cor }} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {SECTION_COLORS.map(c => (
-                                <SelectItem key={c} value={c}>
-                                  <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={{ backgroundColor: c }} />{c}</div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setExpandedSection(isExpanded ? null : section.tempId)}>
-                            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                          </Button>
-                          <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground" onClick={() => duplicateSection(section)} title="Duplicar seção (com campos)" aria-label="Duplicar seção">
-                            <Copy className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive" onClick={() => removeSection(section.tempId)}>
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
+                        )}
 
-                        {isExpanded && (
-                          <div className="p-3 space-y-2">
-                            <Input value={section.descricao} onChange={e => updateSection(section.tempId, "descricao", e.target.value)}
-                              placeholder="Descrição da seção (opcional)" className="text-sm mb-2" maxLength={500} />
+                        {(isExpanded || isImplicitMode) && (
+                          <div className={isImplicitMode ? "space-y-2" : "p-3 space-y-2"}>
+                            {!isImplicitMode && (
+                              <div className="space-y-1">
+                                <Label className="text-xs font-medium text-foreground">Instruções da Etapa</Label>
+                                <Textarea
+                                  value={section.descricao}
+                                  onChange={e => updateSection(section.tempId, "descricao", e.target.value)}
+                                  placeholder="Orientação textual exibida ao executor antes das perguntas (opcional)."
+                                  className="text-sm min-h-[64px]"
+                                  maxLength={2000}
+                                />
+                                <p className="text-[10px] text-muted-foreground">
+                                  Suporte a foto/vídeo/documento será habilitado em breve.
+                                </p>
+                              </div>
+                            )}
 
                             {tipoExecucao === "etapas" && (
                               <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-md p-2 mb-2">
