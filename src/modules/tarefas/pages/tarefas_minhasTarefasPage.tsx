@@ -13,6 +13,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Progress } from "@/components/ui/progress";
 import { OperationalChipFilterBar, type OperationalChipFilter } from "@/modules/tarefas/components/tarefas_chipFilterBar";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { STATUS_CONFIG } from "@/modules/tarefas/hooks/tarefas_useScoring";
 import { AssignmentCard } from "@/modules/tarefas/components/tarefas_tarefaCard";
