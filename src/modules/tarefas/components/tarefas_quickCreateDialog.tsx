@@ -240,12 +240,10 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     });
   }, [colaboradores, isSelfTask, profile?.id, avaliadoId]);
 
-  const planoAcaoOk = !requerPlanoAcao
-    || (planoAcaoMode === "individual" && !!planoAcaoId && planoAcaoId !== avaliadoId)
-    || (planoAcaoMode === "setor" && !!planoAcaoSetorId);
-
-  const planoAcaoEnabled = requerPlanoAcao
-    && ((planoAcaoMode === "individual" && !!planoAcaoId) || (planoAcaoMode === "setor" && !!planoAcaoSetorId));
+  // Cleanup pós-realinhamento: o "Plano de ação" agora é configurado por pergunta no FormBuilder.
+  // Mantemos o state legado apenas como fallback opcional (sem UI no QuickCreate).
+  const planoAcaoOk = true;
+  const planoAcaoEnabled = true; // habilita "gera plano de ação" em qualquer pergunta
 
   const aprovadorOk = !requerAprovacao
     || (aprovadorMode === "individual" && !!aprovadorId && aprovadorId !== avaliadoId && (!isSelfTask || aprovadorId !== profile?.id))
