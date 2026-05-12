@@ -196,12 +196,27 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
   // Modo "implícito": somente uma seção, e usuário não promoveu para etapas.
   const isImplicitMode = !etapaModeForced && sections.length <= 1;
 
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <p className="text-sm font-medium text-foreground">Estrutura da Tarefa</p>
+        <div className="flex items-center gap-2">
+          <Button type="button" size="sm" onClick={handleAddPergunta}>
+            <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Pergunta
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={handleAddEtapa}>
+            <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Etapa/Formulário
+          </Button>
+        </div>
+      </div>
+
       {sections.length === 0 && (
         <div className="text-center py-8 text-muted-foreground border border-dashed border-border rounded-lg">
-          <p className="text-sm">Nenhum agrupador criado.</p>
-          <p className="text-caption">Clique em "Novo Grupo/Etapa" para começar.</p>
+          <p className="text-sm">Nenhuma pergunta adicionada ainda.</p>
+          <p className="text-caption">Clique em "Adicionar Pergunta" para começar.</p>
         </div>
       )}
+
 
       <DragDropContext onDragEnd={onDragEnd}>
         <Droppable droppableId="sections" type="SECTION">
