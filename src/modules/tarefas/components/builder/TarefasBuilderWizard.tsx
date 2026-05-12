@@ -113,10 +113,11 @@ export function TarefasBuilderWizard(props: Props) {
 
         {current === "fluxo" && (
           <div className="space-y-6">
+            <SectionDivider icon={<Workflow className="w-3.5 h-3.5" />} title="Workflow, aprovação, SLA & automação" subtitle="Quem aprova, regras de SLA, contingência e plano de ação." />
             <TabWorkflow form={form} set={set} fields={fields} />
-            <div className="border-t border-border pt-6">
-              <TabRecorrencia form={form} set={set} />
-            </div>
+
+            <SectionDivider icon={<CalendarClock className="w-3.5 h-3.5" />} title="Recorrência" subtitle="Quando esta tarefa será gerada automaticamente." />
+            <TabRecorrencia form={form} set={set} />
           </div>
         )}
 
