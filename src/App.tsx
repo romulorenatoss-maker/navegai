@@ -83,18 +83,26 @@ const App = () => (
               <Route path="/avaliacoes/pesquisa" element={<AvaliacaoOSPage />} />
               <Route path="/avaliacoes/perguntas" element={<PerguntasPage />} />
               <Route path="/avaliacoes/minhas" element={<MinhasAvaliacoesPage />} />
-              <Route path="/operacional/cadastro" element={<OperationalCadastroPage />} />
-              <Route path="/operacional/execucao" element={<OperationalExecucaoPage />} />
-              <Route path="/operacional/gestao" element={<OperationalGestaoPage />} />
-              <Route path="/operacional/avaliacao" element={<OperationalAvaliacaoPage />} />
-              <Route path="/operacional/aprovacao" element={<OperationalAprovacaoPage />} />
-              <Route path="/operacional/contingencias" element={<OperationalContingenciasPage />} />
-              <Route path="/checklists/execucao" element={<Navigate to="/operacional/execucao" replace />} />
-              <Route path="/checklists/gestao" element={<Navigate to="/operacional/gestao" replace />} />
-              <Route path="/checklists/cadastro" element={<Navigate to="/operacional/cadastro" replace />} />
-              <Route path="/checklists/avaliacao" element={<Navigate to="/operacional/avaliacao" replace />} />
-              <Route path="/checklists/aprovacao" element={<Navigate to="/operacional/aprovacao" replace />} />
-              <Route path="/checklists/contingencias" element={<Navigate to="/operacional/contingencias" replace />} />
+              {/* MÓDULO TAREFAS */}
+              <Route path="/tarefas/rotinas" element={<OperationalCadastroPage />} />
+              <Route path="/tarefas/minhas" element={<OperationalExecucaoPage />} />
+              <Route path="/tarefas/gestao" element={<OperationalGestaoPage />} />
+              <Route path="/tarefas/avaliacao" element={<OperationalAvaliacaoPage />} />
+              <Route path="/tarefas/aprovacao" element={<OperationalAprovacaoPage />} />
+              <Route path="/tarefas/contingencias" element={<OperationalContingenciasPage />} />
+              {/* Redirects legados (/operacional/* e /checklists/*) */}
+              <Route path="/operacional/cadastro" element={<Navigate to="/tarefas/rotinas" replace />} />
+              <Route path="/operacional/execucao" element={<Navigate to="/tarefas/minhas" replace />} />
+              <Route path="/operacional/gestao" element={<Navigate to="/tarefas/gestao" replace />} />
+              <Route path="/operacional/avaliacao" element={<Navigate to="/tarefas/avaliacao" replace />} />
+              <Route path="/operacional/aprovacao" element={<Navigate to="/tarefas/aprovacao" replace />} />
+              <Route path="/operacional/contingencias" element={<Navigate to="/tarefas/contingencias" replace />} />
+              <Route path="/checklists/execucao" element={<Navigate to="/tarefas/minhas" replace />} />
+              <Route path="/checklists/gestao" element={<Navigate to="/tarefas/gestao" replace />} />
+              <Route path="/checklists/cadastro" element={<Navigate to="/tarefas/rotinas" replace />} />
+              <Route path="/checklists/avaliacao" element={<Navigate to="/tarefas/avaliacao" replace />} />
+              <Route path="/checklists/aprovacao" element={<Navigate to="/tarefas/aprovacao" replace />} />
+              <Route path="/checklists/contingencias" element={<Navigate to="/tarefas/contingencias" replace />} />
               
               
               <Route path="/cadastros/setores" element={<SetoresPage />} />
