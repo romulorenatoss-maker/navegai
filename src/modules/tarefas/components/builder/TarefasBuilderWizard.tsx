@@ -31,6 +31,9 @@ interface Props {
   setores: any[];
   colaboradores: any[];
   templateId: string | null;
+  draftToRestore?: BuilderDraftPayload | null;
+  onRestoreDraft?: () => void;
+  onDiscardDraft?: () => void;
   onCancel: () => void;
   onSubmit: () => void;
 }
