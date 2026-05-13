@@ -4348,6 +4348,51 @@ export type Database = {
           },
         ]
       }
+      tarefas_pontuacao_config: {
+        Row: {
+          descricao: string | null
+          id: string
+          nota_maxima: number
+          nota_minima: number
+          penalidade_contingencia: number
+          penalidade_fora_prazo: number
+          penalidade_reprovacao: number
+          penalidade_sla_contingencia: number
+          pontuacao_automatica_padrao: boolean
+          singleton: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          descricao?: string | null
+          id?: string
+          nota_maxima?: number
+          nota_minima?: number
+          penalidade_contingencia?: number
+          penalidade_fora_prazo?: number
+          penalidade_reprovacao?: number
+          penalidade_sla_contingencia?: number
+          pontuacao_automatica_padrao?: boolean
+          singleton?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          descricao?: string | null
+          id?: string
+          nota_maxima?: number
+          nota_minima?: number
+          penalidade_contingencia?: number
+          penalidade_fora_prazo?: number
+          penalidade_reprovacao?: number
+          penalidade_sla_contingencia?: number
+          pontuacao_automatica_padrao?: boolean
+          singleton?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       tarefas_storage_config: {
         Row: {
           created_at: string

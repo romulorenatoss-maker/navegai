@@ -22,6 +22,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFoo
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DEFAULT_SOLICITACAO_CONFIG, type SolicitacaoConfig } from "@/modules/tarefas/services/tarefas_solicitacaoConfig";
+import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
 
 // localStorage keys for default penalty values (per-user defaults set via gear icon)
 const LS_DEFAULTS_KEY = "quicktask_workflow_defaults_v1";
@@ -170,6 +171,23 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   useEffect(() => {
     setHabilitarPerguntasAutomaticas(requerAprovacao);
   }, [requerAprovacao]);
+
+  // Carrega defaults globais de Pontuação/Notas (Configurações → Tarefas → Pontuação).
+  // Aplica somente ao abrir o diálogo — edição local na tarefa NÃO altera o padrão global.
+  const { data: pontGlobal } = useQuery({
+    queryKey: ["tarefas_pontuacao_config"],
+    queryFn: getPontuacaoConfig,
+    staleTime: 5 * 60 * 1000,
+  });
+  useEffect(() => {
+    if (!open || !pontGlobal) return;
+    setPenalidadeForaPrazo(pontGlobal.penalidade_fora_prazo);
+    setPenalidadeContingencia(pontGlobal.penalidade_contingencia);
+    setPenalidadeSlaContingencia(pontGlobal.penalidade_sla_contingencia);
+    setPesoNotaMaxima(pontGlobal.nota_maxima);
+    setHabilitarPerguntasAutomaticas(pontGlobal.pontuacao_automatica_padrao && requerAprovacao);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, pontGlobal]);
 
   const { data: colaboradores = [] } = useQuery({
     queryKey: ["profiles_quicktask"],
@@ -333,14 +351,14 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
         penalidade_sla_contingencia: pontuacaoValida ? penalidadeSlaContingencia : 0,
         executor_profile_id: avaliadoId,
         executor_setor_id: setorId || null,
-        avaliador_profile_id: requerValidacao && validadorMode === "individual" ? validadorId : null,
-        avaliador_setor_id: requerValidacao && validadorMode === "setor" ? validadorSetorId : null,
+        avaliador_profile_id: requerValidacao && validadorMode === "individual" ? (validadorId || null) : null,
+        avaliador_setor_id: requerValidacao && validadorMode === "setor" ? (validadorSetorId || null) : null,
         avaliado_profile_id: avaliadoId,
-        aprovador_profile_id: aprovacaoAtiva && aprovadorMode === "individual" ? aprovadorId : null,
-        aprovador_setor_id: aprovacaoAtiva && aprovadorMode === "setor" ? aprovadorSetorId : null,
-        responsavel_contingencia_id: planoAcaoEnabled && planoAcaoMode === "individual" ? planoAcaoId : null,
-        validador_contingencia_profile_id: planoAcaoEnabled && planoAcaoMode === "individual" ? planoAcaoId : null,
-        validador_contingencia_setor_id: planoAcaoEnabled && planoAcaoMode === "setor" ? planoAcaoSetorId : null,
+        aprovador_profile_id: aprovacaoAtiva && aprovadorMode === "individual" ? (aprovadorId || null) : null,
+        aprovador_setor_id: aprovacaoAtiva && aprovadorMode === "setor" ? (aprovadorSetorId || null) : null,
+        responsavel_contingencia_id: planoAcaoEnabled && planoAcaoMode === "individual" ? (planoAcaoId || null) : null,
+        validador_contingencia_profile_id: planoAcaoEnabled && planoAcaoMode === "individual" ? (planoAcaoId || null) : null,
+        validador_contingencia_setor_id: planoAcaoEnabled && planoAcaoMode === "setor" ? (planoAcaoSetorId || null) : null,
         requer_aprovacao_gestor: aprovacaoAtiva,
         modo_pontuacao: pontuacaoValida ? "pontuar_avaliado" : "sem_pontuacao",
         destino_score: "individual",
@@ -488,11 +506,11 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
         horario_limite: horarioLimite || null,
         status: "pendente",
         created_by: profile.id,
-        avaliador_id: requerValidacao && validadorMode === "individual" ? validadorId : null,
+        avaliador_id: requerValidacao && validadorMode === "individual" ? (validadorId || null) : null,
         avaliado_id: avaliadoId,
-        aprovador_id: aprovacaoAtiva && aprovadorMode === "individual" ? aprovadorId : null,
-        validador_contingencia_id: planoAcaoEnabled && planoAcaoMode === "individual" ? planoAcaoId : null,
-        setor_avaliador_id: requerValidacao && validadorMode === "setor" ? validadorSetorId : null,
+        aprovador_id: aprovacaoAtiva && aprovadorMode === "individual" ? (aprovadorId || null) : null,
+        validador_contingencia_id: planoAcaoEnabled && planoAcaoMode === "individual" ? (planoAcaoId || null) : null,
+        setor_avaliador_id: requerValidacao && validadorMode === "setor" ? (validadorSetorId || null) : null,
         setor_executor_id: setorId || null,
         template_versao: 1,
         template_snapshot: snapshot,
