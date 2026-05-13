@@ -56,6 +56,11 @@ export function MinhasTarefasPendentesPanel({ viewAsProfileId }: { viewAsProfile
               <span>{c.assignment?.template?.nome || "—"}</span>
               <span>•</span>
               <span>Resp: {c.responsavel?.nome || "—"}</span>
+              {c.responsavel?.funcao && (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground text-[9px] font-medium border border-border">
+                  {c.responsavel.funcao}
+                </span>
+              )}
             </div>
             {c.justificativa_rejeicao && ["aberta", "em_andamento"].includes(c.status) && (
               <p className="text-xs text-destructive mt-1 truncate">⚠ Reprovada: {c.justificativa_rejeicao}</p>
