@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
 import AdminPasswordDialog from "@/components/AdminPasswordDialog";
@@ -23,6 +24,7 @@ export default function SetoresPage() {
   const [editing, setEditing] = useState<Setor | null>(null);
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
+  const [responsavelPadraoId, setResponsavelPadraoId] = useState<string>("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -32,6 +34,15 @@ export default function SetoresPage() {
       const { data, error } = await supabase.from("setores").select("*").order("nome");
       if (error) throw error;
       return data;
+    },
+  });
+
+  const { data: profiles = [] } = useQuery({
+    queryKey: ["setores_profiles_for_responsavel_padrao"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("id, nome").eq("ativo", true).order("nome");
+      if (error) throw error;
+      return data || [];
     },
   });
 
