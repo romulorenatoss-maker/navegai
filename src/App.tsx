@@ -149,7 +149,8 @@ const App = () => (
               <Route path="/propostas/produtos" element={<ProdutosConversacionalPage />} />
               <Route path="/propostas/produtos/grid" element={<PropostaProdutosPage />} />
               <Route path="/auditoria" element={<PlaceholderPage title="Auditoria" description="Registro completo de todas as ações do sistema." />} />
-              <Route path="/configuracoes" element={<PermissoesPage />} />
+              <Route path="/configuracoes" element={<ConfiguracoesPage />} />
+              <Route path="/configuracoes/permissoes" element={<PermissoesPage />} />
               <Route path="/configuracoes/integracoes" element={<IntegracoesPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
