@@ -131,6 +131,14 @@ export interface TemplateForm {
   penalidade_sla_contingencia: number;
   penalidade_fora_prazo: number;
   habilitar_perguntas_automaticas: boolean;
+
+  // Avaliação do Avaliador (AdA)
+  ada_enabled: boolean;
+  ada_quem_avalia_tipo: "" | "pessoa" | "setor" | "administrador" | "responsavel_padrao";
+  ada_quem_avalia_profile_id: string;
+  ada_quem_avalia_setor_id: string;
+  ada_gerar_em: "" | "pos_avaliacao" | "pos_aprovacao" | "pos_plano_acao";
+  ada_config_snapshot: any | null;
 }
 
 export const FIELD_TYPES: Record<string, string> = {
