@@ -872,7 +872,9 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
             const totalCampos = uniqueAprovadorFields.reduce((s, f) => s + f.aprovador_peso, 0);
             const totalGeral = totalCampos + totalPenalidades;
             // Pontuação só aparece quando há aprovador ativo OU perguntas configuradas OU automáticas habilitadas.
-            const mostrarPontuacao = requerAprovacao || temPerguntasAprovador || habilitarPerguntasAutomaticas;
+            // Regra única: a existência de pontuação/perguntas automáticas/penalidades nasce
+            // SOMENTE da etapa Designação ("Aprovação final e pontuação").
+            const mostrarPontuacao = requerAprovacao;
 
             const setAsDefault = (key: keyof WorkflowDefaults, value: number) => {
               const current = loadDefaults();
