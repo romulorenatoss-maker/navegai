@@ -113,7 +113,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
 
   // Novo padrão visual de Responsáveis (5 blocos V2). Substitui as toggles antigas.
   // Persiste array em template_snapshot.responsaveis_multi (avulso). Coluna legacy = primeiro do array.
-  const [respBlocks, setRespBlocks] = useState<RespBlocksValueV2>(emptyRespBlocksV2V2);
+  const [respBlocks, setRespBlocks] = useState<RespBlocksValueV2>(emptyRespBlocksV2);
 
   // Step 2 state
   const [sections, setSections] = useState<SectionForm[]>([]);
