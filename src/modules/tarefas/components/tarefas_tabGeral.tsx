@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -57,13 +57,20 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
     },
   });
 
-  // Estado derivado dos blocos.
-  const blocks = useMemo(() => buildRespFromForm(form), [
+  // Estado dos blocos: mantém também cliques de modo ainda sem seleção
+  // (ex.: Setorial antes de escolher o setor), que não existem nas colunas legacy.
+  const formBlocks = useMemo(() => buildRespFromForm(form), [
     form.executor_profile_id, form.executor_setor_id,
     form.avaliador_profile_id, form.avaliador_setor_id,
     form.aprovador_profile_id, form.aprovador_setor_id,
     form.ada_quem_avalia_tipo, form.ada_quem_avalia_profile_id, form.ada_quem_avalia_setor_id,
   ]);
+  const formBlocksSignature = useMemo(() => JSON.stringify(formBlocks), [formBlocks]);
+  const [blocks, setBlocks] = useState<RespBlocksValue>(formBlocks);
+
+  useEffect(() => {
+    setBlocks(formBlocks);
+  }, [formBlocksSignature]);
 
   // Setor da rotina derivado do Avaliado (igual à tela avulsa).
   const derivedSetorId = useMemo(() => {
@@ -83,6 +90,8 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
   }, [derivedSetorId]);
 
   const handleBlocksChange = (next: RespBlocksValue) => {
+    setBlocks(next);
+
     // Bloco 1 — Avaliado → executor_*
     set("executor_profile_id" as any, (next.avaliado.mode === "individual" ? (next.avaliado.profileIds[0] || "") : "") as any);
     set("executor_setor_id" as any, (next.avaliado.mode === "setorial" ? next.avaliado.setorId : "") as any);
