@@ -257,6 +257,20 @@ export interface Buckets {
   pendentesSetor: any[];
   emAvaliacaoSetor: any[];
   emAprovacaoSetor: any[];
+
+  // ============================================================
+  // OPERACIONAL — 5 abas finais da tela /tarefas/minhas
+  // ============================================================
+  /** Tarefas para hoje: pendentes/devolvidas/aguardando aceite com data_prevista <= hoje (responsável). */
+  opHoje: any[];
+  /** Trabalho ativo: em execução, em plano de ação, em contingência (responsável). */
+  opEmAndamento: any[];
+  /** Aguardando minha ação (avaliar / aprovar / validar resposta como solicitante). */
+  opAguardandoVoce: any[];
+  /** Encerradas: concluida/aprovada/reprovada/cancelada/nao_executada. */
+  opConcluidas: any[];
+  /** Críticas: SLA estourado ou sem movimento (qualquer papel meu). */
+  opCriticas: any[];
 }
 
 const empty = (): Buckets => ({
