@@ -24,13 +24,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DEFAULT_SOLICITACAO_CONFIG, type SolicitacaoConfig } from "@/modules/tarefas/services/tarefas_solicitacaoConfig";
 import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
 import {
-  TarefasResponsaveisBlocks,
-  emptyRespBlocks,
-  isRespFilled,
-  respLegacyProfileId,
-  respLegacySetorId,
-  type RespBlocksValue,
-} from "@/modules/tarefas/components/responsaveis/TarefasResponsaveisBlocks";
+  TarefasResponsaveisV2,
+  emptyRespBlocksV2,
+  isRespV2Filled,
+  respV2LegacyProfileId,
+  respV2LegacySetorId,
+  type RespBlocksValueV2,
+} from "@/modules/tarefas/components/responsaveis/TarefasResponsaveisV2";
 
 // localStorage keys for default penalty values (per-user defaults set via gear icon)
 const LS_DEFAULTS_KEY = "quicktask_workflow_defaults_v1";
