@@ -290,7 +290,7 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                               </div>
                             )}
 
-                            {tipoExecucao === "etapas" && (
+                            {tipoExecucao === "etapas" && !hideEtapaHorario && (
                               <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-md p-2 mb-2">
                                 <Clock className="w-4 h-4 text-primary shrink-0" />
                                 <div className="flex items-center gap-2 flex-1">
