@@ -31,48 +31,7 @@ import { bucketize, sortAssignments, type SortKey } from "@/modules/tarefas/serv
 import { PainelRetornoCard } from "@/modules/tarefas/components/tarefas_painelRetornoCard";
 import { DrawerActionRouter } from "@/modules/tarefas/components/painels/tarefas_drawerActionRouter";
 
-interface AccordionSectionProps {
-  title: string;
-  count: number;
-  icon: React.ReactNode;
-  borderColor: string;
-  badgeBg: string;
-  badgeText: string;
-  isOpen: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}
-
-// MineOthersTabs removido — separação por papel agora é feita via VisaoSwitcher.
-
-function AccordionSection({ title, count, icon, borderColor, badgeBg, badgeText, isOpen, onToggle, children }: AccordionSectionProps) {
-  return (
-    <div className={`rounded-xl border overflow-hidden transition-all duration-300 ${isOpen ? "shadow-md border-transparent" : "border-border hover:border-muted-foreground/20"}`}
-      style={{ borderLeftWidth: "4px", borderLeftColor: borderColor }}>
-      <button type="button" onClick={onToggle}
-        className={`w-full flex items-center justify-between px-4 py-3.5 transition-colors ${isOpen ? "bg-muted/60" : "bg-card hover:bg-muted/30"}`}>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ backgroundColor: `${borderColor}15` }}>
-            {icon}
-          </div>
-          <span className="text-sm font-semibold text-foreground">{title}</span>
-          <span className={`inline-flex items-center justify-center min-w-[24px] h-6 px-2 rounded-full text-xs font-bold ${badgeBg} ${badgeText}`}>
-            {count}
-          </span>
-        </div>
-        <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} />
-      </button>
-      <div className={`transition-all duration-300 ease-in-out ${isOpen ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0 overflow-hidden"}`}>
-        <div className="px-4 pb-4 pt-2 space-y-2">
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// === RenderVisao: organização por papel reutilizando AccordionSection + bucketize ===
-// === Helpers da nova UI operacional (5 abas fixas) ===
+// === Helpers da UI operacional (5 abas fixas) ===
 function listOrEmpty(list: any[], openExecution: (a: any) => void, emptyMsg: string, designador = false) {
   if (list.length === 0) return <p className="text-xs text-muted-foreground text-center py-6">{emptyMsg}</p>;
   return (
