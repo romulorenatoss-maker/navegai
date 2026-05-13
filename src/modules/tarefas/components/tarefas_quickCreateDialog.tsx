@@ -639,51 +639,62 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                   </p>
                 </div>
 
-                {/* Plano de Ação — responsável obrigatório (definido na Designação). */}
+                {/* Plano de Ação — setor responsável + flag "qualquer um do setor" ou usuário específico. */}
                 <div className="border-t border-border/60 pt-3 space-y-2">
                   <div>
                     <Label className="text-sm">Quem responde Plano de Ação? *</Label>
                     <p className="text-[11px] text-muted-foreground">
-                      Quando uma pergunta gerar não conformidade/plano de ação, esta pessoa (ou setor) receberá a pendência em "Minhas Tarefas".
+                      Quando uma pergunta gerar não conformidade/plano de ação, este setor (ou pessoa específica) receberá a pendência em "Minhas Tarefas".
                     </p>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
-                    <label className={cn("flex items-center gap-1.5 cursor-pointer rounded-md border px-2 py-1.5", planoAcaoResp === "avaliado" && "border-primary bg-primary/5")}>
-                      <input type="radio" checked={planoAcaoResp === "avaliado"} onChange={() => setPlanoAcaoResp("avaliado")} />
-                      Próprio avaliado
-                    </label>
-                    <label className={cn("flex items-center gap-1.5 cursor-pointer rounded-md border px-2 py-1.5", planoAcaoResp === "usuario_setor" && "border-primary bg-primary/5", !setorId && "opacity-50 cursor-not-allowed")}>
-                      <input type="radio" checked={planoAcaoResp === "usuario_setor"} onChange={() => setPlanoAcaoResp("usuario_setor")} disabled={!setorId} />
-                      Usuário específico do setor
-                    </label>
-                    <label className={cn("flex items-center gap-1.5 cursor-pointer rounded-md border px-2 py-1.5", planoAcaoResp === "setor_inteiro" && "border-primary bg-primary/5", !setorId && "opacity-50 cursor-not-allowed")}>
-                      <input type="radio" checked={planoAcaoResp === "setor_inteiro"} onChange={() => setPlanoAcaoResp("setor_inteiro")} disabled={!setorId} />
-                      Setor inteiro
-                    </label>
-                    <label className={cn("flex items-center gap-1.5 cursor-pointer rounded-md border px-2 py-1.5", planoAcaoResp === "responsavel_padrao_setor" && "border-primary bg-primary/5", (!setorId || !responsavelPadraoSetorId) && "opacity-50 cursor-not-allowed")}>
-                      <input type="radio" checked={planoAcaoResp === "responsavel_padrao_setor"} onChange={() => setPlanoAcaoResp("responsavel_padrao_setor")} disabled={!setorId || !responsavelPadraoSetorId} />
-                      Responsável padrão do setor
-                    </label>
-                  </div>
-                  {planoAcaoResp === "usuario_setor" && (
-                    <Select value={planoAcaoUsuarioId} onValueChange={setPlanoAcaoUsuarioId}>
-                      <SelectTrigger><SelectValue placeholder={planoAcaoUsuariosSetor.length === 0 ? "Nenhum usuário no setor" : "Selecionar usuário..."} /></SelectTrigger>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] text-muted-foreground">Setor responsável pelo plano de ação *</Label>
+                    <Select value={planoAcaoSetorId} onValueChange={setPlanoAcaoSetorId}>
+                      <SelectTrigger><SelectValue placeholder="Selecionar setor..." /></SelectTrigger>
                       <SelectContent>
-                        {planoAcaoUsuariosSetor.map((c: any) => (
-                          <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                        {(setores as any[]).map((s) => (
+                          <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <label className={cn("flex items-center justify-between gap-2 rounded-md border px-2.5 py-2", !planoAcaoSetorId && "opacity-50 cursor-not-allowed")}>
+                    <div>
+                      <p className="text-xs font-medium">Qualquer pessoa deste setor pode fazer</p>
+                      <p className="text-[10px] text-muted-foreground">A tarefa fica disponível para todos do setor; o primeiro que assumir executa.</p>
+                    </div>
+                    <Switch
+                      checked={planoAcaoQualquer}
+                      onCheckedChange={(v) => { setPlanoAcaoQualquer(v); if (v) setPlanoAcaoUsuarioId(""); }}
+                      disabled={!planoAcaoSetorId}
+                    />
+                  </label>
+
+                  {!planoAcaoQualquer && planoAcaoSetorId && (
+                    <div className="space-y-1.5">
+                      <Label className="text-[11px] text-muted-foreground">Usuário específico do setor *</Label>
+                      <Select value={planoAcaoUsuarioId} onValueChange={setPlanoAcaoUsuarioId}>
+                        <SelectTrigger><SelectValue placeholder={planoAcaoUsuariosSetor.length === 0 ? "Nenhum usuário no setor" : "Selecionar usuário..."} /></SelectTrigger>
+                        <SelectContent>
+                          {planoAcaoUsuariosSetor.map((c: any) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.nome}{c.funcao ? ` — ${c.funcao}` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   )}
-                  {planoAcaoResp === "responsavel_padrao_setor" && setorId && !responsavelPadraoSetorId && (
-                    <p className="text-[10px] text-amber-600 dark:text-amber-400">
-                      Este setor não possui responsável padrão definido. Configure em Setores ou escolha outra opção.
-                    </p>
-                  )}
-                  {planoAcaoResp === "responsavel_padrao_setor" && responsavelPadraoSetorId && (
-                    <p className="text-[10px] text-muted-foreground">
-                      Será atribuído a: {(colaboradores as any[]).find((c) => c.id === responsavelPadraoSetorId)?.nome || "—"}
-                    </p>
+
+                  {planoAcaoQualquer && planoAcaoSetorId && planoAcaoUsuariosSetor.length > 0 && (
+                    <div className="text-[10px] text-muted-foreground bg-muted/40 border border-border rounded-md px-2 py-1.5">
+                      <p className="font-medium mb-0.5">Estarão aguardando ({planoAcaoUsuariosSetor.length}):</p>
+                      <p className="leading-snug">
+                        {planoAcaoUsuariosSetor.map((c: any) => c.funcao ? `${c.nome} (${c.funcao})` : c.nome).join(" · ")}
+                      </p>
+                    </div>
                   )}
                 </div>
 
