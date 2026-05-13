@@ -414,6 +414,7 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
           setores={setores}
           planoAcaoEnabled={planoAcaoEnabled}
           requireFieldHorario={requireFieldHorario}
+          aprovacaoFinalEnabled={aprovacaoFinalEnabled}
           onSave={commitEditingField}
           onClose={closeEditingField}
         />
