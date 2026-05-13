@@ -38,9 +38,12 @@ interface Props {
   /** Configurações extras por agrupador (somente etapas). */
   agrupadorExtras?: Record<string, AgrupadorExtra>;
   setAgrupadorExtras?: React.Dispatch<React.SetStateAction<Record<string, AgrupadorExtra>>>;
+  /** Quando true, FieldDetailDialog exibe o bloco "Pergunta final para aprovação final".
+   *  Derivado da Designação (requer_aprovacao_gestor / requerAprovacao). */
+  aprovacaoFinalEnabled?: boolean;
 }
 
-export function TabFormBuilder({ sections, setSections, fields, setFields, setores = [], tipoExecucao = "checklist_inspecao", requireFieldHorario = false, planoAcaoEnabled = true, agrupadorExtras = {}, setAgrupadorExtras }: Props) {
+export function TabFormBuilder({ sections, setSections, fields, setFields, setores = [], tipoExecucao = "checklist_inspecao", requireFieldHorario = false, planoAcaoEnabled = true, agrupadorExtras = {}, setAgrupadorExtras, aprovacaoFinalEnabled = false }: Props) {
   const updateAgrupadorExtra = (tempId: string, patch: Partial<AgrupadorExtra>) => {
     if (!setAgrupadorExtras) return;
     setAgrupadorExtras(prev => ({
