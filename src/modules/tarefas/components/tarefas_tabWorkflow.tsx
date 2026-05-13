@@ -193,6 +193,153 @@ export function TabWorkflow({ form, set, fields = [] }: Props) {
           )}
         </div>
       </div>
+
+      <AdaSection form={form} set={set} />
+    </div>
+  );
+}
+
+// Avaliação do Avaliador (AdA) — seção embutida.
+interface AdaProps {
+  form: TemplateForm;
+  set: <K extends keyof TemplateForm>(k: K, v: TemplateForm[K]) => void;
+}
+
+function AdaSection({ form, set }: AdaProps) {
+  const [colaboradores, setColaboradores] = useState<Array<{ id: string; nome: string }>>([]);
+  const [setores, setSetores] = useState<Array<{ id: string; nome: string }>>([]);
+  const [snapshotInfo, setSnapshotInfo] = useState<string>("");
+
+  useEffect(() => {
+    let cancel = false;
+    (async () => {
+      const [{ data: profs }, { data: sets }] = await Promise.all([
+        supabase.from("profiles").select("id, nome").order("nome"),
+        supabase.from("setores").select("id, nome").eq("ativo", true).order("nome"),
+      ]);
+      if (cancel) return;
+      setColaboradores((profs ?? []) as any);
+      setSetores((sets ?? []) as any);
+    })();
+    return () => { cancel = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!form.ada_enabled) return;
+    if (form.ada_config_snapshot) {
+      const snap: any = form.ada_config_snapshot;
+      const qtd = Array.isArray(snap?.perguntas_padrao) ? snap.perguntas_padrao.length : 0;
+      setSnapshotInfo(`Snapshot carregado: ${qtd} pergunta(s), prazo ${snap?.prazo_horas ?? "?"}h.`);
+      return;
+    }
+    getAdaConfig().then((cfg) => {
+      set("ada_config_snapshot" as any, cfg as any);
+      setSnapshotInfo(`Snapshot inicial: ${cfg.perguntas_padrao.length} pergunta(s) padrão, prazo ${cfg.prazo_horas}h.`);
+      if (!form.ada_gerar_em) set("ada_gerar_em" as any, "pos_avaliacao" as any);
+      if (!form.ada_quem_avalia_tipo) set("ada_quem_avalia_tipo" as any, "responsavel_padrao" as any);
+    }).catch(() => setSnapshotInfo("Não foi possível carregar a configuração padrão."));
+  }, [form.ada_enabled]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div className="bg-muted/40 rounded-lg border border-border p-4 space-y-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2">
+          <UserCheck className="w-4 h-4 text-primary mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold">Avaliação do Avaliador</p>
+            <p className="text-xs text-muted-foreground">
+              Após a tarefa principal, gera automaticamente uma avaliação para quem avaliou. Configure o padrão em
+              <strong> Configurações → Tarefas → Avaliação do Avaliador</strong>.
+            </p>
+          </div>
+        </div>
+        <Switch
+          checked={form.ada_enabled}
+          onCheckedChange={(v) => set("ada_enabled" as any, v as any)}
+          aria-label="Avaliar também o avaliador"
+        />
+      </div>
+
+      {form.ada_enabled && (
+        <div className="space-y-3 pt-2 border-t">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Quando gerar</Label>
+              <Select
+                value={form.ada_gerar_em || "pos_avaliacao"}
+                onValueChange={(v) => set("ada_gerar_em" as any, v as any)}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pos_avaliacao">Após avaliação concluída</SelectItem>
+                  <SelectItem value="pos_aprovacao">Após aprovação final</SelectItem>
+                  <SelectItem value="pos_plano_acao">Após plano de ação respondido</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="text-xs">Quem avalia o avaliador</Label>
+              <Select
+                value={form.ada_quem_avalia_tipo || "responsavel_padrao"}
+                onValueChange={(v) => {
+                  set("ada_quem_avalia_tipo" as any, v as any);
+                  if (v !== "pessoa") set("ada_quem_avalia_profile_id" as any, "" as any);
+                  if (v !== "setor") set("ada_quem_avalia_setor_id" as any, "" as any);
+                }}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pessoa">Pessoa específica</SelectItem>
+                  <SelectItem value="setor">Setor</SelectItem>
+                  <SelectItem value="administrador">Administrador (qualquer admin)</SelectItem>
+                  <SelectItem value="responsavel_padrao">Responsável padrão (aprovador / criador)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {form.ada_quem_avalia_tipo === "pessoa" && (
+              <div className="sm:col-span-2">
+                <Label className="text-xs">Selecionar pessoa</Label>
+                <Select
+                  value={form.ada_quem_avalia_profile_id || ""}
+                  onValueChange={(v) => set("ada_quem_avalia_profile_id" as any, v as any)}
+                >
+                  <SelectTrigger><SelectValue placeholder="Escolha um colaborador…" /></SelectTrigger>
+                  <SelectContent>
+                    {colaboradores.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {form.ada_quem_avalia_tipo === "setor" && (
+              <div className="sm:col-span-2">
+                <Label className="text-xs">Selecionar setor</Label>
+                <Select
+                  value={form.ada_quem_avalia_setor_id || ""}
+                  onValueChange={(v) => set("ada_quem_avalia_setor_id" as any, v as any)}
+                >
+                  <SelectTrigger><SelectValue placeholder="Escolha um setor…" /></SelectTrigger>
+                  <SelectContent>
+                    {setores.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+
+          {snapshotInfo && <p className="text-xs text-muted-foreground">{snapshotInfo}</p>}
+          <p className="text-[11px] text-muted-foreground">
+            O responsável definido aqui é gravado diretamente no registro da tarefa-filha gerada. Se for "setor" ou
+            "administrador", a tarefa-filha fica disponível para qualquer membro elegível atender.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
