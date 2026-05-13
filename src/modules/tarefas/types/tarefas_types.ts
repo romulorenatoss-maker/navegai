@@ -196,6 +196,12 @@ export const defaultTemplate: TemplateForm = {
   penalidade_sla_contingencia: 15,
   penalidade_fora_prazo: 20,
   habilitar_perguntas_automaticas: true,
+  ada_enabled: false,
+  ada_quem_avalia_tipo: "",
+  ada_quem_avalia_profile_id: "",
+  ada_quem_avalia_setor_id: "",
+  ada_gerar_em: "",
+  ada_config_snapshot: null,
 };
 
 export const defaultField = (sectionTempId: string, ordem: number): FieldForm => ({
