@@ -154,21 +154,21 @@ export default function OperationalExecucaoPage() {
   const [pickedTaskType] = useState<TaskType>("inspecao");
   const [pickedSetorId] = useState<string>("");
   const isMobile = useIsMobile();
-  // Aba operacional ativa (5 abas fixas)
-  type OpTab = "hoje" | "emAndamento" | "aguardandoVoce" | "concluidas" | "criticas";
-  const [opTab, setOpTab] = useState<OpTab>("hoje");
+  // Accordion vertical aberto (5 grupos fixos)
+  type OpGroup = "hoje" | "emAndamento" | "aguardandoVoce" | "criticas" | "concluidas";
+  const [openGroup, setOpenGroup] = useState<OpGroup | null>("hoje");
   // Ordenação única
   const [sortKey, setSortKey] = useState<SortKey>("sla");
   // Filtros admin
   const [adminSetor, setAdminSetor] = useState<string>("__all");
   const [adminExecutor, setAdminExecutor] = useState<string>("__all");
 
-  // Compat com wrappers de rotas legadas: ?chip= → mapeia para aba operacional
+  // Compat com wrappers de rotas legadas: ?chip= → mapeia para grupo aberto
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const chipParam = searchParams.get("chip");
     if (!chipParam) return;
-    const chipToTab: Record<string, OpTab> = {
+    const chipToGroup: Record<string, OpGroup> = {
       todas: "hoje",
       executar: "hoje",
       avaliar: "aguardandoVoce",
@@ -178,8 +178,8 @@ export default function OperationalExecucaoPage() {
       atrasadas: "criticas",
       concluidas: "concluidas",
     };
-    const target = chipToTab[chipParam];
-    if (target) setOpTab(target);
+    const target = chipToGroup[chipParam];
+    if (target) setOpenGroup(target);
     const next = new URLSearchParams(searchParams);
     next.delete("chip");
     next.delete("from");
