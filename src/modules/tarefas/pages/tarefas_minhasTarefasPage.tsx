@@ -153,48 +153,40 @@ export default function OperationalExecucaoPage() {
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [filterResponsavel, setFilterResponsavel] = useState<string>(profile?.id || "__all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [openAccordion, setOpenAccordion] = useState<string | null>("hoje");
   const today = new Date().toISOString().slice(0, 10);
   const [filterDate, setFilterDate] = useState<string>(today);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [quickTaskOpen, setQuickTaskOpen] = useState(false);
-  // (Removido) seletor "Tipo de tarefa" — abre o builder unificado direto.
-  // Mantemos defaults para o QuickTaskDialog (taskType="inspecao" cobre simples + por etapas).
   const [pickedTaskType] = useState<TaskType>("inspecao");
   const [pickedSetorId] = useState<string>("");
   const isMobile = useIsMobile();
-  // Visão ativa (executor/avaliador/aprovador/designador/setor/admin) — dinâmica por contexto real
-  const [visao, setVisao] = useState<VisaoKey>("executor");
-  // Ordenação por seção (única para todas as listas da visão atual)
+  // Aba operacional ativa (5 abas fixas)
+  type OpTab = "hoje" | "emAndamento" | "aguardandoVoce" | "concluidas" | "criticas";
+  const [opTab, setOpTab] = useState<OpTab>("hoje");
+  // Ordenação única
   const [sortKey, setSortKey] = useState<SortKey>("sla");
-  // Toggle "Só atrasadas" dentro do acordeão Hoje (executor)
-  const [showOnlyLate, setShowOnlyLate] = useState(false);
   // Filtros admin
   const [adminSetor, setAdminSetor] = useState<string>("__all");
   const [adminExecutor, setAdminExecutor] = useState<string>("__all");
 
-  // Compat com wrappers das rotas legadas: ?chip= mapeia para visão + acordeão
+  // Compat com wrappers de rotas legadas: ?chip= → mapeia para aba operacional
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const chipParam = searchParams.get("chip");
     if (!chipParam) return;
-    const chipToVisao: Record<string, { v: VisaoKey; acc: string }> = {
-      todas: { v: "executor", acc: "hoje" },
-      executar: { v: "executor", acc: "hoje" },
-      avaliar: { v: "avaliador", acc: "aguardandoAvaliacao" },
-      aprovar: { v: "aprovador", acc: "aguardandoAprovacao" },
-      plano_acao: { v: "executor", acc: "planoAcao" },
-      contingencias: { v: "executor", acc: "contingencias" },
-      atrasadas: { v: "executor", acc: "hoje" },
-      concluidas: { v: "executor", acc: "concluidas" },
+    const chipToTab: Record<string, OpTab> = {
+      todas: "hoje",
+      executar: "hoje",
+      avaliar: "aguardandoVoce",
+      aprovar: "aguardandoVoce",
+      plano_acao: "emAndamento",
+      contingencias: "emAndamento",
+      atrasadas: "criticas",
+      concluidas: "concluidas",
     };
-    const target = chipToVisao[chipParam];
-    if (target) {
-      setVisao(target.v);
-      setOpenAccordion(target.acc);
-      if (chipParam === "atrasadas") setShowOnlyLate(true);
-    }
+    const target = chipToTab[chipParam];
+    if (target) setOpTab(target);
     const next = new URLSearchParams(searchParams);
     next.delete("chip");
     next.delete("from");
