@@ -145,16 +145,18 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
         </div>
       </div>
 
-      {/* Responsáveis — novo padrão visual (4 blocos) */}
-      <div className="space-y-2">
-        <p className="text-sm font-medium text-foreground">Responsáveis</p>
+      {/* Responsáveis — mesmo padrão visual da tela avulsa */}
+      <div className="border border-border rounded-lg p-3 space-y-3 bg-muted/30">
+        <div className="flex items-center gap-2">
+          <Users className="w-4 h-4 text-primary" />
+          <Label className="text-sm font-semibold">Responsáveis</Label>
+        </div>
         <TarefasResponsaveisBlocks
           value={blocks}
           onChange={handleBlocksChange}
           setores={setores}
           colaboradores={colaboradores}
           colaboradorSetores={colaboradorSetores as any}
-          setorTarefaId={form.setor_id}
           multiPersistWarning="Apenas o primeiro colaborador será gravado nesta versão (sem migration). Para gravar múltiplos, será necessária uma migração futura."
         />
       </div>
