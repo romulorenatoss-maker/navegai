@@ -269,10 +269,45 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     });
   }, [colaboradores, isSelfTask, profile?.id, avaliadoId]);
 
-  // Cleanup pós-realinhamento: o "Plano de ação" agora é configurado por pergunta no FormBuilder.
-  // Mantemos o state legado apenas como fallback opcional (sem UI no QuickCreate).
-  const planoAcaoOk = true;
-  const planoAcaoEnabled = true; // habilita "gera plano de ação" em qualquer pergunta
+  // Usuários do setor disponíveis para "Plano de Ação → Usuário do setor"
+  const planoAcaoUsuariosSetor = useMemo(() => {
+    if (!setorId) return [] as any[];
+    const ids = new Set((colaboradorSetores as any[]).filter((cs) => cs.setor_id === setorId).map((cs) => cs.profile_id));
+    return (colaboradores as any[]).filter((c) => ids.has(c.id));
+  }, [colaboradores, colaboradorSetores, setorId]);
+
+  // Responsável padrão do setor selecionado (pode ser null se setor não tiver definido).
+  const setorSelecionado = useMemo(() => (setores as any[]).find((s) => s.id === setorId), [setores, setorId]);
+  const responsavelPadraoSetorId: string | null = setorSelecionado?.responsavel_padrao_id || null;
+
+  // Resolve para os campos do payload (validador_contingencia_*).
+  const { planoAcaoProfileIdResolvido, planoAcaoSetorIdResolvido } = useMemo(() => {
+    switch (planoAcaoResp) {
+      case "avaliado":
+        return { planoAcaoProfileIdResolvido: avaliadoId || null, planoAcaoSetorIdResolvido: null };
+      case "usuario_setor":
+        return { planoAcaoProfileIdResolvido: planoAcaoUsuarioId || null, planoAcaoSetorIdResolvido: null };
+      case "setor_inteiro":
+        return { planoAcaoProfileIdResolvido: null, planoAcaoSetorIdResolvido: setorId || null };
+      case "responsavel_padrao_setor":
+        return { planoAcaoProfileIdResolvido: responsavelPadraoSetorId, planoAcaoSetorIdResolvido: null };
+      default:
+        return { planoAcaoProfileIdResolvido: null, planoAcaoSetorIdResolvido: null };
+    }
+  }, [planoAcaoResp, avaliadoId, planoAcaoUsuarioId, setorId, responsavelPadraoSetorId]);
+
+  const planoAcaoOk =
+    (planoAcaoResp === "avaliado" && !!avaliadoId) ||
+    (planoAcaoResp === "usuario_setor" && !!planoAcaoUsuarioId) ||
+    (planoAcaoResp === "setor_inteiro" && !!setorId) ||
+    (planoAcaoResp === "responsavel_padrao_setor" && !!responsavelPadraoSetorId);
+
+  // Limpa seleção de usuário se setor mudar e o usuário não pertencer mais ao novo setor.
+  useEffect(() => {
+    if (planoAcaoUsuarioId && !planoAcaoUsuariosSetor.some((c: any) => c.id === planoAcaoUsuarioId)) {
+      setPlanoAcaoUsuarioId("");
+    }
+  }, [planoAcaoUsuariosSetor, planoAcaoUsuarioId]);
 
   const aprovadorOk = !requerAprovacao
     || (aprovadorMode === "individual" && !!aprovadorId && aprovadorId !== avaliadoId && (!isSelfTask || aprovadorId !== profile?.id))
