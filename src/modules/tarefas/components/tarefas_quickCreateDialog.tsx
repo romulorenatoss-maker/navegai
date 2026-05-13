@@ -25,7 +25,7 @@ import { DEFAULT_SOLICITACAO_CONFIG, type SolicitacaoConfig } from "@/modules/ta
 import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
 import {
   TarefasResponsaveisV2,
-  emptyRespBlocksV2V2,
+  emptyRespBlocksV2,
   isRespV2Filled,
   respV2LegacyProfileId,
   respV2LegacySetorId,
