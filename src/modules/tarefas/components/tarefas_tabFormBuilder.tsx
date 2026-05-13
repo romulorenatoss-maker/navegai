@@ -292,8 +292,11 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                             </div>
                             <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: section.cor }} />
                             <Input value={section.nome} onChange={e => updateSection(section.tempId, "nome", e.target.value)}
-                              placeholder="Nome da etapa/formulário" className="h-7 text-sm font-medium flex-1" maxLength={100} />
-                            <span className="text-[10px] text-muted-foreground whitespace-nowrap">{sectionFields.length} campo{sectionFields.length !== 1 ? "s" : ""}</span>
+                              placeholder={etapaPergunta ? "Pergunta principal (ex: O local foi limpo?)" : "Nome da etapa/formulário"}
+                              className="h-7 text-sm font-medium flex-1" maxLength={100} />
+                            <span className={`text-[10px] whitespace-nowrap px-1.5 py-0.5 rounded ${etapaPergunta ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}>
+                              {etapaPergunta ? "Pergunta" : `${sectionFields.length} campo${sectionFields.length !== 1 ? "s" : ""}`}
+                            </span>
                             <Input type="number" min={0.1} step={0.1} value={section.peso} onChange={e => updateSection(section.tempId, "peso", +e.target.value)}
                               className="h-7 w-16 text-sm text-center" title="Peso da etapa" />
                             <Select value={section.cor} onValueChange={v => updateSection(section.tempId, "cor", v)}>
