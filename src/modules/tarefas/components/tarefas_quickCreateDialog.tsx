@@ -258,6 +258,33 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   // Tarefa "para si mesmo" → criador == avaliado
   const isSelfTask = !!profile?.id && avaliadoId === profile.id;
 
+  // Sincroniza o novo padrão de blocos (4) com as variáveis legacy de payload/snapshot.
+  // Bloco 1 (Avaliado) → avaliadoId.
+  // Bloco 2 (Avaliador) → fusão: avaliador_* + validador_contingencia_* (Plano de Ação).
+  // Bloco 3 (Aprovador) → aprovador_* (opcional).
+  // Bloco 4 (Validador Final) → ada_* (opcional, gerenciado no save).
+  useEffect(() => {
+    const av = respBlocks.avaliado;
+    setAvaliadoId(av.mode === "individual" ? (av.profileIds[0] || "") : "");
+
+    const a2 = respBlocks.avaliador;
+    const a2Filled = isRespFilled(a2);
+    setRequerValidacao(a2Filled);
+    setValidadorMode(a2.mode === "individual" ? "individual" : "setor");
+    setValidadorId(respLegacyProfileId(a2));
+    setValidadorSetorId(respLegacySetorId(a2));
+    // Plano de Ação (mesmo bloco 2)
+    setPlanoAcaoSetorId(a2.mode === "setorial" ? a2.setorId : "");
+    setPlanoAcaoUsuarioId(a2.mode === "individual" ? (a2.profileIds[0] || "") : "");
+    setPlanoAcaoQualquer(a2.mode === "setorial");
+
+    const a3 = respBlocks.aprovador;
+    setRequerAprovacao(isRespFilled(a3));
+    setAprovadorMode(a3.mode === "individual" ? "individual" : "setor");
+    setAprovadorId(respLegacyProfileId(a3));
+    setAprovadorSetorId(respLegacySetorId(a3));
+  }, [respBlocks]);
+
   // Validador: nunca pode ser o avaliado (não pode validar a si mesmo)
   const validadorOptions = useMemo(
     () => (colaboradores as any[]).filter((c) => c.id !== avaliadoId),
