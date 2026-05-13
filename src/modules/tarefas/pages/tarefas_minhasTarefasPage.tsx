@@ -27,8 +27,7 @@ import QuickTaskDialog from "@/modules/tarefas/components/tarefas_quickCreateDia
 // (Removido) TaskTypeSelectorDialog — builder único, sem seletor prévio.
 type TaskType = "simples" | "inspecao";
 import { ListChecks, Trophy } from "lucide-react";
-import { bucketize, sortAssignments, availableVisoes, computeSla, isLate, isSemMovimento, type SortKey, type VisaoKey } from "@/modules/tarefas/services/tarefas_bucketize";
-import { VisaoSwitcher } from "@/modules/tarefas/components/tarefas_visaoSwitcher";
+import { bucketize, sortAssignments, computeSla, isLate, isSemMovimento, type SortKey } from "@/modules/tarefas/services/tarefas_bucketize";
 import { PainelRetornoCard } from "@/modules/tarefas/components/tarefas_painelRetornoCard";
 import { DrawerActionRouter } from "@/modules/tarefas/components/painels/tarefas_drawerActionRouter";
 
