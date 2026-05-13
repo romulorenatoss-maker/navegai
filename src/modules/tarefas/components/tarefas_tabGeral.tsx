@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Users } from "lucide-react";
-import { TemplateForm } from "../types/tarefas_types";
+import { TemplateForm, SectionForm, StepForm } from "../types/tarefas_types";
 import {
   TarefasResponsaveisV2,
   emptyRespBlocksV2,
@@ -21,6 +21,8 @@ interface Props {
   set: <K extends keyof TemplateForm>(k: K, v: TemplateForm[K]) => void;
   setores: any[];
   colaboradores: any[];
+  sections?: SectionForm[];
+  steps?: StepForm[];
 }
 
 const EXEC_OPTIONS: Array<{ value: string; label: string }> = [
