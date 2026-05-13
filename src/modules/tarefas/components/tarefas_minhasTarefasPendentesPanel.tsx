@@ -126,7 +126,7 @@ export function MinhasTarefasPendentesPanel({ viewAsProfileId }: { viewAsProfile
             </TabsTrigger>
           </TabsList>
           <TabsContent value="minhas" className="mt-0">
-            {renderList(minhas, "Nenhuma tarefa atribuída a você.")}
+            {renderList(minhas, "Nenhum plano de ação atribuído a você.")}
           </TabsContent>
         </Tabs>
         {dialog}
