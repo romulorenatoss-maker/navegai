@@ -181,5 +181,3 @@ export async function setStorageConfig(params: {
   return { configured: true, config: json.config, validation: json.validation };
 }
 
-// re-export no objeto singleton
-Object.assign(tarefas_storage_service, { getStorageConfig, setStorageConfig });
