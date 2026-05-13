@@ -45,7 +45,7 @@ export default function ConfiguracoesPage() {
         <TabsContent value="tarefas" className="mt-4">
           <Card className="p-0 overflow-hidden">
             <Tabs value={sub} onValueChange={setSub}>
-              <TabsList className="w-full justify-start rounded-none border-b bg-muted/30 px-2">
+              <TabsList className="w-full justify-start rounded-none border-b bg-muted/30 px-2 overflow-x-auto">
                 <TabsTrigger value="colaboradores" className="gap-2">
                   <Users className="w-4 h-4" /> Colaboradores
                 </TabsTrigger>
@@ -54,6 +54,9 @@ export default function ConfiguracoesPage() {
                 </TabsTrigger>
                 <TabsTrigger value="pontuacao" className="gap-2">
                   <Calculator className="w-4 h-4" /> Pontuação / Notas
+                </TabsTrigger>
+                <TabsTrigger value="ada" className="gap-2">
+                  <UserCheck className="w-4 h-4" /> Avaliação do Avaliador
                 </TabsTrigger>
                 <TabsTrigger value="armazenamento" className="gap-2">
                   <HardDrive className="w-4 h-4" /> Armazenamento
@@ -69,6 +72,9 @@ export default function ConfiguracoesPage() {
                 </TabsContent>
                 <TabsContent value="pontuacao" className="m-0">
                   <TarefasConfigPontuacao />
+                </TabsContent>
+                <TabsContent value="ada" className="m-0">
+                  <TarefasConfigAdA />
                 </TabsContent>
                 <TabsContent value="armazenamento" className="m-0">
                   <TarefasConfigArmazenamento />
