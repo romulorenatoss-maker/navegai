@@ -114,10 +114,9 @@ export function TarefasBuilderWizard(props: Props) {
 
         {current === "fluxo" && (
           <div className="space-y-6">
-            <SectionDivider icon={<Workflow className="w-3.5 h-3.5" />} title="Workflow, aprovação, SLA & automação" subtitle="Quem aprova, regras de SLA, contingência e plano de ação." />
-            <TabWorkflow form={form} set={set} fields={fields} />
-
-            <SectionDivider icon={<CalendarClock className="w-3.5 h-3.5" />} title="Recorrência" subtitle="Quando esta tarefa será gerada automaticamente." />
+            {/* Aprovação, SLA, AdA e perguntas do aprovador agora vivem em Geral → Responsáveis
+                e na própria pergunta (Campos → Aprovador verifica). Aqui ficam apenas os
+                horários/dias da rotina, conforme padrão acordado. */}
             <TabRecorrencia form={form} set={set} />
           </div>
         )}
