@@ -1323,6 +1323,8 @@ export type Database = {
       }
       operational_assignments: {
         Row: {
+          ada_avaliador_avaliado_id: string | null
+          ada_responsavel_definido_id: string | null
           aprovador_id: string | null
           avaliado_id: string | null
           avaliador_fim_em: string | null
@@ -1339,6 +1341,7 @@ export type Database = {
           inicio_em: string | null
           numero_tarefa: number
           observacao: string | null
+          parent_assignment_id: string | null
           pausa_iniciada_em: string | null
           pontuacao_obtida: number | null
           prazo_pausado_ms: number
@@ -1356,10 +1359,13 @@ export type Database = {
           template_snapshot: Json | null
           template_versao: number | null
           tempo_gasto_minutos: number | null
+          tipo_assignment: string
           updated_at: string
           validador_contingencia_id: string | null
         }
         Insert: {
+          ada_avaliador_avaliado_id?: string | null
+          ada_responsavel_definido_id?: string | null
           aprovador_id?: string | null
           avaliado_id?: string | null
           avaliador_fim_em?: string | null
@@ -1376,6 +1382,7 @@ export type Database = {
           inicio_em?: string | null
           numero_tarefa?: number
           observacao?: string | null
+          parent_assignment_id?: string | null
           pausa_iniciada_em?: string | null
           pontuacao_obtida?: number | null
           prazo_pausado_ms?: number
@@ -1393,10 +1400,13 @@ export type Database = {
           template_snapshot?: Json | null
           template_versao?: number | null
           tempo_gasto_minutos?: number | null
+          tipo_assignment?: string
           updated_at?: string
           validador_contingencia_id?: string | null
         }
         Update: {
+          ada_avaliador_avaliado_id?: string | null
+          ada_responsavel_definido_id?: string | null
           aprovador_id?: string | null
           avaliado_id?: string | null
           avaliador_fim_em?: string | null
@@ -1413,6 +1423,7 @@ export type Database = {
           inicio_em?: string | null
           numero_tarefa?: number
           observacao?: string | null
+          parent_assignment_id?: string | null
           pausa_iniciada_em?: string | null
           pontuacao_obtida?: number | null
           prazo_pausado_ms?: number
@@ -1430,10 +1441,25 @@ export type Database = {
           template_snapshot?: Json | null
           template_versao?: number | null
           tempo_gasto_minutos?: number | null
+          tipo_assignment?: string
           updated_at?: string
           validador_contingencia_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "operational_assignments_ada_avaliador_avaliado_id_fkey"
+            columns: ["ada_avaliador_avaliado_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_assignments_ada_responsavel_definido_id_fkey"
+            columns: ["ada_responsavel_definido_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "operational_assignments_aprovador_id_fkey"
             columns: ["aprovador_id"]
@@ -1460,6 +1486,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_assignments_parent_assignment_id_fkey"
+            columns: ["parent_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "operational_assignments"
             referencedColumns: ["id"]
           },
           {
@@ -2543,6 +2576,12 @@ export type Database = {
       }
       operational_templates: {
         Row: {
+          ada_config_snapshot: Json | null
+          ada_enabled: boolean
+          ada_gerar_em: string | null
+          ada_quem_avalia_profile_id: string | null
+          ada_quem_avalia_setor_id: string | null
+          ada_quem_avalia_tipo: string | null
           aprovador_profile_id: string | null
           aprovador_setor_id: string | null
           ativo: boolean | null
@@ -2595,6 +2634,12 @@ export type Database = {
           versao: number
         }
         Insert: {
+          ada_config_snapshot?: Json | null
+          ada_enabled?: boolean
+          ada_gerar_em?: string | null
+          ada_quem_avalia_profile_id?: string | null
+          ada_quem_avalia_setor_id?: string | null
+          ada_quem_avalia_tipo?: string | null
           aprovador_profile_id?: string | null
           aprovador_setor_id?: string | null
           ativo?: boolean | null
@@ -2647,6 +2692,12 @@ export type Database = {
           versao?: number
         }
         Update: {
+          ada_config_snapshot?: Json | null
+          ada_enabled?: boolean
+          ada_gerar_em?: string | null
+          ada_quem_avalia_profile_id?: string | null
+          ada_quem_avalia_setor_id?: string | null
+          ada_quem_avalia_tipo?: string | null
           aprovador_profile_id?: string | null
           aprovador_setor_id?: string | null
           ativo?: boolean | null
@@ -2699,6 +2750,20 @@ export type Database = {
           versao?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "operational_templates_ada_quem_avalia_profile_id_fkey"
+            columns: ["ada_quem_avalia_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_templates_ada_quem_avalia_setor_id_fkey"
+            columns: ["ada_quem_avalia_setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "operational_templates_aprovador_profile_id_fkey"
             columns: ["aprovador_profile_id"]
