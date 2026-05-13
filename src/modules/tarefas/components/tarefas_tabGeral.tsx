@@ -65,6 +65,23 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
     form.ada_quem_avalia_tipo, form.ada_quem_avalia_profile_id, form.ada_quem_avalia_setor_id,
   ]);
 
+  // Setor da rotina derivado do Avaliado (igual à tela avulsa).
+  const derivedSetorId = useMemo(() => {
+    const av = blocks.avaliado;
+    if (av.mode === "setorial") return av.setorId || "";
+    const pid = av.profileIds[0];
+    if (!pid) return "";
+    const link = (colaboradorSetores as any[]).find((cs) => cs.profile_id === pid);
+    return link?.setor_id || "";
+  }, [blocks.avaliado, colaboradorSetores]);
+
+  useEffect(() => {
+    if (derivedSetorId && derivedSetorId !== form.setor_id) {
+      set("setor_id" as any, derivedSetorId as any);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [derivedSetorId]);
+
   const handleBlocksChange = (next: RespBlocksValue) => {
     // Bloco 1 — Avaliado → executor_*
     set("executor_profile_id" as any, (next.avaliado.mode === "individual" ? (next.avaliado.profileIds[0] || "") : "") as any);
@@ -72,6 +89,7 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
     // mantém compatibilidade com avaliado_* (mesma pessoa que executa)
     set("avaliado_profile_id" as any, (next.avaliado.mode === "individual" ? (next.avaliado.profileIds[0] || "") : "") as any);
     set("avaliado_setor_id" as any, (next.avaliado.mode === "setorial" ? next.avaliado.setorId : "") as any);
+
 
     // Bloco 2 — Avaliador (Plano de Ação) → fusão: avaliador_* + validador_contingencia_*
     const a2pid = next.avaliador.mode === "individual" ? (next.avaliador.profileIds[0] || "") : "";
