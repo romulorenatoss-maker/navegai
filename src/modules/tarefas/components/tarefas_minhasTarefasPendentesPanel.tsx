@@ -122,7 +122,7 @@ export function MinhasTarefasPendentesPanel({ viewAsProfileId }: { viewAsProfile
         <Tabs defaultValue="minhas" className="w-full">
           <TabsList className="h-8 mb-2">
             <TabsTrigger value="minhas" className="text-xs h-6 px-2">
-              Minhas {minhas.length > 0 && <span className="ml-1 px-1.5 rounded-full text-[10px] bg-primary/20 text-primary">{minhas.length}</span>}
+              Meu Plano de Ação {minhas.length > 0 && <span className="ml-1 px-1.5 rounded-full text-[10px] bg-primary/20 text-primary">{minhas.length}</span>}
             </TabsTrigger>
           </TabsList>
           <TabsContent value="minhas" className="mt-0">
