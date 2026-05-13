@@ -169,6 +169,19 @@ export default function SetoresPage() {
               <Label>Descrição</Label>
               <Textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} />
             </div>
+            <div className="space-y-1.5">
+              <Label>Responsável padrão (opcional)</Label>
+              <Select value={responsavelPadraoId || "__none"} onValueChange={(v) => setResponsavelPadraoId(v === "__none" ? "" : v)}>
+                <SelectTrigger><SelectValue placeholder="Selecionar responsável padrão..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">Sem responsável padrão</SelectItem>
+                  {(profiles as any[]).map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground">Sugerido como responsável de Plano de Ação na criação de tarefas deste setor.</p>
+            </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={closeDialog}>Cancelar</Button>
               <Button type="submit" disabled={upsert.isPending} className="press-effect">
