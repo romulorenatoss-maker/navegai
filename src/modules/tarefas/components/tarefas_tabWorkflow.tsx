@@ -251,6 +251,9 @@ function AdaSection({ form, set }: AdaProps) {
               Após a tarefa principal, gera automaticamente uma avaliação para quem avaliou. Configure o padrão em
               <strong> Configurações → Tarefas → Avaliação do Avaliador</strong>.
             </p>
+            <p className="text-[11px] text-muted-foreground mt-1 italic">
+              Esta configuração também aparece em <strong>Responsáveis → Validador Final</strong>. Os dois pontos editam o mesmo registro.
+            </p>
           </div>
         </div>
         <Switch
@@ -259,6 +262,7 @@ function AdaSection({ form, set }: AdaProps) {
           aria-label="Avaliar também o avaliador"
         />
       </div>
+
 
       {form.ada_enabled && (
         <div className="space-y-3 pt-2 border-t">

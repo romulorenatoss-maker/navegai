@@ -23,6 +23,14 @@ import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DEFAULT_SOLICITACAO_CONFIG, type SolicitacaoConfig } from "@/modules/tarefas/services/tarefas_solicitacaoConfig";
 import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
+import {
+  TarefasResponsaveisBlocks,
+  emptyRespBlocks,
+  isRespFilled,
+  respLegacyProfileId,
+  respLegacySetorId,
+  type RespBlocksValue,
+} from "@/modules/tarefas/components/responsaveis/TarefasResponsaveisBlocks";
 
 // localStorage keys for default penalty values (per-user defaults set via gear icon)
 const LS_DEFAULTS_KEY = "quicktask_workflow_defaults_v1";
@@ -103,6 +111,10 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   const [aprovadorId, setAprovadorId] = useState("");
   const [aprovadorSetorId, setAprovadorSetorId] = useState("");
 
+  // Novo padrão visual de Responsáveis (4 blocos). Substitui as toggles antigas.
+  // Persiste array em template_snapshot.responsaveis_multi (avulso). Coluna legacy = primeiro do array.
+  const [respBlocks, setRespBlocks] = useState<RespBlocksValue>(emptyRespBlocks);
+
   // Step 2 state
   const [sections, setSections] = useState<SectionForm[]>([]);
   const [fields, setFields] = useState<FieldForm[]>([]);
@@ -140,6 +152,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     setRequerValidacao(false); setValidadorMode("individual"); setValidadorId(""); setValidadorSetorId("");
     setPlanoAcaoSetorId(""); setPlanoAcaoQualquer(true); setPlanoAcaoUsuarioId("");
     setRequerAprovacao(false); setAprovadorMode("individual"); setAprovadorId(""); setAprovadorSetorId("");
+    setRespBlocks(emptyRespBlocks);
     setSections([]); setFields([]);
     const d = loadDefaults();
     setSlaHoras(24);
@@ -245,6 +258,33 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   // Tarefa "para si mesmo" → criador == avaliado
   const isSelfTask = !!profile?.id && avaliadoId === profile.id;
 
+  // Sincroniza o novo padrão de blocos (4) com as variáveis legacy de payload/snapshot.
+  // Bloco 1 (Avaliado) → avaliadoId.
+  // Bloco 2 (Avaliador) → fusão: avaliador_* + validador_contingencia_* (Plano de Ação).
+  // Bloco 3 (Aprovador) → aprovador_* (opcional).
+  // Bloco 4 (Validador Final) → ada_* (opcional, gerenciado no save).
+  useEffect(() => {
+    const av = respBlocks.avaliado;
+    setAvaliadoId(av.mode === "individual" ? (av.profileIds[0] || "") : "");
+
+    const a2 = respBlocks.avaliador;
+    const a2Filled = isRespFilled(a2);
+    setRequerValidacao(a2Filled);
+    setValidadorMode(a2.mode === "individual" ? "individual" : "setor");
+    setValidadorId(respLegacyProfileId(a2));
+    setValidadorSetorId(respLegacySetorId(a2));
+    // Plano de Ação (mesmo bloco 2)
+    setPlanoAcaoSetorId(a2.mode === "setorial" ? a2.setorId : "");
+    setPlanoAcaoUsuarioId(a2.mode === "individual" ? (a2.profileIds[0] || "") : "");
+    setPlanoAcaoQualquer(a2.mode === "setorial");
+
+    const a3 = respBlocks.aprovador;
+    setRequerAprovacao(isRespFilled(a3));
+    setAprovadorMode(a3.mode === "individual" ? "individual" : "setor");
+    setAprovadorId(respLegacyProfileId(a3));
+    setAprovadorSetorId(respLegacySetorId(a3));
+  }, [respBlocks]);
+
   // Validador: nunca pode ser o avaliado (não pode validar a si mesmo)
   const validadorOptions = useMemo(
     () => (colaboradores as any[]).filter((c) => c.id !== avaliadoId),
@@ -336,12 +376,10 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
 
   // Step 1 = Estrutura (builder). Step 2 = Designação. Step 3 = Prazos & Notas.
   const canAdvanceStep1 = fields.length > 0 && !horarioValidationError;
-  const canAdvanceStep2 = !!avaliadoId
-    && !!setorId
-    && !!dataPrevista
-    && planoAcaoOk
-    && validadorOk
-    && aprovadorOk;
+  // Avaliado é o único bloco obrigatório. Aprovador e Validador Final são opcionais.
+  // Avaliador (PA) é opcional — se vazio, tarefa segue sem conferência/PA.
+  const canAdvanceStep2 = !!avaliadoId && !!setorId && !!dataPrevista;
+
 
   const create = useMutation({
     mutationFn: async () => {
@@ -388,12 +426,23 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
         tipo_atribuicao_avaliado: "individual",
         habilitar_perguntas_automaticas: pontuacaoValida ? habilitarPerguntasAutomaticas : false,
         ativo: true,
+        // Bloco 4 (Validador Final) → ada_*. Opcional; se vazio, AdA fica desligado.
+        ada_enabled: isRespFilled(respBlocks.validadorFinal),
+        ada_quem_avalia_tipo: isRespFilled(respBlocks.validadorFinal)
+          ? (respBlocks.validadorFinal.mode === "individual" ? "pessoa" : "setor")
+          : null,
+        ada_quem_avalia_profile_id: respBlocks.validadorFinal.mode === "individual"
+          ? (respBlocks.validadorFinal.profileIds[0] || null) : null,
+        ada_quem_avalia_setor_id: respBlocks.validadorFinal.mode === "setorial"
+          ? (respBlocks.validadorFinal.setorId || null) : null,
+        ada_gerar_em: isRespFilled(respBlocks.validadorFinal) ? "pos_avaliacao" : null,
         // Recorrente vai pra "Rotinas Operacionais" (origem rotina); pontual permanece ad_hoc
         // Tarefa avulsa (botão "+" da Minhas Tarefas) NUNCA vira rotina.
         origem: isAvulsa ? "ad_hoc" : (recorrenciaAtiva ? "rotina" : "ad_hoc"),
         // NOTE: operational_templates não possui coluna created_by.
         // Autoria do criador é registrada em operational_assignments.created_by (linha abaixo).
       };
+
 
       const { data: tpl, error: tplErr } = await (supabase as any)
         .from("operational_templates").insert(templatePayload).select().single();
@@ -519,6 +568,13 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
         }),
         // Fase 1B.3 — Fluxo Operacional para tarefa avulsa (sem migration; lido em runtime).
         ...(isAvulsa ? { solicitacao_config: solicitacaoConfig } : {}),
+        // Multi-select dos 4 blocos (sem migration; coluna legacy recebe primeiro do array).
+        responsaveis_multi: {
+          avaliado: respBlocks.avaliado.profileIds,
+          avaliador: respBlocks.avaliador.profileIds,
+          aprovador: respBlocks.aprovador.profileIds,
+          validador_final: respBlocks.validadorFinal.profileIds,
+        },
       };
 
       // 4) cria assignment imediato para o avaliado (executor + recebe nota)
@@ -600,7 +656,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                 {nome.trim() ? " (override manual ativo)" : ""}
               </p>
 
-              {/* Responsáveis */}
+              {/* Responsáveis — novo padrão visual (4 blocos) */}
               <div className="border border-border rounded-lg p-3 space-y-3 bg-muted/30">
                 <div className="flex items-center gap-2">
                   <Users className="w-4 h-4 text-primary" />
@@ -624,172 +680,18 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                   )}
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label>Avaliado *</Label>
-                  <Select value={avaliadoId} onValueChange={setAvaliadoId} disabled={!setorId}>
-                    <SelectTrigger><SelectValue placeholder={!setorId ? "Selecione o setor primeiro" : (avaliadoOptions.length === 0 ? "Nenhum colaborador no setor" : "Selecionar...")} /></SelectTrigger>
-                    <SelectContent>
-                      {avaliadoOptions.map((c: any) => (
-                        <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-[10px] text-muted-foreground">
-                    Pessoa que responde a tarefa e recebe a nota. Filtrada pelos colaboradores vinculados ao setor.
-                  </p>
-                </div>
+                <TarefasResponsaveisBlocks
+                  value={respBlocks}
+                  onChange={setRespBlocks}
+                  setores={setores as any[]}
+                  colaboradores={colaboradores as any[]}
+                  colaboradorSetores={colaboradorSetores as any[]}
+                  setorTarefaId={setorId}
+                />
 
-                {/* Plano de Ação — setor responsável + flag "qualquer um do setor" ou usuário específico. */}
-                <div className="border-t border-border/60 pt-3 space-y-2">
-                  <div>
-                    <Label className="text-sm">Quem responde Plano de Ação? *</Label>
-                    <p className="text-[11px] text-muted-foreground">
-                      Quando uma pergunta gerar não conformidade/plano de ação, este setor (ou pessoa específica) receberá a pendência em "Minhas Tarefas".
-                    </p>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-[11px] text-muted-foreground">Setor responsável pelo plano de ação *</Label>
-                    <Select value={planoAcaoSetorId} onValueChange={setPlanoAcaoSetorId}>
-                      <SelectTrigger><SelectValue placeholder="Selecionar setor..." /></SelectTrigger>
-                      <SelectContent>
-                        {(setores as any[]).map((s) => (
-                          <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <label className={cn("flex items-center justify-between gap-2 rounded-md border px-2.5 py-2", !planoAcaoSetorId && "opacity-50 cursor-not-allowed")}>
-                    <div>
-                      <p className="text-xs font-medium">Qualquer pessoa deste setor pode fazer</p>
-                      <p className="text-[10px] text-muted-foreground">A tarefa fica disponível para todos do setor; o primeiro que assumir executa.</p>
-                    </div>
-                    <Switch
-                      checked={planoAcaoQualquer}
-                      onCheckedChange={(v) => { setPlanoAcaoQualquer(v); if (v) setPlanoAcaoUsuarioId(""); }}
-                      disabled={!planoAcaoSetorId}
-                    />
-                  </label>
-
-                  {!planoAcaoQualquer && planoAcaoSetorId && (
-                    <div className="space-y-1.5">
-                      <Label className="text-[11px] text-muted-foreground">Usuário específico do setor *</Label>
-                      <Select value={planoAcaoUsuarioId} onValueChange={setPlanoAcaoUsuarioId}>
-                        <SelectTrigger><SelectValue placeholder={planoAcaoUsuariosSetor.length === 0 ? "Nenhum usuário no setor" : "Selecionar usuário..."} /></SelectTrigger>
-                        <SelectContent>
-                          {planoAcaoUsuariosSetor.map((c: any) => (
-                            <SelectItem key={c.id} value={c.id}>
-                              {c.nome}{c.funcao ? ` — ${c.funcao}` : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  {planoAcaoQualquer && planoAcaoSetorId && planoAcaoUsuariosSetor.length > 0 && (
-                    <div className="text-[10px] text-muted-foreground bg-muted/40 border border-border rounded-md px-2 py-1.5">
-                      <p className="font-medium mb-0.5">Estarão aguardando ({planoAcaoUsuariosSetor.length}):</p>
-                      <p className="leading-snug">
-                        {planoAcaoUsuariosSetor.map((c: any) => c.funcao ? `${c.nome} (${c.funcao})` : c.nome).join(" · ")}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="border-t border-border/60 pt-3 space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <Label className="text-sm">Avaliação técnica (quem confere a execução?)</Label>
-                      <p className="text-[11px] text-muted-foreground">
-                        Confere se a tarefa foi feita corretamente. Pode confirmar, devolver com observação ou solicitar ajuste. <strong>Não aplica nota.</strong> Não pode ser o próprio avaliado.
-                      </p>
-                    </div>
-                    <Switch checked={requerValidacao} onCheckedChange={setRequerValidacao} />
-                  </div>
-                  {requerValidacao && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-3 text-xs">
-                        <label className="flex items-center gap-1.5 cursor-pointer">
-                          <input type="radio" checked={validadorMode === "individual"} onChange={() => setValidadorMode("individual")} />
-                          Individual
-                        </label>
-                        <label className="flex items-center gap-1.5 cursor-pointer">
-                          <input type="radio" checked={validadorMode === "setor"} onChange={() => setValidadorMode("setor")} />
-                          Setorial
-                        </label>
-                      </div>
-                      {validadorMode === "individual" ? (
-                        <Select value={validadorId} onValueChange={setValidadorId} disabled={!avaliadoId}>
-                          <SelectTrigger><SelectValue placeholder={avaliadoId ? "Selecionar conferente..." : "Escolha o avaliado primeiro"} /></SelectTrigger>
-                          <SelectContent>
-                            {validadorOptions.map((c: any) => (
-                              <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Select value={validadorSetorId} onValueChange={setValidadorSetorId}>
-                          <SelectTrigger><SelectValue placeholder="Selecionar setor..." /></SelectTrigger>
-                          <SelectContent>
-                            {(setores as any[]).map((s) => (
-                              <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div className="border-t border-border/60 pt-3 space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <Label className="text-sm">Aprovação final e pontuação (quem aprova e pontua?)</Label>
-                      <p className="text-[11px] text-muted-foreground">
-                        Faz a aprovação final, aplica nota e penalidades automáticas. Não pode ser o próprio avaliado. Pode ser uma pessoa ou um setor.
-                      </p>
-                    </div>
-                    <Switch checked={requerAprovacao} onCheckedChange={setRequerAprovacao} />
-                  </div>
-                  {requerAprovacao && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-3 text-xs">
-                        <label className="flex items-center gap-1.5 cursor-pointer">
-                          <input type="radio" checked={aprovadorMode === "individual"} onChange={() => setAprovadorMode("individual")} />
-                          Individual
-                        </label>
-                        <label className="flex items-center gap-1.5 cursor-pointer">
-                          <input type="radio" checked={aprovadorMode === "setor"} onChange={() => setAprovadorMode("setor")} />
-                          Setorial
-                        </label>
-                      </div>
-                      {aprovadorMode === "individual" ? (
-                        <Select value={aprovadorId} onValueChange={setAprovadorId} disabled={!avaliadoId}>
-                          <SelectTrigger><SelectValue placeholder={avaliadoId ? "Selecionar aprovador..." : "Escolha o avaliado primeiro"} /></SelectTrigger>
-                          <SelectContent>
-                            {aprovadorOptions.map((c: any) => (
-                              <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Select value={aprovadorSetorId} onValueChange={setAprovadorSetorId}>
-                          <SelectTrigger><SelectValue placeholder="Selecionar setor..." /></SelectTrigger>
-                          <SelectContent>
-                            {(setores as any[]).map((s) => (
-                              <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                      {isSelfTask && (
-                        <p className="text-[10px] text-amber-600 dark:text-amber-400">Tarefa criada para si mesmo: o aprovador não pode ser você.</p>
-                      )}
-                    </div>
-                  )}
-                </div>
+                {isSelfTask && respBlocks.aprovador.profileIds.includes(profile?.id || "") && (
+                  <p className="text-[10px] text-amber-600 dark:text-amber-400">Tarefa criada para si mesmo: o aprovador não deve ser você.</p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
