@@ -122,6 +122,7 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
     // 2) Persistência de responsaveis_multi (snapshot completo) — Fase 2.
     // Por ora, registros novos/edições gravam apenas as colunas legacy mapeadas acima.
     // O fallback de leitura em buildBlocksFromForm já reconstrói os 5 blocos a partir do legacy.
+  };
 
   // Normaliza tipo_execucao legacy → "etapas".
   const displayedExec = form.tipo_execucao === "tarefa_simples" ? "tarefa_simples" : "etapas";
