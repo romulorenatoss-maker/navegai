@@ -25,7 +25,7 @@ import { DEFAULT_SOLICITACAO_CONFIG, type SolicitacaoConfig } from "@/modules/ta
 import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
 import {
   TarefasResponsaveisV2,
-  emptyRespBlocksV2,
+  emptyRespBlocksV2V2,
   isRespV2Filled,
   respV2LegacyProfileId,
   respV2LegacySetorId,
@@ -113,7 +113,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
 
   // Novo padrão visual de Responsáveis (5 blocos V2). Substitui as toggles antigas.
   // Persiste array em template_snapshot.responsaveis_multi (avulso). Coluna legacy = primeiro do array.
-  const [respBlocks, setRespBlocks] = useState<RespBlocksValueV2>(emptyRespBlocksV2);
+  const [respBlocks, setRespBlocks] = useState<RespBlocksValueV2>(emptyRespBlocksV2V2);
 
   // Step 2 state
   const [sections, setSections] = useState<SectionForm[]>([]);
@@ -152,7 +152,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     setRequerValidacao(false); setValidadorMode("individual"); setValidadorId(""); setValidadorSetorId("");
     setPlanoAcaoSetorId(""); setPlanoAcaoQualquer(true); setPlanoAcaoUsuarioId("");
     setRequerAprovacao(false); setAprovadorMode("individual"); setAprovadorId(""); setAprovadorSetorId("");
-    setRespBlocks(emptyRespBlocks);
+    setRespBlocks(emptyRespBlocksV2);
     setSections([]); setFields([]);
     const d = loadDefaults();
     setSlaHoras(24);
@@ -244,7 +244,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   // - Individual → primeiro setor vinculado ao primeiro colaborador selecionado.
   const derivedSetorIdFromAvaliado = useMemo(() => {
     const av = respBlocks.avaliado;
-    if (av.mode === "setorial") return av.setorId || "";
+    if (av.mode === "setor_todo") return av.setorId || "";
     const pid = av.profileIds[0];
     if (!pid) return "";
     const link = (colaboradorSetores as any[]).find((cs) => cs.profile_id === pid);
@@ -270,21 +270,21 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     setAvaliadoId(av.mode === "individual" ? (av.profileIds[0] || "") : "");
 
     const a2 = respBlocks.avaliador;
-    const a2Filled = isRespFilled(a2);
+    const a2Filled = isRespV2Filled(a2);
     setRequerValidacao(a2Filled);
     setValidadorMode(a2.mode === "individual" ? "individual" : "setor");
-    setValidadorId(respLegacyProfileId(a2));
-    setValidadorSetorId(respLegacySetorId(a2));
+    setValidadorId(respV2LegacyProfileId(a2));
+    setValidadorSetorId(respV2LegacySetorId(a2));
     // Plano de Ação (mesmo bloco 2)
-    setPlanoAcaoSetorId(a2.mode === "setorial" ? a2.setorId : "");
+    setPlanoAcaoSetorId(a2.mode === "setor_todo" ? a2.setorId : "");
     setPlanoAcaoUsuarioId(a2.mode === "individual" ? (a2.profileIds[0] || "") : "");
-    setPlanoAcaoQualquer(a2.mode === "setorial");
+    setPlanoAcaoQualquer(a2.mode === "setor_todo");
 
-    const a3 = respBlocks.aprovador;
-    setRequerAprovacao(isRespFilled(a3));
+    const a3 = respBlocks.aprovadorFinal;
+    setRequerAprovacao(isRespV2Filled(a3));
     setAprovadorMode(a3.mode === "individual" ? "individual" : "setor");
-    setAprovadorId(respLegacyProfileId(a3));
-    setAprovadorSetorId(respLegacySetorId(a3));
+    setAprovadorId(respV2LegacyProfileId(a3));
+    setAprovadorSetorId(respV2LegacySetorId(a3));
   }, [respBlocks]);
 
   // Validador: nunca pode ser o avaliado (não pode validar a si mesmo)
@@ -380,7 +380,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   const canAdvanceStep1 = fields.length > 0 && !horarioValidationError;
   // Avaliado é o único bloco obrigatório. Aceita Individual (profileIds) OU Setorial (setorId).
   // Aprovador e Validador Final são opcionais. Avaliador (PA) é opcional.
-  const avaliadoPreenchido = isRespFilled(respBlocks.avaliado);
+  const avaliadoPreenchido = isRespV2Filled(respBlocks.avaliado);
   const canAdvanceStep2 = avaliadoPreenchido && !!dataPrevista;
 
 
@@ -430,15 +430,15 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
         habilitar_perguntas_automaticas: pontuacaoValida ? habilitarPerguntasAutomaticas : false,
         ativo: true,
         // Bloco 4 (Validador Final) → ada_*. Opcional; se vazio, AdA fica desligado.
-        ada_enabled: isRespFilled(respBlocks.validadorFinal),
-        ada_quem_avalia_tipo: isRespFilled(respBlocks.validadorFinal)
+        ada_enabled: isRespV2Filled(respBlocks.validadorFinal),
+        ada_quem_avalia_tipo: isRespV2Filled(respBlocks.validadorFinal)
           ? (respBlocks.validadorFinal.mode === "individual" ? "pessoa" : "setor")
           : null,
         ada_quem_avalia_profile_id: respBlocks.validadorFinal.mode === "individual"
           ? (respBlocks.validadorFinal.profileIds[0] || null) : null,
-        ada_quem_avalia_setor_id: respBlocks.validadorFinal.mode === "setorial"
+        ada_quem_avalia_setor_id: respBlocks.validadorFinal.mode === "setor_todo"
           ? (respBlocks.validadorFinal.setorId || null) : null,
-        ada_gerar_em: isRespFilled(respBlocks.validadorFinal) ? "pos_avaliacao" : null,
+        ada_gerar_em: isRespV2Filled(respBlocks.validadorFinal) ? "pos_avaliacao" : null,
         // Recorrente vai pra "Rotinas Operacionais" (origem rotina); pontual permanece ad_hoc
         // Tarefa avulsa (botão "+" da Minhas Tarefas) NUNCA vira rotina.
         origem: isAvulsa ? "ad_hoc" : (recorrenciaAtiva ? "rotina" : "ad_hoc"),
@@ -575,7 +575,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
         responsaveis_multi: {
           avaliado: respBlocks.avaliado.profileIds,
           avaliador: respBlocks.avaliador.profileIds,
-          aprovador: respBlocks.aprovador.profileIds,
+          aprovador: respBlocks.aprovadorFinal.profileIds,
           validador_final: respBlocks.validadorFinal.profileIds,
         },
       };
@@ -666,7 +666,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                   <Label className="text-sm font-semibold">Responsáveis</Label>
                 </div>
 
-                <TarefasResponsaveisBlocks
+                <TarefasResponsaveisV2
                   value={respBlocks}
                   onChange={setRespBlocks}
                   setores={setores as any[]}
@@ -677,7 +677,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                   O setor da tarefa é definido automaticamente pelo Avaliado (setor escolhido ou setor do colaborador selecionado).
                 </p>
 
-                {isSelfTask && respBlocks.aprovador.profileIds.includes(profile?.id || "") && (
+                {isSelfTask && respBlocks.aprovadorFinal.profileIds.includes(profile?.id || "") && (
                   <p className="text-[10px] text-amber-600 dark:text-amber-400">Tarefa criada para si mesmo: o aprovador não deve ser você.</p>
                 )}
               </div>
