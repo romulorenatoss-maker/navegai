@@ -145,13 +145,14 @@ export function TarefasResponsaveisBlocks({
                   selected={v.profileIds}
                   onChange={(ids) => update(b.key, { profileIds: ids })}
                   placeholder={
-                    b.key === "avaliado" && !setorTarefaId
+                    b.key === "avaliado" && setorTarefaId !== undefined && !setorTarefaId
                       ? "Selecione o setor da tarefa primeiro"
                       : (colabOptions.length === 0 ? "Nenhum colaborador disponível" : "Selecionar colaboradores...")
                   }
-                  disabled={b.key === "avaliado" && !setorTarefaId}
+                  disabled={b.key === "avaliado" && setorTarefaId !== undefined && !setorTarefaId}
                   singleOnly={b.key === "avaliado"}
                 />
+
               ) : (
                 <Select value={v.setorId} onValueChange={(s) => update(b.key, { setorId: s })}>
                   <SelectTrigger className="h-9">
