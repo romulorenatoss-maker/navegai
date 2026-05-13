@@ -31,16 +31,50 @@ import { bucketize, sortAssignments, type SortKey } from "@/modules/tarefas/serv
 import { PainelRetornoCard } from "@/modules/tarefas/components/tarefas_painelRetornoCard";
 import { DrawerActionRouter } from "@/modules/tarefas/components/painels/tarefas_drawerActionRouter";
 
-// === Helpers da UI operacional (5 abas fixas) ===
-function listOrEmpty(list: any[], openExecution: (a: any) => void, emptyMsg: string, designador = false) {
-  if (list.length === 0) return <p className="text-xs text-muted-foreground text-center py-6">{emptyMsg}</p>;
+// === Accordion vertical (layout antigo) ===
+interface AccordionSectionProps {
+  title: string;
+  count: number;
+  icon: React.ReactNode;
+  borderColor: string;
+  badgeBg: string;
+  badgeText: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}
+
+function AccordionSection({ title, count, icon, borderColor, badgeBg, badgeText, isOpen, onToggle, children }: AccordionSectionProps) {
+  return (
+    <div className={`rounded-xl border overflow-hidden transition-all duration-300 ${isOpen ? "shadow-md border-transparent" : "border-border hover:border-muted-foreground/20"}`}
+      style={{ borderLeftWidth: "4px", borderLeftColor: borderColor }}>
+      <button type="button" onClick={onToggle}
+        className={`w-full flex items-center justify-between px-4 py-3.5 transition-colors ${isOpen ? "bg-muted/60" : "bg-card hover:bg-muted/30"}`}>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ backgroundColor: `${borderColor}15` }}>
+            {icon}
+          </div>
+          <span className="text-sm font-semibold text-foreground">{title}</span>
+          <span className={`inline-flex items-center justify-center min-w-[24px] h-6 px-2 rounded-full text-xs font-bold ${badgeBg} ${badgeText}`}>
+            {count}
+          </span>
+        </div>
+        <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`} />
+      </button>
+      <div className={`transition-all duration-300 ease-in-out ${isOpen ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0 overflow-hidden"}`}>
+        <div className="px-4 pb-4 pt-2 space-y-2">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function listOrEmpty(list: any[], openExecution: (a: any) => void, emptyMsg: string) {
+  if (list.length === 0) return <p className="text-xs text-muted-foreground text-center py-4">{emptyMsg}</p>;
   return (
     <div className="space-y-2">
-      {list.map((a) =>
-        designador
-          ? <PainelRetornoCard key={a.id} assignment={a} onClick={openExecution} />
-          : <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />
-      )}
+      {list.map((a) => <AssignmentCard key={a.id} assignment={a} onClick={openExecution} />)}
     </div>
   );
 }
@@ -120,21 +154,21 @@ export default function OperationalExecucaoPage() {
   const [pickedTaskType] = useState<TaskType>("inspecao");
   const [pickedSetorId] = useState<string>("");
   const isMobile = useIsMobile();
-  // Aba operacional ativa (5 abas fixas)
-  type OpTab = "hoje" | "emAndamento" | "aguardandoVoce" | "concluidas" | "criticas";
-  const [opTab, setOpTab] = useState<OpTab>("hoje");
+  // Accordion vertical aberto (5 grupos fixos)
+  type OpGroup = "hoje" | "emAndamento" | "aguardandoVoce" | "criticas" | "concluidas";
+  const [openGroup, setOpenGroup] = useState<OpGroup | null>("hoje");
   // Ordenação única
   const [sortKey, setSortKey] = useState<SortKey>("sla");
   // Filtros admin
   const [adminSetor, setAdminSetor] = useState<string>("__all");
   const [adminExecutor, setAdminExecutor] = useState<string>("__all");
 
-  // Compat com wrappers de rotas legadas: ?chip= → mapeia para aba operacional
+  // Compat com wrappers de rotas legadas: ?chip= → mapeia para grupo aberto
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const chipParam = searchParams.get("chip");
     if (!chipParam) return;
-    const chipToTab: Record<string, OpTab> = {
+    const chipToGroup: Record<string, OpGroup> = {
       todas: "hoje",
       executar: "hoje",
       avaliar: "aguardandoVoce",
@@ -144,8 +178,8 @@ export default function OperationalExecucaoPage() {
       atrasadas: "criticas",
       concluidas: "concluidas",
     };
-    const target = chipToTab[chipParam];
-    if (target) setOpTab(target);
+    const target = chipToGroup[chipParam];
+    if (target) setOpenGroup(target);
     const next = new URLSearchParams(searchParams);
     next.delete("chip");
     next.delete("from");
@@ -499,31 +533,7 @@ export default function OperationalExecucaoPage() {
 
         <TabsContent value="operacionais" className="space-y-0 mt-0">
 
-      {/* 5 abas operacionais fixas — sem status técnico virando aba */}
-      <Tabs value={opTab} onValueChange={(v) => setOpTab(v as typeof opTab)} className="w-full">
-        <TabsList className="w-full overflow-x-auto flex-nowrap mb-3">
-          <TabsTrigger value="hoje" className="flex items-center gap-1.5 whitespace-nowrap">
-            <CalendarClock className="w-3.5 h-3.5" /> Tarefas de Hoje
-            {opLists.hoje.length > 0 && <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold bg-primary/15 text-primary">{opLists.hoje.length}</span>}
-          </TabsTrigger>
-          <TabsTrigger value="emAndamento" className="flex items-center gap-1.5 whitespace-nowrap">
-            <Activity className="w-3.5 h-3.5" /> Em Andamento
-            {opLists.emAndamento.length > 0 && <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold bg-blue-500/15 text-blue-700 dark:text-blue-400">{opLists.emAndamento.length}</span>}
-          </TabsTrigger>
-          <TabsTrigger value="aguardandoVoce" className="flex items-center gap-1.5 whitespace-nowrap">
-            <Hourglass className="w-3.5 h-3.5" /> Aguardando Você
-            {opLists.aguardandoVoce.length > 0 && <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold bg-violet-500/15 text-violet-700 dark:text-violet-400">{opLists.aguardandoVoce.length}</span>}
-          </TabsTrigger>
-          <TabsTrigger value="concluidas" className="flex items-center gap-1.5 whitespace-nowrap">
-            <CheckCheck className="w-3.5 h-3.5" /> Concluídas
-            {opLists.concluidas.length > 0 && <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold bg-green-500/15 text-green-700 dark:text-green-400">{opLists.concluidas.length}</span>}
-          </TabsTrigger>
-          <TabsTrigger value="criticas" className="flex items-center gap-1.5 whitespace-nowrap">
-            <AlertTriangle className="w-3.5 h-3.5" /> Críticas
-            {opLists.criticas.length > 0 && <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold bg-destructive/15 text-destructive">{opLists.criticas.length}</span>}
-          </TabsTrigger>
-        </TabsList>
-
+      {/* Filtros (busca, data, ordenação, criar) */}
       <div className="flex items-center gap-2 mb-3 flex-wrap">
         <div className="relative flex-1 min-w-[160px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -585,15 +595,73 @@ export default function OperationalExecucaoPage() {
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground text-sm">Carregando...</div>
       ) : (
-        <>
-          <TabsContent value="hoje" className="mt-0">{listOrEmpty(opLists.hoje, openExecution, "Nenhuma tarefa para hoje.")}</TabsContent>
-          <TabsContent value="emAndamento" className="mt-0">{listOrEmpty(opLists.emAndamento, openExecution, "Nada em andamento.")}</TabsContent>
-          <TabsContent value="aguardandoVoce" className="mt-0">{listOrEmpty(opLists.aguardandoVoce, openExecution, "Nada aguardando sua ação.")}</TabsContent>
-          <TabsContent value="concluidas" className="mt-0">{listOrEmpty(opLists.concluidas, openExecution, "Nenhuma tarefa concluída.")}</TabsContent>
-          <TabsContent value="criticas" className="mt-0">{listOrEmpty(opLists.criticas, openExecution, "Nada em estado crítico.")}</TabsContent>
-        </>
+        <div className="space-y-3">
+          <AccordionSection
+            title="Tarefas de Hoje"
+            count={opLists.hoje.length}
+            icon={<CalendarClock className="w-4 h-4" style={{ color: "#f97316" }} />}
+            borderColor="#f97316"
+            badgeBg="bg-orange-500/15"
+            badgeText="text-orange-700 dark:text-orange-400"
+            isOpen={openGroup === "hoje"}
+            onToggle={() => setOpenGroup(openGroup === "hoje" ? null : "hoje")}
+          >
+            {listOrEmpty(opLists.hoje, openExecution, "Nenhuma tarefa para hoje.")}
+          </AccordionSection>
+
+          <AccordionSection
+            title="Em Andamento"
+            count={opLists.emAndamento.length}
+            icon={<Activity className="w-4 h-4" style={{ color: "#3b82f6" }} />}
+            borderColor="#3b82f6"
+            badgeBg="bg-blue-500/15"
+            badgeText="text-blue-700 dark:text-blue-400"
+            isOpen={openGroup === "emAndamento"}
+            onToggle={() => setOpenGroup(openGroup === "emAndamento" ? null : "emAndamento")}
+          >
+            {listOrEmpty(opLists.emAndamento, openExecution, "Nada em andamento.")}
+          </AccordionSection>
+
+          <AccordionSection
+            title="Aguardando Você"
+            count={opLists.aguardandoVoce.length}
+            icon={<Hourglass className="w-4 h-4" style={{ color: "#8b5cf6" }} />}
+            borderColor="#8b5cf6"
+            badgeBg="bg-violet-500/15"
+            badgeText="text-violet-700 dark:text-violet-400"
+            isOpen={openGroup === "aguardandoVoce"}
+            onToggle={() => setOpenGroup(openGroup === "aguardandoVoce" ? null : "aguardandoVoce")}
+          >
+            {listOrEmpty(opLists.aguardandoVoce, openExecution, "Nada aguardando sua ação.")}
+          </AccordionSection>
+
+          <AccordionSection
+            title="Críticas"
+            count={opLists.criticas.length}
+            icon={<AlertTriangle className="w-4 h-4" style={{ color: "#dc2626" }} />}
+            borderColor="#dc2626"
+            badgeBg="bg-red-600/15"
+            badgeText="text-red-800 dark:text-red-300"
+            isOpen={openGroup === "criticas"}
+            onToggle={() => setOpenGroup(openGroup === "criticas" ? null : "criticas")}
+          >
+            {listOrEmpty(opLists.criticas, openExecution, "Nada em estado crítico.")}
+          </AccordionSection>
+
+          <AccordionSection
+            title="Concluídas"
+            count={opLists.concluidas.length}
+            icon={<CheckCheck className="w-4 h-4" style={{ color: "#22c55e" }} />}
+            borderColor="#22c55e"
+            badgeBg="bg-green-500/15"
+            badgeText="text-green-700 dark:text-green-400"
+            isOpen={openGroup === "concluidas"}
+            onToggle={() => setOpenGroup(openGroup === "concluidas" ? null : "concluidas")}
+          >
+            {listOrEmpty(opLists.concluidas, openExecution, "Nenhuma tarefa concluída.")}
+          </AccordionSection>
+        </div>
       )}
-      </Tabs>
         </TabsContent>
 
         <TabsContent value="avaliadas" className="mt-0">
