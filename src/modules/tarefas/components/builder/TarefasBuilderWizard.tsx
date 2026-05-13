@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ArrowRight, Save, Workflow, CalendarClock, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Save, CheckCircle2 } from "lucide-react";
 import { TabGeral } from "@/modules/tarefas/components/tarefas_tabGeral";
 import { TabFormBuilder } from "@/modules/tarefas/components/tarefas_tabFormBuilder";
-import { TabWorkflow } from "@/modules/tarefas/components/tarefas_tabWorkflow";
 import { TabRecorrencia } from "@/modules/tarefas/components/tarefas_tabRecorrencia";
 import { TabTarefasExecutadas } from "@/modules/tarefas/components/tarefas_tabTarefasExecutadas";
 import { TemplateForm, SectionForm, FieldForm, StepForm } from "@/modules/tarefas/types/tarefas_types";
@@ -114,10 +113,9 @@ export function TarefasBuilderWizard(props: Props) {
 
         {current === "fluxo" && (
           <div className="space-y-6">
-            <SectionDivider icon={<Workflow className="w-3.5 h-3.5" />} title="Workflow, aprovação, SLA & automação" subtitle="Quem aprova, regras de SLA, contingência e plano de ação." />
-            <TabWorkflow form={form} set={set} fields={fields} />
-
-            <SectionDivider icon={<CalendarClock className="w-3.5 h-3.5" />} title="Recorrência" subtitle="Quando esta tarefa será gerada automaticamente." />
+            {/* Aprovação, SLA, AdA e perguntas do aprovador agora vivem em Geral → Responsáveis
+                e na própria pergunta (Campos → Aprovador verifica). Aqui ficam apenas os
+                horários/dias da rotina, conforme padrão acordado. */}
             <TabRecorrencia form={form} set={set} />
           </div>
         )}
@@ -160,20 +158,6 @@ export function TarefasBuilderWizard(props: Props) {
             </Button>
           )}
         </div>
-      </div>
-    </div>
-  );
-}
-
-function SectionDivider({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle?: string }) {
-  return (
-    <div className="flex items-start gap-2 pb-2 border-b border-border">
-      <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-primary/10 text-primary mt-0.5 shrink-0">
-        {icon}
-      </span>
-      <div>
-        <p className="text-sm font-semibold text-foreground leading-tight">{title}</p>
-        {subtitle && <p className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</p>}
       </div>
     </div>
   );
