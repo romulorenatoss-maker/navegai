@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ArrowRight, Save, Workflow, CalendarClock, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Save, CheckCircle2 } from "lucide-react";
 import { TabGeral } from "@/modules/tarefas/components/tarefas_tabGeral";
 import { TabFormBuilder } from "@/modules/tarefas/components/tarefas_tabFormBuilder";
-import { TabWorkflow } from "@/modules/tarefas/components/tarefas_tabWorkflow";
 import { TabRecorrencia } from "@/modules/tarefas/components/tarefas_tabRecorrencia";
 import { TabTarefasExecutadas } from "@/modules/tarefas/components/tarefas_tabTarefasExecutadas";
 import { TemplateForm, SectionForm, FieldForm, StepForm } from "@/modules/tarefas/types/tarefas_types";
