@@ -361,7 +361,7 @@ export default function OperationalExecucaoPage() {
         },
       }).then(() => {});
     }
-  }, [profile?.id, isAdmin]);
+  }, [profile?.id, isAdmin, navigate]);
 
   const closeExecution = async () => {
     if (exec.dirty) await exec.saveDraft();
