@@ -374,6 +374,47 @@ export function bucketize(
       if ([TASK_STATUS.AGUARDANDO_AVALIACAO, TASK_STATUS.EM_AVALIACAO].includes(a.status)) b.emAvaliacaoSetor.push(a);
       if (a.status === TASK_STATUS.AGUARDANDO_APROVACAO) b.emAprovacaoSetor.push(a);
     }
+
+    // ============================================================
+    // === OPERACIONAL — 5 abas finais (sem duplicar entre abas) ===
+    // ============================================================
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const hasMyRole = isResp || isAval || isAprov || isCriador || isAdmin;
+    const slaEstourado = computeSla(a).current.status === "estourado";
+    const semMov = isSemMovimento(a);
+    const isFinal = FINAL_STATUS_SET.has(a.status);
+
+    // Concluídas (encerradas)
+    if (hasMyRole && isFinal) {
+      b.opConcluidas.push(a);
+    } else if (hasMyRole) {
+      // Críticas: SLA estourado OU sem movimento (não final)
+      if (slaEstourado || semMov) {
+        b.opCriticas.push(a);
+      }
+
+      // Aguardando Você (precisa de ação minha como avaliador/aprovador/solicitante)
+      const aguardandoMinhaAcao =
+        (isAval && [TASK_STATUS.AGUARDANDO_AVALIACAO, TASK_STATUS.EM_AVALIACAO].includes(a.status)) ||
+        (isAprov && a.status === TASK_STATUS.AGUARDANDO_APROVACAO) ||
+        (isCriador && !isResp && [TASK_STATUS.AGUARDANDO_VALIDACAO, TASK_STATUS.AGUARDANDO_ACEITE_PRAZO].includes(a.status));
+
+      if (aguardandoMinhaAcao) {
+        b.opAguardandoVoce.push(a);
+      } else if (isResp || isAdmin) {
+        // Em Andamento: trabalho ativo do executor
+        if ([TASK_STATUS.EM_ANDAMENTO, TASK_STATUS.REABERTA, TASK_STATUS.EM_PLANO_ACAO, TASK_STATUS.CONTINGENCIADO, "contingencia"].includes(a.status)) {
+          b.opEmAndamento.push(a);
+        }
+        // Hoje: pendentes/devolvidas/aguardando aceite com data <= hoje
+        else if (
+          [TASK_STATUS.PENDENTE, TASK_STATUS.DEVOLVIDA, TASK_STATUS.ABERTA, TASK_STATUS.AGUARDANDO_ACEITE_PRAZO].includes(a.status) &&
+          (!a.data_prevista || a.data_prevista <= todayIso)
+        ) {
+          b.opHoje.push(a);
+        }
+      }
+    }
   }
 
   return b;
