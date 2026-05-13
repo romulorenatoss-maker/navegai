@@ -59,6 +59,26 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
   const [editingIsNew, setEditingIsNew] = useState(false);
   /** Quando true, força exibir o card da etapa mesmo se houver apenas uma. Ativado pelo botão "Adicionar Etapa/Formulário". */
   const [etapaModeForced, setEtapaModeForced] = useState(false);
+  /** tempIds de fields criados automaticamente quando a etapa é usada como pergunta principal (modo etapa-pergunta). */
+  const [autoFieldIds, setAutoFieldIds] = useState<Set<string>>(new Set());
+  /** Etapas que o usuário promoveu explicitamente para modo formulário (agrupador). */
+  const [formularioForced, setFormularioForced] = useState<Set<string>>(new Set());
+
+  /** Etapa funciona como pergunta principal quando o usuário ainda não a converteu em formulário
+   *  e ela tem 0 ou 1 field interno. */
+  const isEtapaPergunta = (sectionTempId: string) => {
+    if (formularioForced.has(sectionTempId)) return false;
+    const cnt = fields.filter(f => f.sectionTempId === sectionTempId).length;
+    return cnt <= 1;
+  };
+
+  const getAutoField = (sectionTempId: string): FieldForm | undefined => {
+    const sFields = fields.filter(f => f.sectionTempId === sectionTempId);
+    if (sFields.length === 0) return undefined;
+    if (sFields.length === 1 && autoFieldIds.has(sFields[0].tempId)) return sFields[0];
+    if (sFields.length === 1 && !formularioForced.has(sectionTempId)) return sFields[0];
+    return undefined;
+  };
 
   const addSection = (opts?: { fromUser?: boolean }) => {
     const s = defaultSection(sections.length);
@@ -70,10 +90,40 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
   const removeSection = (tempId: string) => {
     setSections(prev => prev.filter(s => s.tempId !== tempId));
     setFields(prev => prev.filter(f => f.sectionTempId !== tempId));
+    setFormularioForced(prev => { const n = new Set(prev); n.delete(tempId); return n; });
   };
 
   const updateSection = (tempId: string, key: keyof SectionForm, value: any) => {
     setSections(prev => prev.map(s => s.tempId === tempId ? { ...s, [key]: value } : s));
+    // Sincroniza label do auto-field com o nome da etapa quando em modo etapa-pergunta.
+    if (key === "nome" && isEtapaPergunta(tempId)) {
+      const auto = getAutoField(tempId);
+      if (auto) {
+        setFields(prev => prev.map(f => f.tempId === auto.tempId ? { ...f, label: String(value || "") } : f));
+      }
+    }
+  };
+
+  /** Define o tipo de resposta da etapa-pergunta. Cria o auto-field se ainda não existir. */
+  const setEtapaPerguntaTipo = (sectionTempId: string, tipo: string) => {
+    const section = sections.find(s => s.tempId === sectionTempId);
+    if (!section) return;
+    const auto = getAutoField(sectionTempId);
+    if (auto) {
+      setFields(prev => prev.map(f => f.tempId === auto.tempId ? { ...f, tipo, opcoes_regras: [], opcoes: [] } : f));
+    } else {
+      const f = defaultField(sectionTempId, 0);
+      f.label = section.nome || "";
+      f.tipo = tipo;
+      setAutoFieldIds(prev => { const n = new Set(prev); n.add(f.tempId); return n; });
+      setFields(prev => [...prev, f]);
+    }
+  };
+
+  /** Promove a etapa para modo formulário (agrupador). O auto-field, se existir,
+   *  permanece como o primeiro field real. */
+  const promoteToFormulario = (sectionTempId: string) => {
+    setFormularioForced(prev => { const n = new Set(prev); n.add(sectionTempId); return n; });
   };
 
   const addField = (sectionTempId: string) => {
