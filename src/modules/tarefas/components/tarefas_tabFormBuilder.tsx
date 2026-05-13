@@ -41,9 +41,12 @@ interface Props {
   /** Quando true, FieldDetailDialog exibe o bloco "Pergunta final para aprovação final".
    *  Derivado da Designação (requer_aprovacao_gestor / requerAprovacao). */
   aprovacaoFinalEnabled?: boolean;
+  /** Quando true (Modo Global de horário), oculta os inputs de horário início/fim por etapa.
+   *  As etapas herdam o horário limite global da Designação. */
+  hideEtapaHorario?: boolean;
 }
 
-export function TabFormBuilder({ sections, setSections, fields, setFields, setores = [], tipoExecucao = "checklist_inspecao", requireFieldHorario = false, planoAcaoEnabled = true, agrupadorExtras = {}, setAgrupadorExtras, aprovacaoFinalEnabled = false }: Props) {
+export function TabFormBuilder({ sections, setSections, fields, setFields, setores = [], tipoExecucao = "checklist_inspecao", requireFieldHorario = false, planoAcaoEnabled = true, agrupadorExtras = {}, setAgrupadorExtras, aprovacaoFinalEnabled = false, hideEtapaHorario = false }: Props) {
   const updateAgrupadorExtra = (tempId: string, patch: Partial<AgrupadorExtra>) => {
     if (!setAgrupadorExtras) return;
     setAgrupadorExtras(prev => ({
