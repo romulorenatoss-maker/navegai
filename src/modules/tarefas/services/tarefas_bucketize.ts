@@ -393,11 +393,20 @@ export function bucketize(
         b.opCriticas.push(a);
       }
 
-      // Aguardando Você (precisa de ação minha como avaliador/aprovador/solicitante)
+      // Aguardando Você (precisa de ação minha como avaliador/aprovador/solicitante).
+      // Admin tem permissão operacional total: vê toda etapa que aguarda ação humana.
       const aguardandoMinhaAcao =
         (isAval && [TASK_STATUS.AGUARDANDO_AVALIACAO, TASK_STATUS.EM_AVALIACAO].includes(a.status)) ||
         (isAprov && a.status === TASK_STATUS.AGUARDANDO_APROVACAO) ||
-        (isCriador && !isResp && [TASK_STATUS.AGUARDANDO_VALIDACAO, TASK_STATUS.AGUARDANDO_ACEITE_PRAZO].includes(a.status));
+        (isCriador && !isResp && [TASK_STATUS.AGUARDANDO_VALIDACAO, TASK_STATUS.AGUARDANDO_ACEITE_PRAZO].includes(a.status)) ||
+        (isAdmin && [
+          TASK_STATUS.AGUARDANDO_AVALIACAO,
+          TASK_STATUS.EM_AVALIACAO,
+          TASK_STATUS.AGUARDANDO_APROVACAO,
+          TASK_STATUS.AGUARDANDO_VALIDACAO,
+          TASK_STATUS.AGUARDANDO_ACEITE_PRAZO,
+          TASK_STATUS.EM_PLANO_ACAO,
+        ].includes(a.status));
 
       if (aguardandoMinhaAcao) {
         b.opAguardandoVoce.push(a);
