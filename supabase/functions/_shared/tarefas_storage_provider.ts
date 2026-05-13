@@ -12,6 +12,15 @@ export interface UploadParams {
   nomeOriginal: string;
   mimeType: string;
   conteudo: Uint8Array;
+  rootFolderId: string;          // ID da pasta-mãe configurada no provider (obrigatório)
+}
+
+// Verifica metadados de uma pasta no provider — usado pela tela de Configurações
+// para validar o ID antes de salvar.
+export interface FolderInfo {
+  id: string;
+  name: string;
+  mimeType: string;
 }
 
 export interface UploadResult {
