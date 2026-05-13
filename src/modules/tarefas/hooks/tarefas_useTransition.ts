@@ -132,10 +132,10 @@ const REOPEN_CLEAR_FIELDS = {
   score_final_ajustado: null,
 };
 
-async function getAssignmentSnapshot(assignmentId: string): Promise<{ status: string; created_by: string | null; responsavel_id: string | null }> {
+async function getAssignmentSnapshot(assignmentId: string): Promise<{ status: string; created_by: string | null; responsavel_id: string | null; prazo_pausado_ms: number | null; pausa_iniciada_em: string | null }> {
   const { data, error } = await (supabase as any)
     .from("operational_assignments")
-    .select("status, created_by, responsavel_id")
+    .select("status, created_by, responsavel_id, prazo_pausado_ms, pausa_iniciada_em")
     .eq("id", assignmentId)
     .single();
   if (error) throw new Error("Não foi possível verificar status da tarefa.");
@@ -345,6 +345,26 @@ export function useOperationalTransition() {
       // data_prevista é alterado apenas quando solicitante aceita o novo prazo
       if (action === "aceitar_renegociacao_solicitante" && extraData?.novoPrazo) {
         updatePayload.data_prevista = extraData.novoPrazo;
+      }
+
+      // === SLA pause/resume em Plano de Ação ===
+      // Entrando em EM_PLANO_ACAO → inicia pausa do SLA operacional
+      const enteringPlano = targetStatus === TASK_STATUS.EM_PLANO_ACAO
+        && currentStatus !== TASK_STATUS.EM_PLANO_ACAO;
+      // Saindo de EM_PLANO_ACAO → fecha pausa, soma duração ao acumulado
+      const leavingPlano = currentStatus === TASK_STATUS.EM_PLANO_ACAO
+        && targetStatus !== TASK_STATUS.EM_PLANO_ACAO
+        && action !== "invalidar_admin";
+
+      if (enteringPlano) {
+        updatePayload.pausa_iniciada_em = now;
+      }
+      if (leavingPlano && (snap as any).pausa_iniciada_em) {
+        const startMs = new Date((snap as any).pausa_iniciada_em).getTime();
+        const durMs = Math.max(0, Date.now() - startMs);
+        const acumulado = Number((snap as any).prazo_pausado_ms || 0) + durMs;
+        updatePayload.pausa_iniciada_em = null;
+        updatePayload.prazo_pausado_ms = acumulado;
       }
 
       // Execute update (somente se há campos a alterar)
