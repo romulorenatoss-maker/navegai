@@ -73,8 +73,7 @@ const allNavSections = [
   {
     title: "Configurações",
     items: [
-      { to: "/cadastros/colaboradores", icon: Users, label: "Colaboradores" },
-      { to: "/cadastros/setores", icon: Building2, label: "Setores" },
+      { to: "/configuracoes", icon: Settings, label: "Configurações" },
     ],
   },
   {
