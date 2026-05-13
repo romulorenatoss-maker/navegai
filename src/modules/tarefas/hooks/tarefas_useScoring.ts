@@ -91,20 +91,25 @@ export const RECORRENCIA_LABELS: Record<string, string> = {
 export const STATUS_CONFIG: Record<string, { label: string; class: string }> = {
   pendente: { label: "Pendente", class: "bg-yellow-100 text-yellow-800 border-yellow-200" },
   em_andamento: { label: "Em Andamento", class: "bg-blue-100 text-blue-800 border-blue-200" },
-  contingenciado: { label: "Aguardando ação", class: "bg-orange-100 text-orange-800 border-orange-200" },
-  contingencia: { label: "Aguardando ação", class: "bg-orange-100 text-orange-800 border-orange-200" },
+  // Plano de Ação (unificado — engloba contingência operacional)
+  contingenciado: { label: "Plano de Ação", class: "bg-amber-100 text-amber-800 border-amber-200" },
+  contingencia: { label: "Plano de Ação", class: "bg-amber-100 text-amber-800 border-amber-200" },
+  em_plano_acao: { label: "Em Plano de Ação", class: "bg-amber-100 text-amber-800 border-amber-200" },
+  // Status técnicos exibidos como badge no card (não viram aba)
   devolvida: { label: "Devolvida", class: "bg-amber-100 text-amber-800 border-amber-200" },
+  reprovada: { label: "Reprovada", class: "bg-red-100 text-red-800 border-red-200" },
+  aguardando_aceite_prazo: { label: "Aguardando Aceite de Prazo", class: "bg-yellow-100 text-yellow-800 border-yellow-200" },
+  aguardando_validacao: { label: "Aguardando Validação", class: "bg-cyan-100 text-cyan-800 border-cyan-200" },
+  // Restantes
   concluida: { label: "Concluída", class: "badge-complete" },
   aguardando_aprovacao: { label: "Aguardando Aprovação", class: "bg-purple-100 text-purple-800 border-purple-200" },
   aguardando_avaliacao: { label: "Aguardando Avaliação", class: "bg-indigo-100 text-indigo-800 border-indigo-200" },
-  aguardando_validacao: { label: "Aguardando Validação", class: "bg-cyan-100 text-cyan-800 border-cyan-200" },
   em_avaliacao: { label: "Em Avaliação", class: "bg-violet-100 text-violet-800 border-violet-200" },
   aprovada: { label: "Aprovada", class: "bg-emerald-100 text-emerald-800 border-emerald-200" },
-  reprovada: { label: "Reprovada", class: "bg-red-100 text-red-800 border-red-200" },
   reaberta: { label: "Reaberta", class: "bg-amber-100 text-amber-800 border-amber-200" },
-  atrasada: { label: "Atrasada", class: "bg-orange-100 text-orange-800 border-orange-200" },
+  aberta: { label: "Aberta", class: "bg-yellow-100 text-yellow-800 border-yellow-200" },
   nao_executada: { label: "Não Executada", class: "bg-red-100 text-red-800 border-red-200" },
-  bloqueada: { label: "Bloqueada", class: "badge-expired" },
+  cancelada: { label: "Cancelada", class: "bg-gray-100 text-gray-700 border-gray-200" },
 };
 
 export const CONTINGENCY_STATUS: Record<string, { label: string; class: string }> = {
