@@ -138,7 +138,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     setRecorrenciaAtiva(false); setRecorrenciaTipo("diaria"); setRecorrenciaDias([]); setRecorrenciaDataFim("");
     setAvaliadoId("");
     setRequerValidacao(false); setValidadorMode("individual"); setValidadorId(""); setValidadorSetorId("");
-    setPlanoAcaoResp("avaliado"); setPlanoAcaoUsuarioId("");
+    setPlanoAcaoSetorId(""); setPlanoAcaoQualquer(true); setPlanoAcaoUsuarioId("");
     setRequerAprovacao(false); setAprovadorMode("individual"); setAprovadorId(""); setAprovadorSetorId("");
     setSections([]); setFields([]);
     const d = loadDefaults();
