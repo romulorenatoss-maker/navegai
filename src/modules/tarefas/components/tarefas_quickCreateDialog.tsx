@@ -426,12 +426,23 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
         tipo_atribuicao_avaliado: "individual",
         habilitar_perguntas_automaticas: pontuacaoValida ? habilitarPerguntasAutomaticas : false,
         ativo: true,
+        // Bloco 4 (Validador Final) → ada_*. Opcional; se vazio, AdA fica desligado.
+        ada_enabled: isRespFilled(respBlocks.validadorFinal),
+        ada_quem_avalia_tipo: isRespFilled(respBlocks.validadorFinal)
+          ? (respBlocks.validadorFinal.mode === "individual" ? "pessoa" : "setor")
+          : null,
+        ada_quem_avalia_profile_id: respBlocks.validadorFinal.mode === "individual"
+          ? (respBlocks.validadorFinal.profileIds[0] || null) : null,
+        ada_quem_avalia_setor_id: respBlocks.validadorFinal.mode === "setorial"
+          ? (respBlocks.validadorFinal.setorId || null) : null,
+        ada_gerar_em: isRespFilled(respBlocks.validadorFinal) ? "pos_avaliacao" : null,
         // Recorrente vai pra "Rotinas Operacionais" (origem rotina); pontual permanece ad_hoc
         // Tarefa avulsa (botão "+" da Minhas Tarefas) NUNCA vira rotina.
         origem: isAvulsa ? "ad_hoc" : (recorrenciaAtiva ? "rotina" : "ad_hoc"),
         // NOTE: operational_templates não possui coluna created_by.
         // Autoria do criador é registrada em operational_assignments.created_by (linha abaixo).
       };
+
 
       const { data: tpl, error: tplErr } = await (supabase as any)
         .from("operational_templates").insert(templatePayload).select().single();
