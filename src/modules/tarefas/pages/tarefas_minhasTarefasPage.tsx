@@ -286,33 +286,17 @@ export default function OperationalExecucaoPage() {
     [filteredAssignments, effectiveFilterProfileId, isAdmin, meusSetorIds]
   );
 
-  // Visões disponíveis (dinâmico por contexto)
-  const visoes = useMemo(
-    () => availableVisoes(buckets, { isAdmin, hasSetor: hasSetorScope && meusSetorIds.length > 0 }),
-    [buckets, isAdmin, hasSetorScope, meusSetorIds.length]
-  );
-
-  // Ajusta visão se a atual sumir do contexto
-  useEffect(() => {
-    if (visoes.length === 0) return;
-    if (!visoes.find((v) => v.key === visao)) setVisao(visoes[0].key);
-  }, [visoes, visao]);
-
   // Helper de ordenação
   const sorted = useCallback((list: any[]) => sortAssignments(list, sortKey), [sortKey]);
 
-  // Tarefas de Hoje (executor) — pendentes do dia + em execução + atrasadas
-  const hojeBase = useMemo(() => {
-    const me = effectiveFilterProfileId || profile?.id;
-    return filteredAssignments.filter((a: any) => {
-      if (a.status === "em_andamento" || a.status === "reaberta") return true;
-      if (["pendente", "devolvida"].includes(a.status) && a.data_prevista <= filterDate && (a.responsavel_id === me || isAdmin)) return true;
-      if (["contingenciado", "contingencia"].includes(a.status) && (a.responsavel_id === me || isAdmin)) return true;
-      return false;
-    });
-  }, [filteredAssignments, filterDate, effectiveFilterProfileId, profile?.id, isAdmin]);
-  const lateInHojeCount = useMemo(() => hojeBase.filter(isLate).length, [hojeBase]);
-  const hojeFiltrado = useMemo(() => sorted(showOnlyLate ? hojeBase.filter(isLate) : hojeBase), [hojeBase, showOnlyLate, sorted]);
+  // Listas das 5 abas operacionais (vindas direto do bucketize)
+  const opLists = useMemo(() => ({
+    hoje: sorted(buckets.opHoje),
+    emAndamento: sorted(buckets.opEmAndamento),
+    aguardandoVoce: sorted(buckets.opAguardandoVoce),
+    concluidas: sorted(buckets.opConcluidas).slice(0, 100),
+    criticas: sorted(buckets.opCriticas),
+  }), [buckets, sorted]);
 
   const exec = useAssignmentExecution(selectedAssignment?.id || null);
 
