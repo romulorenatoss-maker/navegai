@@ -59,7 +59,19 @@ Deno.serve(async (req) => {
 
   // -------- POST: salva (com validação) --------
   if (req.method === 'POST') {
-    let body: { provider?: string; root_folder_id?: string; root_folder_label?: string };
+    let body: {
+      provider?: string;
+      root_folder_id?: string;
+      root_folder_label?: string;
+      root_folder_link?: string;
+      limite_upload_mb?: number;
+      tipos_permitidos?: string[];
+      usar_proxy_visualizacao?: boolean;
+      bloquear_link_direto?: boolean;
+      permitir_download?: boolean;
+      permitir_preview?: boolean;
+      observacoes?: string;
+    };
     try { body = await req.json(); } catch { return json({ error: 'invalid_body' }, 400); }
 
     const provider = body.provider ?? 'google_drive';
@@ -68,9 +80,11 @@ Deno.serve(async (req) => {
 
     // Valida no provider antes de gravar
     let folderName: string;
+    let statusConexao: string;
     try {
       const info = await getStorageProvider(provider).inspectFolder(folderId);
       folderName = info.name;
+      statusConexao = 'ok';
     } catch (e) {
       return json({ error: 'folder_validation_failed', detail: e instanceof Error ? e.message : String(e) }, 400);
     }
@@ -78,14 +92,26 @@ Deno.serve(async (req) => {
     const { data: profile } = await userClient
       .from('profiles').select('id').eq('user_id', userRes.user.id).maybeSingle();
 
+    const upsertData: Record<string, unknown> = {
+      provider,
+      root_folder_id: folderId,
+      root_folder_label: body.root_folder_label ?? folderName,
+      updated_by: profile?.id ?? null,
+      status_conexao: statusConexao,
+      ultima_validacao_em: new Date().toISOString(),
+    };
+    if (body.root_folder_link !== undefined) upsertData.root_folder_link = body.root_folder_link || null;
+    if (body.limite_upload_mb !== undefined) upsertData.limite_upload_mb = body.limite_upload_mb;
+    if (body.tipos_permitidos !== undefined) upsertData.tipos_permitidos = body.tipos_permitidos;
+    if (body.usar_proxy_visualizacao !== undefined) upsertData.usar_proxy_visualizacao = body.usar_proxy_visualizacao;
+    if (body.bloquear_link_direto !== undefined) upsertData.bloquear_link_direto = body.bloquear_link_direto;
+    if (body.permitir_download !== undefined) upsertData.permitir_download = body.permitir_download;
+    if (body.permitir_preview !== undefined) upsertData.permitir_preview = body.permitir_preview;
+    if (body.observacoes !== undefined) upsertData.observacoes = body.observacoes || null;
+
     const { data: saved, error } = await admin
       .from('tarefas_storage_config')
-      .upsert({
-        provider,
-        root_folder_id: folderId,
-        root_folder_label: body.root_folder_label ?? folderName,
-        updated_by: profile?.id ?? null,
-      }, { onConflict: 'provider' })
+      .upsert(upsertData, { onConflict: 'provider' })
       .select()
       .single();
     if (error) return json({ error: 'db_save_failed', detail: error.message }, 500);
