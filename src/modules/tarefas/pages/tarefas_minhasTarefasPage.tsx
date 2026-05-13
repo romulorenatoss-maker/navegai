@@ -330,6 +330,11 @@ export default function OperationalExecucaoPage() {
   }, [effectiveFields]);
 
   const openExecution = useCallback((a: any) => {
+    // PR C — AdA: tarefas tipo "avaliacao_avaliador" abrem em rota dedicada
+    if (a?.tipo_assignment === "avaliacao_avaliador") {
+      navigate(`/tarefas/avaliacao-avaliador/${a.id}`);
+      return;
+    }
     setSelectedAssignment(a);
     setExecDialogOpen(true);
     setShowHistory(false);
@@ -356,7 +361,7 @@ export default function OperationalExecucaoPage() {
         },
       }).then(() => {});
     }
-  }, [profile?.id, isAdmin]);
+  }, [profile?.id, isAdmin, navigate]);
 
   const closeExecution = async () => {
     if (exec.dirty) await exec.saveDraft();
