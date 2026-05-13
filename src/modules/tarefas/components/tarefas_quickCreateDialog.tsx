@@ -666,31 +666,16 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                   <Label className="text-sm font-semibold">Responsáveis</Label>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label>Setor da tarefa *</Label>
-                  <Select value={setorId} onValueChange={setSetorId} disabled={!!initialSetorId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecionar setor..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(setores as any[]).map((s) => (
-                        <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {initialSetorId && (
-                    <p className="text-[10px] text-muted-foreground">Setor definido no passo anterior.</p>
-                  )}
-                </div>
-
                 <TarefasResponsaveisBlocks
                   value={respBlocks}
                   onChange={setRespBlocks}
                   setores={setores as any[]}
                   colaboradores={colaboradores as any[]}
                   colaboradorSetores={colaboradorSetores as any[]}
-                  setorTarefaId={setorId}
                 />
+                <p className="text-[10px] text-muted-foreground">
+                  O setor da tarefa é definido automaticamente pelo Avaliado (setor escolhido ou setor do colaborador selecionado).
+                </p>
 
                 {isSelfTask && respBlocks.aprovador.profileIds.includes(profile?.id || "") && (
                   <p className="text-[10px] text-amber-600 dark:text-amber-400">Tarefa criada para si mesmo: o aprovador não deve ser você.</p>
