@@ -48,11 +48,12 @@ export default function SetoresPage() {
 
   const upsert = useMutation({
     mutationFn: async () => {
+      const payload: any = { nome, descricao, responsavel_padrao_id: responsavelPadraoId || null };
       if (editing) {
-        const { error } = await supabase.from("setores").update({ nome, descricao }).eq("id", editing.id);
+        const { error } = await supabase.from("setores").update(payload).eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("setores").insert({ nome, descricao });
+        const { error } = await supabase.from("setores").insert(payload);
         if (error) throw error;
       }
     },
