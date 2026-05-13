@@ -203,6 +203,12 @@ export default function OperationalCadastroPage() {
         penalidade_sla_contingencia: form.penalidade_sla_contingencia,
         penalidade_fora_prazo: form.penalidade_fora_prazo,
         habilitar_perguntas_automaticas: form.habilitar_perguntas_automaticas,
+        ada_enabled: form.ada_enabled,
+        ada_quem_avalia_tipo: form.ada_enabled ? (form.ada_quem_avalia_tipo || null) : null,
+        ada_quem_avalia_profile_id: form.ada_enabled && form.ada_quem_avalia_tipo === "pessoa" ? (form.ada_quem_avalia_profile_id || null) : null,
+        ada_quem_avalia_setor_id: form.ada_enabled && form.ada_quem_avalia_tipo === "setor" ? (form.ada_quem_avalia_setor_id || null) : null,
+        ada_gerar_em: form.ada_enabled ? (form.ada_gerar_em || "pos_avaliacao") : null,
+        ada_config_snapshot: form.ada_enabled ? (form.ada_config_snapshot ?? null) : null,
       };
 
       let templateId: string;
