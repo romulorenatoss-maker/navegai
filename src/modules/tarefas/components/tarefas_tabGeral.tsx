@@ -1,16 +1,16 @@
-import { useState, useMemo, useCallback } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Users } from "lucide-react";
 import { TemplateForm } from "../types/tarefas_types";
-import { TIPO_EXECUCAO_LABELS } from "@/modules/tarefas/hooks/tarefas_useScoring";
+import {
+  TarefasResponsaveisBlocks,
+  type RespBlocksValue,
+  type RespValue,
+} from "@/modules/tarefas/components/responsaveis/TarefasResponsaveisBlocks";
 
 interface Props {
   form: TemplateForm;
@@ -19,75 +19,100 @@ interface Props {
   colaboradores: any[];
 }
 
+// Tipo de execução: somente 2 opções (Tarefa simples / Por etapas).
+const EXEC_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "tarefa_simples", label: "Tarefa simples" },
+  { value: "etapas", label: "Por etapas (mais de um agrupador)" },
+];
 
-type RoleConfig = {
-  label: string;
-  profileKey: keyof TemplateForm;
-  setorKey: keyof TemplateForm;
-  hint: string;
-  showSetorMembers?: boolean;
-};
+// Mapeia colunas legacy do TemplateForm para o shape do componente de blocos.
+function buildRespFromForm(form: TemplateForm): RespBlocksValue {
+  const make = (profileId: string, setorId: string): RespValue => {
+    if (profileId) return { mode: "individual", profileIds: [profileId], setorId: "" };
+    if (setorId) return { mode: "setorial", profileIds: [], setorId };
+    return { mode: "individual", profileIds: [], setorId: "" };
+  };
+  return {
+    avaliado: make(form.executor_profile_id, form.executor_setor_id),
+    // Bloco 2 (Avaliador) = fusão; lê de avaliador_* (validador_contingencia_* recebe espelho ao salvar).
+    avaliador: make(form.avaliador_profile_id, form.avaliador_setor_id),
+    aprovador: make(form.aprovador_profile_id, form.aprovador_setor_id),
+    validadorFinal: form.ada_quem_avalia_tipo === "pessoa"
+      ? { mode: "individual", profileIds: form.ada_quem_avalia_profile_id ? [form.ada_quem_avalia_profile_id] : [], setorId: "" }
+      : form.ada_quem_avalia_tipo === "setor"
+      ? { mode: "setorial", profileIds: [], setorId: form.ada_quem_avalia_setor_id || "" }
+      : { mode: "individual", profileIds: [], setorId: "" },
+  };
+}
 
 export function TabGeral({ form, set, setores, colaboradores }: Props) {
-  const [membrosDialogOpen, setMembrosDialogOpen] = useState(false);
-  const [membrosDialogTitle, setMembrosDialogTitle] = useState("");
-  const [membrosDialogList, setMembrosDialogList] = useState<any[]>([]);
-
-  const openMembrosDialog = (title: string, membros: any[]) => {
-    setMembrosDialogTitle(title);
-    setMembrosDialogList(membros);
-    setMembrosDialogOpen(true);
-  };
-  // Fetch colaborador_setores to know who belongs to which sector
+  // Vínculos colaborador↔setor para filtrar Avaliado pelo setor da rotina.
   const { data: colaboradorSetores = [] } = useQuery({
     queryKey: ["operational_colaborador_setores_all"],
     queryFn: async () => {
       const { data, error } = await supabase.from("colaborador_setores").select("profile_id, setor_id");
       if (error) throw error;
-      return data;
+      return data || [];
     },
   });
 
-  // Map setor_id → list of profiles in that sector
-  const setorMembros = useMemo(() => {
-    const map = new Map<string, string[]>();
-    for (const cs of colaboradorSetores) {
-      if (!map.has(cs.setor_id)) map.set(cs.setor_id, []);
-      map.get(cs.setor_id)!.push(cs.profile_id);
-    }
-    return map;
-  }, [colaboradorSetores]);
+  // Estado derivado dos blocos.
+  const blocks = useMemo(() => buildRespFromForm(form), [
+    form.executor_profile_id, form.executor_setor_id,
+    form.avaliador_profile_id, form.avaliador_setor_id,
+    form.aprovador_profile_id, form.aprovador_setor_id,
+    form.ada_quem_avalia_tipo, form.ada_quem_avalia_profile_id, form.ada_quem_avalia_setor_id,
+  ]);
 
-  // Get members for any sector
-  const getMembrosDoSetor = useCallback((setorId: string) => {
-    if (!setorId) return [];
-    const ids = setorMembros.get(setorId) || [];
-    return colaboradores.filter((c: any) => ids.includes(c.id));
-  }, [setorMembros, colaboradores]);
+  const handleBlocksChange = (next: RespBlocksValue) => {
+    // Bloco 1 — Avaliado → executor_*
+    set("executor_profile_id" as any, (next.avaliado.mode === "individual" ? (next.avaliado.profileIds[0] || "") : "") as any);
+    set("executor_setor_id" as any, (next.avaliado.mode === "setorial" ? next.avaliado.setorId : "") as any);
+    // mantém compatibilidade com avaliado_* (mesma pessoa que executa)
+    set("avaliado_profile_id" as any, (next.avaliado.mode === "individual" ? (next.avaliado.profileIds[0] || "") : "") as any);
+    set("avaliado_setor_id" as any, (next.avaliado.mode === "setorial" ? next.avaliado.setorId : "") as any);
 
-  // Get members for avaliado sector
-  
+    // Bloco 2 — Avaliador (Plano de Ação) → fusão: avaliador_* + validador_contingencia_*
+    const a2pid = next.avaliador.mode === "individual" ? (next.avaliador.profileIds[0] || "") : "";
+    const a2sid = next.avaliador.mode === "setorial" ? next.avaliador.setorId : "";
+    set("avaliador_profile_id" as any, a2pid as any);
+    set("avaliador_setor_id" as any, a2sid as any);
+    set("validador_contingencia_profile_id" as any, a2pid as any);
+    set("validador_contingencia_setor_id" as any, a2sid as any);
 
-  const getAssignmentMode = (profileKey: keyof TemplateForm, setorKey: keyof TemplateForm): "nome" | "setor" => {
-    if (form[profileKey]) return "nome";
-    if (form[setorKey]) return "setor";
-    return "nome";
-  };
+    // Bloco 3 — Aprovador
+    set("aprovador_profile_id" as any, (next.aprovador.mode === "individual" ? (next.aprovador.profileIds[0] || "") : "") as any);
+    set("aprovador_setor_id" as any, (next.aprovador.mode === "setorial" ? next.aprovador.setorId : "") as any);
+    // requer_aprovacao_gestor segue presença de aprovador
+    const aprFilled = (next.aprovador.mode === "individual" && next.aprovador.profileIds.length > 0)
+      || (next.aprovador.mode === "setorial" && !!next.aprovador.setorId);
+    set("requer_aprovacao_gestor" as any, aprFilled as any);
 
-  const handleModeChange = (profileKey: keyof TemplateForm, setorKey: keyof TemplateForm, mode: string) => {
-    if (mode === "nome") {
-      set(setorKey as any, "");
+    // Bloco 4 — Validador Final → ada_*
+    const vfFilled = (next.validadorFinal.mode === "individual" && next.validadorFinal.profileIds.length > 0)
+      || (next.validadorFinal.mode === "setorial" && !!next.validadorFinal.setorId);
+    set("ada_enabled" as any, vfFilled as any);
+    if (vfFilled) {
+      set("ada_quem_avalia_tipo" as any, (next.validadorFinal.mode === "individual" ? "pessoa" : "setor") as any);
+      set("ada_quem_avalia_profile_id" as any, (next.validadorFinal.mode === "individual" ? (next.validadorFinal.profileIds[0] || "") : "") as any);
+      set("ada_quem_avalia_setor_id" as any, (next.validadorFinal.mode === "setorial" ? next.validadorFinal.setorId : "") as any);
+      if (!form.ada_gerar_em) set("ada_gerar_em" as any, "pos_avaliacao" as any);
     } else {
-      set(profileKey as any, "");
+      set("ada_quem_avalia_tipo" as any, "" as any);
+      set("ada_quem_avalia_profile_id" as any, "" as any);
+      set("ada_quem_avalia_setor_id" as any, "" as any);
     }
   };
 
-  const roles: RoleConfig[] = [
-    { label: "Quem recebe a nota", profileKey: "executor_profile_id", setorKey: "executor_setor_id", hint: "Pessoa/setor que será pontuado pelas perguntas da aprovação final", showSetorMembers: true },
-    { label: "Avaliador (Checklist)", profileKey: "avaliador_profile_id", setorKey: "avaliador_setor_id", hint: "Quem responde o checklist (se setor, qualquer membro pode). Administradores podem assumir este papel.", showSetorMembers: true },
-  ];
-
-  const validadorMode = getAssignmentMode("validador_contingencia_profile_id", "validador_contingencia_setor_id");
+  // Normaliza tipo_execucao legacy ("checklist_inspecao") para "etapas" no display
+  // (não regrava no banco até o usuário salvar).
+  const displayedExec = form.tipo_execucao === "tarefa_simples" ? "tarefa_simples" : "etapas";
+  useEffect(() => {
+    if (form.tipo_execucao !== "tarefa_simples" && form.tipo_execucao !== "etapas") {
+      set("tipo_execucao" as any, "etapas" as any);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -102,12 +127,13 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label>Tipo de Execução</Label>
-          <Select value={form.tipo_execucao} onValueChange={v => set("tipo_execucao", v)}>
+          <Select value={displayedExec} onValueChange={v => set("tipo_execucao", v)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              {Object.entries(TIPO_EXECUCAO_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+              {EXEC_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
+          <p className="text-[10px] text-muted-foreground">"Por etapas" significa mais de um agrupador/bloco de perguntas.</p>
         </div>
         <div className="space-y-1.5">
           <Label>Setor da Rotina</Label>
@@ -118,214 +144,19 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
         </div>
       </div>
 
-      {/* Responsáveis */}
-      <div className="space-y-3">
+      {/* Responsáveis — novo padrão visual (4 blocos) */}
+      <div className="space-y-2">
         <p className="text-sm font-medium text-foreground">Responsáveis</p>
-        {roles.map(r => {
-          const mode = getAssignmentMode(r.profileKey, r.setorKey);
-          return (
-            <div key={r.label} className="bg-muted/50 rounded-lg border border-border p-3">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-medium text-muted-foreground">{r.label} — <span className="font-normal">{r.hint}</span></p>
-                <RadioGroup
-                  value={mode}
-                  onValueChange={v => handleModeChange(r.profileKey, r.setorKey, v)}
-                  className="flex gap-3"
-                >
-                  <div className="flex items-center gap-1">
-                    <RadioGroupItem value="nome" id={`${r.label}-nome`} className="h-3 w-3" />
-                    <Label htmlFor={`${r.label}-nome`} className="text-xs cursor-pointer">Individual</Label>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <RadioGroupItem value="setor" id={`${r.label}-setor`} className="h-3 w-3" />
-                    <Label htmlFor={`${r.label}-setor`} className="text-xs cursor-pointer">Setorial</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-              {mode === "nome" ? (
-                <>
-                  <Select value={form[r.profileKey] as string} onValueChange={v => set(r.profileKey as any, v)}>
-                    <SelectTrigger className="h-8"><SelectValue placeholder="Selecione colaborador" /></SelectTrigger>
-                    <SelectContent>
-                      {colaboradores
-                        .filter((c: any) => {
-                          // "Quem recebe a nota": se setor da rotina selecionado, só lista membros desse setor
-                          if (r.profileKey === "executor_profile_id" && form.setor_id) {
-                            const ids = setorMembros.get(form.setor_id) || [];
-                            if (!ids.includes(c.id)) return false;
-                          }
-                          // Avaliador não pode ser o mesmo que executor (quem recebe a nota) nem que avaliado
-                          if (r.profileKey === "avaliador_profile_id") {
-                            if (form.executor_profile_id && c.id === form.executor_profile_id) return false;
-                            if (form.avaliado_profile_id && c.id === form.avaliado_profile_id) return false;
-                          }
-                          return true;
-                        })
-                        .map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  {r.profileKey === "executor_profile_id" && form.setor_id && (() => {
-                    const ids = setorMembros.get(form.setor_id) || [];
-                    if (ids.length === 0) {
-                      return <p className="text-[10px] text-destructive mt-1">Nenhum colaborador associado ao setor da rotina.</p>;
-                    }
-                    return <p className="text-[10px] text-muted-foreground mt-1">Listando apenas membros do setor da rotina.</p>;
-                  })()}
-                  {r.profileKey === "avaliador_profile_id" && form.avaliador_profile_id && (
-                    (form.avaliador_profile_id === form.executor_profile_id ||
-                     form.avaliador_profile_id === form.avaliado_profile_id) && (
-                      <p className="text-[10px] text-destructive mt-1">O avaliador não pode ser o mesmo que recebe a nota.</p>
-                    )
-                  )}
-                </>
-              ) : (
-                <div className="space-y-2">
-                  <Select value={form[r.setorKey] as string} onValueChange={v => set(r.setorKey as any, v)}>
-                    <SelectTrigger className="h-8"><SelectValue placeholder="Selecione setor" /></SelectTrigger>
-                    <SelectContent>{setores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
-                  </Select>
-                  {form[r.setorKey] && (() => {
-                    const membros = getMembrosDoSetor(form[r.setorKey] as string);
-                    const setorNome = setores.find((s: any) => s.id === form[r.setorKey])?.nome || "Setor";
-                    return membros.length > 0 ? (
-                      <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1.5"
-                        onClick={() => openMembrosDialog(`Membros — ${setorNome} (${r.label})`, membros)}>
-                        <Users className="w-3 h-3" /> {membros.length} membro{membros.length !== 1 ? "s" : ""}
-                      </Button>
-                    ) : (
-                      <p className="text-[10px] text-destructive">Nenhum colaborador associado</p>
-                    );
-                  })()}
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {/* Validador Plano de Ação — Individual OU Setorial */}
-        <div className="bg-muted/50 rounded-lg border border-border p-3">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-medium text-muted-foreground">Validador Plano de Ação — <span className="font-normal">Quem valida e ajusta planos de ação. Administradores podem assumir este papel.</span></p>
-            <RadioGroup
-              value={validadorMode}
-              onValueChange={v => handleModeChange("validador_contingencia_profile_id", "validador_contingencia_setor_id", v)}
-              className="flex gap-3"
-            >
-              <div className="flex items-center gap-1">
-                <RadioGroupItem value="nome" id="validador-individual" className="h-3 w-3" />
-                <Label htmlFor="validador-individual" className="text-xs cursor-pointer">Individual</Label>
-              </div>
-              <div className="flex items-center gap-1">
-                <RadioGroupItem value="setor" id="validador-setorial" className="h-3 w-3" />
-                <Label htmlFor="validador-setorial" className="text-xs cursor-pointer">Setorial</Label>
-              </div>
-            </RadioGroup>
-          </div>
-          {validadorMode === "nome" ? (
-            <Select value={form.validador_contingencia_profile_id} onValueChange={v => set("validador_contingencia_profile_id", v)}>
-              <SelectTrigger className="h-8"><SelectValue placeholder="Selecione colaborador" /></SelectTrigger>
-              <SelectContent>{colaboradores.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
-            </Select>
-          ) : (
-            <div className="space-y-2">
-              <Select value={form.validador_contingencia_setor_id} onValueChange={v => set("validador_contingencia_setor_id", v)}>
-                <SelectTrigger className="h-8"><SelectValue placeholder="Selecione setor" /></SelectTrigger>
-                <SelectContent>{setores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
-              </Select>
-              {form.validador_contingencia_setor_id && (() => {
-                const membros = getMembrosDoSetor(form.validador_contingencia_setor_id);
-                const setorNome = setores.find((s: any) => s.id === form.validador_contingencia_setor_id)?.nome || "Setor";
-                return membros.length > 0 ? (
-                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1.5"
-                    onClick={() => openMembrosDialog(`Membros — ${setorNome} (Validador)`, membros)}>
-                    <Users className="w-3 h-3" /> {membros.length} membro{membros.length !== 1 ? "s" : ""}
-                  </Button>
-                ) : (
-                  <p className="text-[10px] text-destructive">Nenhum colaborador associado</p>
-                );
-              })()}
-            </div>
-          )}
-        </div>
-
-        {/* Aprovador Final — Individual OU Setorial */}
-        {(() => {
-          const aprovadorMode = getAssignmentMode("aprovador_profile_id", "aprovador_setor_id");
-          return (
-            <div className="bg-muted/50 rounded-lg border border-border p-3">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-medium text-muted-foreground">Aprovador Final — <span className="font-normal">Quem responde as perguntas de aprovação final para concluir a tarefa. Administradores podem assumir este papel.</span></p>
-                <RadioGroup
-                  value={aprovadorMode}
-                  onValueChange={v => handleModeChange("aprovador_profile_id", "aprovador_setor_id", v)}
-                  className="flex gap-3"
-                >
-                  <div className="flex items-center gap-1">
-                    <RadioGroupItem value="nome" id="aprovador-individual" className="h-3 w-3" />
-                    <Label htmlFor="aprovador-individual" className="text-xs cursor-pointer">Individual</Label>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <RadioGroupItem value="setor" id="aprovador-setorial" className="h-3 w-3" />
-                    <Label htmlFor="aprovador-setorial" className="text-xs cursor-pointer">Setorial</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-              {aprovadorMode === "nome" ? (
-                <>
-                  <Select value={form.aprovador_profile_id as string} onValueChange={v => set("aprovador_profile_id" as any, v)}>
-                    <SelectTrigger className="h-8"><SelectValue placeholder="Selecione colaborador" /></SelectTrigger>
-                    <SelectContent>
-                      {colaboradores
-                        .filter((c: any) => !form.avaliado_profile_id || c.id !== form.avaliado_profile_id)
-                        .map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  {form.avaliado_profile_id && form.aprovador_profile_id === form.avaliado_profile_id && (
-                    <p className="text-[10px] text-destructive mt-1">O aprovador não pode ser o mesmo que o avaliado.</p>
-                  )}
-                </>
-              ) : (
-                <div className="space-y-2">
-                  <Select value={form.aprovador_setor_id as string} onValueChange={v => set("aprovador_setor_id" as any, v)}>
-                    <SelectTrigger className="h-8"><SelectValue placeholder="Selecione setor" /></SelectTrigger>
-                    <SelectContent>{setores.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}</SelectContent>
-                  </Select>
-                  {form.aprovador_setor_id && (() => {
-                    const membros = getMembrosDoSetor(form.aprovador_setor_id as string);
-                    const setorNome = setores.find((s: any) => s.id === form.aprovador_setor_id)?.nome || "Setor";
-                    return membros.length > 0 ? (
-                      <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1.5"
-                        onClick={() => openMembrosDialog(`Membros — ${setorNome} (Aprovador Final)`, membros)}>
-                        <Users className="w-3 h-3" /> {membros.length} membro{membros.length !== 1 ? "s" : ""}
-                      </Button>
-                    ) : (
-                      <p className="text-[10px] text-destructive">Nenhum colaborador associado</p>
-                    );
-                  })()}
-                </div>
-              )}
-            </div>
-          );
-        })()}
+        <TarefasResponsaveisBlocks
+          value={blocks}
+          onChange={handleBlocksChange}
+          setores={setores}
+          colaboradores={colaboradores}
+          colaboradorSetores={colaboradorSetores as any}
+          setorTarefaId={form.setor_id}
+          multiPersistWarning="Apenas o primeiro colaborador será gravado nesta versão (sem migration). Para gravar múltiplos, será necessária uma migração futura."
+        />
       </div>
-
-
-      {/* Dialog de Membros */}
-      <Dialog open={membrosDialogOpen} onOpenChange={setMembrosDialogOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>{membrosDialogTitle}</DialogTitle></DialogHeader>
-          <div className="space-y-1.5 max-h-60 overflow-y-auto">
-            {membrosDialogList.map((c: any) => (
-              <div key={c.id} className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 border border-border">
-                <span className="text-sm text-foreground">{c.nome}</span>
-              </div>
-            ))}
-            {membrosDialogList.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">Nenhum membro encontrado.</p>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
