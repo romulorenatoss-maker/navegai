@@ -92,8 +92,8 @@ export default function SetoresPage() {
     setDeletingId(null);
   };
 
-  const openCreate = () => { setEditing(null); setNome(""); setDescricao(""); setDialogOpen(true); };
-  const openEdit = (s: Setor) => { setEditing(s); setNome(s.nome); setDescricao(s.descricao || ""); setDialogOpen(true); };
+  const openCreate = () => { setEditing(null); setNome(""); setDescricao(""); setResponsavelPadraoId(""); setDialogOpen(true); };
+  const openEdit = (s: Setor) => { setEditing(s); setNome(s.nome); setDescricao(s.descricao || ""); setResponsavelPadraoId((s as any).responsavel_padrao_id || ""); setDialogOpen(true); };
   const closeDialog = () => { setDialogOpen(false); setEditing(null); };
 
   return (
