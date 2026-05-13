@@ -44,6 +44,7 @@ import RelatoriosLeadsPage from "./pages/RelatoriosLeadsPage";
 import CampanhasPage from "./pages/CampanhasPage";
 import PermissoesPage from "./pages/PermissoesPage";
 import IntegracoesPage from "./pages/IntegracoesPage";
+import ConfiguracoesPage from "./pages/ConfiguracoesPage";
 import AssistentePage from "./pages/AssistentePage";
 import PropostaCreatePage from "./modules/propostas/pages/PropostaCreatePage";
 import PropostaPreviewPage from "./modules/propostas/pages/PropostaPreviewPage";
