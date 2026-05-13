@@ -152,6 +152,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     setRequerValidacao(false); setValidadorMode("individual"); setValidadorId(""); setValidadorSetorId("");
     setPlanoAcaoSetorId(""); setPlanoAcaoQualquer(true); setPlanoAcaoUsuarioId("");
     setRequerAprovacao(false); setAprovadorMode("individual"); setAprovadorId(""); setAprovadorSetorId("");
+    setRespBlocks(emptyRespBlocks);
     setSections([]); setFields([]);
     const d = loadDefaults();
     setSlaHoras(24);
