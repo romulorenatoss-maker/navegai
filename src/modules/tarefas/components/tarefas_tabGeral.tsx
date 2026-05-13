@@ -8,10 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Users } from "lucide-react";
 import { TemplateForm } from "../types/tarefas_types";
 import {
-  TarefasResponsaveisBlocks,
-  type RespBlocksValue,
-  type RespValue,
-} from "@/modules/tarefas/components/responsaveis/TarefasResponsaveisBlocks";
+  TarefasResponsaveisV2,
+  emptyRespBlocksV2,
+  type RespBlocksValueV2,
+  type RespValueV2,
+  respV2LegacyProfileId,
+  respV2LegacySetorId,
+} from "@/modules/tarefas/components/responsaveis/TarefasResponsaveisV2";
 
 interface Props {
   form: TemplateForm;
@@ -20,34 +23,54 @@ interface Props {
   colaboradores: any[];
 }
 
-// Tipo de execução: somente 2 opções (Tarefa simples / Por etapas).
 const EXEC_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "tarefa_simples", label: "Tarefa simples" },
   { value: "etapas", label: "Por etapas (mais de um agrupador)" },
 ];
 
-// Mapeia colunas legacy do TemplateForm para o shape do componente de blocos.
-function buildRespFromForm(form: TemplateForm): RespBlocksValue {
-  const make = (profileId: string, setorId: string): RespValue => {
+/**
+ * Reconstrói RespBlocksValueV2 a partir de:
+ *  1) form.template_snapshot.responsaveis_multi (fonte oficial nova)
+ *  2) Fallback legacy (executor_*, avaliado_*, ...) — registros antigos.
+ *
+ * Mapeamento legacy:
+ *   executor_*       → respondente
+ *   avaliado_*       → avaliado (fallback: usa executor_* quando vazio)
+ *   avaliador_*      → avaliador
+ *   aprovador_*      → aprovadorFinal
+ *   ada_quem_avalia_* → validadorFinal
+ */
+function buildBlocksFromForm(form: TemplateForm): RespBlocksValueV2 {
+  const snap: any = (form as any).template_snapshot || {};
+  const multi: Partial<RespBlocksValueV2> | undefined = snap?.responsaveis_multi;
+
+  const fromLegacy = (profileId: string, setorId: string): RespValueV2 => {
     if (profileId) return { mode: "individual", profileIds: [profileId], setorId: "" };
-    if (setorId) return { mode: "setorial", profileIds: [], setorId };
-    return { mode: "individual", profileIds: [], setorId: "" };
+    if (setorId) return { mode: "setor_todo", profileIds: [], setorId };
+    return { ...emptyRespBlocksV2.respondente };
   };
-  return {
-    avaliado: make(form.executor_profile_id, form.executor_setor_id),
-    // Bloco 2 (Avaliador) = fusão; lê de avaliador_* (validador_contingencia_* recebe espelho ao salvar).
-    avaliador: make(form.avaliador_profile_id, form.avaliador_setor_id),
-    aprovador: make(form.aprovador_profile_id, form.aprovador_setor_id),
-    validadorFinal: form.ada_quem_avalia_tipo === "pessoa"
-      ? { mode: "individual", profileIds: form.ada_quem_avalia_profile_id ? [form.ada_quem_avalia_profile_id] : [], setorId: "" }
+
+  const respondente = multi?.respondente || fromLegacy(form.executor_profile_id, form.executor_setor_id);
+  // Fallback Avaliado: se não houver explícito, usar executor_* (registros antigos).
+  const avaliado = multi?.avaliado || (
+    form.avaliado_profile_id || form.avaliado_setor_id
+      ? fromLegacy(form.avaliado_profile_id, form.avaliado_setor_id)
+      : fromLegacy(form.executor_profile_id, form.executor_setor_id)
+  );
+  const avaliador = multi?.avaliador || fromLegacy(form.avaliador_profile_id, form.avaliador_setor_id);
+  const aprovadorFinal = multi?.aprovadorFinal || fromLegacy(form.aprovador_profile_id, form.aprovador_setor_id);
+  const validadorFinal = multi?.validadorFinal || (
+    form.ada_quem_avalia_tipo === "pessoa"
+      ? { mode: "individual" as const, profileIds: form.ada_quem_avalia_profile_id ? [form.ada_quem_avalia_profile_id] : [], setorId: "" }
       : form.ada_quem_avalia_tipo === "setor"
-      ? { mode: "setorial", profileIds: [], setorId: form.ada_quem_avalia_setor_id || "" }
-      : { mode: "individual", profileIds: [], setorId: "" },
-  };
+      ? { mode: "setor_todo" as const, profileIds: [], setorId: form.ada_quem_avalia_setor_id || "" }
+      : { ...emptyRespBlocksV2.validadorFinal }
+  );
+
+  return { respondente, avaliado, avaliador, aprovadorFinal, validadorFinal };
 }
 
 export function TabGeral({ form, set, setores, colaboradores }: Props) {
-  // Vínculos colaborador↔setor para filtrar Avaliado pelo setor da rotina.
   const { data: colaboradorSetores = [] } = useQuery({
     queryKey: ["operational_colaborador_setores_all"],
     queryFn: async () => {
@@ -57,83 +80,54 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
     },
   });
 
-  // Estado dos blocos: mantém também cliques de modo ainda sem seleção
-  // (ex.: Setorial antes de escolher o setor), que não existem nas colunas legacy.
-  const formBlocks = useMemo(() => buildRespFromForm(form), [
-    form.executor_profile_id, form.executor_setor_id,
-    form.avaliador_profile_id, form.avaliador_setor_id,
-    form.aprovador_profile_id, form.aprovador_setor_id,
-    form.ada_quem_avalia_tipo, form.ada_quem_avalia_profile_id, form.ada_quem_avalia_setor_id,
-  ]);
-  const formBlocksSignature = useMemo(() => JSON.stringify(formBlocks), [formBlocks]);
-  const [blocks, setBlocks] = useState<RespBlocksValue>(formBlocks);
+  const initialBlocks = useMemo(() => buildBlocksFromForm(form), []); // só na montagem
+  const [blocks, setBlocks] = useState<RespBlocksValueV2>(initialBlocks);
 
-  useEffect(() => {
-    setBlocks(formBlocks);
-  }, [formBlocksSignature]);
-
-  // Setor da rotina derivado do Avaliado (igual à tela avulsa).
-  const derivedSetorId = useMemo(() => {
-    const av = blocks.avaliado;
-    if (av.mode === "setorial") return av.setorId || "";
-    const pid = av.profileIds[0];
-    if (!pid) return "";
-    const link = (colaboradorSetores as any[]).find((cs) => cs.profile_id === pid);
-    return link?.setor_id || "";
-  }, [blocks.avaliado, colaboradorSetores]);
-
-  useEffect(() => {
-    if (derivedSetorId && derivedSetorId !== form.setor_id) {
-      set("setor_id" as any, derivedSetorId as any);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [derivedSetorId]);
-
-  const handleBlocksChange = (next: RespBlocksValue) => {
+  const handleBlocksChange = (next: RespBlocksValueV2) => {
     setBlocks(next);
 
-    // Bloco 1 — Avaliado → executor_*
-    set("executor_profile_id" as any, (next.avaliado.mode === "individual" ? (next.avaliado.profileIds[0] || "") : "") as any);
-    set("executor_setor_id" as any, (next.avaliado.mode === "setorial" ? next.avaliado.setorId : "") as any);
-    // mantém compatibilidade com avaliado_* (mesma pessoa que executa)
-    set("avaliado_profile_id" as any, (next.avaliado.mode === "individual" ? (next.avaliado.profileIds[0] || "") : "") as any);
-    set("avaliado_setor_id" as any, (next.avaliado.mode === "setorial" ? next.avaliado.setorId : "") as any);
+    // 1) Atualiza colunas legacy (1º profile_id ou setor_id de cada bloco)
+    set("executor_profile_id" as any, respV2LegacyProfileId(next.respondente) as any);
+    set("executor_setor_id" as any, respV2LegacySetorId(next.respondente) as any);
 
+    set("avaliado_profile_id" as any, respV2LegacyProfileId(next.avaliado) as any);
+    set("avaliado_setor_id" as any, respV2LegacySetorId(next.avaliado) as any);
 
-    // Bloco 2 — Avaliador (Plano de Ação) → fusão: avaliador_* + validador_contingencia_*
-    const a2pid = next.avaliador.mode === "individual" ? (next.avaliador.profileIds[0] || "") : "";
-    const a2sid = next.avaliador.mode === "setorial" ? next.avaliador.setorId : "";
-    set("avaliador_profile_id" as any, a2pid as any);
-    set("avaliador_setor_id" as any, a2sid as any);
-    set("validador_contingencia_profile_id" as any, a2pid as any);
-    set("validador_contingencia_setor_id" as any, a2sid as any);
+    const a3pid = respV2LegacyProfileId(next.avaliador);
+    const a3sid = respV2LegacySetorId(next.avaliador);
+    set("avaliador_profile_id" as any, a3pid as any);
+    set("avaliador_setor_id" as any, a3sid as any);
+    // mantém compat com validador_contingencia_* (mesmo conjunto)
+    set("validador_contingencia_profile_id" as any, a3pid as any);
+    set("validador_contingencia_setor_id" as any, a3sid as any);
 
-    // Bloco 3 — Aprovador
-    set("aprovador_profile_id" as any, (next.aprovador.mode === "individual" ? (next.aprovador.profileIds[0] || "") : "") as any);
-    set("aprovador_setor_id" as any, (next.aprovador.mode === "setorial" ? next.aprovador.setorId : "") as any);
-    // requer_aprovacao_gestor segue presença de aprovador
-    const aprFilled = (next.aprovador.mode === "individual" && next.aprovador.profileIds.length > 0)
-      || (next.aprovador.mode === "setorial" && !!next.aprovador.setorId);
+    set("aprovador_profile_id" as any, respV2LegacyProfileId(next.aprovadorFinal) as any);
+    set("aprovador_setor_id" as any, respV2LegacySetorId(next.aprovadorFinal) as any);
+    const aprFilled = !!respV2LegacyProfileId(next.aprovadorFinal) || !!respV2LegacySetorId(next.aprovadorFinal);
     set("requer_aprovacao_gestor" as any, aprFilled as any);
 
-    // Bloco 4 — Validador Final → ada_*
-    const vfFilled = (next.validadorFinal.mode === "individual" && next.validadorFinal.profileIds.length > 0)
-      || (next.validadorFinal.mode === "setorial" && !!next.validadorFinal.setorId);
+    const vfFilled = !!respV2LegacyProfileId(next.validadorFinal) || !!respV2LegacySetorId(next.validadorFinal);
     set("ada_enabled" as any, vfFilled as any);
     if (vfFilled) {
       set("ada_quem_avalia_tipo" as any, (next.validadorFinal.mode === "individual" ? "pessoa" : "setor") as any);
-      set("ada_quem_avalia_profile_id" as any, (next.validadorFinal.mode === "individual" ? (next.validadorFinal.profileIds[0] || "") : "") as any);
-      set("ada_quem_avalia_setor_id" as any, (next.validadorFinal.mode === "setorial" ? next.validadorFinal.setorId : "") as any);
+      set("ada_quem_avalia_profile_id" as any, respV2LegacyProfileId(next.validadorFinal) as any);
+      set("ada_quem_avalia_setor_id" as any, respV2LegacySetorId(next.validadorFinal) as any);
       if (!form.ada_gerar_em) set("ada_gerar_em" as any, "pos_avaliacao" as any);
     } else {
       set("ada_quem_avalia_tipo" as any, "" as any);
       set("ada_quem_avalia_profile_id" as any, "" as any);
       set("ada_quem_avalia_setor_id" as any, "" as any);
     }
+
+    // 2) Persiste array completo em template_snapshot.responsaveis_multi (snapshot JSON)
+    const prevSnap: any = (form as any).template_snapshot || {};
+    set("template_snapshot" as any, {
+      ...prevSnap,
+      responsaveis_multi: next,
+    } as any);
   };
 
-  // Normaliza tipo_execucao legacy ("checklist_inspecao") para "etapas" no display
-  // (não regrava no banco até o usuário salvar).
+  // Normaliza tipo_execucao legacy → "etapas".
   const displayedExec = form.tipo_execucao === "tarefa_simples" ? "tarefa_simples" : "etapas";
   useEffect(() => {
     if (form.tipo_execucao !== "tarefa_simples" && form.tipo_execucao !== "etapas") {
@@ -161,24 +155,33 @@ export function TabGeral({ form, set, setores, colaboradores }: Props) {
           </SelectContent>
         </Select>
         <p className="text-[10px] text-muted-foreground">
-          "Por etapas" significa mais de um agrupador/bloco de perguntas. O setor da rotina é definido automaticamente pelo Avaliado.
+          "Por etapas" significa mais de um agrupador/bloco de perguntas.
         </p>
       </div>
 
+      {/* Setor da Rotina — campo manual, independente do Avaliado */}
+      <div className="space-y-1.5">
+        <Label>Setor da Rotina *</Label>
+        <Select value={form.setor_id || ""} onValueChange={(v) => set("setor_id" as any, v as any)}>
+          <SelectTrigger><SelectValue placeholder="Selecionar setor..." /></SelectTrigger>
+          <SelectContent>
+            {(setores as any[]).map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
 
-      {/* Responsáveis — mesmo padrão visual da tela avulsa */}
-      <div className="border border-border rounded-lg p-3 space-y-3 bg-muted/30">
+      {/* Responsáveis — novo padrão V2 (5 papéis) */}
+      <div className="border border-border rounded-lg p-4 space-y-3 bg-card">
         <div className="flex items-center gap-2">
           <Users className="w-4 h-4 text-primary" />
           <Label className="text-sm font-semibold">Responsáveis</Label>
         </div>
-        <TarefasResponsaveisBlocks
+        <TarefasResponsaveisV2
           value={blocks}
           onChange={handleBlocksChange}
           setores={setores}
           colaboradores={colaboradores}
           colaboradorSetores={colaboradorSetores as any}
-          multiPersistWarning="Apenas o primeiro colaborador será gravado nesta versão (sem migration). Para gravar múltiplos, será necessária uma migração futura."
         />
       </div>
     </div>
