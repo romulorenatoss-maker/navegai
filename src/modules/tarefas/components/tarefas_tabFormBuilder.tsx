@@ -277,6 +277,8 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
               {sections.sort((a, b) => a.ordem - b.ordem).map((section, sIdx) => {
                 const sectionFields = fields.filter(f => f.sectionTempId === section.tempId).sort((a, b) => a.ordem - b.ordem);
                 const isExpanded = expandedSection === section.tempId;
+                const etapaPergunta = isEtapaPergunta(section.tempId);
+                const autoField = getAutoField(section.tempId);
 
                 return (
                   <Draggable key={section.tempId} draggableId={section.tempId} index={sIdx}>
