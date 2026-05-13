@@ -96,7 +96,7 @@ export function TarefasBuilderWizard(props: Props) {
         )}
 
         {current === "geral" && (
-          <TabGeral form={form} set={set} setores={setores} colaboradores={colaboradores} />
+          <TabGeral form={form} set={set} setores={setores} colaboradores={colaboradores} sections={sections} steps={steps} />
         )}
 
         {current === "campos" && (

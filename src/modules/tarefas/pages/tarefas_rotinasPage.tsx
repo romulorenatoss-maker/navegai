@@ -693,7 +693,7 @@ export default function OperationalCadastroPage() {
       <Dialog open={dialogOpen} onOpenChange={(o) => { if (!o) closeDialog(); }}>
         <DialogContent className="max-w-5xl w-[96vw] h-[92vh] p-0 flex flex-col gap-0 overflow-hidden">
           <DialogHeader className="px-4 py-3 border-b border-border">
-            <DialogTitle className="text-base">{editingId ? "Editar Tarefa" : "Nova Tarefa"}</DialogTitle>
+            <DialogTitle className="text-base">{editingId ? "Editar Tarefa de Rotina" : "Tarefas de Rotina"}</DialogTitle>
           </DialogHeader>
           <div className="flex-1 min-h-0">
             <TarefasBuilderWizard

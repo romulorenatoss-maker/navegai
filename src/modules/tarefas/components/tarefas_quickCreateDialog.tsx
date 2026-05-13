@@ -619,10 +619,10 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+      <DialogContent className="max-w-5xl w-[96vw] h-[92vh] overflow-hidden flex flex-col p-0">
         <DialogHeader className="px-5 pt-5 pb-3 border-b border-border shrink-0">
           <DialogTitle className="text-base">
-            {taskType === "simples" ? "Nova Tarefa Simples" : "Nova Inspeção por Etapa"}
+            {taskType === "simples" ? "Tarefa Avulsa Simples" : "Tarefa Avulsa por Etapa"}
           </DialogTitle>
           {/* Stepper */}
           <div className="flex items-center gap-2 mt-3">
