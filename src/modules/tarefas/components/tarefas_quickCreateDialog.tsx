@@ -91,10 +91,10 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   const [validadorMode, setValidadorMode] = useState<"individual" | "setor">("individual");
   const [validadorId, setValidadorId] = useState("");
   const [validadorSetorId, setValidadorSetorId] = useState("");
-  // Plano de Ação — responsável definido na Designação (obrigatório).
-  // Opções: 'avaliado' (próprio), 'usuario_setor', 'setor_inteiro', 'responsavel_padrao_setor'.
-  type PlanoAcaoResp = "avaliado" | "usuario_setor" | "setor_inteiro" | "responsavel_padrao_setor";
-  const [planoAcaoResp, setPlanoAcaoResp] = useState<PlanoAcaoResp>("avaliado");
+  // Plano de Ação — quem responde quando uma pergunta gerar plano de ação.
+  // Fluxo: escolher setor responsável → marcar "qualquer um do setor" OU escolher usuário específico.
+  const [planoAcaoSetorId, setPlanoAcaoSetorId] = useState("");
+  const [planoAcaoQualquer, setPlanoAcaoQualquer] = useState(true); // default: qualquer um do setor
   const [planoAcaoUsuarioId, setPlanoAcaoUsuarioId] = useState("");
   // Estados legados mantidos como no-op para não quebrar referências no payload (eliminados abaixo).
   const requerPlanoAcao = true;
