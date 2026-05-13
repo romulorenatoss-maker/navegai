@@ -236,24 +236,26 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     enabled: open,
   });
 
-  // Lista de colaboradores filtrada pelo setor da rotina (se selecionado)
-  const avaliadoOptions = useMemo(() => {
-    if (!setorId) return colaboradores as any[];
-    const idsDoSetor = new Set(
-      (colaboradorSetores as any[])
-        .filter((cs) => cs.setor_id === setorId)
-        .map((cs) => cs.profile_id)
-    );
-    return (colaboradores as any[]).filter((c) => idsDoSetor.has(c.id));
-  }, [colaboradores, colaboradorSetores, setorId]);
+  // Lista completa de colaboradores (sem filtro de setor — derivado do Avaliado).
+  const avaliadoOptions = colaboradores as any[];
 
-  // Se o setor mudar e o avaliado atual não pertencer mais a ele, limpa seleção
+  // Setor da tarefa derivado automaticamente do bloco Avaliado:
+  // - Setorial → setor escolhido no bloco.
+  // - Individual → primeiro setor vinculado ao primeiro colaborador selecionado.
+  const derivedSetorIdFromAvaliado = useMemo(() => {
+    const av = respBlocks.avaliado;
+    if (av.mode === "setorial") return av.setorId || "";
+    const pid = av.profileIds[0];
+    if (!pid) return "";
+    const link = (colaboradorSetores as any[]).find((cs) => cs.profile_id === pid);
+    return link?.setor_id || "";
+  }, [respBlocks.avaliado, colaboradorSetores]);
+
+  // Sincroniza setorId interno (usado em payload e filtros) com o derivado.
   useEffect(() => {
-    if (!setorId || !avaliadoId) return;
-    if (!avaliadoOptions.some((c: any) => c.id === avaliadoId)) {
-      setAvaliadoId("");
-    }
-  }, [setorId, avaliadoId, avaliadoOptions]);
+    if (initialSetorId) return; // respeita override explícito vindo da rotina
+    if (derivedSetorIdFromAvaliado !== setorId) setSetorId(derivedSetorIdFromAvaliado);
+  }, [derivedSetorIdFromAvaliado, initialSetorId]);
 
   // Tarefa "para si mesmo" → criador == avaliado
   const isSelfTask = !!profile?.id && avaliadoId === profile.id;
@@ -379,7 +381,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   // Avaliado é o único bloco obrigatório. Aceita Individual (profileIds) OU Setorial (setorId).
   // Aprovador e Validador Final são opcionais. Avaliador (PA) é opcional.
   const avaliadoPreenchido = isRespFilled(respBlocks.avaliado);
-  const canAdvanceStep2 = avaliadoPreenchido && !!setorId && !!dataPrevista;
+  const canAdvanceStep2 = avaliadoPreenchido && !!dataPrevista;
 
 
   const create = useMutation({
@@ -664,31 +666,16 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                   <Label className="text-sm font-semibold">Responsáveis</Label>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label>Setor da tarefa *</Label>
-                  <Select value={setorId} onValueChange={setSetorId} disabled={!!initialSetorId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecionar setor..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(setores as any[]).map((s) => (
-                        <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {initialSetorId && (
-                    <p className="text-[10px] text-muted-foreground">Setor definido no passo anterior.</p>
-                  )}
-                </div>
-
                 <TarefasResponsaveisBlocks
                   value={respBlocks}
                   onChange={setRespBlocks}
                   setores={setores as any[]}
                   colaboradores={colaboradores as any[]}
                   colaboradorSetores={colaboradorSetores as any[]}
-                  setorTarefaId={setorId}
                 />
+                <p className="text-[10px] text-muted-foreground">
+                  O setor da tarefa é definido automaticamente pelo Avaliado (setor escolhido ou setor do colaborador selecionado).
+                </p>
 
                 {isSelfTask && respBlocks.aprovador.profileIds.includes(profile?.id || "") && (
                   <p className="text-[10px] text-amber-600 dark:text-amber-400">Tarefa criada para si mesmo: o aprovador não deve ser você.</p>
