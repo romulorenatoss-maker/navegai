@@ -213,6 +213,23 @@ const googleDriveProvider: StorageProvider = {
       throw new Error(`Drive delete failed [${res.status}]: ${t}`);
     }
   },
+
+  async inspectFolder(folderId) {
+    const res = await fetch(
+      `${GATEWAY_BASE}/drive/v3/files/${encodeURIComponent(folderId)}?fields=id,name,mimeType,trashed&supportsAllDrives=true`,
+      { headers: gatewayHeaders() },
+    );
+    if (!res.ok) {
+      const t = await res.text().catch(() => '');
+      throw new Error(`Drive inspect folder failed [${res.status}]: ${t}`);
+    }
+    const j = await res.json();
+    if (j.trashed) throw new Error('Pasta está na lixeira do Drive.');
+    if (j.mimeType !== 'application/vnd.google-apps.folder') {
+      throw new Error(`O ID informado não é uma pasta (mimeType=${j.mimeType}).`);
+    }
+    return { id: j.id, name: j.name, mimeType: j.mimeType };
+  },
 };
 
 // ============================================================================
