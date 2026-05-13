@@ -38,9 +38,12 @@ interface Props {
   /** Configurações extras por agrupador (somente etapas). */
   agrupadorExtras?: Record<string, AgrupadorExtra>;
   setAgrupadorExtras?: React.Dispatch<React.SetStateAction<Record<string, AgrupadorExtra>>>;
+  /** Quando true, FieldDetailDialog exibe o bloco "Pergunta final para aprovação final".
+   *  Derivado da Designação (requer_aprovacao_gestor / requerAprovacao). */
+  aprovacaoFinalEnabled?: boolean;
 }
 
-export function TabFormBuilder({ sections, setSections, fields, setFields, setores = [], tipoExecucao = "checklist_inspecao", requireFieldHorario = false, planoAcaoEnabled = true, agrupadorExtras = {}, setAgrupadorExtras }: Props) {
+export function TabFormBuilder({ sections, setSections, fields, setFields, setores = [], tipoExecucao = "checklist_inspecao", requireFieldHorario = false, planoAcaoEnabled = true, agrupadorExtras = {}, setAgrupadorExtras, aprovacaoFinalEnabled = false }: Props) {
   const updateAgrupadorExtra = (tempId: string, patch: Partial<AgrupadorExtra>) => {
     if (!setAgrupadorExtras) return;
     setAgrupadorExtras(prev => ({
@@ -411,6 +414,7 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
           setores={setores}
           planoAcaoEnabled={planoAcaoEnabled}
           requireFieldHorario={requireFieldHorario}
+          aprovacaoFinalEnabled={aprovacaoFinalEnabled}
           onSave={commitEditingField}
           onClose={closeEditingField}
         />
@@ -419,7 +423,7 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
   );
 }
 
-export function FieldDetailDialog({ field, allFields = [], setores, onSave, onClose, planoAcaoEnabled = true, requireFieldHorario = false }: { field: FieldForm; allFields?: FieldForm[]; setores: any[]; onSave: (u: Partial<FieldForm>) => void; onClose: () => void; planoAcaoEnabled?: boolean; requireFieldHorario?: boolean }) {
+export function FieldDetailDialog({ field, allFields = [], setores, onSave, onClose, planoAcaoEnabled = true, requireFieldHorario = false, aprovacaoFinalEnabled = false }: { field: FieldForm; allFields?: FieldForm[]; setores: any[]; onSave: (u: Partial<FieldForm>) => void; onClose: () => void; planoAcaoEnabled?: boolean; requireFieldHorario?: boolean; aprovacaoFinalEnabled?: boolean }) {
   const [local, setLocal] = useState<FieldForm>({ ...field });
   const upd = <K extends keyof FieldForm>(k: K, v: FieldForm[K]) => setLocal(f => ({ ...f, [k]: v }));
   const [previewAnswer, setPreviewAnswer] = useState<string | null>(null);
@@ -780,36 +784,39 @@ export function FieldDetailDialog({ field, allFields = [], setores, onSave, onCl
             </div>
           )}
 
-          {/* ── Pergunta final para aprovação final ── */}
-          <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-4">
-            <div className="flex items-center gap-3">
-              <Switch checked={local.aprovador_verificar ?? false} onCheckedChange={v => {
-                upd("aprovador_verificar", v);
-                if (!v) upd("aprovador_pergunta", "");
-              }} />
-              <div>
-                <Label className="cursor-pointer font-medium text-sm">Pergunta final para aprovação final</Label>
-                <p className="text-caption text-muted-foreground">O aprovador responderá uma pergunta ao revisar este campo na aprovação final.</p>
-              </div>
-            </div>
-
-            {local.aprovador_verificar && (
-              <div className="space-y-4 pt-2">
-                <div className="grid grid-cols-[1fr_100px] gap-3">
-                  <div className="space-y-1.5">
-                    <Label>Pergunta <span className="text-destructive">*</span></Label>
-                    <Input value={local.aprovador_pergunta || ""} onChange={e => upd("aprovador_pergunta", e.target.value)}
-                      placeholder="Ex: O campo foi preenchido corretamente?" maxLength={500} />
-                    {!local.aprovador_pergunta?.trim() && <p className="text-xs text-destructive">Obrigatório.</p>}
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Nota</Label>
-                    <Input type="number" min={1} max={100} value={local.aprovador_peso ?? 1} onChange={e => upd("aprovador_peso", +e.target.value)} />
-                  </div>
+          {/* ── Pergunta final para aprovação final ──
+              Renderiza somente se a Designação tiver aprovação final habilitada. */}
+          {aprovacaoFinalEnabled && (
+            <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-4">
+              <div className="flex items-center gap-3">
+                <Switch checked={local.aprovador_verificar ?? false} onCheckedChange={v => {
+                  upd("aprovador_verificar", v);
+                  if (!v) upd("aprovador_pergunta", "");
+                }} />
+                <div>
+                  <Label className="cursor-pointer font-medium text-sm">Pergunta final para aprovação final</Label>
+                  <p className="text-caption text-muted-foreground">O aprovador responderá uma pergunta ao revisar este campo na aprovação final.</p>
                 </div>
               </div>
-            )}
-          </div>
+
+              {local.aprovador_verificar && (
+                <div className="space-y-4 pt-2">
+                  <div className="grid grid-cols-[1fr_100px] gap-3">
+                    <div className="space-y-1.5">
+                      <Label>Pergunta <span className="text-destructive">*</span></Label>
+                      <Input value={local.aprovador_pergunta || ""} onChange={e => upd("aprovador_pergunta", e.target.value)}
+                        placeholder="Ex: O campo foi preenchido corretamente?" maxLength={500} />
+                      {!local.aprovador_pergunta?.trim() && <p className="text-xs text-destructive">Obrigatório.</p>}
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Nota</Label>
+                      <Input type="number" min={1} max={100} value={local.aprovador_peso ?? 1} onChange={e => upd("aprovador_peso", +e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <FieldVisibilityEditor
             currentTempId={local.tempId}

@@ -836,6 +836,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                 planoAcaoEnabled={planoAcaoEnabled}
                 agrupadorExtras={agrupadorExtras}
                 setAgrupadorExtras={setAgrupadorExtras}
+                aprovacaoFinalEnabled={requerAprovacao}
               />
 
               {/* Opções avançadas — título manual e descrição (recolhido) */}
