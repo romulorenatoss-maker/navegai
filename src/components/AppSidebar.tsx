@@ -56,7 +56,6 @@ const allNavSections = [
       { to: "/tarefas/gestao", icon: FolderKanban, label: "Dash de Tarefas" },
       { to: "/tarefas/minhas", icon: PlayCircle, label: "Minhas Tarefas" },
       { to: "/tarefas/rotinas", icon: ListChecks, label: "Rotinas Operacionais" },
-      { to: "/tarefas/relatorios", icon: FileBarChart, label: "Relatórios de Tarefas" },
       { to: "/tarefas/desempenho", icon: PieChart, label: "Desempenho" },
     ],
   },
