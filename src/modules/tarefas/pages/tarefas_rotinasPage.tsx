@@ -469,6 +469,12 @@ export default function OperationalCadastroPage() {
       penalidade_sla_contingencia: t.penalidade_sla_contingencia ?? 15,
       penalidade_fora_prazo: t.penalidade_fora_prazo ?? 20,
       habilitar_perguntas_automaticas: t.habilitar_perguntas_automaticas ?? true,
+      ada_enabled: t.ada_enabled ?? false,
+      ada_quem_avalia_tipo: t.ada_quem_avalia_tipo ?? "",
+      ada_quem_avalia_profile_id: t.ada_quem_avalia_profile_id ?? "",
+      ada_quem_avalia_setor_id: t.ada_quem_avalia_setor_id ?? "",
+      ada_gerar_em: t.ada_gerar_em ?? "",
+      ada_config_snapshot: t.ada_config_snapshot ?? null,
     });
 
     // Load sections
