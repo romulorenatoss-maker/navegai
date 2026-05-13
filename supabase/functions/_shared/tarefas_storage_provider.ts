@@ -12,6 +12,15 @@ export interface UploadParams {
   nomeOriginal: string;
   mimeType: string;
   conteudo: Uint8Array;
+  rootFolderId: string;          // ID da pasta-mãe configurada no provider (obrigatório)
+}
+
+// Verifica metadados de uma pasta no provider — usado pela tela de Configurações
+// para validar o ID antes de salvar.
+export interface FolderInfo {
+  id: string;
+  name: string;
+  mimeType: string;
 }
 
 export interface UploadResult {
@@ -32,13 +41,15 @@ export interface StorageProvider {
   upload(params: UploadParams): Promise<UploadResult>;
   download(providerFileId: string): Promise<DownloadStream>;
   remove(providerFileId: string): Promise<void>;
+  /** Valida que a pasta existe e é acessível pela conta-serviço. */
+  inspectFolder(folderId: string): Promise<FolderInfo>;
 }
 
 // ============================================================================
 // Google Drive provider (via Lovable connector gateway)
 // ============================================================================
-// Pasta raiz no Drive da conta-serviço: "tarefas-anexos" (criada on-demand).
-// Subpastas espelham o pathRelativo segmento por segmento.
+// Pasta-mãe configurada por admin em Configurações → Integrações
+// (tabela public.tarefas_storage_config). Subpastas espelham o pathRelativo.
 // ============================================================================
 
 const GATEWAY_BASE = 'https://connector-gateway.lovable.dev/google_drive';
@@ -54,8 +65,13 @@ function gatewayHeaders(): HeadersInit {
   };
 }
 
-const ROOT_FOLDER_NAME = 'tarefas-anexos';
-const folderCache = new Map<string, string>(); // pathRelativo de pasta -> driveFolderId
+// Cache: rootFolderId → (subpath relativo → driveFolderId)
+const folderCache = new Map<string, Map<string, string>>();
+function cacheFor(root: string): Map<string, string> {
+  let m = folderCache.get(root);
+  if (!m) { m = new Map(); folderCache.set(root, m); }
+  return m;
+}
 
 async function findFolder(name: string, parentId: string | null): Promise<string | null> {
   const safe = name.replace(/'/g, "\\'");
@@ -93,34 +109,38 @@ async function createFolder(name: string, parentId: string | null): Promise<stri
   return j.id;
 }
 
-async function ensureFolderPath(segments: string[]): Promise<string> {
+async function ensureFolderPath(rootFolderId: string, segments: string[]): Promise<string> {
+  const cache = cacheFor(rootFolderId);
   const cacheKey = segments.join('/');
-  const cached = folderCache.get(cacheKey);
+  if (cacheKey === '') return rootFolderId;
+  const cached = cache.get(cacheKey);
   if (cached) return cached;
 
-  let parent: string | null = null;
+  let parent: string = rootFolderId;
   let runningKey = '';
   for (const seg of segments) {
     runningKey = runningKey ? `${runningKey}/${seg}` : seg;
-    const memo = folderCache.get(runningKey);
+    const memo = cache.get(runningKey);
     if (memo) { parent = memo; continue; }
     let id = await findFolder(seg, parent);
     if (!id) id = await createFolder(seg, parent);
-    folderCache.set(runningKey, id);
+    cache.set(runningKey, id);
     parent = id;
   }
-  return parent!;
+  return parent;
 }
 
 const googleDriveProvider: StorageProvider = {
   name: 'google_drive',
 
-  async upload({ pathRelativo, nomeOriginal, mimeType, conteudo }) {
+  async upload({ pathRelativo, nomeOriginal, mimeType, conteudo, rootFolderId }) {
+    if (!rootFolderId) {
+      throw new Error('rootFolderId obrigatório — configure a pasta-mãe em Configurações → Integrações.');
+    }
     // pathRelativo termina em /{nome_arquivo}; pasta = tudo antes.
     const parts = pathRelativo.split('/').filter(Boolean);
     const fileName = parts.pop()!;
-    const folderSegments = [ROOT_FOLDER_NAME, ...parts];
-    const folderId = await ensureFolderPath(folderSegments);
+    const folderId = await ensureFolderPath(rootFolderId, parts);
 
     const metadata = {
       name: fileName,
@@ -192,6 +212,23 @@ const googleDriveProvider: StorageProvider = {
       const t = await res.text().catch(() => '');
       throw new Error(`Drive delete failed [${res.status}]: ${t}`);
     }
+  },
+
+  async inspectFolder(folderId) {
+    const res = await fetch(
+      `${GATEWAY_BASE}/drive/v3/files/${encodeURIComponent(folderId)}?fields=id,name,mimeType,trashed&supportsAllDrives=true`,
+      { headers: gatewayHeaders() },
+    );
+    if (!res.ok) {
+      const t = await res.text().catch(() => '');
+      throw new Error(`Drive inspect folder failed [${res.status}]: ${t}`);
+    }
+    const j = await res.json();
+    if (j.trashed) throw new Error('Pasta está na lixeira do Drive.');
+    if (j.mimeType !== 'application/vnd.google-apps.folder') {
+      throw new Error(`O ID informado não é uma pasta (mimeType=${j.mimeType}).`);
+    }
+    return { id: j.id, name: j.name, mimeType: j.mimeType };
   },
 };
 

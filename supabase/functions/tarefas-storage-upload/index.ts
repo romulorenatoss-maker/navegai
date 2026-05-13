@@ -76,16 +76,31 @@ Deno.serve(async (req) => {
     });
 
     const provider = getStorageProvider('google_drive');
+    const adminClient = createClient(supabaseUrl, serviceKey);
+
+    // Lê root_folder_id da config (singleton por provider). SEM fallback.
+    const { data: cfg } = await adminClient
+      .from('tarefas_storage_config')
+      .select('root_folder_id')
+      .eq('provider', provider.name)
+      .maybeSingle();
+    if (!cfg?.root_folder_id) {
+      return json({
+        error: 'storage_not_configured',
+        detail: 'Pasta-mãe do Drive ainda não configurada. Acesse Configurações → Integrações.',
+      }, 412);
+    }
+
     const buf = new Uint8Array(await file.arrayBuffer());
     const result = await provider.upload({
       pathRelativo,
       nomeOriginal: file.name,
       mimeType: file.type || 'application/octet-stream',
       conteudo: buf,
+      rootFolderId: cfg.root_folder_id,
     });
 
     // Persistir com service_role (bypass RLS, mas registramos uploaded_by = profile.id)
-    const adminClient = createClient(supabaseUrl, serviceKey);
     const { data: anexo, error: insErr } = await adminClient
       .from('tarefas_anexos')
       .insert({

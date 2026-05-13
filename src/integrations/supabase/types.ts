@@ -4348,6 +4348,44 @@ export type Database = {
           },
         ]
       }
+      tarefas_storage_config: {
+        Row: {
+          created_at: string
+          id: string
+          provider: string
+          root_folder_id: string
+          root_folder_label: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          provider?: string
+          root_folder_id: string
+          root_folder_label?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          provider?: string
+          root_folder_id?: string
+          root_folder_label?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tarefas_storage_config_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_assignments: {
         Row: {
           created_at: string
