@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Settings2, Copy, AlertTriangle, Camera, FileVideo, FileText, Clock, Upload, X, Mic } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
@@ -179,50 +179,46 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
   };
 
   // ============================================================
-  // Etapa implícita: quando há 0 ou 1 seção e o usuário ainda não clicou
-  // "Adicionar Etapa/Formulário", as perguntas vivem dentro de uma seção
-  // padrão "Itens da tarefa" — porém renderizadas SEM o card de etapa.
-  // Ao clicar Adicionar Etapa, a seção implícita "vira visível" naturalmente.
+  // Toda estrutura nasce como etapa/agrupador. Ao entrar na aba,
+  // se não existir nenhuma etapa, cria automaticamente uma vazia
+  // pronta para o usuário preencher.
   // ============================================================
   const ensureDefaultSection = (): string => {
     if (sections.length > 0) return sections[0].tempId;
     const s = defaultSection(0);
-    s.nome = "Itens da tarefa";
+    s.nome = "";
     setSections([s]);
     return s.tempId;
   };
 
-  const handleAddPergunta = () => {
-    const sectionTempId = ensureDefaultSection();
-    startNewField(sectionTempId);
-  };
+  useEffect(() => {
+    if (sections.length === 0) {
+      const s = defaultSection(0);
+      s.nome = "";
+      setSections([s]);
+      setExpandedSection(s.tempId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleAddEtapa = () => addSection({ fromUser: true });
 
-  // Modo "implícito": somente uma seção, e usuário não promoveu para etapas.
-  const isImplicitMode = !etapaModeForced && sections.length <= 1;
+  // Sempre exibir o card da etapa — etapa é o elemento principal da estrutura.
+  const isImplicitMode = false;
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <p className="text-sm font-medium text-foreground">Estrutura da Tarefa</p>
-        <div className="flex items-center gap-2">
-          <Button type="button" size="sm" onClick={handleAddPergunta}>
-            <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Pergunta
-          </Button>
-          <Button type="button" variant="outline" size="sm" onClick={handleAddEtapa}>
-            <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Etapa/Formulário
-          </Button>
+        <div>
+          <p className="text-sm font-medium text-foreground">Estrutura da Tarefa</p>
+          <p className="text-[11px] text-muted-foreground">
+            Toda estrutura é uma etapa. Adicione perguntas dentro da etapa para transformá-la em formulário.
+          </p>
         </div>
+        <Button type="button" variant="outline" size="sm" onClick={handleAddEtapa}>
+          <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Etapa/Formulário
+        </Button>
       </div>
-
-      {sections.length === 0 && (
-        <div className="text-center py-8 text-muted-foreground border border-dashed border-border rounded-lg">
-          <p className="text-sm">Nenhuma pergunta adicionada ainda.</p>
-          <p className="text-caption">Clique em "Adicionar Pergunta" para começar.</p>
-        </div>
-      )}
-
 
       <DragDropContext onDragEnd={onDragEnd}>
         <Droppable droppableId="sections" type="SECTION">
@@ -395,7 +391,7 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                               disabled={!section.nome.trim()}
                               title={!section.nome.trim() ? "Defina o nome da etapa antes de adicionar campos" : undefined}
                             >
-                              <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar Pergunta
+                              <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar pergunta nesta etapa
                             </Button>
                           </div>
                         )}
