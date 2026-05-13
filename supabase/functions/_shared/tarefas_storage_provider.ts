@@ -48,8 +48,8 @@ export interface StorageProvider {
 // ============================================================================
 // Google Drive provider (via Lovable connector gateway)
 // ============================================================================
-// Pasta raiz no Drive da conta-serviço: "tarefas-anexos" (criada on-demand).
-// Subpastas espelham o pathRelativo segmento por segmento.
+// Pasta-mãe configurada por admin em Configurações → Integrações
+// (tabela public.tarefas_storage_config). Subpastas espelham o pathRelativo.
 // ============================================================================
 
 const GATEWAY_BASE = 'https://connector-gateway.lovable.dev/google_drive';
