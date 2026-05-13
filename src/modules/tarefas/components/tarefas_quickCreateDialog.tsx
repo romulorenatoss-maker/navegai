@@ -205,7 +205,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   const { data: setores = [] } = useQuery({
     queryKey: ["setores_quicktask"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("setores").select("*").eq("ativo", true).order("nome");
+      const { data, error } = await supabase.from("setores").select("id, nome, ativo, responsavel_padrao_id").eq("ativo", true).order("nome");
       if (error) throw error;
       return data || [];
     },
