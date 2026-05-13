@@ -353,6 +353,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   // Step 1 = Estrutura (builder). Step 2 = Designação. Step 3 = Prazos & Notas.
   const canAdvanceStep1 = fields.length > 0 && !horarioValidationError;
   const canAdvanceStep2 = !!avaliadoId
+    && !!setorId
     && !!dataPrevista
     && planoAcaoOk
     && validadorOk
