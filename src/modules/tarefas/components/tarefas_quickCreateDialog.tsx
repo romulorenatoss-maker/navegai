@@ -837,6 +837,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                 agrupadorExtras={agrupadorExtras}
                 setAgrupadorExtras={setAgrupadorExtras}
                 aprovacaoFinalEnabled={requerAprovacao}
+                hideEtapaHorario={horarioModo === "global"}
               />
 
               {/* Opções avançadas — título manual e descrição (recolhido) */}
