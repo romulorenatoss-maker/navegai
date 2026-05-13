@@ -135,3 +135,51 @@ export const tarefas_storage_service = {
   getSignedUrl,
   deleteAnexo,
 };
+
+// ============================================================================
+// Configuração da pasta-mãe (admin only). UI = /configuracoes/integracoes.
+// ============================================================================
+export interface StorageConfig {
+  id: string;
+  provider: string;
+  root_folder_id: string;
+  root_folder_label: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StorageConfigState {
+  configured: boolean;
+  config?: StorageConfig;
+  validation?: { ok: boolean; folder_name?: string; error?: string };
+  provider?: string;
+}
+
+export async function getStorageConfig(provider = 'google_drive'): Promise<StorageConfigState> {
+  const headers = await authHeader();
+  const res = await fetch(
+    `${FN_BASE}/tarefas-storage-config?provider=${encodeURIComponent(provider)}`,
+    { method: 'GET', headers },
+  );
+  const json = await res.json();
+  if (!res.ok || !json.ok) throw new Error(json.detail ?? json.error ?? 'config_read_failed');
+  return json as StorageConfigState;
+}
+
+export async function setStorageConfig(params: {
+  root_folder_id: string;
+  root_folder_label?: string;
+  provider?: string;
+}): Promise<StorageConfigState> {
+  const headers = { ...(await authHeader()), 'Content-Type': 'application/json' };
+  const res = await fetch(`${FN_BASE}/tarefas-storage-config`, {
+    method: 'POST', headers, body: JSON.stringify(params),
+  });
+  const json = await res.json();
+  if (!res.ok || !json.ok) throw new Error(json.detail ?? json.error ?? 'config_save_failed');
+  return { configured: true, config: json.config, validation: json.validation };
+}
+
+// re-export no objeto singleton
+Object.assign(tarefas_storage_service, { getStorageConfig, setStorageConfig });
