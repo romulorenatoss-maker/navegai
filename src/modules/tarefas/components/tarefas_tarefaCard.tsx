@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Clock, ChevronRight, AlertTriangle, RotateCcw, CheckCircle2, Timer, TimerOff } from "lucide-react";
+import { Clock, ChevronRight, AlertTriangle, RotateCcw, CheckCircle2, Timer, TimerOff, ClipboardCheck } from "lucide-react";
 import { STATUS_CONFIG, TIPO_EXECUCAO_LABELS } from "@/modules/tarefas/hooks/tarefas_useScoring";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -102,6 +102,11 @@ export function AssignmentCard({ assignment: a, onClick }: Props) {
 
       {/* Status + badges row below */}
       <div className="flex items-center gap-1.5 mt-2 ml-12 flex-wrap">
+        {a.tipo_assignment === "avaliacao_avaliador" && (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-primary/15 text-primary border border-primary/30">
+            <ClipboardCheck className="w-3 h-3" /> Avaliar avaliador
+          </span>
+        )}
         <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border ${statusConf.class}`}>
           {statusConf.label}
         </span>
