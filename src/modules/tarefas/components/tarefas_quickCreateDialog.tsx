@@ -111,6 +111,8 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   const [penalidadeForaPrazo, setPenalidadeForaPrazo] = useState(defaultTemplate.penalidade_fora_prazo);
   const [penalidadeContingencia, setPenalidadeContingencia] = useState(defaultTemplate.penalidade_contingencia);
   const [penalidadeSlaContingencia, setPenalidadeSlaContingencia] = useState(defaultTemplate.penalidade_sla_contingencia);
+  // DERIVADO da Designação: perguntas automáticas existem se, e somente se, há aprovação final.
+  // Sem toggle manual nesta etapa.
   const [habilitarPerguntasAutomaticas, setHabilitarPerguntasAutomaticas] = useState(true);
   const [pesoNotaMaxima, setPesoNotaMaxima] = useState(100);
 
@@ -159,9 +161,15 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   }, [open, defaultAvaliadoId]);
 
   // Em contexto avulsa: blindagem — recorrência sempre desligada.
+  // Em contexto avulsa: blindagem — recorrência sempre desligada.
   useEffect(() => {
     if (isAvulsa && recorrenciaAtiva) setRecorrenciaAtiva(false);
   }, [isAvulsa, recorrenciaAtiva]);
+
+  // Sincroniza perguntas automáticas com a Designação (regra única).
+  useEffect(() => {
+    setHabilitarPerguntasAutomaticas(requerAprovacao);
+  }, [requerAprovacao]);
 
   const { data: colaboradores = [] } = useQuery({
     queryKey: ["profiles_quicktask"],
@@ -872,7 +880,9 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
             const totalCampos = uniqueAprovadorFields.reduce((s, f) => s + f.aprovador_peso, 0);
             const totalGeral = totalCampos + totalPenalidades;
             // Pontuação só aparece quando há aprovador ativo OU perguntas configuradas OU automáticas habilitadas.
-            const mostrarPontuacao = requerAprovacao || temPerguntasAprovador || habilitarPerguntasAutomaticas;
+            // Regra única: a existência de pontuação/perguntas automáticas/penalidades nasce
+            // SOMENTE da etapa Designação ("Aprovação final e pontuação").
+            const mostrarPontuacao = requerAprovacao;
 
             const setAsDefault = (key: keyof WorkflowDefaults, value: number) => {
               const current = loadDefaults();
@@ -940,13 +950,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                     ))}
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <Switch checked={habilitarPerguntasAutomaticas} onCheckedChange={setHabilitarPerguntasAutomaticas} />
-                    <div>
-                      <Label className="cursor-pointer text-sm">Habilitar perguntas automáticas na aprovação</Label>
-                      <p className="text-[11px] text-muted-foreground">Gera automaticamente perguntas sobre prazo, plano de ação e SLA na aprovação final.</p>
-                    </div>
-                  </div>
+                  {/* Toggle removido — perguntas automáticas são derivadas de "Aprovação final e pontuação" (Designação). */}
 
                   {/* Tabela unificada de pontuação */}
                   <div className="border border-border rounded-lg overflow-hidden mt-3 bg-card">
