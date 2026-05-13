@@ -30,6 +30,17 @@ interface Props {
 }
 
 export function TabWorkflow({ form, set, fields = [] }: Props) {
+  const aprovacaoAtiva = !!form.requer_aprovacao_gestor;
+
+  // Perguntas automáticas agora são DERIVADAS da Designação (aprovação final).
+  // Sem toggle separado: se há aprovador → habilitadas; senão → desabilitadas.
+  // Mantém compatibilidade com payload (`habilitar_perguntas_automaticas`).
+  useEffect(() => {
+    if (form.habilitar_perguntas_automaticas !== aprovacaoAtiva) {
+      set("habilitar_perguntas_automaticas" as any, aprovacaoAtiva as any);
+    }
+  }, [aprovacaoAtiva, form.habilitar_perguntas_automaticas, set]);
+
   const uniqueFields = fields
     .filter((f, i, arr) => arr.findIndex(x => x.tempId === f.tempId) === i)
     .filter(f => f.aprovador_verificar && f.aprovador_pergunta?.trim());
@@ -43,6 +54,22 @@ export function TabWorkflow({ form, set, fields = [] }: Props) {
   const totalPenalidades = autoQuestions.reduce((s, q) => s + q.pontos, 0);
   const totalCampos = uniqueFields.reduce((s, f) => s + f.aprovador_peso, 0);
   const totalGeral = totalCampos + totalPenalidades;
+
+  if (!aprovacaoAtiva) {
+    return (
+      <div className="flex items-start gap-2 p-4 rounded-lg border border-border bg-muted/40">
+        <Info className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+        <div className="text-sm text-muted-foreground">
+          <p className="font-semibold text-foreground">Sem aprovação final configurada</p>
+          <p className="text-xs mt-1">
+            Esta tarefa não terá pontuação, penalidades, perguntas automáticas nem SLA de aprovação.
+            Para habilitar, ative <strong>"Aprovação final e pontuação"</strong> na etapa <strong>Designação</strong>.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
 
   return (
     <div className="space-y-4">
