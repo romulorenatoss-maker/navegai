@@ -172,6 +172,23 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     setHabilitarPerguntasAutomaticas(requerAprovacao);
   }, [requerAprovacao]);
 
+  // Carrega defaults globais de Pontuação/Notas (Configurações → Tarefas → Pontuação).
+  // Aplica somente ao abrir o diálogo — edição local na tarefa NÃO altera o padrão global.
+  const { data: pontGlobal } = useQuery({
+    queryKey: ["tarefas_pontuacao_config"],
+    queryFn: getPontuacaoConfig,
+    staleTime: 5 * 60 * 1000,
+  });
+  useEffect(() => {
+    if (!open || !pontGlobal) return;
+    setPenalidadeForaPrazo(pontGlobal.penalidade_fora_prazo);
+    setPenalidadeContingencia(pontGlobal.penalidade_contingencia);
+    setPenalidadeSlaContingencia(pontGlobal.penalidade_sla_contingencia);
+    setPesoNotaMaxima(pontGlobal.nota_maxima);
+    setHabilitarPerguntasAutomaticas(pontGlobal.pontuacao_automatica_padrao && requerAprovacao);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, pontGlobal]);
+
   const { data: colaboradores = [] } = useQuery({
     queryKey: ["profiles_quicktask"],
     queryFn: async () => {
