@@ -78,17 +78,33 @@ Deno.serve(async (req) => {
     const provider = getStorageProvider('google_drive');
     const adminClient = createClient(supabaseUrl, serviceKey);
 
-    // Lê root_folder_id da config (singleton por provider). SEM fallback.
+    // Lê config (singleton por provider). SEM fallback de pasta-mãe.
     const { data: cfg } = await adminClient
       .from('tarefas_storage_config')
-      .select('root_folder_id')
+      .select('root_folder_id, limite_upload_mb, tipos_permitidos')
       .eq('provider', provider.name)
       .maybeSingle();
     if (!cfg?.root_folder_id) {
       return json({
         error: 'storage_not_configured',
-        detail: 'Pasta-mãe do Drive ainda não configurada. Acesse Configurações → Integrações.',
+        detail: 'Pasta-mãe ainda não configurada. Acesse Configurações → Tarefas → Armazenamento.',
       }, 412);
+    }
+
+    // Validação server-side de limite e mime
+    const limiteMb = Number(cfg.limite_upload_mb ?? 25);
+    if (file.size > limiteMb * 1024 * 1024) {
+      return json({ error: 'file_too_large', detail: `Arquivo excede ${limiteMb}MB.` }, 413);
+    }
+    const tipos: string[] = Array.isArray(cfg.tipos_permitidos) ? cfg.tipos_permitidos : [];
+    if (tipos.length > 0) {
+      const mt = (file.type || 'application/octet-stream').toLowerCase();
+      const ok = tipos.some((t) => {
+        const tt = t.toLowerCase();
+        if (tt.endsWith('/*')) return mt.startsWith(tt.slice(0, -1));
+        return mt === tt;
+      });
+      if (!ok) return json({ error: 'mime_not_allowed', detail: `Tipo ${mt} não permitido.` }, 415);
     }
 
     const buf = new Uint8Array(await file.arrayBuffer());

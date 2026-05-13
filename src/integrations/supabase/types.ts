@@ -4451,31 +4451,61 @@ export type Database = {
       }
       tarefas_storage_config: {
         Row: {
+          bloquear_link_direto: boolean
           created_at: string
           id: string
+          limite_upload_mb: number
+          observacoes: string | null
+          permitir_download: boolean
+          permitir_preview: boolean
           provider: string
           root_folder_id: string
           root_folder_label: string | null
+          root_folder_link: string | null
+          status_conexao: string | null
+          tipos_permitidos: string[]
+          ultima_validacao_em: string | null
           updated_at: string
           updated_by: string | null
+          usar_proxy_visualizacao: boolean
         }
         Insert: {
+          bloquear_link_direto?: boolean
           created_at?: string
           id?: string
+          limite_upload_mb?: number
+          observacoes?: string | null
+          permitir_download?: boolean
+          permitir_preview?: boolean
           provider?: string
           root_folder_id: string
           root_folder_label?: string | null
+          root_folder_link?: string | null
+          status_conexao?: string | null
+          tipos_permitidos?: string[]
+          ultima_validacao_em?: string | null
           updated_at?: string
           updated_by?: string | null
+          usar_proxy_visualizacao?: boolean
         }
         Update: {
+          bloquear_link_direto?: boolean
           created_at?: string
           id?: string
+          limite_upload_mb?: number
+          observacoes?: string | null
+          permitir_download?: boolean
+          permitir_preview?: boolean
           provider?: string
           root_folder_id?: string
           root_folder_label?: string | null
+          root_folder_link?: string | null
+          status_conexao?: string | null
+          tipos_permitidos?: string[]
+          ultima_validacao_em?: string | null
           updated_at?: string
           updated_by?: string | null
+          usar_proxy_visualizacao?: boolean
         }
         Relationships: [
           {
