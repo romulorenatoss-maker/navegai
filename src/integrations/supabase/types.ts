@@ -4333,6 +4333,63 @@ export type Database = {
         }
         Relationships: []
       }
+      tarefas_ada_config: {
+        Row: {
+          anexo_instrucao: string | null
+          anexo_obrigatorio: boolean
+          anexo_quantidade_minima: number
+          anexo_tipo: string
+          descricao: string | null
+          exige_anexo: boolean
+          id: string
+          nota_maxima: number
+          nota_minima: number
+          penalidade_atraso: number
+          perguntas_padrao: Json
+          prazo_horas: number
+          prioridade: string
+          singleton: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          anexo_instrucao?: string | null
+          anexo_obrigatorio?: boolean
+          anexo_quantidade_minima?: number
+          anexo_tipo?: string
+          descricao?: string | null
+          exige_anexo?: boolean
+          id?: string
+          nota_maxima?: number
+          nota_minima?: number
+          penalidade_atraso?: number
+          perguntas_padrao?: Json
+          prazo_horas?: number
+          prioridade?: string
+          singleton?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          anexo_instrucao?: string | null
+          anexo_obrigatorio?: boolean
+          anexo_quantidade_minima?: number
+          anexo_tipo?: string
+          descricao?: string | null
+          exige_anexo?: boolean
+          id?: string
+          nota_maxima?: number
+          nota_minima?: number
+          penalidade_atraso?: number
+          perguntas_padrao?: Json
+          prazo_horas?: number
+          prioridade?: string
+          singleton?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       tarefas_anexos: {
         Row: {
           assignment_id: string | null
