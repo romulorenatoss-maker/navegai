@@ -65,8 +65,13 @@ function gatewayHeaders(): HeadersInit {
   };
 }
 
-const ROOT_FOLDER_NAME = 'tarefas-anexos';
-const folderCache = new Map<string, string>(); // pathRelativo de pasta -> driveFolderId
+// Cache: rootFolderId → (subpath relativo → driveFolderId)
+const folderCache = new Map<string, Map<string, string>>();
+function cacheFor(root: string): Map<string, string> {
+  let m = folderCache.get(root);
+  if (!m) { m = new Map(); folderCache.set(root, m); }
+  return m;
+}
 
 async function findFolder(name: string, parentId: string | null): Promise<string | null> {
   const safe = name.replace(/'/g, "\\'");
