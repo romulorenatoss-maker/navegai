@@ -381,7 +381,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   // Avaliado é o único bloco obrigatório. Aceita Individual (profileIds) OU Setorial (setorId).
   // Aprovador e Validador Final são opcionais. Avaliador (PA) é opcional.
   const avaliadoPreenchido = isRespFilled(respBlocks.avaliado);
-  const canAdvanceStep2 = avaliadoPreenchido && !!setorId && !!dataPrevista;
+  const canAdvanceStep2 = avaliadoPreenchido && !!dataPrevista;
 
 
   const create = useMutation({
