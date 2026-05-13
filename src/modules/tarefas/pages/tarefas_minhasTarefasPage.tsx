@@ -540,10 +540,30 @@ export default function OperationalExecucaoPage() {
 
         <TabsContent value="operacionais" className="space-y-0 mt-0">
 
-      {/* Visão por papel — dinâmica conforme contexto real */}
-      <div className="mb-3">
-        <VisaoSwitcher visoes={visoes} value={visao} onChange={setVisao} isMobile={isMobile} />
-      </div>
+      {/* 5 abas operacionais fixas — sem status técnico virando aba */}
+      <Tabs value={opTab} onValueChange={(v) => setOpTab(v as typeof opTab)} className="w-full">
+        <TabsList className="w-full overflow-x-auto flex-nowrap mb-3">
+          <TabsTrigger value="hoje" className="flex items-center gap-1.5 whitespace-nowrap">
+            <CalendarClock className="w-3.5 h-3.5" /> Tarefas de Hoje
+            {opLists.hoje.length > 0 && <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold bg-primary/15 text-primary">{opLists.hoje.length}</span>}
+          </TabsTrigger>
+          <TabsTrigger value="emAndamento" className="flex items-center gap-1.5 whitespace-nowrap">
+            <Activity className="w-3.5 h-3.5" /> Em Andamento
+            {opLists.emAndamento.length > 0 && <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold bg-blue-500/15 text-blue-700 dark:text-blue-400">{opLists.emAndamento.length}</span>}
+          </TabsTrigger>
+          <TabsTrigger value="aguardandoVoce" className="flex items-center gap-1.5 whitespace-nowrap">
+            <Hourglass className="w-3.5 h-3.5" /> Aguardando Você
+            {opLists.aguardandoVoce.length > 0 && <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold bg-violet-500/15 text-violet-700 dark:text-violet-400">{opLists.aguardandoVoce.length}</span>}
+          </TabsTrigger>
+          <TabsTrigger value="concluidas" className="flex items-center gap-1.5 whitespace-nowrap">
+            <CheckCheck className="w-3.5 h-3.5" /> Concluídas
+            {opLists.concluidas.length > 0 && <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold bg-green-500/15 text-green-700 dark:text-green-400">{opLists.concluidas.length}</span>}
+          </TabsTrigger>
+          <TabsTrigger value="criticas" className="flex items-center gap-1.5 whitespace-nowrap">
+            <AlertTriangle className="w-3.5 h-3.5" /> Críticas
+            {opLists.criticas.length > 0 && <span className="ml-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold bg-destructive/15 text-destructive">{opLists.criticas.length}</span>}
+          </TabsTrigger>
+        </TabsList>
 
       <div className="flex items-center gap-2 mb-3 flex-wrap">
         <div className="relative flex-1 min-w-[160px]">
@@ -569,7 +589,7 @@ export default function OperationalExecucaoPage() {
         </Button>
       </div>
 
-      {isAdmin && visao === "admin" && (
+      {isAdmin && (
         <div className="flex items-center gap-2 mb-3 flex-wrap p-2 rounded-lg bg-muted/40 border border-border">
           <Select value={adminExecutor} onValueChange={setAdminExecutor}>
             <SelectTrigger className="w-[200px] h-8 text-xs">
@@ -606,21 +626,15 @@ export default function OperationalExecucaoPage() {
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground text-sm">Carregando...</div>
       ) : (
-        <div className="space-y-3">
-          <RenderVisao
-            visao={visao}
-            buckets={buckets}
-            sorted={sorted}
-            openAccordion={openAccordion}
-            setOpenAccordion={setOpenAccordion}
-            openExecution={openExecution}
-            hojeFiltrado={hojeFiltrado}
-            lateInHojeCount={lateInHojeCount}
-            showOnlyLate={showOnlyLate}
-            setShowOnlyLate={setShowOnlyLate}
-          />
-        </div>
+        <>
+          <TabsContent value="hoje" className="mt-0">{listOrEmpty(opLists.hoje, openExecution, "Nenhuma tarefa para hoje.")}</TabsContent>
+          <TabsContent value="emAndamento" className="mt-0">{listOrEmpty(opLists.emAndamento, openExecution, "Nada em andamento.")}</TabsContent>
+          <TabsContent value="aguardandoVoce" className="mt-0">{listOrEmpty(opLists.aguardandoVoce, openExecution, "Nada aguardando sua ação.")}</TabsContent>
+          <TabsContent value="concluidas" className="mt-0">{listOrEmpty(opLists.concluidas, openExecution, "Nenhuma tarefa concluída.")}</TabsContent>
+          <TabsContent value="criticas" className="mt-0">{listOrEmpty(opLists.criticas, openExecution, "Nada em estado crítico.")}</TabsContent>
+        </>
       )}
+      </Tabs>
         </TabsContent>
 
         <TabsContent value="avaliadas" className="mt-0">
