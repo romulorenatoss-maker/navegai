@@ -132,10 +132,10 @@ const REOPEN_CLEAR_FIELDS = {
   score_final_ajustado: null,
 };
 
-async function getAssignmentSnapshot(assignmentId: string): Promise<{ status: string; created_by: string | null; responsavel_id: string | null }> {
+async function getAssignmentSnapshot(assignmentId: string): Promise<{ status: string; created_by: string | null; responsavel_id: string | null; prazo_pausado_ms: number | null; pausa_iniciada_em: string | null }> {
   const { data, error } = await (supabase as any)
     .from("operational_assignments")
-    .select("status, created_by, responsavel_id")
+    .select("status, created_by, responsavel_id, prazo_pausado_ms, pausa_iniciada_em")
     .eq("id", assignmentId)
     .single();
   if (error) throw new Error("Não foi possível verificar status da tarefa.");
@@ -347,6 +347,26 @@ export function useOperationalTransition() {
         updatePayload.data_prevista = extraData.novoPrazo;
       }
 
+      // === SLA pause/resume em Plano de Ação ===
+      // Entrando em EM_PLANO_ACAO → inicia pausa do SLA operacional
+      const enteringPlano = targetStatus === TASK_STATUS.EM_PLANO_ACAO
+        && currentStatus !== TASK_STATUS.EM_PLANO_ACAO;
+      // Saindo de EM_PLANO_ACAO → fecha pausa, soma duração ao acumulado
+      const leavingPlano = currentStatus === TASK_STATUS.EM_PLANO_ACAO
+        && targetStatus !== TASK_STATUS.EM_PLANO_ACAO
+        && action !== "invalidar_admin";
+
+      if (enteringPlano) {
+        updatePayload.pausa_iniciada_em = now;
+      }
+      if (leavingPlano && (snap as any).pausa_iniciada_em) {
+        const startMs = new Date((snap as any).pausa_iniciada_em).getTime();
+        const durMs = Math.max(0, Date.now() - startMs);
+        const acumulado = Number((snap as any).prazo_pausado_ms || 0) + durMs;
+        updatePayload.pausa_iniciada_em = null;
+        updatePayload.prazo_pausado_ms = acumulado;
+      }
+
       // Execute update (somente se há campos a alterar)
       if (Object.keys(updatePayload).length > 0) {
         const { error } = await (supabase as any)
@@ -366,6 +386,47 @@ export function useOperationalTransition() {
         motivo,
         extraData,
       );
+
+      // Histórico de pausas SLA (auditável)
+      try {
+        if (enteringPlano) {
+          await (supabase as any).from("operational_sla_pausas").insert({
+            assignment_id: assignmentId,
+            motivo: motivo || null,
+            status_origem: currentStatus,
+            status_destino: targetStatus,
+            started_at: now,
+            iniciada_por: profile.id,
+          });
+        }
+        if (leavingPlano && (snap as any).pausa_iniciada_em) {
+          const startIso = (snap as any).pausa_iniciada_em as string;
+          const durMs = Math.max(0, Date.now() - new Date(startIso).getTime());
+          // Fecha a pausa aberta mais recente
+          const { data: openRows } = await (supabase as any)
+            .from("operational_sla_pausas")
+            .select("id")
+            .eq("assignment_id", assignmentId)
+            .is("ended_at", null)
+            .order("started_at", { ascending: false })
+            .limit(1);
+          const openId = openRows?.[0]?.id;
+          if (openId) {
+            await (supabase as any)
+              .from("operational_sla_pausas")
+              .update({
+                ended_at: now,
+                duration_ms: durMs,
+                encerrada_por: profile.id,
+                status_destino: targetStatus,
+              })
+              .eq("id", openId);
+          }
+        }
+      } catch (e) {
+        // não bloquear a transição por falha no histórico de pausa
+        console.warn("[sla_pausas] histórico falhou:", e);
+      }
 
       return { newStatus: action === "invalidar_admin" ? currentStatus : targetStatus, previousStatus: currentStatus };
     },

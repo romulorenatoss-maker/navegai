@@ -101,7 +101,12 @@ export function PainelRetornoCard({ assignment, onClick }: Props) {
       </div>
 
       <div className="flex items-center gap-1.5 flex-wrap">
-        {sla.operacional.due && <SlaBadge sla={sla.operacional} label="Op" />}
+        {assignment.status === TASK_STATUS.EM_PLANO_ACAO && (
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border bg-muted text-muted-foreground border-border text-[10px] font-medium">
+            <Hourglass className="w-3 h-3" /> SLA pausado
+          </span>
+        )}
+        {sla.operacional.due && assignment.status !== TASK_STATUS.EM_PLANO_ACAO && <SlaBadge sla={sla.operacional} label="Op" />}
         {sla.avaliacao.due && <SlaBadge sla={sla.avaliacao} label="Av" />}
         {sla.aprovacao.due && <SlaBadge sla={sla.aprovacao} label="Apr" />}
         {sla.total.due && <SlaBadge sla={sla.total} label="Total" />}

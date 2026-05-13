@@ -95,11 +95,26 @@ export function resolveSemMovimentoHours(a: any, opts?: { semMovimentoHours?: nu
 
 export function computeSla(a: any, opts: BucketizeOptions = { profileId: null, isAdmin: false }): AssignmentSla {
   const o = { ...DEFAULTS, ...opts };
-  // Operacional: data_prevista + horario_limite (ou 23:59:59)
+  // Operacional: data_prevista + horario_limite (ou 23:59:59) — prazo ORIGINAL imutável
   const opDueRaw = a.data_prevista
     ? `${a.data_prevista}T${a.horario_limite || "23:59:59"}`
     : null;
-  const operacional = makeSla("operacional", opDueRaw ? new Date(opDueRaw).toISOString() : null, o.nearMs);
+
+  // Pausas acumuladas (Plano de Ação) — estende o prazo final sem sobrescrever o original
+  const pausadoMs = Number(a.prazo_pausado_ms || 0);
+  const pausaAtivaMs = a.status === TASK_STATUS.EM_PLANO_ACAO && a.pausa_iniciada_em
+    ? Math.max(0, Date.now() - new Date(a.pausa_iniciada_em).getTime())
+    : 0;
+  const extensaoMs = pausadoMs + pausaAtivaMs;
+
+  const opDueIso = opDueRaw
+    ? new Date(new Date(opDueRaw).getTime() + extensaoMs).toISOString()
+    : null;
+
+  // Em EM_PLANO_ACAO o SLA operacional fica PAUSADO (não conta tempo restante)
+  const operacional = a.status === TASK_STATUS.EM_PLANO_ACAO
+    ? { kind: "operacional" as SlaKind, due: opDueIso, msRemaining: null, status: "na" as const }
+    : makeSla("operacional", opDueIso, o.nearMs);
 
   const avaliacao = [TASK_STATUS.AGUARDANDO_AVALIACAO, TASK_STATUS.EM_AVALIACAO].includes(a.status)
     ? makeSla("avaliacao", buildDue(a.updated_at, o.slaAvaliacaoHours), o.nearMs)
@@ -112,7 +127,7 @@ export function computeSla(a: any, opts: BucketizeOptions = { profileId: null, i
   const total = makeSla("total", buildDue(a.created_at, o.slaTotalHours), o.nearMs);
 
   // SLA atual: prioriza etapa de avaliação/aprovação se ativa; senão, operacional.
-  // Operacional continua rodando em em_plano_acao (SLA_RUNNING_STATUSES inclui EM_PLANO_ACAO).
+  // Em EM_PLANO_ACAO o operacional vira "pausado" (na) e nenhum estouro é contabilizado.
   let current = operacional;
   if (avaliacao.due) current = avaliacao;
   else if (aprovacao.due) current = aprovacao;

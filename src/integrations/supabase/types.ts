@@ -1339,7 +1339,9 @@ export type Database = {
           inicio_em: string | null
           numero_tarefa: number
           observacao: string | null
+          pausa_iniciada_em: string | null
           pontuacao_obtida: number | null
+          prazo_pausado_ms: number
           responsavel_id: string | null
           rodada_atual: number
           score_avaliado: number | null
@@ -1374,7 +1376,9 @@ export type Database = {
           inicio_em?: string | null
           numero_tarefa?: number
           observacao?: string | null
+          pausa_iniciada_em?: string | null
           pontuacao_obtida?: number | null
+          prazo_pausado_ms?: number
           responsavel_id?: string | null
           rodada_atual?: number
           score_avaliado?: number | null
@@ -1409,7 +1413,9 @@ export type Database = {
           inicio_em?: string | null
           numero_tarefa?: number
           observacao?: string | null
+          pausa_iniciada_em?: string | null
           pontuacao_obtida?: number | null
+          prazo_pausado_ms?: number
           responsavel_id?: string | null
           rodada_atual?: number
           score_avaliado?: number | null
@@ -2205,6 +2211,56 @@ export type Database = {
           },
           {
             foreignKeyName: "operational_score_overrides_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "operational_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operational_sla_pausas: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          duration_ms: number | null
+          encerrada_por: string | null
+          ended_at: string | null
+          id: string
+          iniciada_por: string | null
+          motivo: string | null
+          started_at: string
+          status_destino: string | null
+          status_origem: string | null
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          duration_ms?: number | null
+          encerrada_por?: string | null
+          ended_at?: string | null
+          id?: string
+          iniciada_por?: string | null
+          motivo?: string | null
+          started_at?: string
+          status_destino?: string | null
+          status_origem?: string | null
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          duration_ms?: number | null
+          encerrada_por?: string | null
+          ended_at?: string | null
+          id?: string
+          iniciada_por?: string | null
+          motivo?: string | null
+          started_at?: string
+          status_destino?: string | null
+          status_origem?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_sla_pausas_assignment_id_fkey"
             columns: ["assignment_id"]
             isOneToOne: false
             referencedRelation: "operational_assignments"
