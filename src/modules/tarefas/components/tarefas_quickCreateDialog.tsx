@@ -942,13 +942,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                     ))}
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <Switch checked={habilitarPerguntasAutomaticas} onCheckedChange={setHabilitarPerguntasAutomaticas} />
-                    <div>
-                      <Label className="cursor-pointer text-sm">Habilitar perguntas automáticas na aprovação</Label>
-                      <p className="text-[11px] text-muted-foreground">Gera automaticamente perguntas sobre prazo, plano de ação e SLA na aprovação final.</p>
-                    </div>
-                  </div>
+                  {/* Toggle removido — perguntas automáticas são derivadas de "Aprovação final e pontuação" (Designação). */}
 
                   {/* Tabela unificada de pontuação */}
                   <div className="border border-border rounded-lg overflow-hidden mt-3 bg-card">
