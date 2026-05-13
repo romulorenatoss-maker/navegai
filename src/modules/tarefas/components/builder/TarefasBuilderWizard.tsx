@@ -104,6 +104,7 @@ export function TarefasBuilderWizard(props: Props) {
             sections={sections} setSections={setSections}
             fields={fields} setFields={setFields}
             setores={setores} tipoExecucao={form.tipo_execucao}
+            aprovacaoFinalEnabled={!!form.requer_aprovacao_gestor}
           />
         )}
 
