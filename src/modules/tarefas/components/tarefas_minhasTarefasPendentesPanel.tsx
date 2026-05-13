@@ -136,7 +136,7 @@ export function MinhasTarefasPendentesPanel({ viewAsProfileId }: { viewAsProfile
 
   // Admin: Minhas + 4 abas de status no mesmo nível
   const tabs = [
-    { key: "minhas", label: "Minhas", list: minhas, accent: "bg-primary/20 text-primary", empty: "Nenhuma tarefa atribuída a você." },
+    { key: "minhas", label: "Meu Plano de Ação", list: minhas, accent: "bg-primary/20 text-primary", empty: "Nenhum plano de ação atribuído a você." },
     { key: "abertas", label: "Abertas", list: cm.abertas, accent: "bg-red-500/20 text-red-700", empty: "Nenhuma plano de ação aberta." },
     { key: "em_tratamento", label: "Em Tratamento", list: cm.emTratamento, accent: "bg-blue-500/20 text-blue-700", empty: "Nenhuma em tratamento." },
     { key: "vencidas", label: "Vencidas", list: cm.vencidas, accent: "bg-red-600/20 text-red-800", empty: "Nenhuma plano de ação vencida." },
