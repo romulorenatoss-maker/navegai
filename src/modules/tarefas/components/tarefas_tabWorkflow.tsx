@@ -115,15 +115,7 @@ export function TabWorkflow({ form, set, fields = [] }: Props) {
           ))}
         </div>
 
-        <div className="flex items-center gap-3">
-          <Switch checked={form.habilitar_perguntas_automaticas} onCheckedChange={v => set("habilitar_perguntas_automaticas", v)} />
-          <div>
-            <Label className="cursor-pointer">Habilitar perguntas automáticas na aprovação</Label>
-            <p className="text-caption text-muted-foreground">Gera automaticamente perguntas sobre prazo, plano de ação e SLA na aprovação final.</p>
-          </div>
-        </div>
-
-        {/* Tabela unificada de pontuação */}
+        {/* Tabela unificada — perguntas automáticas sempre presentes (derivado da Designação) */}
         <div className="border border-border rounded-lg overflow-hidden mt-4">
           <div className="bg-muted px-4 py-2">
             <p className="text-sm font-semibold">Resumo de Pontuação do Template</p>
@@ -139,7 +131,7 @@ export function TabWorkflow({ form, set, fields = [] }: Props) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {form.habilitar_perguntas_automaticas && autoQuestions.map((q, i) => (
+              {autoQuestions.map((q, i) => (
                 <TableRow key={`auto-${i}`} className="bg-destructive/5">
                   <TableCell className="text-center text-sm text-muted-foreground">{i + 1}</TableCell>
                   <TableCell className="text-sm font-medium">{q.label}</TableCell>
@@ -150,15 +142,13 @@ export function TabWorkflow({ form, set, fields = [] }: Props) {
                 </TableRow>
               ))}
 
-              {form.habilitar_perguntas_automaticas && (
-                <TableRow className="bg-muted/30">
-                  <TableCell colSpan={3} className="text-xs font-medium text-right text-muted-foreground">Subtotal Penalidades</TableCell>
-                  <TableCell className="text-right text-sm font-bold text-destructive">-{totalPenalidades}</TableCell>
-                </TableRow>
-              )}
+              <TableRow className="bg-muted/30">
+                <TableCell colSpan={3} className="text-xs font-medium text-right text-muted-foreground">Subtotal Penalidades</TableCell>
+                <TableCell className="text-right text-sm font-bold text-destructive">-{totalPenalidades}</TableCell>
+              </TableRow>
 
               {uniqueFields.map((f, i) => {
-                const idx = (form.habilitar_perguntas_automaticas ? autoQuestions.length : 0) + i + 1;
+                const idx = autoQuestions.length + i + 1;
                 return (
                   <TableRow key={f.tempId}>
                     <TableCell className="text-center text-sm text-muted-foreground">{idx}</TableCell>
@@ -189,9 +179,9 @@ export function TabWorkflow({ form, set, fields = [] }: Props) {
             </TableFooter>
           </Table>
 
-          {uniqueFields.length === 0 && !form.habilitar_perguntas_automaticas && (
+          {uniqueFields.length === 0 && (
             <div className="p-4 text-center text-sm text-muted-foreground">
-              Adicione campos na aba "Formulário" para visualizar a pontuação.
+              Adicione perguntas para o aprovador na aba "Formulário" para somar pontos além das penalidades automáticas.
             </div>
           )}
         </div>
