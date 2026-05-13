@@ -91,10 +91,13 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   const [validadorMode, setValidadorMode] = useState<"individual" | "setor">("individual");
   const [validadorId, setValidadorId] = useState("");
   const [validadorSetorId, setValidadorSetorId] = useState("");
-  const [requerPlanoAcao, setRequerPlanoAcao] = useState(false);
-  const [planoAcaoMode, setPlanoAcaoMode] = useState<"individual" | "setor">("individual");
-  const [planoAcaoId, setPlanoAcaoId] = useState("");
-  const [planoAcaoSetorId, setPlanoAcaoSetorId] = useState("");
+  // Plano de Ação — responsável definido na Designação (obrigatório).
+  // Opções: 'avaliado' (próprio), 'usuario_setor', 'setor_inteiro', 'responsavel_padrao_setor'.
+  type PlanoAcaoResp = "avaliado" | "usuario_setor" | "setor_inteiro" | "responsavel_padrao_setor";
+  const [planoAcaoResp, setPlanoAcaoResp] = useState<PlanoAcaoResp>("avaliado");
+  const [planoAcaoUsuarioId, setPlanoAcaoUsuarioId] = useState("");
+  // Estados legados mantidos como no-op para não quebrar referências no payload (eliminados abaixo).
+  const requerPlanoAcao = true;
   const [requerAprovacao, setRequerAprovacao] = useState(false);
   const [aprovadorMode, setAprovadorMode] = useState<"individual" | "setor">("individual");
   const [aprovadorId, setAprovadorId] = useState("");
