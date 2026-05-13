@@ -376,9 +376,10 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
 
   // Step 1 = Estrutura (builder). Step 2 = Designação. Step 3 = Prazos & Notas.
   const canAdvanceStep1 = fields.length > 0 && !horarioValidationError;
-  // Avaliado é o único bloco obrigatório. Aprovador e Validador Final são opcionais.
-  // Avaliador (PA) é opcional — se vazio, tarefa segue sem conferência/PA.
-  const canAdvanceStep2 = !!avaliadoId && !!setorId && !!dataPrevista;
+  // Avaliado é o único bloco obrigatório. Aceita Individual (profileIds) OU Setorial (setorId).
+  // Aprovador e Validador Final são opcionais. Avaliador (PA) é opcional.
+  const avaliadoPreenchido = isRespFilled(respBlocks.avaliado);
+  const canAdvanceStep2 = avaliadoPreenchido && !!setorId && !!dataPrevista;
 
 
   const create = useMutation({
