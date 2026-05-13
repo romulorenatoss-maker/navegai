@@ -394,57 +394,89 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                             {!section.nome.trim() && (
                               <div className="flex items-start gap-2 bg-amber-500/10 border border-amber-500/30 rounded-md p-2 text-[11px] text-amber-700 dark:text-amber-300">
                                 <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                                <span>Defina o <strong>nome da etapa</strong> acima antes de adicionar campos. As perguntas só podem ser associadas a uma etapa nomeada.</span>
+                                <span>
+                                  {etapaPergunta
+                                    ? <>Defina a <strong>pergunta principal</strong> acima antes de configurar o tipo de resposta.</>
+                                    : <>Defina o <strong>nome da etapa</strong> acima antes de adicionar campos. As perguntas só podem ser associadas a uma etapa nomeada.</>}
+                                </span>
                               </div>
                             )}
 
-                            <Droppable droppableId={section.tempId} type="FIELD">
-                              {(fieldProvided) => (
-                                <div ref={fieldProvided.innerRef} {...fieldProvided.droppableProps} className="space-y-1.5 min-h-[40px]">
-                                  {sectionFields.map((field, fIdx) => (
-                                    <Draggable key={field.tempId} draggableId={field.tempId} index={fIdx}>
-                                      {(fDrag) => (
-                                        <div ref={fDrag.innerRef} {...fDrag.draggableProps}
-                                          className="flex items-center gap-2 bg-background border border-border rounded-md px-2 py-1.5 group hover:border-primary/30 transition-colors">
-                                          <div {...fDrag.dragHandleProps}>
-                                            <GripVertical className="w-3.5 h-3.5 text-muted-foreground cursor-grab" />
-                                          </div>
-                                          <span className="text-caption text-muted-foreground font-tabular w-5">{fIdx + 1}.</span>
-                                          <Input value={field.label} onChange={e => updateField(field.tempId, { label: e.target.value })}
-                                            placeholder="Label do campo" className="h-7 text-sm flex-1" maxLength={255} />
-                                          <Select value={field.tipo} onValueChange={v => updateField(field.tempId, { tipo: v })}>
-                                            <SelectTrigger className="h-7 w-[140px] text-caption"><SelectValue /></SelectTrigger>
-                                            <SelectContent>{Object.entries(FIELD_TYPES).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
-                                          </Select>
-                                          {field.gera_contingencia && <span className="text-[10px] px-1.5 py-0.5 rounded border border-orange-200 bg-orange-100 text-orange-700">Conting.</span>}
-                                          {field.aprovador_verificar && <span className="text-[10px] px-1.5 py-0.5 rounded border border-primary/30 bg-primary/10 text-primary">Aprovador</span>}
-                                          
-                                          <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100" onClick={() => setEditingField(field)}>
-                                            <Settings2 className="w-3.5 h-3.5" />
-                                          </Button>
-                                          <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100" onClick={() => duplicateField(field)}>
-                                            <Copy className="w-3 h-3" />
-                                          </Button>
-                                          <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive opacity-0 group-hover:opacity-100" onClick={() => removeField(field.tempId)}>
-                                            <Trash2 className="w-3 h-3" />
-                                          </Button>
-                                        </div>
-                                      )}
-                                    </Draggable>
-                                  ))}
-                                  {fieldProvided.placeholder}
+                            {etapaPergunta ? (
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-md p-2">
+                                  <Label className="text-[11px] font-semibold text-foreground shrink-0">Tipo de resposta</Label>
+                                  <Select
+                                    value={autoField?.tipo ?? ""}
+                                    onValueChange={v => setEtapaPerguntaTipo(section.tempId, v)}
+                                    disabled={!section.nome.trim()}
+                                  >
+                                    <SelectTrigger className="h-8 text-xs flex-1">
+                                      <SelectValue placeholder="Escolha o tipo (ex: Conforme / Não Conforme)" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {Object.entries(FIELD_TYPES).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                                    </SelectContent>
+                                  </Select>
+                                  {autoField && (
+                                    <Button type="button" variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => setEditingField(autoField)}>
+                                      <Settings2 className="w-3.5 h-3.5 mr-1" /> Configurar
+                                    </Button>
+                                  )}
                                 </div>
-                              )}
-                            </Droppable>
+                                <p className="text-[10px] text-muted-foreground">
+                                  Esta etapa funciona como pergunta única. Adicionar uma pergunta interna a converterá em formulário/agrupador.
+                                </p>
+                              </div>
+                            ) : (
+                              <Droppable droppableId={section.tempId} type="FIELD">
+                                {(fieldProvided) => (
+                                  <div ref={fieldProvided.innerRef} {...fieldProvided.droppableProps} className="space-y-1.5 min-h-[40px]">
+                                    {sectionFields.map((field, fIdx) => (
+                                      <Draggable key={field.tempId} draggableId={field.tempId} index={fIdx}>
+                                        {(fDrag) => (
+                                          <div ref={fDrag.innerRef} {...fDrag.draggableProps}
+                                            className="flex items-center gap-2 bg-background border border-border rounded-md px-2 py-1.5 group hover:border-primary/30 transition-colors">
+                                            <div {...fDrag.dragHandleProps}>
+                                              <GripVertical className="w-3.5 h-3.5 text-muted-foreground cursor-grab" />
+                                            </div>
+                                            <span className="text-caption text-muted-foreground font-tabular w-5">{fIdx + 1}.</span>
+                                            <Input value={field.label} onChange={e => updateField(field.tempId, { label: e.target.value })}
+                                              placeholder="Label do campo" className="h-7 text-sm flex-1" maxLength={255} />
+                                            <Select value={field.tipo} onValueChange={v => updateField(field.tempId, { tipo: v })}>
+                                              <SelectTrigger className="h-7 w-[140px] text-caption"><SelectValue /></SelectTrigger>
+                                              <SelectContent>{Object.entries(FIELD_TYPES).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+                                            </Select>
+                                            {field.gera_contingencia && <span className="text-[10px] px-1.5 py-0.5 rounded border border-orange-200 bg-orange-100 text-orange-700">Conting.</span>}
+                                            {field.aprovador_verificar && <span className="text-[10px] px-1.5 py-0.5 rounded border border-primary/30 bg-primary/10 text-primary">Aprovador</span>}
+
+                                            <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100" onClick={() => setEditingField(field)}>
+                                              <Settings2 className="w-3.5 h-3.5" />
+                                            </Button>
+                                            <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100" onClick={() => duplicateField(field)}>
+                                              <Copy className="w-3 h-3" />
+                                            </Button>
+                                            <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive opacity-0 group-hover:opacity-100" onClick={() => removeField(field.tempId)}>
+                                              <Trash2 className="w-3 h-3" />
+                                            </Button>
+                                          </div>
+                                        )}
+                                      </Draggable>
+                                    ))}
+                                    {fieldProvided.placeholder}
+                                  </div>
+                                )}
+                              </Droppable>
+                            )}
 
                             <Button
                               type="button"
                               variant="outline"
                               size="sm"
                               className="w-full mt-2"
-                              onClick={() => startNewField(section.tempId)}
+                              onClick={() => { promoteToFormulario(section.tempId); startNewField(section.tempId); }}
                               disabled={!section.nome.trim()}
-                              title={!section.nome.trim() ? "Defina o nome da etapa antes de adicionar campos" : undefined}
+                              title={!section.nome.trim() ? "Defina o nome da etapa antes de adicionar campos" : (etapaPergunta ? "Converte esta etapa em formulário/agrupador" : undefined)}
                             >
                               <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar pergunta nesta etapa
                             </Button>
