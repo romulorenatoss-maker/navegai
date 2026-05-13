@@ -183,6 +183,73 @@ export function TabGeral({ form, set, setores, colaboradores, sections, steps }:
           colaboradorSetores={colaboradorSetores as any}
         />
       </div>
+
+      {/* Horários da Rotina — resumo do que foi configurado em Recorrência/Etapas */}
+      <HorariosRotinaPreview form={form} sections={sections} steps={steps} />
+    </div>
+  );
+}
+
+const DIAS_LABEL = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const RECORRENCIA_LABEL: Record<string, string> = {
+  unica: "Única", diaria: "Diária", semanal: "Semanal",
+  mensal: "Mensal", personalizada: "Personalizada",
+};
+
+function HorariosRotinaPreview({ form, sections, steps }: { form: TemplateForm; sections?: SectionForm[]; steps?: StepForm[] }) {
+  const dias = (form.dias_da_semana || []).slice().sort();
+  const isEtapas = form.tipo_execucao === "etapas";
+  const itens: Array<{ nome: string; ini: string; fim: string }> = [];
+  if (isEtapas && sections) {
+    for (const s of sections) {
+      if (s.horario_inicio || s.horario_fim) itens.push({ nome: s.nome || "Etapa", ini: s.horario_inicio, fim: s.horario_fim });
+    }
+  }
+  if (steps) {
+    for (const st of steps) {
+      if (st.horario_inicio || st.horario_fim) itens.push({ nome: st.nome || "Passo", ini: st.horario_inicio, fim: st.horario_fim });
+    }
+  }
+
+  return (
+    <div className="border border-border rounded-lg p-4 space-y-3 bg-card">
+      <div className="flex items-center gap-2">
+        <Label className="text-sm font-semibold">Horários da Rotina</Label>
+        <span className="text-[10px] text-muted-foreground">(somente leitura — configure na aba Recorrência / Campos)</span>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[12px]">
+        <div>
+          <p className="text-muted-foreground text-[10px] uppercase">Recorrência</p>
+          <p className="font-medium">{RECORRENCIA_LABEL[form.recorrencia_tipo] || form.recorrencia_tipo || "—"}</p>
+        </div>
+        <div>
+          <p className="text-muted-foreground text-[10px] uppercase">Dias da semana</p>
+          <p className="font-medium">{dias.length ? dias.map(d => DIAS_LABEL[d]).join(", ") : "—"}</p>
+        </div>
+        <div>
+          <p className="text-muted-foreground text-[10px] uppercase">Início previsto</p>
+          <p className="font-medium">{form.horario_inicio_previsto || "—"}</p>
+        </div>
+        <div>
+          <p className="text-muted-foreground text-[10px] uppercase">Limite de execução</p>
+          <p className="font-medium">{form.horario_limite_execucao || "—"}</p>
+        </div>
+      </div>
+
+      {itens.length > 0 && (
+        <div className="border-t border-border pt-2">
+          <p className="text-[10px] uppercase text-muted-foreground mb-1.5">Janelas por etapa</p>
+          <ul className="space-y-1">
+            {itens.map((it, i) => (
+              <li key={i} className="flex items-center justify-between text-[12px] px-2 py-1 rounded bg-muted/40">
+                <span className="font-medium truncate">{it.nome}</span>
+                <span className="text-muted-foreground tabular-nums">{it.ini || "--:--"} → {it.fim || "--:--"}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
