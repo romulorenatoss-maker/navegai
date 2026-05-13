@@ -111,6 +111,8 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   const [penalidadeForaPrazo, setPenalidadeForaPrazo] = useState(defaultTemplate.penalidade_fora_prazo);
   const [penalidadeContingencia, setPenalidadeContingencia] = useState(defaultTemplate.penalidade_contingencia);
   const [penalidadeSlaContingencia, setPenalidadeSlaContingencia] = useState(defaultTemplate.penalidade_sla_contingencia);
+  // DERIVADO da Designação: perguntas automáticas existem se, e somente se, há aprovação final.
+  // Sem toggle manual nesta etapa.
   const [habilitarPerguntasAutomaticas, setHabilitarPerguntasAutomaticas] = useState(true);
   const [pesoNotaMaxima, setPesoNotaMaxima] = useState(100);
 
