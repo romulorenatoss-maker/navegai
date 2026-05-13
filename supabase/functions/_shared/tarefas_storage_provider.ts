@@ -41,6 +41,8 @@ export interface StorageProvider {
   upload(params: UploadParams): Promise<UploadResult>;
   download(providerFileId: string): Promise<DownloadStream>;
   remove(providerFileId: string): Promise<void>;
+  /** Valida que a pasta existe e é acessível pela conta-serviço. */
+  inspectFolder(folderId: string): Promise<FolderInfo>;
 }
 
 // ============================================================================
