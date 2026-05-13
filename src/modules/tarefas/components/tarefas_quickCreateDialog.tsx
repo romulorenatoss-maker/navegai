@@ -571,12 +571,14 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
         }),
         // Fase 1B.3 — Fluxo Operacional para tarefa avulsa (sem migration; lido em runtime).
         ...(isAvulsa ? { solicitacao_config: solicitacaoConfig } : {}),
-        // Multi-select dos 4 blocos (sem migration; coluna legacy recebe primeiro do array).
+        // Multi-select dos 5 blocos (V2). Coluna legacy recebe primeiro do array.
+        // Estrutura completa preservada para o novo runtime quando ativo.
         responsaveis_multi: {
-          avaliado: respBlocks.avaliado.profileIds,
-          avaliador: respBlocks.avaliador.profileIds,
-          aprovador: respBlocks.aprovadorFinal.profileIds,
-          validador_final: respBlocks.validadorFinal.profileIds,
+          respondente: respBlocks.respondente,
+          avaliado: respBlocks.avaliado,
+          avaliador: respBlocks.avaliador,
+          aprovadorFinal: respBlocks.aprovadorFinal,
+          validadorFinal: respBlocks.validadorFinal,
         },
       };
 
