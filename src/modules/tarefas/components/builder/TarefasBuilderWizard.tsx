@@ -162,17 +162,3 @@ export function TarefasBuilderWizard(props: Props) {
     </div>
   );
 }
-
-function SectionDivider({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle?: string }) {
-  return (
-    <div className="flex items-start gap-2 pb-2 border-b border-border">
-      <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-primary/10 text-primary mt-0.5 shrink-0">
-        {icon}
-      </span>
-      <div>
-        <p className="text-sm font-semibold text-foreground leading-tight">{title}</p>
-        {subtitle && <p className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</p>}
-      </div>
-    </div>
-  );
-}
