@@ -72,7 +72,7 @@ function buildBlocksFromForm(form: TemplateForm): RespBlocksValueV2 {
   return { respondente, avaliado, avaliador, aprovadorFinal, validadorFinal };
 }
 
-export function TabGeral({ form, set, setores, colaboradores }: Props) {
+export function TabGeral({ form, set, setores, colaboradores, sections, steps }: Props) {
   const { data: colaboradorSetores = [] } = useQuery({
     queryKey: ["operational_colaborador_setores_all"],
     queryFn: async () => {
