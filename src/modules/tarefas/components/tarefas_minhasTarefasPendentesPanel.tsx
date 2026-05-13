@@ -122,11 +122,11 @@ export function MinhasTarefasPendentesPanel({ viewAsProfileId }: { viewAsProfile
         <Tabs defaultValue="minhas" className="w-full">
           <TabsList className="h-8 mb-2">
             <TabsTrigger value="minhas" className="text-xs h-6 px-2">
-              Minhas {minhas.length > 0 && <span className="ml-1 px-1.5 rounded-full text-[10px] bg-primary/20 text-primary">{minhas.length}</span>}
+              Meu Plano de Ação {minhas.length > 0 && <span className="ml-1 px-1.5 rounded-full text-[10px] bg-primary/20 text-primary">{minhas.length}</span>}
             </TabsTrigger>
           </TabsList>
           <TabsContent value="minhas" className="mt-0">
-            {renderList(minhas, "Nenhuma tarefa atribuída a você.")}
+            {renderList(minhas, "Nenhum plano de ação atribuído a você.")}
           </TabsContent>
         </Tabs>
         {dialog}
@@ -136,7 +136,7 @@ export function MinhasTarefasPendentesPanel({ viewAsProfileId }: { viewAsProfile
 
   // Admin: Minhas + 4 abas de status no mesmo nível
   const tabs = [
-    { key: "minhas", label: "Minhas", list: minhas, accent: "bg-primary/20 text-primary", empty: "Nenhuma tarefa atribuída a você." },
+    { key: "minhas", label: "Meu Plano de Ação", list: minhas, accent: "bg-primary/20 text-primary", empty: "Nenhum plano de ação atribuído a você." },
     { key: "abertas", label: "Abertas", list: cm.abertas, accent: "bg-red-500/20 text-red-700", empty: "Nenhuma plano de ação aberta." },
     { key: "em_tratamento", label: "Em Tratamento", list: cm.emTratamento, accent: "bg-blue-500/20 text-blue-700", empty: "Nenhuma em tratamento." },
     { key: "vencidas", label: "Vencidas", list: cm.vencidas, accent: "bg-red-600/20 text-red-800", empty: "Nenhuma plano de ação vencida." },

@@ -4272,6 +4272,7 @@ export type Database = {
           descricao: string | null
           id: string
           nome: string
+          responsavel_padrao_id: string | null
           updated_at: string
         }
         Insert: {
@@ -4280,6 +4281,7 @@ export type Database = {
           descricao?: string | null
           id?: string
           nome: string
+          responsavel_padrao_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -4288,9 +4290,18 @@ export type Database = {
           descricao?: string | null
           id?: string
           nome?: string
+          responsavel_padrao_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "setores_responsavel_padrao_id_fkey"
+            columns: ["responsavel_padrao_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       system_logs: {
         Row: {

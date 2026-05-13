@@ -91,10 +91,13 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   const [validadorMode, setValidadorMode] = useState<"individual" | "setor">("individual");
   const [validadorId, setValidadorId] = useState("");
   const [validadorSetorId, setValidadorSetorId] = useState("");
-  const [requerPlanoAcao, setRequerPlanoAcao] = useState(false);
-  const [planoAcaoMode, setPlanoAcaoMode] = useState<"individual" | "setor">("individual");
-  const [planoAcaoId, setPlanoAcaoId] = useState("");
-  const [planoAcaoSetorId, setPlanoAcaoSetorId] = useState("");
+  // Plano de Ação — responsável definido na Designação (obrigatório).
+  // Opções: 'avaliado' (próprio), 'usuario_setor', 'setor_inteiro', 'responsavel_padrao_setor'.
+  type PlanoAcaoResp = "avaliado" | "usuario_setor" | "setor_inteiro" | "responsavel_padrao_setor";
+  const [planoAcaoResp, setPlanoAcaoResp] = useState<PlanoAcaoResp>("avaliado");
+  const [planoAcaoUsuarioId, setPlanoAcaoUsuarioId] = useState("");
+  // Estados legados mantidos como no-op para não quebrar referências no payload (eliminados abaixo).
+  const requerPlanoAcao = true;
   const [requerAprovacao, setRequerAprovacao] = useState(false);
   const [aprovadorMode, setAprovadorMode] = useState<"individual" | "setor">("individual");
   const [aprovadorId, setAprovadorId] = useState("");
@@ -135,7 +138,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     setRecorrenciaAtiva(false); setRecorrenciaTipo("diaria"); setRecorrenciaDias([]); setRecorrenciaDataFim("");
     setAvaliadoId("");
     setRequerValidacao(false); setValidadorMode("individual"); setValidadorId(""); setValidadorSetorId("");
-    setRequerPlanoAcao(false); setPlanoAcaoMode("individual"); setPlanoAcaoId(""); setPlanoAcaoSetorId("");
+    setPlanoAcaoResp("avaliado"); setPlanoAcaoUsuarioId("");
     setRequerAprovacao(false); setAprovadorMode("individual"); setAprovadorId(""); setAprovadorSetorId("");
     setSections([]); setFields([]);
     const d = loadDefaults();
@@ -202,7 +205,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   const { data: setores = [] } = useQuery({
     queryKey: ["setores_quicktask"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("setores").select("*").eq("ativo", true).order("nome");
+      const { data, error } = await supabase.from("setores").select("id, nome, ativo, responsavel_padrao_id").eq("ativo", true).order("nome");
       if (error) throw error;
       return data || [];
     },
@@ -266,10 +269,45 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
     });
   }, [colaboradores, isSelfTask, profile?.id, avaliadoId]);
 
-  // Cleanup pós-realinhamento: o "Plano de ação" agora é configurado por pergunta no FormBuilder.
-  // Mantemos o state legado apenas como fallback opcional (sem UI no QuickCreate).
-  const planoAcaoOk = true;
-  const planoAcaoEnabled = true; // habilita "gera plano de ação" em qualquer pergunta
+  // Usuários do setor disponíveis para "Plano de Ação → Usuário do setor"
+  const planoAcaoUsuariosSetor = useMemo(() => {
+    if (!setorId) return [] as any[];
+    const ids = new Set((colaboradorSetores as any[]).filter((cs) => cs.setor_id === setorId).map((cs) => cs.profile_id));
+    return (colaboradores as any[]).filter((c) => ids.has(c.id));
+  }, [colaboradores, colaboradorSetores, setorId]);
+
+  // Responsável padrão do setor selecionado (pode ser null se setor não tiver definido).
+  const setorSelecionado = useMemo(() => (setores as any[]).find((s) => s.id === setorId), [setores, setorId]);
+  const responsavelPadraoSetorId: string | null = setorSelecionado?.responsavel_padrao_id || null;
+
+  // Resolve para os campos do payload (validador_contingencia_*).
+  const { planoAcaoProfileIdResolvido, planoAcaoSetorIdResolvido } = useMemo(() => {
+    switch (planoAcaoResp) {
+      case "avaliado":
+        return { planoAcaoProfileIdResolvido: avaliadoId || null, planoAcaoSetorIdResolvido: null };
+      case "usuario_setor":
+        return { planoAcaoProfileIdResolvido: planoAcaoUsuarioId || null, planoAcaoSetorIdResolvido: null };
+      case "setor_inteiro":
+        return { planoAcaoProfileIdResolvido: null, planoAcaoSetorIdResolvido: setorId || null };
+      case "responsavel_padrao_setor":
+        return { planoAcaoProfileIdResolvido: responsavelPadraoSetorId, planoAcaoSetorIdResolvido: null };
+      default:
+        return { planoAcaoProfileIdResolvido: null, planoAcaoSetorIdResolvido: null };
+    }
+  }, [planoAcaoResp, avaliadoId, planoAcaoUsuarioId, setorId, responsavelPadraoSetorId]);
+
+  const planoAcaoOk =
+    (planoAcaoResp === "avaliado" && !!avaliadoId) ||
+    (planoAcaoResp === "usuario_setor" && !!planoAcaoUsuarioId) ||
+    (planoAcaoResp === "setor_inteiro" && !!setorId) ||
+    (planoAcaoResp === "responsavel_padrao_setor" && !!responsavelPadraoSetorId);
+
+  // Limpa seleção de usuário se setor mudar e o usuário não pertencer mais ao novo setor.
+  useEffect(() => {
+    if (planoAcaoUsuarioId && !planoAcaoUsuariosSetor.some((c: any) => c.id === planoAcaoUsuarioId)) {
+      setPlanoAcaoUsuarioId("");
+    }
+  }, [planoAcaoUsuariosSetor, planoAcaoUsuarioId]);
 
   const aprovadorOk = !requerAprovacao
     || (aprovadorMode === "individual" && !!aprovadorId && aprovadorId !== avaliadoId && (!isSelfTask || aprovadorId !== profile?.id))
@@ -315,6 +353,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
   // Step 1 = Estrutura (builder). Step 2 = Designação. Step 3 = Prazos & Notas.
   const canAdvanceStep1 = fields.length > 0 && !horarioValidationError;
   const canAdvanceStep2 = !!avaliadoId
+    && !!setorId
     && !!dataPrevista
     && planoAcaoOk
     && validadorOk
@@ -356,9 +395,9 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
         avaliado_profile_id: avaliadoId,
         aprovador_profile_id: aprovacaoAtiva && aprovadorMode === "individual" ? (aprovadorId || null) : null,
         aprovador_setor_id: aprovacaoAtiva && aprovadorMode === "setor" ? (aprovadorSetorId || null) : null,
-        responsavel_contingencia_id: planoAcaoEnabled && planoAcaoMode === "individual" ? (planoAcaoId || null) : null,
-        validador_contingencia_profile_id: planoAcaoEnabled && planoAcaoMode === "individual" ? (planoAcaoId || null) : null,
-        validador_contingencia_setor_id: planoAcaoEnabled && planoAcaoMode === "setor" ? (planoAcaoSetorId || null) : null,
+        responsavel_contingencia_id: planoAcaoProfileIdResolvido,
+        validador_contingencia_profile_id: planoAcaoProfileIdResolvido,
+        validador_contingencia_setor_id: planoAcaoSetorIdResolvido,
         requer_aprovacao_gestor: aprovacaoAtiva,
         modo_pontuacao: pontuacaoValida ? "pontuar_avaliado" : "sem_pontuacao",
         destino_score: "individual",
@@ -509,7 +548,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
         avaliador_id: requerValidacao && validadorMode === "individual" ? (validadorId || null) : null,
         avaliado_id: avaliadoId,
         aprovador_id: aprovacaoAtiva && aprovadorMode === "individual" ? (aprovadorId || null) : null,
-        validador_contingencia_id: planoAcaoEnabled && planoAcaoMode === "individual" ? (planoAcaoId || null) : null,
+        validador_contingencia_id: planoAcaoProfileIdResolvido,
         setor_avaliador_id: requerValidacao && validadorMode === "setor" ? (validadorSetorId || null) : null,
         setor_executor_id: setorId || null,
         template_versao: 1,
@@ -585,13 +624,12 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label>Setor da tarefa {initialSetorId ? "" : "(opcional)"}</Label>
-                  <Select value={setorId || "__none"} onValueChange={(v) => setSetorId(v === "__none" ? "" : v)} disabled={!!initialSetorId}>
+                  <Label>Setor da tarefa *</Label>
+                  <Select value={setorId} onValueChange={setSetorId} disabled={!!initialSetorId}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecionar setor..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__none">Sem setor</SelectItem>
                       {(setores as any[]).map((s) => (
                         <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
                       ))}
@@ -604,8 +642,8 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
 
                 <div className="space-y-1.5">
                   <Label>Avaliado *</Label>
-                  <Select value={avaliadoId} onValueChange={setAvaliadoId}>
-                    <SelectTrigger><SelectValue placeholder={setorId && avaliadoOptions.length === 0 ? "Nenhum colaborador no setor" : "Selecionar..."} /></SelectTrigger>
+                  <Select value={avaliadoId} onValueChange={setAvaliadoId} disabled={!setorId}>
+                    <SelectTrigger><SelectValue placeholder={!setorId ? "Selecione o setor primeiro" : (avaliadoOptions.length === 0 ? "Nenhum colaborador no setor" : "Selecionar...")} /></SelectTrigger>
                     <SelectContent>
                       {avaliadoOptions.map((c: any) => (
                         <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
@@ -613,15 +651,57 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                     </SelectContent>
                   </Select>
                   <p className="text-[10px] text-muted-foreground">
-                    {setorId
-                      ? "Lista filtrada pelos colaboradores vinculados ao setor."
-                      : "Pessoa que responde a tarefa e recebe a nota."}
+                    Pessoa que responde a tarefa e recebe a nota. Filtrada pelos colaboradores vinculados ao setor.
                   </p>
                 </div>
 
-                {/* (Removido) Bloco global "Responsável pelo Plano de Ação".
-                    A geração de plano de ação agora é configurada por pergunta no FormBuilder
-                    (cada item não conforme abre seu próprio plano). */}
+                {/* Plano de Ação — responsável obrigatório (definido na Designação). */}
+                <div className="border-t border-border/60 pt-3 space-y-2">
+                  <div>
+                    <Label className="text-sm">Quem responde Plano de Ação? *</Label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Quando uma pergunta gerar não conformidade/plano de ação, esta pessoa (ou setor) receberá a pendência em "Minhas Tarefas".
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
+                    <label className={cn("flex items-center gap-1.5 cursor-pointer rounded-md border px-2 py-1.5", planoAcaoResp === "avaliado" && "border-primary bg-primary/5")}>
+                      <input type="radio" checked={planoAcaoResp === "avaliado"} onChange={() => setPlanoAcaoResp("avaliado")} />
+                      Próprio avaliado
+                    </label>
+                    <label className={cn("flex items-center gap-1.5 cursor-pointer rounded-md border px-2 py-1.5", planoAcaoResp === "usuario_setor" && "border-primary bg-primary/5", !setorId && "opacity-50 cursor-not-allowed")}>
+                      <input type="radio" checked={planoAcaoResp === "usuario_setor"} onChange={() => setPlanoAcaoResp("usuario_setor")} disabled={!setorId} />
+                      Usuário específico do setor
+                    </label>
+                    <label className={cn("flex items-center gap-1.5 cursor-pointer rounded-md border px-2 py-1.5", planoAcaoResp === "setor_inteiro" && "border-primary bg-primary/5", !setorId && "opacity-50 cursor-not-allowed")}>
+                      <input type="radio" checked={planoAcaoResp === "setor_inteiro"} onChange={() => setPlanoAcaoResp("setor_inteiro")} disabled={!setorId} />
+                      Setor inteiro
+                    </label>
+                    <label className={cn("flex items-center gap-1.5 cursor-pointer rounded-md border px-2 py-1.5", planoAcaoResp === "responsavel_padrao_setor" && "border-primary bg-primary/5", (!setorId || !responsavelPadraoSetorId) && "opacity-50 cursor-not-allowed")}>
+                      <input type="radio" checked={planoAcaoResp === "responsavel_padrao_setor"} onChange={() => setPlanoAcaoResp("responsavel_padrao_setor")} disabled={!setorId || !responsavelPadraoSetorId} />
+                      Responsável padrão do setor
+                    </label>
+                  </div>
+                  {planoAcaoResp === "usuario_setor" && (
+                    <Select value={planoAcaoUsuarioId} onValueChange={setPlanoAcaoUsuarioId}>
+                      <SelectTrigger><SelectValue placeholder={planoAcaoUsuariosSetor.length === 0 ? "Nenhum usuário no setor" : "Selecionar usuário..."} /></SelectTrigger>
+                      <SelectContent>
+                        {planoAcaoUsuariosSetor.map((c: any) => (
+                          <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {planoAcaoResp === "responsavel_padrao_setor" && setorId && !responsavelPadraoSetorId && (
+                    <p className="text-[10px] text-amber-600 dark:text-amber-400">
+                      Este setor não possui responsável padrão definido. Configure em Setores ou escolha outra opção.
+                    </p>
+                  )}
+                  {planoAcaoResp === "responsavel_padrao_setor" && responsavelPadraoSetorId && (
+                    <p className="text-[10px] text-muted-foreground">
+                      Será atribuído a: {(colaboradores as any[]).find((c) => c.id === responsavelPadraoSetorId)?.nome || "—"}
+                    </p>
+                  )}
+                </div>
 
                 <div className="border-t border-border/60 pt-3 space-y-2">
                   <div className="flex items-center justify-between gap-2">
@@ -851,7 +931,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                 setores={setores as any[]}
                 tipoExecucao={taskType === "simples" ? "tarefa_simples" : "etapas"}
                 requireFieldHorario={taskType !== "simples" && horarioModo === "individual"}
-                planoAcaoEnabled={planoAcaoEnabled}
+                planoAcaoEnabled={true}
                 agrupadorExtras={agrupadorExtras}
                 setAgrupadorExtras={setAgrupadorExtras}
                 aprovacaoFinalEnabled={requerAprovacao}

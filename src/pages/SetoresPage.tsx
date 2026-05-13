@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Tables } from "@/integrations/supabase/types";
 import { useAuth } from "@/contexts/AuthContext";
 import AdminPasswordDialog from "@/components/AdminPasswordDialog";
@@ -23,6 +24,7 @@ export default function SetoresPage() {
   const [editing, setEditing] = useState<Setor | null>(null);
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
+  const [responsavelPadraoId, setResponsavelPadraoId] = useState<string>("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -35,13 +37,23 @@ export default function SetoresPage() {
     },
   });
 
+  const { data: profiles = [] } = useQuery({
+    queryKey: ["setores_profiles_for_responsavel_padrao"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("id, nome").eq("ativo", true).order("nome");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   const upsert = useMutation({
     mutationFn: async () => {
+      const payload: any = { nome, descricao, responsavel_padrao_id: responsavelPadraoId || null };
       if (editing) {
-        const { error } = await supabase.from("setores").update({ nome, descricao }).eq("id", editing.id);
+        const { error } = await supabase.from("setores").update(payload).eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("setores").insert({ nome, descricao });
+        const { error } = await supabase.from("setores").insert(payload);
         if (error) throw error;
       }
     },
@@ -80,8 +92,8 @@ export default function SetoresPage() {
     setDeletingId(null);
   };
 
-  const openCreate = () => { setEditing(null); setNome(""); setDescricao(""); setDialogOpen(true); };
-  const openEdit = (s: Setor) => { setEditing(s); setNome(s.nome); setDescricao(s.descricao || ""); setDialogOpen(true); };
+  const openCreate = () => { setEditing(null); setNome(""); setDescricao(""); setResponsavelPadraoId(""); setDialogOpen(true); };
+  const openEdit = (s: Setor) => { setEditing(s); setNome(s.nome); setDescricao(s.descricao || ""); setResponsavelPadraoId((s as any).responsavel_padrao_id || ""); setDialogOpen(true); };
   const closeDialog = () => { setDialogOpen(false); setEditing(null); };
 
   return (
@@ -156,6 +168,19 @@ export default function SetoresPage() {
             <div className="space-y-1.5">
               <Label>Descrição</Label>
               <Textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Responsável padrão (opcional)</Label>
+              <Select value={responsavelPadraoId || "__none"} onValueChange={(v) => setResponsavelPadraoId(v === "__none" ? "" : v)}>
+                <SelectTrigger><SelectValue placeholder="Selecionar responsável padrão..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">Sem responsável padrão</SelectItem>
+                  {(profiles as any[]).map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground">Sugerido como responsável de Plano de Ação na criação de tarefas deste setor.</p>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={closeDialog}>Cancelar</Button>
