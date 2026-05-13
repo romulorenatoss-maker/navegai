@@ -387,6 +387,47 @@ export function useOperationalTransition() {
         extraData,
       );
 
+      // Histórico de pausas SLA (auditável)
+      try {
+        if (enteringPlano) {
+          await (supabase as any).from("operational_sla_pausas").insert({
+            assignment_id: assignmentId,
+            motivo: motivo || null,
+            status_origem: currentStatus,
+            status_destino: targetStatus,
+            started_at: now,
+            iniciada_por: profile.id,
+          });
+        }
+        if (leavingPlano && (snap as any).pausa_iniciada_em) {
+          const startIso = (snap as any).pausa_iniciada_em as string;
+          const durMs = Math.max(0, Date.now() - new Date(startIso).getTime());
+          // Fecha a pausa aberta mais recente
+          const { data: openRows } = await (supabase as any)
+            .from("operational_sla_pausas")
+            .select("id")
+            .eq("assignment_id", assignmentId)
+            .is("ended_at", null)
+            .order("started_at", { ascending: false })
+            .limit(1);
+          const openId = openRows?.[0]?.id;
+          if (openId) {
+            await (supabase as any)
+              .from("operational_sla_pausas")
+              .update({
+                ended_at: now,
+                duration_ms: durMs,
+                encerrada_por: profile.id,
+                status_destino: targetStatus,
+              })
+              .eq("id", openId);
+          }
+        }
+      } catch (e) {
+        // não bloquear a transição por falha no histórico de pausa
+        console.warn("[sla_pausas] histórico falhou:", e);
+      }
+
       return { newStatus: action === "invalidar_admin" ? currentStatus : targetStatus, previousStatus: currentStatus };
     },
     onSuccess: () => {
