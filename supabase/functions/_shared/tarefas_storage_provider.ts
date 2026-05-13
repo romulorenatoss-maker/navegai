@@ -109,34 +109,38 @@ async function createFolder(name: string, parentId: string | null): Promise<stri
   return j.id;
 }
 
-async function ensureFolderPath(segments: string[]): Promise<string> {
+async function ensureFolderPath(rootFolderId: string, segments: string[]): Promise<string> {
+  const cache = cacheFor(rootFolderId);
   const cacheKey = segments.join('/');
-  const cached = folderCache.get(cacheKey);
+  if (cacheKey === '') return rootFolderId;
+  const cached = cache.get(cacheKey);
   if (cached) return cached;
 
-  let parent: string | null = null;
+  let parent: string = rootFolderId;
   let runningKey = '';
   for (const seg of segments) {
     runningKey = runningKey ? `${runningKey}/${seg}` : seg;
-    const memo = folderCache.get(runningKey);
+    const memo = cache.get(runningKey);
     if (memo) { parent = memo; continue; }
     let id = await findFolder(seg, parent);
     if (!id) id = await createFolder(seg, parent);
-    folderCache.set(runningKey, id);
+    cache.set(runningKey, id);
     parent = id;
   }
-  return parent!;
+  return parent;
 }
 
 const googleDriveProvider: StorageProvider = {
   name: 'google_drive',
 
-  async upload({ pathRelativo, nomeOriginal, mimeType, conteudo }) {
+  async upload({ pathRelativo, nomeOriginal, mimeType, conteudo, rootFolderId }) {
+    if (!rootFolderId) {
+      throw new Error('rootFolderId obrigatório — configure a pasta-mãe em Configurações → Integrações.');
+    }
     // pathRelativo termina em /{nome_arquivo}; pasta = tudo antes.
     const parts = pathRelativo.split('/').filter(Boolean);
     const fileName = parts.pop()!;
-    const folderSegments = [ROOT_FOLDER_NAME, ...parts];
-    const folderId = await ensureFolderPath(folderSegments);
+    const folderId = await ensureFolderPath(rootFolderId, parts);
 
     const metadata = {
       name: fileName,
