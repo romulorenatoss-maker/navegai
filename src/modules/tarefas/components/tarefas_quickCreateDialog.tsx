@@ -22,6 +22,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFoo
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DEFAULT_SOLICITACAO_CONFIG, type SolicitacaoConfig } from "@/modules/tarefas/services/tarefas_solicitacaoConfig";
+import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
 
 // localStorage keys for default penalty values (per-user defaults set via gear icon)
 const LS_DEFAULTS_KEY = "quicktask_workflow_defaults_v1";
