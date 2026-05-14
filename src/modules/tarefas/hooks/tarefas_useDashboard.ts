@@ -27,7 +27,7 @@ export function useOperationalDashboard(filters: OperationalDashboardFilters) {
         .from("operational_assignments")
         .select(`
           id, status, data_prevista, inicio_em, fim_em, score_executor, score_avaliado, score_aprovador,
-          score_final_ajustado, template_id, responsavel_id, avaliado_id, avaliador_id,
+          score_final_ajustado, template_id, responsavel_id, avaliado_id, aprovador_id,
           setor_executor_id, setor_avaliado_id, rodada_atual,
           template:operational_templates!operational_assignments_template_id_fkey(id, nome)
         `)
@@ -39,7 +39,7 @@ export function useOperationalDashboard(filters: OperationalDashboardFilters) {
       if (filters.setorId) q = q.or(`setor_executor_id.eq.${filters.setorId},setor_avaliado_id.eq.${filters.setorId}`);
       if (filters.executorId) q = q.eq("responsavel_id", filters.executorId);
       if (filters.avaliadoId) q = q.eq("avaliado_id", filters.avaliadoId);
-      if (filters.aprovadorId) q = q.eq("avaliador_id", filters.aprovadorId);
+      if (filters.aprovadorId) q = q.eq("aprovador_id", filters.aprovadorId);
 
       const { data, error } = await q;
       if (error) throw error;

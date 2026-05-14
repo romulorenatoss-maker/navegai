@@ -48,11 +48,11 @@ export default function AssignmentQuickViewDialog({ assignmentId, open, onOpenCh
           template_id,
           operational_templates(nome, descricao),
           responsavel:profiles!operational_assignments_responsavel_id_fkey(id, nome),
-          avaliador:profiles!operational_assignments_aprovador_id_fkey(id, nome),
+          aprovador:profiles!operational_assignments_aprovador_id_fkey(id, nome),
           avaliado:profiles!operational_assignments_avaliado_id_fkey(id, nome),
           aprovador:profiles!operational_assignments_aprovador_id_fkey(id, nome),
           setor_executor:setores!operational_assignments_setor_executor_id_fkey(id, nome),
-          setor_avaliador:setores!operational_assignments_setor_aprovador_id_fkey(id, nome),
+          setor_aprovador:setores!operational_assignments_setor_aprovador_id_fkey(id, nome),
           setor_avaliado:setores!operational_assignments_setor_avaliado_id_fkey(id, nome)
         `)
         .eq("id", assignmentId!)
@@ -121,7 +121,7 @@ export default function AssignmentQuickViewDialog({ assignmentId, open, onOpenCh
                 <h4 className="text-sm font-semibold mb-2">Responsáveis</h4>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <Info label="Executor" value={a.responsavel?.nome ?? "—"} sub={a.setor_executor?.nome} />
-                  <Info label="Avaliador" value={a.avaliador?.nome ?? "—"} sub={a.setor_avaliador?.nome} />
+                  <Info label="Aprovador" value={a.aprovador?.nome ?? "—"} sub={a.setor_aprovador?.nome} />
                   <Info label="Avaliado" value={a.avaliado?.nome ?? "—"} sub={a.setor_avaliado?.nome} />
                   <Info label="Aprovador" value={a.aprovador?.nome ?? "—"} />
                 </div>
@@ -134,7 +134,7 @@ export default function AssignmentQuickViewDialog({ assignmentId, open, onOpenCh
                     <h4 className="text-sm font-semibold mb-2">Pontuações</h4>
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <Info label="Executor" value={a.score_executor ?? "—"} />
-                      <Info label="Avaliador" value={a.score_aprovador ?? "—"} />
+                      <Info label="Aprovador" value={a.score_aprovador ?? "—"} />
                       <Info label="Avaliado" value={a.score_avaliado ?? "—"} />
                       <Info label="Final ajustado" value={a.score_final_ajustado ?? a.pontuacao_obtida ?? "—"} />
                     </div>

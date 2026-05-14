@@ -49,7 +49,7 @@ export default function MinhasTarefasTab({ viewAsProfileId }: MinhasTarefasTabPr
           score_avaliado, score_final_ajustado, pontuacao_obtida,
           template_id,
           operational_templates(nome),
-          avaliador:profiles!operational_assignments_aprovador_id_fkey(id, nome)
+          aprovador:profiles!operational_assignments_aprovador_id_fkey(id, nome)
         `)
         .eq("avaliado_id", effectiveProfileId)
         .in("status", COMPLETED_STATUSES)
@@ -167,7 +167,7 @@ export default function MinhasTarefasTab({ viewAsProfileId }: MinhasTarefasTabPr
                   <tr key={a.id} className="hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setSelectedAssignmentId(a.id)}>
                     <td className="px-4 py-3 text-body font-mono text-primary">#{a.numero_tarefa}</td>
                     <td className="px-4 py-3 text-body text-foreground">{a.operational_templates?.nome || "—"}</td>
-                    <td className="px-4 py-3 text-body text-muted-foreground">{a.avaliador?.nome || "—"}</td>
+                    <td className="px-4 py-3 text-body text-muted-foreground">{a.aprovador?.nome || "—"}</td>
                     <td className="px-4 py-3 text-body text-muted-foreground">{format(new Date(a.data_prevista), "dd/MM/yyyy")}</td>
                     <td className="px-4 py-3">
                       <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-caption font-medium border", sl.cls)}>{sl.text}</span>
