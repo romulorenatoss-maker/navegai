@@ -135,22 +135,12 @@ export function TarefasBuilderWizard(props: Props) {
         )}
 
         {current === "campos" && (
-          <div className="space-y-4">
-            <PenalidadesAutomaticasBlock
-              camadaKey="sla_executor"
-              titulo="Penalidades automáticas do Avaliado"
-              descricao="Estas perguntas são avaliadas automaticamente pelo sistema (sem intervenção humana) e descontam pontos do avaliado quando ocorrem. Os valores padrão vêm das Configurações > Pontuação/SLA e podem ser ajustados apenas para esta rotina."
-              globalConfig={pontuacaoConfig}
-              overrides={penalidadesOverride}
-              onOverridesChange={setPenalidadesOverride}
-            />
-            <TabFormBuilder
-              sections={sections} setSections={setSections}
-              fields={fields} setFields={setFields}
-              setores={setores} tipoExecucao={form.tipo_execucao}
-              aprovacaoFinalEnabled={!!form.requer_aprovacao_gestor}
-            />
-          </div>
+          <TabFormBuilder
+            sections={sections} setSections={setSections}
+            fields={fields} setFields={setFields}
+            setores={setores} tipoExecucao={form.tipo_execucao}
+            aprovacaoFinalEnabled={!!form.requer_aprovacao_gestor}
+          />
         )}
 
         {current === "checklist_aprovador" && hasAprovador && (
