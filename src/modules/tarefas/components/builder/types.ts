@@ -120,6 +120,14 @@ export interface AprovadorCheckItemForm {
   config_global_origem_id?: string;
   /** Métrica calculável (apenas para automaticas). */
   metrica_calculo?: string;
+  /** Camada que está sendo auditada (validador). */
+  camada_alvo?: "aprovador" | "executor" | "plano_acao";
+  /** Descrição curta da fonte real (tabela/coluna/evento). */
+  fonte_dados?: string;
+  /** Descrição humana da regra de cálculo. */
+  regra_calculo?: string;
+  /** True quando a fonte de cálculo ainda não está cabeada. */
+  metrica_pendente?: boolean;
   ativo?: boolean;
   editado_manual?: boolean;
   editado_por?: string;
