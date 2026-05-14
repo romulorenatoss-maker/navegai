@@ -36,7 +36,7 @@ export default function OperationalCadastroPage() {
   const [pendingDraft, setPendingDraft] = useState<BuilderDraftPayload | null>(null);
 
   // Autosave (localStorage only — sem banco)
-  useDraftAutosave(editingId, dialogOpen, { form, sections, fields, steps });
+  useDraftAutosave(editingId, dialogOpen, { form, sections, fields, steps, aprovadorChecks, validadorChecks });
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ["operational_templates"],
@@ -212,7 +212,7 @@ export default function OperationalCadastroPage() {
         penalidade_fora_prazo: form.penalidade_fora_prazo,
         habilitar_perguntas_automaticas: form.habilitar_perguntas_automaticas,
         ada_config_snapshot: {
-          ...((form as any).ada_config_snapshot ?? {}),
+          ...(((form as any).ada_config_snapshot ?? {}) as any),
           checklists: {
             aprovador: aprovadorChecks,
             validador: validadorChecks,
@@ -530,6 +530,8 @@ export default function OperationalCadastroPage() {
     setSections(pendingDraft.sections);
     setFields(pendingDraft.fields);
     setSteps(pendingDraft.steps);
+    setAprovadorChecks(pendingDraft.aprovadorChecks ?? []);
+    setValidadorChecks(pendingDraft.validadorChecks ?? []);
     
     setPendingDraft(null);
     toast.success("Rascunho restaurado.");
