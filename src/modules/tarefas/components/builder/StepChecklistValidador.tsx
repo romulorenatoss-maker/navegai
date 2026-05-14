@@ -147,8 +147,10 @@ export function StepChecklistValidador({ items, setItems }: Props) {
         {ordered.map((it, idx) => {
           const origem: AprovadorOrigem = it.origem_pergunta ?? "manual";
           const badge = ORIGEM_BADGE[origem];
+          const isDoPacote = origem === "automatica_configuracao" || origem === "replicada_padrao_manual";
+          const inativa = it.ativo === false;
           return (
-            <div key={it.tempId} className="border border-border rounded-lg bg-card p-3">
+            <div key={it.tempId} className={`border rounded-lg bg-card p-3 ${inativa ? "border-dashed border-border opacity-60" : "border-border"}`}>
               <div className="flex items-start gap-2">
                 <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-[11px] font-bold shrink-0">
                   {idx + 1}
@@ -158,6 +160,11 @@ export function StepChecklistValidador({ items, setItems }: Props) {
                     <Badge variant="outline" className={`text-[9px] px-1.5 py-0 h-4 font-semibold ${badge.cls}`}>
                       {badge.label}
                     </Badge>
+                    {inativa && (
+                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 bg-muted text-muted-foreground">
+                        DESATIVADA · não conta na nota
+                      </Badge>
+                    )}
                     {it.metrica_pendente && (
                       <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 bg-muted text-muted-foreground" title={it.regra_calculo || "Métrica ainda não cabeada"}>
                         métrica pendente
@@ -180,12 +187,21 @@ export function StepChecklistValidador({ items, setItems }: Props) {
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                  {isDoPacote && (
+                    <Switch
+                      checked={it.ativo !== false}
+                      onCheckedChange={(v) => updateItem(it.tempId, { ativo: v })}
+                      title={it.ativo !== false ? "Desativar (não contabilizar na nota)" : "Reativar"}
+                    />
+                  )}
                   <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setEditingTempId(it.tempId)}>
                     <Settings2 className="w-3.5 h-3.5" />
                   </Button>
-                  <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => removeItem(it.tempId)}>
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
+                  {!isDoPacote && (
+                    <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => removeItem(it.tempId)}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
