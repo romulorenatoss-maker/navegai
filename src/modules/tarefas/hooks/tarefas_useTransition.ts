@@ -87,6 +87,9 @@ export type TransitionAction =
   | "enviar_contingencia"
   | "retornar_avaliacao"
   | "aprovar_final"
+  | "enviar_auditoria"          // aprovador → aguardando_auditoria (quando template tem auditor configurado)
+  | "auditor_aprovar"           // auditor → aprovada/concluida
+  | "auditor_devolver"          // auditor → devolvida (com motivo)
   | "reprovar_devolver_final"
   | "encerrar_final"
   | "reabrir"
@@ -168,7 +171,11 @@ function resolveTargetStatus(action: TransitionAction, _currentStatus: string, e
     case "enviar_contingencia": return TASK_STATUS.CONTINGENCIADO;
     // retorno do aprovador para o executor é DEVOLVIDA (saneamento 4 papéis)
     case "retornar_avaliacao": return TASK_STATUS.DEVOLVIDA;
-    case "aprovar_final": return TASK_STATUS.APROVADA;
+    case "aprovar_final":
+      return extraData?.requerAuditoria ? TASK_STATUS.AGUARDANDO_AUDITORIA : TASK_STATUS.APROVADA;
+    case "enviar_auditoria": return TASK_STATUS.AGUARDANDO_AUDITORIA;
+    case "auditor_aprovar": return TASK_STATUS.APROVADA;
+    case "auditor_devolver": return TASK_STATUS.DEVOLVIDA;
     case "reprovar_devolver_final": return TASK_STATUS.DEVOLVIDA;
     case "encerrar_final": return TASK_STATUS.CONCLUIDA;
     case "reabrir":
@@ -272,7 +279,7 @@ export function useOperationalTransition() {
       }
 
       // Bloqueia avanço com contingências em aberto
-      if ([TASK_STATUS.AGUARDANDO_APROVACAO, TASK_STATUS.CONCLUIDA, TASK_STATUS.APROVADA].includes(targetStatus as any)
+      if ([TASK_STATUS.AGUARDANDO_APROVACAO, TASK_STATUS.AGUARDANDO_AUDITORIA, TASK_STATUS.CONCLUIDA, TASK_STATUS.APROVADA].includes(targetStatus as any)
           && action !== "encerrar_final" && action !== "validar_solicitante_aprovar") {
         const openCount = await hasOpenContingencies(assignmentId);
         if (openCount > 0) {
@@ -283,6 +290,7 @@ export function useOperationalTransition() {
       // Motivo obrigatório
       const motivoObrigatorio: TransitionAction[] = [
         "reabrir", "avaliar_devolver", "avaliar_reprovar", "reprovar_devolver_final",
+        "auditor_devolver",
         "validar_designada_devolver", "validar_solicitante_devolver",
         "negociar_prazo_executor", "recusar_renegociacao_solicitante",
         "cancelar_solicitante", "cancelar_admin",
@@ -315,15 +323,20 @@ export function useOperationalTransition() {
       if (
         action === "avaliar_devolver"
         || action === "reprovar_devolver_final"
+        || action === "auditor_devolver"
         || action === "validar_designada_devolver"
         || action === "validar_solicitante_devolver"
       ) {
         updatePayload.rodada_atual = (extraData?.rodadaAtual || 1) + 1;
       }
 
-      if (action === "aprovar_final" || action === "encerrar_final") {
+      if (action === "aprovar_final" || action === "encerrar_final" || action === "auditor_aprovar") {
         if (extraData?.aprovadorId) updatePayload.aprovador_id = extraData.aprovadorId;
         if (extraData?.scoreFinal != null) updatePayload.score_final_ajustado = extraData.scoreFinal;
+      }
+
+      if (action === "auditor_aprovar" || action === "auditor_devolver") {
+        updatePayload.auditor_fim_em = now;
       }
 
       if (action === "avaliar_aprovar" && extraData?.requerAprovacao && extraData?.aprovadorProfileId) {

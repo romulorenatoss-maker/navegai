@@ -246,6 +246,13 @@ export function useApprovalFlow(assignmentId: string | null) {
         await saveApproverAnswers.mutateAsync(snapshotFields);
       }
 
+      // Roteamento auditor: se template tem auditor configurado E há campos auditor_verificar,
+      // a aprovação vai para AGUARDANDO_AUDITORIA em vez de APROVADA.
+      const auditorFields = snapshotFields.filter((f: any) => f.auditor_verificar);
+      const requerAuditoria = action === "aprovar"
+        && !!assignment?.auditor_id
+        && auditorFields.length > 0;
+
       let transitionAction: "aprovar_final" | "reprovar_devolver_final" | "encerrar_final";
       switch (action) {
         case "aprovar": transitionAction = "aprovar_final"; break;
@@ -261,18 +268,20 @@ export function useApprovalFlow(assignmentId: string | null) {
         extraData: {
           aprovadorId: profile.id,
           rodadaAtual: assignment.rodada_atual,
+          requerAuditoria,
         },
       });
 
       await (supabase as any).from("operational_execution_logs").insert({
         assignment_id: assignmentId,
-        acao: `aprovador_${action}`,
+        acao: requerAuditoria ? "aprovador_enviou_auditoria" : `aprovador_${action}`,
         executado_por: profile.id,
-        detalhes: { action, motivo: motivo || null, rodada: assignment.rodada_atual },
+        detalhes: { action, motivo: motivo || null, rodada: assignment.rodada_atual, requerAuditoria },
       });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["operational_aprovacao_assignments"] });
+      qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
       toast.success("Decisão registrada com sucesso!");
     },
     onError: (e: any) => toast.error(e.message),

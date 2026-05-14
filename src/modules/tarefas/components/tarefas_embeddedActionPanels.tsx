@@ -23,7 +23,7 @@ import { useAssignmentReview } from "@/modules/tarefas/hooks/tarefas_useAssignme
 import { useApprovalFlow } from "@/modules/tarefas/hooks/tarefas_useApprovalFlow";
 import { ReviewFieldCard } from "@/modules/tarefas/components/tarefas_reviewFieldCard";
 import { SnapshotField, evaluateVisibility } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
-import { VALIDADOR_PACOTE_PADRAO_DEFAULT } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
+
 
 /* =========================================================================
  * EmbeddedReviewPanel — usado quando current user é avaliador
@@ -623,67 +623,131 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   );
 }
 
-export function EmbeddedAuditPanel({ assignment, onClose }: ApprovalProps) {
-  const { profile } = useAuth();
-  const qc = useQueryClient();
-  const [answers, setAnswers] = useState<Record<string, { resposta: string; observacao: string }>>({});
-  const [saving, setSaving] = useState(false);
-  const questions = useMemo(() => {
-    const snapItems = (assignment?.template_snapshot as any)?.ada_config_snapshot?.checklists?.validador;
-    const source = Array.isArray(snapItems) && snapItems.length > 0 ? snapItems : VALIDADOR_PACOTE_PADRAO_DEFAULT.filter((p) => p.ativo !== false);
-    return source.map((q: any, index: number) => ({
-      id: q.tempId || q.id || `auditoria-${index}`,
-      pergunta: q.pergunta_padrao || q.pergunta || "Pergunta de auditoria",
-      peso: Number(q.peso) || 1,
-    }));
-  }, [assignment?.template_snapshot]);
+/* =========================================================================
+ * EmbeddedAuditPanel — usado quando current user é auditor
+ *   status: aguardando_auditoria
+ * ========================================================================= */
+export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProps) {
+  // import lazy para evitar ciclo
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { useAuditFlow } = require("@/modules/tarefas/hooks/tarefas_useAuditFlow");
+  const flow = useAuditFlow(assignment?.id || null);
+  const [motivoFinal, setMotivoFinal] = useState("");
+  const auditorFields = useMemo(() => fields.filter((f: any) => f.auditor_verificar), [fields]);
+  const blockReasons = flow.getBlockingReasons(assignment);
 
-  const allAnswered = questions.every((q) => !!answers[q.id]?.resposta);
-  const saveAudit = async () => {
-    if (!profile?.id || !assignment?.id || !allAnswered) return;
-    setSaving(true);
-    const now = new Date().toISOString();
-    const payload = questions.map((q) => ({ ...q, ...answers[q.id] }));
-    const { error: historyError } = await (supabase as any).from("operational_assignment_history").insert({
-      assignment_id: assignment.id,
-      tipo_evento: "AUDITORIA_REGISTRADA",
-      usuario_id: profile.id,
-      etapa: "auditoria",
-      detalhes_json: { respostas: payload },
+  const saveTimers = useRef<Record<string, any>>({});
+  const scheduleAutoSave = (fieldId: string, payload: any) => {
+    if (saveTimers.current[fieldId]) clearTimeout(saveTimers.current[fieldId]);
+    saveTimers.current[fieldId] = setTimeout(() => {
+      flow.autoSaveAuditorAnswer.mutate({
+        fieldId,
+        resposta: payload.resposta,
+        observacao: payload.observacao,
+        evidenciaUrl: payload.evidencia_url ?? null,
+        motivoAlteracao: payload.motivo_alteracao ?? null,
+        herdada: payload.herdada ?? false,
+      });
+    }, 600);
+  };
+
+  const handleResposta = (f: any, value: string) => {
+    const draft = flow.auditorAnswers[f.id];
+    flow.updateAuditorAnswer(f.id, { resposta: value });
+    scheduleAutoSave(f.id, {
+      resposta: value, observacao: draft?.observacao ?? "",
+      evidencia_url: draft?.evidencia_url ?? null,
+      motivo_alteracao: draft?.motivo_alteracao ?? null,
+      herdada: draft?.herdada ?? false,
     });
-    if (historyError) { setSaving(false); toast.error(historyError.message); return; }
-    const { error: updateError } = await (supabase as any).from("operational_assignments").update({
-      auditor_fim_em: now,
-      auditado_em: now,
-      auditado_por: profile.id,
-    }).eq("id", assignment.id);
-    setSaving(false);
-    if (updateError) { toast.error(updateError.message); return; }
-    qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
-    toast.success("Auditoria registrada.");
-    onClose();
+  };
+
+  const handleObs = (f: any, observacao: string) => {
+    const draft = flow.auditorAnswers[f.id];
+    flow.updateAuditorAnswer(f.id, { observacao });
+    scheduleAutoSave(f.id, {
+      resposta: draft?.resposta ?? "", observacao,
+      evidencia_url: draft?.evidencia_url ?? null,
+      motivo_alteracao: draft?.motivo_alteracao ?? null,
+      herdada: draft?.herdada ?? false,
+    });
+  };
+
+  const aprovar = async () => {
+    try { await flow.finalDecision.mutateAsync({ assignment, action: "aprovar" }); onClose(); }
+    catch (e: any) { toast.error(e.message); }
+  };
+  const devolver = async () => {
+    if (!motivoFinal.trim()) { toast.error("Justifique a devolução."); return; }
+    try { await flow.finalDecision.mutateAsync({ assignment, action: "devolver", motivo: motivoFinal }); onClose(); }
+    catch (e: any) { toast.error(e.message); }
   };
 
   return (
     <div className="space-y-3">
       <div className="bg-primary/5 border border-primary/30 rounded-lg p-3 flex items-start gap-2">
         <ShieldCheck className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-        <div className="text-xs text-foreground"><strong>Modo Auditor.</strong> Responda as perguntas de validação final.</div>
+        <div className="text-xs text-foreground"><strong>Modo Auditor.</strong> Responda as perguntas de auditoria configuradas no template.</div>
       </div>
-      {questions.map((q) => (
-        <div key={q.id} className="border border-border rounded-lg p-3 space-y-2 bg-card">
-          <div className="text-sm font-medium text-foreground">{q.pergunta}</div>
-          <div className="flex gap-2">
-            {["conforme", "nao_conforme", "na"].map((v) => (
-              <Button key={v} type="button" size="sm" variant={answers[q.id]?.resposta === v ? "default" : "outline"} onClick={() => setAnswers((prev) => ({ ...prev, [q.id]: { resposta: v, observacao: prev[q.id]?.observacao || "" } }))}>
-                {v === "conforme" ? "Conforme" : v === "nao_conforme" ? "Não conforme" : "N/A"}
-              </Button>
-            ))}
-          </div>
-          <Textarea className="text-xs min-h-[44px]" placeholder="Observação..." value={answers[q.id]?.observacao || ""} onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: { resposta: prev[q.id]?.resposta || "", observacao: e.target.value } }))} />
+
+      {auditorFields.length === 0 ? (
+        <p className="text-xs text-muted-foreground text-center py-4">Nenhuma pergunta de auditoria configurada neste template.</p>
+      ) : (
+        auditorFields.map((f: any) => {
+          const existing = flow.existingAuditAnswers.find((a: any) => a.field_id === f.id);
+          const draft = flow.auditorAnswers[f.id];
+          const value = draft?.resposta ?? existing?.resposta ?? "";
+          const obs = draft?.observacao ?? existing?.observacao ?? "";
+          const execAnswer = (flow.fieldAnswers || []).find((a: any) => a.field_id === f.id);
+          return (
+            <div key={f.id} className="border border-border rounded-lg p-3 space-y-2 bg-card">
+              <div className="text-sm font-medium text-foreground">{f.auditor_pergunta || `Auditar: ${f.label}`}</div>
+              {execAnswer && (
+                <div className="rounded-md border border-border/60 bg-muted/40 p-2 text-xs">
+                  <span className="text-muted-foreground">Resposta executor: </span>
+                  <strong>{execAnswer.valor_booleano === true ? "Conforme" : execAnswer.valor_booleano === false ? "Não Conforme" : execAnswer.valor_texto || "—"}</strong>
+                </div>
+              )}
+              <div className="flex gap-2">
+                {[
+                  { v: "conforme", label: "Conforme", cls: "border-emerald-300 text-emerald-700" },
+                  { v: "nao_conforme", label: "Não Conforme", cls: "border-red-300 text-red-700" },
+                  { v: "na", label: "N/A", cls: "border-muted-foreground/30 text-muted-foreground" },
+                ].map((opt) => (
+                  <button key={opt.v} type="button" onClick={() => handleResposta(f, opt.v)}
+                    className={`flex-1 text-xs px-2 py-1.5 rounded border transition-colors ${
+                      value === opt.v ? `${opt.cls} ring-2 ring-current/20 font-semibold` : "border-border text-muted-foreground hover:bg-muted"
+                    }`}>{opt.label}</button>
+                ))}
+              </div>
+              <Textarea placeholder="Observação..." className="text-xs min-h-[40px]" value={obs} onChange={(e) => handleObs(f, e.target.value)} />
+            </div>
+          );
+        })
+      )}
+
+      <div className="space-y-1 pt-2 border-t border-border">
+        <Label className="text-[11px]">Justificativa (obrigatória para devolver)</Label>
+        <Textarea value={motivoFinal} onChange={(e) => setMotivoFinal(e.target.value)} className="text-xs min-h-[44px]" maxLength={2000} />
+      </div>
+
+      {blockReasons.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-xs text-amber-800">
+          {blockReasons.map((r: string, i: number) => <div key={i}>• {r}</div>)}
         </div>
-      ))}
-      <Button type="button" size="sm" onClick={saveAudit} disabled={!allAnswered || saving}>{saving ? "Salvando..." : "Concluir Auditoria"}</Button>
+      )}
+
+      <div className="flex gap-2 pt-2 sticky bottom-0 bg-background pb-1">
+        <Button type="button" size="sm" variant="outline" onClick={devolver} disabled={flow.isSaving}
+          className="border-amber-300 text-amber-700 hover:bg-amber-50">
+          <RotateCcw className="w-3.5 h-3.5 mr-1" /> Devolver
+        </Button>
+        <div className="flex-1" />
+        <Button type="button" size="sm" onClick={aprovar} disabled={blockReasons.length > 0 || flow.isSaving}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white">
+          <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> {flow.isSaving ? "Salvando..." : "Aprovar Final"}
+        </Button>
+      </div>
     </div>
   );
 }

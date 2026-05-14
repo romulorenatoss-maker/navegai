@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { Play, Send, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock, RotateCcw, CheckCheck, CalendarClock, ListTodo, Hourglass, Filter, History, Plus, Users, Activity, ArrowDownUp, Eye } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { EmbeddedContingencyPanel } from "@/modules/tarefas/components/tarefas_embeddedContingencyPanel";
-import { EmbeddedReviewPanel, EmbeddedApprovalPanel } from "@/modules/tarefas/components/tarefas_embeddedActionPanels";
+import { EmbeddedReviewPanel, EmbeddedApprovalPanel, EmbeddedAuditPanel } from "@/modules/tarefas/components/tarefas_embeddedActionPanels";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Progress } from "@/components/ui/progress";
@@ -489,8 +489,11 @@ export default function OperationalExecucaoPage() {
   const isAprovadorMode = !!selectedAssignment
     && (selectedAssignment.aprovador_id === profile?.id || isAdmin)
     && selectedAssignment.status === "aguardando_aprovacao";
+  const isAuditorMode = !!selectedAssignment
+    && (selectedAssignment.auditor_id === profile?.id || isAdmin)
+    && selectedAssignment.status === "aguardando_auditoria";
 
-  const isEditable = selectedAssignment && !isAprovadorMode && !isAvaliadorMode && (
+  const isEditable = selectedAssignment && !isAprovadorMode && !isAvaliadorMode && !isAuditorMode && (
     (["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status) && (isOwner || isAdmin)) ||
     isAdminEditing
   );
@@ -1012,7 +1015,15 @@ export default function OperationalExecucaoPage() {
               />
             )}
 
-            {!isEditable && selectedAssignment && !isAvaliadorMode && !isAprovadorMode && (
+            {!isEditable && selectedAssignment && isAuditorMode && (
+              <EmbeddedAuditPanel
+                assignment={selectedAssignment}
+                fields={effectiveFields}
+                onClose={closeExecution}
+              />
+            )}
+
+            {!isEditable && selectedAssignment && !isAvaliadorMode && !isAprovadorMode && !isAuditorMode && (
               <div className="space-y-3">
                 {effectiveFields.map(f => (
                   <DynamicFieldRenderer key={f.id} field={f} answer={exec.answers[f.id]}
