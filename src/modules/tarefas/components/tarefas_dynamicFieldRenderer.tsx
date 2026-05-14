@@ -50,6 +50,29 @@ export interface SnapshotField {
   aprovador_obriga_observacao_nao?: boolean;
   aprovador_exige_evidencia_nao?: boolean;
   aprovador_tipos_evidencia?: string[];
+  aprovador_tipo?: string;
+  aprovador_opcoes?: string[];
+  aprovador_regras_por_opcao?: Array<{
+    valor: string;
+    label?: string;
+    exige_observacao?: boolean;
+    exige_evidencia?: boolean;
+    gera_plano_acao?: boolean;
+    permite_devolucao?: boolean;
+  }>;
+  auditor_verificar?: boolean;
+  auditor_pergunta?: string;
+  auditor_tipo?: string;
+  auditor_opcoes?: string[];
+  auditor_regras_por_opcao?: Array<{
+    valor: string;
+    label?: string;
+    exige_observacao?: boolean;
+    exige_evidencia?: boolean;
+    gera_plano_acao?: boolean;
+    permite_devolucao?: boolean;
+  }>;
+  auditor_peso?: number;
 }
 
 export interface FieldAnswer {
