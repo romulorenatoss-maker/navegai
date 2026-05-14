@@ -18,6 +18,8 @@ import {
   WIZARD_STEPS,
   WizardStepId,
 } from "./types";
+import { PenalidadesAutomaticasBlock, type PenalidadesOverrideMap } from "./PenalidadesAutomaticasBlock";
+import type { TarefasPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
 
 interface Props {
   isEditing: boolean;
@@ -35,6 +37,11 @@ interface Props {
   setAprovadorChecks: React.Dispatch<React.SetStateAction<AprovadorCheckItemForm[]>>;
   validadorChecks: ValidadorCheckItemForm[];
   setValidadorChecks: React.Dispatch<React.SetStateAction<ValidadorCheckItemForm[]>>;
+  /** Config global de Pontuação/SLA — usada para popular as penalidades automáticas. */
+  pontuacaoConfig: TarefasPontuacaoConfig | null;
+  /** Overrides locais por rotina das penalidades automáticas. */
+  penalidadesOverride: PenalidadesOverrideMap;
+  setPenalidadesOverride: React.Dispatch<React.SetStateAction<PenalidadesOverrideMap>>;
   setores: any[];
   colaboradores: any[];
   templateId: string | null;
@@ -50,6 +57,7 @@ export function TarefasBuilderWizard(props: Props) {
     isEditing, saving, form, set, sections, setSections, fields, setFields,
     steps, setSteps,
     aprovadorChecks, setAprovadorChecks, validadorChecks, setValidadorChecks,
+    pontuacaoConfig, penalidadesOverride, setPenalidadesOverride,
     setores, colaboradores,
     templateId, draftToRestore, onRestoreDraft, onDiscardDraft, onCancel, onSubmit,
   } = props;
@@ -127,20 +135,51 @@ export function TarefasBuilderWizard(props: Props) {
         )}
 
         {current === "campos" && (
-          <TabFormBuilder
-            sections={sections} setSections={setSections}
-            fields={fields} setFields={setFields}
-            setores={setores} tipoExecucao={form.tipo_execucao}
-            aprovacaoFinalEnabled={!!form.requer_aprovacao_gestor}
-          />
+          <div className="space-y-4">
+            <PenalidadesAutomaticasBlock
+              camadaKey="sla_executor"
+              titulo="Penalidades automáticas do Avaliado"
+              descricao="Estas perguntas são avaliadas automaticamente pelo sistema (sem intervenção humana) e descontam pontos do avaliado quando ocorrem. Os valores padrão vêm das Configurações > Pontuação/SLA e podem ser ajustados apenas para esta rotina."
+              globalConfig={pontuacaoConfig}
+              overrides={penalidadesOverride}
+              onOverridesChange={setPenalidadesOverride}
+            />
+            <TabFormBuilder
+              sections={sections} setSections={setSections}
+              fields={fields} setFields={setFields}
+              setores={setores} tipoExecucao={form.tipo_execucao}
+              aprovacaoFinalEnabled={!!form.requer_aprovacao_gestor}
+            />
+          </div>
         )}
 
         {current === "checklist_aprovador" && hasAprovador && (
-          <StepChecklistAprovador fields={fields} items={aprovadorChecks} setItems={setAprovadorChecks} />
+          <div className="space-y-4">
+            <PenalidadesAutomaticasBlock
+              camadaKey="sla_aprovador"
+              titulo="Penalidades automáticas do Aprovador"
+              descricao="Avaliadas automaticamente sobre a atuação do aprovador (atraso na aprovação, ausência de resposta, não conformidade detectada)."
+              globalConfig={pontuacaoConfig}
+              overrides={penalidadesOverride}
+              onOverridesChange={setPenalidadesOverride}
+            />
+            <StepChecklistAprovador fields={fields} items={aprovadorChecks} setItems={setAprovadorChecks} />
+          </div>
         )}
 
         {current === "checklist_validador" && hasValidador && (
-          <StepChecklistValidador items={validadorChecks} setItems={setValidadorChecks} />
+          <div className="space-y-4">
+            <PenalidadesAutomaticasBlock
+              camadaKey="sla_validador"
+              titulo="Penalidades automáticas da Auditoria (Validador)"
+              descricao="O Validador não é avaliado: ele audita a execução do Avaliado e do Aprovador. Estas penalidades são aplicadas automaticamente quando a auditoria detecta atraso, ausência de resposta ou não conformidade nas camadas anteriores."
+              nota="Validador audita — não executa nem responde perguntas operacionais."
+              globalConfig={pontuacaoConfig}
+              overrides={penalidadesOverride}
+              onOverridesChange={setPenalidadesOverride}
+            />
+            <StepChecklistValidador items={validadorChecks} setItems={setValidadorChecks} />
+          </div>
         )}
 
         {current === "fluxo" && (
