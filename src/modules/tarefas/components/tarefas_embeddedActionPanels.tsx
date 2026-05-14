@@ -509,6 +509,25 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                     <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Salvo</span>
                   )}
                 </div>
+                {/* Histórico: devoluções anteriores desta pergunta */}
+                {(() => {
+                  const devolucoes = (flow.fieldReviews as any[]).filter(
+                    (r: any) => r.field_id === f.id && r.devolvido === true
+                  );
+                  if (devolucoes.length === 0) return null;
+                  return (
+                    <div className="rounded-md border border-orange-200 bg-orange-50 dark:bg-orange-950/20 p-2 text-[11px] text-orange-800 dark:text-orange-300">
+                      <div className="font-semibold mb-0.5">
+                        Devolvida {devolucoes.length}x ao executor
+                      </div>
+                      {devolucoes.slice(0, 2).map((d: any) => (
+                        <div key={d.id} className="opacity-80">
+                          Rodada {d.rodada}: {d.motivo_devolucao || d.observacao || "—"}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
 
                 {/* Resposta do executor (read-only) */}
                 <div className="rounded-md border border-border/60 bg-muted/40 p-2 space-y-1">
@@ -654,15 +673,46 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
         )}
         <div className="flex-1" />
         {naoConformes.length > 0 ? (
-          <Button
-            type="button" size="sm"
-            onClick={irParaPlano}
-            disabled={flow.isSaving || blockReasons.length > 0}
-            className="bg-amber-600 hover:bg-amber-700 text-white"
-          >
-            <ClipboardList className="w-3.5 h-3.5 mr-1" />
-            Revisar e finalizar ({naoConformes.length} NC)
-          </Button>
+          <>
+            <Button
+              type="button" size="sm" variant="outline"
+              onClick={async () => {
+                const perguntas = naoConformes.map(f => ({
+                  field_id: f.id,
+                  field_label: f.label,
+                  motivo: (flow.approverAnswers[f.id]?.observacao
+                    ?? flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.observacao
+                    ?? "").trim(),
+                }));
+                const semMotivo = perguntas.find(p => !p.motivo);
+                if (semMotivo) {
+                  toast.error(`Escreva uma observação (motivo) em "${semMotivo.field_label}" antes de devolver.`);
+                  return;
+                }
+                try {
+                  await flow.devolverPerguntasParaRefazer.mutateAsync({
+                    assignment, perguntas, motivoGeral: motivoFinal,
+                  });
+                  onClose();
+                } catch (e: any) { toast.error(e.message); }
+              }}
+              disabled={flow.isSaving || blockReasons.length > 0}
+              className="border-orange-300 text-orange-700 hover:bg-orange-50"
+              title="Devolve apenas estas perguntas ao executor com histórico — sem criar plano de ação"
+            >
+              <RotateCcw className="w-3.5 h-3.5 mr-1" />
+              Devolver {naoConformes.length} pergunta(s) p/ refazer
+            </Button>
+            <Button
+              type="button" size="sm"
+              onClick={irParaPlano}
+              disabled={flow.isSaving || blockReasons.length > 0}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              <ClipboardList className="w-3.5 h-3.5 mr-1" />
+              Revisar e finalizar com plano ({naoConformes.length} NC)
+            </Button>
+          </>
         ) : (
           <Button
             type="button" size="sm"
