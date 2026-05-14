@@ -75,20 +75,24 @@ export function TabTarefasExecutadas({ templateId }: Props) {
         .single();
       if (tErr) throw tErr;
 
-      const executorId = t.executor_profile_id || t.responsavel_id;
-      if (!executorId) throw new Error("Nenhum executor configurado no template.");
+      const executorId = t.executor_profile_id || t.responsavel_id || null;
+      const executorSetorId = t.executor_setor_id || t.setor_id || null;
+      if (!executorId && !executorSetorId) {
+        throw new Error("Nenhum executor configurado no template (nem usuário nem setor).");
+      }
 
       const now = new Date();
       const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
-      // Check if already exists for today
-      const { data: existing } = await (supabase as any)
+      // Check if already exists for today (dedupe por template + data; setorizado pode ter responsavel_id NULL)
+      let existingQuery = (supabase as any)
         .from("operational_assignments")
         .select("id")
         .eq("template_id", templateId)
-        .eq("data_prevista", todayStr)
-        .eq("responsavel_id", executorId)
-        .maybeSingle();
+        .eq("data_prevista", todayStr);
+      if (executorId) existingQuery = existingQuery.eq("responsavel_id", executorId);
+      else existingQuery = existingQuery.is("responsavel_id", null);
+      const { data: existing } = await existingQuery.maybeSingle();
 
       if (existing) throw new Error("Já existe uma tarefa para hoje neste template.");
 
