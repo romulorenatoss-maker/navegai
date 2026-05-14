@@ -245,8 +245,8 @@ export function useApprovalFlow(assignmentId: string | null) {
 
       // Save any pending approver answers before final decision
       const snapshotFields: SnapshotField[] = assignment.template_snapshot?.fields || [];
-      const approverFields = snapshotFields.filter(f => f.aprovador_verificar && f.aprovador_pergunta);
-      if (approverFields.length > 0 && Object.keys(approverAnswers).length > 0) {
+      // Save TODOS os rascunhos pendentes do aprovador (todas perguntas, não só aprovador_verificar)
+      if (Object.keys(approverAnswers).length > 0) {
         await saveApproverAnswers.mutateAsync(snapshotFields);
       }
 
