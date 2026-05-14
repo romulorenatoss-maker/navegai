@@ -43,7 +43,61 @@ export interface TarefasPontuacaoConfig {
   sla_aprovador: CamadaSlaConfig;
   sla_plano_acao: CamadaSlaConfig;
   sla_validador: CamadaSlaConfig;
+  // Pacote padrão de perguntas do Aprovador (carregado em novas rotinas).
+  aprovador_pacote_padrao: AprovadorPerguntaPadrao[];
 }
+
+/**
+ * Métricas calculáveis automaticamente na execução/encerramento.
+ * O engine de cálculo entra em segunda etapa; por ora a UI permite override manual.
+ */
+export type AprovadorMetricaCalculo =
+  | "prazo_global"
+  | "atraso_etapa"
+  | "obrigatorias_respondidas"
+  | "evidencias_anexadas"
+  | "respostas_nao_conformes"
+  | "devolucao"
+  | "plano_acao_aberto"
+  | "plano_acao_sla"
+  | "plano_acao_prorrogacao"
+  | "plano_acao_prorrogacao_multipla"
+  | "manual";
+
+export type AprovadorTipoPadrao = "sim_nao" | "conforme_nao_conforme" | "nota";
+
+export interface AprovadorPerguntaPadrao {
+  id: string;                          // estável, usado como config_global_origem_id
+  ordem: number;
+  pergunta: string;
+  tipo: AprovadorTipoPadrao;
+  peso: number;
+  ativo: boolean;
+  metrica_calculo: AprovadorMetricaCalculo;
+  // Regras herdáveis pelo snapshot da rotina (mesmo shape de AprovadorCheckItemForm)
+  exige_observacao?: boolean;
+  exige_evidencia?: boolean;
+  permite_devolucao?: boolean;
+  gera_plano_acao?: boolean;
+  permite_conclusao?: boolean;
+  permite_aumento_prazo?: boolean;
+  permite_ponderacao_auditor?: boolean;
+  exige_justificativa_ponderacao?: boolean;
+  penalidade_reprovacao?: number;
+}
+
+export const APROVADOR_PACOTE_PADRAO_DEFAULT: AprovadorPerguntaPadrao[] = [
+  { id: "apr-prazo-global", ordem: 1, pergunta: "Executor entregou a tarefa dentro do prazo global?", tipo: "sim_nao", peso: 15, ativo: true, metrica_calculo: "prazo_global", exige_observacao: false, permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false },
+  { id: "apr-atraso-etapa", ordem: 2, pergunta: "Houve atraso em alguma etapa/pergunta da execução?", tipo: "sim_nao", peso: 10, ativo: true, metrica_calculo: "atraso_etapa", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true },
+  { id: "apr-obrigatorias", ordem: 3, pergunta: "Todas as perguntas obrigatórias foram respondidas?", tipo: "sim_nao", peso: 10, ativo: true, metrica_calculo: "obrigatorias_respondidas", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: true },
+  { id: "apr-evidencias", ordem: 4, pergunta: "As evidências obrigatórias foram anexadas corretamente?", tipo: "conforme_nao_conforme", peso: 10, ativo: true, metrica_calculo: "evidencias_anexadas", exige_evidencia: true, permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true },
+  { id: "apr-nao-conforme", ordem: 5, pergunta: "Houve resposta marcada como não conforme?", tipo: "sim_nao", peso: 15, ativo: true, metrica_calculo: "respostas_nao_conformes", permite_devolucao: true, gera_plano_acao: true, permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true },
+  { id: "apr-devolucao", ordem: 6, pergunta: "A execução precisou ser devolvida/reaberta?", tipo: "sim_nao", peso: 10, ativo: true, metrica_calculo: "devolucao", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true },
+  { id: "apr-pa-aberto", ordem: 7, pergunta: "Foi necessário abrir plano de ação?", tipo: "sim_nao", peso: 10, ativo: true, metrica_calculo: "plano_acao_aberto", gera_plano_acao: true, permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true },
+  { id: "apr-pa-sla", ordem: 8, pergunta: "O plano de ação foi concluído dentro do SLA?", tipo: "sim_nao", peso: 10, ativo: true, metrica_calculo: "plano_acao_sla", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true },
+  { id: "apr-pa-prazo", ordem: 9, pergunta: "O plano de ação precisou de aumento de prazo?", tipo: "sim_nao", peso: 5, ativo: true, metrica_calculo: "plano_acao_prorrogacao", permite_aumento_prazo: true, permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true },
+  { id: "apr-pa-prorr-mult", ordem: 10, pergunta: "O plano de ação teve mais de uma prorrogação?", tipo: "sim_nao", peso: 5, ativo: true, metrica_calculo: "plano_acao_prorrogacao_multipla", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true },
+];
 
 const camadaDefault = (over: Partial<CamadaSlaConfig> = {}): CamadaSlaConfig => ({
   nota_max: 100,
