@@ -912,46 +912,6 @@ export function FieldDetailDialog({ field, allFields = [], setores, onSave, onCl
             </div>
           )}
 
-          {/* ── Pergunta final para aprovação final ──
-              Renderiza somente se a Designação tiver aprovação final habilitada. */}
-          {aprovacaoFinalEnabled && (
-            <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-4">
-              <div className="flex items-center gap-3">
-                <Switch checked={local.aprovador_verificar ?? false} onCheckedChange={v => {
-                  upd("aprovador_verificar", v);
-                  if (!v) upd("aprovador_pergunta", "");
-                }} />
-                <div>
-                  <Label className="cursor-pointer font-medium text-sm">Pergunta final para aprovação final</Label>
-                  <p className="text-caption text-muted-foreground">O aprovador responderá uma pergunta ao revisar este campo na aprovação final.</p>
-                </div>
-              </div>
-
-              {local.aprovador_verificar && (
-                <div className="space-y-4 pt-2">
-                  <div className="grid grid-cols-[1fr_100px] gap-3">
-                    <div className="space-y-1.5">
-                      <Label>Pergunta <span className="text-destructive">*</span></Label>
-                      <Input value={local.aprovador_pergunta || ""} onChange={e => upd("aprovador_pergunta", e.target.value)}
-                        placeholder="Ex: O campo foi preenchido corretamente?" maxLength={500} />
-                      {!local.aprovador_pergunta?.trim() && <p className="text-xs text-destructive">Obrigatório.</p>}
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Nota</Label>
-                      <Input type="number" min={1} max={100} value={local.aprovador_peso ?? 1} onChange={e => upd("aprovador_peso", +e.target.value)} />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          <FieldVisibilityEditor
-            currentTempId={local.tempId}
-            allFields={allFields}
-            value={local.condicao_visibilidade}
-            onChange={(v) => upd("condicao_visibilidade", v)}
-          />
 
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
