@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Play, Send, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock, RotateCcw, CheckCheck, CalendarClock, ListTodo, Hourglass, Filter, History, Plus, Users, Activity, ArrowDownUp } from "lucide-react";
+import { Play, Send, ChevronLeft, CheckCircle2, AlertTriangle, ChevronDown, Search, Clock, RotateCcw, CheckCheck, CalendarClock, ListTodo, Hourglass, Filter, History, Plus, Users, Activity, ArrowDownUp, Eye } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { EmbeddedContingencyPanel } from "@/modules/tarefas/components/tarefas_embeddedContingencyPanel";
 import { EmbeddedReviewPanel, EmbeddedApprovalPanel } from "@/modules/tarefas/components/tarefas_embeddedActionPanels";
