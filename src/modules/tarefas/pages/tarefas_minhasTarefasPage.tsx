@@ -344,7 +344,9 @@ export default function OperationalExecucaoPage() {
     emAndamento: sorted(buckets.opEmAndamento),
     aguardandoVoce: sorted(buckets.opAguardandoVoce),
     concluidas: sorted(buckets.opConcluidas).slice(0, 100),
-    criticas: sorted(buckets.opCriticas),
+    // Críticas: sempre ordenadas pelo menor tempo restante (mais urgente primeiro),
+    // independente do sort selecionado pelo usuário.
+    criticas: sortAssignments(buckets.opCriticas, "sla"),
   }), [buckets, sorted]);
 
   const exec = useAssignmentExecution(selectedAssignment?.id || null);
