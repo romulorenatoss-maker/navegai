@@ -146,8 +146,9 @@ export function StepChecklistAprovador({ fields, items, setItems }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Lista ordenada para exibição
+  // Lista ordenada para exibição (filtra órfãos como defesa em profundidade)
   const ordered = useMemo(() => {
+    const validFieldIds = new Set(fields.map(f => f.tempId));
     const ord = (i: AprovadorCheckItemForm) => {
       switch (i.origem_pergunta) {
         case "replicada_avaliado": return 0;
@@ -156,8 +157,14 @@ export function StepChecklistAprovador({ fields, items, setItems }: Props) {
         default: return 2;
       }
     };
-    return [...items].sort((a, b) => ord(a) - ord(b));
-  }, [items]);
+    return items
+      .filter(i => {
+        const isReplicada = i.origem_pergunta === "replicada_avaliado" || (!i.origem_pergunta && !!i.field_id);
+        if (!isReplicada) return true;
+        return !!i.field_id && validFieldIds.has(i.field_id);
+      })
+      .sort((a, b) => ord(a) - ord(b));
+  }, [items, fields]);
 
   const totalPeso = useMemo(
     () => items.filter(i => i.ativo !== false).reduce((s, i) => s + (Number(i.peso) || 0), 0),
