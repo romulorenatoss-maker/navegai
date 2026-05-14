@@ -45,52 +45,43 @@ const TIPO_LABEL: Record<string, string> = {
   nota: "Nota (0–100)",
 };
 
-const normalizeKeyText = (value: unknown) =>
-  String(value ?? "").trim().toLocaleLowerCase("pt-BR");
-
-const fieldReplicationKey = (field: FieldForm) => JSON.stringify([
-  normalizeKeyText(field.label),
-  field.tipo || "",
-  Number(field.ordem) || 0,
-]);
+// (Removido: dedupe por label do field — agora identificamos replicadas por tempId apenas.)
 
 export function StepChecklistAprovador({ fields, items, setItems }: Props) {
   const { profile } = useAuth();
   const [editingTempId, setEditingTempId] = useState<string | null>(null);
 
-  // Sincroniza apenas as perguntas REPLICADAS com os fields do Avaliado.
-  // Itens AUTO/MANUAL não são tocados.
+  // Espelha as perguntas REPLICADAS a partir dos fields do Avaliado.
+  // - Dedupe estritamente por tempId do field (nunca por label, evita duplicar ao renomear).
+  // - Sempre sobrescreve field_label e pergunta_padrao para refletir o Avaliado.
+  // - Remove órfãos (replicadas cujo field não existe mais).
+  // - Itens AUTO/MANUAL não são tocados.
   useEffect(() => {
     setItems(prev => {
       const replicadasPrev = prev.filter(i => i.origem_pergunta === "replicada_avaliado" || (!i.origem_pergunta && i.field_id));
       const naoReplicadas = prev.filter(i => !replicadasPrev.includes(i));
       const byField = new Map(replicadasPrev.map(i => [i.field_id, i]));
-      const fieldsByPergunta = new Map<string, FieldForm>();
-      for (const field of fields) {
-        const key = fieldReplicationKey(field);
-        const current = fieldsByPergunta.get(key);
-        if (!current || byField.has(field.tempId) || (!current.sectionTempId && field.sectionTempId)) {
-          fieldsByPergunta.set(key, field);
-        }
-      }
-      const uniqueFields = Array.from(fieldsByPergunta.values()).sort((a, b) => a.ordem - b.ordem);
+
+      // Dedupe de fields apenas por tempId (id estável). Sem dedupe por label.
+      const seenIds = new Set<string>();
+      const uniqueFields = fields
+        .filter(f => {
+          if (!f.tempId || seenIds.has(f.tempId)) return false;
+          seenIds.add(f.tempId);
+          return true;
+        })
+        .sort((a, b) => a.ordem - b.ordem);
       const fieldIds = new Set(uniqueFields.map(f => f.tempId));
 
       const replicadasNext: AprovadorCheckItemForm[] = uniqueFields.map(f => {
         const existing = byField.get(f.tempId);
+        const perguntaEspelhada = `Aprovador confirma: ${f.label || "Pergunta sem nome"}?`;
         if (existing) {
-          const oldLabel = existing.field_label || "";
-          const labelChanged = oldLabel !== f.label;
-          const wasDefaultPergunta =
-            !existing.pergunta_padrao ||
-            existing.pergunta_padrao === `Aprovador confirma: ${oldLabel}?`;
           return {
             ...existing,
+            field_id: f.tempId,
             field_label: f.label,
-            pergunta_padrao:
-              labelChanged && wasDefaultPergunta
-                ? `Aprovador confirma: ${f.label}?`
-                : existing.pergunta_padrao,
+            pergunta_padrao: perguntaEspelhada,
             origem_pergunta: "replicada_avaliado",
             pergunta_origem_id: f.tempId,
           };
@@ -148,8 +139,9 @@ export function StepChecklistAprovador({ fields, items, setItems }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Lista ordenada para exibição
+  // Lista ordenada para exibição (filtra órfãos como defesa em profundidade)
   const ordered = useMemo(() => {
+    const validFieldIds = new Set(fields.map(f => f.tempId));
     const ord = (i: AprovadorCheckItemForm) => {
       switch (i.origem_pergunta) {
         case "replicada_avaliado": return 0;
@@ -158,8 +150,14 @@ export function StepChecklistAprovador({ fields, items, setItems }: Props) {
         default: return 2;
       }
     };
-    return [...items].sort((a, b) => ord(a) - ord(b));
-  }, [items]);
+    return items
+      .filter(i => {
+        const isReplicada = i.origem_pergunta === "replicada_avaliado" || (!i.origem_pergunta && !!i.field_id);
+        if (!isReplicada) return true;
+        return !!i.field_id && validFieldIds.has(i.field_id);
+      })
+      .sort((a, b) => ord(a) - ord(b));
+  }, [items, fields]);
 
   const totalPeso = useMemo(
     () => items.filter(i => i.ativo !== false).reduce((s, i) => s + (Number(i.peso) || 0), 0),
