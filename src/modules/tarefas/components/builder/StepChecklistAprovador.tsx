@@ -45,14 +45,7 @@ const TIPO_LABEL: Record<string, string> = {
   nota: "Nota (0–100)",
 };
 
-const normalizeKeyText = (value: unknown) =>
-  String(value ?? "").trim().toLocaleLowerCase("pt-BR");
-
-const fieldReplicationKey = (field: FieldForm) => JSON.stringify([
-  normalizeKeyText(field.label),
-  field.tipo || "",
-  Number(field.ordem) || 0,
-]);
+// (Removido: dedupe por label do field — agora identificamos replicadas por tempId apenas.)
 
 export function StepChecklistAprovador({ fields, items, setItems }: Props) {
   const { profile } = useAuth();
