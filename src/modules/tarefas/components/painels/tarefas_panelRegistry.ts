@@ -83,3 +83,4 @@ export const PANEL_REGISTRY: PanelEntry[] = [
   // Renderizada diretamente por EmbeddedApprovalPanel em /tarefas/minhas
   // (mostra respostas/anexos do executor, anexo opcional do aprovador,
   // hidrata auto-save, e abre etapa final de Plano de Ação consolidada).
+];
