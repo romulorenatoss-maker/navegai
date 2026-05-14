@@ -334,6 +334,7 @@ export default function OperationalCadastroPage() {
       // Checklist legacy (operational_template_check_items) NÃO é mais escrito pelo novo
       // builder. A tabela é mantida viva apenas para histórico/leitura legada.
       // Substituído por: Campos + Checklist Aprovador + Checklist Validador (snapshot).
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["operational_templates"] });
       toast.success(editingId ? "Template atualizado (versão incrementada)." : "Template criado.");
