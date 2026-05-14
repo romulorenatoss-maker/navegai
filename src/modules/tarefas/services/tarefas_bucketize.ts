@@ -390,7 +390,7 @@ export function bucketize(
     // === OPERACIONAL — 5 abas finais (sem duplicar entre abas) ===
     // ============================================================
     const todayIso = new Date().toISOString().slice(0, 10);
-    const hasMyRole = isResp || isAval || isAprov || isCriador || isAdmin;
+    const hasMyRole = isResp || isAval || isAprov || isAuditor || isCriador || isAdmin;
     const slaEstourado = computeSla(a).current.status === "estourado";
     const semMov = isSemMovimento(a);
     const isFinal = FINAL_STATUS_SET.has(a.status);
