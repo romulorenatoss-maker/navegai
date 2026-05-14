@@ -278,6 +278,76 @@ export function useApprovalFlow(assignmentId: string | null) {
     onError: (e: any) => toast.error(e.message),
   });
 
+  // Cria contingências (planos de ação) consolidadas a partir de NCs do aprovador,
+  // uma por NC, e dispara devolução final ao executor/setor.
+  const criarPlanosAcaoEDevolver = useMutation({
+    mutationFn: async ({ assignment, planos, motivoGeral }: {
+      assignment: any;
+      planos: Array<{
+        field_id: string;
+        field_label: string;
+        descricao_acao: string;
+        prazo_iso: string; // ISO datetime
+        responsavel_profile_id?: string | null;
+        responsavel_setor_id?: string | null;
+        criticidade: "baixa" | "media" | "alta";
+      }>;
+      motivoGeral?: string;
+    }) => {
+      if (!profile?.id || !assignmentId) throw new Error("Não autenticado");
+      if (!planos.length) throw new Error("Nenhum plano de ação para registrar.");
+
+      // 1) Salva respostas do aprovador
+      const snapshotFields: SnapshotField[] = assignment.template_snapshot?.fields || [];
+      if (Object.keys(approverAnswers).length > 0) {
+        await saveApproverAnswers.mutateAsync(snapshotFields);
+      }
+
+      // 2) Cria uma contingência por NC
+      for (const p of planos) {
+        await (supabase as any).from("operational_contingencies").insert({
+          assignment_id: assignmentId,
+          field_id: p.field_id,
+          descricao: `[${p.field_label}] ${p.descricao_acao}`,
+          prazo_sla: p.prazo_iso,
+          criticidade: p.criticidade,
+          status: "pendente",
+          responsavel_profile_id: p.responsavel_profile_id ?? null,
+          responsavel_setor_id: p.responsavel_setor_id ?? null,
+          criada_por: profile.id,
+          origem: "aprovador_plano_acao_final",
+        });
+      }
+
+      // 3) Dispara devolução final consolidada
+      await transition.mutateAsync({
+        assignmentId,
+        action: "reprovar_devolver_final",
+        motivo: motivoGeral || `${planos.length} plano(s) de ação registrado(s) pelo aprovador`,
+        origem: "aprovacao_plano_acao_final",
+        extraData: {
+          aprovadorId: profile.id,
+          rodadaAtual: assignment.rodada_atual,
+          total_planos: planos.length,
+        },
+      });
+
+      await (supabase as any).from("operational_execution_logs").insert({
+        assignment_id: assignmentId,
+        acao: "aprovador_devolveu_com_planos_acao",
+        executado_por: profile.id,
+        detalhes: { total_planos: planos.length, rodada: assignment.rodada_atual },
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["operational_aprovacao_assignments"] });
+      qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
+      qc.invalidateQueries({ queryKey: ["operational_approval_contingencies"] });
+      toast.success("Planos de ação registrados e tarefa devolvida.");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   return {
     fieldAnswers,
     fieldReviews,
@@ -291,6 +361,7 @@ export function useApprovalFlow(assignmentId: string | null) {
     pendingContingencies,
     getBlockingReasons,
     finalDecision,
-    isSaving: finalDecision.isPending || saveApproverAnswers.isPending,
+    criarPlanosAcaoEDevolver,
+    isSaving: finalDecision.isPending || saveApproverAnswers.isPending || criarPlanosAcaoEDevolver.isPending,
   };
 }
