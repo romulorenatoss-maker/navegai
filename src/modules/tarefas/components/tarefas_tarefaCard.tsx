@@ -1,8 +1,20 @@
 import { useState, useEffect, useMemo } from "react";
-import { Clock, ChevronRight, AlertTriangle, RotateCcw, CheckCircle2, Timer, TimerOff, ClipboardCheck } from "lucide-react";
+import { Clock, ChevronRight, AlertTriangle, RotateCcw, CheckCircle2, Timer, TimerOff, ClipboardCheck, Play } from "lucide-react";
 import { STATUS_CONFIG, TIPO_EXECUCAO_LABELS } from "@/modules/tarefas/hooks/tarefas_useScoring";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOperationalTransition } from "@/modules/tarefas/hooks/tarefas_useTransition";
+import { TASK_STATUS } from "@/modules/tarefas/services/tarefas_statusConstants";
+import { toast } from "sonner";
+
+const STARTABLE_STATUSES: string[] = [
+  TASK_STATUS.ABERTA,
+  TASK_STATUS.PENDENTE,
+  TASK_STATUS.DEVOLVIDA,
+  TASK_STATUS.REABERTA,
+  TASK_STATUS.EM_PLANO_ACAO,
+];
 
 interface Props {
   assignment: any;
@@ -50,6 +62,7 @@ function useCountdown(dataPrevista: string, horarioLimite: string | null) {
 
 export function AssignmentCard({ assignment: a, onClick }: Props) {
   const { profile } = useAuth();
+  const { transition } = useOperationalTransition();
   const snapshot = a.template_snapshot;
   const nome = snapshot?.nome || a.operational_templates?.nome || "Rotina";
   const tipo = snapshot?.tipo_execucao || a.operational_templates?.tipo_execucao;
@@ -66,6 +79,26 @@ export function AssignmentCard({ assignment: a, onClick }: Props) {
 
   const isActive = ["pendente", "em_andamento", "devolvida"].includes(a.status);
   const countdown = useCountdown(a.data_prevista, isActive ? a.horario_limite : null);
+
+  // Botão Iniciar: visível para o executor quando a tarefa está em status que permite iniciar.
+  const isExecutorOuAdmin = !!profile?.id && (a.responsavel_id === profile.id);
+  const canStart = isExecutorOuAdmin && STARTABLE_STATUSES.includes(a.status) && !transition.isPending;
+
+  async function handleStart(e: React.MouseEvent) {
+    e.stopPropagation(); // não abrir o drawer
+    try {
+      const action = a.status === TASK_STATUS.ABERTA ? "aceitar_tarefa" : "iniciar";
+      await transition.mutateAsync({
+        assignmentId: a.id,
+        action,
+        origem: "tarefa_card_iniciar",
+        extraData: { papel_usado: "EXECUTOR" },
+      });
+      toast.success("Tarefa iniciada");
+    } catch (err: any) {
+      toast.error(err?.message || "Não foi possível iniciar a tarefa");
+    }
+  }
 
   // ─── Papel do usuário nesta tarefa ─────────────────────────────────
   const myRole = useMemo<"executor" | "aprovador" | "auditor" | null>(() => {
@@ -223,6 +256,22 @@ export function AssignmentCard({ assignment: a, onClick }: Props) {
               <span className="text-[10px] tabular-nums text-muted-foreground w-9 text-right">{timePct}%</span>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Botão Iniciar — visível só para o executor em status startable */}
+      {canStart && (
+        <div className="ml-12 mt-2 flex">
+          <Button
+            size="sm"
+            variant="default"
+            className="h-7 px-3 text-xs gap-1.5"
+            onClick={handleStart}
+            disabled={transition.isPending}
+          >
+            <Play className="w-3 h-3" />
+            {a.status === TASK_STATUS.ABERTA ? "Aceitar e iniciar" : "Iniciar"}
+          </Button>
         </div>
       )}
     </div>
