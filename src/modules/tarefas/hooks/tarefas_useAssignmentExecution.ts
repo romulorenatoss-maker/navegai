@@ -256,6 +256,16 @@ export function useAssignmentExecution(assignmentId: string | null) {
   // Validate all visible fields
   const validateAll = useCallback((fields: SnapshotField[], assignmentStatus: string): string[] => {
     const errors: string[] = [];
+    const STRUCTURAL = new Set(["secao", "divisor", "titulo"]);
+    const hasAnswerValue = (a: any) =>
+      !!a && (
+        (a.valor_texto != null && a.valor_texto !== "") ||
+        a.valor_numero != null ||
+        a.valor_booleano != null ||
+        a.valor_data != null ||
+        a.valor_json != null ||
+        (a.evidencia_url != null && a.evidencia_url !== "")
+      );
     for (const f of fields) {
       if (!evaluateVisibility(f.condicao_visibilidade, answers)) continue;
       if (assignmentStatus === "devolvida") {
@@ -263,7 +273,20 @@ export function useAssignmentExecution(assignmentId: string | null) {
         if (!review?.devolvido) continue;
       }
       const err = validateField(f, answers[f.id]);
-      if (err) errors.push(`${f.label}: ${err}`);
+      if (err) {
+        errors.push(`${f.label}: ${err}`);
+        continue;
+      }
+      // Reforço C: perguntas que serão revisadas (aprovador/auditor) exigem resposta
+      // mesmo quando o template não marcou `obrigatorio`.
+      const willBeReviewed = (f as any).aprovador_verificar === true || (f as any).auditor_verificar === true;
+      if (
+        willBeReviewed &&
+        !STRUCTURAL.has(String((f as any).tipo)) &&
+        !hasAnswerValue(answers[f.id])
+      ) {
+        errors.push(`${f.label}: resposta obrigatória (será revisada)`);
+      }
     }
     return errors;
   }, [answers, reviews]);
