@@ -86,6 +86,13 @@ interface Props {
   onChange: (fieldId: string, answer: Partial<FieldAnswer>) => void;
   assignmentId: string;
   showValidation?: boolean;
+  approverPlan?: {
+    plano_acao_descricao?: string | null;
+    plano_acao_prazo?: string | null;
+    plano_acao_anexo_url?: string | null;
+    flag_prazo_alterado?: boolean | null;
+    justificativa_alteracao_prazo?: string | null;
+  } | null;
 }
 
 function evaluateVisibility(condition: any, allAnswers: Record<string, FieldAnswer>): boolean {
@@ -134,7 +141,7 @@ function validateField(field: SnapshotField, answer: FieldAnswer | undefined): s
 
 export { evaluateVisibility, validateField };
 
-export function DynamicFieldRenderer({ field, answer, review, userRole, disabled, allAnswers, onChange, assignmentId, showValidation = true }: Props) {
+export function DynamicFieldRenderer({ field, answer, review, userRole, disabled, allAnswers, onChange, assignmentId, showValidation = true, approverPlan }: Props) {
   const [uploading, setUploading] = useState(false);
 
   const isVisible = field.visivel_para.includes(userRole) && evaluateVisibility(field.condicao_visibilidade, allAnswers);
@@ -456,9 +463,31 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
       {isReturned && review && (
         <div className="flex items-start gap-2 mt-2 p-2 bg-amber-100/50 rounded border border-amber-200">
           <RotateCcw className="w-3.5 h-3.5 text-amber-600 mt-0.5 shrink-0" />
-          <div>
-            <p className="text-xs font-medium text-amber-800">Campo devolvido — Rodada {review.rodada}</p>
-            {review.motivo_devolucao && <p className="text-xs text-amber-700 mt-0.5">{review.motivo_devolucao}</p>}
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-amber-800">
+              {approverPlan?.plano_acao_descricao ? "Plano de ação do aprovador" : "Campo devolvido"} — Rodada {review.rodada}
+            </p>
+            {review.motivo_devolucao && <p className="text-xs text-amber-700 mt-0.5 whitespace-pre-wrap">{review.motivo_devolucao}</p>}
+            {userRole === "executor" && approverPlan && (
+              <div className="mt-1.5 space-y-0.5 text-xs text-amber-800">
+                {approverPlan.plano_acao_prazo && (
+                  <p><span className="font-medium">Prazo:</span> {format(new Date(approverPlan.plano_acao_prazo), "dd/MM/yyyy HH:mm")}</p>
+                )}
+                {approverPlan.flag_prazo_alterado && (
+                  <p className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-200/60 text-amber-900 font-medium">
+                    ⚑ Prazo alterado pelo aprovador
+                    {approverPlan.justificativa_alteracao_prazo ? `: ${approverPlan.justificativa_alteracao_prazo}` : ""}
+                  </p>
+                )}
+                {approverPlan.plano_acao_anexo_url && (
+                  <p>
+                    <a href={approverPlan.plano_acao_anexo_url} target="_blank" rel="noreferrer" className="text-primary underline">
+                      Ver anexo do aprovador
+                    </a>
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

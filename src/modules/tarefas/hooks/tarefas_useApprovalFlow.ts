@@ -358,6 +358,32 @@ export function useApprovalFlow(assignmentId: string | null) {
             ...planoPayload,
           });
         }
+
+        // 2b) Libera o campo no executor: marca devolvido=true em operational_field_reviews
+        // (mesmo padrão de devolverPerguntasParaRefazer; gate em useAssignmentExecution)
+        const rodadaPA = assignment.rodada_atual || 1;
+        const answerExecPA = (fieldAnswers as any[]).find((a: any) => a.field_id === p.field_id);
+        const reviewPayload: any = {
+          assignment_id: assignmentId,
+          field_id: p.field_id,
+          answer_id: answerExecPA?.id ?? null,
+          conforme: false,
+          devolvido: true,
+          motivo_devolucao: p.descricao_acao,
+          observacao: p.descricao_acao,
+          rodada: rodadaPA,
+          avaliador_id: profile.id,
+          avaliado_em: new Date().toISOString(),
+        };
+        const existingReview = (fieldReviews as any[]).find(
+          (r: any) => r.field_id === p.field_id && r.rodada === rodadaPA
+        );
+        if (existingReview) {
+          await (supabase as any).from("operational_field_reviews")
+            .update(reviewPayload).eq("id", existingReview.id);
+        } else {
+          await (supabase as any).from("operational_field_reviews").insert(reviewPayload);
+        }
       }
 
       // 3) Dispara devolução final consolidada → status EM_PLANO_ACAO via solicitar_plano_acao
@@ -386,6 +412,7 @@ export function useApprovalFlow(assignmentId: string | null) {
       qc.invalidateQueries({ queryKey: ["operational_aprovacao_assignments"] });
       qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
       qc.invalidateQueries({ queryKey: ["operational_approval_contingencies"] });
+      qc.invalidateQueries({ queryKey: ["operational_approval_field_reviews", assignmentId] });
       toast.success("Planos de ação registrados e tarefa devolvida.");
     },
     onError: (e: any) => toast.error(e.message),

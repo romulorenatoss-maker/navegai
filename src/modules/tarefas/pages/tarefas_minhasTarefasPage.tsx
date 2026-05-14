@@ -514,6 +514,28 @@ export default function OperationalExecucaoPage() {
     isAdminEditing
   );
   const isDevolvida = selectedAssignment?.status === "devolvida";
+
+  // Planos de ação do aprovador (visíveis ao executor quando o campo foi devolvido com plano)
+  const { data: approverPlansList = [] } = useQuery({
+    queryKey: ["operational_approval_answers_executor_view", selectedAssignment?.id],
+    queryFn: async () => {
+      if (!selectedAssignment?.id) return [];
+      const { data, error } = await (supabase as any)
+        .from("operational_approval_answers")
+        .select("field_id, plano_acao_descricao, plano_acao_prazo, plano_acao_anexo_url, flag_prazo_alterado, justificativa_alteracao_prazo")
+        .eq("assignment_id", selectedAssignment.id);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selectedAssignment?.id && (isDevolvida || selectedAssignment?.status === "em_plano_acao"),
+  });
+  const approverPlanByField = useMemo(() => {
+    const map: Record<string, any> = {};
+    for (const a of approverPlansList as any[]) {
+      if (a?.field_id) map[a.field_id] = a;
+    }
+    return map;
+  }, [approverPlansList]);
   const isContingenciado = selectedAssignment && ["contingenciado", "contingencia"].includes(selectedAssignment.status);
   const needsAdminReopen = isAdmin && selectedAssignment && ["aguardando_avaliacao", "aguardando_aprovacao", "concluida", "aprovada", "contingenciado", "contingencia"].includes(selectedAssignment.status);
   // Show contingency panel for avaliado, validador, responsavel, or admin
@@ -963,7 +985,7 @@ export default function OperationalExecucaoPage() {
                         review={exec.getLatestReview(f.id)} userRole="executor"
                         disabled={isDevolvida && exec.getLatestReview(f.id)?.devolvido !== true}
                         allAnswers={exec.answers} onChange={exec.updateAnswer} assignmentId={selectedAssignment.id}
-                        showValidation={submitAttempted} />
+                        showValidation={submitAttempted} approverPlan={approverPlanByField[f.id]} />
                     ))}
                   </div>
                 ) : (
@@ -1022,7 +1044,7 @@ export default function OperationalExecucaoPage() {
                               review={exec.getLatestReview(f.id)} userRole="executor"
                               disabled={isDevolvida && exec.getLatestReview(f.id)?.devolvido !== true}
                               allAnswers={exec.answers} onChange={exec.updateAnswer} assignmentId={selectedAssignment.id}
-                              showValidation={submitAttempted} />
+                              showValidation={submitAttempted} approverPlan={approverPlanByField[f.id]} />
                           ))}
                         </div>
                       </div>
