@@ -4603,6 +4603,7 @@ export type Database = {
           sla_validador: Json
           updated_at: string
           updated_by: string | null
+          validador_pacote_padrao: Json
         }
         Insert: {
           aprovador_pacote_padrao?: Json
@@ -4621,6 +4622,7 @@ export type Database = {
           sla_validador?: Json
           updated_at?: string
           updated_by?: string | null
+          validador_pacote_padrao?: Json
         }
         Update: {
           aprovador_pacote_padrao?: Json
@@ -4639,6 +4641,7 @@ export type Database = {
           sla_validador?: Json
           updated_at?: string
           updated_by?: string | null
+          validador_pacote_padrao?: Json
         }
         Relationships: []
       }

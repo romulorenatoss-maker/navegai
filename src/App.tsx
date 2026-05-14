@@ -17,7 +17,7 @@ import PerguntasPage from "./pages/PerguntasPage";
 import OperationalCadastroPage from "./modules/tarefas/pages/tarefas_rotinasPage";
 import OperationalExecucaoPage from "./modules/tarefas/pages/tarefas_minhasTarefasPage";
 import OperationalGestaoPage from "./modules/tarefas/pages/tarefas_gestaoPage";
-import TarefasAvaliacaoAvaliadorPage from "./modules/tarefas/pages/tarefas_avaliacaoAvaliadorPage";
+
 // Fase C: páginas legadas (avaliacao/aprovacao/contingencias) removidas — rotas viraram wrappers Navigate
 
 import CadastroEnderecosPage from "./pages/CadastroEnderecosPage";
@@ -88,7 +88,8 @@ const App = () => (
               <Route path="/tarefas/rotinas" element={<OperationalCadastroPage />} />
               <Route path="/tarefas/minhas" element={<OperationalExecucaoPage />} />
               <Route path="/tarefas/gestao" element={<OperationalGestaoPage />} />
-              <Route path="/tarefas/avaliacao-avaliador/:id" element={<TarefasAvaliacaoAvaliadorPage />} />
+              {/* Aba "Avaliação do Avaliador" foi unificada na aba Aprovador (perguntas replicadas + AUTO). Rota antiga redireciona. */}
+              <Route path="/tarefas/avaliacao-avaliador/:id" element={<Navigate to="/tarefas/minhas?chip=aprovar" replace />} />
               {/* Fase B: rotas legadas viram wrappers que abrem /tarefas/minhas com chip pré-selecionado */}
               <Route path="/tarefas/avaliacao" element={<Navigate to="/tarefas/minhas?chip=avaliar&from=avaliacao" replace />} />
               <Route path="/tarefas/aprovacao" element={<Navigate to="/tarefas/minhas?chip=aprovar&from=aprovacao" replace />} />

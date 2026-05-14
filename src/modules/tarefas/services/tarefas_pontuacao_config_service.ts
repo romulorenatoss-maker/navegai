@@ -44,6 +44,9 @@ export interface TarefasPontuacaoConfig {
   sla_validador: CamadaSlaConfig;
   // Pacote padrão de perguntas do Aprovador (carregado em novas rotinas).
   aprovador_pacote_padrao: AprovadorPerguntaPadrao[];
+  // Pacote padrão de perguntas do Validador/Auditor (carregado em novas rotinas).
+  // Reusa o shape AprovadorPerguntaPadrao p/ compartilhar UI/modal/normalizers.
+  validador_pacote_padrao: AprovadorPerguntaPadrao[];
 }
 
 /**
@@ -98,6 +101,21 @@ export const APROVADOR_PACOTE_PADRAO_DEFAULT: AprovadorPerguntaPadrao[] = [
   { id: "apr-devolucao", ordem: 5, pergunta: "A execução precisou ser devolvida ou reaberta?", tipo: "sim_nao", peso: 15, ativo: true, metrica_calculo: "devolucao", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false },
 ];
 
+/**
+ * Pacote padrão do Validador/Auditor.
+ * O Validador audita a ATUAÇÃO DO APROVADOR — nunca avalia o Executor diretamente.
+ * Soma 100 pontos.
+ */
+export const VALIDADOR_PACOTE_PADRAO_DEFAULT: AprovadorPerguntaPadrao[] = [
+  { id: "val-sla-aprovador", ordem: 1, pergunta: "O aprovador avaliou dentro do prazo/SLA?", tipo: "sim_nao", peso: 20, ativo: true, metrica_calculo: "manual", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false },
+  { id: "val-justificativa-nc", ordem: 2, pergunta: "O aprovador justificou corretamente as não conformidades?", tipo: "conforme_nao_conforme", peso: 15, ativo: true, metrica_calculo: "manual", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false, exige_observacao: true },
+  { id: "val-evidencia", ordem: 3, pergunta: "O aprovador anexou evidência/comprovante quando exigido?", tipo: "conforme_nao_conforme", peso: 15, ativo: true, metrica_calculo: "manual", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false, exige_evidencia: true },
+  { id: "val-regras-pergunta", ordem: 4, pergunta: "O aprovador aplicou corretamente as regras da pergunta?", tipo: "conforme_nao_conforme", peso: 20, ativo: true, metrica_calculo: "manual", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false },
+  { id: "val-plano-acao", ordem: 5, pergunta: "O aprovador abriu plano de ação quando a regra exigia?", tipo: "sim_nao", peso: 10, ativo: true, metrica_calculo: "manual", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false },
+  { id: "val-ponderacao", ordem: 6, pergunta: "O aprovador alterou/ponderou nota manualmente?", tipo: "sim_nao", peso: 10, ativo: true, metrica_calculo: "manual", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false },
+  { id: "val-plausibilidade", ordem: 7, pergunta: "A justificativa da ponderação do aprovador é plausível?", tipo: "conforme_nao_conforme", peso: 10, ativo: true, metrica_calculo: "manual", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false, exige_observacao: true },
+];
+
 
 const camadaDefault = (over: Partial<CamadaSlaConfig> = {}): CamadaSlaConfig => ({
   nota_max: 100,
@@ -126,6 +144,7 @@ export const TAREFAS_PONTUACAO_DEFAULTS: TarefasPontuacaoConfig = {
   sla_plano_acao: camadaDefault({ sla_horas: 48, penalidade_atraso: 15, penalidade_nao_resposta: 40, penalidade_nao_conformidade: 25, gera_plano_acao_auto: false }),
   sla_validador: camadaDefault({ sla_horas: 72, penalidade_atraso: 10, penalidade_nao_resposta: 30, penalidade_nao_conformidade: 20, gera_plano_acao_auto: false }),
   aprovador_pacote_padrao: APROVADOR_PACOTE_PADRAO_DEFAULT,
+  validador_pacote_padrao: VALIDADOR_PACOTE_PADRAO_DEFAULT,
 };
 
 const mergeCamada = (raw: any, fallback: CamadaSlaConfig): CamadaSlaConfig => ({
@@ -151,6 +170,9 @@ export async function getPontuacaoConfig(): Promise<TarefasPontuacaoConfig> {
     aprovador_pacote_padrao: Array.isArray(data.aprovador_pacote_padrao) && data.aprovador_pacote_padrao.length > 0
       ? data.aprovador_pacote_padrao
       : APROVADOR_PACOTE_PADRAO_DEFAULT,
+    validador_pacote_padrao: Array.isArray(data.validador_pacote_padrao) && data.validador_pacote_padrao.length > 0
+      ? data.validador_pacote_padrao
+      : VALIDADOR_PACOTE_PADRAO_DEFAULT,
   } as TarefasPontuacaoConfig;
 }
 

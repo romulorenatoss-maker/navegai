@@ -20,6 +20,7 @@ import {
   setPontuacaoConfig,
   TAREFAS_PONTUACAO_DEFAULTS,
   APROVADOR_PACOTE_PADRAO_DEFAULT,
+  VALIDADOR_PACOTE_PADRAO_DEFAULT,
   type TarefasPontuacaoConfig,
   type CamadaSlaConfig,
   type AprovadorPerguntaPadrao,
@@ -83,10 +84,23 @@ export function TarefasConfigPontuacao() {
 
   return (
     <div className="space-y-4">
-      <PacotePadraoAprovadorCard
+      <PacotePadraoCard
+        title="Pacote padrão do Aprovador"
+        description="Estas perguntas são carregadas automaticamente em novas rotinas, após as perguntas replicadas do Avaliado. Cada uma vira um item editável no snapshot da rotina. Alterações aqui não afetam rotinas já criadas."
         items={form.aprovador_pacote_padrao ?? APROVADOR_PACOTE_PADRAO_DEFAULT}
+        defaults={APROVADOR_PACOTE_PADRAO_DEFAULT}
         disabled={disabled}
         onChange={(items) => upd("aprovador_pacote_padrao", items)}
+        onSave={() => save.mutate()}
+        saving={save.isPending}
+      />
+      <PacotePadraoCard
+        title="Pacote padrão do Validador / Auditor"
+        description="Perguntas automáticas que auditam a atuação do APROVADOR (nunca o Executor diretamente). Carregadas em novas rotinas na aba Validador. Alterações aqui não afetam rotinas já criadas."
+        items={form.validador_pacote_padrao ?? VALIDADOR_PACOTE_PADRAO_DEFAULT}
+        defaults={VALIDADOR_PACOTE_PADRAO_DEFAULT}
+        disabled={disabled}
+        onChange={(items) => upd("validador_pacote_padrao", items)}
         onSave={() => save.mutate()}
         saving={save.isPending}
       />
@@ -94,10 +108,13 @@ export function TarefasConfigPontuacao() {
   );
 }
 
-function PacotePadraoAprovadorCard({
-  items, disabled, onChange, onSave, saving,
+function PacotePadraoCard({
+  title, description, items, defaults, disabled, onChange, onSave, saving,
 }: {
+  title: string;
+  description: string;
   items: AprovadorPerguntaPadrao[];
+  defaults: AprovadorPerguntaPadrao[];
   disabled: boolean;
   onChange: (next: AprovadorPerguntaPadrao[]) => void;
   onSave: () => void;
@@ -115,12 +132,8 @@ function PacotePadraoAprovadorCard({
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
           <div>
-            <CardTitle className="text-base">Pacote padrão do Aprovador</CardTitle>
-            <p className="text-xs text-muted-foreground mt-1">
-              Estas perguntas são carregadas automaticamente em <strong>novas rotinas</strong>,
-              após as perguntas replicadas do Avaliado. Cada uma vira um item editável no snapshot da rotina.
-              Alterações aqui não afetam rotinas já criadas.
-            </p>
+            <CardTitle className="text-base">{title}</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">{description}</p>
           </div>
           <div className="text-right shrink-0">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Nota total ativo</div>
@@ -164,7 +177,7 @@ function PacotePadraoAprovadorCard({
         ))}
 
         <div className="flex justify-between pt-2 border-t">
-          <Button type="button" size="sm" variant="ghost" disabled={disabled} onClick={() => onChange(APROVADOR_PACOTE_PADRAO_DEFAULT)}>
+          <Button type="button" size="sm" variant="ghost" disabled={disabled} onClick={() => onChange(defaults)}>
             <RotateCcw className="w-3.5 h-3.5 mr-1" /> Restaurar padrões
           </Button>
           <Button onClick={onSave} disabled={disabled || saving}>

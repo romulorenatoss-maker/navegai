@@ -8,13 +8,12 @@
 import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
-import { Settings, Users, Building2, Calculator, HardDrive, Shield, UserCheck } from "lucide-react";
+import { Settings, Users, Building2, Calculator, HardDrive, Shield } from "lucide-react";
 import PermissoesPage from "@/pages/PermissoesPage";
 import { TarefasConfigColaboradores } from "@/modules/tarefas/components/configuracoes/TarefasConfigColaboradores";
 import { TarefasConfigSetores } from "@/modules/tarefas/components/configuracoes/TarefasConfigSetores";
 import { TarefasConfigPontuacao } from "@/modules/tarefas/components/configuracoes/TarefasConfigPontuacao";
 import { TarefasConfigArmazenamento } from "@/modules/tarefas/components/configuracoes/TarefasConfigArmazenamento";
-import { TarefasConfigAdA } from "@/modules/tarefas/components/configuracoes/TarefasConfigAdA";
 
 export default function ConfiguracoesPage() {
   const [params, setParams] = useSearchParams();
@@ -55,9 +54,6 @@ export default function ConfiguracoesPage() {
                 <TabsTrigger value="pontuacao" className="gap-2">
                   <Calculator className="w-4 h-4" /> Pontuação / Notas
                 </TabsTrigger>
-                <TabsTrigger value="ada" className="gap-2">
-                  <UserCheck className="w-4 h-4" /> Avaliação do Avaliador
-                </TabsTrigger>
                 <TabsTrigger value="armazenamento" className="gap-2">
                   <HardDrive className="w-4 h-4" /> Armazenamento
                 </TabsTrigger>
@@ -72,9 +68,6 @@ export default function ConfiguracoesPage() {
                 </TabsContent>
                 <TabsContent value="pontuacao" className="m-0">
                   <TarefasConfigPontuacao />
-                </TabsContent>
-                <TabsContent value="ada" className="m-0">
-                  <TarefasConfigAdA />
                 </TabsContent>
                 <TabsContent value="armazenamento" className="m-0">
                   <TarefasConfigArmazenamento />

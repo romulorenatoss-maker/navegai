@@ -14,7 +14,6 @@ import { DraftRestoreBanner } from "./DraftRestoreBanner";
 import type { BuilderDraftPayload } from "./useBuilderDraft";
 import {
   AprovadorCheckItemForm,
-  ValidadorCheckItemForm,
   WIZARD_STEPS,
   WizardStepId,
 } from "./types";
@@ -35,8 +34,8 @@ interface Props {
   /** Checklists do Aprovador Final / Validador Final (Fase 2). */
   aprovadorChecks: AprovadorCheckItemForm[];
   setAprovadorChecks: React.Dispatch<React.SetStateAction<AprovadorCheckItemForm[]>>;
-  validadorChecks: ValidadorCheckItemForm[];
-  setValidadorChecks: React.Dispatch<React.SetStateAction<ValidadorCheckItemForm[]>>;
+  validadorChecks: AprovadorCheckItemForm[];
+  setValidadorChecks: React.Dispatch<React.SetStateAction<AprovadorCheckItemForm[]>>;
   /** Config global de Pontuação/SLA — usada para popular as penalidades automáticas. */
   pontuacaoConfig: TarefasPontuacaoConfig | null;
   /** Overrides locais por rotina das penalidades automáticas. */

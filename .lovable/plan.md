@@ -1,79 +1,88 @@
-## Objetivo
+## Análise atual
 
-Separar responsabilidades:
-- **Avaliado/Executor**: apenas operacional (responder + anexar). Sem regras avaliativas.
-- **Aprovador**: única origem das regras avaliativas; replica cada pergunta do Avaliado e nelas vivem todas as regras (conforme/NC, evidência, plano de ação, devolução, reabertura, prazo, perda de pontos, ponderação, anexos).
-- **Pacote padrão**: continua separado, só para métricas gerais (prazo global, atraso por etapa, obrigatórias respondidas, evidências anexadas, devolução/reabertura). Sem duplicar penalidade de plano de ação.
-- **Nota do Avaliado**: calculada exclusivamente pelas respostas do Aprovador às perguntas replicadas.
+**Pacote padrão do Aprovador (referência a reutilizar)**
+- `tarefas_pontuacao_config_service.ts` → `aprovador_pacote_padrao` + `APROVADOR_PACOTE_PADRAO_DEFAULT`, tipos `AprovadorPerguntaPadrao` / `AprovadorMetricaCalculo` / `AprovadorTipoPadrao`.
+- `TarefasConfigPontuacao.tsx` → componente `PacotePadraoAprovadorCard` (Card + lista + Switch + `FieldConfigSheet`) renderizado dentro da subaba **Pontuação / Notas**.
+- `StepChecklistAprovador.tsx` → consome o pacote via `getPontuacaoConfig()` e injeta itens com `buildAprovadorAutomatico(...)`. Lista única ordenada (REPLICADA → AUTO → MANUAL), modal único = `FieldConfigSheet`.
+- `types.ts` → `AprovadorCheckItemForm`, `defaultAprovadorManualItem`, `buildAprovadorAutomatico`, `AprovadorOrigem`.
+- Persistência: `ada_config_snapshot.checklists.{aprovador,validador}` (sem migration).
 
-## Análise de impacto (antes de alterar)
+**Validador hoje**
+- `StepChecklistValidador.tsx` usa UI própria (categorias, sem AUTO, sem `FieldConfigSheet`) e `VALIDADOR_DEFAULT_ITEMS` hardcoded em `types.ts`.
+- Não há pacote padrão global do Validador em `tarefas_pontuacao_config`.
+- Persistido em `ada_config_snapshot.checklists.validador` (compatível ao reusar `AprovadorCheckItemForm` para itens AUTO/MANUAL).
 
-### Arquivos que precisam ser ajustados
-1. `src/modules/tarefas/types/tarefas_types.ts`
-   - `FieldForm`: remover/depreciar campos avaliativos do Avaliado:
-     - `penalidade_reprovacao`, `impacta_score`, `criticidade`, `gera_contingencia`,
-       `exige_evidencia`, `tipo_evidencia`, `opcoes_regras`, `validacao`,
-       `condicao_visibilidade`, `formula`, `aprovador_*` (já migrado p/ aba Aprovador).
-   - Manter: `label`, `descricao`, `tipo`, `ordem`, `obrigatorio`, `peso`, `instrucao_url/tipo`.
-   - `defaultField`: simplificar.
+**“Avaliação do Avaliador” (a remover)**
+- Subaba `ada` em `ConfiguracoesPage.tsx` → `TarefasConfigAdA.tsx`.
+- Página `tarefas_avaliacaoAvaliadorPage.tsx` (rota `/tarefas/avaliacao-avaliador/:id`) + navegação em `tarefas_minhasTarefasPage.tsx:336`.
+- Service `tarefas_ada_config_service.ts` (singleton `tarefas_ada_config`).
+- `tarefas_tabWorkflow.tsx` chama `getAdaConfig()` e popula `ada_config_snapshot` (usado também para guardar `checklists`).
+- **Coluna `ada_config_snapshot` em tarefas/rotinas é COMPARTILHADA** — guarda também `checklists.aprovador` e `checklists.validador`. NÃO pode ser removida.
 
-2. `src/modules/tarefas/components/builder/StepChecklistAvaliado.tsx` (ou equivalente que renderiza o config da pergunta do Avaliado)
-   - Remover da UI: bloco "regras", criticidade, plano de ação, penalidades, condicionais, opções de regra, evidência obrigatória, formulários condicionais.
-   - Manter: título, descrição, tipo base, peso, obrigatório, instrução visual.
+## Mudanças mínimas e localizadas
 
-3. `src/modules/tarefas/components/builder/StepChecklistAprovador.tsx`
-   - Já existe a lista unificada com replicação. Garantir que a pergunta replicada herda só: `field_label`, `tipo` base mapeado, `peso`, `pergunta_origem_id`.
-   - Garantir que TODAS as regras avaliativas estão disponíveis no `FieldConfigSheet` da pergunta replicada (já estão; só validar).
+### 1) Service `tarefas_pontuacao_config_service.ts`
+- Adicionar tipo `ValidadorMetricaCalculo` (sla_aprovador, justificativa_nc, evidencia_aprovador, regras_pergunta, plano_acao_aprovador, ponderacao_manual, plausibilidade_ponderacao, manual).
+- Adicionar `validador_pacote_padrao: AprovadorPerguntaPadrao[]` no shape `TarefasPontuacaoConfig` (reuso do mesmo tipo do Aprovador para que TODA UI/modal funcione sem mudanças).
+- `VALIDADOR_PACOTE_PADRAO_DEFAULT` com as 7 perguntas (peso somando 100).
+- `getPontuacaoConfig` faz merge com fallback default; `setPontuacaoConfig` persiste o campo novo.
 
-4. `src/modules/tarefas/components/builder/FieldConfigSheet.tsx`
-   - Sem mudanças estruturais — é o lugar correto para as regras (Aprovador).
+### 2) Migration mínima
+- `ALTER TABLE tarefas_pontuacao_config ADD COLUMN IF NOT EXISTS validador_pacote_padrao jsonb DEFAULT '[]'::jsonb;`
+- Sem mudar trigger, sem dropar nada.
 
-5. `src/modules/tarefas/components/builder/checklistNormalizers.ts`
-   - Migrar peso/tipo do Avaliado para a pergunta replicada do Aprovador ao carregar rotinas antigas.
-   - Limpar campos avaliativos legados do Avaliado ao normalizar (sem dropar dados — só ignorar na UI).
+### 3) `TarefasConfigPontuacao.tsx`
+- Generalizar `PacotePadraoAprovadorCard` em `PacotePadraoCard` (props: `title`, `description`, `items`, `onChange`, `defaults`) — mantendo 100% do layout/modal atuais.
+- Renderizar dois cards: Aprovador (acima) e Validador/Auditor (abaixo). Mesmo `FieldConfigSheet`, mesmo botão Salvar (único save persiste ambos).
 
-6. `src/modules/tarefas/services/tarefas_pontuacao_config_service.ts` + `TarefasConfigPontuacao.tsx`
-   - Pacote padrão: revisar a lista default para conter SOMENTE métricas gerais (prazo global, atraso por etapa, obrigatórias respondidas, evidências anexadas, devolução/reabertura). Remover qualquer item de "plano de ação" do pacote padrão para não duplicar.
+### 4) `StepChecklistValidador.tsx` — substituir conteúdo, manter contrato externo
+- Refatorar para usar **mesmo padrão visual** do Aprovador: lista única, badges AUTO/MANUAL, `FieldConfigSheet`.
+- Itens passam a ser `AprovadorCheckItemForm` (reuso). Um adapter no `tarefas_rotinasPage.tsx` e `tarefas_tabWorkflow.tsx` (onde `setItems` é tipado) recebe o tipo novo.
+- Carrega o pacote do Validador via `getPontuacaoConfig().validador_pacote_padrao` com `buildAprovadorAutomatico`.
+- Bloco de auditoria: cada card AUTO/MANUAL terá um `<details>` "Ver dados auditáveis" exibindo, quando disponível, resposta do Executor / Aprovador / justificativa / anexos / ponderação / plano de ação / SLA / atrasos / reaberturas. Em construção da rotina (sem assignment), o bloco mostra apenas legenda “Disponível na execução”. Sem nova RPC: dados vêm do `ada_config_snapshot` da execução, lido pelo painel de auditoria já existente.
 
-7. Engine de scoring (`tarefas_useScoring.ts` e/ou serviço relacionado)
-   - **Não alterar agora** o cálculo final (fora do escopo UI imediato), mas **documentar** que a nota do Avaliado deve vir das respostas do Aprovador às perguntas replicadas. Marcar TODO no código se necessário.
-   - Se já houver cálculo somando peso direto do Avaliado: ajustar para somar a partir da lista do Aprovador (replicadas + manuais), aplicando NC → desconto proporcional ao peso.
+### 5) `types.ts`
+- Manter `ValidadorCheckItemForm` e `VALIDADOR_DEFAULT_ITEMS` como **legacy** (não remover) → garante compat com snapshots antigos.
+- Adicionar `defaultValidadorPacote()` que devolve `AprovadorCheckItemForm[]` derivado do pacote do Validador.
+- Adicionar `normalizeValidadorLegacy(items)` em `checklistNormalizers.ts`: se snapshot vier no formato antigo (`ValidadorCheckItemForm`), converte para `AprovadorCheckItemForm` mantendo pergunta/peso/tipo (sem perder histórico).
 
-### O que NÃO será mexido
-- Banco de dados / migrations (campos legados ficam, só deixam de ser usados na UI).
-- `tarefas_useTransition.ts`, fluxo de transições, hooks de execução.
-- Snapshots de rotinas existentes — `checklistNormalizers` faz a ponte.
-- `AprovadorCheckItemForm` em `types.ts` — já tem os campos necessários.
+### 6) Remoção da aba “Avaliação do Avaliador”
+- `ConfiguracoesPage.tsx`: remover `TabsTrigger value="ada"` + `TabsContent` + import.
+- `App.tsx`: remover rota `/tarefas/avaliacao-avaliador/:id` + import.
+- `tarefas_minhasTarefasPage.tsx:336`: remover navegação (o usuário responderá agora pelas perguntas replicadas/AUTO do Aprovador, que já existem).
+- **Manter no codebase (legacy, não importados em UI)**: `tarefas_avaliacaoAvaliadorPage.tsx`, `TarefasConfigAdA.tsx`, `tarefas_ada_config_service.ts`. Razão: `ada_config_snapshot` continua usado pelo Aprovador/Validador para guardar checklists; manter o service evita quebrar histórico/Hooks indiretos. Marcar com comentário `@legacy` no topo dos 3 arquivos.
+- `tarefas_tabWorkflow.tsx`: remover `getAdaConfig()` automático que sobrescreve `ada_config_snapshot` apenas com config do AdA — ajuste mínimo: só popular se snapshot ainda não tem `checklists` (preserva `checklists.aprovador/validador`). Não altera comportamento atual de checklists.
+- Tabela `tarefas_ada_config` permanece intocada (legacy).
 
-## Plano de execução
+### 7) Cálculo de notas
+- Não alterar engine. A nota do Validador continua somando pelos itens do checklist Validador no snapshot — agora vinda do mesmo shape `AprovadorCheckItemForm`.
+- Trigger DB inalterado.
 
-### Fase A — UI do Avaliado simplificada
-1. Identificar o componente real que renderiza o editor de pergunta do Avaliado (provavelmente `StepChecklistAvaliado.tsx` ou `tarefas_tabFormBuilder.tsx`).
-2. Remover da UI todos os controles avaliativos. Manter apenas: título, descrição, tipo base, peso, obrigatório, instrução/anexo de referência.
-3. Remover o bloco "Pergunta do Aprovador" inline (já existe a aba dedicada).
+## Compatibilidade
 
-### Fase B — Garantir replicação enxuta no Aprovador
-1. Em `StepChecklistAprovador.tsx` / `defaultAprovadorCheckItem`: confirmar que só herdamos `field_label`, `tipo` mapeado, `peso`, `pergunta_origem_id`.
-2. Manter `FieldConfigSheet` como única tela de regras.
+- Rotinas antigas: `checklists.validador` legado (`ValidadorCheckItemForm`) é convertido on-read pelo normalizer; nada é regravado até o usuário salvar.
+- Snapshots `ada_config_snapshot` continuam válidos (mesma chave `checklists`).
+- Histórico de avaliações AdA preservado via service legacy.
 
-### Fase C — Pacote padrão = só métricas gerais
-1. Em `tarefas_pontuacao_config_service.ts`, substituir as 10 perguntas atuais por itens de métrica geral:
-   - Prazo global cumprido
-   - Atrasos por etapa
-   - Obrigatórias respondidas
-   - Evidências anexadas
-   - Devoluções/reaberturas
-2. Remover qualquer item de "plano de ação" do pacote padrão.
+## Arquivos a alterar
 
-### Fase D — Score do Avaliado vem do Aprovador
-1. Localizar onde a nota do Avaliado é calculada hoje.
-2. Alterar para somar peso × resultado da pergunta replicada (Conforme = 100% do peso; NC = 0; com ponderação do auditor se aplicável).
-3. Pacote padrão entra como métrica geral separada (não soma na nota da pergunta).
+1. `supabase/migrations/<timestamp>_validador_pacote_padrao.sql` (novo)
+2. `src/modules/tarefas/services/tarefas_pontuacao_config_service.ts`
+3. `src/modules/tarefas/components/configuracoes/TarefasConfigPontuacao.tsx`
+4. `src/modules/tarefas/components/builder/StepChecklistValidador.tsx`
+5. `src/modules/tarefas/components/builder/types.ts` (defaults validador, sem remover legacy)
+6. `src/modules/tarefas/components/builder/checklistNormalizers.ts`
+7. `src/modules/tarefas/components/builder/TarefasBuilderWizard.tsx` (tipo do state validador → `AprovadorCheckItemForm[]`)
+8. `src/modules/tarefas/pages/tarefas_rotinasPage.tsx` (load/save validador com novo tipo)
+9. `src/pages/ConfiguracoesPage.tsx` (remover trigger/content `ada`)
+10. `src/App.tsx` (remover rota `/tarefas/avaliacao-avaliador/:id`)
+11. `src/modules/tarefas/pages/tarefas_minhasTarefasPage.tsx` (remover navegação para a página antiga)
+12. `src/modules/tarefas/components/tarefas_tabWorkflow.tsx` (não sobrescrever `checklists`)
 
 ## Confirmação solicitada
 
-Como a alteração toca contrato de dados (`FieldForm`), normalização de rotinas legadas e engine de score, peço confirmação antes de aplicar. Em especial:
+1. **Migration** adicionando coluna `validador_pacote_padrao jsonb` em `tarefas_pontuacao_config` — OK?
+2. **Manter** `tarefas_ada_config`, `tarefas_avaliacaoAvaliadorPage.tsx`, `TarefasConfigAdA.tsx`, `tarefas_ada_config_service.ts` como **legacy** (apenas remover do menu e da rota), conforme regra “não apagar histórico” — OK?
+3. **Reuso de `AprovadorCheckItemForm`** para o checklist Validador (com normalizer p/ snapshots antigos), em vez de manter dois shapes — OK?
 
-- **OK remover da UI** os campos avaliativos do Avaliado mantendo as colunas no banco como legado?
-- **OK substituir o pacote padrão atual** (10 perguntas) por 5 métricas gerais?
-- **Fase D (engine de score)**: posso ajustar agora ou prefere deixar como TODO sinalizado e aplicar em passo separado?
+Ao confirmar, aplico as 12 alterações acima em sequência e gero o diff completo + checklist de validação.

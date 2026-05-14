@@ -11,7 +11,8 @@ import { TemplateForm, SectionForm, FieldForm, StepForm, defaultTemplate, defaul
 // (Removido) TaskTypeSelectorDialog — builder único, sem seletor prévio.
 type TaskType = "simples" | "inspecao";
 import { TarefasBuilderWizard } from "@/modules/tarefas/components/builder/TarefasBuilderWizard";
-import { AprovadorCheckItemForm, ValidadorCheckItemForm, buildDefaultValidadorItems, buildAprovadorAutomatico } from "@/modules/tarefas/components/builder/types";
+import { AprovadorCheckItemForm, buildAprovadorAutomatico } from "@/modules/tarefas/components/builder/types";
+import { normalizeAprovadorList } from "@/modules/tarefas/components/builder/checklistNormalizers";
 import type { PenalidadesOverrideMap } from "@/modules/tarefas/components/builder/PenalidadesAutomaticasBlock";
 import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
 import { useDraftAutosave, loadDraft, clearDraft, type BuilderDraftPayload } from "@/modules/tarefas/components/builder/useBuilderDraft";
@@ -27,7 +28,7 @@ export default function OperationalCadastroPage() {
   const [fields, setFields] = useState<FieldForm[]>([]);
   const [steps, setSteps] = useState<StepForm[]>([]);
   const [aprovadorChecks, setAprovadorChecks] = useState<AprovadorCheckItemForm[]>([]);
-  const [validadorChecks, setValidadorChecks] = useState<ValidadorCheckItemForm[]>([]);
+  const [validadorChecks, setValidadorChecks] = useState<AprovadorCheckItemForm[]>([]);
   const [penalidadesOverride, setPenalidadesOverride] = useState<PenalidadesOverrideMap>({});
   const [activeTab, setActiveTab] = useState("geral");
   const [filterExecutor, setFilterExecutor] = useState("__all");
@@ -407,7 +408,10 @@ export default function OperationalCadastroPage() {
     setAprovadorChecks(
       pacote.filter(p => p.ativo !== false).map(p => buildAprovadorAutomatico(p))
     );
-    setValidadorChecks(buildDefaultValidadorItems());
+    const pacoteVal = pontuacaoConfig?.validador_pacote_padrao ?? [];
+    setValidadorChecks(
+      pacoteVal.filter(p => p.ativo !== false).map(p => buildAprovadorAutomatico(p))
+    );
     setPenalidadesOverride({});
     setActiveTab("geral");
     // Detect existing draft for new template
@@ -526,17 +530,24 @@ export default function OperationalCadastroPage() {
       permite_conclusao: i.permite_conclusao ?? true,
       permite_aumento_prazo: i.permite_aumento_prazo ?? true,
     })));
-    setValidadorChecks(val.length > 0
-      ? val.map((i: any) => ({
-          tempId: i.tempId || crypto.randomUUID(),
-          pergunta: i.pergunta || "",
-          categoria: i.categoria || "manual",
-          peso: Number(i.peso) || 1,
-          tipo_resposta: i.tipo_resposta || "sim_nao",
-          exige_observacao: !!i.exige_observacao,
-          exige_evidencia: !!i.exige_evidencia,
-        }))
-      : buildDefaultValidadorItems());
+    // Validador: aceita formato novo (AprovadorCheckItemForm) e formato legacy
+    // (ValidadorCheckItemForm com {pergunta, categoria}). Snapshots antigos são
+    // convertidos preservando pergunta/peso/tipo, sem perder histórico.
+    const valNormalized = val.map((i: any) => {
+      if (i.pergunta_padrao) return i; // já no formato novo
+      // legacy: ValidadorCheckItemForm
+      return {
+        ...i,
+        pergunta_padrao: i.pergunta ?? "",
+        field_id: "",
+        origem_pergunta: "manual" as const,
+      };
+    });
+    setValidadorChecks(
+      valNormalized.length > 0
+        ? normalizeAprovadorList(valNormalized)
+        : []
+    );
 
     // Hidrata overrides de penalidades automáticas (se houver no snapshot).
     const ovRaw = (snap?.penalidades_override ?? {}) as any;

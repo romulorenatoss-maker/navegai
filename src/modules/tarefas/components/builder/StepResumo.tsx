@@ -1,6 +1,6 @@
 import { CheckCircle2, ClipboardList, Settings2, CalendarClock, FileText, ShieldCheck, ClipboardCheck, Award } from "lucide-react";
 import { TemplateForm, SectionForm, FieldForm, StepForm } from "@/modules/tarefas/types/tarefas_types";
-import { AprovadorCheckItemForm, ValidadorCheckItemForm } from "./types";
+import { AprovadorCheckItemForm } from "./types";
 import { TIPO_EXECUCAO_LABELS, RECORRENCIA_LABELS } from "@/modules/tarefas/hooks/tarefas_useScoring";
 
 interface Props {
@@ -9,7 +9,7 @@ interface Props {
   fields: FieldForm[];
   steps: StepForm[];
   aprovadorChecks?: AprovadorCheckItemForm[];
-  validadorChecks?: ValidadorCheckItemForm[];
+  validadorChecks?: AprovadorCheckItemForm[];
   hasAprovador?: boolean;
   hasValidador?: boolean;
   setores: any[];
