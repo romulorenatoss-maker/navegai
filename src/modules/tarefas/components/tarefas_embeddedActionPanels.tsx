@@ -521,7 +521,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             className="bg-amber-600 hover:bg-amber-700 text-white"
           >
             <Send className="w-3.5 h-3.5 mr-1" />
-            {flow.isSaving ? "Enviando..." : `Registrar ${naoConformes.length} plano(s) e devolver`}
+            {flow.isSaving ? "Enviando..." : `Registrar ${naoConformesPlano.length} plano(s)${naoConformesDevolver.length ? ` + devolver ${naoConformesDevolver.length}` : ""} e devolver tarefa`}
           </Button>
         </div>
       </div>
