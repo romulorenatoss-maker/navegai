@@ -52,6 +52,19 @@ export function useAuditFlow(assignmentId: string | null) {
     enabled: !!assignmentId,
   });
 
+  // Respostas do aprovador (para alertas/anormalidades visíveis ao auditor)
+  const { data: approvalAnswers = [] } = useQuery({
+    queryKey: ["operational_audit_approval_answers", assignmentId],
+    queryFn: async () => {
+      if (!assignmentId) return [];
+      const { data, error } = await (supabase as any).from("operational_approval_answers")
+        .select("*").eq("assignment_id", assignmentId);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!assignmentId,
+  });
+
   // Hidrata drafts a partir do que já está salvo
   useEffect(() => {
     if (!existingAuditAnswers || existingAuditAnswers.length === 0) return;
@@ -173,6 +186,7 @@ export function useAuditFlow(assignmentId: string | null) {
   return {
     fieldAnswers,
     existingAuditAnswers,
+    approvalAnswers,
     auditorAnswers,
     updateAuditorAnswer,
     autoSaveAuditorAnswer,

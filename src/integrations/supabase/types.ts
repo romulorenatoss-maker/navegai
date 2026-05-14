@@ -1282,42 +1282,75 @@ export type Database = {
       operational_approval_answers: {
         Row: {
           assignment_id: string
+          conforme: boolean | null
           created_at: string
           evidencia_url: string | null
           field_id: string
+          flag_prazo_alterado: boolean | null
           herdada: boolean | null
           id: string
+          justificativa_alteracao_prazo: string | null
+          justificativa_atraso: string | null
+          justificativa_atraso_anexo_url: string | null
           motivo_alteracao: string | null
           observacao: string | null
           peso: number
+          plano_acao_anexo_url: string | null
+          plano_acao_descricao: string | null
+          plano_acao_prazo: string | null
+          prazo_padrao_aplicado: string | null
+          resolucao_atrasada: boolean | null
+          resolvido_em: string | null
           respondido_em: string
           respondido_por: string
           resposta: string
         }
         Insert: {
           assignment_id: string
+          conforme?: boolean | null
           created_at?: string
           evidencia_url?: string | null
           field_id: string
+          flag_prazo_alterado?: boolean | null
           herdada?: boolean | null
           id?: string
+          justificativa_alteracao_prazo?: string | null
+          justificativa_atraso?: string | null
+          justificativa_atraso_anexo_url?: string | null
           motivo_alteracao?: string | null
           observacao?: string | null
           peso?: number
+          plano_acao_anexo_url?: string | null
+          plano_acao_descricao?: string | null
+          plano_acao_prazo?: string | null
+          prazo_padrao_aplicado?: string | null
+          resolucao_atrasada?: boolean | null
+          resolvido_em?: string | null
           respondido_em?: string
           respondido_por: string
           resposta?: string
         }
         Update: {
           assignment_id?: string
+          conforme?: boolean | null
           created_at?: string
           evidencia_url?: string | null
           field_id?: string
+          flag_prazo_alterado?: boolean | null
           herdada?: boolean | null
           id?: string
+          justificativa_alteracao_prazo?: string | null
+          justificativa_atraso?: string | null
+          justificativa_atraso_anexo_url?: string | null
           motivo_alteracao?: string | null
           observacao?: string | null
           peso?: number
+          plano_acao_anexo_url?: string | null
+          plano_acao_descricao?: string | null
+          plano_acao_prazo?: string | null
+          prazo_padrao_aplicado?: string | null
+          resolucao_atrasada?: boolean | null
+          resolvido_em?: string | null
           respondido_em?: string
           respondido_por?: string
           resposta?: string
@@ -1413,10 +1446,15 @@ export type Database = {
           evidencia_url: string | null
           excluir_da_media: boolean
           fim_em: string | null
+          flag_atraso_plano_acao: boolean | null
+          flag_reincidencia_atraso: boolean | null
+          flag_sla_etapa_estourado: boolean | null
           horario_inicio_previsto: string | null
           horario_limite: string | null
           id: string
           inicio_em: string | null
+          justificativa_sla_etapa: string | null
+          justificativa_sla_etapa_anexo_url: string | null
           motivo_cancelamento: string | null
           motivo_exclusao_media: string | null
           numero_tarefa: number
@@ -1465,10 +1503,15 @@ export type Database = {
           evidencia_url?: string | null
           excluir_da_media?: boolean
           fim_em?: string | null
+          flag_atraso_plano_acao?: boolean | null
+          flag_reincidencia_atraso?: boolean | null
+          flag_sla_etapa_estourado?: boolean | null
           horario_inicio_previsto?: string | null
           horario_limite?: string | null
           id?: string
           inicio_em?: string | null
+          justificativa_sla_etapa?: string | null
+          justificativa_sla_etapa_anexo_url?: string | null
           motivo_cancelamento?: string | null
           motivo_exclusao_media?: string | null
           numero_tarefa?: number
@@ -1517,10 +1560,15 @@ export type Database = {
           evidencia_url?: string | null
           excluir_da_media?: boolean
           fim_em?: string | null
+          flag_atraso_plano_acao?: boolean | null
+          flag_reincidencia_atraso?: boolean | null
+          flag_sla_etapa_estourado?: boolean | null
           horario_inicio_previsto?: string | null
           horario_limite?: string | null
           id?: string
           inicio_em?: string | null
+          justificativa_sla_etapa?: string | null
+          justificativa_sla_etapa_anexo_url?: string | null
           motivo_cancelamento?: string | null
           motivo_exclusao_media?: string | null
           numero_tarefa?: number
@@ -2869,6 +2917,7 @@ export type Database = {
           penalidade_sla_contingencia: number
           permite_devolucao_parcial: boolean | null
           peso_recorrencia: number
+          prazo_plano_acao_padrao_horas: number | null
           prazo_sla_correcao_horas: number | null
           pular_semanas: number | null
           recorrencia_tipo: string
@@ -2921,6 +2970,7 @@ export type Database = {
           penalidade_sla_contingencia?: number
           permite_devolucao_parcial?: boolean | null
           peso_recorrencia?: number
+          prazo_plano_acao_padrao_horas?: number | null
           prazo_sla_correcao_horas?: number | null
           pular_semanas?: number | null
           recorrencia_tipo?: string
@@ -2973,6 +3023,7 @@ export type Database = {
           penalidade_sla_contingencia?: number
           permite_devolucao_parcial?: boolean | null
           peso_recorrencia?: number
+          prazo_plano_acao_padrao_horas?: number | null
           prazo_sla_correcao_horas?: number | null
           pular_semanas?: number | null
           recorrencia_tipo?: string

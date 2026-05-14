@@ -186,7 +186,24 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   const flow = useApprovalFlow(assignment?.id || null);
   const [step, setStep] = useState<"perguntas" | "plano">("perguntas");
   const [motivoFinal, setMotivoFinal] = useState("");
-  const [planos, setPlanos] = useState<Record<string, { descricao_acao: string; prazo: string; criticidade: "baixa" | "media" | "alta" }>>({});
+  const prazoPadraoHoras: number = Number(
+    assignment?.template_snapshot?.prazo_plano_acao_padrao_horas
+    ?? assignment?.prazo_plano_acao_padrao_horas
+    ?? 24
+  );
+  const computeDefaultPrazo = () => {
+    const d = new Date(Date.now() + prazoPadraoHoras * 3600 * 1000);
+    // datetime-local precisa formato YYYY-MM-DDTHH:mm
+    const pad = (n: number) => n.toString().padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+  const [planos, setPlanos] = useState<Record<string, {
+    descricao_acao: string;
+    prazo: string;
+    prazo_padrao: string;
+    justificativa_alteracao_prazo: string;
+    criticidade: "baixa" | "media" | "alta";
+  }>>({});
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
   const saveTimers = useRef<Record<string, any>>({});
 
@@ -267,14 +284,17 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   }, [approverFields, flow.approverAnswers, flow.existingApprovalAnswers]);
 
   const irParaPlano = () => {
-    // Garante registros default no formulário
+    // Garante registros default no formulário (com prazo padrão pré-aplicado)
     const next: typeof planos = { ...planos };
+    const defaultPrazo = computeDefaultPrazo();
     for (const f of naoConformes) {
       if (!next[f.id]) {
         const draft = flow.approverAnswers[f.id];
         next[f.id] = {
           descricao_acao: draft?.observacao ?? "",
-          prazo: "",
+          prazo: defaultPrazo,
+          prazo_padrao: defaultPrazo,
+          justificativa_alteracao_prazo: "",
           criticidade: "media",
         };
       }
@@ -293,16 +313,22 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   const submeterPlanos = async () => {
     const lista = naoConformes.map(f => {
       const p = planos[f.id];
+      const prazoAlterado = !!(p?.prazo && p?.prazo_padrao && p.prazo !== p.prazo_padrao);
       return {
         field_id: f.id,
         field_label: f.label,
         descricao_acao: p?.descricao_acao?.trim() || "",
         prazo_iso: p?.prazo ? new Date(p.prazo).toISOString() : "",
-        criticidade: p?.criticidade || "media",
+        prazo_padrao_iso: p?.prazo_padrao ? new Date(p.prazo_padrao).toISOString() : null,
+        prazo_alterado: prazoAlterado,
+        justificativa_alteracao_prazo: prazoAlterado ? (p?.justificativa_alteracao_prazo?.trim() || "") : null,
+        criticidade: p?.criticidade || "media" as const,
       };
     });
-    const invalido = lista.find(p => !p.descricao_acao || !p.prazo_iso);
-    if (invalido) { toast.error(`Preencha descrição e prazo para "${invalido.field_label}".`); return; }
+    const invalidoBasico = lista.find(p => !p.descricao_acao || !p.prazo_iso);
+    if (invalidoBasico) { toast.error(`Preencha descrição e prazo para "${invalidoBasico.field_label}".`); return; }
+    const invalidoJust = lista.find(p => p.prazo_alterado && !p.justificativa_alteracao_prazo);
+    if (invalidoJust) { toast.error(`Justifique a alteração do prazo padrão em "${invalidoJust.field_label}".`); return; }
     try {
       await flow.criarPlanosAcaoEDevolver.mutateAsync({ assignment, planos: lista, motivoGeral: motivoFinal });
       onClose();
@@ -329,23 +355,33 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
         </div>
 
         {naoConformes.map((f) => {
-          const p = planos[f.id] || { descricao_acao: "", prazo: "", criticidade: "media" as const };
+          const p = planos[f.id] || {
+            descricao_acao: "",
+            prazo: computeDefaultPrazo(),
+            prazo_padrao: computeDefaultPrazo(),
+            justificativa_alteracao_prazo: "",
+            criticidade: "media" as const,
+          };
+          const prazoAlterado = !!(p.prazo && p.prazo_padrao && p.prazo !== p.prazo_padrao);
           return (
             <div key={f.id} className="border border-border rounded-lg p-3 bg-card space-y-2">
               <div className="text-sm font-medium text-foreground">{f.label}</div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-[11px]">Prazo</Label>
+                  <Label className="text-[11px]">
+                    Prazo {prazoAlterado && <span className="text-amber-600 font-semibold">(alterado do padrão)</span>}
+                  </Label>
                   <Input
                     type="datetime-local"
                     value={p.prazo}
                     onChange={(e) => setPlanos(prev => ({ ...prev, [f.id]: { ...p, prazo: e.target.value } }))}
                     className="h-8 text-xs"
                   />
+                  <p className="text-[10px] text-muted-foreground">Padrão: {prazoPadraoHoras}h</p>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[11px]">Criticidade</Label>
-                  <Select value={p.criticidade} onValueChange={(v) => setPlanos(prev => ({ ...prev, [f.id]: { ...p, criticidade: v as any } }))}>
+                  <Select value={p.criticidade} onValueChange={(v) => setPlanos(prev => ({ ...prev, [f.id]: { ...p, criticidade: v as "baixa" | "media" | "alta" } }))}>
                     <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="baixa">Baixa</SelectItem>
@@ -364,6 +400,19 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                   placeholder="O que precisa ser feito para corrigir..."
                 />
               </div>
+              {prazoAlterado && (
+                <div className="space-y-1 border-t border-amber-200 pt-2 bg-amber-50/50 dark:bg-amber-950/20 -mx-3 px-3 -mb-3 pb-3 rounded-b-lg">
+                  <Label className="text-[11px] text-amber-800 dark:text-amber-300 font-semibold">
+                    Justificativa para alterar o prazo padrão (obrigatória) — visível ao auditor
+                  </Label>
+                  <Textarea
+                    value={p.justificativa_alteracao_prazo}
+                    onChange={(e) => setPlanos(prev => ({ ...prev, [f.id]: { ...p, justificativa_alteracao_prazo: e.target.value } }))}
+                    className="text-xs min-h-[40px]"
+                    placeholder="Por que o prazo foi estendido além do padrão..."
+                  />
+                </div>
+              )}
             </div>
           );
         })}
@@ -683,12 +732,60 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
     catch (e: any) { toast.error(e.message); }
   };
 
+  // Alertas/anormalidades para o auditor revisar
+  const approvalAnswers = (flow.approvalAnswers || []) as any[];
+  const planosComPrazoAlterado = approvalAnswers.filter(a => a.flag_prazo_alterado);
+  const atrasos = approvalAnswers.filter(a => a.resolucao_atrasada);
+  const fieldById = (id: string) => fields.find((f: any) => f.id === id);
+  const slaEtapa = !!assignment?.flag_sla_etapa_estourado;
+  const reincidencia = !!assignment?.flag_reincidencia_atraso;
+  const temAlertas = planosComPrazoAlterado.length > 0 || atrasos.length > 0 || slaEtapa || reincidencia;
+
   return (
     <div className="space-y-3">
       <div className="bg-primary/5 border border-primary/30 rounded-lg p-3 flex items-start gap-2">
         <ShieldCheck className="w-4 h-4 text-primary shrink-0 mt-0.5" />
         <div className="text-xs text-foreground"><strong>Modo Auditor.</strong> Responda as perguntas de auditoria configuradas no template.</div>
       </div>
+
+      {temAlertas && (
+        <div className="border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 rounded-lg p-3 space-y-2">
+          <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
+            <AlertTriangle className="w-4 h-4" />
+            <strong className="text-xs uppercase tracking-wider">Anormalidades detectadas</strong>
+          </div>
+          {reincidencia && (
+            <div className="text-xs text-red-700 font-semibold bg-red-50 border border-red-200 rounded px-2 py-1">
+              ⚠ Reincidência de atraso em plano de ação
+            </div>
+          )}
+          {slaEtapa && (
+            <div className="text-xs text-amber-800">
+              <strong>SLA da etapa estourado.</strong>
+              {assignment?.justificativa_sla_etapa && <> Justificativa: <em>{assignment.justificativa_sla_etapa}</em></>}
+            </div>
+          )}
+          {planosComPrazoAlterado.map((a) => {
+            const f = fieldById(a.field_id);
+            return (
+              <div key={`pa-${a.id}`} className="text-xs text-amber-800 border-t border-amber-200 pt-1">
+                <strong>Prazo alterado pelo aprovador</strong> em "{f?.label || a.field_id}".
+                {a.justificativa_alteracao_prazo && <> Justificativa: <em>{a.justificativa_alteracao_prazo}</em></>}
+              </div>
+            );
+          })}
+          {atrasos.map((a) => {
+            const f = fieldById(a.field_id);
+            return (
+              <div key={`at-${a.id}`} className="text-xs text-red-800 border-t border-amber-200 pt-1">
+                <strong>Atraso na execução do plano</strong> em "{f?.label || a.field_id}".
+                {a.plano_acao_prazo && <> Prazo: {new Date(a.plano_acao_prazo).toLocaleString("pt-BR")} → resolvido: {a.resolvido_em ? new Date(a.resolvido_em).toLocaleString("pt-BR") : "—"}.</>}
+                {a.justificativa_atraso && <> Justificativa do executor: <em>{a.justificativa_atraso}</em></>}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {auditorFields.length === 0 ? (
         <p className="text-xs text-muted-foreground text-center py-4">Nenhuma pergunta de auditoria configurada neste template.</p>

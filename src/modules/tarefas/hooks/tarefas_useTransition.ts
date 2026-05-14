@@ -378,6 +378,45 @@ export function useOperationalTransition() {
         updatePayload.prazo_pausado_ms = acumulado;
       }
 
+      // Ao sair de EM_PLANO_ACAO: marca resolução dos planos de ação e flags de atraso
+      let novosAtrasados = 0;
+      if (leavingPlano) {
+        try {
+          const { data: pendentes } = await (supabase as any)
+            .from("operational_approval_answers")
+            .select("id, plano_acao_prazo, resolvido_em, resolucao_atrasada")
+            .eq("assignment_id", assignmentId)
+            .not("plano_acao_prazo", "is", null)
+            .is("resolvido_em", null);
+          const nowDate = new Date(now);
+          for (const row of (pendentes || []) as any[]) {
+            const atrasada = !!row.plano_acao_prazo && nowDate > new Date(row.plano_acao_prazo);
+            if (atrasada) novosAtrasados += 1;
+            await (supabase as any)
+              .from("operational_approval_answers")
+              .update({
+                resolvido_em: now,
+                resolucao_atrasada: atrasada,
+              })
+              .eq("id", row.id);
+          }
+          if (novosAtrasados > 0) {
+            // Se já tinha flag anterior → reincidência
+            const { data: assignFlags } = await (supabase as any)
+              .from("operational_assignments")
+              .select("flag_atraso_plano_acao")
+              .eq("id", assignmentId)
+              .maybeSingle();
+            updatePayload.flag_atraso_plano_acao = true;
+            if (assignFlags?.flag_atraso_plano_acao) {
+              updatePayload.flag_reincidencia_atraso = true;
+            }
+          }
+        } catch (e) {
+          console.warn("[plano_acao] flags falharam:", e);
+        }
+      }
+
       // Execute update (somente se há campos a alterar)
       if (Object.keys(updatePayload).length > 0) {
         const { error } = await (supabase as any)
