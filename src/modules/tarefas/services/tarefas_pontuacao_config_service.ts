@@ -86,18 +86,20 @@ export interface AprovadorPerguntaPadrao {
   penalidade_reprovacao?: number;
 }
 
+/**
+ * Pacote padrão = SOMENTE métricas gerais.
+ * Avaliação por pergunta (NC, plano de ação, devolução, ponderação, evidência específica)
+ * acontece nas perguntas REPLICADAS do Aprovador (uma por pergunta do Avaliado),
+ * não aqui — para não duplicar penalidades.
+ */
 export const APROVADOR_PACOTE_PADRAO_DEFAULT: AprovadorPerguntaPadrao[] = [
-  { id: "apr-prazo-global", ordem: 1, pergunta: "Executor entregou a tarefa dentro do prazo global?", tipo: "sim_nao", peso: 15, ativo: true, metrica_calculo: "prazo_global", exige_observacao: false, permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false },
-  { id: "apr-atraso-etapa", ordem: 2, pergunta: "Houve atraso em alguma etapa/pergunta da execução?", tipo: "sim_nao", peso: 10, ativo: true, metrica_calculo: "atraso_etapa", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true },
-  { id: "apr-obrigatorias", ordem: 3, pergunta: "Todas as perguntas obrigatórias foram respondidas?", tipo: "sim_nao", peso: 10, ativo: true, metrica_calculo: "obrigatorias_respondidas", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: true },
-  { id: "apr-evidencias", ordem: 4, pergunta: "As evidências obrigatórias foram anexadas corretamente?", tipo: "conforme_nao_conforme", peso: 10, ativo: true, metrica_calculo: "evidencias_anexadas", exige_evidencia: true, permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true },
-  { id: "apr-nao-conforme", ordem: 5, pergunta: "Houve resposta marcada como não conforme?", tipo: "sim_nao", peso: 15, ativo: true, metrica_calculo: "respostas_nao_conformes", permite_devolucao: true, gera_plano_acao: true, permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true },
-  { id: "apr-devolucao", ordem: 6, pergunta: "A execução precisou ser devolvida/reaberta?", tipo: "sim_nao", peso: 10, ativo: true, metrica_calculo: "devolucao", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true },
-  { id: "apr-pa-aberto", ordem: 7, pergunta: "Foi necessário abrir plano de ação?", tipo: "sim_nao", peso: 10, ativo: true, metrica_calculo: "plano_acao_aberto", gera_plano_acao: true, permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true },
-  { id: "apr-pa-sla", ordem: 8, pergunta: "O plano de ação foi concluído dentro do SLA?", tipo: "sim_nao", peso: 10, ativo: true, metrica_calculo: "plano_acao_sla", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true },
-  { id: "apr-pa-prazo", ordem: 9, pergunta: "O plano de ação precisou de aumento de prazo?", tipo: "sim_nao", peso: 5, ativo: true, metrica_calculo: "plano_acao_prorrogacao", permite_aumento_prazo: true, permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true },
-  { id: "apr-pa-prorr-mult", ordem: 10, pergunta: "O plano de ação teve mais de uma prorrogação?", tipo: "sim_nao", peso: 5, ativo: true, metrica_calculo: "plano_acao_prorrogacao_multipla", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true },
+  { id: "apr-prazo-global", ordem: 1, pergunta: "Executor entregou a tarefa dentro do prazo global?", tipo: "sim_nao", peso: 25, ativo: true, metrica_calculo: "prazo_global", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false },
+  { id: "apr-atraso-etapa", ordem: 2, pergunta: "Houve atraso em alguma etapa da execução?", tipo: "sim_nao", peso: 20, ativo: true, metrica_calculo: "atraso_etapa", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false },
+  { id: "apr-obrigatorias", ordem: 3, pergunta: "Todas as perguntas obrigatórias foram respondidas?", tipo: "sim_nao", peso: 20, ativo: true, metrica_calculo: "obrigatorias_respondidas", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false },
+  { id: "apr-evidencias", ordem: 4, pergunta: "As evidências obrigatórias foram anexadas corretamente?", tipo: "sim_nao", peso: 20, ativo: true, metrica_calculo: "evidencias_anexadas", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false },
+  { id: "apr-devolucao", ordem: 5, pergunta: "A execução precisou ser devolvida ou reaberta?", tipo: "sim_nao", peso: 15, ativo: true, metrica_calculo: "devolucao", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false },
 ];
+
 
 const camadaDefault = (over: Partial<CamadaSlaConfig> = {}): CamadaSlaConfig => ({
   nota_max: 100,
