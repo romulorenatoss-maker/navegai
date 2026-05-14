@@ -80,7 +80,7 @@ export type TransitionAction =
   | "enviar_validacao_designante"
   | "validar_designada_aprovar"
   | "validar_designada_devolver"
-  | "iniciar_avaliacao"
+  // "iniciar_avaliacao" removido (saneamento 4 papéis — sem etapa intermediária)
   | "avaliar_aprovar"
   | "avaliar_devolver"
   | "avaliar_reprovar"
@@ -124,11 +124,11 @@ interface TransitionResult {
 const REOPEN_CLEAR_FIELDS = {
   fim_em: null,
   pontuacao_obtida: null,
-  avaliador_inicio_em: null,
-  avaliador_fim_em: null,
+  // Saneamento 4 papéis: avaliador_inicio_em / avaliador_fim_em / score_avaliador
+  // não existem mais como colunas em operational_assignments — removidos do payload.
   score_executor: null,
   score_avaliado: null,
-  score_avaliador: null,
+  score_aprovador: null,
   score_final_ajustado: null,
 };
 
@@ -156,16 +156,18 @@ function resolveTargetStatus(action: TransitionAction, _currentStatus: string, e
   switch (action) {
     // Legado
     case "iniciar": return TASK_STATUS.EM_ANDAMENTO;
-    case "enviar_avaliacao": return TASK_STATUS.AGUARDANDO_AVALIACAO;
+    // Saneamento 4 papéis: executor envia direto para aprovação (sem etapa de "avaliação")
+    case "enviar_avaliacao": return TASK_STATUS.AGUARDANDO_APROVACAO;
     case "enviar_validacao_designante": return TASK_STATUS.AGUARDANDO_VALIDACAO;
     case "validar_designada_aprovar": return TASK_STATUS.APROVADA;
     case "validar_designada_devolver": return TASK_STATUS.DEVOLVIDA;
-    case "iniciar_avaliacao": return TASK_STATUS.EM_AVALIACAO;
+    // case "iniciar_avaliacao" removido — não há mais etapa intermediária de avaliação
     case "avaliar_aprovar": return extraData?.requerAprovacao ? TASK_STATUS.AGUARDANDO_APROVACAO : TASK_STATUS.CONCLUIDA;
     case "avaliar_devolver": return TASK_STATUS.DEVOLVIDA;
     case "avaliar_reprovar": return TASK_STATUS.REPROVADA;
     case "enviar_contingencia": return TASK_STATUS.CONTINGENCIADO;
-    case "retornar_avaliacao": return TASK_STATUS.AGUARDANDO_AVALIACAO;
+    // retorno do aprovador para o executor é DEVOLVIDA (saneamento 4 papéis)
+    case "retornar_avaliacao": return TASK_STATUS.DEVOLVIDA;
     case "aprovar_final": return TASK_STATUS.APROVADA;
     case "reprovar_devolver_final": return TASK_STATUS.DEVOLVIDA;
     case "encerrar_final": return TASK_STATUS.CONCLUIDA;
@@ -183,11 +185,10 @@ function resolveTargetStatus(action: TransitionAction, _currentStatus: string, e
       // D3: auto-conclusão se aplicável é decidida no service via extraData.autoConcluir
       return extraData?.autoConcluir ? TASK_STATUS.CONCLUIDA : TASK_STATUS.AGUARDANDO_VALIDACAO;
     case "validar_solicitante_aprovar":
-      return extraData?.requerAvaliacao
-        ? TASK_STATUS.AGUARDANDO_AVALIACAO
-        : extraData?.requerAprovacao
-          ? TASK_STATUS.AGUARDANDO_APROVACAO
-          : TASK_STATUS.CONCLUIDA;
+      // Saneamento 4 papéis: requerAvaliacao colapsado em requerAprovacao (sem etapa intermediária)
+      return (extraData?.requerAprovacao || extraData?.requerAvaliacao)
+        ? TASK_STATUS.AGUARDANDO_APROVACAO
+        : TASK_STATUS.CONCLUIDA;
     case "validar_solicitante_devolver": return TASK_STATUS.DEVOLVIDA;
     case "solicitar_plano_acao": return TASK_STATUS.EM_PLANO_ACAO;
     case "concluir_plano_acao": return TASK_STATUS.AGUARDANDO_VALIDACAO;
@@ -309,10 +310,7 @@ export function useOperationalTransition() {
         Object.assign(updatePayload, REOPEN_CLEAR_FIELDS);
       }
 
-      if (action === "iniciar_avaliacao") {
-        updatePayload.avaliador_inicio_em = now;
-        if (profile.id) updatePayload.avaliador_id = profile.id;
-      }
+      // "iniciar_avaliacao" removido (saneamento 4 papéis). Colunas avaliador_* já não existem.
 
       if (
         action === "avaliar_devolver"
@@ -337,9 +335,9 @@ export function useOperationalTransition() {
         if (extraData?.tempoGasto != null) updatePayload.tempo_gasto_minutos = extraData.tempoGasto;
       }
 
-      if (action === "avaliar_aprovar" || action === "avaliar_devolver" || action === "avaliar_reprovar") {
-        updatePayload.avaliador_fim_em = now;
-      }
+      // Saneamento 4 papéis: avaliador_fim_em não existe mais como coluna.
+      // Decisões de aprovador (avaliar_aprovar/devolver/reprovar) agora marcam só o updated_at.
+      // Quando houver auditoria posterior, auditor_fim_em é usado em outro fluxo.
 
       // Negociação de prazo: registrar prazo proposto em campo livre? Sem migration → grava em audit only
       // data_prevista é alterado apenas quando solicitante aceita o novo prazo
