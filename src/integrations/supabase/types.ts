@@ -1419,10 +1419,12 @@ export type Database = {
           reagendamentos_count: number
           responsavel_id: string | null
           rodada_atual: number
+          score_aprovador: number | null
           score_auditor: number | null
           score_avaliado: number | null
           score_executor: number | null
           score_final_ajustado: number | null
+          setor_aprovador_id: string | null
           setor_auditor_id: string | null
           setor_avaliado_id: string | null
           setor_executor_id: string | null
@@ -1469,10 +1471,12 @@ export type Database = {
           reagendamentos_count?: number
           responsavel_id?: string | null
           rodada_atual?: number
+          score_aprovador?: number | null
           score_auditor?: number | null
           score_avaliado?: number | null
           score_executor?: number | null
           score_final_ajustado?: number | null
+          setor_aprovador_id?: string | null
           setor_auditor_id?: string | null
           setor_avaliado_id?: string | null
           setor_executor_id?: string | null
@@ -1519,10 +1523,12 @@ export type Database = {
           reagendamentos_count?: number
           responsavel_id?: string | null
           rodada_atual?: number
+          score_aprovador?: number | null
           score_auditor?: number | null
           score_avaliado?: number | null
           score_executor?: number | null
           score_final_ajustado?: number | null
+          setor_aprovador_id?: string | null
           setor_auditor_id?: string | null
           setor_avaliado_id?: string | null
           setor_executor_id?: string | null
@@ -5471,7 +5477,13 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "avaliador" | "executor" | "gestor" | "avaliado"
+      app_role:
+        | "admin"
+        | "avaliador"
+        | "executor"
+        | "gestor"
+        | "avaliado"
+        | "aprovador"
       data_scope: "none" | "own" | "team" | "all"
       os_status: "aberta" | "em_andamento" | "concluida" | "aguardando_numero"
       propostas_status: "rascunho" | "aprovado" | "cancelado"
@@ -5611,7 +5623,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "avaliador", "executor", "gestor", "avaliado"],
+      app_role: [
+        "admin",
+        "avaliador",
+        "executor",
+        "gestor",
+        "avaliado",
+        "aprovador",
+      ],
       data_scope: ["none", "own", "team", "all"],
       os_status: ["aberta", "em_andamento", "concluida", "aguardando_numero"],
       propostas_status: ["rascunho", "aprovado", "cancelado"],
