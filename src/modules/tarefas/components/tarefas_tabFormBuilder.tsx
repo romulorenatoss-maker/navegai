@@ -547,6 +547,15 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
         </Droppable>
       </DragDropContext>
 
+      {fields.length > 0 && (
+        <div className="flex items-center justify-end gap-2 mt-2 px-3 py-2 bg-muted/40 border border-border rounded-md">
+          <span className="text-xs text-muted-foreground">Total de notas (Avaliado):</span>
+          <span className="text-sm font-semibold text-foreground font-tabular">
+            {fields.reduce((a, f) => a + (Number(f.peso) || 0), 0)} pts
+          </span>
+        </div>
+      )}
+
       {editingField && (
         <FieldDetailDialog
           field={editingField}
