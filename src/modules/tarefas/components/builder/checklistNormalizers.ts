@@ -158,5 +158,42 @@ export const normalizeAprovadorList = (raw: any[] | undefined, defaults?: Camada
     });
 };
 
+export const syncAprovadorReplicadasFromFields = (
+  rawItems: AprovadorCheckItemForm[],
+  currentFields: FieldForm[],
+  defaults?: CamadaSlaDefaults,
+) => {
+  const seenFields = new Set<string>();
+  const uniqueFields = currentFields
+    .filter(field => {
+      if (!field.tempId || seenFields.has(field.tempId)) return false;
+      seenFields.add(field.tempId);
+      return true;
+    })
+    .sort((a, b) => a.ordem - b.ordem);
+
+  const baseItems = normalizeAprovadorList(rawItems, defaults);
+  const replicadasPrev = baseItems.filter(isAprovadorReplicada);
+  const naoReplicadas = baseItems.filter(item => !isAprovadorReplicada(item));
+  const replicadasByField = new Map(replicadasPrev.map(item => [item.field_id || item.pergunta_origem_id || "", item]));
+
+  const replicadasNext = uniqueFields.map(field => {
+    const label = field.label || "Pergunta sem nome";
+    const pergunta = `Aprovador confirma: ${label}?`;
+    const existing = replicadasByField.get(field.tempId);
+    if (!existing) return defaultAprovadorCheckItem(field.tempId, label);
+    return {
+      ...existing,
+      field_id: field.tempId,
+      field_label: label,
+      pergunta_padrao: pergunta,
+      origem_pergunta: "replicada_avaliado" as const,
+      pergunta_origem_id: field.tempId,
+    };
+  });
+
+  return [...replicadasNext, ...naoReplicadas];
+};
+
 export const normalizeValidadorList = (raw: any[] | undefined, defaults?: CamadaSlaDefaults) =>
   Array.isArray(raw) ? raw.map(r => normalizeValidadorItem(r, defaults)) : [];
