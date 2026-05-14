@@ -29,9 +29,10 @@ interface Props {
 }
 
 const ORIGEM_BADGE: Record<AprovadorOrigem, { label: string; cls: string }> = {
-  replicada_avaliado:       { label: "REPLICADA", cls: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900" },
-  automatica_configuracao:  { label: "AUTO",      cls: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900" },
-  manual:                   { label: "MANUAL",    cls: "bg-muted text-muted-foreground border-border" },
+  replicada_avaliado:       { label: "REPLICADA",        cls: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900" },
+  automatica_configuracao:  { label: "REPLICADA AUTO",   cls: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900" },
+  replicada_padrao_manual:  { label: "REPLICADA MANUAL", cls: "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-900" },
+  manual:                   { label: "MANUAL",           cls: "bg-muted text-muted-foreground border-border" },
 };
 
 const TIPO_LABEL: Record<string, string> = {
