@@ -80,7 +80,11 @@ export interface RegraPorOpcao {
   permite_devolucao?: boolean;
 }
 
-export type AprovadorOrigem = "replicada_avaliado" | "automatica_configuracao" | "manual";
+export type AprovadorOrigem =
+  | "replicada_avaliado"
+  | "automatica_configuracao"      // AUTO replicada do pacote padrão (cálculo automático)
+  | "replicada_padrao_manual"      // MANUAL replicada do pacote padrão (julgamento humano)
+  | "manual";                       // criada na rotina pelo construtor
 
 export interface AprovadorCheckItemForm {
   tempId: string;
@@ -201,7 +205,7 @@ export const buildAprovadorAutomatico = (p: {
   // "manual_padrao_configuracao") para o domínio do snapshot da rotina
   // (AprovadorOrigem: "automatica_configuracao" | "manual" | "replicada_avaliado").
   const origemSnapshot: AprovadorOrigem =
-    p.origem_pergunta === "manual_padrao_configuracao" ? "manual" : "automatica_configuracao";
+    p.origem_pergunta === "manual_padrao_configuracao" ? "replicada_padrao_manual" : "automatica_configuracao";
   return {
     tempId: crypto.randomUUID(),
     field_id: "",

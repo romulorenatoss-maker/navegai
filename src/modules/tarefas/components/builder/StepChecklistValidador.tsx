@@ -29,9 +29,10 @@ interface Props {
 }
 
 const ORIGEM_BADGE: Record<AprovadorOrigem, { label: string; cls: string }> = {
-  replicada_avaliado:       { label: "REPLICADA", cls: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900" },
-  automatica_configuracao:  { label: "AUTO",      cls: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900" },
-  manual:                   { label: "MANUAL",    cls: "bg-muted text-muted-foreground border-border" },
+  replicada_avaliado:       { label: "REPLICADA",        cls: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900" },
+  automatica_configuracao:  { label: "REPLICADA AUTO",   cls: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900" },
+  replicada_padrao_manual:  { label: "REPLICADA MANUAL", cls: "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-900" },
+  manual:                   { label: "MANUAL",           cls: "bg-muted text-muted-foreground border-border" },
 };
 
 const TIPO_LABEL: Record<string, string> = {
@@ -56,7 +57,10 @@ export function StepChecklistValidador({ items, setItems }: Props) {
         setItems(prev => {
           const existentes = new Set(
             prev
-              .filter(i => i.origem_pergunta === "automatica_configuracao")
+              .filter(i =>
+                i.origem_pergunta === "automatica_configuracao" ||
+                i.origem_pergunta === "replicada_padrao_manual",
+              )
               .map(i => i.config_global_origem_id)
               .filter(Boolean),
           );
@@ -75,7 +79,11 @@ export function StepChecklistValidador({ items, setItems }: Props) {
   }, []);
 
   const ordered = useMemo(() => {
-    const ord = (i: AprovadorCheckItemForm) => i.origem_pergunta === "automatica_configuracao" ? 0 : 1;
+    const ord = (i: AprovadorCheckItemForm) => {
+      if (i.origem_pergunta === "automatica_configuracao") return 0;
+      if (i.origem_pergunta === "replicada_padrao_manual") return 1;
+      return 2;
+    };
     return [...items].sort((a, b) => ord(a) - ord(b));
   }, [items]);
 
@@ -86,7 +94,7 @@ export function StepChecklistValidador({ items, setItems }: Props) {
     setItems(prev => prev.map(i => {
       if (i.tempId !== tempId) return i;
       const next = { ...i, ...patch };
-      if (i.origem_pergunta === "automatica_configuracao") {
+      if (i.origem_pergunta === "automatica_configuracao" || i.origem_pergunta === "replicada_padrao_manual") {
         next.editado_manual = true;
         next.editado_por = profile?.id;
         next.editado_em = new Date().toISOString();
@@ -191,8 +199,10 @@ export function StepChecklistValidador({ items, setItems }: Props) {
           onOpenChange={(o) => { if (!o) setEditingTempId(null); }}
           title={
             editing.origem_pergunta === "automatica_configuracao"
-              ? "Configurar pergunta automática"
-              : "Configurar pergunta manual"
+              ? "Configurar pergunta automática (replicada)"
+              : editing.origem_pergunta === "replicada_padrao_manual"
+                ? "Configurar pergunta manual padrão (replicada)"
+                : "Configurar pergunta manual"
           }
           value={{
             pergunta_padrao: editing.pergunta_padrao,

@@ -42,12 +42,19 @@ export function normalizeAprovadorItem(
     raw?.tipo_resposta ?? "conforme_nao_conforme";
 
   // Deduz origem para snapshots antigos:
-  //   - se vier do snapshot novo, respeita.
-  //   - se tem field_id → replicada_avaliado.
+  //   - respeita origem nova se presente.
+  //   - field_id → replicada_avaliado.
+  //   - config_global_origem_id começando com "val-man-" → replicada_padrao_manual
+  //     (compat com snapshots salvos antes da introdução dessa origem).
   //   - caso contrário → manual.
-  const origem_pergunta =
-    raw?.origem_pergunta
-      ?? (raw?.field_id ? "replicada_avaliado" : "manual");
+  const origem_pergunta: AprovadorOrigem = (() => {
+    if (raw?.origem_pergunta === "manual" && typeof raw?.config_global_origem_id === "string" && raw.config_global_origem_id.startsWith("val-man-")) {
+      return "replicada_padrao_manual";
+    }
+    if (raw?.origem_pergunta) return raw.origem_pergunta as AprovadorOrigem;
+    if (raw?.field_id) return "replicada_avaliado";
+    return "manual";
+  })();
 
   return {
     tempId: raw?.tempId ?? ensureId(),
