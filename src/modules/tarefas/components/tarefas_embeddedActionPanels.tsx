@@ -375,23 +375,32 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     }
   };
 
-  // Quais perguntas estão marcadas como "nao_conforme"
-  const naoConformes = useMemo(() => {
+  // Perguntas cuja opção selecionada pede plano de ação ou devolução.
+  const perguntasComAcao = useMemo(() => {
     return approverFields.filter(f => {
       const draft = flow.approverAnswers[f.id];
       const existing = flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id);
       const v = draft?.resposta ?? existing?.resposta;
-      return v === "nao_conforme";
+      const rule = v ? getRuleForResposta(f, v, "aprovador") : null;
+      return !!rule?.gera_plano_acao || !!rule?.permite_devolucao;
     });
   }, [approverFields, flow.approverAnswers, flow.existingApprovalAnswers]);
 
   const naoConformesPlano = useMemo(
-    () => naoConformes.filter(f => (acaoPorNC[f.id] ?? "plano") === "plano"),
-    [naoConformes, acaoPorNC]
+    () => perguntasComAcao.filter(f => {
+      const v = flow.approverAnswers[f.id]?.resposta ?? flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.resposta;
+      const rule = v ? getRuleForResposta(f, v, "aprovador") : null;
+      return getAllowedActions(rule).includes("plano") && (acaoPorNC[f.id] ?? getDefaultReviewAction(rule)) === "plano";
+    }),
+    [perguntasComAcao, acaoPorNC, flow.approverAnswers, flow.existingApprovalAnswers]
   );
   const naoConformesDevolver = useMemo(
-    () => naoConformes.filter(f => acaoPorNC[f.id] === "devolver"),
-    [naoConformes, acaoPorNC]
+    () => perguntasComAcao.filter(f => {
+      const v = flow.approverAnswers[f.id]?.resposta ?? flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.resposta;
+      const rule = v ? getRuleForResposta(f, v, "aprovador") : null;
+      return getAllowedActions(rule).includes("devolver") && (acaoPorNC[f.id] ?? getDefaultReviewAction(rule)) === "devolver";
+    }),
+    [perguntasComAcao, acaoPorNC, flow.approverAnswers, flow.existingApprovalAnswers]
   );
 
   const irParaPlano = () => {
