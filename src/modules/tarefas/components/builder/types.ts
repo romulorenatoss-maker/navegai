@@ -205,7 +205,7 @@ export const buildAprovadorAutomatico = (p: {
   // "manual_padrao_configuracao") para o domínio do snapshot da rotina
   // (AprovadorOrigem: "automatica_configuracao" | "manual" | "replicada_avaliado").
   const origemSnapshot: AprovadorOrigem =
-    p.origem_pergunta === "manual_padrao_configuracao" ? "manual" : "automatica_configuracao";
+    p.origem_pergunta === "manual_padrao_configuracao" ? "replicada_padrao_manual" : "automatica_configuracao";
   return {
     tempId: crypto.randomUUID(),
     field_id: "",
