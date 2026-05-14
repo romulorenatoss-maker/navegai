@@ -149,9 +149,18 @@ function PacotePadraoCard({
             </span>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 font-semibold bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900">
-                  AUTO
+                <Badge variant="outline" className={`text-[9px] px-1.5 py-0 h-4 font-semibold ${
+                  p.origem_pergunta === "manual_padrao_configuracao"
+                    ? "bg-muted text-muted-foreground border-border"
+                    : "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900"
+                }`}>
+                  {p.origem_pergunta === "manual_padrao_configuracao" ? "MANUAL" : "AUTO"}
                 </Badge>
+                {p.metrica_pendente && (
+                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 bg-muted text-muted-foreground" title={p.regra_calculo || "Métrica ainda não cabeada"}>
+                    métrica pendente
+                  </Badge>
+                )}
                 {p.ativo === false && (
                   <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4">INATIVA</Badge>
                 )}

@@ -146,6 +146,11 @@ export function StepChecklistValidador({ items, setItems }: Props) {
                     <Badge variant="outline" className={`text-[9px] px-1.5 py-0 h-4 font-semibold ${badge.cls}`}>
                       {badge.label}
                     </Badge>
+                    {it.metrica_pendente && (
+                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 bg-muted text-muted-foreground" title={it.regra_calculo || "Métrica ainda não cabeada"}>
+                        métrica pendente
+                      </Badge>
+                    )}
                     {it.editado_manual && (
                       <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4">EDITADA</Badge>
                     )}

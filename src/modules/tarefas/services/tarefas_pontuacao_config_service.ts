@@ -54,6 +54,7 @@ export interface TarefasPontuacaoConfig {
  * O engine de cálculo entra em segunda etapa; por ora a UI permite override manual.
  */
 export type AprovadorMetricaCalculo =
+  // Legado (mantido p/ compat)
   | "prazo_global"
   | "atraso_etapa"
   | "obrigatorias_respondidas"
@@ -64,9 +65,24 @@ export type AprovadorMetricaCalculo =
   | "plano_acao_sla"
   | "plano_acao_prorrogacao"
   | "plano_acao_prorrogacao_multipla"
-  | "manual";
+  | "manual"
+  // Novas metric_keys do Pacote padrão do Validador
+  | "aprovador_fora_sla"
+  | "aprovou_com_alerta_pendente"
+  | "nao_conformidade_sem_regra_obrigatoria"
+  | "ponderacao_manual_realizada"
+  | "prorrogacao_plano_acao"
+  | "prorrogacao_plano_acao_recorrente"
+  | "plano_acao_vencido"
+  | "aprovador_reabriu_ou_devolveu";
 
 export type AprovadorTipoPadrao = "sim_nao" | "conforme_nao_conforme" | "nota";
+
+/** Origem da pergunta no pacote padrão. */
+export type AprovadorOrigemPergunta =
+  | "automatica_sistema"           // calculada pelo motor de auditoria
+  | "manual_padrao_configuracao"   // padrão manual entregue pelo Validador/Auditor
+  | "automatica_configuracao";     // legado — perguntas auto-configuráveis do Aprovador
 
 export interface AprovadorPerguntaPadrao {
   id: string;                          // estável, usado como config_global_origem_id
@@ -85,6 +101,12 @@ export interface AprovadorPerguntaPadrao {
   permite_aumento_prazo?: boolean;
   permite_ponderacao_auditor?: boolean;
   exige_justificativa_ponderacao?: boolean;
+  // ── Auditoria / metadados (novos — JSON, sem migration) ──
+  origem_pergunta?: AprovadorOrigemPergunta;
+  camada_alvo?: "aprovador" | "executor" | "plano_acao";
+  fonte_dados?: string;        // descrição curta da fonte real (tabela/coluna/evento)
+  regra_calculo?: string;      // descrição humana da regra
+  metrica_pendente?: boolean;  // true → mostra chip "métrica pendente de implementação"
 }
 
 /**
@@ -102,18 +124,131 @@ export const APROVADOR_PACOTE_PADRAO_DEFAULT: AprovadorPerguntaPadrao[] = [
 ];
 
 /**
- * Pacote padrão do Validador/Auditor.
+ * Pacote padrão do Validador / Auditor.
  * O Validador audita a ATUAÇÃO DO APROVADOR — nunca avalia o Executor diretamente.
- * Soma 100 pontos.
+ *
+ * Bloco AUTO (8 itens, soma 100) — perguntas calculadas a partir de fontes reais.
+ * Bloco MANUAL (4 itens, soma 100) — julgamento humano do auditor, sem cálculo.
+ *
+ * Quando uma metric_key ainda não tem fonte confiável cabeada, a pergunta entra
+ * com `metrica_pendente: true` e `ativo: false` para evitar cálculo falso.
  */
 export const VALIDADOR_PACOTE_PADRAO_DEFAULT: AprovadorPerguntaPadrao[] = [
-  { id: "val-sla-aprovador", ordem: 1, pergunta: "O aprovador avaliou dentro do prazo/SLA?", tipo: "sim_nao", peso: 20, ativo: true, metrica_calculo: "manual", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false },
-  { id: "val-justificativa-nc", ordem: 2, pergunta: "O aprovador justificou corretamente as não conformidades?", tipo: "conforme_nao_conforme", peso: 15, ativo: true, metrica_calculo: "manual", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false, exige_observacao: true },
-  { id: "val-evidencia", ordem: 3, pergunta: "O aprovador anexou evidência/comprovante quando exigido?", tipo: "conforme_nao_conforme", peso: 15, ativo: true, metrica_calculo: "manual", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false, exige_evidencia: true },
-  { id: "val-regras-pergunta", ordem: 4, pergunta: "O aprovador aplicou corretamente as regras da pergunta?", tipo: "conforme_nao_conforme", peso: 20, ativo: true, metrica_calculo: "manual", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false },
-  { id: "val-plano-acao", ordem: 5, pergunta: "O aprovador abriu plano de ação quando a regra exigia?", tipo: "sim_nao", peso: 10, ativo: true, metrica_calculo: "manual", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false },
-  { id: "val-ponderacao", ordem: 6, pergunta: "O aprovador alterou/ponderou nota manualmente?", tipo: "sim_nao", peso: 10, ativo: true, metrica_calculo: "manual", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false },
-  { id: "val-plausibilidade", ordem: 7, pergunta: "A justificativa da ponderação do aprovador é plausível?", tipo: "conforme_nao_conforme", peso: 10, ativo: true, metrica_calculo: "manual", permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true, gera_plano_acao: false, exige_observacao: true },
+  // ── AUTO (8) ─────────────────────────────────────────────────────
+  {
+    id: "val-aprovador-fora-sla", ordem: 1,
+    pergunta: "Aprovador avaliou fora do SLA?",
+    tipo: "sim_nao", peso: 20, ativo: true,
+    metrica_calculo: "aprovador_fora_sla",
+    origem_pergunta: "automatica_sistema", camada_alvo: "aprovador",
+    fonte_dados: "operational_assignments.avaliador_fim_em vs prazo SLA do aprovador",
+    regra_calculo: "Comparar prazo limite da avaliação do aprovador com data/hora real de conclusão.",
+    permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true,
+  },
+  {
+    id: "val-aprovou-alerta-pendente", ordem: 2,
+    pergunta: "Aprovador aprovou item com alerta automático pendente?",
+    tipo: "sim_nao", peso: 15, ativo: true, metrica_pendente: true,
+    metrica_calculo: "aprovou_com_alerta_pendente",
+    origem_pergunta: "automatica_sistema", camada_alvo: "aprovador",
+    fonte_dados: "operational_field_reviews + operational_contingencies + alertas",
+    regra_calculo: "Detectar aprovação (conforme=true) com alerta ativo (atraso, evidência ausente, SLA vencido, NC) sem tratamento/justificativa.",
+    permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true,
+  },
+  {
+    id: "val-nc-sem-regra", ordem: 3,
+    pergunta: "Aprovador marcou não conformidade sem cumprir regra exigida?",
+    tipo: "sim_nao", peso: 15, ativo: true, metrica_pendente: true,
+    metrica_calculo: "nao_conformidade_sem_regra_obrigatoria",
+    origem_pergunta: "automatica_sistema", camada_alvo: "aprovador",
+    fonte_dados: "operational_field_reviews.conforme=false + regras do snapshot (exige_observacao/exige_evidencia/gera_plano_acao)",
+    regra_calculo: "Quando NC, validar se justificativa, evidência, plano de ação ou anexo obrigatórios foram cumpridos.",
+    permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true,
+  },
+  {
+    id: "val-ponderacao-manual", ordem: 4,
+    pergunta: "Aprovador alterou/ponderou nota manualmente?",
+    tipo: "sim_nao", peso: 10, ativo: false, metrica_pendente: true,
+    metrica_calculo: "ponderacao_manual_realizada",
+    origem_pergunta: "automatica_sistema", camada_alvo: "aprovador",
+    fonte_dados: "operational_score_logs.detalhe_calculo (nota automática) vs score_final aplicado",
+    regra_calculo: "Comparar nota automática sugerida com nota final aplicada — se diferentes, marcar Sim.",
+    permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true,
+  },
+  {
+    id: "val-prorrogacao-plano", ordem: 5,
+    pergunta: "Aprovador prorrogou prazo do plano de ação?",
+    tipo: "sim_nao", peso: 10, ativo: true, metrica_pendente: true,
+    metrica_calculo: "prorrogacao_plano_acao",
+    origem_pergunta: "automatica_sistema", camada_alvo: "aprovador",
+    fonte_dados: "operational_assignment_history.tipo_evento = 'contingencia_prazo_definido'",
+    regra_calculo: "Existe ao menos 1 evento de alteração de prazo do plano de ação criado pelo aprovador.",
+    permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true,
+  },
+  {
+    id: "val-prorrogacao-recorrente", ordem: 6,
+    pergunta: "Aprovador prorrogou mais de uma vez?",
+    tipo: "sim_nao", peso: 10, ativo: true, metrica_pendente: true,
+    metrica_calculo: "prorrogacao_plano_acao_recorrente",
+    origem_pergunta: "automatica_sistema", camada_alvo: "aprovador",
+    fonte_dados: "operational_assignment_history.tipo_evento = 'contingencia_prazo_definido' (count > 1)",
+    regra_calculo: "Contar prorrogações de prazo do plano de ação; se quantidade > 1, marcar Sim.",
+    permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true,
+  },
+  {
+    id: "val-plano-vencido", ordem: 7,
+    pergunta: "Plano de ação aberto pelo aprovador venceu o SLA?",
+    tipo: "sim_nao", peso: 10, ativo: true,
+    metrica_calculo: "plano_acao_vencido",
+    origem_pergunta: "automatica_sistema", camada_alvo: "plano_acao",
+    fonte_dados: "operational_contingencies.dentro_prazo = false OU prazo_sla < now() AND status NOT IN (validada, descartada)",
+    regra_calculo: "Comparar prazo limite do plano de ação com data/hora de conclusão; se não concluído ou concluído após prazo, marcar Sim.",
+    permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true,
+  },
+  {
+    id: "val-reabriu-devolveu", ordem: 8,
+    pergunta: "Aprovador reabriu/devolveu tarefa?",
+    tipo: "sim_nao", peso: 10, ativo: true,
+    metrica_calculo: "aprovador_reabriu_ou_devolveu",
+    origem_pergunta: "automatica_sistema", camada_alvo: "aprovador",
+    fonte_dados: "operational_assignment_history.tipo_evento IN ('reabertura','avaliacao_devolvida','aprovacao_devolucao')",
+    regra_calculo: "Existe ao menos 1 evento de reabertura ou devolução praticado pelo aprovador.",
+    permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true,
+  },
+  // ── MANUAL (4) — soma 100 ───────────────────────────────────────
+  {
+    id: "val-man-justificativa", ordem: 9,
+    pergunta: "Justificativa do aprovador é plausível?",
+    tipo: "conforme_nao_conforme", peso: 25, ativo: true,
+    metrica_calculo: "manual",
+    origem_pergunta: "manual_padrao_configuracao", camada_alvo: "aprovador",
+    exige_observacao: true, permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true,
+  },
+  {
+    id: "val-man-evidencia", ordem: 10,
+    pergunta: "Evidência comprova a decisão?",
+    tipo: "conforme_nao_conforme", peso: 25, ativo: true,
+    metrica_calculo: "manual",
+    origem_pergunta: "manual_padrao_configuracao", camada_alvo: "aprovador",
+    exige_observacao: true, exige_evidencia: true,
+    permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true,
+  },
+  {
+    id: "val-man-ponderacao", ordem: 11,
+    pergunta: "Ponderação aplicada foi correta?",
+    tipo: "conforme_nao_conforme", peso: 25, ativo: true,
+    metrica_calculo: "manual",
+    origem_pergunta: "manual_padrao_configuracao", camada_alvo: "aprovador",
+    exige_observacao: true, permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true,
+  },
+  {
+    id: "val-man-nota-final", ordem: 12,
+    pergunta: "Nota final do aprovador deve ser mantida?",
+    tipo: "conforme_nao_conforme", peso: 25, ativo: true,
+    metrica_calculo: "manual",
+    origem_pergunta: "manual_padrao_configuracao", camada_alvo: "aprovador",
+    exige_observacao: true, permite_ponderacao_auditor: true, exige_justificativa_ponderacao: true,
+  },
 ];
 
 
