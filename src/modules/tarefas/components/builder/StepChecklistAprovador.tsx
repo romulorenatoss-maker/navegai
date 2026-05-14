@@ -1,15 +1,27 @@
-import { useEffect, useMemo } from "react";
-import { ShieldCheck, Info } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+/**
+ * Aba Aprovador — lista ÚNICA de perguntas (replicadas + automáticas + manuais).
+ *
+ * Ordem de exibição:
+ *   1. Perguntas replicadas do Avaliado (uma por field operacional).
+ *   2. Perguntas automáticas do pacote padrão da config global.
+ *   3. Perguntas manuais adicionadas pelo construtor da rotina.
+ *
+ * Badge discreto (REPLICADA / AUTO / MANUAL) por item.
+ * Cada card abre o mesmo FieldConfigSheet usado para configurar perguntas.
+ */
+import { useEffect, useMemo, useState } from "react";
+import { ShieldCheck, Plus, Settings2, Paperclip, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/AuthContext";
 import { FieldForm } from "@/modules/tarefas/types/tarefas_types";
 import {
   AprovadorCheckItemForm,
-  AprovadorTipoResposta,
+  AprovadorOrigem,
   defaultAprovadorCheckItem,
+  defaultAprovadorManualItem,
 } from "./types";
+import { FieldConfigSheet } from "./FieldConfigSheet";
 
 interface Props {
   fields: FieldForm[];
@@ -17,28 +29,34 @@ interface Props {
   setItems: React.Dispatch<React.SetStateAction<AprovadorCheckItemForm[]>>;
 }
 
-const TIPO_LABEL: Record<AprovadorTipoResposta, string> = {
+const ORIGEM_BADGE: Record<AprovadorOrigem, { label: string; cls: string }> = {
+  replicada_avaliado:       { label: "REPLICADA", cls: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900" },
+  automatica_configuracao:  { label: "AUTO",      cls: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900" },
+  manual:                   { label: "MANUAL",    cls: "bg-muted text-muted-foreground border-border" },
+};
+
+const TIPO_LABEL: Record<string, string> = {
   conforme_nao_conforme: "Conforme / Não conforme",
   sim_nao: "Sim / Não",
   nota: "Nota (0–100)",
 };
 
 export function StepChecklistAprovador({ fields, items, setItems }: Props) {
-  // Replicação automática (idempotente):
-  // - cria item para cada field novo
-  // - remove itens órfãos (field excluído)
-  // - mantém ajustes locais (peso, tipo, evidência…) via field_id
-  // - atualiza o cache field_label/pergunta_padrao quando o label muda
+  const { profile } = useAuth();
+  const [editingTempId, setEditingTempId] = useState<string | null>(null);
+
+  // Sincroniza apenas as perguntas REPLICADAS com os fields do Avaliado.
+  // Itens AUTO/MANUAL não são tocados.
   useEffect(() => {
     setItems(prev => {
-      const byField = new Map(prev.map(i => [i.field_id, i]));
+      const replicadasPrev = prev.filter(i => i.origem_pergunta === "replicada_avaliado" || (!i.origem_pergunta && i.field_id));
+      const naoReplicadas = prev.filter(i => !replicadasPrev.includes(i));
+      const byField = new Map(replicadasPrev.map(i => [i.field_id, i]));
       const fieldIds = new Set(fields.map(f => f.tempId));
 
-      // Itens novos + atualização de label
-      const next: AprovadorCheckItemForm[] = fields.map(f => {
+      const replicadasNext: AprovadorCheckItemForm[] = fields.map(f => {
         const existing = byField.get(f.tempId);
         if (existing) {
-          // só atualiza label/pergunta_padrao se ainda estava no padrão antigo
           const oldLabel = existing.field_label || "";
           const labelChanged = oldLabel !== f.label;
           const wasDefaultPergunta =
@@ -51,52 +69,84 @@ export function StepChecklistAprovador({ fields, items, setItems }: Props) {
               labelChanged && wasDefaultPergunta
                 ? `Aprovador confirma: ${f.label}?`
                 : existing.pergunta_padrao,
+            origem_pergunta: "replicada_avaliado",
+            pergunta_origem_id: f.tempId,
           };
         }
         return defaultAprovadorCheckItem(f.tempId, f.label || "Pergunta sem nome");
       });
 
-      // Mantém ordem por fields; órfãos já removidos por filtro implícito acima
-      const orphans = prev.filter(i => !fieldIds.has(i.field_id));
-      if (next.length === prev.length && orphans.length === 0) {
-        // possivelmente nada mudou — comparar superficialmente
-        const same = next.every((n, idx) => {
-          const p = prev[idx];
+      const orphans = replicadasPrev.filter(i => !fieldIds.has(i.field_id));
+      const next = [...replicadasNext, ...naoReplicadas];
+
+      // No-op detection
+      if (
+        replicadasNext.length === replicadasPrev.length &&
+        orphans.length === 0 &&
+        replicadasNext.every((n, idx) => {
+          const p = replicadasPrev[idx];
           return p && p.field_id === n.field_id && p.field_label === n.field_label && p.pergunta_padrao === n.pergunta_padrao;
-        });
-        if (same) return prev;
+        })
+      ) {
+        return prev;
       }
       return next;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fields]);
 
-  const update = (tempId: string, patch: Partial<AprovadorCheckItemForm>) =>
-    setItems(prev => prev.map(i => (i.tempId === tempId ? { ...i, ...patch } : i)));
+  // Lista ordenada para exibição
+  const ordered = useMemo(() => {
+    const ord = (i: AprovadorCheckItemForm) => {
+      switch (i.origem_pergunta) {
+        case "replicada_avaliado": return 0;
+        case "automatica_configuracao": return 1;
+        case "manual":
+        default: return 2;
+      }
+    };
+    return [...items].sort((a, b) => ord(a) - ord(b));
+  }, [items]);
 
-  const totalPeso = useMemo(() => items.reduce((s, i) => s + (i.peso || 0), 0), [items]);
+  const totalPeso = useMemo(() => items.reduce((s, i) => s + (Number(i.peso) || 0), 0), [items]);
 
-  if (fields.length === 0) {
-    return (
-      <div className="border border-dashed border-border rounded-lg p-8 text-center">
-        <ShieldCheck className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-        <p className="text-sm font-medium text-foreground">Nenhuma pergunta operacional ainda</p>
-        <p className="text-xs text-muted-foreground mt-1">
-          Adicione perguntas na aba <strong>Campos</strong> para que o aprovador tenha o que verificar.
-        </p>
-      </div>
-    );
-  }
+  const editing = items.find(i => i.tempId === editingTempId) ?? null;
+
+  const updateItem = (tempId: string, patch: Partial<AprovadorCheckItemForm>) => {
+    setItems(prev => prev.map(i => {
+      if (i.tempId !== tempId) return i;
+      const next = { ...i, ...patch };
+      // Auditoria: marca edição manual em itens automáticos
+      if (i.origem_pergunta === "automatica_configuracao") {
+        next.editado_manual = true;
+        next.editado_por = profile?.id;
+        next.editado_em = new Date().toISOString();
+        next.config_atual_snapshot = { ...next };
+      }
+      return next;
+    }));
+  };
+
+  const addManual = () => {
+    const novo = defaultAprovadorManualItem();
+    setItems(prev => [...prev, novo]);
+    setEditingTempId(novo.tempId);
+  };
+
+  const removeItem = (tempId: string) => {
+    setItems(prev => prev.filter(i => i.tempId !== tempId));
+  };
 
   return (
     <div className="space-y-3">
       <div className="bg-primary/5 border border-primary/30 rounded-lg p-3 flex items-start gap-2.5">
         <ShieldCheck className="w-5 h-5 text-primary mt-0.5 shrink-0" />
         <div className="flex-1">
-          <p className="text-sm font-semibold text-foreground">Checklist do Aprovador Final</p>
+          <p className="text-sm font-semibold text-foreground">Avaliação do Aprovador</p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Cada pergunta da aba Campos gerou automaticamente um item de aprovação. Ajuste peso, tipo de resposta e
-            comportamentos (devolução, plano de ação, evidência) por item.
+            Lista única em sequência: perguntas replicadas do Avaliado, perguntas automáticas
+            do pacote padrão (Configurações &gt; Pontuação/SLA) e perguntas manuais adicionadas
+            por você. Cada item pode ter regras próprias (devolução, plano de ação, evidência…).
           </p>
         </div>
         <div className="text-right shrink-0">
@@ -105,71 +155,95 @@ export function StepChecklistAprovador({ fields, items, setItems }: Props) {
         </div>
       </div>
 
+      {ordered.length === 0 && (
+        <div className="border border-dashed border-border rounded-lg p-6 text-center text-xs text-muted-foreground">
+          Nenhuma pergunta ainda. Adicione perguntas no Avaliado, configure o pacote padrão em
+          Configurações ou clique em <strong>+ Pergunta manual</strong>.
+        </div>
+      )}
+
       <div className="space-y-2">
-        {items.map((it, idx) => (
-          <div key={it.tempId} className="border border-border rounded-lg bg-card p-3 space-y-3">
-            <div className="flex items-start gap-2">
-              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-[11px] font-bold shrink-0">
-                {idx + 1}
-              </span>
-              <div className="flex-1 min-w-0">
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                  <Info className="w-3 h-3" />
-                  Pergunta original: <span className="text-foreground font-medium normal-case">{it.field_label || "—"}</span>
+        {ordered.map((it, idx) => {
+          const origem = it.origem_pergunta ?? (it.field_id ? "replicada_avaliado" : "manual");
+          const badge = ORIGEM_BADGE[origem];
+          const isReplicada = origem === "replicada_avaliado";
+          return (
+            <div key={it.tempId} className="border border-border rounded-lg bg-card p-3">
+              <div className="flex items-start gap-2">
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-[11px] font-bold shrink-0">
+                  {idx + 1}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                    <Badge variant="outline" className={`text-[9px] px-1.5 py-0 h-4 font-semibold ${badge.cls}`}>
+                      {badge.label}
+                    </Badge>
+                    {it.editado_manual && (
+                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4">EDITADA</Badge>
+                    )}
+                    {it.instrucao_url && (
+                      <Paperclip className="w-3 h-3 text-primary" />
+                    )}
+                  </div>
+                  <p className="text-sm font-medium text-foreground leading-snug">{it.pergunta_padrao || "—"}</p>
+                  <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-3 flex-wrap">
+                    <span>Tipo: <span className="text-foreground">{TIPO_LABEL[it.tipo_resposta] ?? it.tipo_resposta}</span></span>
+                    <span>Peso: <span className="text-foreground font-semibold">{it.peso}</span></span>
+                    {it.gera_plano_acao && <span className="text-amber-600 dark:text-amber-400">• Plano de ação</span>}
+                    {it.exige_evidencia && <span className="text-blue-600 dark:text-blue-400">• Evidência</span>}
+                    {it.permite_devolucao && <span>• Devolução</span>}
+                  </div>
                 </div>
-                <Input
-                  className="mt-1"
-                  value={it.pergunta_padrao}
-                  onChange={e => update(it.tempId, { pergunta_padrao: e.target.value })}
-                  placeholder="Pergunta exibida ao aprovador"
-                  maxLength={300}
-                />
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setEditingTempId(it.tempId)}>
+                    <Settings2 className="w-3.5 h-3.5" />
+                  </Button>
+                  {!isReplicada && (
+                    <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => removeItem(it.tempId)}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              <div className="space-y-1">
-                <Label className="text-[11px]">Tipo de resposta</Label>
-                <Select value={it.tipo_resposta} onValueChange={v => update(it.tempId, { tipo_resposta: v as AprovadorTipoResposta })}>
-                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {(Object.keys(TIPO_LABEL) as AprovadorTipoResposta[]).map(k => (
-                      <SelectItem key={k} value={k} className="text-xs">{TIPO_LABEL[k]}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-[11px]">Peso</Label>
-                <Input
-                  type="number" min={0} max={100}
-                  className="h-8 text-xs"
-                  value={it.peso}
-                  onChange={e => update(it.tempId, { peso: Number(e.target.value) || 0 })}
-                />
-              </div>
-              <ToggleField label="Exige observação" checked={it.exige_observacao} onChange={v => update(it.tempId, { exige_observacao: v })} />
-              <ToggleField label="Exige evidência" checked={it.exige_evidencia} onChange={v => update(it.tempId, { exige_evidencia: v })} />
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-1 border-t border-border/50">
-              <ToggleField label="Permite devolução" checked={it.permite_devolucao} onChange={v => update(it.tempId, { permite_devolucao: v })} />
-              <ToggleField label="Gera plano de ação" checked={it.gera_plano_acao} onChange={v => update(it.tempId, { gera_plano_acao: v })} />
-              <ToggleField label="Permite conclusão" checked={it.permite_conclusao} onChange={v => update(it.tempId, { permite_conclusao: v })} />
-              <ToggleField label="Permite aumento de prazo" checked={it.permite_aumento_prazo} onChange={v => update(it.tempId, { permite_aumento_prazo: v })} />
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
-    </div>
-  );
-}
 
-function ToggleField({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <div className="flex items-center justify-between gap-2 px-2 py-1.5 rounded border border-border/50 bg-muted/30">
-      <Label className="text-[11px] leading-tight">{label}</Label>
-      <Switch checked={checked} onCheckedChange={onChange} />
+      <Button type="button" size="sm" variant="outline" onClick={addManual} className="w-full">
+        <Plus className="w-3.5 h-3.5 mr-1" /> Pergunta manual
+      </Button>
+
+      {editing && (
+        <FieldConfigSheet
+          open={!!editingTempId}
+          onOpenChange={(o) => { if (!o) setEditingTempId(null); }}
+          title={
+            editing.origem_pergunta === "replicada_avaliado" ? "Configurar pergunta replicada" :
+            editing.origem_pergunta === "automatica_configuracao" ? "Configurar pergunta automática" :
+            "Configurar pergunta manual"
+          }
+          perguntaBloqueada={editing.origem_pergunta === "replicada_avaliado"}
+          value={{
+            pergunta_padrao: editing.pergunta_padrao,
+            tipo_resposta: editing.tipo_resposta,
+            peso: editing.peso,
+            exige_observacao: editing.exige_observacao,
+            exige_evidencia: editing.exige_evidencia,
+            permite_devolucao: editing.permite_devolucao,
+            gera_plano_acao: editing.gera_plano_acao,
+            permite_conclusao: editing.permite_conclusao,
+            permite_aumento_prazo: editing.permite_aumento_prazo,
+            permite_ponderacao_auditor: editing.permite_ponderacao_auditor,
+            exige_justificativa_ponderacao: editing.exige_justificativa_ponderacao,
+            penalidade_reprovacao: editing.penalidade_reprovacao,
+            sla_horas: editing.sla_horas,
+            instrucao_url: editing.instrucao_url,
+            instrucao_tipo: editing.instrucao_tipo,
+          }}
+          onSave={(next) => updateItem(editing.tempId, next)}
+        />
+      )}
     </div>
   );
 }
