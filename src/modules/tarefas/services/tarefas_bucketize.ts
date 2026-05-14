@@ -271,6 +271,14 @@ export interface Buckets {
   opConcluidas: any[];
   /** Críticas: SLA estourado ou sem movimento (qualquer papel meu). */
   opCriticas: any[];
+  /** Fase 1 (fluxo oficial): tarefas pós-conclusão do executor pendentes de aprovação.
+   *  Visível para executor (sua tarefa aguardando aprovador), aprovador (precisa aprovar) e admin. */
+  opAguardandoAprovacao: any[];
+  /** Fase 1: tarefas aprovadas pendentes de auditoria, ou em AGUARDANDO_AUDITORIA.
+   *  Visível para executor, aprovador, auditor e admin. */
+  opAguardandoAuditoria: any[];
+  /** Fase 1: TODAS as tarefas onde o usuário tem qualquer papel (executor/avaliado/aprovador/auditor/criador). */
+  opTodas: any[];
 }
 
 const empty = (): Buckets => ({
@@ -282,6 +290,7 @@ const empty = (): Buckets => ({
   renegociacaoPendente: [], aguardandoValidacaoMinha: [], respostaRecebida: [], limiteRenegociacao: [],
   doMeuSetor: [], pendentesSetor: [], emAvaliacaoSetor: [], emAprovacaoSetor: [],
   opHoje: [], opEmAndamento: [], opAguardandoVoce: [], opConcluidas: [], opCriticas: [],
+  opAguardandoAprovacao: [], opAguardandoAuditoria: [], opTodas: [],
 });
 
 export function bucketize(
@@ -473,6 +482,37 @@ export function bucketize(
         ) {
           b.opHoje.push(a);
         }
+      }
+    }
+
+    // ============================================================
+    // === Fase 1 (fluxo oficial) — Aguardando Aprovação / Auditoria / Todas
+    // ============================================================
+    if (hasMyRole) {
+      // Todas: qualquer papel do usuário
+      b.opTodas.push(a);
+
+      // Aguardando Aprovação:
+      //  - executor: tarefa concluída por ele aguardando aprovador
+      //  - aprovador: precisa aprovar
+      //  - admin
+      const isAguardandoAprov = [
+        TASK_STATUS.AGUARDANDO_APROVACAO,
+        TASK_STATUS.AGUARDANDO_AVALIACAO,
+        TASK_STATUS.EM_AVALIACAO,
+      ].includes(a.status);
+      if (isAguardandoAprov && (isResp || isAprov || isAdmin)) {
+        b.opAguardandoAprovacao.push(a);
+      }
+
+      // Aguardando Auditoria:
+      //  - status AGUARDANDO_AUDITORIA, OU
+      //  - APROVADA/CONCLUIDA com auditor designado mas sem auditor_fim_em
+      const isAguardandoAud =
+        a.status === TASK_STATUS.AGUARDANDO_AUDITORIA ||
+        temAuditorPendente;
+      if (isAguardandoAud && (isResp || isAprov || isAuditor || isAdmin)) {
+        b.opAguardandoAuditoria.push(a);
       }
     }
   }
