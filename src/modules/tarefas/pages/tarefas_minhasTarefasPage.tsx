@@ -409,7 +409,14 @@ export default function OperationalExecucaoPage() {
 
   const isFilled = useCallback((f: SnapshotField) => {
     const a = exec.answers[f.id];
-    return a && (a.valor_texto != null && a.valor_texto !== "" || a.valor_numero != null || a.valor_booleano != null || a.valor_data != null || a.valor_json != null);
+    return !!a && (
+      (a.valor_texto != null && a.valor_texto !== "") ||
+      a.valor_numero != null ||
+      a.valor_booleano != null ||
+      a.valor_data != null ||
+      a.valor_json != null ||
+      (a.evidencia_url != null && a.evidencia_url !== "")
+    );
   }, [exec.answers]);
 
   const progress = useMemo(() => {
@@ -438,7 +445,16 @@ export default function OperationalExecucaoPage() {
     }
   };
 
-  const isOwner = selectedAssignment?.responsavel_id === profile?.id;
+  // Owner: dono individual OU, quando setorizada (responsavel_id NULL),
+  // qualquer membro ativo do setor executor pode preencher/concluir.
+  const isOwner = !!selectedAssignment && (
+    selectedAssignment.responsavel_id === profile?.id ||
+    (
+      selectedAssignment.responsavel_id == null &&
+      !!selectedAssignment.setor_executor_id &&
+      meusSetorIds.includes(selectedAssignment.setor_executor_id)
+    )
+  );
   const isAvaliado = selectedAssignment?.avaliado_id === profile?.id;
   const isAdminEditing = isAdmin && selectedAssignment && !["nao_executada"].includes(selectedAssignment.status);
   const isEditable = selectedAssignment && (
@@ -786,7 +802,14 @@ export default function OperationalExecucaoPage() {
                   const sFieldsVisible = sFields.filter(f => evaluateVisibility(f.condicao_visibilidade, exec.answers));
                   const filled = sFieldsVisible.filter(f => {
                     const a = exec.answers[f.id];
-                    return a && (a.valor_texto != null && a.valor_texto !== "" || a.valor_numero != null || a.valor_booleano != null || a.valor_data != null || a.valor_json != null);
+                    return !!a && (
+                      (a.valor_texto != null && a.valor_texto !== "") ||
+                      a.valor_numero != null ||
+                      a.valor_booleano != null ||
+                      a.valor_data != null ||
+                      a.valor_json != null ||
+                      (a.evidencia_url != null && a.evidencia_url !== "")
+                    );
                   }).length;
                   const allFilled = filled === sFieldsVisible.length && sFieldsVisible.length > 0;
                   const isLate = (() => {
