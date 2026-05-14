@@ -19,9 +19,14 @@ import {
   getPontuacaoConfig,
   setPontuacaoConfig,
   TAREFAS_PONTUACAO_DEFAULTS,
+  APROVADOR_PACOTE_PADRAO_DEFAULT,
   type TarefasPontuacaoConfig,
   type CamadaSlaConfig,
+  type AprovadorPerguntaPadrao,
 } from "../../services/tarefas_pontuacao_config_service";
+import { Badge } from "@/components/ui/badge";
+import { Settings2, RotateCcw } from "lucide-react";
+import { FieldConfigSheet } from "@/modules/tarefas/components/builder/FieldConfigSheet";
 
 type CamadaKey = "sla_aprovador" | "sla_plano_acao" | "sla_validador";
 
@@ -185,7 +190,133 @@ export function TarefasConfigPontuacao() {
           )}
         </CardContent>
       </Card>
+
+      <PacotePadraoAprovadorCard
+        items={form.aprovador_pacote_padrao ?? APROVADOR_PACOTE_PADRAO_DEFAULT}
+        disabled={disabled}
+        onChange={(items) => upd("aprovador_pacote_padrao", items)}
+        onSave={() => save.mutate()}
+        saving={save.isPending}
+      />
     </div>
+  );
+}
+
+function PacotePadraoAprovadorCard({
+  items, disabled, onChange, onSave, saving,
+}: {
+  items: AprovadorPerguntaPadrao[];
+  disabled: boolean;
+  onChange: (next: AprovadorPerguntaPadrao[]) => void;
+  onSave: () => void;
+  saving: boolean;
+}) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const editing = items.find(i => i.id === editingId) ?? null;
+  const total = items.filter(i => i.ativo !== false).reduce((s, i) => s + (Number(i.peso) || 0), 0);
+
+  const update = (id: string, patch: Partial<AprovadorPerguntaPadrao>) =>
+    onChange(items.map(i => (i.id === id ? { ...i, ...patch } : i)));
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <CardTitle className="text-base">Pacote padrão do Aprovador</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Estas perguntas são carregadas automaticamente em <strong>novas rotinas</strong>,
+              após as perguntas replicadas do Avaliado. Cada uma vira um item editável no snapshot da rotina.
+              Alterações aqui não afetam rotinas já criadas.
+            </p>
+          </div>
+          <div className="text-right shrink-0">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Peso total ativo</div>
+            <div className="text-sm font-bold text-primary">{total}</div>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {items.map((p) => (
+          <div key={p.id} className="border border-border rounded-lg bg-card p-3 flex items-start gap-2">
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-[11px] font-bold shrink-0">
+              {p.ordem}
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 font-semibold bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900">
+                  AUTO
+                </Badge>
+                {p.ativo === false && (
+                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4">INATIVA</Badge>
+                )}
+              </div>
+              <p className="text-sm font-medium text-foreground leading-snug">{p.pergunta}</p>
+              <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-3 flex-wrap">
+                <span>Tipo: <span className="text-foreground">{p.tipo}</span></span>
+                <span>Peso: <span className="text-foreground font-semibold">{p.peso}</span></span>
+                <span>Métrica: <span className="text-foreground">{p.metrica_calculo}</span></span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <Switch
+                checked={p.ativo !== false}
+                disabled={disabled}
+                onCheckedChange={(v) => update(p.id, { ativo: v })}
+              />
+              <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0" disabled={disabled} onClick={() => setEditingId(p.id)}>
+                <Settings2 className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          </div>
+        ))}
+
+        <div className="flex justify-between pt-2 border-t">
+          <Button type="button" size="sm" variant="ghost" disabled={disabled} onClick={() => onChange(APROVADOR_PACOTE_PADRAO_DEFAULT)}>
+            <RotateCcw className="w-3.5 h-3.5 mr-1" /> Restaurar padrões
+          </Button>
+          <Button onClick={onSave} disabled={disabled || saving}>
+            <Save className="w-4 h-4 mr-2" /> Salvar pacote
+          </Button>
+        </div>
+      </CardContent>
+
+      {editing && (
+        <FieldConfigSheet
+          open={!!editingId}
+          onOpenChange={(o) => { if (!o) setEditingId(null); }}
+          title={`Configurar: ${editing.pergunta}`}
+          value={{
+            pergunta_padrao: editing.pergunta,
+            tipo_resposta: editing.tipo,
+            peso: editing.peso,
+            exige_observacao: !!editing.exige_observacao,
+            exige_evidencia: !!editing.exige_evidencia,
+            permite_devolucao: !!editing.permite_devolucao,
+            gera_plano_acao: !!editing.gera_plano_acao,
+            permite_conclusao: !!editing.permite_conclusao,
+            permite_aumento_prazo: !!editing.permite_aumento_prazo,
+            permite_ponderacao_auditor: editing.permite_ponderacao_auditor,
+            exige_justificativa_ponderacao: editing.exige_justificativa_ponderacao,
+            penalidade_reprovacao: editing.penalidade_reprovacao,
+          }}
+          onSave={(next) => update(editing.id, {
+            pergunta: next.pergunta_padrao,
+            tipo: next.tipo_resposta as AprovadorPerguntaPadrao["tipo"],
+            peso: next.peso,
+            exige_observacao: next.exige_observacao,
+            exige_evidencia: next.exige_evidencia,
+            permite_devolucao: next.permite_devolucao,
+            gera_plano_acao: next.gera_plano_acao,
+            permite_conclusao: next.permite_conclusao,
+            permite_aumento_prazo: next.permite_aumento_prazo,
+            permite_ponderacao_auditor: next.permite_ponderacao_auditor,
+            exige_justificativa_ponderacao: next.exige_justificativa_ponderacao,
+            penalidade_reprovacao: next.penalidade_reprovacao,
+          })}
+        />
+      )}
+    </Card>
   );
 }
 

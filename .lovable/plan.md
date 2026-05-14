@@ -1,94 +1,146 @@
-## Objetivo
-
-No modal de **editar rotina** (`/tarefas/rotinas`):
-
-1. Renomear a aba **"Campos"** para **"Avaliado"** (mantendo todo o conteúdo atual — é o que o avaliado responde).
-2. Nas abas **Aprovador** e **Validador**, carregar **automaticamente no topo** as "perguntas" derivadas das **penalidades automáticas** definidas em **Configurações → Pontuação/SLA** (atraso, não-resposta, não-conformidade) da camada correspondente.
-3. Essas perguntas automáticas vêm com **pontos pré-preenchidos** vindos da config global, mas **editáveis por rotina** (override local, sem alterar a config global).
-4. O **peso total** de cada aba (Avaliado/Aprovador/Validador) é somado dinamicamente conforme perguntas/agrupadores são criados.
-5. O **Validador não é avaliado**: ele apenas audita o que Avaliado e Aprovador fizeram. As "perguntas automáticas" no Validador são checagens de conformidade sobre as camadas anteriores (não pesos próprios do validador como executor).
-
----
-
 ## Análise da estrutura atual
 
-**Arquivos impactados (frontend apenas):**
+**Configurações > Pontuação/SLA** (`TarefasConfigPontuacao.tsx` + `tarefas_pontuacao_config_service.ts`):
+- Singleton em `tarefas_pontuacao_config` com blocos por camada (`sla_executor`, `sla_aprovador`, `sla_plano_acao`, `sla_validador`).
+- Hoje só guarda penalidades/SLA da camada (atraso, não-resposta, não-conformidade) e flags globais.
+- **Não existe** pacote padrão de perguntas do Aprovador.
 
-| Arquivo | Mudança |
-|---|---|
-| `BuilderStepper.tsx` | Trocar label "Campos" → "Avaliado" |
-| `WIZARD_STEPS` em `types.ts` | Trocar label do step `campos` |
-| `StepChecklistAprovador.tsx` | Adicionar bloco superior "Penalidades automáticas (da config)" carregando 3 itens (atraso/não-resposta/não-conformidade) da camada `sla_aprovador`; somar no peso total |
-| `StepChecklistValidador.tsx` | Adicionar bloco superior similar para camada `sla_validador`; deixar claro que valida camadas anteriores |
-| `TabFormBuilder` (aba Avaliado) | Mostrar bloco superior com penalidades automáticas da camada `sla_executor` (read-only resumo + edição de override) e somatório do peso da aba |
-| `types.ts` | Adicionar tipo `PenalidadesAutoForm` (overrides locais por camada) — opcional, persistido junto à rotina |
-| `tarefas_rotinasPage.tsx` | Carregar `tarefas_pontuacao_config` ao abrir o modal; passar para os steps; salvar overrides como parte do snapshot da rotina |
+**Modal de criar/editar rotina** (`TarefasBuilderWizard.tsx`, `tarefas_rotinasPage.tsx`):
+- Wizard com steps: tipo → geral → campos (Avaliado) → checklist_aprovador → checklist_validador → fluxo → resumo.
+- Estado `aprovadorChecks: AprovadorCheckItemForm[]` salvo em `ada_config_snapshot.checklists.aprovador` (sem migration — JSONB existente).
+- `checklist_validador` análogo em `.checklists.validador`.
 
-**Hook novo (opcional, simples):**
-- `usePenalidadesPorCamada(camadaKey)` — busca config global + aplica override local. Pode ficar inline no page por enquanto.
+**Aba Aprovador atual** (`StepChecklistAprovador.tsx`):
+- `useEffect` sincroniza 1:1 itens com `fields` da aba Avaliado (replicação automática), órfãos removidos, label cacheado.
+- Render mostra apenas perguntas replicadas. Acima existe `PenalidadesAutomaticasBlock` (bloco separado de penalidades automáticas).
+- Edição inline simples: `Input` para pergunta, Select tipo, peso, e 6 toggles (`exige_observacao`, `exige_evidencia`, `permite_devolucao`, `gera_plano_acao`, `permite_conclusao`, `permite_aumento_prazo`). **Não usa o mesmo modal das perguntas do Avaliado** (`tarefas_tabFormBuilder.tsx`).
 
-**Service usado (já existente):**
-- `tarefas_pontuacao_config_service.getPontuacaoConfig()` — já retorna `sla_executor`, `sla_aprovador`, `sla_plano_acao`, `sla_validador`.
+**Componente de pergunta do Avaliado** (`tarefas_tabFormBuilder.tsx`, 1083 linhas):
+- Engine completa: tipo, opções, `opcoes_regras` (`OpcaoRegra` por opção), peso, evidência, instrução (anexo), criticidade, condição visibilidade, fórmula, `aprovador_verificar/_pergunta/_tipo_resposta/_peso/...`. Hoje **a configuração da pergunta do aprovador já existe inline na pergunta do Avaliado** (`aprovador_verificar`, etc.).
+- O modal/expand inline é grande e está acoplado a `SectionForm`/`FieldForm`.
 
-**Tabelas/RPCs/Triggers:**
-- **Nenhuma alteração de DB nesta fase.** Apenas leitura da config existente. Override fica no snapshot da rotina (jsonb já existente).
+**Snapshots**:
+- `operational_assignments.template_snapshot` (jsonb) — usado no scoring.
+- `ada_config_snapshot` no template — guarda checklists.
+
+**Hooks/services**:
+- `tarefas_service.ts` (CRUD rotinas, leitura snapshot), `tarefas_pontuacao_config_service.ts` (config global), `tarefas_useScoring.ts` (cálculo nota — tabela `operational_score_logs`).
+- `calculate_operational_score_on_complete` (trigger) calcula score baseado em `operational_template_fields` + answers + reviews. **Não consome** o checklist do aprovador atual.
 
 ---
 
-## Layout proposto (cada aba)
+## Decisões de design (alteração mínima)
 
+1. **Persistência sem migration**: pacote padrão do Aprovador vai em `tarefas_pontuacao_config.aprovador_pacote_padrao` (jsonb dentro do singleton). Snapshot por rotina continua em `ada_config_snapshot.checklists.aprovador`. Cada item ganha metadados `origem_pergunta`, `pergunta_origem_id`, `config_global_origem_id`, `editado_manual`, `editado_por`, `editado_em`, `config_original_snapshot`, `config_atual_snapshot` — **adicionados em `AprovadorCheckItemForm`**, normalizados como opcionais (legacy = `manual`).
+
+2. **Lista única na aba Aprovador**: remover `PenalidadesAutomaticasBlock` da step do aprovador. Manter `StepChecklistAprovador` mas re-arquitetar para renderizar lista única ordenada: `replicada_avaliado` → `automatica_configuracao`. Cada card mostra badge discreto (REPLICADA/AUTO/MANUAL) e abre o **mesmo componente de configuração** das perguntas do Avaliado.
+
+3. **Reutilizar componente de configuração**: extrair o bloco de configuração de pergunta do `tarefas_tabFormBuilder.tsx` para um `FieldConfigSheet` reutilizável (Sheet/Dialog) que recebe um shape comum (`pergunta`, `tipo`, `opcoes`, `opcoes_regras`, `peso`, `exige_evidencia`, `instrucao_url/_tipo`, `gera_plano_acao`, `permite_devolucao`, `permite_conclusao`, `permite_aumento_prazo`, `permite_ponderacao_auditor`, `exige_justificativa_ponderacao`, `penalidade_*`, `sla_horas`). Usado tanto no Avaliado quanto no Aprovador. Na pergunta do Avaliado, o componente continua inline (sem mudança visual). No Aprovador, abre via botão "Configurar".
+
+4. **Hidratação ao criar rotina nova**: em `tarefas_rotinasPage.tsx` (load), quando `templateId` é novo (criar) e `aprovadorChecks` vier vazio, popular com `pacote_padrao_aprovador` da config global (já carregada). Cada item recebe `origem_pergunta: 'automatica_configuracao'`, `config_global_origem_id` e `config_original_snapshot`. Não roda em rotinas existentes.
+
+5. **Soma total**: ajustar lógica de total da aba Aprovador para somar todos os pesos da lista única (replicadas + automáticas + manuais). Já existe `totalPeso` por reduce — fica.
+
+6. **Cálculo automático na execução**: fora de escopo desta entrega visual. Item 9 do pedido envolve trigger novo + leitura de eventos (devoluções, planos de ação, prorrogações). **Proponho fazer em segunda etapa**, depois da aprovação do snapshot/UI. Por ora: marcar perguntas com `origem='automatica_configuracao'` e `metrica_calculo` (chave: `prazo_global`, `atraso_etapa`, `obrigatorias_respondidas`, `evidencias_anexadas`, `respostas_nao_conformes`, `devolucao`, `plano_acao_aberto`, `plano_acao_sla`, `plano_acao_prorrogacao`, `plano_acao_prorrogacao_multipla`) — guardado no snapshot. UI já mostra o valor sugerido + permitir override; engine de cálculo entra em segunda PR.
+
+7. **Auditoria de edição manual**: registrar em `editado_manual=true`, `editado_por`, `editado_em`, `config_atual_snapshot` no próprio item. Sem nova tabela.
+
+8. **Compatibilidade**: snapshots antigos continuam válidos via `normalizeAprovadorItem` (já existe). Adicionar defaults para os novos campos de metadados (origem padrão = `manual` se ausente, exceto se `field_id` preenchido → `replicada_avaliado`).
+
+---
+
+## Arquivos impactados
+
+```text
+ALTERADOS
+  src/modules/tarefas/services/tarefas_pontuacao_config_service.ts
+    + interface AprovadorPerguntaPadrao
+    + campo aprovador_pacote_padrao: AprovadorPerguntaPadrao[] na config
+    + DEFAULT com as 10 perguntas listadas (peso total = 100)
+    + merge no getPontuacaoConfig
+
+  src/modules/tarefas/components/configuracoes/TarefasConfigPontuacao.tsx
+    + nova seção "Pacote padrão do Aprovador"
+    + lista ordenada com ordem/pergunta/tipo/peso/ativo
+    + botão "editar regra" abre FieldConfigSheet
+    + botão "Restaurar padrões"
+
+  src/modules/tarefas/components/builder/types.ts
+    + metadados em AprovadorCheckItemForm: origem_pergunta, pergunta_origem_id,
+      config_global_origem_id, editado_manual, editado_por, editado_em,
+      config_original_snapshot, config_atual_snapshot, metrica_calculo,
+      ativo, instrucao_url, instrucao_tipo, opcoes_regras, penalidade_reprovacao
+    + helper buildAprovadorAutomatico(perguntaPadrao, configGlobalOrigemId)
+
+  src/modules/tarefas/components/builder/checklistNormalizers.ts
+    + preserva novos metadados; deduz origem_pergunta quando ausente
+
+  src/modules/tarefas/components/builder/StepChecklistAprovador.tsx
+    REESCRITO (menor):
+    + lista única ordenada (replicadas → automáticas → manuais)
+    + badge discreto AUTO / REPLICADA / MANUAL
+    + card padrão usa FieldConfigSheet
+    + botão "+ Pergunta manual"
+    + total considera todos
+    - remove inline edit antigo
+
+  src/modules/tarefas/components/builder/TarefasBuilderWizard.tsx
+    - remove PenalidadesAutomaticasBlock da step checklist_aprovador
+      (penalidades agora vivem dentro de cada pergunta)
+    - mantém na step checklist_validador (auditoria — sem mudança)
+
+  src/modules/tarefas/pages/tarefas_rotinasPage.tsx
+    + ao criar rotina nova: hidrata aprovadorChecks com pacote padrão
+      da config global (uma vez, se vazio e !isEditing)
+    + persiste novos metadados sem mudança de schema
+
+NOVOS
+  src/modules/tarefas/components/builder/FieldConfigSheet.tsx
+    Sheet reutilizável de configuração de pergunta.
+    Props: value (shape comum), onChange, contexto ('avaliado' | 'aprovador').
+    Usa os mesmos controles do tarefas_tabFormBuilder (extraídos).
+
+  src/modules/tarefas/components/builder/AprovadorPerguntaCard.tsx
+    Card item da lista única (badge + título + tipo + peso + botão configurar).
 ```
-[ Aba Aprovador ]
-┌──────────────────────────────────────────────┐
-│  Penalidades automáticas (da config global) │
-│  ─────────────────────────────────────────  │
-│  • Atraso na aprovação        [-10] pts     │
-│  • Não respondeu              [-20] pts     │
-│  • Não conformidade detectada [-15] pts     │
-│  (editável por rotina — não altera global)  │
-└──────────────────────────────────────────────┘
 
-┌──────────────────────────────────────────────┐
-│  Checklist do Aprovador (perguntas)          │
-│  1. ... peso 5                               │
-│  2. ... peso 3                               │
-└──────────────────────────────────────────────┘
-
-Peso total da camada: 53
-```
-
-Mesmo padrão para **Validador** (lendo `sla_validador`) e **Avaliado** (lendo `sla_executor`).
-
-No **Validador**, o bloco de penalidades automáticas vem com nota explicativa: *"Estas penalidades são aplicadas pela auditoria sobre a execução do Avaliado/Aprovador."*
+**Sem mudanças em**: trigger `calculate_operational_score_on_complete`, tabelas, RPCs, RLS, hooks de execução, aba Avaliado (`tarefas_tabFormBuilder.tsx` só sofre extração interna do bloco de config — visualmente idêntico).
 
 ---
 
-## Regra de cálculo
+## Compatibilidade com rotinas antigas
 
-- **Peso total da aba** = soma dos pesos das perguntas + soma absoluta das penalidades automáticas ativas.
-- Penalidades são valores negativos (já vêm como número da config). Mostradas com sinal `-`.
-- Override por rotina é salvo em `template.snapshot.penalidades_override = { sla_executor: {...}, sla_aprovador: {...}, sla_validador: {...} }` (campo jsonb dentro do snapshot que já é persistido).
-
----
-
-## Rollback
-
-Reverter os 6 arquivos editados. Sem migração, sem perda de dados.
+- `ada_config_snapshot.checklists.aprovador` antigo: `normalizeAprovadorItem` preenche metadados ausentes. Se item tem `field_id` válido → `origem_pergunta='replicada_avaliado'`. Caso contrário → `'manual'`.
+- Pesos antigos preservados.
+- Itens sem `metrica_calculo` continuam editáveis manualmente; nada quebra.
+- Config global sem `aprovador_pacote_padrao` → usa default em memória; rotinas antigas não recebem retroativamente.
 
 ---
 
-## Checklist de validação
+## Checklist de validação (pós-implementação)
 
-- [ ] Aba "Campos" agora aparece como "Avaliado" no stepper
-- [ ] Modal Aprovador mostra 3 penalidades automáticas no topo, com valores vindos da config
-- [ ] Editar valor da penalidade na rotina não altera a config global
-- [ ] Peso total exibido = soma perguntas + |penalidades|
-- [ ] Validador mostra mesmo bloco + nota "auditoria"
-- [ ] Aba Avaliado mostra o bloco + soma total ao adicionar/remover perguntas
-- [ ] Salvar e reabrir rotina preserva os overrides
+- [ ] Configurações > Pontuação/SLA mostra "Pacote padrão do Aprovador" com 10 perguntas.
+- [ ] Cada pergunta padrão abre o mesmo `FieldConfigSheet` das perguntas do Avaliado.
+- [ ] Criar nova rotina → aba Aprovador já vem com replicadas + 10 automáticas (lista única).
+- [ ] Editar rotina antiga → carrega itens antigos sem erro, todos com badge `MANUAL` ou `REPLICADA`.
+- [ ] Badges AUTO/REPLICADA/MANUAL discretos no card.
+- [ ] Total de pontos soma replicadas + automáticas + manuais.
+- [ ] Editar pergunta automática marca `editado_manual=true`, `editado_por`, `editado_em`.
+- [ ] Penalidades automáticas (bloco separado) removidas da aba Aprovador.
+
+---
+
+## Fora de escopo (segunda etapa, após sua aprovação)
+
+- Engine de cálculo automático das 10 perguntas (trigger lendo eventos de execução, plano de ação, prorrogação). Hoje a UI permite override manual; a sugestão automática vem como `null` até o engine ser implementado. Posso planejar isso separadamente, pois envolve trigger e leitura de várias tabelas.
+- Visualização do auditor/validador das edições — depende do engine acima.
 
 ---
 
 ## Confirmação
 
-Confirma que posso seguir com este plano (Fase única, só frontend, sem DB)?
+Antes de codar, confirma:
+
+1. OK em **persistir o pacote padrão dentro do `tarefas_pontuacao_config` (jsonb)** sem criar nova tabela?
+2. OK em **deixar o engine de cálculo automático para uma 2ª etapa**, entregando agora UI + snapshot + override manual?
+3. OK em **extrair o bloco de configuração de pergunta** do `tarefas_tabFormBuilder.tsx` para um `FieldConfigSheet` (sem mudar visualmente a aba Avaliado)?

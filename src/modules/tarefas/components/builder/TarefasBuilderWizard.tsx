@@ -144,17 +144,7 @@ export function TarefasBuilderWizard(props: Props) {
         )}
 
         {current === "checklist_aprovador" && hasAprovador && (
-          <div className="space-y-4">
-            <PenalidadesAutomaticasBlock
-              camadaKey="sla_aprovador"
-              titulo="Penalidades automáticas do Aprovador"
-              descricao="Avaliadas automaticamente sobre a atuação do aprovador (atraso na aprovação, ausência de resposta, não conformidade detectada)."
-              globalConfig={pontuacaoConfig}
-              overrides={penalidadesOverride}
-              onOverridesChange={setPenalidadesOverride}
-            />
-            <StepChecklistAprovador fields={fields} items={aprovadorChecks} setItems={setAprovadorChecks} />
-          </div>
+          <StepChecklistAprovador fields={fields} items={aprovadorChecks} setItems={setAprovadorChecks} />
         )}
 
         {current === "checklist_validador" && hasValidador && (

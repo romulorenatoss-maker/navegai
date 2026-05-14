@@ -11,7 +11,7 @@ import { TemplateForm, SectionForm, FieldForm, StepForm, defaultTemplate, defaul
 // (Removido) TaskTypeSelectorDialog — builder único, sem seletor prévio.
 type TaskType = "simples" | "inspecao";
 import { TarefasBuilderWizard } from "@/modules/tarefas/components/builder/TarefasBuilderWizard";
-import { AprovadorCheckItemForm, ValidadorCheckItemForm, buildDefaultValidadorItems } from "@/modules/tarefas/components/builder/types";
+import { AprovadorCheckItemForm, ValidadorCheckItemForm, buildDefaultValidadorItems, buildAprovadorAutomatico } from "@/modules/tarefas/components/builder/types";
 import type { PenalidadesOverrideMap } from "@/modules/tarefas/components/builder/PenalidadesAutomaticasBlock";
 import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
 import { useDraftAutosave, loadDraft, clearDraft, type BuilderDraftPayload } from "@/modules/tarefas/components/builder/useBuilderDraft";
@@ -402,7 +402,11 @@ export default function OperationalCadastroPage() {
     setSections([]);
     setFields([]);
     setSteps([]);
-    setAprovadorChecks([]);
+    // Hidrata aba Aprovador com pacote padrão da config global (apenas em criação).
+    const pacote = pontuacaoConfig?.aprovador_pacote_padrao ?? [];
+    setAprovadorChecks(
+      pacote.filter(p => p.ativo !== false).map(p => buildAprovadorAutomatico(p))
+    );
     setValidadorChecks(buildDefaultValidadorItems());
     setPenalidadesOverride({});
     setActiveTab("geral");
