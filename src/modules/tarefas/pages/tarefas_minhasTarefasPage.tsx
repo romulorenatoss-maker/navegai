@@ -478,7 +478,19 @@ export default function OperationalExecucaoPage() {
   );
   const isAvaliado = selectedAssignment?.avaliado_id === profile?.id;
   const isAdminEditing = isAdmin && selectedAssignment && !["nao_executada"].includes(selectedAssignment.status);
-  const isEditable = selectedAssignment && (
+
+  // Modos de papel ativo no drawer (mutuamente exclusivos com edição do executor):
+  //  - Avaliador: status aguardando_avaliacao | em_avaliacao
+  //  - Aprovador: status aguardando_aprovacao
+  // Admin entra nesses modos quando não há aprovador/avaliador atribuído ou para suprir ausência.
+  const isAvaliadorMode = !!selectedAssignment
+    && (selectedAssignment.aprovador_id === profile?.id || isAdmin)
+    && ["aguardando_avaliacao", "em_avaliacao"].includes(selectedAssignment.status);
+  const isAprovadorMode = !!selectedAssignment
+    && (selectedAssignment.aprovador_id === profile?.id || isAdmin)
+    && selectedAssignment.status === "aguardando_aprovacao";
+
+  const isEditable = selectedAssignment && !isAprovadorMode && !isAvaliadorMode && (
     (["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status) && (isOwner || isAdmin)) ||
     isAdminEditing
   );
@@ -495,18 +507,6 @@ export default function OperationalExecucaoPage() {
   const isCriadorValidando = !!selectedAssignment
     && selectedAssignment.status === "aguardando_validacao"
     && selectedAssignment.created_by === profile?.id;
-
-  // Modos de papel ativo no drawer (mutuamente exclusivos com edição do executor):
-  //  - Avaliador: status aguardando_avaliacao | em_avaliacao
-  //  - Aprovador: status aguardando_aprovacao
-  // Admin sem ser avaliador/aprovador da tarefa NÃO entra nesses modos automaticamente
-  // (evita atropelar o reabrir-para-edição). Usa-se apenas a igualdade de id.
-  const isAvaliadorMode = !!selectedAssignment
-    && selectedAssignment.aprovador_id === profile?.id
-    && ["aguardando_avaliacao", "em_avaliacao"].includes(selectedAssignment.status);
-  const isAprovadorMode = !!selectedAssignment
-    && selectedAssignment.aprovador_id === profile?.id
-    && selectedAssignment.status === "aguardando_aprovacao";
 
   const handleStart = () => {
     if (selectedAssignment) exec.startTask.mutate({
