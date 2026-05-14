@@ -374,15 +374,77 @@ export default function OperationalExecucaoPage() {
       .sort((a: any, b: any) => a.ordem - b.ordem);
   }, [snapshot]);
 
+  // Buscar regras vivas do template para sobrepor às regras congeladas no snapshot.
+  // Garante que edições posteriores no template (opcoes_regras, gera_contingencia,
+  // exige_evidencia, criticidade, obrigatorio, etc.) reflitam imediatamente em
+  // tarefas em andamento. Estrutura (label/ordem/section) permanece do snapshot.
+  const isAssignmentLive = useMemo(() => {
+    const st = selectedAssignment?.status;
+    return !!st && !["concluida", "aprovada", "auditada", "cancelada", "arquivada"].includes(st);
+  }, [selectedAssignment?.status]);
+
+  const { data: liveTemplateFields } = useQuery({
+    queryKey: ["live_template_fields_overlay", selectedAssignment?.template_id],
+    enabled: !!selectedAssignment?.template_id && isAssignmentLive,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("operational_template_fields")
+        .select("id, label, ordem, section_id, opcoes, opcoes_regras, obrigatorio, exige_evidencia, tipo_evidencia, gera_contingencia, criticidade, validacao, condicao_visibilidade, aprovador_verificar, aprovador_pergunta, aprovador_tipo_resposta, aprovador_peso, aprovador_obriga_observacao_nao, aprovador_exige_evidencia_nao, aprovador_tipos_evidencia, auditor_verificar")
+        .eq("template_id", selectedAssignment.template_id);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const liveFieldOverlayMap = useMemo(() => {
+    const map: Record<string, any> = {};
+    if (!liveTemplateFields) return map;
+    // chave primária: id; fallback: section_id|label (caso snapshot tenha id divergente)
+    for (const lf of liveTemplateFields as any[]) {
+      map[lf.id] = lf;
+      const altKey = `${lf.section_id || ""}|${(lf.label || "").trim().toLowerCase()}`;
+      if (altKey && !map[altKey]) map[altKey] = lf;
+    }
+    return map;
+  }, [liveTemplateFields]);
+
   const snapshotFields: SnapshotField[] = useMemo(() => {
     const raw = snapshot?.fields || [];
     const seen = new Set<string>();
     const result = raw.filter((f: any) => { if (seen.has(f.id)) return false; seen.add(f.id); return true; })
-      .sort((a: any, b: any) => a.ordem - b.ordem);
+      .sort((a: any, b: any) => a.ordem - b.ordem)
+      .map((f: any) => {
+        if (!isAssignmentLive) return f;
+        const altKey = `${f.section_id || ""}|${(f.label || "").trim().toLowerCase()}`;
+        const live = liveFieldOverlayMap[f.id] || liveFieldOverlayMap[altKey];
+        if (!live) return f;
+        // Sobrepõe apenas as propriedades de regra; preserva identidade/estrutura
+        return {
+          ...f,
+          opcoes: live.opcoes ?? f.opcoes,
+          opcoes_regras: live.opcoes_regras ?? f.opcoes_regras,
+          obrigatorio: live.obrigatorio ?? f.obrigatorio,
+          exige_evidencia: live.exige_evidencia ?? f.exige_evidencia,
+          tipo_evidencia: live.tipo_evidencia ?? f.tipo_evidencia,
+          gera_contingencia: live.gera_contingencia ?? f.gera_contingencia,
+          criticidade: live.criticidade ?? f.criticidade,
+          validacao: live.validacao ?? f.validacao,
+          condicao_visibilidade: live.condicao_visibilidade ?? f.condicao_visibilidade,
+          aprovador_verificar: live.aprovador_verificar ?? f.aprovador_verificar,
+          aprovador_pergunta: live.aprovador_pergunta ?? f.aprovador_pergunta,
+          aprovador_tipo_resposta: live.aprovador_tipo_resposta ?? f.aprovador_tipo_resposta,
+          aprovador_peso: live.aprovador_peso ?? f.aprovador_peso,
+          aprovador_obriga_observacao_nao: live.aprovador_obriga_observacao_nao ?? f.aprovador_obriga_observacao_nao,
+          aprovador_exige_evidencia_nao: live.aprovador_exige_evidencia_nao ?? f.aprovador_exige_evidencia_nao,
+          aprovador_tipos_evidencia: live.aprovador_tipos_evidencia ?? f.aprovador_tipos_evidencia,
+          auditor_verificar: live.auditor_verificar ?? f.auditor_verificar,
+        };
+      });
     // Register field labels for detailed logging
     if (result.length > 0) exec.setFieldLabels(result);
     return result;
-  }, [snapshot]);
+  }, [snapshot, liveFieldOverlayMap, isAssignmentLive]);
 
   const sectionIds = useMemo(() => new Set(snapshotSections.map(s => s.id)), [snapshotSections]);
 
