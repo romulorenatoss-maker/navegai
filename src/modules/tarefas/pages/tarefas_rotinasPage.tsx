@@ -749,6 +749,8 @@ export default function OperationalCadastroPage() {
               fields={fields} setFields={setFields}
               steps={steps} setSteps={setSteps}
               checkItems={checkItems} setCheckItems={setCheckItems}
+              aprovadorChecks={aprovadorChecks} setAprovadorChecks={setAprovadorChecks}
+              validadorChecks={validadorChecks} setValidadorChecks={setValidadorChecks}
               protectedCheckIds={protectedCheckIds}
               draftToRestore={pendingDraft}
               onRestoreDraft={restoreDraft}
