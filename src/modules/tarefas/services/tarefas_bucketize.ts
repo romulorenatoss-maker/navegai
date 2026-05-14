@@ -411,8 +411,8 @@ export function bucketize(
       // Aguardando Você (precisa de ação minha como avaliador/aprovador/solicitante).
       // Admin tem permissão operacional total: vê toda etapa que aguarda ação humana.
       const aguardandoMinhaAcao =
-        // Saneamento 4 papéis: aprovador (e legacy avaliador_id) cobre AGUARDANDO_APROVACAO + legados.
-        ((isAprov || isAval) && [
+        // Saneamento 4 papéis: avaliado é passivo — só aprovador age em aguardando_aprovacao.
+        (isAprov && [
           TASK_STATUS.AGUARDANDO_APROVACAO,
           TASK_STATUS.AGUARDANDO_AVALIACAO,
           TASK_STATUS.EM_AVALIACAO,
