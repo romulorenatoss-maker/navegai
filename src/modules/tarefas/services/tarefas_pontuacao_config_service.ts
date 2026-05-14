@@ -33,7 +33,6 @@ export interface TarefasPontuacaoConfig {
   penalidade_sla_contingencia: number;
   nota_minima: number;
   nota_maxima: number;
-  penalidade_reprovacao: number;
   pontuacao_automatica_padrao: boolean;
   descricao: string | null;
   updated_at?: string;
@@ -83,7 +82,6 @@ export interface AprovadorPerguntaPadrao {
   permite_aumento_prazo?: boolean;
   permite_ponderacao_auditor?: boolean;
   exige_justificativa_ponderacao?: boolean;
-  penalidade_reprovacao?: number;
 }
 
 /**
@@ -121,7 +119,6 @@ export const TAREFAS_PONTUACAO_DEFAULTS: TarefasPontuacaoConfig = {
   penalidade_sla_contingencia: 15,
   nota_minima: 0,
   nota_maxima: 100,
-  penalidade_reprovacao: 100,
   pontuacao_automatica_padrao: true,
   descricao: null,
   sla_executor: camadaDefault({ sla_horas: 24 }),

@@ -187,7 +187,6 @@ function PacotePadraoAprovadorCard({
             peso: editing.peso,
             permite_ponderacao_auditor: editing.permite_ponderacao_auditor,
             exige_justificativa_ponderacao: editing.exige_justificativa_ponderacao,
-            penalidade_reprovacao: editing.penalidade_reprovacao,
           }}
           onSave={(next) => {
             const regs = next.regras_por_opcao ?? [];
@@ -201,7 +200,6 @@ function PacotePadraoAprovadorCard({
               gera_plano_acao: regs.some(r => r.gera_plano_acao),
               permite_ponderacao_auditor: next.permite_ponderacao_auditor,
               exige_justificativa_ponderacao: next.exige_justificativa_ponderacao,
-              penalidade_reprovacao: next.penalidade_reprovacao,
               opcoes: next.opcoes,
               regras_por_opcao: next.regras_por_opcao,
             } as any);

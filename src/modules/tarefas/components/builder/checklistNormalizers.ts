@@ -70,7 +70,6 @@ export function normalizeAprovadorItem(
     penalidade_nao_resposta: raw?.penalidade_nao_resposta ?? defaults.penalidade_nao_resposta,
     penalidade_nao_conformidade:
       raw?.penalidade_nao_conformidade ?? defaults.penalidade_nao_conformidade,
-    penalidade_reprovacao: raw?.penalidade_reprovacao,
     permite_ponderacao_auditor:
       raw?.permite_ponderacao_auditor ?? defaults.permite_ponderacao ?? true,
     exige_justificativa_ponderacao:

@@ -43,7 +43,6 @@ type Editable = Pick<
   | "peso"
   | "permite_ponderacao_auditor"
   | "exige_justificativa_ponderacao"
-  | "penalidade_reprovacao"
   | "sla_horas"
   | "instrucao_url"
   | "instrucao_tipo"

@@ -180,7 +180,6 @@ Deno.serve(async (req) => {
           obrigatorio: f.obrigatorio,
           peso: f.peso,
           nota_maxima: f.nota_maxima,
-          penalidade_reprovacao: f.penalidade_reprovacao,
           impacta_score: f.impacta_score,
           criticidade: f.criticidade,
           gera_contingencia: f.gera_contingencia,

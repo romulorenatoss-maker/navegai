@@ -266,7 +266,6 @@ export function StepChecklistAprovador({ fields, items, setItems }: Props) {
             peso: editing.peso,
             permite_ponderacao_auditor: editing.permite_ponderacao_auditor,
             exige_justificativa_ponderacao: editing.exige_justificativa_ponderacao,
-            penalidade_reprovacao: editing.penalidade_reprovacao,
             sla_horas: editing.sla_horas,
             instrucao_url: editing.instrucao_url,
             instrucao_tipo: editing.instrucao_tipo,

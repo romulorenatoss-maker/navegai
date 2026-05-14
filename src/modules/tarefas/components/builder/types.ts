@@ -9,7 +9,6 @@ export interface CheckItemForm {
   gera_contingencia_se_reprovado: boolean;
   peso: number;
   nota_maxima: number;
-  penalidade_reprovacao: number;
 }
 
 export const defaultCheckItem = (ordem: number): CheckItemForm => ({
@@ -22,7 +21,6 @@ export const defaultCheckItem = (ordem: number): CheckItemForm => ({
   gera_contingencia_se_reprovado: false,
   peso: 1,
   nota_maxima: 100,
-  penalidade_reprovacao: 100,
 });
 
 export type WizardStepId =
@@ -107,7 +105,6 @@ export interface AprovadorCheckItemForm {
   penalidade_atraso?: number;
   penalidade_nao_resposta?: number;
   penalidade_nao_conformidade?: number;
-  penalidade_reprovacao?: number;
   // Ponderação pelo auditor
   permite_ponderacao_auditor?: boolean;
   exige_justificativa_ponderacao?: boolean;
@@ -184,7 +181,6 @@ export const buildAprovadorAutomatico = (p: {
   permite_aumento_prazo?: boolean;
   permite_ponderacao_auditor?: boolean;
   exige_justificativa_ponderacao?: boolean;
-  penalidade_reprovacao?: number;
 }): AprovadorCheckItemForm => ({
   tempId: crypto.randomUUID(),
   field_id: "",
@@ -200,7 +196,6 @@ export const buildAprovadorAutomatico = (p: {
   permite_aumento_prazo: !!p.permite_aumento_prazo,
   permite_ponderacao_auditor: p.permite_ponderacao_auditor ?? true,
   exige_justificativa_ponderacao: p.exige_justificativa_ponderacao ?? true,
-  penalidade_reprovacao: p.penalidade_reprovacao,
   origem_pergunta: "automatica_configuracao",
   config_global_origem_id: p.id,
   metrica_calculo: p.metrica_calculo,
