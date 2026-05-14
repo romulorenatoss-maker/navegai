@@ -10,8 +10,6 @@ import { BuilderStepper } from "./BuilderStepper";
 import { StepChecklistAprovador } from "./StepChecklistAprovador";
 import { StepChecklistValidador } from "./StepChecklistValidador";
 import { StepResumo } from "./StepResumo";
-import { DraftRestoreBanner } from "./DraftRestoreBanner";
-import type { BuilderDraftPayload } from "./useBuilderDraft";
 import {
   AprovadorCheckItemForm,
   WIZARD_STEPS,
@@ -37,9 +35,6 @@ interface Props {
   setores: any[];
   colaboradores: any[];
   templateId: string | null;
-  draftToRestore?: BuilderDraftPayload | null;
-  onRestoreDraft?: () => void;
-  onDiscardDraft?: () => void;
   onCancel: () => void;
   onSubmit: () => void;
 }
@@ -50,7 +45,7 @@ export function TarefasBuilderWizard(props: Props) {
     steps, setSteps,
     aprovadorChecks, setAprovadorChecks, validadorChecks, setValidadorChecks,
     setores, colaboradores,
-    templateId, draftToRestore, onRestoreDraft, onDiscardDraft, onCancel, onSubmit,
+    templateId, onCancel, onSubmit,
   } = props;
 
   // Aprovador Final detectado pelos campos do form.
@@ -103,14 +98,6 @@ export function TarefasBuilderWizard(props: Props) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <BuilderStepper current={current} completed={completed} onJump={jump} isEditing={isEditing} steps={visibleSteps} />
-
-      {draftToRestore && onRestoreDraft && onDiscardDraft && (
-        <DraftRestoreBanner
-          savedAt={draftToRestore.savedAt}
-          onRestore={onRestoreDraft}
-          onDiscard={onDiscardDraft}
-        />
-      )}
 
       <div className="flex-1 overflow-y-auto px-1 py-4 md:px-2">
         {current === "tipo" && (

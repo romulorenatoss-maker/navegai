@@ -15,7 +15,19 @@ import { AprovadorCheckItemForm, buildAprovadorAutomatico, defaultAprovadorCheck
 import { normalizeAprovadorList } from "@/modules/tarefas/components/builder/checklistNormalizers";
 
 import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
-import { useDraftAutosave, loadDraft, clearDraft, type BuilderDraftPayload } from "@/modules/tarefas/components/builder/useBuilderDraft";
+// Draft/rascunho automático REMOVIDO: a única fonte de verdade é o estado salvo da rotina.
+// Limpeza preventiva de qualquer entrada antiga ainda presente no navegador.
+const LEGACY_DRAFT_PREFIX = "tarefas_builder_draft_v1::";
+const purgeLegacyBuilderDrafts = () => {
+  try {
+    const toRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(LEGACY_DRAFT_PREFIX)) toRemove.push(k);
+    }
+    toRemove.forEach(k => localStorage.removeItem(k));
+  } catch { /* ignore */ }
+};
 
 const normalizeKeyText = (value: unknown) =>
   String(value ?? "").trim().toLocaleLowerCase("pt-BR");
@@ -172,10 +184,7 @@ export default function OperationalCadastroPage() {
   const [activeTab, setActiveTab] = useState("geral");
   const [filterExecutor, setFilterExecutor] = useState("__all");
   const [filterAvaliador, setFilterAvaliador] = useState("__all");
-  const [pendingDraft, setPendingDraft] = useState<BuilderDraftPayload | null>(null);
-
-  // Autosave (localStorage only — sem banco)
-  useDraftAutosave(editingId, dialogOpen, { form, sections, fields, steps, aprovadorChecks, validadorChecks });
+  // Draft/rascunho removido — sem autosave, sem restore.
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ["operational_templates"],
@@ -504,8 +513,7 @@ export default function OperationalCadastroPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["operational_templates"] });
       toast.success(editingId ? "Template atualizado (versão incrementada)." : "Template criado.");
-      clearDraft(editingId);
-      setPendingDraft(null);
+      purgeLegacyBuilderDrafts();
       closeDialog();
     },
     onError: (e: any) => toast.error(e.message),
@@ -569,9 +577,7 @@ export default function OperationalCadastroPage() {
     );
     
     setActiveTab("geral");
-    // Detect existing draft for new template
-    const existing = loadDraft(null);
-    setPendingDraft(existing);
+    purgeLegacyBuilderDrafts();
     setDialogOpen(true);
   };
 
@@ -709,32 +715,11 @@ export default function OperationalCadastroPage() {
     );
 
     setActiveTab("geral");
-    // Detect existing draft for this template id
-    const existing = loadDraft(t.id);
-    setPendingDraft(existing);
+    purgeLegacyBuilderDrafts();
     setDialogOpen(true);
   };
 
-  const restoreDraft = () => {
-    if (!pendingDraft) return;
-    setForm(pendingDraft.form);
-    setSections(pendingDraft.sections);
-    setFields(pendingDraft.fields);
-    setSteps(pendingDraft.steps);
-    setAprovadorChecks(pendingDraft.aprovadorChecks ?? []);
-    setValidadorChecks(pendingDraft.validadorChecks ?? []);
-    
-    setPendingDraft(null);
-    toast.success("Rascunho restaurado.");
-  };
-
-  const discardDraft = () => {
-    clearDraft(editingId);
-    setPendingDraft(null);
-    toast.message("Rascunho descartado.");
-  };
-
-  const closeDialog = () => { setDialogOpen(false); setEditingId(null); setPendingDraft(null); };
+  const closeDialog = () => { setDialogOpen(false); setEditingId(null); };
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -863,9 +848,6 @@ export default function OperationalCadastroPage() {
               steps={steps} setSteps={setSteps}
               aprovadorChecks={aprovadorChecks} setAprovadorChecks={setAprovadorChecks}
               validadorChecks={validadorChecks} setValidadorChecks={setValidadorChecks}
-              draftToRestore={pendingDraft}
-              onRestoreDraft={restoreDraft}
-              onDiscardDraft={discardDraft}
               setores={setores} colaboradores={colaboradores}
               templateId={editingId}
               onCancel={closeDialog}
