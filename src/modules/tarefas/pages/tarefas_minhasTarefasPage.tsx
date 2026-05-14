@@ -906,15 +906,6 @@ export default function OperationalExecucaoPage() {
               </div>
             )}
 
-            {needsAdminReopen && (
-              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-3">
-                <div className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-400">
-                  <AlertTriangle className="w-4 h-4 shrink-0" />
-                  <span className="font-medium">Modo Administrador:</span>
-                  <span>Esta tarefa está em <strong>{STATUS_CONFIG[selectedAssignment.status]?.label}</strong>. Você pode editar os campos diretamente.</span>
-                </div>
-              </div>
-            )}
 
             {/* Embedded contingency panel for contingenciado tasks */}
             {showContingencyPanel && selectedAssignment && (
