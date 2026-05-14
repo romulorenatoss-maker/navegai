@@ -199,8 +199,10 @@ export function StepChecklistValidador({ items, setItems }: Props) {
           onOpenChange={(o) => { if (!o) setEditingTempId(null); }}
           title={
             editing.origem_pergunta === "automatica_configuracao"
-              ? "Configurar pergunta automática"
-              : "Configurar pergunta manual"
+              ? "Configurar pergunta automática (replicada)"
+              : editing.origem_pergunta === "replicada_padrao_manual"
+                ? "Configurar pergunta manual padrão (replicada)"
+                : "Configurar pergunta manual"
           }
           value={{
             pergunta_padrao: editing.pergunta_padrao,
