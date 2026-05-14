@@ -1215,6 +1215,70 @@ export type Database = {
           },
         ]
       }
+      operational_action_plans: {
+        Row: {
+          assignment_id: string
+          concluido_em: string | null
+          created_at: string
+          created_by: string | null
+          descricao: string
+          id: string
+          prazo: string | null
+          responsavel_id: string | null
+          resultado: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assignment_id: string
+          concluido_em?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao: string
+          id?: string
+          prazo?: string | null
+          responsavel_id?: string | null
+          resultado?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assignment_id?: string
+          concluido_em?: string | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string
+          id?: string
+          prazo?: string | null
+          responsavel_id?: string | null
+          resultado?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_action_plans_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "operational_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_action_plans_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_action_plans_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       operational_approval_answers: {
         Row: {
           assignment_id: string
@@ -1323,36 +1387,44 @@ export type Database = {
       }
       operational_assignments: {
         Row: {
-          ada_avaliador_avaliado_id: string | null
-          ada_responsavel_definido_id: string | null
+          aprovado_em: string | null
+          aprovado_por: string | null
           aprovador_id: string | null
+          auditado_em: string | null
+          auditado_por: string | null
+          auditor_fim_em: string | null
+          auditor_id: string | null
+          auditor_inicio_em: string | null
           avaliado_id: string | null
-          avaliador_fim_em: string | null
-          avaliador_id: string | null
-          avaliador_inicio_em: string | null
+          cancelada_em: string | null
+          cancelada_por: string | null
           created_at: string
           created_by: string | null
           data_prevista: string
           evidencia_url: string | null
+          excluir_da_media: boolean
           fim_em: string | null
           horario_inicio_previsto: string | null
           horario_limite: string | null
           id: string
           inicio_em: string | null
+          motivo_cancelamento: string | null
+          motivo_exclusao_media: string | null
           numero_tarefa: number
           observacao: string | null
           parent_assignment_id: string | null
           pausa_iniciada_em: string | null
           pontuacao_obtida: number | null
           prazo_pausado_ms: number
+          reagendamentos_count: number
           responsavel_id: string | null
           rodada_atual: number
+          score_auditor: number | null
           score_avaliado: number | null
-          score_avaliador: number | null
           score_executor: number | null
           score_final_ajustado: number | null
+          setor_auditor_id: string | null
           setor_avaliado_id: string | null
-          setor_avaliador_id: string | null
           setor_executor_id: string | null
           status: string
           template_id: string
@@ -1360,40 +1432,49 @@ export type Database = {
           template_versao: number | null
           tempo_gasto_minutos: number | null
           tipo_assignment: string
+          ultimo_motivo_reagendamento: string | null
           updated_at: string
           validador_contingencia_id: string | null
         }
         Insert: {
-          ada_avaliador_avaliado_id?: string | null
-          ada_responsavel_definido_id?: string | null
+          aprovado_em?: string | null
+          aprovado_por?: string | null
           aprovador_id?: string | null
+          auditado_em?: string | null
+          auditado_por?: string | null
+          auditor_fim_em?: string | null
+          auditor_id?: string | null
+          auditor_inicio_em?: string | null
           avaliado_id?: string | null
-          avaliador_fim_em?: string | null
-          avaliador_id?: string | null
-          avaliador_inicio_em?: string | null
+          cancelada_em?: string | null
+          cancelada_por?: string | null
           created_at?: string
           created_by?: string | null
           data_prevista?: string
           evidencia_url?: string | null
+          excluir_da_media?: boolean
           fim_em?: string | null
           horario_inicio_previsto?: string | null
           horario_limite?: string | null
           id?: string
           inicio_em?: string | null
+          motivo_cancelamento?: string | null
+          motivo_exclusao_media?: string | null
           numero_tarefa?: number
           observacao?: string | null
           parent_assignment_id?: string | null
           pausa_iniciada_em?: string | null
           pontuacao_obtida?: number | null
           prazo_pausado_ms?: number
+          reagendamentos_count?: number
           responsavel_id?: string | null
           rodada_atual?: number
+          score_auditor?: number | null
           score_avaliado?: number | null
-          score_avaliador?: number | null
           score_executor?: number | null
           score_final_ajustado?: number | null
+          setor_auditor_id?: string | null
           setor_avaliado_id?: string | null
-          setor_avaliador_id?: string | null
           setor_executor_id?: string | null
           status?: string
           template_id: string
@@ -1401,40 +1482,49 @@ export type Database = {
           template_versao?: number | null
           tempo_gasto_minutos?: number | null
           tipo_assignment?: string
+          ultimo_motivo_reagendamento?: string | null
           updated_at?: string
           validador_contingencia_id?: string | null
         }
         Update: {
-          ada_avaliador_avaliado_id?: string | null
-          ada_responsavel_definido_id?: string | null
+          aprovado_em?: string | null
+          aprovado_por?: string | null
           aprovador_id?: string | null
+          auditado_em?: string | null
+          auditado_por?: string | null
+          auditor_fim_em?: string | null
+          auditor_id?: string | null
+          auditor_inicio_em?: string | null
           avaliado_id?: string | null
-          avaliador_fim_em?: string | null
-          avaliador_id?: string | null
-          avaliador_inicio_em?: string | null
+          cancelada_em?: string | null
+          cancelada_por?: string | null
           created_at?: string
           created_by?: string | null
           data_prevista?: string
           evidencia_url?: string | null
+          excluir_da_media?: boolean
           fim_em?: string | null
           horario_inicio_previsto?: string | null
           horario_limite?: string | null
           id?: string
           inicio_em?: string | null
+          motivo_cancelamento?: string | null
+          motivo_exclusao_media?: string | null
           numero_tarefa?: number
           observacao?: string | null
           parent_assignment_id?: string | null
           pausa_iniciada_em?: string | null
           pontuacao_obtida?: number | null
           prazo_pausado_ms?: number
+          reagendamentos_count?: number
           responsavel_id?: string | null
           rodada_atual?: number
+          score_auditor?: number | null
           score_avaliado?: number | null
-          score_avaliador?: number | null
           score_executor?: number | null
           score_final_ajustado?: number | null
+          setor_auditor_id?: string | null
           setor_avaliado_id?: string | null
-          setor_avaliador_id?: string | null
           setor_executor_id?: string | null
           status?: string
           template_id?: string
@@ -1442,20 +1532,14 @@ export type Database = {
           template_versao?: number | null
           tempo_gasto_minutos?: number | null
           tipo_assignment?: string
+          ultimo_motivo_reagendamento?: string | null
           updated_at?: string
           validador_contingencia_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "operational_assignments_ada_avaliador_avaliado_id_fkey"
-            columns: ["ada_avaliador_avaliado_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "operational_assignments_ada_responsavel_definido_id_fkey"
-            columns: ["ada_responsavel_definido_id"]
+            foreignKeyName: "operational_assignments_aprovado_por_fkey"
+            columns: ["aprovado_por"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1468,6 +1552,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "operational_assignments_auditado_por_fkey"
+            columns: ["auditado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_assignments_auditor_id_fkey"
+            columns: ["auditor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "operational_assignments_avaliado_id_fkey"
             columns: ["avaliado_id"]
             isOneToOne: false
@@ -1475,8 +1573,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "operational_assignments_avaliador_id_fkey"
-            columns: ["avaliador_id"]
+            foreignKeyName: "operational_assignments_cancelada_por_fkey"
+            columns: ["cancelada_por"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1503,15 +1601,15 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "operational_assignments_setor_avaliado_id_fkey"
-            columns: ["setor_avaliado_id"]
+            foreignKeyName: "operational_assignments_setor_auditor_id_fkey"
+            columns: ["setor_auditor_id"]
             isOneToOne: false
             referencedRelation: "setores"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "operational_assignments_setor_avaliador_id_fkey"
-            columns: ["setor_avaliador_id"]
+            foreignKeyName: "operational_assignments_setor_avaliado_id_fkey"
+            columns: ["setor_avaliado_id"]
             isOneToOne: false
             referencedRelation: "setores"
             referencedColumns: ["id"]
@@ -2624,19 +2722,13 @@ export type Database = {
       }
       operational_templates: {
         Row: {
-          ada_config_snapshot: Json | null
-          ada_enabled: boolean
-          ada_gerar_em: string | null
-          ada_quem_avalia_profile_id: string | null
-          ada_quem_avalia_setor_id: string | null
-          ada_quem_avalia_tipo: string | null
           aprovador_profile_id: string | null
           aprovador_setor_id: string | null
           ativo: boolean | null
+          auditor_profile_id: string | null
+          auditor_setor_id: string | null
           avaliado_profile_id: string | null
           avaliado_setor_id: string | null
-          avaliador_profile_id: string | null
-          avaliador_setor_id: string | null
           bloquear_fechamento_com_contingencia: boolean
           created_at: string
           data_fim: string | null
@@ -2682,19 +2774,13 @@ export type Database = {
           versao: number
         }
         Insert: {
-          ada_config_snapshot?: Json | null
-          ada_enabled?: boolean
-          ada_gerar_em?: string | null
-          ada_quem_avalia_profile_id?: string | null
-          ada_quem_avalia_setor_id?: string | null
-          ada_quem_avalia_tipo?: string | null
           aprovador_profile_id?: string | null
           aprovador_setor_id?: string | null
           ativo?: boolean | null
+          auditor_profile_id?: string | null
+          auditor_setor_id?: string | null
           avaliado_profile_id?: string | null
           avaliado_setor_id?: string | null
-          avaliador_profile_id?: string | null
-          avaliador_setor_id?: string | null
           bloquear_fechamento_com_contingencia?: boolean
           created_at?: string
           data_fim?: string | null
@@ -2740,19 +2826,13 @@ export type Database = {
           versao?: number
         }
         Update: {
-          ada_config_snapshot?: Json | null
-          ada_enabled?: boolean
-          ada_gerar_em?: string | null
-          ada_quem_avalia_profile_id?: string | null
-          ada_quem_avalia_setor_id?: string | null
-          ada_quem_avalia_tipo?: string | null
           aprovador_profile_id?: string | null
           aprovador_setor_id?: string | null
           ativo?: boolean | null
+          auditor_profile_id?: string | null
+          auditor_setor_id?: string | null
           avaliado_profile_id?: string | null
           avaliado_setor_id?: string | null
-          avaliador_profile_id?: string | null
-          avaliador_setor_id?: string | null
           bloquear_fechamento_com_contingencia?: boolean
           created_at?: string
           data_fim?: string | null
@@ -2799,20 +2879,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "operational_templates_ada_quem_avalia_profile_id_fkey"
-            columns: ["ada_quem_avalia_profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "operational_templates_ada_quem_avalia_setor_id_fkey"
-            columns: ["ada_quem_avalia_setor_id"]
-            isOneToOne: false
-            referencedRelation: "setores"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "operational_templates_aprovador_profile_id_fkey"
             columns: ["aprovador_profile_id"]
             isOneToOne: false
@@ -2842,14 +2908,14 @@ export type Database = {
           },
           {
             foreignKeyName: "operational_templates_avaliador_profile_id_fkey"
-            columns: ["avaliador_profile_id"]
+            columns: ["auditor_profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "operational_templates_avaliador_setor_id_fkey"
-            columns: ["avaliador_setor_id"]
+            columns: ["auditor_setor_id"]
             isOneToOne: false
             referencedRelation: "setores"
             referencedColumns: ["id"]
@@ -4446,63 +4512,6 @@ export type Database = {
         }
         Relationships: []
       }
-      tarefas_ada_config: {
-        Row: {
-          anexo_instrucao: string | null
-          anexo_obrigatorio: boolean
-          anexo_quantidade_minima: number
-          anexo_tipo: string
-          descricao: string | null
-          exige_anexo: boolean
-          id: string
-          nota_maxima: number
-          nota_minima: number
-          penalidade_atraso: number
-          perguntas_padrao: Json
-          prazo_horas: number
-          prioridade: string
-          singleton: boolean
-          updated_at: string
-          updated_by: string | null
-        }
-        Insert: {
-          anexo_instrucao?: string | null
-          anexo_obrigatorio?: boolean
-          anexo_quantidade_minima?: number
-          anexo_tipo?: string
-          descricao?: string | null
-          exige_anexo?: boolean
-          id?: string
-          nota_maxima?: number
-          nota_minima?: number
-          penalidade_atraso?: number
-          perguntas_padrao?: Json
-          prazo_horas?: number
-          prioridade?: string
-          singleton?: boolean
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Update: {
-          anexo_instrucao?: string | null
-          anexo_obrigatorio?: boolean
-          anexo_quantidade_minima?: number
-          anexo_tipo?: string
-          descricao?: string | null
-          exige_anexo?: boolean
-          id?: string
-          nota_maxima?: number
-          nota_minima?: number
-          penalidade_atraso?: number
-          perguntas_padrao?: Json
-          prazo_horas?: number
-          prioridade?: string
-          singleton?: boolean
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Relationships: []
-      }
       tarefas_anexos: {
         Row: {
           assignment_id: string | null
@@ -4588,6 +4597,7 @@ export type Database = {
       tarefas_pontuacao_config: {
         Row: {
           aprovador_pacote_padrao: Json
+          auditor_pacote_padrao: Json
           descricao: string | null
           id: string
           nota_maxima: number
@@ -4603,10 +4613,10 @@ export type Database = {
           sla_validador: Json
           updated_at: string
           updated_by: string | null
-          validador_pacote_padrao: Json
         }
         Insert: {
           aprovador_pacote_padrao?: Json
+          auditor_pacote_padrao?: Json
           descricao?: string | null
           id?: string
           nota_maxima?: number
@@ -4622,10 +4632,10 @@ export type Database = {
           sla_validador?: Json
           updated_at?: string
           updated_by?: string | null
-          validador_pacote_padrao?: Json
         }
         Update: {
           aprovador_pacote_padrao?: Json
+          auditor_pacote_padrao?: Json
           descricao?: string | null
           id?: string
           nota_maxima?: number
@@ -4641,7 +4651,6 @@ export type Database = {
           sla_validador?: Json
           updated_at?: string
           updated_by?: string | null
-          validador_pacote_padrao?: Json
         }
         Relationships: []
       }
