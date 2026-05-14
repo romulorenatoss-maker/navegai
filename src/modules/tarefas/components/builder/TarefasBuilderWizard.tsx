@@ -34,11 +34,6 @@ interface Props {
   setAprovadorChecks: React.Dispatch<React.SetStateAction<AprovadorCheckItemForm[]>>;
   validadorChecks: AprovadorCheckItemForm[];
   setValidadorChecks: React.Dispatch<React.SetStateAction<AprovadorCheckItemForm[]>>;
-  /** Config global de Pontuação/SLA — usada para popular as penalidades automáticas. */
-  pontuacaoConfig: TarefasPontuacaoConfig | null;
-  /** Overrides locais por rotina das penalidades automáticas. */
-  penalidadesOverride: PenalidadesOverrideMap;
-  setPenalidadesOverride: React.Dispatch<React.SetStateAction<PenalidadesOverrideMap>>;
   setores: any[];
   colaboradores: any[];
   templateId: string | null;
