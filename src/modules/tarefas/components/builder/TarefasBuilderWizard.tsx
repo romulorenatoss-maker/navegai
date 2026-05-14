@@ -49,7 +49,7 @@ export function TarefasBuilderWizard(props: Props) {
     isEditing, saving, form, set, sections, setSections, fields, setFields,
     steps, setSteps,
     aprovadorChecks, setAprovadorChecks, validadorChecks, setValidadorChecks,
-    pontuacaoConfig, penalidadesOverride, setPenalidadesOverride,
+    
     setores, colaboradores,
     templateId, draftToRestore, onRestoreDraft, onDiscardDraft, onCancel, onSubmit,
   } = props;
