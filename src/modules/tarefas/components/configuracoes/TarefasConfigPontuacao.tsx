@@ -123,7 +123,7 @@ function PacotePadraoAprovadorCard({
             </p>
           </div>
           <div className="text-right shrink-0">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Peso total ativo</div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Nota total ativo</div>
             <div className="text-sm font-bold text-primary">{total}</div>
           </div>
         </div>
@@ -146,7 +146,7 @@ function PacotePadraoAprovadorCard({
               <p className="text-sm font-medium text-foreground leading-snug">{p.pergunta}</p>
               <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-3 flex-wrap">
                 <span>Tipo: <span className="text-foreground">{p.tipo}</span></span>
-                <span>Peso: <span className="text-foreground font-semibold">{p.peso}</span></span>
+                <span>Nota: <span className="text-foreground font-semibold">{p.peso}</span></span>
                 <span>Métrica: <span className="text-foreground">{p.metrica_calculo}</span></span>
               </div>
             </div>

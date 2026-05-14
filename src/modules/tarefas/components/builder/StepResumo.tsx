@@ -101,7 +101,7 @@ export function StepResumo({
             <h4 className={titleCls}><ShieldCheck className="w-3.5 h-3.5" /> Checklist Aprovador</h4>
             <dl className="text-xs space-y-1">
               <div className="flex gap-2"><dt className="text-muted-foreground w-28 shrink-0">Itens:</dt><dd>{aprovadorChecks.length}</dd></div>
-              <div className="flex gap-2"><dt className="text-muted-foreground w-28 shrink-0">Peso total:</dt><dd className="font-medium">{pesoAprovador}</dd></div>
+              <div className="flex gap-2"><dt className="text-muted-foreground w-28 shrink-0">Nota total:</dt><dd className="font-medium">{pesoAprovador}</dd></div>
             </dl>
           </div>
         )}
@@ -111,7 +111,7 @@ export function StepResumo({
             <h4 className={titleCls}><ClipboardCheck className="w-3.5 h-3.5" /> Checklist Validador</h4>
             <dl className="text-xs space-y-1">
               <div className="flex gap-2"><dt className="text-muted-foreground w-28 shrink-0">Itens:</dt><dd>{validadorChecks.length}</dd></div>
-              <div className="flex gap-2"><dt className="text-muted-foreground w-28 shrink-0">Peso total:</dt><dd className="font-medium">{pesoValidador}</dd></div>
+              <div className="flex gap-2"><dt className="text-muted-foreground w-28 shrink-0">Nota total:</dt><dd className="font-medium">{pesoValidador}</dd></div>
             </dl>
           </div>
         )}
@@ -124,7 +124,7 @@ export function StepResumo({
           <div className="rounded border border-emerald-200 bg-emerald-50/50 p-2">
             <div className="text-[10px] uppercase tracking-wider text-emerald-700 font-bold">Nota Operacional</div>
             <div className="text-foreground">Pertence ao <strong>Avaliado</strong></div>
-            <div className="text-muted-foreground mt-1">Base: {fields.length} pergunta(s) operacional(is) · peso total {pesoOperacional}</div>
+            <div className="text-muted-foreground mt-1">Base: {fields.length} pergunta(s) operacional(is) · nota total {pesoOperacional}</div>
           </div>
           <div className={`rounded border ${hasAprovador ? "border-blue-200 bg-blue-50/50" : "border-border bg-muted/30 opacity-60"} p-2`}>
             <div className="text-[10px] uppercase tracking-wider text-blue-700 font-bold">Nota de Governança</div>
@@ -139,7 +139,7 @@ export function StepResumo({
             <div className="text-[10px] uppercase tracking-wider text-purple-700 font-bold">Nota de Auditoria</div>
             <div className="text-foreground">Pertence ao <strong>Validador</strong></div>
             <div className="text-muted-foreground mt-1">
-              {hasValidador ? `Base: ${validadorChecks.length} item(s) · peso total ${pesoValidador}` : "Validador Final não definido"}
+              {hasValidador ? `Base: ${validadorChecks.length} item(s) · nota total ${pesoValidador}` : "Validador Final não definido"}
             </div>
           </div>
         </div>

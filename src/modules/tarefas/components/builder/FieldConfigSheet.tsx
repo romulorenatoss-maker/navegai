@@ -220,7 +220,7 @@ export function FieldConfigSheet({ open, onOpenChange, title, perguntaBloqueada,
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Peso</Label>
+              <Label className="text-xs">Nota</Label>
               <Input
                 type="number" min={0} max={100}
                 className="h-9 text-xs"

@@ -183,7 +183,7 @@ export function StepChecklistAprovador({ fields, items, setItems }: Props) {
           </p>
         </div>
         <div className="text-right shrink-0">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Peso total</div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Nota total</div>
           <div className="text-sm font-bold text-primary">{totalPeso}</div>
         </div>
       </div>
@@ -221,7 +221,7 @@ export function StepChecklistAprovador({ fields, items, setItems }: Props) {
                   <p className="text-sm font-medium text-foreground leading-snug">{it.pergunta_padrao || "—"}</p>
                   <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-3 flex-wrap">
                     <span>Tipo: <span className="text-foreground">{TIPO_LABEL[it.tipo_resposta] ?? it.tipo_resposta}</span></span>
-                    <span>Peso: <span className="text-foreground font-semibold">{it.peso}</span></span>
+                    <span>Nota: <span className="text-foreground font-semibold">{it.peso}</span></span>
                     {it.gera_plano_acao && <span className="text-amber-600 dark:text-amber-400">• Plano de ação</span>}
                     {it.exige_evidencia && <span className="text-blue-600 dark:text-blue-400">• Evidência</span>}
                     {it.permite_devolucao && <span>• Devolução</span>}

@@ -253,7 +253,7 @@ export default function DesempenhoOperacionalPage() {
                                   <thead>
                                     <tr className="border-b border-border">
                                       <th className="text-left py-1 px-2 text-muted-foreground">Item</th>
-                                      <th className="text-center py-1 px-2 text-muted-foreground">Peso</th>
+                                      <th className="text-center py-1 px-2 text-muted-foreground">Nota</th>
                                       <th className="text-center py-1 px-2 text-muted-foreground">Máx</th>
                                       <th className="text-center py-1 px-2 text-muted-foreground">Penalidade</th>
                                       <th className="text-center py-1 px-2 text-muted-foreground">Conforme</th>
