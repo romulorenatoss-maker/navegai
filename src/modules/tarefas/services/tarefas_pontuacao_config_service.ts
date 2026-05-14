@@ -170,6 +170,9 @@ export async function getPontuacaoConfig(): Promise<TarefasPontuacaoConfig> {
     aprovador_pacote_padrao: Array.isArray(data.aprovador_pacote_padrao) && data.aprovador_pacote_padrao.length > 0
       ? data.aprovador_pacote_padrao
       : APROVADOR_PACOTE_PADRAO_DEFAULT,
+    validador_pacote_padrao: Array.isArray(data.validador_pacote_padrao) && data.validador_pacote_padrao.length > 0
+      ? data.validador_pacote_padrao
+      : VALIDADOR_PACOTE_PADRAO_DEFAULT,
   } as TarefasPontuacaoConfig;
 }
 
