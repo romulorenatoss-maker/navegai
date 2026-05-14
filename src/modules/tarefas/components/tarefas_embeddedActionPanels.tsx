@@ -15,7 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2, XCircle, RotateCcw, Send, Play, AlertTriangle, ShieldCheck } from "lucide-react";
+import { CheckCircle2, XCircle, RotateCcw, Send, Play, AlertTriangle, ShieldCheck, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { useAssignmentReview } from "@/modules/tarefas/hooks/tarefas_useAssignmentReview";
 import { useApprovalFlow } from "@/modules/tarefas/hooks/tarefas_useApprovalFlow";
