@@ -442,6 +442,11 @@ export default function OperationalExecucaoPage() {
         if (!live) return f;
         return {
           ...f,
+          // Quando o snapshot antigo só casa por label/section, o ID antigo pode
+          // não existir mais em operational_template_fields. Persistir pelo ID
+          // vivo evita FK 23503 no autosave sem trocar a organização do snapshot.
+          id: live.id || f.id,
+          section_id: f.section_id,
           opcoes: pickArr(live.opcoes, f.opcoes),
           opcoes_regras: pickArr(live.opcoes_regras, f.opcoes_regras),
           obrigatorio: pick(live.obrigatorio, f.obrigatorio),
@@ -513,7 +518,14 @@ export default function OperationalExecucaoPage() {
   }, [profile?.id, isAdmin, navigate]);
 
   const closeExecution = async () => {
-    if (exec.dirty) await exec.saveDraft();
+    if (exec.dirty) {
+      try {
+        await exec.saveDraft();
+      } catch (e: any) {
+        console.error("Erro ao salvar rascunho ao fechar execução:", e);
+        toast.error("Não foi possível salvar o rascunho agora. A tela será fechada.");
+      }
+    }
     setExecDialogOpen(false);
     setSelectedAssignment(null);
     setSubmitAttempted(false);
