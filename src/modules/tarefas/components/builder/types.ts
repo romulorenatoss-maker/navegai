@@ -28,6 +28,7 @@ export type WizardStepId =
   | "geral"
   | "campos"
   | "checklist_aprovador"
+  | "checklist_validador"
   | "fluxo"
   | "resumo";
 
@@ -44,6 +45,7 @@ export const WIZARD_STEPS: WizardStepDef[] = [
   { id: "geral", label: "Informações gerais", short: "Geral" },
   { id: "campos", label: "Avaliado (perguntas operacionais)", short: "Avaliado" },
   { id: "checklist_aprovador", label: "Checklist Aprovador", short: "Aprovador", conditional: true },
+  { id: "checklist_validador", label: "Checklist Auditor", short: "Auditor", conditional: true },
   { id: "fluxo", label: "Fluxo operacional", short: "Fluxo" },
   { id: "resumo", label: "Resumo / Publicação", short: "Resumo" },
 ];

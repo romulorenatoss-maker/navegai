@@ -9,6 +9,9 @@
  * Não tocam em banco, RPCs, triggers, scoring, builder ou execução.
  */
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -18,6 +21,7 @@ import { useAssignmentReview } from "@/modules/tarefas/hooks/tarefas_useAssignme
 import { useApprovalFlow } from "@/modules/tarefas/hooks/tarefas_useApprovalFlow";
 import { ReviewFieldCard } from "@/modules/tarefas/components/tarefas_reviewFieldCard";
 import { SnapshotField, evaluateVisibility } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
+import { VALIDADOR_PACOTE_PADRAO_DEFAULT } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
 
 /* =========================================================================
  * EmbeddedReviewPanel — usado quando current user é avaliador
@@ -311,6 +315,71 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
           {flow.isSaving ? "Salvando..." : "Aprovar Final"}
         </Button>
       </div>
+    </div>
+  );
+}
+
+export function EmbeddedAuditPanel({ assignment, onClose }: ApprovalProps) {
+  const { profile } = useAuth();
+  const qc = useQueryClient();
+  const [answers, setAnswers] = useState<Record<string, { resposta: string; observacao: string }>>({});
+  const [saving, setSaving] = useState(false);
+  const questions = useMemo(() => {
+    const snapItems = (assignment?.template_snapshot as any)?.ada_config_snapshot?.checklists?.validador;
+    const source = Array.isArray(snapItems) && snapItems.length > 0 ? snapItems : VALIDADOR_PACOTE_PADRAO_DEFAULT.filter((p) => p.ativo !== false);
+    return source.map((q: any, index: number) => ({
+      id: q.tempId || q.id || `auditoria-${index}`,
+      pergunta: q.pergunta_padrao || q.pergunta || "Pergunta de auditoria",
+      peso: Number(q.peso) || 1,
+    }));
+  }, [assignment?.template_snapshot]);
+
+  const allAnswered = questions.every((q) => !!answers[q.id]?.resposta);
+  const saveAudit = async () => {
+    if (!profile?.id || !assignment?.id || !allAnswered) return;
+    setSaving(true);
+    const now = new Date().toISOString();
+    const payload = questions.map((q) => ({ ...q, ...answers[q.id] }));
+    const { error: historyError } = await (supabase as any).from("operational_assignment_history").insert({
+      assignment_id: assignment.id,
+      tipo_evento: "AUDITORIA_REGISTRADA",
+      usuario_id: profile.id,
+      etapa: "auditoria",
+      detalhes_json: { respostas: payload },
+    });
+    if (historyError) { setSaving(false); toast.error(historyError.message); return; }
+    const { error: updateError } = await (supabase as any).from("operational_assignments").update({
+      auditor_fim_em: now,
+      auditado_em: now,
+      auditado_por: profile.id,
+    }).eq("id", assignment.id);
+    setSaving(false);
+    if (updateError) { toast.error(updateError.message); return; }
+    qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
+    toast.success("Auditoria registrada.");
+    onClose();
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="bg-primary/5 border border-primary/30 rounded-lg p-3 flex items-start gap-2">
+        <ShieldCheck className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+        <div className="text-xs text-foreground"><strong>Modo Auditor.</strong> Responda as perguntas de validação final.</div>
+      </div>
+      {questions.map((q) => (
+        <div key={q.id} className="border border-border rounded-lg p-3 space-y-2 bg-card">
+          <div className="text-sm font-medium text-foreground">{q.pergunta}</div>
+          <div className="flex gap-2">
+            {["conforme", "nao_conforme", "na"].map((v) => (
+              <Button key={v} type="button" size="sm" variant={answers[q.id]?.resposta === v ? "default" : "outline"} onClick={() => setAnswers((prev) => ({ ...prev, [q.id]: { resposta: v, observacao: prev[q.id]?.observacao || "" } }))}>
+                {v === "conforme" ? "Conforme" : v === "nao_conforme" ? "Não conforme" : "N/A"}
+              </Button>
+            ))}
+          </div>
+          <Textarea className="text-xs min-h-[44px]" placeholder="Observação..." value={answers[q.id]?.observacao || ""} onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: { resposta: prev[q.id]?.resposta || "", observacao: e.target.value } }))} />
+        </div>
+      ))}
+      <Button type="button" size="sm" onClick={saveAudit} disabled={!allAnswered || saving}>{saving ? "Salvando..." : "Concluir Auditoria"}</Button>
     </div>
   );
 }
