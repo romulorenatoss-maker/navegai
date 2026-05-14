@@ -214,9 +214,10 @@ export function useApprovalFlow(assignmentId: string | null) {
       }
     }
 
-    // Block if approval questions are unanswered — only check aprovador_verificar fields
+    // Block if approval questions are unanswered — exige resposta para TODAS as perguntas
+    // do snapshot (replicadas + manuais), exceto tipos puramente estruturais.
     const snapshotFields: SnapshotField[] = snapshot?.fields || [];
-    const approvalFields = snapshotFields.filter(f => f.aprovador_verificar);
+    const approvalFields = snapshotFields.filter(f => !["secao", "divisor", "titulo"].includes(String((f as any).tipo)));
     const unanswered = approvalFields.filter(f => {
       const existing = existingApprovalAnswers.find((a: any) => a.field_id === f.id);
       const draft = approverAnswers[f.id];
