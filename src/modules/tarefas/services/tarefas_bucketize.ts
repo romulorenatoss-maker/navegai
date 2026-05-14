@@ -394,9 +394,12 @@ export function bucketize(
     const slaEstourado = computeSla(a).current.status === "estourado";
     const semMov = isSemMovimento(a);
     const isFinal = FINAL_STATUS_SET.has(a.status);
+    const isAuditoriaPendente = isAuditor
+      && [TASK_STATUS.APROVADA, TASK_STATUS.CONCLUIDA].includes(a.status)
+      && !a.auditor_fim_em;
 
     // Concluídas (encerradas)
-    if (hasMyRole && isFinal) {
+    if (hasMyRole && isFinal && !isAuditoriaPendente) {
       b.opConcluidas.push(a);
     } else if (hasMyRole) {
       // Críticas: SLA estourado OU sem movimento (não final)
@@ -413,6 +416,7 @@ export function bucketize(
           TASK_STATUS.AGUARDANDO_AVALIACAO,
           TASK_STATUS.EM_AVALIACAO,
         ].includes(a.status)) ||
+        isAuditoriaPendente ||
         (isCriador && !isResp && [TASK_STATUS.AGUARDANDO_VALIDACAO, TASK_STATUS.AGUARDANDO_ACEITE_PRAZO].includes(a.status)) ||
         (isAdmin && [
           TASK_STATUS.AGUARDANDO_APROVACAO,
