@@ -87,8 +87,8 @@ export default function OperationalCadastroPage() {
     for (const t of templates) {
       if (t.executor_profile_id && profileMap.has(t.executor_profile_id))
         execMap.set(t.executor_profile_id, profileMap.get(t.executor_profile_id)!);
-      if (t.avaliador_profile_id && profileMap.has(t.avaliador_profile_id))
-        avalMap.set(t.avaliador_profile_id, profileMap.get(t.avaliador_profile_id)!);
+      if (t.aprovador_profile_id && profileMap.has(t.aprovador_profile_id))
+        avalMap.set(t.aprovador_profile_id, profileMap.get(t.aprovador_profile_id)!);
     }
     return {
       executorProfiles: Array.from(execMap, ([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome)),
@@ -99,7 +99,7 @@ export default function OperationalCadastroPage() {
   const filteredTemplates = useMemo(() => {
     let list = templates;
     if (filterExecutor !== "__all") list = list.filter((t: any) => t.executor_profile_id === filterExecutor);
-    if (filterAvaliador !== "__all") list = list.filter((t: any) => t.avaliador_profile_id === filterAvaliador);
+    if (filterAvaliador !== "__all") list = list.filter((t: any) => t.aprovador_profile_id === filterAvaliador);
     return list;
   }, [templates, filterExecutor, filterAvaliador]);
 
@@ -227,7 +227,7 @@ export default function OperationalCadastroPage() {
         if (currentTemplate) {
           const trackedFields = [
             "executor_profile_id", "executor_setor_id",
-            "avaliador_profile_id", "avaliador_setor_id",
+            "aprovador_profile_id", "aprovador_setor_id",
             "aprovador_profile_id", "aprovador_setor_id",
             "validador_contingencia_profile_id", "validador_contingencia_setor_id",
             "nome", "setor_id", "recorrencia_tipo", "tipo_execucao",

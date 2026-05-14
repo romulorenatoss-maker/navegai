@@ -85,11 +85,11 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
           ),
           assignment:operational_assignments!operational_contingencies_assignment_id_fkey(
             id, data_prevista, rodada_atual, status, validador_contingencia_id, numero_tarefa,
-            avaliado_id, avaliador_id, responsavel_id,
+            avaliado_id, aprovador_id, responsavel_id,
             template:operational_templates!operational_assignments_template_id_fkey(nome),
             executor:profiles!operational_assignments_responsavel_id_fkey(nome),
             avaliado:profiles!operational_assignments_avaliado_id_fkey(id, nome),
-            avaliador_profile:profiles!operational_assignments_avaliador_id_fkey(id, nome)
+            avaliador_profile:profiles!operational_assignments_aprovador_id_fkey(id, nome)
           )
         `)
         .order("created_at", { ascending: false });

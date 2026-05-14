@@ -41,10 +41,11 @@ export type OperationalAction =
 /** Mapa declarativo ação → perfis autorizados (documentação viva). */
 export const ACTION_ROLES: Record<OperationalAction, OperationalRole[]> = {
   executar_tarefa:                ["EXECUTOR", "ADMIN"],
-  avaliar_tarefa:                 ["AVALIADOR", "ADMIN"],
+  // Saneamento 4 papéis: AVALIADOR consolidado em APROVADOR.
+  avaliar_tarefa:                 ["APROVADOR", "ADMIN"],
   aprovar_tarefa:                 ["APROVADOR", "ADMIN"],
   validar_designada:              ["CRIADOR_DESIGNANTE", "ADMIN"],
-  gerenciar_contingencia:         ["AVALIADOR", "APROVADOR", "GESTOR", "ADMIN"],
+  gerenciar_contingencia:         ["APROVADOR", "GESTOR", "ADMIN"],
   ver_gestao_operacional:         ["GESTOR", "ADMIN"],
   cadastrar_template_operacional: ["GESTOR", "ADMIN"],
 
@@ -56,7 +57,7 @@ export const ACTION_ROLES: Record<OperationalAction, OperationalRole[]> = {
   responder_executor:             ["EXECUTOR", "ADMIN"],
   validar_solicitante_aprovar:    ["CRIADOR_DESIGNANTE", "ADMIN"],
   validar_solicitante_devolver:   ["CRIADOR_DESIGNANTE", "ADMIN"],
-  solicitar_plano_acao:           ["CRIADOR_DESIGNANTE", "AVALIADOR", "ADMIN"],
+  solicitar_plano_acao:           ["CRIADOR_DESIGNANTE", "APROVADOR", "ADMIN"],
   concluir_plano_acao:            ["EXECUTOR", "ADMIN"],
   cancelar_tarefa_solicitante:    ["CRIADOR_DESIGNANTE", "ADMIN"],
   cancelar_tarefa_admin:          ["ADMIN"],
@@ -69,7 +70,6 @@ interface AssignmentRoleInput {
   profileId: string | null | undefined;
   assignment?: {
     responsavel_id?: string | null;
-    avaliador_id?: string | null;
     aprovador_id?: string | null;
     created_by?: string | null;
   } | null;
@@ -93,7 +93,7 @@ export function resolveAssignmentRole(
   const a = input.assignment;
   if (!a) return null;
   if (a.aprovador_id === pid) return "APROVADOR";
-  if (a.avaliador_id === pid) return "AVALIADOR";
+  // AVALIADOR foi consolidado em APROVADOR (saneamento 4 papéis). Mantemos o type para histórico.
   if (a.created_by === pid && a.responsavel_id !== pid) return "CRIADOR_DESIGNANTE";
   if (a.responsavel_id === pid) return "EXECUTOR";
   return null;

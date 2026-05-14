@@ -124,7 +124,7 @@ interface TransitionResult {
 const REOPEN_CLEAR_FIELDS = {
   fim_em: null,
   pontuacao_obtida: null,
-  // Saneamento 4 papéis: avaliador_inicio_em / avaliador_fim_em / score_avaliador
+  // Saneamento 4 papéis: avaliador_inicio_em / avaliador_fim_em / score_aprovador
   // não existem mais como colunas em operational_assignments — removidos do payload.
   score_executor: null,
   score_avaliado: null,

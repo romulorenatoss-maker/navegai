@@ -46,8 +46,8 @@ export function EmbeddedValidacaoSolicitantePanel({ ctx, onClose, onActionDone }
           onClick={() => run("validar_solicitante_aprovar", {
             requerAvaliacao: cfg.avaliacao.obrigatoria,
             requerAprovacao: cfg.aprovacao.obrigatoria,
-            avaliador_id: cfg.avaliacao.avaliador_id ?? undefined,
-            aprovador_id: cfg.aprovacao.aprovador_id ?? undefined,
+            // Saneamento 4 papéis: avaliacao.aprovador_id e aprovacao.aprovador_id consolidados.
+            aprovador_id: cfg.aprovacao.aprovador_id ?? cfg.avaliacao.aprovador_id ?? undefined,
           })}
         >
           Validar e concluir

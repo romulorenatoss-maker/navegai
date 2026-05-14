@@ -96,7 +96,7 @@ export function PainelRetornoCard({ assignment, onClick }: Props) {
       <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground flex-wrap">
         <UserIcon className="w-3 h-3" />
         <span className="font-medium text-foreground">{responsavel}</span>
-        {assignment.avaliador_id && <span>· aval: {assignment.avaliador?.nome || "—"}</span>}
+        {assignment.aprovador_id && <span>· aval: {assignment.aprovador?.nome || "—"}</span>}
         {assignment.aprovador_id && <span>· aprov: {assignment.aprovador?.nome || "—"}</span>}
       </div>
 

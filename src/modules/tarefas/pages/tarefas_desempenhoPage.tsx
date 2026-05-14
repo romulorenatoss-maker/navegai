@@ -87,7 +87,7 @@ export default function DesempenhoOperacionalPage() {
   // ── Computed stats (with weighted average using multiplicador) ──
   const myExecutorLogs = scoreLogs.filter((s: any) => s.tipo_score === "executor" && s.profile_id === profileId);
   const myAvaliadoLogs = scoreLogs.filter((s: any) => s.tipo_score === "avaliado" && s.target_profile_id === profileId);
-  const myAvaliadorLogs = scoreLogs.filter((s: any) => s.tipo_score === "avaliador" && s.profile_id === profileId);
+  const myAprovadorLogs = scoreLogs.filter((s: any) => s.tipo_score === "aprovador" && s.profile_id === profileId);
 
   const weightedAvg = (logs: any[]) => {
     if (logs.length === 0) return null;
@@ -102,7 +102,7 @@ export default function DesempenhoOperacionalPage() {
 
   const avgExecutor = weightedAvg(myExecutorLogs);
   const avgAvaliado = weightedAvg(myAvaliadoLogs);
-  const avgAvaliador = weightedAvg(myAvaliadorLogs);
+  const avgAvaliador = weightedAvg(myAprovadorLogs);
 
   // ── Rankings ──
   const rankings = useMemo(() => {
