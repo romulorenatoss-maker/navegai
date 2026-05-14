@@ -246,7 +246,28 @@ export default function OperationalExecucaoPage() {
       }
       const { data, error } = await q.limit(500);
       if (error) throw error;
-      return data;
+      const ids = (data || []).map((a: any) => a.id);
+      if (ids.length === 0) return data;
+      // Anexa contagens de respostas para o cálculo da barra de "Etapa".
+      const [{ data: fa }, { data: ap }] = await Promise.all([
+        (supabase as any).from("operational_field_answers").select("assignment_id, field_id").in("assignment_id", ids),
+        (supabase as any).from("operational_approval_answers").select("assignment_id, field_id").in("assignment_id", ids),
+      ]);
+      const faMap = new Map<string, Set<string>>();
+      (fa || []).forEach((r: any) => {
+        if (!faMap.has(r.assignment_id)) faMap.set(r.assignment_id, new Set());
+        faMap.get(r.assignment_id)!.add(r.field_id);
+      });
+      const apMap = new Map<string, Set<string>>();
+      (ap || []).forEach((r: any) => {
+        if (!apMap.has(r.assignment_id)) apMap.set(r.assignment_id, new Set());
+        apMap.get(r.assignment_id)!.add(r.field_id);
+      });
+      return (data || []).map((a: any) => ({
+        ...a,
+        field_answer_count: faMap.get(a.id)?.size ?? 0,
+        approver_answer_count: apMap.get(a.id)?.size ?? 0,
+      }));
     },
     enabled: !!profile?.id,
     staleTime: 300000,
