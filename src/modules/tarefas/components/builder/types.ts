@@ -81,9 +81,11 @@ export interface RegraPorOpcao {
   permite_devolucao?: boolean;
 }
 
+export type AprovadorOrigem = "replicada_avaliado" | "automatica_configuracao" | "manual";
+
 export interface AprovadorCheckItemForm {
   tempId: string;
-  field_id: string;            // referência ao field operacional original
+  field_id: string;            // referência ao field operacional original (vazio se não for replicada)
   field_label?: string;        // cache do label para exibição
   pergunta_padrao: string;
   /** Compat: tipo simplificado antigo. Novo código usa `tipo`. */
@@ -104,10 +106,30 @@ export interface AprovadorCheckItemForm {
   penalidade_atraso?: number;
   penalidade_nao_resposta?: number;
   penalidade_nao_conformidade?: number;
+  penalidade_reprovacao?: number;
   // Ponderação pelo auditor
   permite_ponderacao_auditor?: boolean;
   exige_justificativa_ponderacao?: boolean;
   permite_aumento_prazo_plano?: boolean;
+  // Anexo de instrução (mesmo shape de FieldForm)
+  instrucao_url?: string;
+  instrucao_tipo?: string;
+  // ─── Metadados (origem/auditoria) ───────────────────────────────
+  origem_pergunta?: AprovadorOrigem;
+  /** Para replicada_avaliado: id (tempId) do field original. */
+  pergunta_origem_id?: string;
+  /** Para automatica_configuracao: id da pergunta padrão na config global. */
+  config_global_origem_id?: string;
+  /** Métrica calculável (apenas para automaticas). */
+  metrica_calculo?: string;
+  ativo?: boolean;
+  editado_manual?: boolean;
+  editado_por?: string;
+  editado_em?: string;
+  /** Snapshot da config no momento da hidratação (referência). */
+  config_original_snapshot?: any;
+  /** Snapshot atual (após edições do construtor da rotina). */
+  config_atual_snapshot?: any;
 }
 
 export const defaultAprovadorCheckItem = (
@@ -126,6 +148,63 @@ export const defaultAprovadorCheckItem = (
   gera_plano_acao: true,
   permite_conclusao: true,
   permite_aumento_prazo: true,
+  origem_pergunta: "replicada_avaliado",
+  pergunta_origem_id: field_id,
+});
+
+export const defaultAprovadorManualItem = (): AprovadorCheckItemForm => ({
+  tempId: crypto.randomUUID(),
+  field_id: "",
+  pergunta_padrao: "",
+  tipo_resposta: "sim_nao",
+  peso: 1,
+  exige_observacao: false,
+  exige_evidencia: false,
+  permite_devolucao: false,
+  gera_plano_acao: false,
+  permite_conclusao: false,
+  permite_aumento_prazo: false,
+  origem_pergunta: "manual",
+});
+
+/** Cria um item de checklist a partir de uma pergunta padrão da config global. */
+export const buildAprovadorAutomatico = (p: {
+  id: string;
+  ordem: number;
+  pergunta: string;
+  tipo: "sim_nao" | "conforme_nao_conforme" | "nota";
+  peso: number;
+  metrica_calculo: string;
+  exige_observacao?: boolean;
+  exige_evidencia?: boolean;
+  permite_devolucao?: boolean;
+  gera_plano_acao?: boolean;
+  permite_conclusao?: boolean;
+  permite_aumento_prazo?: boolean;
+  permite_ponderacao_auditor?: boolean;
+  exige_justificativa_ponderacao?: boolean;
+  penalidade_reprovacao?: number;
+}): AprovadorCheckItemForm => ({
+  tempId: crypto.randomUUID(),
+  field_id: "",
+  pergunta_padrao: p.pergunta,
+  tipo_resposta: p.tipo,
+  tipo: p.tipo,
+  peso: p.peso,
+  exige_observacao: !!p.exige_observacao,
+  exige_evidencia: !!p.exige_evidencia,
+  permite_devolucao: !!p.permite_devolucao,
+  gera_plano_acao: !!p.gera_plano_acao,
+  permite_conclusao: !!p.permite_conclusao,
+  permite_aumento_prazo: !!p.permite_aumento_prazo,
+  permite_ponderacao_auditor: p.permite_ponderacao_auditor ?? true,
+  exige_justificativa_ponderacao: p.exige_justificativa_ponderacao ?? true,
+  penalidade_reprovacao: p.penalidade_reprovacao,
+  origem_pergunta: "automatica_configuracao",
+  config_global_origem_id: p.id,
+  metrica_calculo: p.metrica_calculo,
+  ativo: true,
+  config_original_snapshot: p,
 });
 
 // ─────────────────────────────────────────────────────────────────────
