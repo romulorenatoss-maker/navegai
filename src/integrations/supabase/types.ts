@@ -2933,6 +2933,7 @@ export type Database = {
       }
       operational_templates: {
         Row: {
+          ada_config_snapshot: Json
           aprovador_profile_id: string | null
           aprovador_setor_id: string | null
           ativo: boolean | null
@@ -2986,6 +2987,7 @@ export type Database = {
           versao: number
         }
         Insert: {
+          ada_config_snapshot?: Json
           aprovador_profile_id?: string | null
           aprovador_setor_id?: string | null
           ativo?: boolean | null
@@ -3039,6 +3041,7 @@ export type Database = {
           versao?: number
         }
         Update: {
+          ada_config_snapshot?: Json
           aprovador_profile_id?: string | null
           aprovador_setor_id?: string | null
           ativo?: boolean | null
