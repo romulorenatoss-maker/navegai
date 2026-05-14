@@ -40,7 +40,7 @@ export default function DashboardOperacionalKPIPage() {
     setorId: setorId && setorId !== "all" ? setorId : undefined,
     executorId: executorId && executorId !== "all" ? executorId : undefined,
     avaliadoId: avaliadoId && avaliadoId !== "all" ? avaliadoId : undefined,
-    avaliadorId: avaliadorId && avaliadorId !== "all" ? avaliadorId : undefined,
+    aprovadorId: avaliadorId && avaliadorId !== "all" ? avaliadorId : undefined,
   });
 
   const clearFilters = () => {
