@@ -12,6 +12,8 @@ import { TemplateForm, SectionForm, FieldForm, StepForm, defaultTemplate, defaul
 type TaskType = "simples" | "inspecao";
 import { TarefasBuilderWizard } from "@/modules/tarefas/components/builder/TarefasBuilderWizard";
 import { AprovadorCheckItemForm, ValidadorCheckItemForm, buildDefaultValidadorItems } from "@/modules/tarefas/components/builder/types";
+import type { PenalidadesOverrideMap } from "@/modules/tarefas/components/builder/PenalidadesAutomaticasBlock";
+import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
 import { useDraftAutosave, loadDraft, clearDraft, type BuilderDraftPayload } from "@/modules/tarefas/components/builder/useBuilderDraft";
 
 export default function OperationalCadastroPage() {
@@ -26,6 +28,7 @@ export default function OperationalCadastroPage() {
   const [steps, setSteps] = useState<StepForm[]>([]);
   const [aprovadorChecks, setAprovadorChecks] = useState<AprovadorCheckItemForm[]>([]);
   const [validadorChecks, setValidadorChecks] = useState<ValidadorCheckItemForm[]>([]);
+  const [penalidadesOverride, setPenalidadesOverride] = useState<PenalidadesOverrideMap>({});
   const [activeTab, setActiveTab] = useState("geral");
   const [filterExecutor, setFilterExecutor] = useState("__all");
   const [filterAvaliador, setFilterAvaliador] = useState("__all");
