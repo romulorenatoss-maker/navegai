@@ -57,7 +57,10 @@ export function StepChecklistValidador({ items, setItems }: Props) {
         setItems(prev => {
           const existentes = new Set(
             prev
-              .filter(i => i.origem_pergunta === "automatica_configuracao")
+              .filter(i =>
+                i.origem_pergunta === "automatica_configuracao" ||
+                i.origem_pergunta === "replicada_padrao_manual",
+              )
               .map(i => i.config_global_origem_id)
               .filter(Boolean),
           );
