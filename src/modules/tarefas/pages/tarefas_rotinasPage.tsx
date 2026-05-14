@@ -572,7 +572,11 @@ export default function OperationalCadastroPage() {
       aprovador_exige_evidencia_nao: f.aprovador_exige_evidencia_nao ?? false,
       aprovador_tipos_evidencia: f.aprovador_tipos_evidencia || ["foto"],
     }));
-    setFields(loadedFields);
+    const referencedFieldIds = await fetchReferencedFieldIds(
+      loadedFields.map(f => f.id).filter(Boolean) as string[],
+    );
+    const dedupedFields = dedupeLoadedFields(loadedFields, referencedFieldIds);
+    setFields(dedupedFields);
 
     // Load steps
     const { data: stps } = await (supabase as any).from("operational_template_steps")
@@ -591,7 +595,9 @@ export default function OperationalCadastroPage() {
     // (Fase 2). Tolerante a registros antigos sem o campo.
     const snap: any = t.ada_config_snapshot ?? {};
     const checklistsSnap: any = snap?.checklists ?? {};
-    const apr: any[] = Array.isArray(checklistsSnap.aprovador) ? checklistsSnap.aprovador : [];
+    const dedupedFieldIds = new Set(dedupedFields.map(f => f.tempId));
+    const aprRaw: any[] = Array.isArray(checklistsSnap.aprovador) ? checklistsSnap.aprovador : [];
+    const apr = aprRaw.filter((i: any) => i?.origem_pergunta !== "replicada_avaliado" || dedupedFieldIds.has(i.field_id));
     const val: any[] = Array.isArray(checklistsSnap.validador) ? checklistsSnap.validador : [];
     setAprovadorChecks(normalizeAprovadorList(apr));
     // Validador: aceita formato novo (AprovadorCheckItemForm) e formato legacy
