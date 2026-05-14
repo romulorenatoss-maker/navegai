@@ -338,7 +338,8 @@ export function bucketize(
     // avaliador_id setado vê os mesmos itens nos buckets do aprovador.
 
     // === Aprovador ===
-    if (isAprov || isAval || isAdmin) {
+    // (avaliado é passivo — não vê tarefa em "aguardando aprovação" como ação dele)
+    if (isAprov || isAdmin) {
       // Legados aguardando_avaliacao/em_avaliacao caem aqui também.
       if ([
         TASK_STATUS.AGUARDANDO_APROVACAO,
