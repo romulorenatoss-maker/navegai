@@ -10,7 +10,7 @@ export interface SolicitacaoConfig {
   exige_validacao_solicitante: boolean;
   permite_devolver: boolean;
   permite_plano_acao: boolean;
-  avaliacao: { obrigatoria: boolean; avaliador_id: string | null };
+  avaliacao: { obrigatoria: boolean; aprovador_id: string | null };
   aprovacao: { obrigatoria: boolean; aprovador_id: string | null };
   nota: { obrigatoria: boolean };
   renegociacao: { permite: boolean; limite: number };
@@ -42,7 +42,7 @@ export const DEFAULT_SOLICITACAO_CONFIG: SolicitacaoConfig = {
   exige_validacao_solicitante: true,
   permite_devolver: true,
   permite_plano_acao: true,
-  avaliacao: { obrigatoria: false, avaliador_id: null },
+  avaliacao: { obrigatoria: false, aprovador_id: null },
   aprovacao: { obrigatoria: false, aprovador_id: null },
   nota: { obrigatoria: false },
   renegociacao: { permite: true, limite: 3 },
@@ -70,7 +70,7 @@ export function parseSolicitacaoConfig(raw: any): SolicitacaoConfig {
     permite_plano_acao: !!(raw.permite_plano_acao ?? d.permite_plano_acao),
     avaliacao: {
       obrigatoria: !!raw.avaliacao?.obrigatoria,
-      avaliador_id: raw.avaliacao?.avaliador_id ?? null,
+      aprovador_id: raw.avaliacao?.aprovador_id ?? raw.avaliacao?.avaliador_id ?? null,
     },
     aprovacao: {
       obrigatoria: !!raw.aprovacao?.obrigatoria,
