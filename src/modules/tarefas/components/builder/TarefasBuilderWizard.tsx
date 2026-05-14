@@ -7,14 +7,12 @@ import { TabRecorrencia } from "@/modules/tarefas/components/tarefas_tabRecorren
 import { TabTarefasExecutadas } from "@/modules/tarefas/components/tarefas_tabTarefasExecutadas";
 import { TemplateForm, SectionForm, FieldForm, StepForm } from "@/modules/tarefas/types/tarefas_types";
 import { BuilderStepper } from "./BuilderStepper";
-import { StepChecklist } from "./StepChecklist";
 import { StepChecklistAprovador } from "./StepChecklistAprovador";
 import { StepChecklistValidador } from "./StepChecklistValidador";
 import { StepResumo } from "./StepResumo";
 import { DraftRestoreBanner } from "./DraftRestoreBanner";
 import type { BuilderDraftPayload } from "./useBuilderDraft";
 import {
-  CheckItemForm,
   AprovadorCheckItemForm,
   ValidadorCheckItemForm,
   WIZARD_STEPS,
@@ -32,14 +30,11 @@ interface Props {
   setFields: React.Dispatch<React.SetStateAction<FieldForm[]>>;
   steps: StepForm[];
   setSteps: React.Dispatch<React.SetStateAction<StepForm[]>>;
-  checkItems: CheckItemForm[];
-  setCheckItems: React.Dispatch<React.SetStateAction<CheckItemForm[]>>;
   /** Checklists do Aprovador Final / Validador Final (Fase 2). */
   aprovadorChecks: AprovadorCheckItemForm[];
   setAprovadorChecks: React.Dispatch<React.SetStateAction<AprovadorCheckItemForm[]>>;
   validadorChecks: ValidadorCheckItemForm[];
   setValidadorChecks: React.Dispatch<React.SetStateAction<ValidadorCheckItemForm[]>>;
-  protectedCheckIds?: Set<string>;
   setores: any[];
   colaboradores: any[];
   templateId: string | null;
@@ -53,14 +48,13 @@ interface Props {
 export function TarefasBuilderWizard(props: Props) {
   const {
     isEditing, saving, form, set, sections, setSections, fields, setFields,
-    steps, setSteps, checkItems, setCheckItems,
+    steps, setSteps,
     aprovadorChecks, setAprovadorChecks, validadorChecks, setValidadorChecks,
-    protectedCheckIds, setores, colaboradores,
+    setores, colaboradores,
     templateId, draftToRestore, onRestoreDraft, onDiscardDraft, onCancel, onSubmit,
   } = props;
 
-  // Aprovador Final / Validador Final detectados pelos campos do form
-  // (mantém retrocompat com legacy aprovador_*/ada_*).
+  // Aprovador Final / Validador Final detectados pelos campos do form.
   const hasAprovador = !!(form.aprovador_profile_id || form.aprovador_setor_id || form.requer_aprovacao_gestor);
   const hasValidador = !!(form.ada_enabled || form.ada_quem_avalia_profile_id || form.ada_quem_avalia_setor_id);
 
@@ -77,7 +71,6 @@ export function TarefasBuilderWizard(props: Props) {
   const [current, setCurrent] = useState<WizardStepId>("geral");
   const [completed, setCompleted] = useState<Set<WizardStepId>>(new Set(["tipo"]));
 
-  // Se o passo atual deixou de existir (ex.: aprovador foi removido), volta pra "geral".
   if (!visibleSteps.find(s => s.id === current)) {
     setTimeout(() => setCurrent("geral"), 0);
   }
@@ -150,15 +143,8 @@ export function TarefasBuilderWizard(props: Props) {
           <StepChecklistValidador items={validadorChecks} setItems={setValidadorChecks} />
         )}
 
-        {current === "checklist" && (
-          <StepChecklist items={checkItems} setItems={setCheckItems} protectedIds={protectedCheckIds} />
-        )}
-
         {current === "fluxo" && (
           <div className="space-y-6">
-            {/* Aprovação, SLA, AdA e perguntas do aprovador agora vivem em Geral → Responsáveis
-                e na própria pergunta (Campos → Aprovador verifica). Aqui ficam apenas os
-                horários/dias da rotina. */}
             <TabRecorrencia form={form} set={set} />
           </div>
         )}
@@ -167,7 +153,6 @@ export function TarefasBuilderWizard(props: Props) {
           <div className="space-y-6">
             <StepResumo
               form={form} sections={sections} fields={fields} steps={steps}
-              checkItems={checkItems}
               aprovadorChecks={aprovadorChecks}
               validadorChecks={validadorChecks}
               hasAprovador={hasAprovador}
