@@ -398,9 +398,16 @@ export function bucketize(
     const isAuditoriaPendente = isAuditor
       && [TASK_STATUS.APROVADA, TASK_STATUS.CONCLUIDA].includes(a.status)
       && !a.auditor_fim_em;
+    // Auditoria global pendente: existe auditor designado, status finalizado pela aprovação,
+    // mas o auditor ainda não fechou. Para qualquer papel (executor/aprovador/criador),
+    // não deve cair em "Concluídas" — segue em acompanhamento.
+    const temAuditorPendente =
+      !!(a.auditor_id || a.setor_auditor_id)
+      && [TASK_STATUS.APROVADA, TASK_STATUS.CONCLUIDA].includes(a.status)
+      && !a.auditor_fim_em;
 
     // Concluídas (encerradas)
-    if (hasMyRole && isFinal && !isAuditoriaPendente) {
+    if (hasMyRole && isFinal && !isAuditoriaPendente && !temAuditorPendente) {
       b.opConcluidas.push(a);
     } else if (hasMyRole) {
       // Críticas (replica — pode aparecer também em outras abas):
