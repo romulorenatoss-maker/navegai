@@ -32,6 +32,41 @@ import { bucketize, sortAssignments, type SortKey } from "@/modules/tarefas/serv
 import { PainelRetornoCard } from "@/modules/tarefas/components/tarefas_painelRetornoCard";
 import { DrawerActionRouter } from "@/modules/tarefas/components/painels/tarefas_drawerActionRouter";
 
+const normalizeTextKey = (value: unknown) =>
+  String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+const getCheckItemKey = (item: any) =>
+  item?.field_id || item?.pergunta_origem_id || normalizeTextKey(item?.field_label || item?.pergunta_padrao);
+
+const applyChecklistConfigToFields = (fields: SnapshotField[], snapshot: any, type: "aprovador" | "auditor") => {
+  const list = snapshot?.ada_config_snapshot?.checklists?.[type === "aprovador" ? "aprovador" : "validador"];
+  if (!Array.isArray(list) || list.length === 0) return fields;
+  const byKey = new Map<string, any>();
+  for (const item of list) {
+    if (item?.ativo === false) continue;
+    const key = getCheckItemKey(item);
+    if (key) byKey.set(key, item);
+  }
+  return fields.map((field: any) => {
+    const item = byKey.get(field.id) || byKey.get(normalizeTextKey(field.label));
+    if (!item) return field;
+    const prefix = type === "aprovador" ? "aprovador" : "auditor";
+    return {
+      ...field,
+      [`${prefix}_verificar`]: true,
+      [`${prefix}_pergunta`]: item.pergunta_padrao || field[`${prefix}_pergunta`] || field.label,
+      [`${prefix}_tipo`]: item.tipo || item.tipo_resposta || field[`${prefix}_tipo`],
+      [`${prefix}_opcoes`]: Array.isArray(item.opcoes) ? item.opcoes : field[`${prefix}_opcoes`],
+      [`${prefix}_regras_por_opcao`]: Array.isArray(item.regras_por_opcao) ? item.regras_por_opcao : field[`${prefix}_regras_por_opcao`],
+      [`${prefix}_peso`]: item.peso ?? field[`${prefix}_peso`],
+    };
+  });
+};
+
 // === Accordion vertical (layout antigo) ===
 interface AccordionSectionProps {
   title: string;
