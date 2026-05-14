@@ -412,7 +412,7 @@ export default function OperationalCadastroPage() {
     setValidadorChecks(
       pacoteVal.filter(p => p.ativo !== false).map(p => buildAprovadorAutomatico(p))
     );
-    setPenalidadesOverride({});
+    
     setActiveTab("geral");
     // Detect existing draft for new template
     const existing = loadDraft(null);
