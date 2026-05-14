@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Clock, ChevronRight, AlertTriangle, RotateCcw, CheckCircle2, Timer, TimerOff, ClipboardCheck } from "lucide-react";
 import { STATUS_CONFIG, TIPO_EXECUCAO_LABELS } from "@/modules/tarefas/hooks/tarefas_useScoring";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Props {
   assignment: any;
@@ -48,6 +49,7 @@ function useCountdown(dataPrevista: string, horarioLimite: string | null) {
 }
 
 export function AssignmentCard({ assignment: a, onClick }: Props) {
+  const { profile } = useAuth();
   const snapshot = a.template_snapshot;
   const nome = snapshot?.nome || a.operational_templates?.nome || "Rotina";
   const tipo = snapshot?.tipo_execucao || a.operational_templates?.tipo_execucao;
@@ -64,6 +66,58 @@ export function AssignmentCard({ assignment: a, onClick }: Props) {
 
   const isActive = ["pendente", "em_andamento", "devolvida"].includes(a.status);
   const countdown = useCountdown(a.data_prevista, isActive ? a.horario_limite : null);
+
+  // ─── Papel do usuário nesta tarefa ─────────────────────────────────
+  const myRole = useMemo<"executor" | "aprovador" | "auditor" | null>(() => {
+    if (!profile?.id) return null;
+    if (a.aprovador_id === profile.id || ["aguardando_aprovacao"].includes(a.status)) {
+      if (a.aprovador_id === profile.id) return "aprovador";
+    }
+    if (a.auditor_id === profile.id) return "auditor";
+    if (a.responsavel_id === profile.id) return "executor";
+    return null;
+  }, [profile?.id, a.aprovador_id, a.auditor_id, a.responsavel_id, a.status]);
+
+  // ─── Progresso de conclusão (% de respostas da etapa atual) ────────
+  // Só renderiza se a query expuser as contagens (campos *_answer_count).
+  const completionPct = useMemo(() => {
+    const fields: any[] = (snapshot?.fields || []).filter((f: any) => f?.obrigatorio !== false);
+    if (myRole === "aprovador" && a.approver_answer_count != null) {
+      const apFields = fields.filter((f: any) => f.aprovador_verificar);
+      if (apFields.length === 0) return null;
+      return Math.min(100, Math.round((a.approver_answer_count / apFields.length) * 100));
+    }
+    if (myRole === "executor" && a.field_answer_count != null) {
+      if (fields.length === 0) return null;
+      return Math.min(100, Math.round((a.field_answer_count / fields.length) * 100));
+    }
+    if (myRole === "auditor" && a.audit_answer_count != null) {
+      const items = (snapshot?.ada_config_snapshot?.checklists?.validador || []) as any[];
+      if (items.length === 0) return null;
+      return Math.min(100, Math.round((a.audit_answer_count / items.length) * 100));
+    }
+    return null;
+  }, [snapshot, myRole, a.field_answer_count, a.approver_answer_count, a.audit_answer_count]);
+
+  // ─── Progresso temporal (% do SLA consumido) ───────────────────────
+  const timePct = useMemo(() => {
+    if (!a.data_prevista || !a.horario_limite) return null;
+    const [h, m] = a.horario_limite.split(":").map(Number);
+    const deadline = new Date(`${a.data_prevista}T00:00:00`);
+    deadline.setHours(h, m, 0, 0);
+    const start = a.criado_em ? new Date(a.criado_em).getTime() : new Date(`${a.data_prevista}T00:00:00`).getTime();
+    const total = deadline.getTime() - start;
+    if (total <= 0) return null;
+    const elapsed = Date.now() - start;
+    return Math.max(0, Math.min(100, Math.round((elapsed / total) * 100)));
+  }, [a.data_prevista, a.horario_limite, a.criado_em, countdown?.label]);
+
+  const timeBarColor = timePct == null
+    ? "bg-muted"
+    : timePct >= 100 ? "bg-destructive"
+    : timePct >= 90 ? "bg-red-500"
+    : timePct >= 60 ? "bg-amber-500"
+    : "bg-emerald-500";
 
   return (
     <div onClick={() => onClick(a)}
@@ -147,6 +201,30 @@ export function AssignmentCard({ assignment: a, onClick }: Props) {
           <span className="flex items-center gap-1 text-[10px] text-primary"><CheckCircle2 className="w-3 h-3" />{Math.round(a.score_executor)}pts</span>
         )}
       </div>
+
+      {/* Progresso (conclusão da minha etapa + tempo SLA) */}
+      {isActive && (completionPct != null || timePct != null) && (
+        <div className="ml-12 mt-2 space-y-1">
+          {completionPct != null && (
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] uppercase tracking-wider text-muted-foreground w-14 shrink-0">Etapa</span>
+              <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-primary transition-all" style={{ width: `${completionPct}%` }} />
+              </div>
+              <span className="text-[10px] tabular-nums text-muted-foreground w-9 text-right">{completionPct}%</span>
+            </div>
+          )}
+          {timePct != null && (
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] uppercase tracking-wider text-muted-foreground w-14 shrink-0">Tempo</span>
+              <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                <div className={`h-full transition-all ${timeBarColor}`} style={{ width: `${timePct}%` }} />
+              </div>
+              <span className="text-[10px] tabular-nums text-muted-foreground w-9 text-right">{timePct}%</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

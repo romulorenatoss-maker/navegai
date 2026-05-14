@@ -8,14 +8,16 @@
  *
  * Não tocam em banco, RPCs, triggers, scoring, builder ou execução.
  */
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2, XCircle, RotateCcw, Send, Play, AlertTriangle, ShieldCheck, ExternalLink } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CheckCircle2, XCircle, RotateCcw, Send, Play, AlertTriangle, ShieldCheck, ExternalLink, Upload, ArrowLeft, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import { useAssignmentReview } from "@/modules/tarefas/hooks/tarefas_useAssignmentReview";
 import { useApprovalFlow } from "@/modules/tarefas/hooks/tarefas_useApprovalFlow";
@@ -180,54 +182,257 @@ interface ApprovalProps {
 }
 
 export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalProps) {
+  const { profile } = useAuth();
   const flow = useApprovalFlow(assignment?.id || null);
-  const [motivo, setMotivo] = useState("");
+  const [step, setStep] = useState<"perguntas" | "plano">("perguntas");
+  const [motivoFinal, setMotivoFinal] = useState("");
+  const [planos, setPlanos] = useState<Record<string, { descricao_acao: string; prazo: string; criticidade: "baixa" | "media" | "alta" }>>({});
+  const [uploadingFor, setUploadingFor] = useState<string | null>(null);
+  const saveTimers = useRef<Record<string, any>>({});
 
   const blockReasons = flow.getBlockingReasons(assignment);
   const approverFields = useMemo(() => fields.filter((f) => f.aprovador_verificar), [fields]);
 
-  const handleAction = async (action: "aprovar" | "reprovar_devolver") => {
-    if (action !== "aprovar" && !motivo.trim()) {
-      toast.error("Justifique a reprovação / devolução.");
-      return;
-    }
+  // Auto-save debounced (campo único)
+  const scheduleAutoSave = (fieldId: string, payload: { resposta: string; observacao: string; peso: number; evidencia_url?: string | null }) => {
+    if (saveTimers.current[fieldId]) clearTimeout(saveTimers.current[fieldId]);
+    saveTimers.current[fieldId] = setTimeout(() => {
+      flow.autoSaveApproverAnswer.mutate({
+        fieldId,
+        resposta: payload.resposta,
+        observacao: payload.observacao,
+        peso: payload.peso,
+        evidenciaUrl: payload.evidencia_url ?? null,
+      });
+    }, 600);
+  };
+
+  const handleResposta = (f: SnapshotField, value: string) => {
+    const draft = flow.approverAnswers[f.id];
+    flow.updateApproverAnswer(f.id, { resposta: value, peso: f.aprovador_peso || 1 });
+    scheduleAutoSave(f.id, {
+      resposta: value,
+      observacao: draft?.observacao ?? "",
+      peso: f.aprovador_peso || 1,
+      evidencia_url: draft?.evidencia_url ?? null,
+    });
+  };
+
+  const handleObs = (f: SnapshotField, observacao: string) => {
+    const draft = flow.approverAnswers[f.id];
+    flow.updateApproverAnswer(f.id, { observacao, peso: f.aprovador_peso || 1 });
+    scheduleAutoSave(f.id, {
+      resposta: draft?.resposta ?? "",
+      observacao,
+      peso: f.aprovador_peso || 1,
+      evidencia_url: draft?.evidencia_url ?? null,
+    });
+  };
+
+  const handleEvidenceUpload = async (f: SnapshotField, file: File) => {
+    if (!assignment?.id) return;
+    setUploadingFor(f.id);
     try {
-      await flow.finalDecision.mutateAsync({ assignment, action, motivo: motivo || undefined });
-      onClose();
+      const ext = file.name.split(".").pop();
+      const path = `${assignment.id}/aprovador/${f.id}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("evidencias").upload(path, file);
+      if (upErr) throw upErr;
+      const { data: signed, error: signErr } = await supabase.storage.from("evidencias").createSignedUrl(path, 60 * 60 * 24 * 365);
+      if (signErr) throw signErr;
+      const draft = flow.approverAnswers[f.id];
+      flow.updateApproverAnswer(f.id, { evidencia_url: signed.signedUrl, peso: f.aprovador_peso || 1 });
+      flow.autoSaveApproverAnswer.mutate({
+        fieldId: f.id,
+        resposta: draft?.resposta ?? "",
+        observacao: draft?.observacao ?? "",
+        peso: f.aprovador_peso || 1,
+        evidenciaUrl: signed.signedUrl,
+      });
+      toast.success("Anexo salvo");
     } catch (e: any) {
-      toast.error(e.message);
+      toast.error(`Falha no upload: ${e.message}`);
+    } finally {
+      setUploadingFor(null);
     }
   };
 
+  // Quais perguntas estão marcadas como "nao_conforme"
+  const naoConformes = useMemo(() => {
+    return approverFields.filter(f => {
+      const draft = flow.approverAnswers[f.id];
+      const existing = flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id);
+      const v = draft?.resposta ?? existing?.resposta;
+      return v === "nao_conforme";
+    });
+  }, [approverFields, flow.approverAnswers, flow.existingApprovalAnswers]);
+
+  const irParaPlano = () => {
+    // Garante registros default no formulário
+    const next: typeof planos = { ...planos };
+    for (const f of naoConformes) {
+      if (!next[f.id]) {
+        const draft = flow.approverAnswers[f.id];
+        next[f.id] = {
+          descricao_acao: draft?.observacao ?? "",
+          prazo: "",
+          criticidade: "media",
+        };
+      }
+    }
+    setPlanos(next);
+    setStep("plano");
+  };
+
+  const aprovarDireto = async () => {
+    try {
+      await flow.finalDecision.mutateAsync({ assignment, action: "aprovar" });
+      onClose();
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  const submeterPlanos = async () => {
+    const lista = naoConformes.map(f => {
+      const p = planos[f.id];
+      return {
+        field_id: f.id,
+        field_label: f.label,
+        descricao_acao: p?.descricao_acao?.trim() || "",
+        prazo_iso: p?.prazo ? new Date(p.prazo).toISOString() : "",
+        criticidade: p?.criticidade || "media",
+      };
+    });
+    const invalido = lista.find(p => !p.descricao_acao || !p.prazo_iso);
+    if (invalido) { toast.error(`Preencha descrição e prazo para "${invalido.field_label}".`); return; }
+    try {
+      await flow.criarPlanosAcaoEDevolver.mutateAsync({ assignment, planos: lista, motivoGeral: motivoFinal });
+      onClose();
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  const encerrarSemAprovar = async () => {
+    if (!motivoFinal.trim()) { toast.error("Informe a justificativa para encerrar."); return; }
+    try {
+      await flow.finalDecision.mutateAsync({ assignment, action: "encerrar", motivo: motivoFinal });
+      onClose();
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  // ─── PASSO 2: PLANO DE AÇÃO FINAL ──────────────────────────────────
+  if (step === "plano") {
+    return (
+      <div className="space-y-3">
+        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 flex items-start gap-2">
+          <ClipboardList className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div className="text-xs text-amber-800 dark:text-amber-300">
+            <strong>Plano de ação consolidado.</strong> Defina prazo, criticidade e descrição da ação para cada não conformidade. Ao confirmar, a tarefa retorna ao executor/setor.
+          </div>
+        </div>
+
+        {naoConformes.map((f) => {
+          const p = planos[f.id] || { descricao_acao: "", prazo: "", criticidade: "media" as const };
+          return (
+            <div key={f.id} className="border border-border rounded-lg p-3 bg-card space-y-2">
+              <div className="text-sm font-medium text-foreground">{f.label}</div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Prazo</Label>
+                  <Input
+                    type="datetime-local"
+                    value={p.prazo}
+                    onChange={(e) => setPlanos(prev => ({ ...prev, [f.id]: { ...p, prazo: e.target.value } }))}
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px]">Criticidade</Label>
+                  <Select value={p.criticidade} onValueChange={(v) => setPlanos(prev => ({ ...prev, [f.id]: { ...p, criticidade: v as any } }))}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="baixa">Baixa</SelectItem>
+                      <SelectItem value="media">Média</SelectItem>
+                      <SelectItem value="alta">Alta</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px]">Descrição da ação</Label>
+                <Textarea
+                  value={p.descricao_acao}
+                  onChange={(e) => setPlanos(prev => ({ ...prev, [f.id]: { ...p, descricao_acao: e.target.value } }))}
+                  className="text-xs min-h-[50px]"
+                  placeholder="O que precisa ser feito para corrigir..."
+                />
+              </div>
+            </div>
+          );
+        })}
+
+        <div className="space-y-1 pt-2 border-t border-border">
+          <Label className="text-[11px]">Observação geral (opcional)</Label>
+          <Textarea
+            value={motivoFinal}
+            onChange={(e) => setMotivoFinal(e.target.value)}
+            className="text-xs min-h-[44px]"
+            placeholder="Resumo da devolução..."
+            maxLength={2000}
+          />
+        </div>
+
+        <div className="flex gap-2 pt-2 sticky bottom-0 bg-background pb-1">
+          <Button type="button" size="sm" variant="outline" onClick={() => setStep("perguntas")} disabled={flow.isSaving}>
+            <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Voltar
+          </Button>
+          <div className="flex-1" />
+          <Button
+            type="button"
+            size="sm"
+            onClick={submeterPlanos}
+            disabled={flow.isSaving}
+            className="bg-amber-600 hover:bg-amber-700 text-white"
+          >
+            <Send className="w-3.5 h-3.5 mr-1" />
+            {flow.isSaving ? "Enviando..." : `Registrar ${naoConformes.length} plano(s) e devolver`}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── PASSO 1: PERGUNTAS DO APROVADOR ───────────────────────────────
   return (
     <div className="space-y-3">
       <div className="bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg p-3 flex items-start gap-2">
         <ShieldCheck className="w-4 h-4 text-purple-700 dark:text-purple-400 shrink-0 mt-0.5" />
         <div className="text-xs text-purple-800 dark:text-purple-300">
-          <strong>Aprovação Final.</strong> Revise as respostas e a avaliação antes de decidir.
+          <strong>Aprovação Final.</strong> Revise as respostas do executor. Toque em cada pergunta para confirmar, e marque "Não Conforme" para itens que precisam de plano de ação.
         </div>
       </div>
 
-      {/* Resumo da avaliação anterior */}
       <div className="bg-card border border-border rounded-lg p-3">
-        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Resumo da Avaliação</p>
+        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Resumo</p>
         <div className="grid grid-cols-3 gap-2 text-xs">
           <div>
             <div className="text-muted-foreground">Conformes</div>
-            <div className="font-bold text-emerald-700">{flow.fieldReviews.filter((r: any) => r.conforme === true).length}</div>
+            <div className="font-bold text-emerald-700">{approverFields.filter(f => {
+              const v = flow.approverAnswers[f.id]?.resposta ?? flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.resposta;
+              return v === "conforme";
+            }).length}</div>
           </div>
           <div>
             <div className="text-muted-foreground">Não Conformes</div>
-            <div className="font-bold text-red-700">{flow.fieldReviews.filter((r: any) => r.conforme === false).length}</div>
+            <div className="font-bold text-red-700">{naoConformes.length}</div>
           </div>
           <div>
-            <div className="text-muted-foreground">Planos de Ação</div>
-            <div className="font-bold text-orange-700">{flow.pendingContingencies.length}</div>
+            <div className="text-muted-foreground">Pendentes</div>
+            <div className="font-bold text-amber-700">{approverFields.filter(f => {
+              const v = flow.approverAnswers[f.id]?.resposta ?? flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.resposta;
+              return !v;
+            }).length}</div>
           </div>
         </div>
       </div>
 
-      {/* Perguntas exclusivas do aprovador, se houver */}
       {approverFields.length > 0 && (
         <div className="space-y-2">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Perguntas do Aprovador</p>
@@ -235,10 +440,19 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             const existing = flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id);
             const draft = flow.approverAnswers[f.id];
             const value = draft?.resposta ?? existing?.resposta ?? "";
+            const obs = draft?.observacao ?? existing?.observacao ?? "";
+            const evid = draft?.evidencia_url ?? existing?.evidencia_url ?? null;
             const execAnswer = (flow.fieldAnswers || []).find((a: any) => a.field_id === f.id);
+            const exigeEvidNC = !!f.aprovador_exige_evidencia_nao;
+            const isSavedHere = !!existing && (draft ? draft.resposta === existing.resposta && (draft.observacao ?? "") === (existing.observacao ?? "") : true);
             return (
               <div key={f.id} className="border border-border rounded-lg p-3 space-y-2 bg-card">
-                <div className="text-sm font-medium text-foreground">{f.label}</div>
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-medium text-foreground">{f.label}</div>
+                  {isSavedHere && existing && (
+                    <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Salvo</span>
+                  )}
+                </div>
 
                 {/* Resposta do executor (read-only) */}
                 <div className="rounded-md border border-border/60 bg-muted/40 p-2 space-y-1">
@@ -286,7 +500,6 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                   )}
                 </div>
 
-                {/* Pergunta do aprovador */}
                 <div className="text-xs font-medium text-foreground pt-1">
                   {f.aprovador_pergunta || `Avaliar: ${f.label}`}
                 </div>
@@ -299,7 +512,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                     <button
                       key={opt.v}
                       type="button"
-                      onClick={() => flow.updateApproverAnswer(f.id, { resposta: opt.v, peso: f.aprovador_peso || 1 })}
+                      onClick={() => handleResposta(f, opt.v)}
                       className={`flex-1 text-xs px-2 py-1.5 rounded border transition-colors ${
                         value === opt.v ? `${opt.cls} ring-2 ring-current/20 font-semibold` : "border-border text-muted-foreground hover:bg-muted"
                       }`}
@@ -311,9 +524,50 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                 <Textarea
                   placeholder="Observação..."
                   className="text-xs min-h-[40px]"
-                  value={draft?.observacao ?? existing?.observacao ?? ""}
-                  onChange={(e) => flow.updateApproverAnswer(f.id, { observacao: e.target.value, peso: f.aprovador_peso || 1 })}
+                  value={obs}
+                  onChange={(e) => handleObs(f, e.target.value)}
                 />
+
+                {/* Anexo do aprovador — só onde template exigir (NC) */}
+                {exigeEvidNC && value === "nao_conforme" && (
+                  <div className="space-y-1 border-t border-border/50 pt-2">
+                    <Label className="text-[11px]">Anexo de comprovação (obrigatório)</Label>
+                    {evid ? (
+                      <div className="flex items-center gap-2">
+                        <a href={evid} target="_blank" rel="noreferrer" className="text-xs text-primary underline inline-flex items-center gap-1 flex-1 truncate">
+                          <ExternalLink className="w-3 h-3" /> Ver anexo enviado
+                        </a>
+                        <Button
+                          type="button" size="sm" variant="ghost"
+                          onClick={() => {
+                            flow.updateApproverAnswer(f.id, { evidencia_url: null, peso: f.aprovador_peso || 1 });
+                            flow.autoSaveApproverAnswer.mutate({
+                              fieldId: f.id, resposta: value, observacao: obs,
+                              peso: f.aprovador_peso || 1, evidenciaUrl: null,
+                            });
+                          }}
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <label className="inline-flex items-center gap-2 text-xs cursor-pointer text-primary hover:underline">
+                        <Upload className="w-3.5 h-3.5" />
+                        {uploadingFor === f.id ? "Enviando..." : "Selecionar arquivo"}
+                        <input
+                          type="file"
+                          className="hidden"
+                          disabled={uploadingFor === f.id}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleEvidenceUpload(f, file);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -331,39 +585,39 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
         </div>
       )}
 
-      <div className="space-y-2 pt-2 border-t border-border">
-        <Label className="text-xs">Justificativa (obrigatória para reprovar/devolver)</Label>
-        <Textarea
-          value={motivo}
-          onChange={(e) => setMotivo(e.target.value)}
-          placeholder="Motivo da decisão..."
-          className="text-xs min-h-[60px]"
-          maxLength={2000}
-        />
-      </div>
-
-      <div className="flex flex-wrap gap-2 pt-2 sticky bottom-0 bg-background pb-1">
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={() => handleAction("reprovar_devolver")}
-          disabled={flow.isSaving}
-          className="border-red-300 text-red-700 hover:bg-red-50"
-        >
-          <RotateCcw className="w-3.5 h-3.5 mr-1" /> Reprovar / Devolver
-        </Button>
+      <div className="flex flex-wrap gap-2 pt-2 sticky bottom-0 bg-background pb-1 border-t border-border">
+        {profile && (assignment?.responsavel_id !== profile.id) && (
+          <Button
+            type="button" size="sm" variant="ghost"
+            onClick={encerrarSemAprovar} disabled={flow.isSaving}
+            className="text-muted-foreground"
+            title="Encerrar sem aprovar (admin)"
+          >
+            Encerrar
+          </Button>
+        )}
         <div className="flex-1" />
-        <Button
-          type="button"
-          size="sm"
-          onClick={() => handleAction("aprovar")}
-          disabled={blockReasons.length > 0 || flow.isSaving}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white"
-        >
-          <Send className="w-3.5 h-3.5 mr-1" />
-          {flow.isSaving ? "Salvando..." : "Aprovar Final"}
-        </Button>
+        {naoConformes.length > 0 ? (
+          <Button
+            type="button" size="sm"
+            onClick={irParaPlano}
+            disabled={flow.isSaving || blockReasons.length > 0}
+            className="bg-amber-600 hover:bg-amber-700 text-white"
+          >
+            <ClipboardList className="w-3.5 h-3.5 mr-1" />
+            Revisar e finalizar ({naoConformes.length} NC)
+          </Button>
+        ) : (
+          <Button
+            type="button" size="sm"
+            onClick={aprovarDireto}
+            disabled={blockReasons.length > 0 || flow.isSaving}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+          >
+            <Send className="w-3.5 h-3.5 mr-1" />
+            {flow.isSaving ? "Salvando..." : "Aprovar Final"}
+          </Button>
+        )}
       </div>
     </div>
   );
