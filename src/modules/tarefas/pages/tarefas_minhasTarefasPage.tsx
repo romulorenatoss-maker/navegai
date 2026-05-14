@@ -478,7 +478,7 @@ export default function OperationalExecucaoPage() {
   );
   const isAvaliado = selectedAssignment?.avaliado_id === profile?.id;
   const isAdminEditing = isAdmin && selectedAssignment && !["nao_executada"].includes(selectedAssignment.status);
-  const isEditable = selectedAssignment && (
+  const isEditable = selectedAssignment && !isAprovadorMode && !isAvaliadorMode && (
     (["pendente", "em_andamento", "devolvida"].includes(selectedAssignment.status) && (isOwner || isAdmin)) ||
     isAdminEditing
   );
