@@ -174,10 +174,9 @@ export const defaultTemplate: TemplateForm = {
   requer_aprovacao_gestor: false, bloquear_fechamento_com_contingencia: false,
   permite_devolucao_parcial: false,
   executor_profile_id: "", executor_setor_id: "",
-  avaliador_profile_id: "", avaliador_setor_id: "",
   avaliado_profile_id: "", avaliado_setor_id: "",
   aprovador_profile_id: "", aprovador_setor_id: "",
-  validador_contingencia_profile_id: "", validador_contingencia_setor_id: "",
+  auditor_profile_id: "", auditor_setor_id: "",
   modo_pontuacao: "pontuar_avaliado", destino_score: "individual",
   peso_recorrencia: 2.0,
   tipo_atribuicao_avaliado: "individual",
@@ -185,12 +184,6 @@ export const defaultTemplate: TemplateForm = {
   penalidade_sla_contingencia: 15,
   penalidade_fora_prazo: 20,
   habilitar_perguntas_automaticas: true,
-  ada_enabled: false,
-  ada_quem_avalia_tipo: "",
-  ada_quem_avalia_profile_id: "",
-  ada_quem_avalia_setor_id: "",
-  ada_gerar_em: "",
-  ada_config_snapshot: null,
 };
 
 export const defaultField = (sectionTempId: string, ordem: number): FieldForm => ({
