@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Settings2, Copy, AlertTriangle, Camera, FileVideo, FileText, Clock, Upload, X, Mic } from "lucide-react";
+import { Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Settings2, Copy, AlertTriangle, Camera, FileVideo, FileText, Clock, Upload, X, Mic, Eye, Paperclip } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
@@ -325,21 +325,48 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
 
                         {(isExpanded || isImplicitMode) && (
                           <div className={isImplicitMode ? "space-y-2" : "p-3 space-y-2"}>
-                            {!isImplicitMode && (
-                              <div className="space-y-1">
-                                <Label className="text-xs font-medium text-foreground">Instruções da Etapa</Label>
-                                <Textarea
-                                  value={section.descricao}
-                                  onChange={e => updateSection(section.tempId, "descricao", e.target.value)}
-                                  placeholder="Orientação textual exibida ao executor antes das perguntas (opcional)."
-                                  className="text-sm min-h-[64px]"
-                                  maxLength={2000}
-                                />
-                                <p className="text-[10px] text-muted-foreground">
-                                  Suporte a foto/vídeo/documento será habilitado em breve.
-                                </p>
-                              </div>
-                            )}
+                            {!isImplicitMode && (() => {
+                              const anexo = parseAnexoFromDescricao(section.descricao);
+                              return (
+                                <div className="flex items-center gap-2 bg-muted/30 border border-border rounded-md px-2 py-1.5">
+                                  <Paperclip className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                  <Label className="text-[11px] font-medium text-foreground shrink-0">Anexo de instrução</Label>
+                                  {anexo ? (
+                                    <>
+                                      <span className="flex-1 text-[11px] text-muted-foreground truncate">
+                                        {anexo.tipo === "foto" ? "Foto" : anexo.tipo === "video" ? "Vídeo" : "Documento"} anexado
+                                      </span>
+                                      <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" title="Visualizar anexo"
+                                        onClick={() => window.open(anexo.url, "_blank", "noopener,noreferrer")}>
+                                        <Eye className="w-3.5 h-3.5" />
+                                      </Button>
+                                      <AnexoIconUploader compact accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx"
+                                        title="Trocar anexo"
+                                        onUpload={(url, tipo) => updateSection(section.tempId, "descricao", serializeAnexoToDescricao({ url, tipo }))} />
+                                      <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive" title="Remover anexo"
+                                        onClick={() => updateSection(section.tempId, "descricao", "")}>
+                                        <X className="w-3.5 h-3.5" />
+                                      </Button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="flex-1 text-[11px] text-muted-foreground">
+                                        Anexe foto, vídeo ou documento de referência para o executor.
+                                      </span>
+                                      <AnexoIconUploader accept="image/*" tipoFixo="foto" title="Anexar foto"
+                                        icon={<Camera className="w-3.5 h-3.5" />}
+                                        onUpload={(url) => updateSection(section.tempId, "descricao", serializeAnexoToDescricao({ url, tipo: "foto" }))} />
+                                      <AnexoIconUploader accept="video/*" tipoFixo="video" title="Anexar vídeo"
+                                        icon={<FileVideo className="w-3.5 h-3.5" />}
+                                        onUpload={(url) => updateSection(section.tempId, "descricao", serializeAnexoToDescricao({ url, tipo: "video" }))} />
+                                      <AnexoIconUploader accept=".pdf,.doc,.docx,.xls,.xlsx" tipoFixo="documento" title="Anexar documento"
+                                        icon={<FileText className="w-3.5 h-3.5" />}
+                                        onUpload={(url) => updateSection(section.tempId, "descricao", serializeAnexoToDescricao({ url, tipo: "documento" }))} />
+                                    </>
+                                  )}
+                                </div>
+                              );
+                            })()}
 
                             {tipoExecucao === "etapas" && !hideEtapaHorario && (
                               <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-md p-2 mb-2">
@@ -449,6 +476,21 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                                             </Select>
                                             {field.gera_contingencia && <span className="text-[10px] px-1.5 py-0.5 rounded border border-orange-200 bg-orange-100 text-orange-700">Conting.</span>}
                                             {field.aprovador_verificar && <span className="text-[10px] px-1.5 py-0.5 rounded border border-primary/30 bg-primary/10 text-primary">Aprovador</span>}
+
+                                            {field.instrucao_url ? (
+                                              <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 text-primary" title="Visualizar anexo de instrução"
+                                                onClick={() => window.open(field.instrucao_url, "_blank", "noopener,noreferrer")}>
+                                                <Eye className="w-3.5 h-3.5" />
+                                              </Button>
+                                            ) : (
+                                              <AnexoIconUploader
+                                                accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx"
+                                                title="Anexar instrução (foto/vídeo/documento)"
+                                                icon={<Paperclip className="w-3.5 h-3.5" />}
+                                                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
+                                                onUpload={(url, tipo) => updateField(field.tempId, { instrucao_url: url, instrucao_tipo: tipo })}
+                                              />
+                                            )}
 
                                             <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100" onClick={() => setEditingField(field)}>
                                               <Settings2 className="w-3.5 h-3.5" />
@@ -955,6 +997,90 @@ function InstrucaoUploadButton({ label, icon, accept, tipo, onUpload }: {
         onClick={() => inputRef.current?.click()}>
         {uploading ? <Clock className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : icon}
         {uploading ? "Enviando..." : label}
+      </Button>
+    </>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Anexo de instrução por etapa: serializado como JSON dentro de SectionForm.descricao
+// para evitar migration. Compatível com legado (texto livre é ignorado/descartado).
+// ──────────────────────────────────────────────────────────────────────────
+export type AnexoTipo = "foto" | "video" | "documento";
+export interface SectionAnexo { url: string; tipo: AnexoTipo }
+
+export function parseAnexoFromDescricao(descricao: string | null | undefined): SectionAnexo | null {
+  if (!descricao) return null;
+  const s = String(descricao).trim();
+  if (!s.startsWith("{")) return null;
+  try {
+    const obj = JSON.parse(s);
+    if (obj && typeof obj.url === "string" && obj.url && (obj.tipo === "foto" || obj.tipo === "video" || obj.tipo === "documento")) {
+      return { url: obj.url, tipo: obj.tipo };
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+export function serializeAnexoToDescricao(anexo: SectionAnexo): string {
+  return JSON.stringify({ url: anexo.url, tipo: anexo.tipo });
+}
+
+// Uploader compacto baseado em ícone (sem label).
+function AnexoIconUploader({
+  accept, onUpload, icon, title, className, tipoFixo, compact,
+}: {
+  accept: string;
+  onUpload: (url: string, tipo: AnexoTipo) => void;
+  icon?: React.ReactNode;
+  title?: string;
+  className?: string;
+  tipoFixo?: AnexoTipo;
+  compact?: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const detectTipo = (file: File): AnexoTipo => {
+    if (tipoFixo) return tipoFixo;
+    if (file.type.startsWith("image/")) return "foto";
+    if (file.type.startsWith("video/")) return "video";
+    return "documento";
+  };
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "bin";
+      const path = `${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from("instrucoes-campos").upload(path, file);
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from("instrucoes-campos").getPublicUrl(path);
+      onUpload(urlData.publicUrl, detectTipo(file));
+      toast.success("Anexo enviado");
+    } catch (err: any) {
+      toast.error(`Erro ao enviar: ${err.message}`);
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  return (
+    <>
+      <input ref={inputRef} type="file" accept={accept} className="hidden" onChange={handleFile} />
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className={className ?? (compact ? "h-7 w-7 p-0" : "h-7 w-7 p-0")}
+        disabled={uploading}
+        title={title ?? "Anexar"}
+        onClick={() => inputRef.current?.click()}
+      >
+        {uploading ? <Clock className="w-3.5 h-3.5 animate-spin" /> : (icon ?? <Upload className="w-3.5 h-3.5" />)}
       </Button>
     </>
   );
