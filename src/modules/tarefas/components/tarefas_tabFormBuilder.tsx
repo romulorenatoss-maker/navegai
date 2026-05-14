@@ -476,6 +476,16 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                                               <SelectTrigger className="h-7 w-[140px] text-caption"><SelectValue /></SelectTrigger>
                                               <SelectContent>{Object.entries(FIELD_TYPES).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
                                             </Select>
+                                            <Input
+                                              type="number"
+                                              min={0}
+                                              step={0.5}
+                                              value={field.peso ?? 1}
+                                              onChange={e => updateField(field.tempId, { peso: Math.max(0, +e.target.value || 0) })}
+                                              className="h-7 w-14 text-xs text-center"
+                                              title="Nota desta pergunta"
+                                              aria-label="Nota"
+                                            />
                                             {field.gera_contingencia && <span className="text-[10px] px-1.5 py-0.5 rounded border border-orange-200 bg-orange-100 text-orange-700">Conting.</span>}
                                             {field.aprovador_verificar && <span className="text-[10px] px-1.5 py-0.5 rounded border border-primary/30 bg-primary/10 text-primary">Aprovador</span>}
 
