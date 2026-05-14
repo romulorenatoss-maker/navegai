@@ -577,10 +577,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                   )}
                 </div>
 
-                <div className="text-xs font-medium text-foreground pt-1">
-                  {f.aprovador_pergunta || `Avaliar: ${f.label}`}
-                </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 pt-1">
                   {[
                     { v: "conforme", label: "Conforme", cls: "border-emerald-300 text-emerald-700" },
                     { v: "nao_conforme", label: "Não Conforme", cls: "border-red-300 text-red-700" },
