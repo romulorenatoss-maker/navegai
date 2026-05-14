@@ -94,7 +94,7 @@ export function StepChecklistValidador({ items, setItems }: Props) {
     setItems(prev => prev.map(i => {
       if (i.tempId !== tempId) return i;
       const next = { ...i, ...patch };
-      if (i.origem_pergunta === "automatica_configuracao") {
+      if (i.origem_pergunta === "automatica_configuracao" || i.origem_pergunta === "replicada_padrao_manual") {
         next.editado_manual = true;
         next.editado_por = profile?.id;
         next.editado_em = new Date().toISOString();
