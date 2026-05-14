@@ -395,6 +395,7 @@ export default function OperationalExecucaoPage() {
     setShowHistory(false);
     const sections = a.template_snapshot?.sections?.sort((x: any, y: any) => x.ordem - y.ordem);
     setActiveSection(sections?.[0]?.id || null);
+    setViewMode("registro");
 
     if (profile?.id) {
       // Auditoria enriquecida: papel_usado derivado do contexto
