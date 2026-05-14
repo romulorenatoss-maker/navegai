@@ -192,7 +192,20 @@ export const syncAprovadorReplicadasFromFields = (
     };
   });
 
-  return [...replicadasNext, ...naoReplicadas];
+  const next = [...replicadasNext, ...naoReplicadas];
+  const sameLength = next.length === rawItems.length;
+  const sameContent = sameLength && next.every((item, idx) => {
+    const prev = rawItems[idx];
+    return prev &&
+      prev.tempId === item.tempId &&
+      prev.field_id === item.field_id &&
+      prev.field_label === item.field_label &&
+      prev.pergunta_padrao === item.pergunta_padrao &&
+      prev.origem_pergunta === item.origem_pergunta &&
+      prev.pergunta_origem_id === item.pergunta_origem_id;
+  });
+
+  return sameContent ? rawItems : next;
 };
 
 export const normalizeValidadorList = (raw: any[] | undefined, defaults?: CamadaSlaDefaults) =>
