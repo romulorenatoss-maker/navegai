@@ -107,18 +107,21 @@ Deno.serve(async (req) => {
 
       if (!shouldGenerate) { skipped++; continue; }
 
-      // Resolve executor
-      const executorId = t.executor_profile_id || t.responsavel_id;
-      if (!executorId) { skipped++; continue; }
+      // Resolve executor (aceita setorizado: responsavel_id pode ser NULL)
+      const executorId = t.executor_profile_id || t.responsavel_id || null;
+      const executorSetorId = t.executor_setor_id || t.setor_id || null;
+      if (!executorId && !executorSetorId) { skipped++; continue; }
 
-      // Check uniqueness
-      const { data: existing } = await supabase
+      // Check uniqueness (template + data; setorizado dedupe por responsavel_id NULL)
+      let existingQuery = supabase
         .from("operational_assignments")
         .select("id")
         .eq("template_id", t.id)
-        .eq("data_prevista", todayStr)
-        .eq("responsavel_id", executorId)
-        .maybeSingle();
+        .eq("data_prevista", todayStr);
+      existingQuery = executorId
+        ? existingQuery.eq("responsavel_id", executorId)
+        : existingQuery.is("responsavel_id", null);
+      const { data: existing } = await existingQuery.maybeSingle();
 
       if (existing) { skipped++; continue; }
 
