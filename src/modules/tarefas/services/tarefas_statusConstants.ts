@@ -101,6 +101,7 @@ export function getStatusLabel(status: string, ctx: StatusVisualContext = {}): s
     case TASK_STATUS.AGUARDANDO_AVALIACAO: return "Aguardando aprovação (legado)";
     case TASK_STATUS.EM_AVALIACAO: return "Aguardando aprovação (legado)";
     case TASK_STATUS.AGUARDANDO_APROVACAO: return "Aguardando aprovação";
+    case TASK_STATUS.AGUARDANDO_AUDITORIA: return "Aguardando auditoria";
     case TASK_STATUS.APROVADA: return "Aprovada";
     case TASK_STATUS.CONCLUIDA: return "Concluída";
     case TASK_STATUS.REPROVADA: return "Reprovada";
