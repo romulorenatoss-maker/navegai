@@ -13,7 +13,7 @@ type TaskType = "simples" | "inspecao";
 import { TarefasBuilderWizard } from "@/modules/tarefas/components/builder/TarefasBuilderWizard";
 import { AprovadorCheckItemForm, buildAprovadorAutomatico } from "@/modules/tarefas/components/builder/types";
 import { normalizeAprovadorList } from "@/modules/tarefas/components/builder/checklistNormalizers";
-import type { PenalidadesOverrideMap } from "@/modules/tarefas/components/builder/PenalidadesAutomaticasBlock";
+
 import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
 import { useDraftAutosave, loadDraft, clearDraft, type BuilderDraftPayload } from "@/modules/tarefas/components/builder/useBuilderDraft";
 
