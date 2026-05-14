@@ -309,18 +309,6 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                                 className="h-7 w-16 text-sm text-center bg-muted/60 cursor-not-allowed"
                                 title="Soma das notas das perguntas deste agrupador (somente leitura)" />
                             )}
-                            <Select value={section.cor} onValueChange={v => updateSection(section.tempId, "cor", v)}>
-                              <SelectTrigger className="h-7 w-10 p-1">
-                                <div className="w-4 h-4 rounded-full" style={{ backgroundColor: section.cor }} />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {SECTION_COLORS.map(c => (
-                                  <SelectItem key={c} value={c}>
-                                    <div className="flex items-center gap-2"><div className="w-4 h-4 rounded-full" style={{ backgroundColor: c }} />{c}</div>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
                             <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setExpandedSection(isExpanded ? null : section.tempId)}>
                               {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                             </Button>
