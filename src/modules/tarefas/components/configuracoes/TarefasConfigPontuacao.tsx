@@ -20,6 +20,7 @@ import {
   setPontuacaoConfig,
   TAREFAS_PONTUACAO_DEFAULTS,
   APROVADOR_PACOTE_PADRAO_DEFAULT,
+  VALIDADOR_PACOTE_PADRAO_DEFAULT,
   type TarefasPontuacaoConfig,
   type CamadaSlaConfig,
   type AprovadorPerguntaPadrao,
