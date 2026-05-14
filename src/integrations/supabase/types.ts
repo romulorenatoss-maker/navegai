@@ -4593,6 +4593,7 @@ export type Database = {
       }
       tarefas_pontuacao_config: {
         Row: {
+          aprovador_pacote_padrao: Json
           descricao: string | null
           id: string
           nota_maxima: number
@@ -4611,6 +4612,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          aprovador_pacote_padrao?: Json
           descricao?: string | null
           id?: string
           nota_maxima?: number
@@ -4629,6 +4631,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          aprovador_pacote_padrao?: Json
           descricao?: string | null
           id?: string
           nota_maxima?: number
