@@ -287,9 +287,8 @@ export function useApprovalFlow(assignmentId: string | null) {
         field_id: string;
         field_label: string;
         descricao_acao: string;
-        prazo_iso: string; // ISO datetime
+        prazo_iso: string;
         responsavel_profile_id?: string | null;
-        responsavel_setor_id?: string | null;
         criticidade: "baixa" | "media" | "alta";
       }>;
       motivoGeral?: string;
@@ -297,25 +296,22 @@ export function useApprovalFlow(assignmentId: string | null) {
       if (!profile?.id || !assignmentId) throw new Error("Não autenticado");
       if (!planos.length) throw new Error("Nenhum plano de ação para registrar.");
 
-      // 1) Salva respostas do aprovador
       const snapshotFields: SnapshotField[] = assignment.template_snapshot?.fields || [];
       if (Object.keys(approverAnswers).length > 0) {
         await saveApproverAnswers.mutateAsync(snapshotFields);
       }
 
-      // 2) Cria uma contingência por NC
       for (const p of planos) {
         await (supabase as any).from("operational_contingencies").insert({
           assignment_id: assignmentId,
-          field_id: p.field_id,
+          origin_field_id: p.field_id || null,
           descricao: `[${p.field_label}] ${p.descricao_acao}`,
+          plano_acao: p.descricao_acao,
           prazo_sla: p.prazo_iso,
-          criticidade: p.criticidade,
-          status: "pendente",
-          responsavel_profile_id: p.responsavel_profile_id ?? null,
-          responsavel_setor_id: p.responsavel_setor_id ?? null,
-          criada_por: profile.id,
-          origem: "aprovador_plano_acao_final",
+          prazo_resolucao: p.prazo_iso,
+          status: "aberta",
+          responsavel_id: p.responsavel_profile_id ?? null,
+          motivo_instrucao: `Criticidade: ${p.criticidade}`,
         });
       }
 
