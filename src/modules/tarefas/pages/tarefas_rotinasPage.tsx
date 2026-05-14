@@ -549,10 +549,6 @@ export default function OperationalCadastroPage() {
         : []
     );
 
-    // Hidrata overrides de penalidades automáticas (se houver no snapshot).
-    const ovRaw = (snap?.penalidades_override ?? {}) as any;
-    setPenalidadesOverride(ovRaw && typeof ovRaw === "object" ? ovRaw : {});
-
     setActiveTab("geral");
     // Detect existing draft for this template id
     const existing = loadDraft(t.id);
