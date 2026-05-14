@@ -602,6 +602,38 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                   onChange={(e) => handleObs(f, e.target.value)}
                 />
 
+                {/* Seletor de ação para NC: plano de ação OU devolver para refazer */}
+                {value === "nao_conforme" && (
+                  <div className="border-t border-border/50 pt-2 space-y-1">
+                    <Label className="text-[11px]">Tratamento desta não conformidade</Label>
+                    <div className="flex gap-2">
+                      {[
+                        { v: "plano", label: "Plano de ação", cls: "border-amber-300 text-amber-700" },
+                        { v: "devolver", label: "Devolver p/ refazer", cls: "border-orange-300 text-orange-700" },
+                      ].map(opt => {
+                        const sel = (acaoPorNC[f.id] ?? "plano") === opt.v;
+                        return (
+                          <button
+                            key={opt.v}
+                            type="button"
+                            onClick={() => setAcaoPorNC(prev => ({ ...prev, [f.id]: opt.v as "plano" | "devolver" }))}
+                            className={`flex-1 text-xs px-2 py-1.5 rounded border transition-colors ${
+                              sel ? `${opt.cls} ring-2 ring-current/20 font-semibold` : "border-border text-muted-foreground hover:bg-muted"
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      {(acaoPorNC[f.id] ?? "plano") === "plano"
+                        ? "Será criado um plano de ação com prazo na próxima etapa."
+                        : "Esta pergunta volta ao executor para refazer (a observação acima vira o motivo)."}
+                    </p>
+                  </div>
+                )}
+
                 {/* Anexo do aprovador — só onde template exigir (NC) */}
                 {exigeEvidNC && value === "nao_conforme" && (
                   <div className="space-y-1 border-t border-border/50 pt-2">
