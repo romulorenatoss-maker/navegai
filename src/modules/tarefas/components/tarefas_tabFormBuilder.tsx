@@ -725,224 +725,56 @@ export function FieldDetailDialog({ field, allFields = [], setores, onSave, onCl
           </div>
 
 
-          {/* ── Opções e Regras por Botão ── */}
+          {/* ── Opções operacionais (apenas para tipos com escolha) ── */}
           {temOpcoes && (
-            <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-4">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Opções de Resposta — Regras por Botão
-              </p>
-              <p className="text-caption text-muted-foreground">
-                Configure individualmente o que acontece ao clicar em cada opção. Clique para expandir.
-              </p>
+            <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-3">
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Opções de Resposta
+                </p>
+                <p className="text-caption text-muted-foreground">
+                  Apenas operacional. Regras avaliativas (não conformidade, evidência, plano de ação, devolução, ponderação) ficam exclusivamente na pergunta replicada do Aprovador.
+                </p>
+              </div>
 
               {(local.tipo === "select" || local.tipo === "multi_select") && (
-                <div className="flex gap-2">
-                  <Input value={newOptionLabel} onChange={e => setNewOptionLabel(e.target.value)}
-                    placeholder="Nova opção..." className="flex-1 h-8 text-sm"
-                    onKeyDown={e => e.key === "Enter" && (e.preventDefault(), addCustomOption())} />
-                  <Button type="button" variant="outline" size="sm" onClick={addCustomOption} disabled={!newOptionLabel.trim()}>
-                    <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar
-                  </Button>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                {opcoesRegras.map(opcao => {
-                  const isExpanded = expandedOption === opcao.valor;
-                  const isCustom = local.tipo === "select" || local.tipo === "multi_select";
-                  const hasAnyRule = opcao.requer_descricao || opcao.requer_evidencia || opcao.gera_contingencia;
-
-                  return (
-                    <div key={opcao.valor} className="border border-border rounded-lg overflow-hidden bg-card">
-                      <div className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-muted/30 transition-colors"
-                        onClick={() => setExpandedOption(isExpanded ? null : opcao.valor)}>
-                        <div className={`w-3 h-3 rounded-full shrink-0 ${
-                          opcao.cor === "success" ? "bg-success" : opcao.cor === "destructive" ? "bg-destructive" : "bg-muted-foreground/40"
-                        }`} />
-                        <span className="text-sm font-medium flex-1">{opcao.label}</span>
-                        {hasAnyRule && (
-                          <div className="flex gap-1">
-                            {opcao.requer_descricao && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">Desc.</span>}
-                            {opcao.requer_evidencia && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">Evid.</span>}
-                            {opcao.gera_contingencia && <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 border border-orange-200 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-800">Conting.</span>}
-                          </div>
-                        )}
-                        {!hasAnyRule && <span className="text-caption text-muted-foreground">Sem regras</span>}
-                        {isCustom && (
-                          <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive"
-                            onClick={e => { e.stopPropagation(); removeCustomOption(opcao.valor); }}>
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        )}
-                        {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                <>
+                  <div className="flex gap-2">
+                    <Input value={newOptionLabel} onChange={e => setNewOptionLabel(e.target.value)}
+                      placeholder="Nova opção..." className="flex-1 h-8 text-sm"
+                      onKeyDown={e => e.key === "Enter" && (e.preventDefault(), addCustomOption())} />
+                    <Button type="button" variant="outline" size="sm" onClick={addCustomOption} disabled={!newOptionLabel.trim()}>
+                      <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar
+                    </Button>
+                  </div>
+                  <div className="space-y-1.5">
+                    {opcoesRegras.map(opcao => (
+                      <div key={opcao.valor} className="flex items-center gap-2 px-2.5 py-1.5 border border-border rounded bg-card">
+                        <span className="text-sm flex-1">{opcao.label}</span>
+                        <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive"
+                          onClick={() => removeCustomOption(opcao.valor)}>
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
                       </div>
-
-                      {isExpanded && (
-                        <div className="px-3 pb-3 pt-1 border-t border-border space-y-3">
-                        <div className="grid grid-cols-3 gap-3">
-                            <div className="flex items-center gap-2">
-                              <Switch checked={opcao.requer_descricao} onCheckedChange={v => updateOpcaoRegra(opcao.valor, { requer_descricao: v })} />
-                              <Label className="cursor-pointer text-caption">Descrição obrigatória</Label>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Switch checked={opcao.requer_evidencia} onCheckedChange={v => {
-                                updateOpcaoRegra(opcao.valor, { requer_evidencia: v });
-                                if (!v) updateOpcaoRegra(opcao.valor, { tipos_evidencia: ["qualquer"] });
-                              }} />
-                              <Label className="cursor-pointer text-caption">Exigir evidência</Label>
-                            </div>
-                            <div className="flex items-center gap-2" title={!planoAcaoEnabled ? "Defina um Responsável pelo Plano de Ação na etapa Designação para habilitar." : undefined}>
-                              <Switch
-                                checked={planoAcaoEnabled && opcao.gera_contingencia}
-                                disabled={!planoAcaoEnabled}
-                                onCheckedChange={v => updateOpcaoRegra(opcao.valor, { gera_contingencia: v })}
-                              />
-                              <Label className={`cursor-pointer text-caption ${!planoAcaoEnabled ? "text-muted-foreground/60" : ""}`}>
-                                Gera plano de ação{!planoAcaoEnabled && <span className="text-[10px] ml-1">(requer responsável)</span>}
-                              </Label>
-                            </div>
-                          </div>
-                          {!planoAcaoEnabled && opcao.requer_evidencia && (
-                            <p className="text-[10px] text-muted-foreground pl-1">Evidência será obrigatória ao selecionar esta opção.</p>
-                          )}
-
-                          {opcao.requer_evidencia && (
-                            <div className="space-y-2 pl-1">
-                              <Label className="text-caption text-muted-foreground">Tipos de mídia aceitos:</Label>
-                              <div className="flex flex-wrap gap-2">
-                                {[
-                                  { key: "foto", label: "Foto", icon: <Camera className="w-3 h-3" /> },
-                                  { key: "video", label: "Vídeo", icon: <FileVideo className="w-3 h-3" /> },
-                                  { key: "audio", label: "Áudio", icon: <Mic className="w-3 h-3" /> },
-                                  { key: "qualquer", label: "Qualquer tipo", icon: <FileText className="w-3 h-3" /> },
-                                ].map(t => {
-                                  const tipos = opcao.tipos_evidencia || ["qualquer"];
-                                  const selected = tipos.includes(t.key);
-                                  return (
-                                    <button key={t.key} type="button"
-                                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-caption font-medium border transition-colors ${
-                                        selected
-                                          ? "bg-primary/10 border-primary/30 text-primary"
-                                          : "bg-card border-border text-muted-foreground hover:bg-muted/50"
-                                      }`}
-                                      onClick={() => {
-                                        if (t.key === "qualquer") {
-                                          updateOpcaoRegra(opcao.valor, { tipos_evidencia: ["qualquer"] });
-                                        } else {
-                                          let next = tipos.filter((x: string) => x !== "qualquer");
-                                          if (selected) {
-                                            next = next.filter((x: string) => x !== t.key);
-                                            if (next.length === 0) next = ["qualquer"];
-                                          } else {
-                                            next = [...next, t.key];
-                                          }
-                                          updateOpcaoRegra(opcao.valor, { tipos_evidencia: next });
-                                        }
-                                      }}>
-                                      {t.icon} {t.label}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-
-                          {opcao.gera_contingencia && (
-                            <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded p-2 text-caption text-orange-700 dark:text-orange-400 flex items-center gap-1.5">
-                              <AlertTriangle className="w-3.5 h-3.5" />
-                              Executor receberá pendência com prazo SLA e cronômetro.
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {opcoesRegras.length === 0 && (local.tipo === "select" || local.tipo === "multi_select") && (
-                <p className="text-center text-caption text-muted-foreground py-4">Adicione opções acima para configurar as regras.</p>
-              )}
-            </div>
-          )}
-
-          {/* ── Pré-visualização (abaixo de opções) ── */}
-          {local.label?.trim() && temOpcoes && opcoesRegras.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-caption text-muted-foreground uppercase tracking-wider font-semibold">Pré-visualização</p>
-              <div className="bg-muted/30 border border-border rounded-lg p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <p className="text-body font-medium text-foreground">{local.label}</p>
-                    {local.aprovador_verificar && local.aprovador_pergunta?.trim() && (
-                      <p className="text-caption text-muted-foreground mt-0.5">Nota: {local.aprovador_peso ?? 1}</p>
+                    ))}
+                    {opcoesRegras.length === 0 && (
+                      <p className="text-center text-caption text-muted-foreground py-3">
+                        Adicione opções acima.
+                      </p>
                     )}
                   </div>
-                  <div className="flex bg-muted rounded-md p-0.5 gap-0.5 shrink-0">
-                    {opcoesRegras.map(opt => (
-                      <button key={opt.valor} type="button"
-                        onClick={() => setPreviewAnswer(previewAnswer === opt.valor ? null : opt.valor)}
-                        className={`px-3 py-1.5 rounded text-caption font-medium transition-all duration-150 min-w-[48px] ${
-                          getCorClass(opt.cor, previewAnswer === opt.valor)
-                        }`}>{opt.label}</button>
-                    ))}
-                  </div>
+                </>
+              )}
+
+              {(local.tipo === "conforme" || local.tipo === "sim_nao" || local.tipo === "nota_avaliacao") && (
+                <div className="flex flex-wrap gap-1.5">
+                  {opcoesRegras.map(opt => (
+                    <span key={opt.valor} className="text-[11px] px-2 py-1 rounded bg-card border border-border text-muted-foreground">
+                      {opt.label}
+                    </span>
+                  ))}
                 </div>
-                <AnimatePresence>
-                  {selectedOpcao && (selectedOpcao.requer_descricao || selectedOpcao.requer_evidencia || selectedOpcao.gera_contingencia) && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                      <div className={`border rounded-lg p-3 mt-3 space-y-3 ${
-                        selectedOpcao.cor === "destructive" ? "bg-destructive/5 border-destructive/20"
-                          : selectedOpcao.cor === "success" ? "bg-success/5 border-success/20"
-                          : "bg-muted/50 border-border"
-                      }`}>
-                        {selectedOpcao.requer_descricao && (
-                          <div className="space-y-1.5">
-                            <div className="flex items-center gap-1.5 text-caption font-medium text-destructive">
-                              <AlertTriangle className="w-3.5 h-3.5" /> Descrição obrigatória
-                            </div>
-                            <Textarea placeholder="Descreva a irregularidade..." className="bg-card h-20 text-caption" disabled />
-                          </div>
-                        )}
-                        {selectedOpcao.requer_evidencia && (
-                          <div>
-                            <Label className="text-caption mb-1.5 block">Evidência obrigatória</Label>
-                            <div className="flex flex-wrap gap-2">
-                              {(selectedOpcao.tipos_evidencia?.includes("qualquer") || selectedOpcao.tipos_evidencia?.includes("foto")) && (
-                                <Button type="button" variant="outline" size="sm" className="text-caption" disabled><Camera className="w-3.5 h-3.5 mr-1.5" /> Foto</Button>
-                              )}
-                              {(selectedOpcao.tipos_evidencia?.includes("qualquer") || selectedOpcao.tipos_evidencia?.includes("video")) && (
-                                <Button type="button" variant="outline" size="sm" className="text-caption" disabled><FileVideo className="w-3.5 h-3.5 mr-1.5" /> Vídeo</Button>
-                              )}
-                              {(selectedOpcao.tipos_evidencia?.includes("qualquer") || selectedOpcao.tipos_evidencia?.includes("audio")) && (
-                                <Button type="button" variant="outline" size="sm" className="text-caption" disabled><Mic className="w-3.5 h-3.5 mr-1.5" /> Áudio</Button>
-                              )}
-                              {selectedOpcao.tipos_evidencia?.includes("qualquer") && (
-                                <Button type="button" variant="outline" size="sm" className="text-caption" disabled><FileText className="w-3.5 h-3.5 mr-1.5" /> Doc</Button>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                        {selectedOpcao.gera_contingencia && (
-                          <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded p-2 text-caption text-orange-700 dark:text-orange-400 space-y-1">
-                            <p className="flex items-center gap-1.5 font-medium"><AlertTriangle className="w-3.5 h-3.5" /> Plano de Ação será gerada automaticamente</p>
-                            <p className="text-orange-600 dark:text-orange-400/80">Executor receberá pendência com prazo SLA e cronômetro de tempo decorrido.</p>
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                  {selectedOpcao && !selectedOpcao.requer_descricao && !selectedOpcao.requer_evidencia && !selectedOpcao.gera_contingencia && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                      <div className={`rounded p-2 mt-3 text-caption ${
-                        selectedOpcao.cor === "success" ? "bg-success/10 border border-success/20 text-success" : "bg-muted/50 border border-border text-muted-foreground"
-                      }`}>
-                        {selectedOpcao.cor === "success" ? `✓ ${selectedOpcao.label} — Nenhuma ação adicional` : `${selectedOpcao.label} — Sem regras configuradas`}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+              )}
             </div>
           )}
 
