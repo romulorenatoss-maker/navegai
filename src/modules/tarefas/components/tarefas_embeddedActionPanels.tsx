@@ -205,6 +205,8 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     criticidade: "baixa" | "media" | "alta";
   }>>({});
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
+  // Por NC, o aprovador escolhe se vira plano de ação ou só devolução para refazer
+  const [acaoPorNC, setAcaoPorNC] = useState<Record<string, "plano" | "devolver">>({});
   const saveTimers = useRef<Record<string, any>>({});
 
   const blockReasons = flow.getBlockingReasons(assignment);
@@ -290,11 +292,20 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     });
   }, [approverFields, flow.approverAnswers, flow.existingApprovalAnswers]);
 
+  const naoConformesPlano = useMemo(
+    () => naoConformes.filter(f => (acaoPorNC[f.id] ?? "plano") === "plano"),
+    [naoConformes, acaoPorNC]
+  );
+  const naoConformesDevolver = useMemo(
+    () => naoConformes.filter(f => acaoPorNC[f.id] === "devolver"),
+    [naoConformes, acaoPorNC]
+  );
+
   const irParaPlano = () => {
     // Garante registros default no formulário (com prazo padrão pré-aplicado)
     const next: typeof planos = { ...planos };
     const defaultPrazo = computeDefaultPrazo();
-    for (const f of naoConformes) {
+    for (const f of naoConformesPlano) {
       if (!next[f.id]) {
         const draft = flow.approverAnswers[f.id];
         next[f.id] = {
@@ -317,8 +328,29 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     } catch (e: any) { toast.error(e.message); }
   };
 
+  // Devolve apenas as NCs marcadas como "devolver" (sem plano).
+  // Quando NÃO há nenhuma NC marcada como "plano", isto encerra a revisão.
+  const devolverApenas = async () => {
+    const perguntas = naoConformesDevolver.map(f => ({
+      field_id: f.id,
+      field_label: f.label,
+      motivo: (flow.approverAnswers[f.id]?.observacao
+        ?? flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.observacao
+        ?? "").trim(),
+    }));
+    const semMotivo = perguntas.find(p => !p.motivo);
+    if (semMotivo) {
+      toast.error(`Escreva uma observação (motivo) em "${semMotivo.field_label}" antes de devolver.`);
+      return;
+    }
+    try {
+      await flow.devolverPerguntasParaRefazer.mutateAsync({ assignment, perguntas, motivoGeral: motivoFinal });
+      onClose();
+    } catch (e: any) { toast.error(e.message); }
+  };
+
   const submeterPlanos = async () => {
-    const lista = naoConformes.map(f => {
+    const lista = naoConformesPlano.map(f => {
       const p = planos[f.id];
       const prazoAlterado = !!(p?.prazo && p?.prazo_padrao && p.prazo !== p.prazo_padrao);
       return {
@@ -337,6 +369,47 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     const invalidoJust = lista.find(p => p.prazo_alterado && !p.justificativa_alteracao_prazo);
     if (invalidoJust) { toast.error(`Justifique a alteração do prazo padrão em "${invalidoJust.field_label}".`); return; }
     try {
+      // Se houver perguntas marcadas para apenas devolver, marca-as como devolvidas antes
+      // (mesma transição final do plano cobre status). Inserções diretas em field_reviews.
+      if (naoConformesDevolver.length > 0) {
+        const perguntasDev = naoConformesDevolver.map(f => ({
+          field_id: f.id,
+          field_label: f.label,
+          motivo: (flow.approverAnswers[f.id]?.observacao
+            ?? flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.observacao
+            ?? "").trim(),
+        }));
+        const semMotivoDev = perguntasDev.find(p => !p.motivo);
+        if (semMotivoDev) {
+          toast.error(`Escreva uma observação (motivo) na pergunta "${semMotivoDev.field_label}" marcada como devolver.`);
+          return;
+        }
+        // Insere apenas os reviews (devolvido=true) reaproveitando o RPC; transição vem do criarPlanosAcaoEDevolver.
+        const rodada = assignment.rodada_atual || 1;
+        for (const p of perguntasDev) {
+          const existing = (flow.fieldReviews as any[]).find(
+            (r: any) => r.field_id === p.field_id && r.rodada === rodada
+          );
+          const answerExec = (flow.fieldAnswers as any[]).find((a: any) => a.field_id === p.field_id);
+          const payload: any = {
+            assignment_id: assignment.id,
+            field_id: p.field_id,
+            answer_id: answerExec?.id ?? null,
+            conforme: false,
+            devolvido: true,
+            motivo_devolucao: p.motivo,
+            observacao: p.motivo,
+            rodada,
+            avaliador_id: (assignment as any)?.aprovador_id ?? undefined,
+            avaliado_em: new Date().toISOString(),
+          };
+          if (existing) {
+            await (supabase as any).from("operational_field_reviews").update(payload).eq("id", existing.id);
+          } else {
+            await (supabase as any).from("operational_field_reviews").insert(payload);
+          }
+        }
+      }
       await flow.criarPlanosAcaoEDevolver.mutateAsync({ assignment, planos: lista, motivoGeral: motivoFinal });
       onClose();
     } catch (e: any) { toast.error(e.message); }
@@ -361,7 +434,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
           </div>
         </div>
 
-        {naoConformes.map((f) => {
+        {naoConformesPlano.map((f) => {
           const p = planos[f.id] || {
             descricao_acao: "",
             prazo: computeDefaultPrazo(),
@@ -448,7 +521,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             className="bg-amber-600 hover:bg-amber-700 text-white"
           >
             <Send className="w-3.5 h-3.5 mr-1" />
-            {flow.isSaving ? "Enviando..." : `Registrar ${naoConformes.length} plano(s) e devolver`}
+            {flow.isSaving ? "Enviando..." : `Registrar ${naoConformesPlano.length} plano(s)${naoConformesDevolver.length ? ` + devolver ${naoConformesDevolver.length}` : ""} e devolver tarefa`}
           </Button>
         </div>
       </div>
@@ -575,10 +648,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                   )}
                 </div>
 
-                <div className="text-xs font-medium text-foreground pt-1">
-                  {f.aprovador_pergunta || `Avaliar: ${f.label}`}
-                </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 pt-1">
                   {[
                     { v: "conforme", label: "Conforme", cls: "border-emerald-300 text-emerald-700" },
                     { v: "nao_conforme", label: "Não Conforme", cls: "border-red-300 text-red-700" },
@@ -602,6 +672,38 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                   value={obs}
                   onChange={(e) => handleObs(f, e.target.value)}
                 />
+
+                {/* Seletor de ação para NC: plano de ação OU devolver para refazer */}
+                {value === "nao_conforme" && (
+                  <div className="border-t border-border/50 pt-2 space-y-1">
+                    <Label className="text-[11px]">Tratamento desta não conformidade</Label>
+                    <div className="flex gap-2">
+                      {[
+                        { v: "plano", label: "Plano de ação", cls: "border-amber-300 text-amber-700" },
+                        { v: "devolver", label: "Devolver p/ refazer", cls: "border-orange-300 text-orange-700" },
+                      ].map(opt => {
+                        const sel = (acaoPorNC[f.id] ?? "plano") === opt.v;
+                        return (
+                          <button
+                            key={opt.v}
+                            type="button"
+                            onClick={() => setAcaoPorNC(prev => ({ ...prev, [f.id]: opt.v as "plano" | "devolver" }))}
+                            className={`flex-1 text-xs px-2 py-1.5 rounded border transition-colors ${
+                              sel ? `${opt.cls} ring-2 ring-current/20 font-semibold` : "border-border text-muted-foreground hover:bg-muted"
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      {(acaoPorNC[f.id] ?? "plano") === "plano"
+                        ? "Será criado um plano de ação com prazo na próxima etapa."
+                        : "Esta pergunta volta ao executor para refazer (a observação acima vira o motivo)."}
+                    </p>
+                  </div>
+                )}
 
                 {/* Anexo do aprovador — só onde template exigir (NC) */}
                 {exigeEvidNC && value === "nao_conforme" && (
@@ -673,46 +775,31 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
         )}
         <div className="flex-1" />
         {naoConformes.length > 0 ? (
-          <>
-            <Button
-              type="button" size="sm" variant="outline"
-              onClick={async () => {
-                const perguntas = naoConformes.map(f => ({
-                  field_id: f.id,
-                  field_label: f.label,
-                  motivo: (flow.approverAnswers[f.id]?.observacao
-                    ?? flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.observacao
-                    ?? "").trim(),
-                }));
-                const semMotivo = perguntas.find(p => !p.motivo);
-                if (semMotivo) {
-                  toast.error(`Escreva uma observação (motivo) em "${semMotivo.field_label}" antes de devolver.`);
-                  return;
-                }
-                try {
-                  await flow.devolverPerguntasParaRefazer.mutateAsync({
-                    assignment, perguntas, motivoGeral: motivoFinal,
-                  });
-                  onClose();
-                } catch (e: any) { toast.error(e.message); }
-              }}
-              disabled={flow.isSaving || blockReasons.length > 0}
-              className="border-orange-300 text-orange-700 hover:bg-orange-50"
-              title="Devolve apenas estas perguntas ao executor com histórico — sem criar plano de ação"
-            >
-              <RotateCcw className="w-3.5 h-3.5 mr-1" />
-              Devolver {naoConformes.length} pergunta(s) p/ refazer
-            </Button>
-            <Button
-              type="button" size="sm"
-              onClick={irParaPlano}
-              disabled={flow.isSaving || blockReasons.length > 0}
-              className="bg-amber-600 hover:bg-amber-700 text-white"
-            >
-              <ClipboardList className="w-3.5 h-3.5 mr-1" />
-              Revisar e finalizar com plano ({naoConformes.length} NC)
-            </Button>
-          </>
+          <Button
+            type="button" size="sm"
+            onClick={() => {
+              if (naoConformesPlano.length > 0) {
+                irParaPlano();
+              } else {
+                devolverApenas();
+              }
+            }}
+            disabled={flow.isSaving || blockReasons.length > 0}
+            className="bg-amber-600 hover:bg-amber-700 text-white"
+            title={
+              naoConformesPlano.length > 0 && naoConformesDevolver.length > 0
+                ? `${naoConformesPlano.length} plano(s) + ${naoConformesDevolver.length} devolução(ões)`
+                : naoConformesPlano.length > 0
+                ? `${naoConformesPlano.length} plano(s) de ação`
+                : `${naoConformesDevolver.length} devolução(ões)`
+            }
+          >
+            <ClipboardList className="w-3.5 h-3.5 mr-1" />
+            Finalizar revisão ({naoConformes.length} NC
+            {naoConformesPlano.length > 0 && naoConformesDevolver.length > 0
+              ? `: ${naoConformesPlano.length} plano + ${naoConformesDevolver.length} devolver`
+              : ""})
+          </Button>
         ) : (
           <Button
             type="button" size="sm"
