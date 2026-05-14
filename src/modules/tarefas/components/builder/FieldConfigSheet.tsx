@@ -1,15 +1,21 @@
 /**
  * FieldConfigSheet — modal/sheet de configuração de uma pergunta do Aprovador.
  *
- * Reutilizado por:
- *   - Aba Aprovador do builder (cada item da lista única)
- *   - Configurações > Pontuação/SLA (cada pergunta padrão do pacote)
+ * Tipo de resposta limitado a opções marcáveis (sem texto livre):
+ *   - conforme_nao_conforme
+ *   - sim_nao
+ *   - selecao (única)
+ *   - selecao_multipla (checkbox)
  *
- * Mantém o mesmo conjunto de regras das perguntas do Avaliado:
- * tipo, peso, evidência, instrução, opções, regras por opção, ponderação,
- * permissões (devolução, plano de ação, conclusão, aumento de prazo).
+ * Cada opção tem regras próprias:
+ *   - gera_plano_acao  → cria plano de ação padrão para refazer
+ *   - exige_observacao → exige justificativa para tirar o ponto
+ *   - exige_evidencia  → exige anexo/foto
+ *   - permite_devolucao → habilita o aprovador a devolver para correção
+ *
+ * O aprovador, em runtime, decide se devolve ou apenas registra justificativa.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,20 +23,24 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings2, Save } from "lucide-react";
-import type { AprovadorCheckItemForm, AprovadorTipoResposta } from "./types";
+import { Settings2, Save, Plus, Trash2 } from "lucide-react";
+import type {
+  AprovadorCheckItemForm,
+  AprovadorTipoResposta,
+  CamadaTipoResposta,
+  RegraPorOpcao,
+} from "./types";
+
+type TipoMarcavel = Extract<CamadaTipoResposta, "conforme_nao_conforme" | "sim_nao" | "selecao" | "selecao_multipla">;
 
 type Editable = Pick<
   AprovadorCheckItemForm,
   | "pergunta_padrao"
   | "tipo_resposta"
+  | "tipo"
+  | "opcoes"
+  | "regras_por_opcao"
   | "peso"
-  | "exige_observacao"
-  | "exige_evidencia"
-  | "permite_devolucao"
-  | "gera_plano_acao"
-  | "permite_conclusao"
-  | "permite_aumento_prazo"
   | "permite_ponderacao_auditor"
   | "exige_justificativa_ponderacao"
   | "penalidade_reprovacao"
@@ -43,16 +53,43 @@ interface Props {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   title?: string;
-  /** True quando origem = replicada_avaliado: bloqueia edição da pergunta-base. */
   perguntaBloqueada?: boolean;
   value: Editable;
   onSave: (next: Editable) => void;
 }
 
-const TIPO_LABEL: Record<AprovadorTipoResposta, string> = {
+const TIPO_LABEL: Record<TipoMarcavel, string> = {
   conforme_nao_conforme: "Conforme / Não conforme",
   sim_nao: "Sim / Não",
-  nota: "Nota (0–100)",
+  selecao: "Seleção única (botões)",
+  selecao_multipla: "Seleção múltipla (checkbox)",
+};
+
+const DEFAULT_OPCOES: Record<TipoMarcavel, string[]> = {
+  conforme_nao_conforme: ["Conforme", "Não conforme", "N/A"],
+  sim_nao: ["Sim", "Não", "N/A"],
+  selecao: ["Opção 1", "Opção 2"],
+  selecao_multipla: ["Opção 1", "Opção 2"],
+};
+
+/** Heurística: opções "negativas" recebem regras padrão de NC. */
+const isNegativa = (label: string) => {
+  const l = label.toLowerCase().trim();
+  return l === "não conforme" || l === "nao conforme" || l === "não" || l === "nao" || l.startsWith("reprov");
+};
+
+const defaultRegra = (label: string): RegraPorOpcao => ({
+  valor: label,
+  exige_observacao: isNegativa(label),
+  exige_evidencia: false,
+  gera_plano_acao: isNegativa(label),
+  permite_devolucao: isNegativa(label),
+});
+
+const tipoSimplificado = (t: TipoMarcavel): AprovadorTipoResposta => {
+  if (t === "conforme_nao_conforme") return "conforme_nao_conforme";
+  if (t === "sim_nao") return "sim_nao";
+  return "conforme_nao_conforme"; // fallback compat
 };
 
 export function FieldConfigSheet({ open, onOpenChange, title, perguntaBloqueada, value, onSave }: Props) {
@@ -60,10 +97,81 @@ export function FieldConfigSheet({ open, onOpenChange, title, perguntaBloqueada,
 
   useEffect(() => { setDraft(value); }, [value, open]);
 
+  const tipoAtual: TipoMarcavel = useMemo(() => {
+    const t = (draft.tipo ?? draft.tipo_resposta) as string;
+    if (t === "selecao" || t === "selecao_multipla" || t === "sim_nao" || t === "conforme_nao_conforme") return t as TipoMarcavel;
+    return "conforme_nao_conforme";
+  }, [draft.tipo, draft.tipo_resposta]);
+
+  const opcoes = draft.opcoes && draft.opcoes.length > 0 ? draft.opcoes : DEFAULT_OPCOES[tipoAtual];
+  const regras = draft.regras_por_opcao ?? [];
+
   const upd = <K extends keyof Editable>(k: K, v: Editable[K]) =>
     setDraft(prev => ({ ...prev, [k]: v }));
 
-  const handleSave = () => { onSave(draft); onOpenChange(false); };
+  const changeTipo = (novo: TipoMarcavel) => {
+    const novasOpcoes = DEFAULT_OPCOES[novo];
+    setDraft(prev => ({
+      ...prev,
+      tipo: novo,
+      tipo_resposta: tipoSimplificado(novo),
+      opcoes: novasOpcoes,
+      regras_por_opcao: novasOpcoes.map(defaultRegra),
+    }));
+  };
+
+  const setOpcao = (idx: number, novoLabel: string) => {
+    const ops = [...opcoes];
+    const antigo = ops[idx];
+    ops[idx] = novoLabel;
+    const regs = [...regras];
+    const ri = regs.findIndex(r => r.valor === antigo);
+    if (ri >= 0) regs[ri] = { ...regs[ri], valor: novoLabel };
+    else regs.push(defaultRegra(novoLabel));
+    setDraft(prev => ({ ...prev, opcoes: ops, regras_por_opcao: regs }));
+  };
+
+  const addOpcao = () => {
+    const novaLabel = `Opção ${opcoes.length + 1}`;
+    setDraft(prev => ({
+      ...prev,
+      opcoes: [...opcoes, novaLabel],
+      regras_por_opcao: [...regras, defaultRegra(novaLabel)],
+    }));
+  };
+
+  const removeOpcao = (idx: number) => {
+    const alvo = opcoes[idx];
+    setDraft(prev => ({
+      ...prev,
+      opcoes: opcoes.filter((_, i) => i !== idx),
+      regras_por_opcao: regras.filter(r => r.valor !== alvo),
+    }));
+  };
+
+  const setRegra = (label: string, patch: Partial<RegraPorOpcao>) => {
+    const regs = [...regras];
+    const ri = regs.findIndex(r => r.valor === label);
+    if (ri >= 0) regs[ri] = { ...regs[ri], ...patch };
+    else regs.push({ ...defaultRegra(label), ...patch });
+    setDraft(prev => ({ ...prev, regras_por_opcao: regs }));
+  };
+
+  const getRegra = (label: string): RegraPorOpcao =>
+    regras.find(r => r.valor === label) ?? defaultRegra(label);
+
+  const podeEditarOpcoes = tipoAtual === "selecao" || tipoAtual === "selecao_multipla";
+
+  const handleSave = () => {
+    onSave({
+      ...draft,
+      tipo: tipoAtual,
+      tipo_resposta: tipoSimplificado(tipoAtual),
+      opcoes,
+      regras_por_opcao: opcoes.map(getRegra),
+    });
+    onOpenChange(false);
+  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -97,12 +205,12 @@ export function FieldConfigSheet({ open, onOpenChange, title, perguntaBloqueada,
             <div className="space-y-1.5">
               <Label className="text-xs">Tipo de resposta</Label>
               <Select
-                value={draft.tipo_resposta}
-                onValueChange={v => upd("tipo_resposta", v as AprovadorTipoResposta)}
+                value={tipoAtual}
+                onValueChange={v => changeTipo(v as TipoMarcavel)}
               >
                 <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(TIPO_LABEL) as AprovadorTipoResposta[]).map(k => (
+                  {(Object.keys(TIPO_LABEL) as TipoMarcavel[]).map(k => (
                     <SelectItem key={k} value={k} className="text-xs">{TIPO_LABEL[k]}</SelectItem>
                   ))}
                 </SelectContent>
@@ -117,6 +225,74 @@ export function FieldConfigSheet({ open, onOpenChange, title, perguntaBloqueada,
                 onChange={e => upd("peso", Number(e.target.value) || 0)}
               />
             </div>
+          </div>
+
+          {/* Opções + regras por opção */}
+          <div className="border-t pt-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Opções e ações por resposta
+              </p>
+              {podeEditarOpcoes && (
+                <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={addOpcao}>
+                  <Plus className="w-3 h-3 mr-1" /> Opção
+                </Button>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              {opcoes.map((label, idx) => {
+                const r = getRegra(label);
+                return (
+                  <div key={`${label}-${idx}`} className="border border-border/60 rounded-md p-2 bg-muted/20 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        className="h-8 text-xs flex-1"
+                        value={label}
+                        onChange={e => setOpcao(idx, e.target.value)}
+                        disabled={!podeEditarOpcoes}
+                      />
+                      {podeEditarOpcoes && (
+                        <Button
+                          type="button" size="sm" variant="ghost"
+                          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                          onClick={() => removeOpcao(idx)}
+                          disabled={opcoes.length <= 2}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <ToggleField
+                        label="Gera plano de ação (refazer)"
+                        checked={!!r.gera_plano_acao}
+                        onChange={v => setRegra(label, { gera_plano_acao: v })}
+                      />
+                      <ToggleField
+                        label="Exige justificativa (tirar ponto)"
+                        checked={!!r.exige_observacao}
+                        onChange={v => setRegra(label, { exige_observacao: v })}
+                      />
+                      <ToggleField
+                        label="Exige evidência (anexo)"
+                        checked={!!r.exige_evidencia}
+                        onChange={v => setRegra(label, { exige_evidencia: v })}
+                      />
+                      <ToggleField
+                        label="Permite devolução"
+                        checked={!!r.permite_devolucao}
+                        onChange={v => setRegra(label, { permite_devolucao: v })}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-[10px] text-muted-foreground leading-tight">
+              Em runtime, o aprovador escolhe se devolve para correção ou apenas registra a justificativa
+              para concluir tirando o ponto. A devolução só fica disponível se a opção marcada permitir.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -139,18 +315,6 @@ export function FieldConfigSheet({ open, onOpenChange, title, perguntaBloqueada,
                 placeholder="Padrão da camada"
                 onChange={e => upd("sla_horas", e.target.value === "" ? undefined : Number(e.target.value))}
               />
-            </div>
-          </div>
-
-          <div className="border-t pt-3 space-y-2">
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Comportamentos</p>
-            <div className="grid grid-cols-2 gap-2">
-              <ToggleField label="Exige justificativa/observação" checked={!!draft.exige_observacao} onChange={v => upd("exige_observacao", v)} />
-              <ToggleField label="Exige evidência (anexo)" checked={!!draft.exige_evidencia} onChange={v => upd("exige_evidencia", v)} />
-              <ToggleField label="Permite devolução" checked={!!draft.permite_devolucao} onChange={v => upd("permite_devolucao", v)} />
-              <ToggleField label="Gera plano de ação" checked={!!draft.gera_plano_acao} onChange={v => upd("gera_plano_acao", v)} />
-              <ToggleField label="Permite conclusão" checked={!!draft.permite_conclusao} onChange={v => upd("permite_conclusao", v)} />
-              <ToggleField label="Permite aumento de prazo" checked={!!draft.permite_aumento_prazo} onChange={v => upd("permite_aumento_prazo", v)} />
             </div>
           </div>
 
@@ -205,7 +369,7 @@ export function FieldConfigSheet({ open, onOpenChange, title, perguntaBloqueada,
 
 function ToggleField({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <div className="flex items-center justify-between gap-2 px-2 py-1.5 rounded border border-border/60 bg-muted/30">
+    <div className="flex items-center justify-between gap-2 px-2 py-1.5 rounded border border-border/60 bg-card">
       <Label className="text-[11px] leading-tight">{label}</Label>
       <Switch checked={checked} onCheckedChange={onChange} />
     </div>

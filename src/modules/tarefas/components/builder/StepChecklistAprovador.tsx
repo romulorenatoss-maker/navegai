@@ -260,13 +260,10 @@ export function StepChecklistAprovador({ fields, items, setItems }: Props) {
           value={{
             pergunta_padrao: editing.pergunta_padrao,
             tipo_resposta: editing.tipo_resposta,
+            tipo: editing.tipo,
+            opcoes: editing.opcoes,
+            regras_por_opcao: editing.regras_por_opcao,
             peso: editing.peso,
-            exige_observacao: editing.exige_observacao,
-            exige_evidencia: editing.exige_evidencia,
-            permite_devolucao: editing.permite_devolucao,
-            gera_plano_acao: editing.gera_plano_acao,
-            permite_conclusao: editing.permite_conclusao,
-            permite_aumento_prazo: editing.permite_aumento_prazo,
             permite_ponderacao_auditor: editing.permite_ponderacao_auditor,
             exige_justificativa_ponderacao: editing.exige_justificativa_ponderacao,
             penalidade_reprovacao: editing.penalidade_reprovacao,
@@ -274,7 +271,16 @@ export function StepChecklistAprovador({ fields, items, setItems }: Props) {
             instrucao_url: editing.instrucao_url,
             instrucao_tipo: editing.instrucao_tipo,
           }}
-          onSave={(next) => updateItem(editing.tempId, next)}
+          onSave={(next) => {
+            const regs = next.regras_por_opcao ?? [];
+            updateItem(editing.tempId, {
+              ...next,
+              gera_plano_acao: regs.some(r => r.gera_plano_acao),
+              exige_evidencia: regs.some(r => r.exige_evidencia),
+              exige_observacao: regs.some(r => r.exige_observacao),
+              permite_devolucao: regs.some(r => r.permite_devolucao),
+            });
+          }}
         />
       )}
     </div>
