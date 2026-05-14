@@ -86,6 +86,13 @@ interface Props {
   onChange: (fieldId: string, answer: Partial<FieldAnswer>) => void;
   assignmentId: string;
   showValidation?: boolean;
+  approverPlan?: {
+    plano_acao_descricao?: string | null;
+    plano_acao_prazo?: string | null;
+    plano_acao_anexo_url?: string | null;
+    flag_prazo_alterado?: boolean | null;
+    justificativa_alteracao_prazo?: string | null;
+  } | null;
 }
 
 function evaluateVisibility(condition: any, allAnswers: Record<string, FieldAnswer>): boolean {
