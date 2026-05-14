@@ -15,6 +15,7 @@ import {
   WIZARD_STEPS,
   WizardStepId,
 } from "./types";
+import { syncAprovadorReplicadasFromFields } from "./checklistNormalizers";
 
 interface Props {
   isEditing: boolean;
@@ -80,18 +81,30 @@ export function TarefasBuilderWizard(props: Props) {
 
   const goNext = () => {
     if (!canAdvance) return;
+    if (current === "campos") {
+      setAprovadorChecks(prev => syncAprovadorReplicadasFromFields(prev, fields));
+    }
     setCompleted(prev => new Set(prev).add(current));
     const next = visibleSteps[Math.min(idx + 1, visibleSteps.length - 1)];
+    if (next.id === "checklist_aprovador") {
+      setAprovadorChecks(prev => syncAprovadorReplicadasFromFields(prev, fields));
+    }
     setCurrent(next.id);
   };
 
   const goPrev = () => {
     const prev = visibleSteps[Math.max(idx - 1, 1)];
+    if (prev.id === "checklist_aprovador") {
+      setAprovadorChecks(currentItems => syncAprovadorReplicadasFromFields(currentItems, fields));
+    }
     setCurrent(prev.id);
   };
 
   const jump = (id: WizardStepId) => {
     if (id === "tipo") return;
+    if (current === "campos" || id === "checklist_aprovador") {
+      setAprovadorChecks(prev => syncAprovadorReplicadasFromFields(prev, fields));
+    }
     setCurrent(id);
   };
 
