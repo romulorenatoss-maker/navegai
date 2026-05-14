@@ -331,9 +331,19 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
   return (
     <div className={`space-y-1.5 p-3 rounded-lg border transition-colors ${isReturned ? "border-amber-400 bg-amber-50/50" : error && !disabled ? "border-destructive/30 bg-destructive/5" : "border-border bg-card"}`}>
       <div className="flex items-start justify-between gap-2">
-        <Label className="text-sm font-medium">
+        <Label className="text-sm font-medium flex items-center gap-1.5">
           {field.label}
           {field.obrigatorio && <span className="text-destructive ml-0.5">*</span>}
+          {field.instrucao_url && (
+            <button
+              type="button"
+              title={`Ver instrução (${field.instrucao_tipo || "anexo"})`}
+              onClick={() => window.open(field.instrucao_url!, "_blank", "noopener,noreferrer")}
+              className="inline-flex items-center justify-center w-5 h-5 rounded hover:bg-primary/10 text-primary transition-colors"
+            >
+              <Eye className="w-3.5 h-3.5" />
+            </button>
+          )}
         </Label>
         {field.criticidade === "critica" && <span className="text-[10px] bg-red-100 text-red-700 border border-red-200 px-1.5 py-0.5 rounded">Crítico</span>}
         {field.criticidade === "alta" && <span className="text-[10px] bg-orange-100 text-orange-700 border border-orange-200 px-1.5 py-0.5 rounded">Alta</span>}
