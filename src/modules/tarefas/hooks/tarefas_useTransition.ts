@@ -279,7 +279,7 @@ export function useOperationalTransition() {
       }
 
       // Bloqueia avanço com contingências em aberto
-      if ([TASK_STATUS.AGUARDANDO_APROVACAO, TASK_STATUS.CONCLUIDA, TASK_STATUS.APROVADA].includes(targetStatus as any)
+      if ([TASK_STATUS.AGUARDANDO_APROVACAO, TASK_STATUS.AGUARDANDO_AUDITORIA, TASK_STATUS.CONCLUIDA, TASK_STATUS.APROVADA].includes(targetStatus as any)
           && action !== "encerrar_final" && action !== "validar_solicitante_aprovar") {
         const openCount = await hasOpenContingencies(assignmentId);
         if (openCount > 0) {
@@ -290,6 +290,7 @@ export function useOperationalTransition() {
       // Motivo obrigatório
       const motivoObrigatorio: TransitionAction[] = [
         "reabrir", "avaliar_devolver", "avaliar_reprovar", "reprovar_devolver_final",
+        "auditor_devolver",
         "validar_designada_devolver", "validar_solicitante_devolver",
         "negociar_prazo_executor", "recusar_renegociacao_solicitante",
         "cancelar_solicitante", "cancelar_admin",
