@@ -431,13 +431,14 @@ export default function OperationalExecucaoPage() {
       .sort((a: any, b: any) => a.ordem - b.ordem)
       .map((f: any) => {
         if (!isAssignmentLive) return f;
-        const altKey = `${f.section_id || ""}|${(f.label || "").trim().toLowerCase()}`;
+        const sectionKey = `${f.section_id || ""}|${(f.label || "").trim().toLowerCase()}`;
+        const labelKey = `__label__|${(f.label || "").trim().toLowerCase()}`;
         const byId = liveFieldOverlayMap[f.id];
-        const byLabel = liveFieldOverlayMap[altKey];
-        // Prefere a entrada por label se ela trouxer regras e a por id não tiver.
-        const byIdHasRules = byId && Array.isArray(byId.opcoes_regras) && byId.opcoes_regras.length > 0;
-        const byLabelHasRules = byLabel && Array.isArray(byLabel.opcoes_regras) && byLabel.opcoes_regras.length > 0;
-        const live = byIdHasRules ? byId : (byLabelHasRules ? byLabel : (byId || byLabel));
+        const bySection = liveFieldOverlayMap[sectionKey];
+        const byLabel = liveFieldOverlayMap[labelKey];
+        // Prefere a entrada que trouxer regras preenchidas, em qualquer chave.
+        const has = (x: any) => x && Array.isArray(x.opcoes_regras) && x.opcoes_regras.length > 0;
+        const live = has(byId) ? byId : has(bySection) ? bySection : has(byLabel) ? byLabel : (byId || bySection || byLabel);
         if (!live) return f;
         return {
           ...f,
