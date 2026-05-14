@@ -325,21 +325,48 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
 
                         {(isExpanded || isImplicitMode) && (
                           <div className={isImplicitMode ? "space-y-2" : "p-3 space-y-2"}>
-                            {!isImplicitMode && (
-                              <div className="space-y-1">
-                                <Label className="text-xs font-medium text-foreground">Instruções da Etapa</Label>
-                                <Textarea
-                                  value={section.descricao}
-                                  onChange={e => updateSection(section.tempId, "descricao", e.target.value)}
-                                  placeholder="Orientação textual exibida ao executor antes das perguntas (opcional)."
-                                  className="text-sm min-h-[64px]"
-                                  maxLength={2000}
-                                />
-                                <p className="text-[10px] text-muted-foreground">
-                                  Suporte a foto/vídeo/documento será habilitado em breve.
-                                </p>
-                              </div>
-                            )}
+                            {!isImplicitMode && (() => {
+                              const anexo = parseAnexoFromDescricao(section.descricao);
+                              return (
+                                <div className="flex items-center gap-2 bg-muted/30 border border-border rounded-md px-2 py-1.5">
+                                  <Paperclip className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                  <Label className="text-[11px] font-medium text-foreground shrink-0">Anexo de instrução</Label>
+                                  {anexo ? (
+                                    <>
+                                      <span className="flex-1 text-[11px] text-muted-foreground truncate">
+                                        {anexo.tipo === "foto" ? "Foto" : anexo.tipo === "video" ? "Vídeo" : "Documento"} anexado
+                                      </span>
+                                      <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" title="Visualizar anexo"
+                                        onClick={() => window.open(anexo.url, "_blank", "noopener,noreferrer")}>
+                                        <Eye className="w-3.5 h-3.5" />
+                                      </Button>
+                                      <AnexoIconUploader compact accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx"
+                                        title="Trocar anexo"
+                                        onUpload={(url, tipo) => updateSection(section.tempId, "descricao", serializeAnexoToDescricao({ url, tipo }))} />
+                                      <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive" title="Remover anexo"
+                                        onClick={() => updateSection(section.tempId, "descricao", "")}>
+                                        <X className="w-3.5 h-3.5" />
+                                      </Button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="flex-1 text-[11px] text-muted-foreground">
+                                        Anexe foto, vídeo ou documento de referência para o executor.
+                                      </span>
+                                      <AnexoIconUploader accept="image/*" tipoFixo="foto" title="Anexar foto"
+                                        icon={<Camera className="w-3.5 h-3.5" />}
+                                        onUpload={(url) => updateSection(section.tempId, "descricao", serializeAnexoToDescricao({ url, tipo: "foto" }))} />
+                                      <AnexoIconUploader accept="video/*" tipoFixo="video" title="Anexar vídeo"
+                                        icon={<FileVideo className="w-3.5 h-3.5" />}
+                                        onUpload={(url) => updateSection(section.tempId, "descricao", serializeAnexoToDescricao({ url, tipo: "video" }))} />
+                                      <AnexoIconUploader accept=".pdf,.doc,.docx,.xls,.xlsx" tipoFixo="documento" title="Anexar documento"
+                                        icon={<FileText className="w-3.5 h-3.5" />}
+                                        onUpload={(url) => updateSection(section.tempId, "descricao", serializeAnexoToDescricao({ url, tipo: "documento" }))} />
+                                    </>
+                                  )}
+                                </div>
+                              );
+                            })()}
 
                             {tipoExecucao === "etapas" && !hideEtapaHorario && (
                               <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-md p-2 mb-2">
