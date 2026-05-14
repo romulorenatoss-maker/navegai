@@ -202,7 +202,7 @@ export function TabTarefasExecutadas({ templateId }: Props) {
           setor_executor_id: t.executor_setor_id || t.setor_id || null,
           setor_aprovador_id: t.aprovador_setor_id || null,
           setor_avaliado_id: t.avaliado_setor_id || null,
-          data_prevista: todayStr,
+          data_prevista: targetDateStr,
           horario_inicio_previsto: t.horario_inicio_previsto || null,
           horario_limite: t.horario_limite_execucao || null,
           status: "pendente",
@@ -212,10 +212,12 @@ export function TabTarefasExecutadas({ templateId }: Props) {
         });
 
       if (insErr) throw insErr;
+      return { targetDateStr };
     },
-    onSuccess: () => {
+    onSuccess: (res: any) => {
       qc.invalidateQueries({ queryKey: ["operational_template_assignments", templateId] });
-      toast.success("Tarefa gerada com sucesso para hoje!");
+      const dt = res?.targetDateStr ? res.targetDateStr.split("-").reverse().join("/") : "";
+      toast.success(dt ? `Tarefa gerada para ${dt}. As próximas serão geradas automaticamente ao virar a data.` : "Tarefa gerada com sucesso!");
     },
     onError: (e: any) => toast.error(e.message),
   });
