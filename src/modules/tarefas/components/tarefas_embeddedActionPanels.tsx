@@ -651,8 +651,8 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             }).length}</div>
           </div>
           <div>
-            <div className="text-muted-foreground">Não Conformes</div>
-            <div className="font-bold text-red-700">{naoConformes.length}</div>
+            <div className="text-muted-foreground">Com ação</div>
+            <div className="font-bold text-red-700">{perguntasComAcao.length}</div>
           </div>
           <div>
             <div className="text-muted-foreground">Pendentes</div>
@@ -674,7 +674,9 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             const obs = draft?.observacao ?? existing?.observacao ?? "";
             const evid = draft?.evidencia_url ?? existing?.evidencia_url ?? null;
             const execAnswer = (flow.fieldAnswers || []).find((a: any) => a.field_id === f.id);
-            const exigeEvidNC = !!f.aprovador_exige_evidencia_nao;
+            const selectedRule = value ? getRuleForResposta(f, value, "aprovador") : null;
+            const allowedActions = getAllowedActions(selectedRule);
+            const selectedAction = acaoPorNC[f.id] ?? getDefaultReviewAction(selectedRule);
             const isSavedHere = !!existing && (draft ? draft.resposta === existing.resposta && (draft.observacao ?? "") === (existing.observacao ?? "") : true);
             return (
               <div key={f.id} className="border border-border rounded-lg p-3 space-y-2 bg-card">
@@ -751,11 +753,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                 </div>
 
                 <div className="flex gap-2 pt-1">
-                  {[
-                    { v: "conforme", label: "Conforme", cls: "border-emerald-300 text-emerald-700" },
-                    { v: "nao_conforme", label: "Não Conforme", cls: "border-red-300 text-red-700" },
-                    { v: "na", label: "N/A", cls: "border-muted-foreground/30 text-muted-foreground" },
-                  ].map((opt) => (
+                  {getReviewOptions(f, "aprovador").map((opt) => (
                     <button
                       key={opt.v}
                       type="button"
@@ -775,16 +773,16 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                   onChange={(e) => handleObs(f, e.target.value)}
                 />
 
-                {/* Seletor de ação para NC: plano de ação OU devolver para refazer */}
-                {value === "nao_conforme" && (
+                {/* Seletor de ação: aparece apenas se a opção marcada permitir plano/devolução */}
+                {allowedActions.length > 0 && (
                   <div className="border-t border-border/50 pt-2 space-y-1">
-                    <Label className="text-[11px]">Tratamento desta não conformidade</Label>
+                    <Label className="text-[11px]">Tratamento desta resposta</Label>
                     <div className="flex gap-2">
                       {[
                         { v: "plano", label: "Plano de ação", cls: "border-amber-300 text-amber-700" },
                         { v: "devolver", label: "Devolver p/ refazer", cls: "border-orange-300 text-orange-700" },
-                      ].map(opt => {
-                        const sel = (acaoPorNC[f.id] ?? "plano") === opt.v;
+                      ].filter(opt => allowedActions.includes(opt.v as "plano" | "devolver")).map(opt => {
+                        const sel = selectedAction === opt.v;
                         return (
                           <button
                             key={opt.v}
@@ -800,15 +798,15 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                       })}
                     </div>
                     <p className="text-[10px] text-muted-foreground">
-                      {(acaoPorNC[f.id] ?? "plano") === "plano"
+                      {selectedAction === "plano"
                         ? "Será criado um plano de ação com prazo na próxima etapa."
                         : "Esta pergunta volta ao executor para refazer (a observação acima vira o motivo)."}
                     </p>
                   </div>
                 )}
 
-                {/* Anexo do aprovador — só onde template exigir (NC) */}
-                {exigeEvidNC && value === "nao_conforme" && (
+                {/* Anexo do aprovador — só onde a regra da opção marcada exigir */}
+                {selectedRule?.exige_evidencia && (
                   <div className="space-y-1 border-t border-border/50 pt-2">
                     <Label className="text-[11px]">Anexo de comprovação (obrigatório)</Label>
                     {evid ? (
