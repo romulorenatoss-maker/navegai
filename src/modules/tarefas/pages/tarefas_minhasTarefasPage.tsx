@@ -200,38 +200,55 @@ export default function OperationalExecucaoPage() {
     staleTime: 60000,
   });
 
+  // Setores do usuário — sempre carregados (necessário para visibilidade de tarefas setorizadas)
+  const { getScope } = usePermissions(profile?.id ?? null);
+  const hasSetorScope = getScope("executar_tarefa") === "team";
+  const { data: meusSetorIds = [] } = useQuery<string[]>({
+    queryKey: ["my_setor_ids", profile?.id],
+    queryFn: async () => {
+      if (!profile?.id) return [];
+      const { data } = await (supabase as any)
+        .from("colaborador_setores")
+        .select("setor_id")
+        .eq("profile_id", profile.id);
+      return (data || []).map((r: any) => r.setor_id);
+    },
+    enabled: !!profile?.id,
+    staleTime: 300000,
+  });
+
   const { data: assignments = [], isLoading } = useQuery({
-    queryKey: ["operational_my_assignments", profile?.id, isAdmin],
+    queryKey: ["operational_my_assignments", profile?.id, isAdmin, meusSetorIds],
     queryFn: async () => {
       if (!profile?.id) return [];
       let q = (supabase as any).from("operational_assignments")
         .select("*, operational_templates(nome, tipo_execucao, origem), profiles:responsavel_id(id, nome, foto_url), criador:created_by(id, nome), aprovador:profiles!operational_assignments_aprovador_id_fkey(nome)")
         .order("data_prevista", { ascending: true });
       if (!isAdmin) {
-        q = q.or(`responsavel_id.eq.${profile.id},aprovador_id.eq.${profile.id},aprovador_id.eq.${profile.id},avaliado_id.eq.${profile.id},validador_contingencia_id.eq.${profile.id},created_by.eq.${profile.id}`);
+        const orParts: string[] = [
+          `responsavel_id.eq.${profile.id}`,
+          `aprovador_id.eq.${profile.id}`,
+          `avaliado_id.eq.${profile.id}`,
+          `auditor_id.eq.${profile.id}`,
+          `validador_contingencia_id.eq.${profile.id}`,
+          `created_by.eq.${profile.id}`,
+        ];
+        if (meusSetorIds.length > 0) {
+          const setorList = `(${meusSetorIds.join(",")})`;
+          orParts.push(
+            `and(responsavel_id.is.null,setor_executor_id.in.${setorList})`,
+            `and(avaliado_id.is.null,setor_avaliado_id.in.${setorList})`,
+            `and(aprovador_id.is.null,setor_aprovador_id.in.${setorList})`,
+            `and(auditor_id.is.null,setor_auditor_id.in.${setorList})`,
+          );
+        }
+        q = q.or(orParts.join(","));
       }
       const { data, error } = await q.limit(500);
       if (error) throw error;
       return data;
     },
     enabled: !!profile?.id,
-    staleTime: 300000,
-  });
-
-  // Setores do usuário (para visão Setor) — derivado de permissões com escopo team
-  const { getScope } = usePermissions(profile?.id ?? null);
-  const hasSetorScope = getScope("executar_tarefa") === "team";
-  const { data: meusSetorIds = [] } = useQuery({
-    queryKey: ["my_setor_ids", profile?.id],
-    queryFn: async () => {
-      if (!profile?.id) return [];
-      const { data } = await (supabase as any)
-        .from("profile_setores")
-        .select("setor_id")
-        .eq("profile_id", profile.id);
-      return (data || []).map((r: any) => r.setor_id);
-    },
-    enabled: !!profile?.id && hasSetorScope,
     staleTime: 300000,
   });
 

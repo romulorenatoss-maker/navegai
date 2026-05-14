@@ -310,11 +310,16 @@ export function bucketize(
   ];
 
   for (const a of assignments) {
-    const isResp = a.responsavel_id === me;
-    const isAval = a.aprovador_id === me;
-    const isAprov = a.aprovador_id === me;
+    const inSetor = (sid?: string | null) => !!sid && setorSet.has(sid);
+    // Papéis individuais OU por setor (quando *_id é NULL e setor pertence ao usuário)
+    const isResp = a.responsavel_id === me || (a.responsavel_id == null && inSetor(a.setor_executor_id));
+    const isAval = a.avaliado_id === me || (a.avaliado_id == null && inSetor(a.setor_avaliado_id));
+    const isAprov = a.aprovador_id === me || (a.aprovador_id == null && inSetor(a.setor_aprovador_id));
+    const isAuditor = a.auditor_id === me || (a.auditor_id == null && inSetor(a.setor_auditor_id));
     const isCriador = a.created_by === me;
-    const inMySetor = a.setor_id && setorSet.has(a.setor_id);
+    const inMySetor =
+      inSetor(a.setor_executor_id) || inSetor(a.setor_avaliado_id) ||
+      inSetor(a.setor_aprovador_id) || inSetor(a.setor_auditor_id);
 
     // === Executor ===
     if (isResp || isAdmin) {
@@ -385,7 +390,7 @@ export function bucketize(
     // === OPERACIONAL — 5 abas finais (sem duplicar entre abas) ===
     // ============================================================
     const todayIso = new Date().toISOString().slice(0, 10);
-    const hasMyRole = isResp || isAval || isAprov || isCriador || isAdmin;
+    const hasMyRole = isResp || isAval || isAprov || isAuditor || isCriador || isAdmin;
     const slaEstourado = computeSla(a).current.status === "estourado";
     const semMov = isSemMovimento(a);
     const isFinal = FINAL_STATUS_SET.has(a.status);
