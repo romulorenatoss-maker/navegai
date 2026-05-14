@@ -62,6 +62,7 @@ function useCountdown(dataPrevista: string, horarioLimite: string | null) {
 
 export function AssignmentCard({ assignment: a, onClick }: Props) {
   const { profile } = useAuth();
+  const { transition } = useOperationalTransition();
   const snapshot = a.template_snapshot;
   const nome = snapshot?.nome || a.operational_templates?.nome || "Rotina";
   const tipo = snapshot?.tipo_execucao || a.operational_templates?.tipo_execucao;
@@ -78,6 +79,26 @@ export function AssignmentCard({ assignment: a, onClick }: Props) {
 
   const isActive = ["pendente", "em_andamento", "devolvida"].includes(a.status);
   const countdown = useCountdown(a.data_prevista, isActive ? a.horario_limite : null);
+
+  // Botão Iniciar: visível para o executor quando a tarefa está em status que permite iniciar.
+  const isExecutorOuAdmin = !!profile?.id && (a.responsavel_id === profile.id);
+  const canStart = isExecutorOuAdmin && STARTABLE_STATUSES.includes(a.status) && !transition.isPending;
+
+  async function handleStart(e: React.MouseEvent) {
+    e.stopPropagation(); // não abrir o drawer
+    try {
+      const action = a.status === TASK_STATUS.ABERTA ? "aceitar_tarefa" : "iniciar";
+      await transition.mutateAsync({
+        assignmentId: a.id,
+        action,
+        origem: "tarefa_card_iniciar",
+        extraData: { papel_usado: "EXECUTOR" },
+      });
+      toast.success("Tarefa iniciada");
+    } catch (err: any) {
+      toast.error(err?.message || "Não foi possível iniciar a tarefa");
+    }
+  }
 
   // ─── Papel do usuário nesta tarefa ─────────────────────────────────
   const myRole = useMemo<"executor" | "aprovador" | "auditor" | null>(() => {
