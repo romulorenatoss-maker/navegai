@@ -40,7 +40,7 @@ export default function OperationalGestaoPage() {
     queryKey: ["operational_gestao_assignments", periodoInicio, periodoFim],
     queryFn: async () => {
       const { data, error } = await (supabase as any).from("operational_assignments")
-        .select("*, operational_templates(nome, tipo_execucao, setor_id, requer_aprovacao_gestor, bloquear_fechamento_com_contingencia, modo_pontuacao, destino_score, executor_setor_id, avaliador_setor_id, avaliado_setor_id, setores:setores!operational_templates_setor_id_fkey(nome), horario_limite_execucao), profiles!operational_assignments_responsavel_id_fkey(id, nome)")
+        .select("*, operational_templates(nome, tipo_execucao, setor_id, requer_aprovacao_gestor, bloquear_fechamento_com_contingencia, modo_pontuacao, destino_score, executor_setor_id, aprovador_setor_id, avaliado_setor_id, setores:setores!operational_templates_setor_id_fkey(nome), horario_limite_execucao), profiles!operational_assignments_responsavel_id_fkey(id, nome)")
         .gte("data_prevista", periodoInicio)
         .lte("data_prevista", periodoFim)
         .order("data_prevista", { ascending: false });
@@ -205,9 +205,9 @@ export default function OperationalGestaoPage() {
       }
       // Avaliador
       const avdrId = a.avaliador_id;
-      if (avdrId && ["concluida", "aprovada"].includes(a.status) && a.score_avaliador != null) {
+      if (avdrId && ["concluida", "aprovada"].includes(a.status) && a.score_aprovador != null) {
         if (!byUser[avdrId]) byUser[avdrId] = { nome: "—", total: 0, concluidas: 0, scoreExecSum: 0, scoreAvdoSum: 0, scoreAvdrSum: 0, countExec: 0, countAvdo: 0, countAvdr: 0 };
-        byUser[avdrId].scoreAvdrSum += Number(a.score_avaliador);
+        byUser[avdrId].scoreAvdrSum += Number(a.score_aprovador);
         byUser[avdrId].countAvdr++;
       }
     });

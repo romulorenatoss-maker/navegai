@@ -26,7 +26,7 @@ export function useOperationalDashboard(filters: OperationalDashboardFilters) {
       let q = (supabase as any)
         .from("operational_assignments")
         .select(`
-          id, status, data_prevista, inicio_em, fim_em, score_executor, score_avaliado, score_avaliador,
+          id, status, data_prevista, inicio_em, fim_em, score_executor, score_avaliado, score_aprovador,
           score_final_ajustado, template_id, responsavel_id, avaliado_id, avaliador_id,
           setor_executor_id, setor_avaliado_id, rodada_atual,
           template:operational_templates!operational_assignments_template_id_fkey(id, nome)

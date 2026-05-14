@@ -49,7 +49,7 @@ export default function MinhasTarefasTab({ viewAsProfileId }: MinhasTarefasTabPr
           score_avaliado, score_final_ajustado, pontuacao_obtida,
           template_id,
           operational_templates(nome),
-          avaliador:profiles!operational_assignments_avaliador_id_fkey(id, nome)
+          avaliador:profiles!operational_assignments_aprovador_id_fkey(id, nome)
         `)
         .eq("avaliado_id", effectiveProfileId)
         .in("status", COMPLETED_STATUSES)

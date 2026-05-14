@@ -89,7 +89,7 @@ export function useContingencyManagement(filters: ContingencyFilters = {}) {
             template:operational_templates!operational_assignments_template_id_fkey(nome),
             executor:profiles!operational_assignments_responsavel_id_fkey(nome),
             avaliado:profiles!operational_assignments_avaliado_id_fkey(id, nome),
-            avaliador_profile:profiles!operational_assignments_avaliador_id_fkey(id, nome)
+            avaliador_profile:profiles!operational_assignments_aprovador_id_fkey(id, nome)
           )
         `)
         .order("created_at", { ascending: false });
