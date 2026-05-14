@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { STATUS_CONFIG } from "@/modules/tarefas/hooks/tarefas_useScoring";
 import { AssignmentCard } from "@/modules/tarefas/components/tarefas_tarefaCard";
 import { DynamicFieldRenderer, SnapshotField, evaluateVisibility } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
+import { parseAnexoFromDescricao } from "@/modules/tarefas/components/tarefas_tabFormBuilder";
 import { useAssignmentExecution } from "@/modules/tarefas/hooks/tarefas_useAssignmentExecution";
 import { useOperationalTransition } from "@/modules/tarefas/hooks/tarefas_useTransition";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
