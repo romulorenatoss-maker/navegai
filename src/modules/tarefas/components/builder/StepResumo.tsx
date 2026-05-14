@@ -91,7 +91,7 @@ export function StepResumo({
           <dl className="text-xs space-y-1">
             <div className="flex gap-2"><dt className="text-muted-foreground w-32 shrink-0">Seções:</dt><dd>{sections.length}</dd></div>
             <div className="flex gap-2"><dt className="text-muted-foreground w-32 shrink-0">Campos avaliativos:</dt><dd>{fields.length}</dd></div>
-            <div className="flex gap-2"><dt className="text-muted-foreground w-32 shrink-0">Itens checklist (legacy):</dt><dd className="flex items-center gap-1">{checkItems.length} <ListChecks className="w-3.5 h-3.5 text-muted-foreground" /></dd></div>
+            
             <div className="flex gap-2"><dt className="text-muted-foreground w-32 shrink-0">Etapas:</dt><dd>{steps.length}</dd></div>
           </dl>
         </div>
