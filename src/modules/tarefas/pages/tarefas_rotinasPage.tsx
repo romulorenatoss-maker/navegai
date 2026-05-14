@@ -530,17 +530,24 @@ export default function OperationalCadastroPage() {
       permite_conclusao: i.permite_conclusao ?? true,
       permite_aumento_prazo: i.permite_aumento_prazo ?? true,
     })));
-    setValidadorChecks(val.length > 0
-      ? val.map((i: any) => ({
-          tempId: i.tempId || crypto.randomUUID(),
-          pergunta: i.pergunta || "",
-          categoria: i.categoria || "manual",
-          peso: Number(i.peso) || 1,
-          tipo_resposta: i.tipo_resposta || "sim_nao",
-          exige_observacao: !!i.exige_observacao,
-          exige_evidencia: !!i.exige_evidencia,
-        }))
-      : buildDefaultValidadorItems());
+    // Validador: aceita formato novo (AprovadorCheckItemForm) e formato legacy
+    // (ValidadorCheckItemForm com {pergunta, categoria}). Snapshots antigos são
+    // convertidos preservando pergunta/peso/tipo, sem perder histórico.
+    const valNormalized = val.map((i: any) => {
+      if (i.pergunta_padrao) return i; // já no formato novo
+      // legacy: ValidadorCheckItemForm
+      return {
+        ...i,
+        pergunta_padrao: i.pergunta ?? "",
+        field_id: "",
+        origem_pergunta: "manual" as const,
+      };
+    });
+    setValidadorChecks(
+      valNormalized.length > 0
+        ? normalizeAprovadorList(valNormalized)
+        : []
+    );
 
     // Hidrata overrides de penalidades automáticas (se houver no snapshot).
     const ovRaw = (snap?.penalidades_override ?? {}) as any;
