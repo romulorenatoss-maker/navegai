@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,9 +8,10 @@ import { useOperationalTransition } from "@/modules/tarefas/hooks/tarefas_useTra
 
 export interface ApproverAnswerDraft {
   field_id: string;
-  resposta: string; // conforme | nao_conforme | na
+  resposta: string; // conforme | nao_conforme | na | <opção custom>
   observacao: string;
   peso: number;
+  evidencia_url?: string | null;
 }
 
 export function useApprovalFlow(assignmentId: string | null) {
@@ -86,9 +87,29 @@ export function useApprovalFlow(assignmentId: string | null) {
     enabled: !!assignmentId,
   });
 
+  // Hidrata approverAnswers a partir de respostas já salvas
+  // (auto-save persistente: ao reabrir, toggles/observação/anexo já vêm preenchidos).
+  useEffect(() => {
+    if (!existingApprovalAnswers || existingApprovalAnswers.length === 0) return;
+    setApproverAnswers(prev => {
+      const next = { ...prev };
+      for (const a of existingApprovalAnswers as any[]) {
+        if (next[a.field_id]) continue; // não sobrescreve edição local
+        next[a.field_id] = {
+          field_id: a.field_id,
+          resposta: a.resposta ?? "",
+          observacao: a.observacao ?? "",
+          peso: a.peso ?? 1,
+          evidencia_url: a.evidencia_url ?? null,
+        };
+      }
+      return next;
+    });
+  }, [existingApprovalAnswers]);
+
   // Auto-save a single approver answer (upsert)
   const autoSaveApproverAnswer = useMutation({
-    mutationFn: async ({ fieldId, resposta, observacao, peso }: { fieldId: string; resposta: string; observacao?: string; peso?: number }) => {
+    mutationFn: async ({ fieldId, resposta, observacao, peso, evidenciaUrl }: { fieldId: string; resposta: string; observacao?: string; peso?: number; evidenciaUrl?: string | null }) => {
       if (!profile?.id || !assignmentId) throw new Error("Não autenticado");
       const payload: any = {
         assignment_id: assignmentId,
@@ -96,6 +117,7 @@ export function useApprovalFlow(assignmentId: string | null) {
         resposta,
         observacao: observacao || null,
         peso: peso ?? 1,
+        evidencia_url: evidenciaUrl ?? null,
         respondido_por: profile.id,
         respondido_em: new Date().toISOString(),
       };
@@ -149,6 +171,7 @@ export function useApprovalFlow(assignmentId: string | null) {
           resposta: draft.resposta,
           observacao: draft.observacao || null,
           peso: f.aprovador_peso || 1,
+          evidencia_url: draft.evidencia_url ?? null,
           respondido_por: profile.id,
           respondido_em: new Date().toISOString(),
         };
@@ -255,6 +278,72 @@ export function useApprovalFlow(assignmentId: string | null) {
     onError: (e: any) => toast.error(e.message),
   });
 
+  // Cria contingências (planos de ação) consolidadas a partir de NCs do aprovador,
+  // uma por NC, e dispara devolução final ao executor/setor.
+  const criarPlanosAcaoEDevolver = useMutation({
+    mutationFn: async ({ assignment, planos, motivoGeral }: {
+      assignment: any;
+      planos: Array<{
+        field_id: string;
+        field_label: string;
+        descricao_acao: string;
+        prazo_iso: string;
+        responsavel_profile_id?: string | null;
+        criticidade: "baixa" | "media" | "alta";
+      }>;
+      motivoGeral?: string;
+    }) => {
+      if (!profile?.id || !assignmentId) throw new Error("Não autenticado");
+      if (!planos.length) throw new Error("Nenhum plano de ação para registrar.");
+
+      const snapshotFields: SnapshotField[] = assignment.template_snapshot?.fields || [];
+      if (Object.keys(approverAnswers).length > 0) {
+        await saveApproverAnswers.mutateAsync(snapshotFields);
+      }
+
+      for (const p of planos) {
+        await (supabase as any).from("operational_contingencies").insert({
+          assignment_id: assignmentId,
+          origin_field_id: p.field_id || null,
+          descricao: `[${p.field_label}] ${p.descricao_acao}`,
+          plano_acao: p.descricao_acao,
+          prazo_sla: p.prazo_iso,
+          prazo_resolucao: p.prazo_iso,
+          status: "aberta",
+          responsavel_id: p.responsavel_profile_id ?? null,
+          motivo_instrucao: `Criticidade: ${p.criticidade}`,
+        });
+      }
+
+      // 3) Dispara devolução final consolidada
+      await transition.mutateAsync({
+        assignmentId,
+        action: "reprovar_devolver_final",
+        motivo: motivoGeral || `${planos.length} plano(s) de ação registrado(s) pelo aprovador`,
+        origem: "aprovacao_plano_acao_final",
+        extraData: {
+          aprovadorId: profile.id,
+          rodadaAtual: assignment.rodada_atual,
+          total_planos: planos.length,
+        },
+      });
+
+      await (supabase as any).from("operational_execution_logs").insert({
+        assignment_id: assignmentId,
+        acao: "aprovador_devolveu_com_planos_acao",
+        executado_por: profile.id,
+        detalhes: { total_planos: planos.length, rodada: assignment.rodada_atual },
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["operational_aprovacao_assignments"] });
+      qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
+      qc.invalidateQueries({ queryKey: ["operational_approval_contingencies"] });
+      toast.success("Planos de ação registrados e tarefa devolvida.");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   return {
     fieldAnswers,
     fieldReviews,
@@ -268,6 +357,7 @@ export function useApprovalFlow(assignmentId: string | null) {
     pendingContingencies,
     getBlockingReasons,
     finalDecision,
-    isSaving: finalDecision.isPending || saveApproverAnswers.isPending,
+    criarPlanosAcaoEDevolver,
+    isSaving: finalDecision.isPending || saveApproverAnswers.isPending || criarPlanosAcaoEDevolver.isPending,
   };
 }

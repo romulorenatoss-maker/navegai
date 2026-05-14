@@ -24,9 +24,8 @@ const PlanoAcao = lazy(() =>
   import("./tarefas_embeddedPlanoAcaoPanel").then((m) => ({ default: m.EmbeddedPlanoAcaoPanel })),
 );
 // Avaliacao panel removido — fluxo consolidado em Executor (responde) → Aprovador.
-const Aprovacao = lazy(() =>
-  import("./tarefas_embeddedAprovacaoPanel").then((m) => ({ default: m.EmbeddedAprovacaoPanel })),
-);
+// Aprovacao panel removido do router — UI completa renderizada por EmbeddedApprovalPanel
+// diretamente em /tarefas/minhas (resposta executor + anexos + plano de ação final).
 
 export const PANEL_REGISTRY: PanelEntry[] = [
   // === Aceite de prazo (executor ou solicitante decidindo renegociação) ===
@@ -80,14 +79,8 @@ export const PANEL_REGISTRY: PanelEntry[] = [
 
   // === Avaliação técnica REMOVIDA — Executor já responde; próxima etapa = Aprovador ===
 
-  // === Aprovação (wrapper fino do fluxo legado) ===
-  {
-    id: "aprovacao",
-    label: "Aprovação",
-    priority: 10,
-    match: (c) =>
-      c.status === TASK_STATUS.AGUARDANDO_APROVACAO && (c.isAprov || c.isAdmin),
-    requiredAction: "aprovar_tarefa",
-    component: Aprovacao,
-  },
+  // === Aprovação removida do router declarativo ===
+  // Renderizada diretamente por EmbeddedApprovalPanel em /tarefas/minhas
+  // (mostra respostas/anexos do executor, anexo opcional do aprovador,
+  // hidrata auto-save, e abre etapa final de Plano de Ação consolidada).
 ];

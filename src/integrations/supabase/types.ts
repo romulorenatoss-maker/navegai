@@ -1283,6 +1283,7 @@ export type Database = {
         Row: {
           assignment_id: string
           created_at: string
+          evidencia_url: string | null
           field_id: string
           id: string
           observacao: string | null
@@ -1294,6 +1295,7 @@ export type Database = {
         Insert: {
           assignment_id: string
           created_at?: string
+          evidencia_url?: string | null
           field_id: string
           id?: string
           observacao?: string | null
@@ -1305,6 +1307,7 @@ export type Database = {
         Update: {
           assignment_id?: string
           created_at?: string
+          evidencia_url?: string | null
           field_id?: string
           id?: string
           observacao?: string | null
@@ -2511,6 +2514,7 @@ export type Database = {
       }
       operational_template_fields: {
         Row: {
+          aprovador_exige_evidencia: boolean
           aprovador_exige_evidencia_nao: boolean | null
           aprovador_obriga_observacao_nao: boolean | null
           aprovador_pergunta: string | null
@@ -2543,6 +2547,7 @@ export type Database = {
           visivel_para: string[]
         }
         Insert: {
+          aprovador_exige_evidencia?: boolean
           aprovador_exige_evidencia_nao?: boolean | null
           aprovador_obriga_observacao_nao?: boolean | null
           aprovador_pergunta?: string | null
@@ -2575,6 +2580,7 @@ export type Database = {
           visivel_para?: string[]
         }
         Update: {
+          aprovador_exige_evidencia?: boolean
           aprovador_exige_evidencia_nao?: boolean | null
           aprovador_obriga_observacao_nao?: boolean | null
           aprovador_pergunta?: string | null
