@@ -60,7 +60,7 @@ export function normalizeAprovadorItem(
 ): AprovadorCheckItemForm {
   const tipo_resposta: AprovadorTipoResposta =
     raw?.tipo_resposta ?? "conforme_nao_conforme";
-  const fieldReference = raw?.field_id ?? raw?.pergunta_origem_id ?? "";
+  const fieldReference = raw?.field_id || raw?.pergunta_origem_id || "";
 
   // Deduz origem para snapshots antigos:
   //   - respeita origem nova se presente.
