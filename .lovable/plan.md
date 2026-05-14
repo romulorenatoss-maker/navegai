@@ -1,152 +1,183 @@
-## Contexto e premissas
+# Plano — Cadeia de Avaliação por Camadas em /tarefas/rotinas
 
-- A aba 1 (Responsáveis V2) já está aprovada — **não será tocada**.
-- O modal de **Rotinas** (`TarefasBuilderWizard`) passa a ser o **builder oficial único** do sistema.
-- O botão "+" (Tarefa Avulsa) em fase posterior reutilizará este mesmo modal — nada de duplicar agora.
-- Retrocompatibilidade total: tarefas antigas continuam executando via fallback legacy. Sem migração de snapshots existentes.
+Objetivo: evoluir a rotina atual para uma cadeia em 4 camadas (Avaliado, Aprovador, Plano de Ação, Validador), reaproveitando a engine de **Campos Dinâmicos** já existente. **Nenhuma tabela será dropada**, **nenhum snapshot antigo será migrado**, e rotinas legadas continuam funcionando via fallback.
 
-## Arquivos impactados (lista prévia, antes de aplicar)
+---
 
-### Frontend — alterados
-1. `src/modules/tarefas/components/builder/types.ts`
-   - Adicionar steps `checklist_aprovador` e `checklist_validador` em `WIZARD_STEPS` (condicionais).
-   - Novos tipos `AprovadorCheckItemForm` e `ValidadorCheckItemForm`.
-2. `src/modules/tarefas/components/builder/BuilderStepper.tsx`
-   - Suportar steps condicionais (filtrar visualização baseado em flags).
-3. `src/modules/tarefas/components/builder/TarefasBuilderWizard.tsx`
-   - Receber `aprovadorChecks`, `setAprovadorChecks`, `validadorChecks`, `setValidadorChecks`.
-   - Renderizar novas abas condicionais.
-   - Filtrar `WIZARD_STEPS` em runtime conforme presença de Aprovador Final / Validador Final.
-4. `src/modules/tarefas/components/builder/StepChecklistAprovador.tsx` **(novo)**
-   - Lista auto-replicada das perguntas operacionais (cada `field` da aba Campos vira um item).
-   - Permite editar: peso, tipo de resposta (sim/não, conforme/nc, nota), observação, anexo, devolução, plano de ação, conclusão, exige evidência, permite aumento de prazo.
-5. `src/modules/tarefas/components/builder/StepChecklistValidador.tsx` **(novo)**
-   - Itens padrão pré-popados: SLA cumprido, atrasos, devoluções, evidência presente, plano de ação encerrado, conformidade do avaliador, conformidade do aprovador.
-   - Permite adicionar itens manuais; pesos somáveis com total exibido.
-6. `src/modules/tarefas/components/builder/StepResumo.tsx`
-   - Exibir resumo das duas novas abas quando presentes.
-   - Exibir as três notas separadas (Operacional / Governança / Auditoria).
-7. `src/modules/tarefas/pages/tarefas_rotinasPage.tsx`
-   - Estado novo: `aprovadorChecks`, `validadorChecks`.
-   - Persistir em `template_snapshot.checklist_aprovador` e `template_snapshot.checklist_validador` (sem migration; usa colunas snapshot existentes).
-   - Carregar/hidratar ao editar template.
-8. `src/modules/tarefas/types/tarefas_types.ts`
-   - Tipos `AprovadorCheckItem` e `ValidadorCheckItem` exportados.
+## 1. Análise da estrutura atual (já mapeada)
 
-### Frontend — apenas leitura (não alterar nesta etapa)
-- `src/modules/tarefas/components/responsaveis/TarefasResponsaveisV2.tsx` (fonte de verdade de quem é Aprovador Final / Validador Final).
-- `src/modules/tarefas/components/tarefas_tabFormBuilder.tsx` (aba Campos — já tem peso, anexo, N/A, conforme/NC etc.; é a origem da replicação).
-- `src/modules/tarefas/components/tarefas_quickCreateDialog.tsx` (Tarefa Avulsa — **não tocar agora**, será migrado em etapa futura).
+**Builder (`src/modules/tarefas/components/builder/`)**
+- `TarefasBuilderWizard.tsx` (197) — orquestra wizard com 7 etapas: tipo, geral, campos, checklist_aprovador, checklist_validador, fluxo, resumo
+- `BuilderStepper.tsx` — UI do passo a passo (condicional por aprovador/validador)
+- `StepChecklistAprovador.tsx` (175) — replica perguntas de Campos com 3 tipos de resposta (conforme/sim/nota) + flags simples
+- `StepChecklistValidador.tsx` (155) — itens automáticos de auditoria (SLA, atraso, evidência…) + manuais
+- `FieldVisibilityEditor.tsx` — usado em Campos para regras por opção
+- `useBuilderDraft.ts` — autosave do rascunho
+- `types.ts` — `AprovadorCheckItemForm`, `ValidadorCheckItemForm`, defaults
 
-### Backend
-- **Sem migration nesta etapa.** Tudo persistido em `operational_templates.template_snapshot` (jsonb) que já existe.
-- Sem alterações em RLS, sem novas tabelas, sem novas Edge Functions.
+**Persistência atual** (sem migration): tudo dentro de `operational_templates.ada_config_snapshot.checklists.{aprovador,validador}`.
 
-## Fluxo da aba Campos → replicação automática
+**Configurações globais**: `tarefas_pontuacao_config` (singleton) → `TarefasConfigPontuacao.tsx` + service `tarefas_pontuacao_config_service.ts`. Hoje só campos planos: penalidades fora-prazo, contingência, SLA contingência, nota min/max, reprovação.
 
-```text
-Aba Campos (perguntas operacionais)
-        │
-        ├──► (se Aprovador Final marcado)
-        │     Aba Checklist Aprovador
-        │     1 item por pergunta, com:
-        │     - pergunta_padrao = "Aprovador confirma: <label>?"
-        │     - peso, tipo_resposta, exige_evidencia,
-        │       permite_devolucao, gera_plano_acao,
-        │       permite_aumento_prazo
-        │
-        └──► (se Validador Final marcado)
-              Aba Checklist Validador
-              Itens fixos de auditoria + manuais
-              (SLA, atraso, devolução, evidência, plano,
-               conformidade avaliador, conformidade aprovador)
-```
+**Cálculo automático**: trigger `calculate_operational_score_on_complete` já calcula score_executor / score_avaliado / score_avaliador com base em fields, reviews, SLA, contingências, devoluções e penalidades do template. **Não será alterado nesta fase.**
 
-Replicação é **idempotente**: ao editar um field na aba Campos, o item correspondente em Checklist Aprovador é atualizado (label/ordem) sem perder os ajustes locais (peso, tipo, evidência).
+**Engine de perguntas (Campos)**: `operational_template_fields` + `operational_template_sections` + `operational_field_answers` + `operational_field_reviews` — cobrem todos os tipos pedidos (conforme, sim_nao, nota, texto, número, data, hora, seleção, múltipla, foto, arquivo, anexos, regras por opção, evidência, plano de ação, etc.).
 
-## Separação de notas (apenas estrutura/cálculo no payload — UI exibe no Resumo)
+---
 
-```text
-Nota Operacional   →  Avaliado          (perguntas da aba Campos)
-Nota Governança    →  Avaliador/Aprov.  (SLA + aprovação + devolução +
-                                          plano de ação + encerramento +
-                                          conformidade do fluxo)
-Nota Auditoria     →  Validador         (Checklist Validador completo)
-```
+## 2. Princípio diretor
 
-**Regra de consolidação:** se Avaliador e Aprovador forem o mesmo usuário (`profile_id` igual nos blocos da V2), a Nota de Governança é **consolidada** — não soma penalidade duplicada de SLA, mas mantém histórico de eventos separados.
+Em vez de manter `Aprovador`/`Validador` como “checklists simplificados” paralelos, eles vão **reusar exatamente a mesma estrutura de Campos** (subset herdado + perguntas próprias). A persistência continua em `ada_config_snapshot.checklists.{aprovador,validador}` mas o **schema do item passa a ser um superset compatível** com `CheckItemForm` (ou seja: tipo, peso, regras por opção, exige_evidencia, gera_plano_acao, permite_devolucao, permite_conclusao, permite_aumento_prazo, SLA próprio, penalidade própria, ponderável_por_auditor).
 
-## Plano de Ação — preparação (sem RBAC forte ainda)
+Para rotinas antigas: loader detecta itens no formato antigo e converte em memória para o superset (`tipo_resposta` mapeado → `tipo`, defaults para campos novos). Sem migration.
 
-Estrutura preparada no payload:
-- `acoes[]`: { id, descricao, anexos[], observacoes[], historico[], mensagens[], sla_horas, prazo_atual, aumentos_prazo[], encerrado_em, encerrado_por }
-- Devolução: `devolucoes[]` com motivo, anexo, autor, prazo de retorno.
-- Encerramento formal: campo `encerramento` com timestamp, autor, justificativa.
-- **RBAC forte (somente Aprovador Final pode encerrar/aprovar/devolver) será aplicado em etapa futura.** Por ora, todos os papéis podem editar (com auditoria registrada).
+---
 
-## Regras condicionais das abas (resumo)
+## 3. Mudanças no Builder (frontend, escopo localizado)
 
-| Aba                    | Visível quando                                       |
-|------------------------|------------------------------------------------------|
-| Geral                  | sempre                                               |
-| Campos                 | sempre                                               |
-| Checklist (legacy)     | sempre (mantido por retrocompat)                     |
-| Checklist Aprovador    | `responsaveis_multi.aprovadorFinal` tem ≥1 pessoa    |
-| Checklist Validador    | `responsaveis_multi.validadorFinal` tem ≥1 pessoa    |
-| Fluxo                  | sempre                                               |
-| Resumo                 | sempre                                               |
+### 3.1 `types.ts`
+- Estender `AprovadorCheckItemForm` e `ValidadorCheckItemForm` com:
+  - `tipo` completo (conforme, sim_nao, nota, texto, numero, data, hora, selecao, selecao_multipla, foto, arquivo)
+  - `opcoes` + `regras_por_opcao` (mesma forma do Field)
+  - `sla_horas`, `penalidade_atraso`, `penalidade_nao_resposta`, `penalidade_nao_conformidade`
+  - `permite_ponderacao_auditor`, `exige_justificativa_ponderacao`
+  - `permite_aumento_prazo_plano`
+- Manter campos antigos como opcionais (compat).
+- Loader util `normalizeAprovadorItem(raw)` / `normalizeValidadorItem(raw)` para rotinas antigas.
 
-## Retrocompatibilidade garantida
+### 3.2 `StepChecklistAprovador.tsx` — reescrita visual em **7 blocos colapsáveis**
+1. Configuração geral (modo de pontuação, ponderação permitida)
+2. SLA do aprovador (horas + penalidade atraso)
+3. Nota total (peso da camada na composição final)
+4. Perguntas herdadas da execução (auto-replicadas com link visual à pergunta original)
+5. Regras por resposta (reaproveitar `FieldVisibilityEditor` adaptado)
+6. Plano de ação (toggles por item)
+7. Ponderação (permite/exige justificativa)
 
-- `template_snapshot.checklist_aprovador` ausente → execução cai no comportamento atual (sem checklist do aprovador).
-- `template_snapshot.checklist_validador` ausente → idem.
-- `responsaveis_multi` ausente → fallback legacy (`executor_*`, `avaliador_*`, `aprovador_*`, `ada_*`) já implementado nas etapas anteriores.
-- Snapshots antigos não são reescritos.
+Cada item de pergunta mostra: pergunta original (read-only) → pergunta do aprovador (editável) → seletor de tipo completo → peso → SLA → penalidade atraso → toggles (justificativa, evidência, plano_acao, aumento_prazo, ponderavel).
 
-## Detalhes técnicos
+### 3.3 `StepChecklistValidador.tsx` — reorganização em auditoria final
+- Mantém defaults automáticos.
+- Adiciona controle por item: `pode_ponderar_aprovador`, `pode_ponderar_avaliado`, `nota_automatica_sugerida` (read-only no builder), `exige_justificativa_para_alterar`.
+- Visual em 3 grupos: SLA/Atraso, Conformidade, Manual.
 
-- **Tipos novos** (em `types/tarefas_types.ts`):
-  ```ts
-  export interface AprovadorCheckItem {
-    tempId: string;
-    field_id: string;          // referência ao field operacional original
-    pergunta_padrao: string;   // "Aprovador confirma: <label>?"
-    tipo_resposta: "conforme_nao_conforme" | "sim_nao" | "nota";
-    peso: number;
-    exige_observacao: boolean;
-    exige_evidencia: boolean;
-    permite_devolucao: boolean;
-    gera_plano_acao: boolean;
-    permite_conclusao: boolean;
-    permite_aumento_prazo: boolean;
-  }
-  export interface ValidadorCheckItem {
-    tempId: string;
-    pergunta: string;
-    categoria: "sla" | "atraso" | "devolucao" | "evidencia" |
-               "plano_acao" | "conformidade_avaliador" |
-               "conformidade_aprovador" | "manual";
-    peso: number;
-    tipo_resposta: "conforme_nao_conforme" | "sim_nao" | "nota";
-    exige_observacao: boolean;
-    exige_evidencia: boolean;
-  }
-  ```
-- **Replicação**: `useEffect` no `StepChecklistAprovador` sincroniza `aprovadorChecks` com `fields` por `field_id` — adiciona novos, remove órfãos, mantém ajustes locais.
-- **Ordem dos steps**: Geral → Campos → Checklist Aprovador (cond.) → Checklist Validador (cond.) → Checklist (legacy) → Fluxo → Resumo.
+### 3.4 `StepResumo.tsx`
+- Mostrar pesos por camada (Avaliado / Aprovador / Plano / Validador) com soma e validação.
 
-## Entregáveis ao final da execução
+### 3.5 `tarefas_rotinasPage.tsx`
+- `loadFromTemplate`: aplicar normalizers (compat antigos).
+- `save`: serializar superset em `ada_config_snapshot.checklists`.
+- Carregar `tarefas_pontuacao_sla_config` (novo, ver §4) como defaults para snapshot.
 
-- Diff completo dos arquivos listados.
-- Manifest dos arquivos alterados/criados.
-- Rollback: reverter os 8 arquivos listados (restaura comportamento atual).
-- Descrição visual do novo modal (desktop + mobile).
-- Lista de novos campos no payload `template_snapshot`.
-- Lista de regras novas vs. regras legacy mantidas.
+---
 
-## Confirmação solicitada antes de executar
+## 4. Configurações globais — `Pontuação / Notas` → `Pontuação / SLA`
 
-Como há mudança no fluxo do builder (novas abas + payload novo no snapshot), confirmar:
-1. Aprovação para executar com **escopo exatamente como descrito acima** (sem migration, sem RBAC forte ainda).
-2. Posição da aba "Checklist (legacy)" — manter ou ocultar quando ambas as novas existirem? Sugestão: manter sempre por retrocompat, mas posso ocultar se preferir.
-3. Os itens padrão do Validador propostos (SLA, atraso, devolução, evidência, plano, conformidade avaliador, conformidade aprovador) cobrem o que você quer ou faltou algum?
+### 4.1 Migration aditiva (não-destrutiva)
+- **Não dropar** `tarefas_pontuacao_config`. 
+- Adicionar colunas JSONB opcionais: `sla_executor jsonb`, `sla_aprovador jsonb`, `sla_plano_acao jsonb`, `sla_validador jsonb`. Cada uma com `{nota_max, nota_min, sla_horas, penalidade_atraso, penalidade_nao_resposta, penalidade_nao_conformidade, permite_ponderacao, exige_justificativa_ponderacao, gera_plano_acao_auto, permite_reabertura}`.
+- Defaults populados via UPDATE singleton (idempotente).
+
+### 4.2 `TarefasConfigPontuacao.tsx` — renomear título para "Pontuação / SLA" (arquivo mantém nome para evitar quebras de import)
+- 4 abas/blocos colapsáveis: Avaliado, Aprovador, Plano de Ação, Validador.
+- Bloco "Globais (legado)" no topo preservando os campos atuais (ainda lidos por `calculate_operational_score_on_complete`).
+
+### 4.3 `tarefas_pontuacao_config_service.ts`
+- Estender interface com os 4 blocos novos. `getPontuacaoConfig` retorna defaults se colunas ausentes.
+
+### 4.4 Snapshot na rotina
+- `tarefas_rotinasPage.tsx` ao **criar** nova rotina copia `sla_*` para `ada_config_snapshot.sla_camadas`. Edição da config global **não** afeta rotinas existentes.
+
+---
+
+## 5. Validador — modal de auditoria com 3 abas (execução)
+
+Componente novo: `src/modules/tarefas/components/auditoria/ValidadorAuditoriaDialog.tsx` (usado na execução, não no builder).
+- **Aba 1 — Avaliado**: monta a partir de `operational_field_answers` + reviews + contingencies + score_logs (tipo='avaliado'). Read-only com badges de alerta (atraso, evidência faltante, regra quebrada).
+- **Aba 2 — Aprovador**: respostas do aprovador (do checklist_aprovador resolvido), prazo, atraso, ponderações, planos, alertas.
+- **Aba 3 — Auditoria Final**: resumo das notas por camada + ações (manter, alterar, penalidade parcial, remover penalidade c/ justificativa, zerar nota do aprovador, abrir plano para qualquer camada, cancelar, concluir).
+
+Persistência das ponderações: nova tabela `operational_audit_overrides` (camada, nota_automatica, nota_final, motivo, profile_id, created_at, assignment_id). **Aditiva, sem alterar tabelas existentes.**
+
+Hook novo `useAuditoriaFinal.ts`. Serviço novo `tarefas_audit_service.ts`.
+
+---
+
+## 6. Cálculo automático (sem mexer no trigger nesta fase)
+
+- Manter `calculate_operational_score_on_complete` como está (calcula camadas executor/avaliado/avaliador via score_logs).
+- A **camada Plano de Ação** já é capturada pelas penalidades de contingência existentes.
+- A **camada Validador** vira camada de **override** sobre os scores existentes (consumida pela UI de auditoria; trigger não muda agora).
+- Em fase futura: nova função `recalc_with_overrides(assignment_id)` aplicaria `operational_audit_overrides`. Fora deste escopo.
+
+---
+
+## 7. Compatibilidade com rotinas antigas
+
+- Loader detecta `ada_config_snapshot.checklists.aprovador[].tipo_resposta` (formato antigo) e converte para `tipo` superset.
+- Itens sem `sla_horas`/`penalidade_*` recebem defaults da config global no momento do load.
+- Execuções antigas: nenhuma mudança na leitura de `operational_field_answers/reviews`.
+- Trigger DB inalterado.
+
+---
+
+## 8. Arquivos a alterar / criar
+
+### Alterar (frontend)
+- `src/modules/tarefas/components/builder/types.ts`
+- `src/modules/tarefas/components/builder/StepChecklistAprovador.tsx`
+- `src/modules/tarefas/components/builder/StepChecklistValidador.tsx`
+- `src/modules/tarefas/components/builder/StepResumo.tsx`
+- `src/modules/tarefas/pages/tarefas_rotinasPage.tsx` (carga/save com normalizers + snapshot SLA)
+- `src/modules/tarefas/components/configuracoes/TarefasConfigPontuacao.tsx` (4 blocos novos)
+- `src/modules/tarefas/services/tarefas_pontuacao_config_service.ts` (interface estendida)
+
+### Criar
+- `src/modules/tarefas/components/builder/checklistNormalizers.ts`
+- `src/modules/tarefas/components/auditoria/ValidadorAuditoriaDialog.tsx`
+- `src/modules/tarefas/components/auditoria/AbaAvaliado.tsx`
+- `src/modules/tarefas/components/auditoria/AbaAprovador.tsx`
+- `src/modules/tarefas/components/auditoria/AbaAuditoriaFinal.tsx`
+- `src/modules/tarefas/hooks/tarefas_useAuditoriaFinal.ts`
+- `src/modules/tarefas/services/tarefas_audit_service.ts`
+
+### DB (migration aditiva, sem drops)
+- `tarefas_pontuacao_config`: ADD COLUMN `sla_executor jsonb`, `sla_aprovador jsonb`, `sla_plano_acao jsonb`, `sla_validador jsonb` (todas DEFAULT '{}'::jsonb)
+- Nova tabela `operational_audit_overrides` + RLS (admin/aprovador/validador via profile)
+
+---
+
+## 9. Rollback
+
+- Frontend: reverter os 7 arquivos alterados e remover os 7 novos.
+- DB: `DROP TABLE operational_audit_overrides;` + `ALTER TABLE tarefas_pontuacao_config DROP COLUMN sla_executor, sla_aprovador, sla_plano_acao, sla_validador;` (colunas vazias, sem perda).
+- Snapshots de rotinas antigas continuam intactos.
+
+---
+
+## 10. Checklist de validação (após implementação)
+
+Visual:
+- [ ] Builder Aprovador mostra 7 blocos com todos os tipos de resposta
+- [ ] Builder Validador organizado em SLA/Conformidade/Manual
+- [ ] Resumo mostra pesos por camada
+- [ ] Configurações > Pontuação/SLA mostra 4 blocos + legado
+- [ ] Modal Validador (execução) com 3 abas
+
+Funcional:
+- [ ] Rotina antiga abre sem erro (normalizer)
+- [ ] Nova rotina salva snapshot com SLA por camada
+- [ ] Override de auditor persiste em `operational_audit_overrides`
+- [ ] Trigger de score continua funcionando
+
+---
+
+## 11. Fora deste escopo (propor depois)
+
+- Reescrita do trigger de cálculo para consumir overrides
+- Migração de snapshots antigos para novo schema
+- Drop das tabelas `operational_template_check_items` (mantidas vivas)
+
+---
+
+**Aguardando confirmação para iniciar a implementação. Posso também executar em fases (sugerido: Fase A = types+normalizers+migration aditiva; Fase B = Builder Aprovador/Validador/Resumo; Fase C = Config global; Fase D = Modal de auditoria na execução).**
