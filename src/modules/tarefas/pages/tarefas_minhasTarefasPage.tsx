@@ -331,11 +331,7 @@ export default function OperationalExecucaoPage() {
   }, [effectiveFields]);
 
   const openExecution = useCallback((a: any) => {
-    // PR C — AdA: tarefas tipo "avaliacao_avaliador" abrem em rota dedicada
-    if (a?.tipo_assignment === "avaliacao_avaliador") {
-      navigate(`/tarefas/avaliacao-avaliador/${a.id}`);
-      return;
-    }
+    // Fluxo "avaliacao_avaliador" REMOVIDO — Executor já responde diretamente.
     setSelectedAssignment(a);
     setExecDialogOpen(true);
     setShowHistory(false);
