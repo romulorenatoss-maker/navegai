@@ -23,18 +23,13 @@ import {
   type CamadaSlaConfig,
 } from "../../services/tarefas_pontuacao_config_service";
 
-type CamadaKey = "sla_executor" | "sla_aprovador" | "sla_plano_acao" | "sla_validador";
+type CamadaKey = "sla_aprovador" | "sla_plano_acao" | "sla_validador";
 
 const CAMADAS: Array<{ key: CamadaKey; titulo: string; descricao: string }> = [
   {
-    key: "sla_executor",
-    titulo: "Avaliado (Executor)",
-    descricao: "Penalidades aplicadas ao executor da tarefa.",
-  },
-  {
     key: "sla_aprovador",
     titulo: "Aprovador",
-    descricao: "Penalidades aplicadas ao aprovador na revisão da execução.",
+    descricao: "Penalidades aplicadas ao aprovador na revisão da execução. As perguntas avaliativas sobre o Executor (atraso, não conformidade, evidências) são respondidas aqui.",
   },
   {
     key: "sla_plano_acao",
@@ -44,7 +39,7 @@ const CAMADAS: Array<{ key: CamadaKey; titulo: string; descricao: string }> = [
   {
     key: "sla_validador",
     titulo: "Validador (Auditoria)",
-    descricao: "Penalidades aplicadas ao validador / auditor final.",
+    descricao: "Penalidades aplicadas ao validador / auditor final, que audita a atuação do Aprovador.",
   },
 ];
 
