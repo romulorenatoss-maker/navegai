@@ -25,6 +25,7 @@ import {
 } from "./types";
 import { FieldConfigSheet } from "./FieldConfigSheet";
 import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
+import { isAprovadorReplicada, syncAprovadorReplicadasFromFields } from "./checklistNormalizers";
 
 interface Props {
   fields: FieldForm[];
@@ -57,54 +58,7 @@ export function StepChecklistAprovador({ fields, items, setItems }: Props) {
   // - Remove órfãos (replicadas cujo field não existe mais).
   // - Itens AUTO/MANUAL não são tocados.
   useEffect(() => {
-    setItems(prev => {
-      const replicadasPrev = prev.filter(i => i.origem_pergunta === "replicada_avaliado" || (!i.origem_pergunta && i.field_id));
-      const naoReplicadas = prev.filter(i => !replicadasPrev.includes(i));
-      const byField = new Map(replicadasPrev.map(i => [i.field_id, i]));
-
-      // Dedupe de fields apenas por tempId (id estável). Sem dedupe por label.
-      const seenIds = new Set<string>();
-      const uniqueFields = fields
-        .filter(f => {
-          if (!f.tempId || seenIds.has(f.tempId)) return false;
-          seenIds.add(f.tempId);
-          return true;
-        })
-        .sort((a, b) => a.ordem - b.ordem);
-      const fieldIds = new Set(uniqueFields.map(f => f.tempId));
-
-      const replicadasNext: AprovadorCheckItemForm[] = uniqueFields.map(f => {
-        const existing = byField.get(f.tempId);
-        const perguntaEspelhada = `Aprovador confirma: ${f.label || "Pergunta sem nome"}?`;
-        if (existing) {
-          return {
-            ...existing,
-            field_id: f.tempId,
-            field_label: f.label,
-            pergunta_padrao: perguntaEspelhada,
-            origem_pergunta: "replicada_avaliado",
-            pergunta_origem_id: f.tempId,
-          };
-        }
-        return defaultAprovadorCheckItem(f.tempId, f.label || "Pergunta sem nome");
-      });
-
-      const orphans = replicadasPrev.filter(i => !fieldIds.has(i.field_id));
-      const next = [...replicadasNext, ...naoReplicadas];
-
-      // No-op detection
-      if (
-        replicadasNext.length === replicadasPrev.length &&
-        orphans.length === 0 &&
-        replicadasNext.every((n, idx) => {
-          const p = replicadasPrev[idx];
-          return p && p.field_id === n.field_id && p.field_label === n.field_label && p.pergunta_padrao === n.pergunta_padrao;
-        })
-      ) {
-        return prev;
-      }
-      return next;
-    });
+    setItems(prev => syncAprovadorReplicadasFromFields(prev, fields));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fields]);
 
@@ -152,7 +106,7 @@ export function StepChecklistAprovador({ fields, items, setItems }: Props) {
     };
     return items
       .filter(i => {
-        const isReplicada = i.origem_pergunta === "replicada_avaliado" || (!i.origem_pergunta && !!i.field_id);
+        const isReplicada = isAprovadorReplicada(i);
         if (!isReplicada) return true;
         return !!i.field_id && validFieldIds.has(i.field_id);
       })
