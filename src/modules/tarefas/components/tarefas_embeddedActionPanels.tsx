@@ -284,14 +284,17 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   }, [approverFields, flow.approverAnswers, flow.existingApprovalAnswers]);
 
   const irParaPlano = () => {
-    // Garante registros default no formulário
+    // Garante registros default no formulário (com prazo padrão pré-aplicado)
     const next: typeof planos = { ...planos };
+    const defaultPrazo = computeDefaultPrazo();
     for (const f of naoConformes) {
       if (!next[f.id]) {
         const draft = flow.approverAnswers[f.id];
         next[f.id] = {
           descricao_acao: draft?.observacao ?? "",
-          prazo: "",
+          prazo: defaultPrazo,
+          prazo_padrao: defaultPrazo,
+          justificativa_alteracao_prazo: "",
           criticidade: "media",
         };
       }
@@ -310,16 +313,22 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   const submeterPlanos = async () => {
     const lista = naoConformes.map(f => {
       const p = planos[f.id];
+      const prazoAlterado = !!(p?.prazo && p?.prazo_padrao && p.prazo !== p.prazo_padrao);
       return {
         field_id: f.id,
         field_label: f.label,
         descricao_acao: p?.descricao_acao?.trim() || "",
         prazo_iso: p?.prazo ? new Date(p.prazo).toISOString() : "",
-        criticidade: p?.criticidade || "media",
+        prazo_padrao_iso: p?.prazo_padrao ? new Date(p.prazo_padrao).toISOString() : null,
+        prazo_alterado: prazoAlterado,
+        justificativa_alteracao_prazo: prazoAlterado ? (p?.justificativa_alteracao_prazo?.trim() || "") : null,
+        criticidade: p?.criticidade || "media" as const,
       };
     });
-    const invalido = lista.find(p => !p.descricao_acao || !p.prazo_iso);
-    if (invalido) { toast.error(`Preencha descrição e prazo para "${invalido.field_label}".`); return; }
+    const invalidoBasico = lista.find(p => !p.descricao_acao || !p.prazo_iso);
+    if (invalidoBasico) { toast.error(`Preencha descrição e prazo para "${invalidoBasico.field_label}".`); return; }
+    const invalidoJust = lista.find(p => p.prazo_alterado && !p.justificativa_alteracao_prazo);
+    if (invalidoJust) { toast.error(`Justifique a alteração do prazo padrão em "${invalidoJust.field_label}".`); return; }
     try {
       await flow.criarPlanosAcaoEDevolver.mutateAsync({ assignment, planos: lista, motivoGeral: motivoFinal });
       onClose();
