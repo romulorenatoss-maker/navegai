@@ -10,6 +10,8 @@ import type {
   CamadaTipoResposta,
   ValidadorCheckItemForm,
 } from "./types";
+import { defaultAprovadorCheckItem } from "./types";
+import type { FieldForm } from "@/modules/tarefas/types/tarefas_types";
 
 const ensureId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -29,7 +31,7 @@ const normalizeKeyText = (value: unknown) =>
   String(value ?? "").trim().toLocaleLowerCase("pt-BR");
 
 const checklistUniqueKey = (item: AprovadorCheckItemForm) => {
-  if (item.origem_pergunta === "replicada_avaliado") {
+  if (isAprovadorReplicada(item)) {
     // Replicadas são identificadas EXCLUSIVAMENTE pelo field_id (id estável do Avaliado).
     // Sem fallback para label/pergunta_origem_id — evita falsos pares e órfãos persistidos.
     return `rep:${item.field_id}`;
@@ -39,6 +41,9 @@ const checklistUniqueKey = (item: AprovadorCheckItemForm) => {
   }
   return `manual:${item.tempId}`;
 };
+
+export const isAprovadorReplicada = (item: Pick<AprovadorCheckItemForm, "origem_pergunta" | "field_id" | "pergunta_origem_id">) =>
+  item.origem_pergunta === "replicada_avaliado" || Boolean(item.field_id || item.pergunta_origem_id);
 
 export interface CamadaSlaDefaults {
   sla_horas?: number;
@@ -55,6 +60,7 @@ export function normalizeAprovadorItem(
 ): AprovadorCheckItemForm {
   const tipo_resposta: AprovadorTipoResposta =
     raw?.tipo_resposta ?? "conforme_nao_conforme";
+  const fieldReference = raw?.field_id ?? raw?.pergunta_origem_id ?? "";
 
   // Deduz origem para snapshots antigos:
   //   - respeita origem nova se presente.
@@ -66,14 +72,14 @@ export function normalizeAprovadorItem(
     if (raw?.origem_pergunta === "manual" && typeof raw?.config_global_origem_id === "string" && raw.config_global_origem_id.startsWith("val-man-")) {
       return "replicada_padrao_manual";
     }
+    if (fieldReference) return "replicada_avaliado";
     if (raw?.origem_pergunta) return raw.origem_pergunta as AprovadorOrigem;
-    if (raw?.field_id) return "replicada_avaliado";
     return "manual";
   })();
 
   return {
     tempId: raw?.tempId ?? ensureId(),
-    field_id: raw?.field_id ?? "",
+    field_id: origem_pergunta === "replicada_avaliado" ? fieldReference : (raw?.field_id ?? ""),
     field_label: raw?.field_label,
     pergunta_padrao: raw?.pergunta_padrao ?? "",
     tipo_resposta,
@@ -100,7 +106,7 @@ export function normalizeAprovadorItem(
     instrucao_url: raw?.instrucao_url,
     instrucao_tipo: raw?.instrucao_tipo,
     origem_pergunta,
-    pergunta_origem_id: raw?.pergunta_origem_id ?? (origem_pergunta === "replicada_avaliado" ? raw?.field_id : undefined),
+    pergunta_origem_id: origem_pergunta === "replicada_avaliado" ? fieldReference : raw?.pergunta_origem_id,
     config_global_origem_id: raw?.config_global_origem_id,
     metrica_calculo: raw?.metrica_calculo,
     ativo: raw?.ativo ?? true,
