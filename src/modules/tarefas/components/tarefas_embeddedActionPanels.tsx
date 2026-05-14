@@ -732,12 +732,60 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
     catch (e: any) { toast.error(e.message); }
   };
 
+  // Alertas/anormalidades para o auditor revisar
+  const approvalAnswers = (flow.approvalAnswers || []) as any[];
+  const planosComPrazoAlterado = approvalAnswers.filter(a => a.flag_prazo_alterado);
+  const atrasos = approvalAnswers.filter(a => a.resolucao_atrasada);
+  const fieldById = (id: string) => fields.find((f: any) => f.id === id);
+  const slaEtapa = !!assignment?.flag_sla_etapa_estourado;
+  const reincidencia = !!assignment?.flag_reincidencia_atraso;
+  const temAlertas = planosComPrazoAlterado.length > 0 || atrasos.length > 0 || slaEtapa || reincidencia;
+
   return (
     <div className="space-y-3">
       <div className="bg-primary/5 border border-primary/30 rounded-lg p-3 flex items-start gap-2">
         <ShieldCheck className="w-4 h-4 text-primary shrink-0 mt-0.5" />
         <div className="text-xs text-foreground"><strong>Modo Auditor.</strong> Responda as perguntas de auditoria configuradas no template.</div>
       </div>
+
+      {temAlertas && (
+        <div className="border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 rounded-lg p-3 space-y-2">
+          <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
+            <AlertTriangle className="w-4 h-4" />
+            <strong className="text-xs uppercase tracking-wider">Anormalidades detectadas</strong>
+          </div>
+          {reincidencia && (
+            <div className="text-xs text-red-700 font-semibold bg-red-50 border border-red-200 rounded px-2 py-1">
+              ⚠ Reincidência de atraso em plano de ação
+            </div>
+          )}
+          {slaEtapa && (
+            <div className="text-xs text-amber-800">
+              <strong>SLA da etapa estourado.</strong>
+              {assignment?.justificativa_sla_etapa && <> Justificativa: <em>{assignment.justificativa_sla_etapa}</em></>}
+            </div>
+          )}
+          {planosComPrazoAlterado.map((a) => {
+            const f = fieldById(a.field_id);
+            return (
+              <div key={`pa-${a.id}`} className="text-xs text-amber-800 border-t border-amber-200 pt-1">
+                <strong>Prazo alterado pelo aprovador</strong> em "{f?.label || a.field_id}".
+                {a.justificativa_alteracao_prazo && <> Justificativa: <em>{a.justificativa_alteracao_prazo}</em></>}
+              </div>
+            );
+          })}
+          {atrasos.map((a) => {
+            const f = fieldById(a.field_id);
+            return (
+              <div key={`at-${a.id}`} className="text-xs text-red-800 border-t border-amber-200 pt-1">
+                <strong>Atraso na execução do plano</strong> em "{f?.label || a.field_id}".
+                {a.plano_acao_prazo && <> Prazo: {new Date(a.plano_acao_prazo).toLocaleString("pt-BR")} → resolvido: {a.resolvido_em ? new Date(a.resolvido_em).toLocaleString("pt-BR") : "—"}.</>}
+                {a.justificativa_atraso && <> Justificativa do executor: <em>{a.justificativa_atraso}</em></>}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {auditorFields.length === 0 ? (
         <p className="text-xs text-muted-foreground text-center py-4">Nenhuma pergunta de auditoria configurada neste template.</p>
