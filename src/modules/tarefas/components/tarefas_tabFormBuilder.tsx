@@ -493,8 +493,6 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                                               title="Nota desta pergunta"
                                               aria-label="Nota"
                                             />
-                                            {field.gera_contingencia && <span className="text-[10px] px-1.5 py-0.5 rounded border border-orange-200 bg-orange-100 text-orange-700">Conting.</span>}
-                                            {field.aprovador_verificar && <span className="text-[10px] px-1.5 py-0.5 rounded border border-primary/30 bg-primary/10 text-primary">Aprovador</span>}
 
                                             {field.instrucao_url ? (
                                               <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 text-primary" title="Visualizar anexo de instrução"
