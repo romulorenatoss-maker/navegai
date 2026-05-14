@@ -28,7 +28,7 @@ export default function OperationalCadastroPage() {
   const [fields, setFields] = useState<FieldForm[]>([]);
   const [steps, setSteps] = useState<StepForm[]>([]);
   const [aprovadorChecks, setAprovadorChecks] = useState<AprovadorCheckItemForm[]>([]);
-  const [validadorChecks, setValidadorChecks] = useState<ValidadorCheckItemForm[]>([]);
+  const [validadorChecks, setValidadorChecks] = useState<AprovadorCheckItemForm[]>([]);
   const [penalidadesOverride, setPenalidadesOverride] = useState<PenalidadesOverrideMap>({});
   const [activeTab, setActiveTab] = useState("geral");
   const [filterExecutor, setFilterExecutor] = useState("__all");
