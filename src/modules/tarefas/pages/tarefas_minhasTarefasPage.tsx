@@ -445,7 +445,16 @@ export default function OperationalExecucaoPage() {
     }
   };
 
-  const isOwner = selectedAssignment?.responsavel_id === profile?.id;
+  // Owner: dono individual OU, quando setorizada (responsavel_id NULL),
+  // qualquer membro ativo do setor executor pode preencher/concluir.
+  const isOwner = !!selectedAssignment && (
+    selectedAssignment.responsavel_id === profile?.id ||
+    (
+      selectedAssignment.responsavel_id == null &&
+      !!selectedAssignment.setor_executor_id &&
+      meusSetorIds.includes(selectedAssignment.setor_executor_id)
+    )
+  );
   const isAvaliado = selectedAssignment?.avaliado_id === profile?.id;
   const isAdminEditing = isAdmin && selectedAssignment && !["nao_executada"].includes(selectedAssignment.status);
   const isEditable = selectedAssignment && (
