@@ -509,6 +509,25 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                     <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Salvo</span>
                   )}
                 </div>
+                {/* Histórico: devoluções anteriores desta pergunta */}
+                {(() => {
+                  const devolucoes = (flow.fieldReviews as any[]).filter(
+                    (r: any) => r.field_id === f.id && r.devolvido === true
+                  );
+                  if (devolucoes.length === 0) return null;
+                  return (
+                    <div className="rounded-md border border-orange-200 bg-orange-50 dark:bg-orange-950/20 p-2 text-[11px] text-orange-800 dark:text-orange-300">
+                      <div className="font-semibold mb-0.5">
+                        Devolvida {devolucoes.length}x ao executor
+                      </div>
+                      {devolucoes.slice(0, 2).map((d: any) => (
+                        <div key={d.id} className="opacity-80">
+                          Rodada {d.rodada}: {d.motivo_devolucao || d.observacao || "—"}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
 
                 {/* Resposta do executor (read-only) */}
                 <div className="rounded-md border border-border/60 bg-muted/40 p-2 space-y-1">
