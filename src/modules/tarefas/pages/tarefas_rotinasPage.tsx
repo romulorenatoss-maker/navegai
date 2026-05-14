@@ -402,7 +402,11 @@ export default function OperationalCadastroPage() {
     setSections([]);
     setFields([]);
     setSteps([]);
-    setAprovadorChecks([]);
+    // Hidrata aba Aprovador com pacote padrão da config global (apenas em criação).
+    const pacote = pontuacaoConfig?.aprovador_pacote_padrao ?? [];
+    setAprovadorChecks(
+      pacote.filter(p => p.ativo !== false).map(p => buildAprovadorAutomatico(p))
+    );
     setValidadorChecks(buildDefaultValidadorItems());
     setPenalidadesOverride({});
     setActiveTab("geral");
