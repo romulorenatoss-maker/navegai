@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { TemplateForm, SectionForm, FieldForm, StepForm } from "@/modules/tarefas/types/tarefas_types";
+import type { AprovadorCheckItemForm } from "./types";
 
 const PREFIX = "tarefas_builder_draft_v1::";
 const DEBOUNCE_MS = 800;
@@ -11,6 +12,8 @@ export interface BuilderDraftPayload {
   sections: SectionForm[];
   fields: FieldForm[];
   steps: StepForm[];
+  aprovadorChecks?: AprovadorCheckItemForm[];
+  validadorChecks?: AprovadorCheckItemForm[];
 }
 
 export const draftKey = (templateId: string | null) =>
