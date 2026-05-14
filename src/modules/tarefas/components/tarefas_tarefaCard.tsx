@@ -1,8 +1,20 @@
 import { useState, useEffect, useMemo } from "react";
-import { Clock, ChevronRight, AlertTriangle, RotateCcw, CheckCircle2, Timer, TimerOff, ClipboardCheck } from "lucide-react";
+import { Clock, ChevronRight, AlertTriangle, RotateCcw, CheckCircle2, Timer, TimerOff, ClipboardCheck, Play } from "lucide-react";
 import { STATUS_CONFIG, TIPO_EXECUCAO_LABELS } from "@/modules/tarefas/hooks/tarefas_useScoring";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOperationalTransition } from "@/modules/tarefas/hooks/tarefas_useTransition";
+import { TASK_STATUS } from "@/modules/tarefas/services/tarefas_statusConstants";
+import { toast } from "sonner";
+
+const STARTABLE_STATUSES: string[] = [
+  TASK_STATUS.ABERTA,
+  TASK_STATUS.PENDENTE,
+  TASK_STATUS.DEVOLVIDA,
+  TASK_STATUS.REABERTA,
+  TASK_STATUS.EM_PLANO_ACAO,
+];
 
 interface Props {
   assignment: any;
