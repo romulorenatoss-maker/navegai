@@ -186,7 +186,24 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   const flow = useApprovalFlow(assignment?.id || null);
   const [step, setStep] = useState<"perguntas" | "plano">("perguntas");
   const [motivoFinal, setMotivoFinal] = useState("");
-  const [planos, setPlanos] = useState<Record<string, { descricao_acao: string; prazo: string; criticidade: "baixa" | "media" | "alta" }>>({});
+  const prazoPadraoHoras: number = Number(
+    assignment?.template_snapshot?.prazo_plano_acao_padrao_horas
+    ?? assignment?.prazo_plano_acao_padrao_horas
+    ?? 24
+  );
+  const computeDefaultPrazo = () => {
+    const d = new Date(Date.now() + prazoPadraoHoras * 3600 * 1000);
+    // datetime-local precisa formato YYYY-MM-DDTHH:mm
+    const pad = (n: number) => n.toString().padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+  const [planos, setPlanos] = useState<Record<string, {
+    descricao_acao: string;
+    prazo: string;
+    prazo_padrao: string;
+    justificativa_alteracao_prazo: string;
+    criticidade: "baixa" | "media" | "alta";
+  }>>({});
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
   const saveTimers = useRef<Record<string, any>>({});
 
