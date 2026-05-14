@@ -145,6 +145,7 @@ export default function OperationalExecucaoPage() {
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
   const [execDialogOpen, setExecDialogOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"registro" | "aprovacao" | "auditor">("registro");
   const [filterResponsavel, setFilterResponsavel] = useState<string>(profile?.id || "__all");
   const [searchTerm, setSearchTerm] = useState("");
   const today = new Date().toISOString().slice(0, 10);
