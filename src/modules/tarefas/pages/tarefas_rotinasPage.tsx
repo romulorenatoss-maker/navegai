@@ -28,18 +28,32 @@ const fieldDuplicateKey = (field: FieldForm) => JSON.stringify([
 
 const dedupeLoadedFields = (loadedFields: FieldForm[], referencedFieldIds: Set<string>) => {
   const byKey = new Map<string, FieldForm>();
+  const deduped: FieldForm[] = [];
   for (const field of loadedFields) {
     const key = fieldDuplicateKey(field);
     const existing = byKey.get(key);
     if (!existing) {
       byKey.set(key, field);
+      deduped.push(field);
+      continue;
+    }
+    const bothHaveDifferentSections = !!existing.sectionTempId && !!field.sectionTempId && existing.sectionTempId !== field.sectionTempId;
+    if (bothHaveDifferentSections) {
+      deduped.push(field);
       continue;
     }
     const existingIsReferenced = !!existing.id && referencedFieldIds.has(existing.id);
     const fieldIsReferenced = !!field.id && referencedFieldIds.has(field.id);
-    if (!existingIsReferenced && fieldIsReferenced) byKey.set(key, field);
+    const shouldReplace =
+      (!existingIsReferenced && fieldIsReferenced) ||
+      (!existing.sectionTempId && !!field.sectionTempId);
+    if (shouldReplace) {
+      const idx = deduped.findIndex(f => f.tempId === existing.tempId);
+      if (idx >= 0) deduped[idx] = field;
+      byKey.set(key, field);
+    }
   }
-  return Array.from(byKey.values()).sort((a, b) => a.ordem - b.ordem);
+  return deduped.sort((a, b) => a.ordem - b.ordem);
 };
 
 const sanitizeAprovadorChecks = (
