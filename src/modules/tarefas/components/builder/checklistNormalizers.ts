@@ -30,7 +30,9 @@ const normalizeKeyText = (value: unknown) =>
 
 const checklistUniqueKey = (item: AprovadorCheckItemForm) => {
   if (item.origem_pergunta === "replicada_avaliado") {
-    return `rep:${item.field_id || item.pergunta_origem_id || normalizeKeyText(item.field_label || item.pergunta_padrao)}`;
+    // Replicadas são identificadas EXCLUSIVAMENTE pelo field_id (id estável do Avaliado).
+    // Sem fallback para label/pergunta_origem_id — evita falsos pares e órfãos persistidos.
+    return `rep:${item.field_id}`;
   }
   if (item.config_global_origem_id) {
     return `pkg:${item.config_global_origem_id}`;
