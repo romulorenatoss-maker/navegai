@@ -317,7 +317,11 @@ export default function OperationalCadastroPage() {
         pontuacaoConfig?.aprovador_pacote_padrao,
         form.habilitar_perguntas_automaticas,
       );
-      const activeAvaliadorFieldIds = fields.map(f => f.id ?? f.tempId).filter(Boolean);
+      const activeAvaliadorFields = fields.map(f => ({
+        id: f.id ?? null,
+        key: fieldDuplicateKey(f),
+      }));
+      const activeAvaliadorFieldIds = activeAvaliadorFields.map(f => f.id).filter(Boolean);
       const adaSnapshotBase = (((form as any).ada_config_snapshot ?? {}) as any);
       
       const payload: any = {
@@ -362,6 +366,7 @@ export default function OperationalCadastroPage() {
           ...adaSnapshotBase,
           checklists: {
             ...((adaSnapshotBase.checklists ?? {}) as any),
+            avaliado_fields: activeAvaliadorFields,
             avaliado_field_ids: activeAvaliadorFieldIds,
             aprovador: aprovadorSnapshot,
             validador: validadorChecks,
