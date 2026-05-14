@@ -88,7 +88,10 @@ export function StepChecklistValidador({ items, setItems }: Props) {
     return [...items].sort((a, b) => ord(a) - ord(b));
   }, [items]);
 
-  const totalPeso = useMemo(() => items.reduce((s, i) => s + (Number(i.peso) || 0), 0), [items]);
+  const totalPeso = useMemo(
+    () => items.filter(i => i.ativo !== false).reduce((s, i) => s + (Number(i.peso) || 0), 0),
+    [items],
+  );
   const editing = items.find(i => i.tempId === editingTempId) ?? null;
 
   const updateItem = (tempId: string, patch: Partial<AprovadorCheckItemForm>) => {
