@@ -39,8 +39,12 @@ const normalizeTextKey = (value: unknown) =>
     .toLowerCase()
     .trim();
 
-const getCheckItemKey = (item: any) =>
-  item?.field_id || item?.pergunta_origem_id || normalizeTextKey(item?.field_label || item?.pergunta_padrao);
+const getCheckItemKeys = (item: any) => [
+  item?.field_id,
+  item?.pergunta_origem_id,
+  normalizeTextKey(item?.field_label),
+  normalizeTextKey(item?.pergunta_padrao),
+].filter(Boolean) as string[];
 
 const applyChecklistConfigToFields = (fields: SnapshotField[], snapshot: any, type: "aprovador" | "auditor") => {
   const list = snapshot?.ada_config_snapshot?.checklists?.[type === "aprovador" ? "aprovador" : "validador"];
@@ -48,8 +52,7 @@ const applyChecklistConfigToFields = (fields: SnapshotField[], snapshot: any, ty
   const byKey = new Map<string, any>();
   for (const item of list) {
     if (item?.ativo === false) continue;
-    const key = getCheckItemKey(item);
-    if (key) byKey.set(key, item);
+    for (const key of getCheckItemKeys(item)) byKey.set(key, item);
   }
   return fields.map((field: any) => {
     const item = byKey.get(field.id) || byKey.get(normalizeTextKey(field.label));
