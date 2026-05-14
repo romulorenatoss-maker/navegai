@@ -40,6 +40,9 @@ export interface SnapshotField {
   visivel_para: string[];
   editavel_por: string[];
   section_id?: string;
+  // Instrução visual (referência para responder a pergunta)
+  instrucao_url?: string;
+  instrucao_tipo?: string;
   // Approver review fields
   aprovador_verificar?: boolean;
   aprovador_pergunta?: string;
