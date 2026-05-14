@@ -143,6 +143,8 @@ export const normalizeAprovadorList = (raw: any[] | undefined, defaults?: Camada
   return raw
     .map(r => normalizeAprovadorItem(r, defaults))
     .filter(item => {
+      // Descarta replicadas sem field_id — sempre órfã.
+      if (item.origem_pergunta === "replicada_avaliado" && !item.field_id) return false;
       const key = checklistUniqueKey(item);
       if (seen.has(key)) return false;
       seen.add(key);
