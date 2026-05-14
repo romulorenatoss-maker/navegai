@@ -554,14 +554,22 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
         </Droppable>
       </DragDropContext>
 
-      {fields.length > 0 && (
-        <div className="flex items-center justify-end gap-2 mt-2 px-3 py-2 bg-muted/40 border border-border rounded-md">
-          <span className="text-xs text-muted-foreground">Total de notas (Avaliado):</span>
-          <span className="text-sm font-semibold text-foreground font-tabular">
-            {fields.reduce((a, f) => a + (Number(f.peso) || 0), 0)} pts
-          </span>
-        </div>
-      )}
+      {(sections.length > 0 || fields.length > 0) && (() => {
+        const total = sections.reduce((acc, s) => {
+          const sFields = fields.filter(f => f.sectionTempId === s.tempId);
+          // Etapa-pergunta (0 ou 1 campo, não promovida a formulário): usa nota da própria etapa.
+          const isPergunta = !formularioForced.has(s.tempId) && sFields.length <= 1;
+          return acc + (isPergunta
+            ? (Number(s.peso) || 0)
+            : sFields.reduce((a, f) => a + (Number(f.peso) || 0), 0));
+        }, 0);
+        return (
+          <div className="flex items-center justify-end gap-2 mt-2 px-3 py-2 bg-muted/40 border border-border rounded-md">
+            <span className="text-xs text-muted-foreground">Total de notas (Avaliado):</span>
+            <span className="text-sm font-semibold text-foreground font-tabular">{total} pts</span>
+          </div>
+        );
+      })()}
 
       {editingField && (
         <FieldDetailDialog
