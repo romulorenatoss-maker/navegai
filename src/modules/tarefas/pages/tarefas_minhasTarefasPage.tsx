@@ -691,33 +691,7 @@ export default function OperationalExecucaoPage() {
           </AccordionSection>
 
           <AccordionSection
-            title="Em Andamento"
-            count={opLists.emAndamento.length}
-            icon={<Activity className="w-4 h-4" style={{ color: "#3b82f6" }} />}
-            borderColor="#3b82f6"
-            badgeBg="bg-blue-500/15"
-            badgeText="text-blue-700 dark:text-blue-400"
-            isOpen={openGroup === "emAndamento"}
-            onToggle={() => setOpenGroup(openGroup === "emAndamento" ? null : "emAndamento")}
-          >
-            {listOrEmpty(opLists.emAndamento, openExecution, "Nada em andamento.")}
-          </AccordionSection>
-
-          <AccordionSection
-            title="Aguardando Você"
-            count={opLists.aguardandoVoce.length}
-            icon={<Hourglass className="w-4 h-4" style={{ color: "#8b5cf6" }} />}
-            borderColor="#8b5cf6"
-            badgeBg="bg-violet-500/15"
-            badgeText="text-violet-700 dark:text-violet-400"
-            isOpen={openGroup === "aguardandoVoce"}
-            onToggle={() => setOpenGroup(openGroup === "aguardandoVoce" ? null : "aguardandoVoce")}
-          >
-            {listOrEmpty(opLists.aguardandoVoce, openExecution, "Nada aguardando sua ação.")}
-          </AccordionSection>
-
-          <AccordionSection
-            title="Críticas"
+            title="Crítico"
             count={opLists.criticas.length}
             icon={<AlertTriangle className="w-4 h-4" style={{ color: "#dc2626" }} />}
             borderColor="#dc2626"
@@ -727,6 +701,32 @@ export default function OperationalExecucaoPage() {
             onToggle={() => setOpenGroup(openGroup === "criticas" ? null : "criticas")}
           >
             {listOrEmpty(opLists.criticas, openExecution, "Nada em estado crítico.")}
+          </AccordionSection>
+
+          <AccordionSection
+            title="Aguardando Aprovação"
+            count={opLists.aguardandoAprovacao.length}
+            icon={<Hourglass className="w-4 h-4" style={{ color: "#8b5cf6" }} />}
+            borderColor="#8b5cf6"
+            badgeBg="bg-violet-500/15"
+            badgeText="text-violet-700 dark:text-violet-400"
+            isOpen={openGroup === "aguardandoAprovacao"}
+            onToggle={() => setOpenGroup(openGroup === "aguardandoAprovacao" ? null : "aguardandoAprovacao")}
+          >
+            {listOrEmpty(opLists.aguardandoAprovacao, openExecution, "Nada aguardando aprovação.")}
+          </AccordionSection>
+
+          <AccordionSection
+            title="Aguardando Auditoria"
+            count={opLists.aguardandoAuditoria.length}
+            icon={<Eye className="w-4 h-4" style={{ color: "#0ea5e9" }} />}
+            borderColor="#0ea5e9"
+            badgeBg="bg-sky-500/15"
+            badgeText="text-sky-700 dark:text-sky-400"
+            isOpen={openGroup === "aguardandoAuditoria"}
+            onToggle={() => setOpenGroup(openGroup === "aguardandoAuditoria" ? null : "aguardandoAuditoria")}
+          >
+            {listOrEmpty(opLists.aguardandoAuditoria, openExecution, "Nada aguardando auditoria.")}
           </AccordionSection>
 
           <AccordionSection
@@ -740,6 +740,19 @@ export default function OperationalExecucaoPage() {
             onToggle={() => setOpenGroup(openGroup === "concluidas" ? null : "concluidas")}
           >
             {listOrEmpty(opLists.concluidas, openExecution, "Nenhuma tarefa concluída.")}
+          </AccordionSection>
+
+          <AccordionSection
+            title="Todas"
+            count={opLists.todas.length}
+            icon={<ListTodo className="w-4 h-4" style={{ color: "#64748b" }} />}
+            borderColor="#64748b"
+            badgeBg="bg-slate-500/15"
+            badgeText="text-slate-700 dark:text-slate-400"
+            isOpen={openGroup === "todas"}
+            onToggle={() => setOpenGroup(openGroup === "todas" ? null : "todas")}
+          >
+            {listOrEmpty(opLists.todas, openExecution, "Nenhuma tarefa visível para você.")}
           </AccordionSection>
         </div>
       )}
