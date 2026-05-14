@@ -63,6 +63,7 @@ export type AprovadorTipoResposta = "conforme_nao_conforme" | "sim_nao" | "nota"
 export type CamadaTipoResposta =
   | "conforme_nao_conforme"
   | "sim_nao"
+  | "excelente_bom_ruim"
   | "nota"
   | "texto"
   | "numero"
