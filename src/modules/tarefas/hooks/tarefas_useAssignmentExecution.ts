@@ -339,19 +339,23 @@ export function useAssignmentExecution(assignmentId: string | null) {
       // Sempre buscar regras vivas do template para refletir edições posteriores
       // do template em tarefas em andamento (snapshot pode estar desatualizado).
       let liveFieldRulesMap: Record<string, any[]> = {};
-      let liveFieldByLabel: Record<string, any[]> = {};
+      let liveFieldByLabelSection: Record<string, any[]> = {};
+      let liveFieldByLabelOnly: Record<string, any[]> = {};
       if (assignment.template_id) {
         const { data: liveFields } = await (supabase as any)
           .from("operational_template_fields")
           .select("id, label, section_id, opcoes_regras")
           .eq("template_id", assignment.template_id);
         if (liveFields) {
+          const better = (a: any[] | undefined, b: any[]) =>
+            (Array.isArray(a) && a.length > 0) ? a : b;
           for (const lf of liveFields) {
-            if (lf.opcoes_regras) {
-              liveFieldRulesMap[lf.id] = lf.opcoes_regras;
-              const altKey = `${lf.section_id || ""}|${(lf.label || "").trim().toLowerCase()}`;
-              liveFieldByLabel[altKey] = lf.opcoes_regras;
-            }
+            if (!Array.isArray(lf.opcoes_regras) || lf.opcoes_regras.length === 0) continue;
+            liveFieldRulesMap[lf.id] = better(liveFieldRulesMap[lf.id], lf.opcoes_regras);
+            const sKey = `${lf.section_id || ""}|${(lf.label || "").trim().toLowerCase()}`;
+            liveFieldByLabelSection[sKey] = better(liveFieldByLabelSection[sKey], lf.opcoes_regras);
+            const lKey = (lf.label || "").trim().toLowerCase();
+            liveFieldByLabelOnly[lKey] = better(liveFieldByLabelOnly[lKey], lf.opcoes_regras);
           }
         }
       }
@@ -361,10 +365,12 @@ export function useAssignmentExecution(assignmentId: string | null) {
         if (!evaluateVisibility(f.condicao_visibilidade, currentAnswers)) continue;
         const ans = currentAnswers[f.id];
         if (!ans) continue;
-        const altKey = `${(f as any).section_id || ""}|${(f.label || "").trim().toLowerCase()}`;
+        const sKey = `${(f as any).section_id || ""}|${(f.label || "").trim().toLowerCase()}`;
+        const lKey = (f.label || "").trim().toLowerCase();
         const rules =
           liveFieldRulesMap[f.id] ||
-          liveFieldByLabel[altKey] ||
+          liveFieldByLabelSection[sKey] ||
+          liveFieldByLabelOnly[lKey] ||
           (Array.isArray(f.opcoes_regras) ? f.opcoes_regras : []);
         let triggers = false;
         if (f.tipo === "conforme") {

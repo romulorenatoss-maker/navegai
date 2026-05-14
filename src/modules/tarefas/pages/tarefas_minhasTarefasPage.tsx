@@ -400,18 +400,23 @@ export default function OperationalExecucaoPage() {
   const liveFieldOverlayMap = useMemo(() => {
     const map: Record<string, any> = {};
     if (!liveTemplateFields) return map;
-    // Index por id; e por label (preferindo a versão que tenha opcoes_regras preenchidas,
-    // pois pode haver entradas duplicadas/legadas com regras vazias).
+    // Index por id; por section_id|label; e por label puro.
+    // Sempre prefere a versão que tenha opcoes_regras preenchidas (templates podem
+    // ter entradas duplicadas/legadas com regras vazias, ou o snapshot pode ter sido
+    // gerado de uma versão anterior do template com IDs/sections diferentes).
+    const better = (a: any, b: any) => {
+      const aHas = a && Array.isArray(a.opcoes_regras) && a.opcoes_regras.length > 0;
+      const bHas = b && Array.isArray(b.opcoes_regras) && b.opcoes_regras.length > 0;
+      if (aHas && !bHas) return a;
+      if (bHas && !aHas) return b;
+      return a || b;
+    };
     for (const lf of liveTemplateFields as any[]) {
-      map[lf.id] = lf;
-    }
-    for (const lf of liveTemplateFields as any[]) {
-      const altKey = `${lf.section_id || ""}|${(lf.label || "").trim().toLowerCase()}`;
-      if (!altKey) continue;
-      const existing = map[altKey];
-      const lfHasRules = Array.isArray(lf.opcoes_regras) && lf.opcoes_regras.length > 0;
-      const existingHasRules = existing && Array.isArray(existing.opcoes_regras) && existing.opcoes_regras.length > 0;
-      if (!existing || (lfHasRules && !existingHasRules)) map[altKey] = lf;
+      map[lf.id] = better(map[lf.id], lf);
+      const sectionKey = `${lf.section_id || ""}|${(lf.label || "").trim().toLowerCase()}`;
+      map[sectionKey] = better(map[sectionKey], lf);
+      const labelKey = `__label__|${(lf.label || "").trim().toLowerCase()}`;
+      map[labelKey] = better(map[labelKey], lf);
     }
     return map;
   }, [liveTemplateFields]);
@@ -426,13 +431,14 @@ export default function OperationalExecucaoPage() {
       .sort((a: any, b: any) => a.ordem - b.ordem)
       .map((f: any) => {
         if (!isAssignmentLive) return f;
-        const altKey = `${f.section_id || ""}|${(f.label || "").trim().toLowerCase()}`;
+        const sectionKey = `${f.section_id || ""}|${(f.label || "").trim().toLowerCase()}`;
+        const labelKey = `__label__|${(f.label || "").trim().toLowerCase()}`;
         const byId = liveFieldOverlayMap[f.id];
-        const byLabel = liveFieldOverlayMap[altKey];
-        // Prefere a entrada por label se ela trouxer regras e a por id não tiver.
-        const byIdHasRules = byId && Array.isArray(byId.opcoes_regras) && byId.opcoes_regras.length > 0;
-        const byLabelHasRules = byLabel && Array.isArray(byLabel.opcoes_regras) && byLabel.opcoes_regras.length > 0;
-        const live = byIdHasRules ? byId : (byLabelHasRules ? byLabel : (byId || byLabel));
+        const bySection = liveFieldOverlayMap[sectionKey];
+        const byLabel = liveFieldOverlayMap[labelKey];
+        // Prefere a entrada que trouxer regras preenchidas, em qualquer chave.
+        const has = (x: any) => x && Array.isArray(x.opcoes_regras) && x.opcoes_regras.length > 0;
+        const live = has(byId) ? byId : has(bySection) ? bySection : has(byLabel) ? byLabel : (byId || bySection || byLabel);
         if (!live) return f;
         return {
           ...f,
