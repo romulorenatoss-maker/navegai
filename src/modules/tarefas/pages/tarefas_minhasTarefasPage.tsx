@@ -145,6 +145,7 @@ export default function OperationalExecucaoPage() {
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
   const [execDialogOpen, setExecDialogOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"registro" | "aprovacao" | "auditor">("registro");
   const [filterResponsavel, setFilterResponsavel] = useState<string>(profile?.id || "__all");
   const [searchTerm, setSearchTerm] = useState("");
   const today = new Date().toISOString().slice(0, 10);
@@ -394,6 +395,7 @@ export default function OperationalExecucaoPage() {
     setShowHistory(false);
     const sections = a.template_snapshot?.sections?.sort((x: any, y: any) => x.ordem - y.ordem);
     setActiveSection(sections?.[0]?.id || null);
+    setViewMode("registro");
 
     if (profile?.id) {
       // Auditoria enriquecida: papel_usado derivado do contexto
@@ -821,7 +823,7 @@ export default function OperationalExecucaoPage() {
               <Progress value={progress} className="h-2" />
             </div>
 
-            {snapshotSections.length > 1 && (
+            {(snapshotSections.length > 1 || isAprovadorMode || isAuditorMode) && (
               <div className="flex gap-1.5 mt-3 overflow-x-auto pb-1">
                 {snapshotSections.map((s: any) => {
                   const sFields = fieldsBySection[s.id] || [];
@@ -842,9 +844,10 @@ export default function OperationalExecucaoPage() {
                     if (!s.horario_fim || !selectedAssignment?.data_prevista) return false;
                     return new Date(`${selectedAssignment.data_prevista}T${s.horario_fim}`) < new Date();
                   })();
+                  const isActiveTab = viewMode === "registro" && activeSection === s.id;
                   return (
-                    <button key={s.id} type="button" onClick={() => setActiveSection(s.id)}
-                      className={`flex flex-col items-start gap-0.5 px-3 py-1.5 rounded-md text-xs font-medium border whitespace-nowrap transition-colors ${activeSection === s.id ? "bg-primary/10 border-primary text-primary" : isLate && !allFilled ? "bg-destructive/5 border-destructive/30 text-destructive" : "bg-card border-border text-muted-foreground hover:bg-muted"}`}>
+                    <button key={s.id} type="button" onClick={() => { setViewMode("registro"); setActiveSection(s.id); }}
+                      className={`flex flex-col items-start gap-0.5 px-3 py-1.5 rounded-md text-xs font-medium border whitespace-nowrap transition-colors ${isActiveTab ? "bg-primary/10 border-primary text-primary" : isLate && !allFilled ? "bg-destructive/5 border-destructive/30 text-destructive" : "bg-card border-border text-muted-foreground hover:bg-muted"}`}>
                       <div className="flex items-center gap-1.5">
                         <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.cor || "#3b82f6" }} />
                         {s.nome || "Seção"}
@@ -860,6 +863,18 @@ export default function OperationalExecucaoPage() {
                     </button>
                   );
                 })}
+                {isAprovadorMode && (
+                  <button type="button" onClick={() => setViewMode("aprovacao")}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border whitespace-nowrap transition-colors ${viewMode === "aprovacao" ? "bg-emerald-500/10 border-emerald-500 text-emerald-700 dark:text-emerald-400" : "bg-card border-border text-muted-foreground hover:bg-muted"}`}>
+                    <CheckCircle2 className="w-3 h-3" /> Aprovação
+                  </button>
+                )}
+                {isAuditorMode && (
+                  <button type="button" onClick={() => setViewMode("auditor")}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border whitespace-nowrap transition-colors ${viewMode === "auditor" ? "bg-blue-500/10 border-blue-500 text-blue-700 dark:text-blue-400" : "bg-card border-border text-muted-foreground hover:bg-muted"}`}>
+                    <CheckCircle2 className="w-3 h-3" /> Auditor
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -1009,7 +1024,7 @@ export default function OperationalExecucaoPage() {
               />
             )}
 
-            {!isEditable && selectedAssignment && isAprovadorMode && (
+            {!isEditable && selectedAssignment && isAprovadorMode && viewMode === "aprovacao" && (
               <EmbeddedApprovalPanel
                 assignment={selectedAssignment}
                 fields={effectiveFields}
@@ -1017,7 +1032,7 @@ export default function OperationalExecucaoPage() {
               />
             )}
 
-            {!isEditable && selectedAssignment && isAuditorMode && (
+            {!isEditable && selectedAssignment && isAuditorMode && viewMode === "auditor" && (
               <EmbeddedAuditPanel
                 assignment={selectedAssignment}
                 fields={effectiveFields}
@@ -1025,7 +1040,10 @@ export default function OperationalExecucaoPage() {
               />
             )}
 
-            {!isEditable && selectedAssignment && !isAvaliadorMode && !isAprovadorMode && !isAuditorMode && (
+            {!isEditable && selectedAssignment && (
+              (!isAvaliadorMode && !isAprovadorMode && !isAuditorMode) ||
+              ((isAprovadorMode || isAuditorMode) && viewMode === "registro")
+            ) && (
               <div className="space-y-3">
                 {effectiveFields.map(f => (
                   <DynamicFieldRenderer key={f.id} field={f} answer={exec.answers[f.id]}
