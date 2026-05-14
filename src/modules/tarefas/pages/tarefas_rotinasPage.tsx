@@ -17,12 +17,13 @@ import { normalizeAprovadorList } from "@/modules/tarefas/components/builder/che
 import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
 import { useDraftAutosave, loadDraft, clearDraft, type BuilderDraftPayload } from "@/modules/tarefas/components/builder/useBuilderDraft";
 
+const normalizeKeyText = (value: unknown) =>
+  String(value ?? "").trim().toLocaleLowerCase("pt-BR");
+
 const fieldDuplicateKey = (field: FieldForm) => JSON.stringify([
-  field.sectionTempId || "",
-  field.label?.trim() || "",
+  normalizeKeyText(field.label),
   field.tipo || "",
   Number(field.ordem) || 0,
-  field.descricao || "",
 ]);
 
 const dedupeLoadedFields = (loadedFields: FieldForm[], referencedFieldIds: Set<string>) => {
@@ -39,6 +40,28 @@ const dedupeLoadedFields = (loadedFields: FieldForm[], referencedFieldIds: Set<s
     if (!existingIsReferenced && fieldIsReferenced) byKey.set(key, field);
   }
   return Array.from(byKey.values()).sort((a, b) => a.ordem - b.ordem);
+};
+
+const sanitizeAprovadorChecks = (
+  rawItems: AprovadorCheckItemForm[],
+  currentFields: FieldForm[],
+  pacotePadrao: any[] | undefined,
+  incluirAutomaticas: boolean,
+) => {
+  const fieldIds = new Set(currentFields.map(f => f.tempId));
+  const normalized = normalizeAprovadorList(rawItems).filter(item =>
+    item.origem_pergunta !== "replicada_avaliado" || fieldIds.has(item.field_id)
+  );
+  if (!incluirAutomaticas) {
+    return normalized.filter(item => item.origem_pergunta !== "automatica_configuracao");
+  }
+  const existingConfigIds = new Set(
+    normalized.map(item => item.config_global_origem_id).filter(Boolean)
+  );
+  const missingAutomaticas = (pacotePadrao ?? [])
+    .filter(p => p.ativo !== false && !existingConfigIds.has(p.id))
+    .map(p => buildAprovadorAutomatico(p));
+  return normalizeAprovadorList([...normalized, ...missingAutomaticas]);
 };
 
 const fetchReferencedFieldIds = async (fieldIds: string[]) => {
