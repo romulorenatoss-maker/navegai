@@ -17,7 +17,7 @@ import PerguntasPage from "./pages/PerguntasPage";
 import OperationalCadastroPage from "./modules/tarefas/pages/tarefas_rotinasPage";
 import OperationalExecucaoPage from "./modules/tarefas/pages/tarefas_minhasTarefasPage";
 import OperationalGestaoPage from "./modules/tarefas/pages/tarefas_gestaoPage";
-import TarefasAvaliacaoAvaliadorPage from "./modules/tarefas/pages/tarefas_avaliacaoAvaliadorPage";
+
 // Fase C: páginas legadas (avaliacao/aprovacao/contingencias) removidas — rotas viraram wrappers Navigate
 
 import CadastroEnderecosPage from "./pages/CadastroEnderecosPage";
