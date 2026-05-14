@@ -24,9 +24,8 @@ const PlanoAcao = lazy(() =>
   import("./tarefas_embeddedPlanoAcaoPanel").then((m) => ({ default: m.EmbeddedPlanoAcaoPanel })),
 );
 // Avaliacao panel removido — fluxo consolidado em Executor (responde) → Aprovador.
-const Aprovacao = lazy(() =>
-  import("./tarefas_embeddedAprovacaoPanel").then((m) => ({ default: m.EmbeddedAprovacaoPanel })),
-);
+// Aprovacao panel removido do router — UI completa renderizada por EmbeddedApprovalPanel
+// diretamente em /tarefas/minhas (resposta executor + anexos + plano de ação final).
 
 export const PANEL_REGISTRY: PanelEntry[] = [
   // === Aceite de prazo (executor ou solicitante decidindo renegociação) ===
