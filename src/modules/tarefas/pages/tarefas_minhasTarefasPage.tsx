@@ -501,8 +501,13 @@ export default function OperationalExecucaoPage() {
           auditor_verificar: pick(live.auditor_verificar, f.auditor_verificar),
         };
       });
-    if (result.length > 0) exec.setFieldLabels(result);
-    return result;
+    const withChecklistRules = applyChecklistConfigToFields(
+      applyChecklistConfigToFields(result, snapshot, "aprovador"),
+      snapshot,
+      "auditor",
+    );
+    if (withChecklistRules.length > 0) exec.setFieldLabels(withChecklistRules);
+    return withChecklistRules;
   }, [snapshot, liveFieldOverlayMap, isAssignmentLive]);
 
   const sectionIds = useMemo(() => new Set(snapshotSections.map(s => s.id)), [snapshotSections]);
