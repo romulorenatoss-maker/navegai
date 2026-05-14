@@ -8,7 +8,6 @@ import { TabTarefasExecutadas } from "@/modules/tarefas/components/tarefas_tabTa
 import { TemplateForm, SectionForm, FieldForm, StepForm } from "@/modules/tarefas/types/tarefas_types";
 import { BuilderStepper } from "./BuilderStepper";
 import { StepChecklistAprovador } from "./StepChecklistAprovador";
-import { StepChecklistValidador } from "./StepChecklistValidador";
 import { StepResumo } from "./StepResumo";
 import { DraftRestoreBanner } from "./DraftRestoreBanner";
 import type { BuilderDraftPayload } from "./useBuilderDraft";
@@ -29,11 +28,9 @@ interface Props {
   setFields: React.Dispatch<React.SetStateAction<FieldForm[]>>;
   steps: StepForm[];
   setSteps: React.Dispatch<React.SetStateAction<StepForm[]>>;
-  /** Checklists do Aprovador Final / Validador Final (Fase 2). */
+  /** Checklist do Aprovador Final. */
   aprovadorChecks: AprovadorCheckItemForm[];
   setAprovadorChecks: React.Dispatch<React.SetStateAction<AprovadorCheckItemForm[]>>;
-  validadorChecks: AprovadorCheckItemForm[];
-  setValidadorChecks: React.Dispatch<React.SetStateAction<AprovadorCheckItemForm[]>>;
   setores: any[];
   colaboradores: any[];
   templateId: string | null;
@@ -48,24 +45,21 @@ export function TarefasBuilderWizard(props: Props) {
   const {
     isEditing, saving, form, set, sections, setSections, fields, setFields,
     steps, setSteps,
-    aprovadorChecks, setAprovadorChecks, validadorChecks, setValidadorChecks,
-    
+    aprovadorChecks, setAprovadorChecks,
     setores, colaboradores,
     templateId, draftToRestore, onRestoreDraft, onDiscardDraft, onCancel, onSubmit,
   } = props;
 
-  // Aprovador Final / Validador Final detectados pelos campos do form.
+  // Aprovador Final detectado pelos campos do form.
   const hasAprovador = !!(form.aprovador_profile_id || form.aprovador_setor_id || form.requer_aprovacao_gestor);
-  const hasValidador = !!(form.ada_enabled || form.ada_quem_avalia_profile_id || form.ada_quem_avalia_setor_id);
 
   // Steps visíveis (filtrando os condicionais).
   const visibleSteps = useMemo(
     () => WIZARD_STEPS.filter(s => {
       if (s.id === "checklist_aprovador") return hasAprovador;
-      if (s.id === "checklist_validador") return hasValidador;
       return true;
     }),
-    [hasAprovador, hasValidador],
+    [hasAprovador],
   );
 
   const [current, setCurrent] = useState<WizardStepId>("geral");
@@ -139,10 +133,6 @@ export function TarefasBuilderWizard(props: Props) {
           <StepChecklistAprovador fields={fields} items={aprovadorChecks} setItems={setAprovadorChecks} />
         )}
 
-        {current === "checklist_validador" && hasValidador && (
-          <StepChecklistValidador items={validadorChecks} setItems={setValidadorChecks} />
-        )}
-
         {current === "fluxo" && (
           <div className="space-y-6">
             <TabRecorrencia form={form} set={set} />
@@ -154,9 +144,7 @@ export function TarefasBuilderWizard(props: Props) {
             <StepResumo
               form={form} sections={sections} fields={fields} steps={steps}
               aprovadorChecks={aprovadorChecks}
-              validadorChecks={validadorChecks}
               hasAprovador={hasAprovador}
-              hasValidador={hasValidador}
               setores={setores} colaboradores={colaboradores}
               isEditing={isEditing}
             />
