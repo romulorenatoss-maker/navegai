@@ -72,7 +72,13 @@ export default function OperationalCadastroPage() {
     },
   });
 
-  // Build profile maps for filters — only show names that have templates associated
+  // Config global de Pontuação/SLA — usada para exibir as penalidades automáticas
+  // como "perguntas" no topo das abas Avaliado / Aprovador / Validador.
+  const { data: pontuacaoConfig } = useQuery({
+    queryKey: ["tarefas_pontuacao_config"],
+    queryFn: getPontuacaoConfig,
+    staleTime: 60_000,
+  });
   const { executorProfiles, avaliadorProfiles } = useMemo(() => {
     const execMap = new Map<string, string>();
     const avalMap = new Map<string, string>();
