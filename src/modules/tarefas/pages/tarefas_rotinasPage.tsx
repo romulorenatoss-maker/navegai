@@ -691,6 +691,9 @@ export default function OperationalCadastroPage() {
               steps={steps} setSteps={setSteps}
               aprovadorChecks={aprovadorChecks} setAprovadorChecks={setAprovadorChecks}
               validadorChecks={validadorChecks} setValidadorChecks={setValidadorChecks}
+              pontuacaoConfig={pontuacaoConfig ?? null}
+              penalidadesOverride={penalidadesOverride}
+              setPenalidadesOverride={setPenalidadesOverride}
               draftToRestore={pendingDraft}
               onRestoreDraft={restoreDraft}
               onDiscardDraft={discardDraft}
