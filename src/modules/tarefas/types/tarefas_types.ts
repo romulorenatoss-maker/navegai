@@ -64,7 +64,6 @@ export interface FieldForm {
   obrigatorio: boolean;
   peso: number;
   nota_maxima: number;
-  penalidade_reprovacao: number;
   impacta_score: boolean;
   criticidade: string;
   gera_contingencia: boolean;
@@ -214,7 +213,6 @@ export const defaultField = (sectionTempId: string, ordem: number): FieldForm =>
   obrigatorio: true,
   peso: 1,
   nota_maxima: 100,
-  penalidade_reprovacao: 100,
   impacta_score: true,
   criticidade: "media",
   gera_contingencia: false,

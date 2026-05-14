@@ -18,7 +18,6 @@ export interface SnapshotField {
   obrigatorio: boolean;
   peso: number;
   nota_maxima: number;
-  penalidade_reprovacao: number;
   impacta_score: boolean;
   criticidade: string;
   gera_contingencia: boolean;

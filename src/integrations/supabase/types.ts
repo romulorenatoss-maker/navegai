@@ -2364,7 +2364,6 @@ export type Database = {
           id: string
           nota_maxima: number
           ordem: number
-          penalidade_reprovacao: number
           pergunta: string
           peso: number
           template_id: string
@@ -2378,7 +2377,6 @@ export type Database = {
           id?: string
           nota_maxima?: number
           ordem?: number
-          penalidade_reprovacao?: number
           pergunta: string
           peso?: number
           template_id: string
@@ -2392,7 +2390,6 @@ export type Database = {
           id?: string
           nota_maxima?: number
           ordem?: number
-          penalidade_reprovacao?: number
           pergunta?: string
           peso?: number
           template_id?: string
@@ -2433,7 +2430,6 @@ export type Database = {
           opcoes: Json | null
           opcoes_regras: Json | null
           ordem: number
-          penalidade_reprovacao: number
           peso: number
           section_id: string | null
           template_id: string
@@ -2466,7 +2462,6 @@ export type Database = {
           opcoes?: Json | null
           opcoes_regras?: Json | null
           ordem?: number
-          penalidade_reprovacao?: number
           peso?: number
           section_id?: string | null
           template_id: string
@@ -2499,7 +2494,6 @@ export type Database = {
           opcoes?: Json | null
           opcoes_regras?: Json | null
           ordem?: number
-          penalidade_reprovacao?: number
           peso?: number
           section_id?: string | null
           template_id?: string
@@ -4600,7 +4594,6 @@ export type Database = {
           nota_minima: number
           penalidade_contingencia: number
           penalidade_fora_prazo: number
-          penalidade_reprovacao: number
           penalidade_sla_contingencia: number
           pontuacao_automatica_padrao: boolean
           singleton: boolean
@@ -4619,7 +4612,6 @@ export type Database = {
           nota_minima?: number
           penalidade_contingencia?: number
           penalidade_fora_prazo?: number
-          penalidade_reprovacao?: number
           penalidade_sla_contingencia?: number
           pontuacao_automatica_padrao?: boolean
           singleton?: boolean
@@ -4638,7 +4630,6 @@ export type Database = {
           nota_minima?: number
           penalidade_contingencia?: number
           penalidade_fora_prazo?: number
-          penalidade_reprovacao?: number
           penalidade_sla_contingencia?: number
           pontuacao_automatica_padrao?: boolean
           singleton?: boolean

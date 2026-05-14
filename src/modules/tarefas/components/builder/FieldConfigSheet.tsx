@@ -43,7 +43,6 @@ type Editable = Pick<
   | "peso"
   | "permite_ponderacao_auditor"
   | "exige_justificativa_ponderacao"
-  | "penalidade_reprovacao"
   | "sla_horas"
   | "instrucao_url"
   | "instrucao_tipo"
@@ -298,17 +297,7 @@ export function FieldConfigSheet({ open, onOpenChange, title, perguntaBloqueada,
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Penalidade por resposta ruim (pts)</Label>
-              <Input
-                type="number" min={0} max={100}
-                className="h-9 text-xs"
-                value={draft.penalidade_reprovacao ?? ""}
-                placeholder="Padrão da camada"
-                onChange={e => upd("penalidade_reprovacao", e.target.value === "" ? undefined : Number(e.target.value))}
-              />
-            </div>
+          <div className="grid grid-cols-1 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs">SLA da pergunta (horas)</Label>
               <Input
