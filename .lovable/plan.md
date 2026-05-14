@@ -1,88 +1,152 @@
-## Análise prévia (causa antes de alterar)
+## Contexto e premissas
 
-Hoje o sistema usa **4 blocos**: Avaliado, Avaliador (Plano de Ação), Aprovador, Validador Final. O escopo solicitado introduz um modelo de **5 papéis** com separação conceitual nova: **Respondente** (executa o checklist) ≠ **Avaliado** (recebe a nota). Isso muda regras de negócio, não só UI.
+- A aba 1 (Responsáveis V2) já está aprovada — **não será tocada**.
+- O modal de **Rotinas** (`TarefasBuilderWizard`) passa a ser o **builder oficial único** do sistema.
+- O botão "+" (Tarefa Avulsa) em fase posterior reutilizará este mesmo modal — nada de duplicar agora.
+- Retrocompatibilidade total: tarefas antigas continuam executando via fallback legacy. Sem migração de snapshots existentes.
 
-### Arquivos atuais impactados (mapeados)
+## Arquivos impactados (lista prévia, antes de aplicar)
 
-1. `src/modules/tarefas/components/responsaveis/TarefasResponsaveisBlocks.tsx` — componente de blocos atual (4 papéis).
-2. `src/modules/tarefas/components/tarefas_quickCreateDialog.tsx` — modal de tarefa avulsa.
-3. `src/modules/tarefas/components/tarefas_tabGeral.tsx` — aba Geral do builder de rotinas.
-4. `src/modules/tarefas/components/tarefas_tabWorkflow.tsx` — aba Workflow (regras de aprovação).
-5. `src/modules/tarefas/pages/tarefas_rotinasPage.tsx` — página/wizard de rotinas.
-6. `src/modules/tarefas/types/tarefas_types.ts` — `TemplateForm`, payload.
+### Frontend — alterados
+1. `src/modules/tarefas/components/builder/types.ts`
+   - Adicionar steps `checklist_aprovador` e `checklist_validador` em `WIZARD_STEPS` (condicionais).
+   - Novos tipos `AprovadorCheckItemForm` e `ValidadorCheckItemForm`.
+2. `src/modules/tarefas/components/builder/BuilderStepper.tsx`
+   - Suportar steps condicionais (filtrar visualização baseado em flags).
+3. `src/modules/tarefas/components/builder/TarefasBuilderWizard.tsx`
+   - Receber `aprovadorChecks`, `setAprovadorChecks`, `validadorChecks`, `setValidadorChecks`.
+   - Renderizar novas abas condicionais.
+   - Filtrar `WIZARD_STEPS` em runtime conforme presença de Aprovador Final / Validador Final.
+4. `src/modules/tarefas/components/builder/StepChecklistAprovador.tsx` **(novo)**
+   - Lista auto-replicada das perguntas operacionais (cada `field` da aba Campos vira um item).
+   - Permite editar: peso, tipo de resposta (sim/não, conforme/nc, nota), observação, anexo, devolução, plano de ação, conclusão, exige evidência, permite aumento de prazo.
+5. `src/modules/tarefas/components/builder/StepChecklistValidador.tsx` **(novo)**
+   - Itens padrão pré-popados: SLA cumprido, atrasos, devoluções, evidência presente, plano de ação encerrado, conformidade do avaliador, conformidade do aprovador.
+   - Permite adicionar itens manuais; pesos somáveis com total exibido.
+6. `src/modules/tarefas/components/builder/StepResumo.tsx`
+   - Exibir resumo das duas novas abas quando presentes.
+   - Exibir as três notas separadas (Operacional / Governança / Auditoria).
+7. `src/modules/tarefas/pages/tarefas_rotinasPage.tsx`
+   - Estado novo: `aprovadorChecks`, `validadorChecks`.
+   - Persistir em `template_snapshot.checklist_aprovador` e `template_snapshot.checklist_validador` (sem migration; usa colunas snapshot existentes).
+   - Carregar/hidratar ao editar template.
+8. `src/modules/tarefas/types/tarefas_types.ts`
+   - Tipos `AprovadorCheckItem` e `ValidadorCheckItem` exportados.
 
-### Funções/áreas que mudam de comportamento
+### Frontend — apenas leitura (não alterar nesta etapa)
+- `src/modules/tarefas/components/responsaveis/TarefasResponsaveisV2.tsx` (fonte de verdade de quem é Aprovador Final / Validador Final).
+- `src/modules/tarefas/components/tarefas_tabFormBuilder.tsx` (aba Campos — já tem peso, anexo, N/A, conforme/NC etc.; é a origem da replicação).
+- `src/modules/tarefas/components/tarefas_quickCreateDialog.tsx` (Tarefa Avulsa — **não tocar agora**, será migrado em etapa futura).
 
-- `buildRespFromForm` / `handleBlocksChange` (mapeamento legacy ↔ blocos).
-- Payload de save de rotina e tarefa avulsa (precisa novo array `template_snapshot.responsaveis_multi[papel]`).
-- Hooks de execução/aprovação que hoje tratam `executor_*` como "quem responde **e** é avaliado" — passarão a tratar Respondente e Avaliado separados.
-- `tarefas_useApprovalFlow`, `tarefas_useAssignmentExecution`, `tarefas_useScoring`, `tarefas_canTransition`: regras de "quem cria plano de ação" e "quem fecha" precisam considerar Aprovador Final como autoridade exclusiva quando configurado.
+### Backend
+- **Sem migration nesta etapa.** Tudo persistido em `operational_templates.template_snapshot` (jsonb) que já existe.
+- Sem alterações em RLS, sem novas tabelas, sem novas Edge Functions.
 
-### Pontos sensíveis (preciso da sua confirmação antes de mexer)
+## Fluxo da aba Campos → replicação automática
 
-**A. Modelo de dados — Respondente é NOVO.** Hoje `executor_profile_id` significa "quem executa". A imagem separa Respondente de Avaliado. Opções:
-   - **A1 (mínima/recomendada):** mapear `executor_*` = **Respondente**, e usar campos novos `avaliado_*` (que já existem no schema) como **Avaliado**. Sem migration.
-   - **A2:** criar colunas novas `respondente_*` em `tarefas_templates` / `tarefa_assignments`. Requer migration.
+```text
+Aba Campos (perguntas operacionais)
+        │
+        ├──► (se Aprovador Final marcado)
+        │     Aba Checklist Aprovador
+        │     1 item por pergunta, com:
+        │     - pergunta_padrao = "Aprovador confirma: <label>?"
+        │     - peso, tipo_resposta, exige_evidencia,
+        │       permite_devolucao, gera_plano_acao,
+        │       permite_aumento_prazo
+        │
+        └──► (se Validador Final marcado)
+              Aba Checklist Validador
+              Itens fixos de auditoria + manuais
+              (SLA, atraso, devolução, evidência, plano,
+               conformidade avaliador, conformidade aprovador)
+```
 
-**B. Multi-select e "Setor todo".** Hoje só grava 1 colaborador (legacy). Para "Setor todo" e múltiplos individuais sem migration, gravamos array em `template_snapshot.responsaveis_multi[papel]` (snapshot JSON). Tarefa avulsa precisa de campo equivalente em `tarefa_assignments` (também via snapshot/extra_data).
+Replicação é **idempotente**: ao editar um field na aba Campos, o item correspondente em Checklist Aprovador é atualizado (label/ordem) sem perder os ajustes locais (peso, tipo, evidência).
 
-**C. Stepper de 4 etapas (Responsáveis → Perguntas → Fluxo & Prazos → Resumo).** Hoje a rotina usa wizard de 6 etapas (`WIZARD_STEPS` em `builder/types.ts`: Tipo, Geral, Campos, Checklist, Fluxo, Resumo). A imagem mostra **outro fluxo, mais curto, focado em tarefa avulsa/quick create**. Preciso confirmar:
-   - Aplicar stepper de 4 só na **tarefa avulsa** (quickCreateDialog) e manter rotinas com o wizard atual de 6 etapas, **substituindo apenas o conteúdo do bloco Responsáveis** (como você disse: "preservar Nome/Descrição/Tipo/Setor da Rotina, substituir apenas a área de Responsáveis")?
-   - Ou também trocar o wizard de rotinas para o de 4 etapas?
+## Separação de notas (apenas estrutura/cálculo no payload — UI exibe no Resumo)
 
-**D. Regra "Aprovador Final exclusivo do Plano de Ação".** Hoje quem cria PA é o "Avaliador (Plano de Ação)" (bloco 2 atual). A nova regra inverte: PA pertence ao **Aprovador Final**. Isso afeta:
-   - Botões em `tarefas_useApprovalFlow` / painéis embarcados (`painels/*`).
-   - RBAC em `tarefas_rbac.ts` (`canCreatePlanoAcao`, `canCloseAssignment`).
-   - Compatibilidade: tarefas existentes (registros antigos) — manter regra antiga para elas ou migrar?
+```text
+Nota Operacional   →  Avaliado          (perguntas da aba Campos)
+Nota Governança    →  Avaliador/Aprov.  (SLA + aprovação + devolução +
+                                          plano de ação + encerramento +
+                                          conformidade do fluxo)
+Nota Auditoria     →  Validador         (Checklist Validador completo)
+```
 
-**E. "Setor da Rotina" preservado.** Você pediu para manter, mas a iteração anterior removeu esse campo (derivado do Avaliado). Reintroduzir como campo manual?
+**Regra de consolidação:** se Avaliador e Aprovador forem o mesmo usuário (`profile_id` igual nos blocos da V2), a Nota de Governança é **consolidada** — não soma penalidade duplicada de SLA, mas mantém histórico de eventos separados.
 
----
+## Plano de Ação — preparação (sem RBAC forte ainda)
 
-## Proposta de execução (após sua confirmação dos pontos A–E)
+Estrutura preparada no payload:
+- `acoes[]`: { id, descricao, anexos[], observacoes[], historico[], mensagens[], sla_horas, prazo_atual, aumentos_prazo[], encerrado_em, encerrado_por }
+- Devolução: `devolucoes[]` com motivo, anexo, autor, prazo de retorno.
+- Encerramento formal: campo `encerramento` com timestamp, autor, justificativa.
+- **RBAC forte (somente Aprovador Final pode encerrar/aprovar/devolver) será aplicado em etapa futura.** Por ora, todos os papéis podem editar (com auditoria registrada).
 
-### Fase 1 — UI (sem regras de negócio)
+## Regras condicionais das abas (resumo)
 
-1. Reescrever `TarefasResponsaveisBlocks.tsx` como **`TarefasResponsaveisV2.tsx`** com 5 blocos, 3 colunas (Setor / Setor todo / Individual), banner azul, mensagens de apoio, legenda Obrigatório/Opcional, layout responsivo (cards collapsíveis no mobile via `useIsMobile`).
-2. Manter o componente antigo (não deletar) até validação — rollback trivial.
-3. Integrar V2 em `tarefas_quickCreateDialog.tsx` com stepper de 4 etapas (Responsáveis / Perguntas / Fluxo & Prazos / Resumo).
-4. Integrar V2 em `tarefas_tabGeral.tsx` substituindo apenas o bloco Responsáveis (sem alterar Nome/Descrição/Tipo/Setor da Rotina — re-adicionar Setor da Rotina como campo manual).
+| Aba                    | Visível quando                                       |
+|------------------------|------------------------------------------------------|
+| Geral                  | sempre                                               |
+| Campos                 | sempre                                               |
+| Checklist (legacy)     | sempre (mantido por retrocompat)                     |
+| Checklist Aprovador    | `responsaveis_multi.aprovadorFinal` tem ≥1 pessoa    |
+| Checklist Validador    | `responsaveis_multi.validadorFinal` tem ≥1 pessoa    |
+| Fluxo                  | sempre                                               |
+| Resumo                 | sempre                                               |
 
-### Fase 2 — Persistência (snapshot)
+## Retrocompatibilidade garantida
 
-5. Estender `TemplateForm` com `responsaveis_multi: { respondente, avaliado, avaliador, aprovador_final, validador_final: { modo: 'setor_todo'|'individual', setor_id, profile_ids[] } }`.
-6. Mapeamento legacy (retrocompat):
-   - `executor_*` = primeiro do Respondente
-   - `avaliado_*` = primeiro do Avaliado
-   - `avaliador_*` / `validador_contingencia_*` = primeiro do Avaliador
-   - `aprovador_*` = primeiro do Aprovador Final
-   - `ada_*` = Validador Final
-7. Gravar array completo em `template_snapshot.responsaveis_multi`.
+- `template_snapshot.checklist_aprovador` ausente → execução cai no comportamento atual (sem checklist do aprovador).
+- `template_snapshot.checklist_validador` ausente → idem.
+- `responsaveis_multi` ausente → fallback legacy (`executor_*`, `avaliador_*`, `aprovador_*`, `ada_*`) já implementado nas etapas anteriores.
+- Snapshots antigos não são reescritos.
 
-### Fase 3 — Regras (Aprovador Final = autoridade do PA)
+## Detalhes técnicos
 
-8. Em `tarefas_rbac.ts`: novas helpers `isAprovadorFinal`, `canCreatePlanoAcao` agora prioriza Aprovador Final; fallback para regra antiga quando snapshot não tem o novo formato.
-9. Hooks de execução: passa `respondenteIds` separado de `avaliadoIds`. Nota final pertence ao Avaliado.
-10. Painéis (`planoAcao`, `aprovacao`): match() considera Aprovador Final como dono.
+- **Tipos novos** (em `types/tarefas_types.ts`):
+  ```ts
+  export interface AprovadorCheckItem {
+    tempId: string;
+    field_id: string;          // referência ao field operacional original
+    pergunta_padrao: string;   // "Aprovador confirma: <label>?"
+    tipo_resposta: "conforme_nao_conforme" | "sim_nao" | "nota";
+    peso: number;
+    exige_observacao: boolean;
+    exige_evidencia: boolean;
+    permite_devolucao: boolean;
+    gera_plano_acao: boolean;
+    permite_conclusao: boolean;
+    permite_aumento_prazo: boolean;
+  }
+  export interface ValidadorCheckItem {
+    tempId: string;
+    pergunta: string;
+    categoria: "sla" | "atraso" | "devolucao" | "evidencia" |
+               "plano_acao" | "conformidade_avaliador" |
+               "conformidade_aprovador" | "manual";
+    peso: number;
+    tipo_resposta: "conforme_nao_conforme" | "sim_nao" | "nota";
+    exige_observacao: boolean;
+    exige_evidencia: boolean;
+  }
+  ```
+- **Replicação**: `useEffect` no `StepChecklistAprovador` sincroniza `aprovadorChecks` com `fields` por `field_id` — adiciona novos, remove órfãos, mantém ajustes locais.
+- **Ordem dos steps**: Geral → Campos → Checklist Aprovador (cond.) → Checklist Validador (cond.) → Checklist (legacy) → Fluxo → Resumo.
 
-### Fase 4 — Entregáveis
+## Entregáveis ao final da execução
 
-11. Diff completo, manifest, script de rollback (reverter para componente V1), checklist de regras alteradas.
+- Diff completo dos arquivos listados.
+- Manifest dos arquivos alterados/criados.
+- Rollback: reverter os 8 arquivos listados (restaura comportamento atual).
+- Descrição visual do novo modal (desktop + mobile).
+- Lista de novos campos no payload `template_snapshot`.
+- Lista de regras novas vs. regras legacy mantidas.
 
----
+## Confirmação solicitada antes de executar
 
-## Risco
-
-- Fase 3 toca lógica crítica de aprovação/scoring. **Sugestão:** entregar Fases 1+2 primeiro (UI + persistência no snapshot, sem mudar quem aprova), validar visualmente, e só depois Fase 3 (mudança de autoridade do PA) em PR separado.
-
----
-
-## Decisões que preciso de você antes de implementar
-
-1. **A1 ou A2** para Respondente? (recomendo A1)
-2. **C** — stepper de 4 etapas só no quick create, mantendo wizard atual da rotina? (recomendo sim)
-3. **D** — aplicar nova regra de Aprovador Final imediatamente ou só Fase 1+2 agora e Fase 3 depois? (recomendo Fase 1+2 agora)
-4. **E** — Setor da Rotina volta como campo manual obrigatório, ou continua derivado do Avaliado?
-5. Tarefas/rotinas **já existentes** continuam com regra antiga (retrocompat) ou também passam pelo novo modelo?
-
-Aguardo sua confirmação para começar.
+Como há mudança no fluxo do builder (novas abas + payload novo no snapshot), confirmar:
+1. Aprovação para executar com **escopo exatamente como descrito acima** (sem migration, sem RBAC forte ainda).
+2. Posição da aba "Checklist (legacy)" — manter ou ocultar quando ambas as novas existirem? Sugestão: manter sempre por retrocompat, mas posso ocultar se preferir.
+3. Os itens padrão do Validador propostos (SLA, atraso, devolução, evidência, plano, conformidade avaliador, conformidade aprovador) cobrem o que você quer ou faltou algum?
