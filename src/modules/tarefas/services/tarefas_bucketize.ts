@@ -431,6 +431,8 @@ export function bucketize(
           TASK_STATUS.AGUARDANDO_APROVACAO,
           TASK_STATUS.AGUARDANDO_AVALIACAO,
           TASK_STATUS.EM_AVALIACAO,
+          // (B) Aprovador acompanha plano de ação em curso como pendência sua.
+          TASK_STATUS.EM_PLANO_ACAO,
         ].includes(a.status)) ||
         isAuditoriaPendente ||
         (isCriador && !isResp && [TASK_STATUS.AGUARDANDO_VALIDACAO, TASK_STATUS.AGUARDANDO_ACEITE_PRAZO].includes(a.status)) ||
@@ -446,8 +448,22 @@ export function bucketize(
       if (aguardandoMinhaAcao) {
         b.opAguardandoVoce.push(a);
       } else if (isResp || isAdmin) {
+        // (A) Executor: enquanto aguarda aprovação/auditoria, mantém rastreio em "Em Andamento".
+        const inTransitoPosEnvio = [
+          TASK_STATUS.AGUARDANDO_APROVACAO,
+          TASK_STATUS.AGUARDANDO_AVALIACAO,
+          TASK_STATUS.EM_AVALIACAO,
+          TASK_STATUS.AGUARDANDO_VALIDACAO,
+          TASK_STATUS.AGUARDANDO_AUDITORIA,
+        ].includes(a.status);
+        // (C) APROVADA com auditor pendente também segue em "Em Andamento" para executor/aprovador.
+        const aprovadaAguardandoAuditor = temAuditorPendente && !isAuditor;
+
         // Em Andamento: trabalho ativo do executor
         if ([TASK_STATUS.EM_ANDAMENTO, TASK_STATUS.REABERTA, TASK_STATUS.EM_PLANO_ACAO, TASK_STATUS.CONTINGENCIADO, "contingencia"].includes(a.status)) {
+          b.opEmAndamento.push(a);
+        }
+        else if (inTransitoPosEnvio || aprovadaAguardandoAuditor) {
           b.opEmAndamento.push(a);
         }
         // Hoje: pendentes/devolvidas/aguardando aceite com data <= hoje
