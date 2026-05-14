@@ -189,27 +189,45 @@ export const buildAprovadorAutomatico = (p: {
   permite_aumento_prazo?: boolean;
   permite_ponderacao_auditor?: boolean;
   exige_justificativa_ponderacao?: boolean;
-}): AprovadorCheckItemForm => ({
-  tempId: crypto.randomUUID(),
-  field_id: "",
-  pergunta_padrao: p.pergunta,
-  tipo_resposta: p.tipo,
-  tipo: p.tipo,
-  peso: p.peso,
-  exige_observacao: !!p.exige_observacao,
-  exige_evidencia: !!p.exige_evidencia,
-  permite_devolucao: !!p.permite_devolucao,
-  gera_plano_acao: !!p.gera_plano_acao,
-  permite_conclusao: !!p.permite_conclusao,
-  permite_aumento_prazo: !!p.permite_aumento_prazo,
-  permite_ponderacao_auditor: p.permite_ponderacao_auditor ?? true,
-  exige_justificativa_ponderacao: p.exige_justificativa_ponderacao ?? true,
-  origem_pergunta: "automatica_configuracao",
-  config_global_origem_id: p.id,
-  metrica_calculo: p.metrica_calculo,
-  ativo: true,
-  config_original_snapshot: p,
-});
+  // Novos metadados (Validador)
+  origem_pergunta?: "automatica_sistema" | "manual_padrao_configuracao" | "automatica_configuracao";
+  camada_alvo?: "aprovador" | "executor" | "plano_acao";
+  fonte_dados?: string;
+  regra_calculo?: string;
+  metrica_pendente?: boolean;
+  ativo?: boolean;
+}): AprovadorCheckItemForm => {
+  // Mapeia origem_pergunta da config (que pode ser "automatica_sistema" ou
+  // "manual_padrao_configuracao") para o domínio do snapshot da rotina
+  // (AprovadorOrigem: "automatica_configuracao" | "manual" | "replicada_avaliado").
+  const origemSnapshot: AprovadorOrigem =
+    p.origem_pergunta === "manual_padrao_configuracao" ? "manual" : "automatica_configuracao";
+  return {
+    tempId: crypto.randomUUID(),
+    field_id: "",
+    pergunta_padrao: p.pergunta,
+    tipo_resposta: p.tipo,
+    tipo: p.tipo,
+    peso: p.peso,
+    exige_observacao: !!p.exige_observacao,
+    exige_evidencia: !!p.exige_evidencia,
+    permite_devolucao: !!p.permite_devolucao,
+    gera_plano_acao: !!p.gera_plano_acao,
+    permite_conclusao: !!p.permite_conclusao,
+    permite_aumento_prazo: !!p.permite_aumento_prazo,
+    permite_ponderacao_auditor: p.permite_ponderacao_auditor ?? true,
+    exige_justificativa_ponderacao: p.exige_justificativa_ponderacao ?? true,
+    origem_pergunta: origemSnapshot,
+    config_global_origem_id: p.id,
+    metrica_calculo: p.metrica_calculo,
+    camada_alvo: p.camada_alvo,
+    fonte_dados: p.fonte_dados,
+    regra_calculo: p.regra_calculo,
+    metrica_pendente: p.metrica_pendente,
+    ativo: p.ativo ?? true,
+    config_original_snapshot: p,
+  };
+};
 
 // ─────────────────────────────────────────────────────────────────────
 // Checklist Validador (auditoria do processo)
