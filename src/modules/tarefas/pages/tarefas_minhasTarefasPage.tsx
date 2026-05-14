@@ -304,7 +304,18 @@ export default function OperationalExecucaoPage() {
       (a.aprovador_id == null && a.setor_aprovador_id && setorSet.has(a.setor_aprovador_id)) ||
       (a.auditor_id == null && a.setor_auditor_id && setorSet.has(a.setor_auditor_id));
     if (isAdmin && adminExecutor !== "__all") {
-      list = list.filter((a) => a.responsavel_id === adminExecutor);
+      // "Executor" no painel admin = "tarefas onde este usuário ATUA em qualquer papel"
+      // (executor, avaliado, aprovador, auditor, criador). Antes filtrava só responsavel_id,
+      // o que escondia tarefas onde o usuário era aprovador/auditor (inclusive via setor).
+      list = list.filter((a) =>
+        a.responsavel_id === adminExecutor ||
+        a.avaliado_id === adminExecutor ||
+        a.aprovador_id === adminExecutor ||
+        a.auditor_id === adminExecutor ||
+        a.created_by === adminExecutor ||
+        // Filtro de setor só faz sentido para o usuário logado (temos os setores dele).
+        (adminExecutor === profile?.id && matchesSetor(a))
+      );
     } else if (isAdmin && filterResponsavel !== "__all") {
       list = list.filter((a) =>
         a.responsavel_id === filterResponsavel ||
