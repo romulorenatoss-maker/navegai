@@ -227,7 +227,7 @@ export default function OperationalCadastroPage() {
             aprovador: aprovadorChecks,
             validador: validadorChecks,
           },
-          penalidades_override: penalidadesOverride,
+          
         },
       };
 
