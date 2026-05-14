@@ -40,7 +40,7 @@ function buildCtx(args: {
     isAdmin,
     profileId,
     isResp: assignment?.responsavel_id === profileId,
-    isAval: assignment?.avaliador_id === profileId,
+    isAval: assignment?.aprovador_id === profileId,
     isAprov: assignment?.aprovador_id === profileId,
     isCriador: assignment?.created_by === profileId,
     cfg: getSolicitacaoConfig(assignment),

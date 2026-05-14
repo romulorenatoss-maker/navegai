@@ -172,7 +172,7 @@ export function TabTarefasExecutadas({ templateId }: Props) {
         .insert({
           template_id: t.id,
           responsavel_id: executorId,
-          avaliador_id: t.aprovador_profile_id || null,
+          aprovador_id: t.aprovador_profile_id || null,
           avaliado_id: t.avaliado_profile_id || null,
           aprovador_id: t.aprovador_profile_id || null,
           validador_contingencia_id: t.validador_contingencia_profile_id || null,

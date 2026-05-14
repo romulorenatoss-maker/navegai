@@ -375,7 +375,7 @@ export function useAssignmentExecution(assignmentId: string | null) {
         // caso contrário → aguardando_avaliacao (fluxo tradicional)
         const isDesignada = !!assignment.created_by
           && assignment.created_by !== assignment.responsavel_id
-          && !assignment.avaliador_id;
+          && !assignment.aprovador_id;
         await transition.mutateAsync({
           assignmentId: assignment.id,
           action: isDesignada ? "enviar_validacao_designante" : "enviar_avaliacao",

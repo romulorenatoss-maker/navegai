@@ -69,7 +69,7 @@ interface AssignmentRoleInput {
   profileId: string | null | undefined;
   assignment?: {
     responsavel_id?: string | null;
-    avaliador_id?: string | null;
+    aprovador_id?: string | null;
     aprovador_id?: string | null;
     created_by?: string | null;
   } | null;
@@ -93,7 +93,7 @@ export function resolveAssignmentRole(
   const a = input.assignment;
   if (!a) return null;
   if (a.aprovador_id === pid) return "APROVADOR";
-  if (a.avaliador_id === pid) return "AVALIADOR";
+  if (a.aprovador_id === pid) return "AVALIADOR";
   if (a.created_by === pid && a.responsavel_id !== pid) return "CRIADOR_DESIGNANTE";
   if (a.responsavel_id === pid) return "EXECUTOR";
   return null;

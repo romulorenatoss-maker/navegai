@@ -204,7 +204,7 @@ export default function OperationalGestaoPage() {
         byUser[avdoId].countAvdo++;
       }
       // Avaliador
-      const avdrId = a.avaliador_id;
+      const avdrId = a.aprovador_id;
       if (avdrId && ["concluida", "aprovada"].includes(a.status) && a.score_aprovador != null) {
         if (!byUser[avdrId]) byUser[avdrId] = { nome: "—", total: 0, concluidas: 0, scoreExecSum: 0, scoreAvdoSum: 0, scoreAvdrSum: 0, countExec: 0, countAvdo: 0, countAvdr: 0 };
         byUser[avdrId].scoreAvdrSum += Number(a.score_aprovador);

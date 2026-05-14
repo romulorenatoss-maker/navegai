@@ -311,7 +311,7 @@ export function bucketize(
 
   for (const a of assignments) {
     const isResp = a.responsavel_id === me;
-    const isAval = a.avaliador_id === me;
+    const isAval = a.aprovador_id === me;
     const isAprov = a.aprovador_id === me;
     const isCriador = a.created_by === me;
     const inMySetor = a.setor_id && setorSet.has(a.setor_id);

@@ -116,7 +116,7 @@ export function ContingencyDetailDialog({ contingency, open, onOpenChange }: Pro
   const isMyContingency = selected?.responsavel_id === profile?.id;
   const isValidador = isAdmin || selected?.assignment?.validador_contingencia_id === profile?.id;
   const isAvaliado = selected?.assignment?.avaliado_id === profile?.id;
-  const isAvaliador = selected?.assignment?.avaliador_id === profile?.id;
+  const isAvaliador = selected?.assignment?.aprovador_id === profile?.id;
   const canInitiate = isAdmin || isValidador || isAvaliador;
   const canResolveAction = isAdmin || isMyContingency || isValidador || isAvaliado;
   const canDiscardAction = isAdmin || isValidador || isAvaliador;
