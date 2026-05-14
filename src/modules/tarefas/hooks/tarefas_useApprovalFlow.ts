@@ -289,6 +289,8 @@ export function useApprovalFlow(assignmentId: string | null) {
 
   // Cria contingências (planos de ação) consolidadas a partir de NCs do aprovador,
   // uma por NC, e dispara devolução final ao executor/setor.
+  // Também persiste flags em operational_approval_answers (conforme=false, plano_acao_*,
+  // flag_prazo_alterado, justificativa_alteracao_prazo) para o auditor revisar.
   const criarPlanosAcaoEDevolver = useMutation({
     mutationFn: async ({ assignment, planos, motivoGeral }: {
       assignment: any;
@@ -297,6 +299,10 @@ export function useApprovalFlow(assignmentId: string | null) {
         field_label: string;
         descricao_acao: string;
         prazo_iso: string;
+        prazo_padrao_iso?: string | null;
+        prazo_alterado?: boolean;
+        justificativa_alteracao_prazo?: string | null;
+        anexo_url?: string | null;
         responsavel_profile_id?: string | null;
         criticidade: "baixa" | "media" | "alta";
       }>;
@@ -311,6 +317,7 @@ export function useApprovalFlow(assignmentId: string | null) {
       }
 
       for (const p of planos) {
+        // 1) Cria contingência (workflow operacional existente)
         await (supabase as any).from("operational_contingencies").insert({
           assignment_id: assignmentId,
           origin_field_id: p.field_id || null,
@@ -322,9 +329,35 @@ export function useApprovalFlow(assignmentId: string | null) {
           responsavel_id: p.responsavel_profile_id ?? null,
           motivo_instrucao: `Criticidade: ${p.criticidade}`,
         });
+
+        // 2) Persiste detalhes do plano em operational_approval_answers (para auditor)
+        const existing = (existingApprovalAnswers as any[]).find((a: any) => a.field_id === p.field_id);
+        const planoPayload: any = {
+          conforme: false,
+          plano_acao_descricao: p.descricao_acao,
+          plano_acao_prazo: p.prazo_iso,
+          plano_acao_anexo_url: p.anexo_url ?? null,
+          prazo_padrao_aplicado: p.prazo_padrao_iso ?? null,
+          flag_prazo_alterado: !!p.prazo_alterado,
+          justificativa_alteracao_prazo: p.prazo_alterado ? (p.justificativa_alteracao_prazo || null) : null,
+        };
+        if (existing) {
+          await (supabase as any).from("operational_approval_answers")
+            .update(planoPayload).eq("id", existing.id);
+        } else {
+          await (supabase as any).from("operational_approval_answers").insert({
+            assignment_id: assignmentId,
+            field_id: p.field_id,
+            resposta: "nao_conforme",
+            respondido_por: profile.id,
+            respondido_em: new Date().toISOString(),
+            ...planoPayload,
+          });
+        }
       }
 
-      // 3) Dispara devolução final consolidada
+      // 3) Dispara devolução final consolidada → status EM_PLANO_ACAO via solicitar_plano_acao
+      // Mantém uso de reprovar_devolver_final para preservar comportamento (rodada++).
       await transition.mutateAsync({
         assignmentId,
         action: "reprovar_devolver_final",
@@ -334,6 +367,7 @@ export function useApprovalFlow(assignmentId: string | null) {
           aprovadorId: profile.id,
           rodadaAtual: assignment.rodada_atual,
           total_planos: planos.length,
+          planos_com_prazo_alterado: planos.filter(p => p.prazo_alterado).length,
         },
       });
 
