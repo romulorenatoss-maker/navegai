@@ -14,7 +14,9 @@ export const TASK_STATUS = {
   // Estados legados (fluxo rotina/inspeção) — mantidos
   PENDENTE: "pendente",
   EM_ANDAMENTO: "em_andamento",
+  /** @deprecated Saneamento 4 papéis — não usar. Migrado para AGUARDANDO_APROVACAO. Mantido só para renderizar histórico. */
   AGUARDANDO_AVALIACAO: "aguardando_avaliacao",
+  /** @deprecated Saneamento 4 papéis — não usar. Migrado para AGUARDANDO_APROVACAO. Mantido só para renderizar histórico. */
   EM_AVALIACAO: "em_avaliacao",
   CONTINGENCIADO: "contingenciado",
   AGUARDANDO_APROVACAO: "aguardando_aprovacao",
@@ -95,8 +97,8 @@ export function getStatusLabel(status: string, ctx: StatusVisualContext = {}): s
         : "Respondida pelo executor";
     case TASK_STATUS.DEVOLVIDA: return "Devolvida ao executor";
     case TASK_STATUS.EM_PLANO_ACAO: return "Em plano de ação";
-    case TASK_STATUS.AGUARDANDO_AVALIACAO: return "Aguardando avaliação técnica";
-    case TASK_STATUS.EM_AVALIACAO: return "Em avaliação";
+    case TASK_STATUS.AGUARDANDO_AVALIACAO: return "Aguardando aprovação (legado)";
+    case TASK_STATUS.EM_AVALIACAO: return "Aguardando aprovação (legado)";
     case TASK_STATUS.AGUARDANDO_APROVACAO: return "Aguardando aprovação";
     case TASK_STATUS.APROVADA: return "Aprovada";
     case TASK_STATUS.CONCLUIDA: return "Concluída";
