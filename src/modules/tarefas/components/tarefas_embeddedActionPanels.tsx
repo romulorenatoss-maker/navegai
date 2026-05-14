@@ -205,6 +205,8 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     criticidade: "baixa" | "media" | "alta";
   }>>({});
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
+  // Por NC, o aprovador escolhe se vira plano de ação ou só devolução para refazer
+  const [acaoPorNC, setAcaoPorNC] = useState<Record<string, "plano" | "devolver">>({});
   const saveTimers = useRef<Record<string, any>>({});
 
   const blockReasons = flow.getBlockingReasons(assignment);
