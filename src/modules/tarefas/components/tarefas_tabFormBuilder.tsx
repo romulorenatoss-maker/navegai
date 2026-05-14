@@ -724,7 +724,7 @@ export function FieldDetailDialog({ field, allFields = [], setores, onSave, onCl
           </div>
 
 
-          {/* ── Opções operacionais (apenas para tipos com escolha) ── */}
+          {/* ── Opções de Resposta + Regras por Opção ── */}
           {temOpcoes && (
             <div className="bg-muted/50 rounded-lg border border-border p-4 space-y-3">
               <div>
@@ -732,48 +732,112 @@ export function FieldDetailDialog({ field, allFields = [], setores, onSave, onCl
                   Opções de Resposta
                 </p>
                 <p className="text-caption text-muted-foreground">
-                  Apenas operacional. Regras avaliativas (não conformidade, evidência, plano de ação, devolução, ponderação) ficam exclusivamente na pergunta replicada do Aprovador.
+                  Para cada opção, defina o que o executor deve anexar/preencher ao selecioná-la (descrição, evidência/foto/vídeo) e se gera plano de ação.
                 </p>
               </div>
 
               {(local.tipo === "select" || local.tipo === "multi_select") && (
-                <>
-                  <div className="flex gap-2">
-                    <Input value={newOptionLabel} onChange={e => setNewOptionLabel(e.target.value)}
-                      placeholder="Nova opção..." className="flex-1 h-8 text-sm"
-                      onKeyDown={e => e.key === "Enter" && (e.preventDefault(), addCustomOption())} />
-                    <Button type="button" variant="outline" size="sm" onClick={addCustomOption} disabled={!newOptionLabel.trim()}>
-                      <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar
-                    </Button>
-                  </div>
-                  <div className="space-y-1.5">
-                    {opcoesRegras.map(opcao => (
-                      <div key={opcao.valor} className="flex items-center gap-2 px-2.5 py-1.5 border border-border rounded bg-card">
-                        <span className="text-sm flex-1">{opcao.label}</span>
-                        <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive"
-                          onClick={() => removeCustomOption(opcao.valor)}>
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    ))}
-                    {opcoesRegras.length === 0 && (
-                      <p className="text-center text-caption text-muted-foreground py-3">
-                        Adicione opções acima.
-                      </p>
-                    )}
-                  </div>
-                </>
-              )}
-
-              {(local.tipo === "conforme" || local.tipo === "sim_nao" || local.tipo === "nota_avaliacao") && (
-                <div className="flex flex-wrap gap-1.5">
-                  {opcoesRegras.map(opt => (
-                    <span key={opt.valor} className="text-[11px] px-2 py-1 rounded bg-card border border-border text-muted-foreground">
-                      {opt.label}
-                    </span>
-                  ))}
+                <div className="flex gap-2">
+                  <Input value={newOptionLabel} onChange={e => setNewOptionLabel(e.target.value)}
+                    placeholder="Nova opção..." className="flex-1 h-8 text-sm"
+                    onKeyDown={e => e.key === "Enter" && (e.preventDefault(), addCustomOption())} />
+                  <Button type="button" variant="outline" size="sm" onClick={addCustomOption} disabled={!newOptionLabel.trim()}>
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Adicionar
+                  </Button>
                 </div>
               )}
+
+              <div className="space-y-2">
+                {opcoesRegras.map(opcao => {
+                  const isOpen = expandedOption === opcao.valor;
+                  const tipos = Array.isArray(opcao.tipos_evidencia) && opcao.tipos_evidencia.length
+                    ? opcao.tipos_evidencia
+                    : ["qualquer"];
+                  const toggleTipo = (t: string) => {
+                    let next = tipos.includes(t) ? tipos.filter(x => x !== t) : [...tipos.filter(x => x !== "qualquer"), t];
+                    if (next.length === 0) next = ["qualquer"];
+                    if (t === "qualquer") next = ["qualquer"];
+                    updateOpcaoRegra(opcao.valor, { tipos_evidencia: next });
+                  };
+                  const corDot = opcao.cor === "success" ? "bg-success" : opcao.cor === "destructive" ? "bg-destructive" : "bg-muted-foreground/40";
+                  const hasRules = opcao.requer_descricao || opcao.requer_evidencia || opcao.gera_contingencia;
+                  return (
+                    <div key={opcao.valor} className="border border-border rounded-md bg-card overflow-hidden">
+                      <button type="button" onClick={() => setExpandedOption(isOpen ? null : opcao.valor)}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-muted/40 transition-colors">
+                        <span className={`w-2 h-2 rounded-full ${corDot}`} />
+                        <span className="text-sm flex-1 text-left">{opcao.label}</span>
+                        {hasRules && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                            Com regras
+                          </span>
+                        )}
+                        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                        {(local.tipo === "select" || local.tipo === "multi_select") && (
+                          <span role="button" tabIndex={0} className="ml-1 inline-flex items-center justify-center h-6 w-6 rounded text-destructive hover:bg-destructive/10"
+                            onClick={(e) => { e.stopPropagation(); removeCustomOption(opcao.valor); }}>
+                            <Trash2 className="w-3 h-3" />
+                          </span>
+                        )}
+                      </button>
+                      {isOpen && (
+                        <div className="px-3 py-3 border-t border-border bg-muted/30 space-y-3">
+                          <label className="flex items-start gap-2 cursor-pointer">
+                            <input type="checkbox" className="mt-0.5" checked={opcao.requer_descricao}
+                              onChange={e => updateOpcaoRegra(opcao.valor, { requer_descricao: e.target.checked })} />
+                            <div>
+                              <p className="text-xs font-medium">Exigir descrição / justificativa</p>
+                              <p className="text-[10px] text-muted-foreground">Executor deverá preencher um texto ao selecionar esta opção.</p>
+                            </div>
+                          </label>
+
+                          <label className="flex items-start gap-2 cursor-pointer">
+                            <input type="checkbox" className="mt-0.5" checked={opcao.requer_evidencia}
+                              onChange={e => updateOpcaoRegra(opcao.valor, { requer_evidencia: e.target.checked })} />
+                            <div className="flex-1">
+                              <p className="text-xs font-medium">Exigir evidência (anexo)</p>
+                              <p className="text-[10px] text-muted-foreground">Executor deverá anexar mídia ao selecionar esta opção.</p>
+                              {opcao.requer_evidencia && (
+                                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                  {[
+                                    { v: "qualquer", l: "Qualquer" },
+                                    { v: "foto", l: "Foto" },
+                                    { v: "video", l: "Vídeo" },
+                                    { v: "audio", l: "Áudio" },
+                                    { v: "documento", l: "Documento" },
+                                  ].map(t => (
+                                    <button key={t.v} type="button"
+                                      onClick={() => toggleTipo(t.v)}
+                                      className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${tipos.includes(t.v) ? "bg-primary/10 border-primary text-primary" : "bg-card border-border text-muted-foreground"}`}>
+                                      {t.l}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </label>
+
+                          {planoAcaoEnabled && (
+                            <label className="flex items-start gap-2 cursor-pointer">
+                              <input type="checkbox" className="mt-0.5" checked={opcao.gera_contingencia}
+                                onChange={e => updateOpcaoRegra(opcao.valor, { gera_contingencia: e.target.checked })} />
+                              <div>
+                                <p className="text-xs font-medium">Gera plano de ação (contingência)</p>
+                                <p className="text-[10px] text-muted-foreground">Ao selecionar esta opção, será criado automaticamente um plano de ação para correção.</p>
+                              </div>
+                            </label>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {opcoesRegras.length === 0 && (
+                  <p className="text-center text-caption text-muted-foreground py-3">
+                    Adicione opções acima.
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
