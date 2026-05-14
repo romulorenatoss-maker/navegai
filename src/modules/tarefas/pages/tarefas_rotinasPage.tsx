@@ -11,7 +11,7 @@ import { TemplateForm, SectionForm, FieldForm, StepForm, defaultTemplate, defaul
 // (Removido) TaskTypeSelectorDialog — builder único, sem seletor prévio.
 type TaskType = "simples" | "inspecao";
 import { TarefasBuilderWizard } from "@/modules/tarefas/components/builder/TarefasBuilderWizard";
-import { AprovadorCheckItemForm, buildAprovadorAutomatico } from "@/modules/tarefas/components/builder/types";
+import { AprovadorCheckItemForm, buildAprovadorAutomatico, defaultAprovadorCheckItem } from "@/modules/tarefas/components/builder/types";
 import { normalizeAprovadorList } from "@/modules/tarefas/components/builder/checklistNormalizers";
 
 import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
@@ -62,10 +62,28 @@ const sanitizeAprovadorChecks = (
   pacotePadrao: any[] | undefined,
   incluirAutomaticas: boolean,
 ) => {
-  const fieldIds = new Set(currentFields.map(f => f.tempId));
-  const normalized = normalizeAprovadorList(rawItems).filter(item =>
-    item.origem_pergunta !== "replicada_avaliado" || fieldIds.has(item.field_id)
-  );
+  const uniqueFields = [...currentFields]
+    .filter(f => !!f.tempId)
+    .sort((a, b) => a.ordem - b.ordem);
+  const normalized = normalizeAprovadorList(rawItems);
+  const replicadasPrev = normalized.filter(item => item.origem_pergunta === "replicada_avaliado");
+  const naoReplicadas = normalized.filter(item => item.origem_pergunta !== "replicada_avaliado");
+  const replicadasByField = new Map(replicadasPrev.map(item => [item.field_id, item]));
+  const replicadasEspelhadas = uniqueFields.map(field => {
+    const existing = replicadasByField.get(field.tempId);
+    const label = field.label || "Pergunta sem nome";
+    const pergunta = `Aprovador confirma: ${label}?`;
+    if (!existing) return defaultAprovadorCheckItem(field.tempId, label);
+    return {
+      ...existing,
+      field_id: field.tempId,
+      field_label: label,
+      pergunta_padrao: pergunta,
+      origem_pergunta: "replicada_avaliado" as const,
+      pergunta_origem_id: field.tempId,
+    };
+  });
+  const normalized = [...replicadasEspelhadas, ...naoReplicadas];
   if (!incluirAutomaticas) {
     return normalized.filter(item => item.origem_pergunta !== "automatica_configuracao");
   }
