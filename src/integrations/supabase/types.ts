@@ -1285,7 +1285,9 @@ export type Database = {
           created_at: string
           evidencia_url: string | null
           field_id: string
+          herdada: boolean | null
           id: string
+          motivo_alteracao: string | null
           observacao: string | null
           peso: number
           respondido_em: string
@@ -1297,7 +1299,9 @@ export type Database = {
           created_at?: string
           evidencia_url?: string | null
           field_id: string
+          herdada?: boolean | null
           id?: string
+          motivo_alteracao?: string | null
           observacao?: string | null
           peso?: number
           respondido_em?: string
@@ -1309,7 +1313,9 @@ export type Database = {
           created_at?: string
           evidencia_url?: string | null
           field_id?: string
+          herdada?: boolean | null
           id?: string
+          motivo_alteracao?: string | null
           observacao?: string | null
           peso?: number
           respondido_em?: string
@@ -1642,6 +1648,70 @@ export type Database = {
             columns: ["validador_contingencia_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operational_audit_answers: {
+        Row: {
+          assignment_id: string
+          auditor_id: string | null
+          created_at: string
+          evidencia_url: string | null
+          field_id: string
+          herdada: boolean | null
+          id: string
+          motivo_alteracao: string | null
+          observacao: string | null
+          resposta: string | null
+          updated_at: string
+        }
+        Insert: {
+          assignment_id: string
+          auditor_id?: string | null
+          created_at?: string
+          evidencia_url?: string | null
+          field_id: string
+          herdada?: boolean | null
+          id?: string
+          motivo_alteracao?: string | null
+          observacao?: string | null
+          resposta?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assignment_id?: string
+          auditor_id?: string | null
+          created_at?: string
+          evidencia_url?: string | null
+          field_id?: string
+          herdada?: boolean | null
+          id?: string
+          motivo_alteracao?: string | null
+          observacao?: string | null
+          resposta?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_audit_answers_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "operational_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_audit_answers_auditor_id_fkey"
+            columns: ["auditor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_audit_answers_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "operational_template_fields"
             referencedColumns: ["id"]
           },
         ]
@@ -2516,12 +2586,22 @@ export type Database = {
         Row: {
           aprovador_exige_evidencia: boolean
           aprovador_exige_evidencia_nao: boolean | null
+          aprovador_herdar_resposta: boolean
           aprovador_obriga_observacao_nao: boolean | null
           aprovador_pergunta: string | null
           aprovador_peso: number | null
           aprovador_tipo_resposta: string | null
           aprovador_tipos_evidencia: Json | null
           aprovador_verificar: boolean
+          auditor_exige_evidencia: boolean
+          auditor_exige_evidencia_nao: boolean | null
+          auditor_herdar_resposta: boolean
+          auditor_obriga_observacao_nao: boolean | null
+          auditor_pergunta: string | null
+          auditor_peso: number | null
+          auditor_tipo_resposta: string | null
+          auditor_tipos_evidencia: Json | null
+          auditor_verificar: boolean
           condicao_visibilidade: Json | null
           created_at: string
           criticidade: string
@@ -2549,12 +2629,22 @@ export type Database = {
         Insert: {
           aprovador_exige_evidencia?: boolean
           aprovador_exige_evidencia_nao?: boolean | null
+          aprovador_herdar_resposta?: boolean
           aprovador_obriga_observacao_nao?: boolean | null
           aprovador_pergunta?: string | null
           aprovador_peso?: number | null
           aprovador_tipo_resposta?: string | null
           aprovador_tipos_evidencia?: Json | null
           aprovador_verificar?: boolean
+          auditor_exige_evidencia?: boolean
+          auditor_exige_evidencia_nao?: boolean | null
+          auditor_herdar_resposta?: boolean
+          auditor_obriga_observacao_nao?: boolean | null
+          auditor_pergunta?: string | null
+          auditor_peso?: number | null
+          auditor_tipo_resposta?: string | null
+          auditor_tipos_evidencia?: Json | null
+          auditor_verificar?: boolean
           condicao_visibilidade?: Json | null
           created_at?: string
           criticidade?: string
@@ -2582,12 +2672,22 @@ export type Database = {
         Update: {
           aprovador_exige_evidencia?: boolean
           aprovador_exige_evidencia_nao?: boolean | null
+          aprovador_herdar_resposta?: boolean
           aprovador_obriga_observacao_nao?: boolean | null
           aprovador_pergunta?: string | null
           aprovador_peso?: number | null
           aprovador_tipo_resposta?: string | null
           aprovador_tipos_evidencia?: Json | null
           aprovador_verificar?: boolean
+          auditor_exige_evidencia?: boolean
+          auditor_exige_evidencia_nao?: boolean | null
+          auditor_herdar_resposta?: boolean
+          auditor_obriga_observacao_nao?: boolean | null
+          auditor_pergunta?: string | null
+          auditor_peso?: number | null
+          auditor_tipo_resposta?: string | null
+          auditor_tipos_evidencia?: Json | null
+          auditor_verificar?: boolean
           condicao_visibilidade?: Json | null
           created_at?: string
           criticidade?: string
