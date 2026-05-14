@@ -147,18 +147,7 @@ export function TarefasBuilderWizard(props: Props) {
         )}
 
         {current === "checklist_validador" && hasValidador && (
-          <div className="space-y-4">
-            <PenalidadesAutomaticasBlock
-              camadaKey="sla_validador"
-              titulo="Penalidades automáticas da Auditoria (Validador)"
-              descricao="O Validador não é avaliado: ele audita a execução do Avaliado e do Aprovador. Estas penalidades são aplicadas automaticamente quando a auditoria detecta atraso, ausência de resposta ou não conformidade nas camadas anteriores."
-              nota="Validador audita — não executa nem responde perguntas operacionais."
-              globalConfig={pontuacaoConfig}
-              overrides={penalidadesOverride}
-              onOverridesChange={setPenalidadesOverride}
-            />
-            <StepChecklistValidador items={validadorChecks} setItems={setValidadorChecks} />
-          </div>
+          <StepChecklistValidador items={validadorChecks} setItems={setValidadorChecks} />
         )}
 
         {current === "fluxo" && (
