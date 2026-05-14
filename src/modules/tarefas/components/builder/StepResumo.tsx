@@ -9,7 +9,7 @@ interface Props {
   fields: FieldForm[];
   steps: StepForm[];
   aprovadorChecks?: AprovadorCheckItemForm[];
-  validadorChecks?: ValidadorCheckItemForm[];
+  validadorChecks?: AprovadorCheckItemForm[];
   hasAprovador?: boolean;
   hasValidador?: boolean;
   setores: any[];
