@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,9 +8,10 @@ import { useOperationalTransition } from "@/modules/tarefas/hooks/tarefas_useTra
 
 export interface ApproverAnswerDraft {
   field_id: string;
-  resposta: string; // conforme | nao_conforme | na
+  resposta: string; // conforme | nao_conforme | na | <opção custom>
   observacao: string;
   peso: number;
+  evidencia_url?: string | null;
 }
 
 export function useApprovalFlow(assignmentId: string | null) {
