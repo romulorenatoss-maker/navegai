@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight, Save, CheckCircle2 } from "lucide-react";
 import { TabGeral } from "@/modules/tarefas/components/tarefas_tabGeral";
@@ -65,6 +65,11 @@ export function TarefasBuilderWizard(props: Props) {
 
   const [current, setCurrent] = useState<WizardStepId>("geral");
   const [completed, setCompleted] = useState<Set<WizardStepId>>(new Set(["tipo"]));
+
+  useEffect(() => {
+    if (!hasAprovador) return;
+    setAprovadorChecks(prev => syncAprovadorReplicadasFromFields(prev, fields));
+  }, [fields, hasAprovador, setAprovadorChecks]);
 
   if (!visibleSteps.find(s => s.id === current)) {
     setTimeout(() => setCurrent("geral"), 0);
