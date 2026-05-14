@@ -181,6 +181,80 @@ interface ApprovalProps {
   onClose: () => void;
 }
 
+type ReviewRule = {
+  valor: string;
+  label?: string;
+  exige_observacao?: boolean;
+  exige_evidencia?: boolean;
+  gera_plano_acao?: boolean;
+  permite_devolucao?: boolean;
+};
+
+const normalizeOptionKey = (value: unknown) =>
+  String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+const optionAliases = (value: unknown) => {
+  const key = normalizeOptionKey(value);
+  if (["conforme", "sim", "yes"].includes(key)) return [key, "conforme", "sim"];
+  if (["nao_conforme", "nao", "não", "no"].includes(key)) return [key, "nao_conforme", "nao"];
+  if (["n_a", "na", "nao_aplica", "nao_aplicavel"].includes(key)) return [key, "na", "n_a"];
+  return [key];
+};
+
+const getRuleForResposta = (f: SnapshotField, resposta: string, scope: "aprovador" | "auditor"): ReviewRule | null => {
+  const rules = (scope === "aprovador" ? f.aprovador_regras_por_opcao : f.auditor_regras_por_opcao) ?? [];
+  const selectedAliases = optionAliases(resposta);
+  const rule = rules.find((r) => {
+    const keys = [...optionAliases(r.valor), ...optionAliases(r.label)];
+    return keys.some(k => selectedAliases.includes(k));
+  });
+  if (rule) return rule;
+  if (scope === "aprovador" && rules.length === 0 && resposta === "nao_conforme") {
+    return {
+      valor: "nao_conforme",
+      exige_observacao: !!f.aprovador_obriga_observacao_nao,
+      exige_evidencia: !!f.aprovador_exige_evidencia_nao,
+      gera_plano_acao: true,
+      permite_devolucao: true,
+    };
+  }
+  return null;
+};
+
+const getReviewOptions = (f: SnapshotField, scope: "aprovador" | "auditor") => {
+  const configured = scope === "aprovador" ? f.aprovador_opcoes : f.auditor_opcoes;
+  const rules = scope === "aprovador" ? f.aprovador_regras_por_opcao : f.auditor_regras_por_opcao;
+  const labels = (Array.isArray(configured) && configured.length > 0)
+    ? configured
+    : (Array.isArray(rules) && rules.length > 0)
+      ? rules.map(r => r.label || r.valor)
+      : ["Conforme", "Não Conforme", "N/A"];
+  return labels.map(label => {
+    const key = normalizeOptionKey(label);
+    const v = key === "conforme" || key === "sim" ? "conforme"
+      : key === "nao_conforme" || key === "nao" ? "nao_conforme"
+      : key === "n_a" || key === "na" ? "na"
+      : String(label);
+    const danger = optionAliases(v).includes("nao_conforme");
+    const neutral = optionAliases(v).includes("na");
+    return {
+      v,
+      label: String(label),
+      cls: danger ? "border-red-300 text-red-700" : neutral ? "border-muted-foreground/30 text-muted-foreground" : "border-emerald-300 text-emerald-700",
+    };
+  });
+};
+
+const getAllowedActions = (rule: ReviewRule | null) => [
+  ...(rule?.gera_plano_acao ? ["plano" as const] : []),
+  ...(rule?.permite_devolucao ? ["devolver" as const] : []),
+];
+
 export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalProps) {
   const { profile } = useAuth();
   const flow = useApprovalFlow(assignment?.id || null);
