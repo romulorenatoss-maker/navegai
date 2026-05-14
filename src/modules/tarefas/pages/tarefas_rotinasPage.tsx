@@ -11,7 +11,7 @@ import { TemplateForm, SectionForm, FieldForm, StepForm, defaultTemplate, defaul
 // (Removido) TaskTypeSelectorDialog — builder único, sem seletor prévio.
 type TaskType = "simples" | "inspecao";
 import { TarefasBuilderWizard } from "@/modules/tarefas/components/builder/TarefasBuilderWizard";
-import { CheckItemForm } from "@/modules/tarefas/components/builder/types";
+import { CheckItemForm, AprovadorCheckItemForm, ValidadorCheckItemForm, buildDefaultValidadorItems } from "@/modules/tarefas/components/builder/types";
 import { useDraftAutosave, loadDraft, clearDraft, type BuilderDraftPayload } from "@/modules/tarefas/components/builder/useBuilderDraft";
 
 export default function OperationalCadastroPage() {
