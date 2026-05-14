@@ -295,7 +295,9 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                               placeholder={etapaPergunta ? "Pergunta principal (ex: O local foi limpo?)" : "Nome da etapa/formulário"}
                               className="h-7 text-sm font-medium flex-1" maxLength={100} />
                             <span className={`text-[10px] whitespace-nowrap px-1.5 py-0.5 rounded ${etapaPergunta ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}>
-                              {etapaPergunta ? "Pergunta" : `${sectionFields.length} campo${sectionFields.length !== 1 ? "s" : ""}`}
+                              {etapaPergunta
+                                ? "Pergunta"
+                                : `${sectionFields.length} campo${sectionFields.length !== 1 ? "s" : ""} · Σ ${sectionFields.reduce((a, f) => a + (Number(f.peso) || 0), 0)} pts`}
                             </span>
                             <Input type="number" min={0.1} step={0.1} value={section.peso} onChange={e => updateSection(section.tempId, "peso", +e.target.value)}
                               className="h-7 w-16 text-sm text-center" title="Peso da etapa" />
