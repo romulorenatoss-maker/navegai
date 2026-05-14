@@ -259,7 +259,7 @@ export default function OperationalExecucaoPage() {
     queryFn: async () => {
       if (!profile?.id) return [];
       let q = (supabase as any).from("operational_assignments")
-        .select("*, operational_templates(nome, tipo_execucao, origem), profiles:responsavel_id(id, nome, foto_url), criador:created_by(id, nome), aprovador:profiles!operational_assignments_aprovador_id_fkey(nome)")
+        .select("*, operational_templates(nome, tipo_execucao, origem, ada_config_snapshot), profiles:responsavel_id(id, nome, foto_url), criador:created_by(id, nome), aprovador:profiles!operational_assignments_aprovador_id_fkey(nome)")
         .order("data_prevista", { ascending: true });
       if (!isAdmin) {
         const orParts: string[] = [
@@ -399,7 +399,12 @@ export default function OperationalExecucaoPage() {
 
   const exec = useAssignmentExecution(selectedAssignment?.id || null);
 
-  const snapshot = selectedAssignment?.template_snapshot;
+  const snapshot = useMemo(() => {
+    const base = selectedAssignment?.template_snapshot;
+    const liveAda = selectedAssignment?.operational_templates?.ada_config_snapshot;
+    if (!base || base.ada_config_snapshot || !liveAda) return base;
+    return { ...base, ada_config_snapshot: liveAda };
+  }, [selectedAssignment?.template_snapshot, selectedAssignment?.operational_templates?.ada_config_snapshot]);
 
   // Deduplicate sections and fields by id
   const snapshotSections: any[] = useMemo(() => {
