@@ -355,23 +355,33 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
         </div>
 
         {naoConformes.map((f) => {
-          const p = planos[f.id] || { descricao_acao: "", prazo: "", criticidade: "media" as const };
+          const p = planos[f.id] || {
+            descricao_acao: "",
+            prazo: computeDefaultPrazo(),
+            prazo_padrao: computeDefaultPrazo(),
+            justificativa_alteracao_prazo: "",
+            criticidade: "media" as const,
+          };
+          const prazoAlterado = !!(p.prazo && p.prazo_padrao && p.prazo !== p.prazo_padrao);
           return (
             <div key={f.id} className="border border-border rounded-lg p-3 bg-card space-y-2">
               <div className="text-sm font-medium text-foreground">{f.label}</div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-[11px]">Prazo</Label>
+                  <Label className="text-[11px]">
+                    Prazo {prazoAlterado && <span className="text-amber-600 font-semibold">(alterado do padrão)</span>}
+                  </Label>
                   <Input
                     type="datetime-local"
                     value={p.prazo}
                     onChange={(e) => setPlanos(prev => ({ ...prev, [f.id]: { ...p, prazo: e.target.value } }))}
                     className="h-8 text-xs"
                   />
+                  <p className="text-[10px] text-muted-foreground">Padrão: {prazoPadraoHoras}h</p>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[11px]">Criticidade</Label>
-                  <Select value={p.criticidade} onValueChange={(v) => setPlanos(prev => ({ ...prev, [f.id]: { ...p, criticidade: v as any } }))}>
+                  <Select value={p.criticidade} onValueChange={(v) => setPlanos(prev => ({ ...prev, [f.id]: { ...p, criticidade: v as "baixa" | "media" | "alta" } }))}>
                     <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="baixa">Baixa</SelectItem>
@@ -390,6 +400,19 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                   placeholder="O que precisa ser feito para corrigir..."
                 />
               </div>
+              {prazoAlterado && (
+                <div className="space-y-1 border-t border-amber-200 pt-2 bg-amber-50/50 dark:bg-amber-950/20 -mx-3 px-3 -mb-3 pb-3 rounded-b-lg">
+                  <Label className="text-[11px] text-amber-800 dark:text-amber-300 font-semibold">
+                    Justificativa para alterar o prazo padrão (obrigatória) — visível ao auditor
+                  </Label>
+                  <Textarea
+                    value={p.justificativa_alteracao_prazo}
+                    onChange={(e) => setPlanos(prev => ({ ...prev, [f.id]: { ...p, justificativa_alteracao_prazo: e.target.value } }))}
+                    className="text-xs min-h-[40px]"
+                    placeholder="Por que o prazo foi estendido além do padrão..."
+                  />
+                </div>
+              )}
             </div>
           );
         })}
