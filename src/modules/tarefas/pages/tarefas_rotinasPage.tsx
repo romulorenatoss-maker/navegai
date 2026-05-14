@@ -443,6 +443,8 @@ export default function OperationalCadastroPage() {
     setFields([]);
     setSteps([]);
     setCheckItems([]);
+    setAprovadorChecks([]);
+    setValidadorChecks(buildDefaultValidadorItems());
     setProtectedCheckIds(new Set());
     setActiveTab("geral");
     // Detect existing draft for new template
