@@ -1001,3 +1001,87 @@ function InstrucaoUploadButton({ label, icon, accept, tipo, onUpload }: {
     </>
   );
 }
+
+// ──────────────────────────────────────────────────────────────────────────
+// Anexo de instrução por etapa: serializado como JSON dentro de SectionForm.descricao
+// para evitar migration. Compatível com legado (texto livre é ignorado/descartado).
+// ──────────────────────────────────────────────────────────────────────────
+export type AnexoTipo = "foto" | "video" | "documento";
+export interface SectionAnexo { url: string; tipo: AnexoTipo }
+
+export function parseAnexoFromDescricao(descricao: string | null | undefined): SectionAnexo | null {
+  if (!descricao) return null;
+  const s = String(descricao).trim();
+  if (!s.startsWith("{")) return null;
+  try {
+    const obj = JSON.parse(s);
+    if (obj && typeof obj.url === "string" && obj.url && (obj.tipo === "foto" || obj.tipo === "video" || obj.tipo === "documento")) {
+      return { url: obj.url, tipo: obj.tipo };
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+export function serializeAnexoToDescricao(anexo: SectionAnexo): string {
+  return JSON.stringify({ url: anexo.url, tipo: anexo.tipo });
+}
+
+// Uploader compacto baseado em ícone (sem label).
+function AnexoIconUploader({
+  accept, onUpload, icon, title, className, tipoFixo, compact,
+}: {
+  accept: string;
+  onUpload: (url: string, tipo: AnexoTipo) => void;
+  icon?: React.ReactNode;
+  title?: string;
+  className?: string;
+  tipoFixo?: AnexoTipo;
+  compact?: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const detectTipo = (file: File): AnexoTipo => {
+    if (tipoFixo) return tipoFixo;
+    if (file.type.startsWith("image/")) return "foto";
+    if (file.type.startsWith("video/")) return "video";
+    return "documento";
+  };
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "bin";
+      const path = `${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from("instrucoes-campos").upload(path, file);
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from("instrucoes-campos").getPublicUrl(path);
+      onUpload(urlData.publicUrl, detectTipo(file));
+      toast.success("Anexo enviado");
+    } catch (err: any) {
+      toast.error(`Erro ao enviar: ${err.message}`);
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  return (
+    <>
+      <input ref={inputRef} type="file" accept={accept} className="hidden" onChange={handleFile} />
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className={className ?? (compact ? "h-7 w-7 p-0" : "h-7 w-7 p-0")}
+        disabled={uploading}
+        title={title ?? "Anexar"}
+        onClick={() => inputRef.current?.click()}
+      >
+        {uploading ? <Clock className="w-3.5 h-3.5 animate-spin" /> : (icon ?? <Upload className="w-3.5 h-3.5" />)}
+      </Button>
+    </>
+  );
+}
