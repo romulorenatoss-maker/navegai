@@ -876,7 +876,23 @@ export default function OperationalExecucaoPage() {
                         <div className="flex items-center gap-2 mb-1">
                           <div className="w-3 h-3 rounded-full" style={{ backgroundColor: section.cor || "#3b82f6" }} />
                           <h3 className="text-sm font-semibold text-foreground">{section.nome}</h3>
-                          {section.descricao && <p className="text-xs text-muted-foreground">— {section.descricao}</p>}
+                          {(() => {
+                            const anexo = parseAnexoFromDescricao(section.descricao);
+                            if (!anexo) return null;
+                            return (
+                              <button
+                                type="button"
+                                title={`Ver instrução da etapa (${anexo.tipo})`}
+                                onClick={() => window.open(anexo.url, "_blank", "noopener,noreferrer")}
+                                className="inline-flex items-center justify-center w-6 h-6 rounded hover:bg-primary/10 text-primary transition-colors"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                            );
+                          })()}
+                          {section.descricao && !parseAnexoFromDescricao(section.descricao) && (
+                            <p className="text-xs text-muted-foreground">— {section.descricao}</p>
+                          )}
                         </div>
                         {(section.horario_inicio || section.horario_fim) && (
                           <div className={`flex items-center gap-2 mb-3 ml-5 text-xs ${sectionLate ? "text-destructive font-semibold" : "text-muted-foreground"}`}>
