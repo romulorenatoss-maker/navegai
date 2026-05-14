@@ -434,7 +434,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
           </div>
         </div>
 
-        {naoConformes.map((f) => {
+        {naoConformesPlano.map((f) => {
           const p = planos[f.id] || {
             descricao_acao: "",
             prazo: computeDefaultPrazo(),
