@@ -404,6 +404,7 @@ export default function OperationalCadastroPage() {
     setSteps([]);
     setAprovadorChecks([]);
     setValidadorChecks(buildDefaultValidadorItems());
+    setPenalidadesOverride({});
     setActiveTab("geral");
     // Detect existing draft for new template
     const existing = loadDraft(null);
@@ -532,6 +533,10 @@ export default function OperationalCadastroPage() {
           exige_evidencia: !!i.exige_evidencia,
         }))
       : buildDefaultValidadorItems());
+
+    // Hidrata overrides de penalidades automáticas (se houver no snapshot).
+    const ovRaw = (snap?.penalidades_override ?? {}) as any;
+    setPenalidadesOverride(ovRaw && typeof ovRaw === "object" ? ovRaw : {});
 
     setActiveTab("geral");
     // Detect existing draft for this template id
