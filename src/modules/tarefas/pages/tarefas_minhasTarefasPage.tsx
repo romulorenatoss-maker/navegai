@@ -400,11 +400,18 @@ export default function OperationalExecucaoPage() {
   const liveFieldOverlayMap = useMemo(() => {
     const map: Record<string, any> = {};
     if (!liveTemplateFields) return map;
-    // chave primária: id; fallback: section_id|label (caso snapshot tenha id divergente)
+    // Index por id; e por label (preferindo a versão que tenha opcoes_regras preenchidas,
+    // pois pode haver entradas duplicadas/legadas com regras vazias).
     for (const lf of liveTemplateFields as any[]) {
       map[lf.id] = lf;
+    }
+    for (const lf of liveTemplateFields as any[]) {
       const altKey = `${lf.section_id || ""}|${(lf.label || "").trim().toLowerCase()}`;
-      if (altKey && !map[altKey]) map[altKey] = lf;
+      if (!altKey) continue;
+      const existing = map[altKey];
+      const lfHasRules = Array.isArray(lf.opcoes_regras) && lf.opcoes_regras.length > 0;
+      const existingHasRules = existing && Array.isArray(existing.opcoes_regras) && existing.opcoes_regras.length > 0;
+      if (!existing || (lfHasRules && !existingHasRules)) map[altKey] = lf;
     }
     return map;
   }, [liveTemplateFields]);
@@ -412,36 +419,42 @@ export default function OperationalExecucaoPage() {
   const snapshotFields: SnapshotField[] = useMemo(() => {
     const raw = snapshot?.fields || [];
     const seen = new Set<string>();
+    // Helpers: ?? mantém [] vazio do live; queremos cair para snapshot quando live estiver vazio.
+    const pickArr = (live: any, snap: any) => (Array.isArray(live) && live.length > 0 ? live : (snap ?? live));
+    const pick = (live: any, snap: any) => (live === null || live === undefined ? snap : live);
     const result = raw.filter((f: any) => { if (seen.has(f.id)) return false; seen.add(f.id); return true; })
       .sort((a: any, b: any) => a.ordem - b.ordem)
       .map((f: any) => {
         if (!isAssignmentLive) return f;
         const altKey = `${f.section_id || ""}|${(f.label || "").trim().toLowerCase()}`;
-        const live = liveFieldOverlayMap[f.id] || liveFieldOverlayMap[altKey];
+        const byId = liveFieldOverlayMap[f.id];
+        const byLabel = liveFieldOverlayMap[altKey];
+        // Prefere a entrada por label se ela trouxer regras e a por id não tiver.
+        const byIdHasRules = byId && Array.isArray(byId.opcoes_regras) && byId.opcoes_regras.length > 0;
+        const byLabelHasRules = byLabel && Array.isArray(byLabel.opcoes_regras) && byLabel.opcoes_regras.length > 0;
+        const live = byIdHasRules ? byId : (byLabelHasRules ? byLabel : (byId || byLabel));
         if (!live) return f;
-        // Sobrepõe apenas as propriedades de regra; preserva identidade/estrutura
         return {
           ...f,
-          opcoes: live.opcoes ?? f.opcoes,
-          opcoes_regras: live.opcoes_regras ?? f.opcoes_regras,
-          obrigatorio: live.obrigatorio ?? f.obrigatorio,
-          exige_evidencia: live.exige_evidencia ?? f.exige_evidencia,
-          tipo_evidencia: live.tipo_evidencia ?? f.tipo_evidencia,
-          gera_contingencia: live.gera_contingencia ?? f.gera_contingencia,
-          criticidade: live.criticidade ?? f.criticidade,
-          validacao: live.validacao ?? f.validacao,
-          condicao_visibilidade: live.condicao_visibilidade ?? f.condicao_visibilidade,
-          aprovador_verificar: live.aprovador_verificar ?? f.aprovador_verificar,
-          aprovador_pergunta: live.aprovador_pergunta ?? f.aprovador_pergunta,
-          aprovador_tipo_resposta: live.aprovador_tipo_resposta ?? f.aprovador_tipo_resposta,
-          aprovador_peso: live.aprovador_peso ?? f.aprovador_peso,
-          aprovador_obriga_observacao_nao: live.aprovador_obriga_observacao_nao ?? f.aprovador_obriga_observacao_nao,
-          aprovador_exige_evidencia_nao: live.aprovador_exige_evidencia_nao ?? f.aprovador_exige_evidencia_nao,
-          aprovador_tipos_evidencia: live.aprovador_tipos_evidencia ?? f.aprovador_tipos_evidencia,
-          auditor_verificar: live.auditor_verificar ?? f.auditor_verificar,
+          opcoes: pickArr(live.opcoes, f.opcoes),
+          opcoes_regras: pickArr(live.opcoes_regras, f.opcoes_regras),
+          obrigatorio: pick(live.obrigatorio, f.obrigatorio),
+          exige_evidencia: pick(live.exige_evidencia, f.exige_evidencia),
+          tipo_evidencia: pick(live.tipo_evidencia, f.tipo_evidencia),
+          gera_contingencia: pick(live.gera_contingencia, f.gera_contingencia),
+          criticidade: pick(live.criticidade, f.criticidade),
+          validacao: pick(live.validacao, f.validacao),
+          condicao_visibilidade: pick(live.condicao_visibilidade, f.condicao_visibilidade),
+          aprovador_verificar: pick(live.aprovador_verificar, f.aprovador_verificar),
+          aprovador_pergunta: pick(live.aprovador_pergunta, f.aprovador_pergunta),
+          aprovador_tipo_resposta: pick(live.aprovador_tipo_resposta, f.aprovador_tipo_resposta),
+          aprovador_peso: pick(live.aprovador_peso, f.aprovador_peso),
+          aprovador_obriga_observacao_nao: pick(live.aprovador_obriga_observacao_nao, f.aprovador_obriga_observacao_nao),
+          aprovador_exige_evidencia_nao: pick(live.aprovador_exige_evidencia_nao, f.aprovador_exige_evidencia_nao),
+          aprovador_tipos_evidencia: pickArr(live.aprovador_tipos_evidencia, f.aprovador_tipos_evidencia),
+          auditor_verificar: pick(live.auditor_verificar, f.auditor_verificar),
         };
       });
-    // Register field labels for detailed logging
     if (result.length > 0) exec.setFieldLabels(result);
     return result;
   }, [snapshot, liveFieldOverlayMap, isAssignmentLive]);
