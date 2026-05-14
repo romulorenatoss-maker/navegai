@@ -290,6 +290,7 @@ const empty = (): Buckets => ({
   renegociacaoPendente: [], aguardandoValidacaoMinha: [], respostaRecebida: [], limiteRenegociacao: [],
   doMeuSetor: [], pendentesSetor: [], emAvaliacaoSetor: [], emAprovacaoSetor: [],
   opHoje: [], opEmAndamento: [], opAguardandoVoce: [], opConcluidas: [], opCriticas: [],
+  opAguardandoAprovacao: [], opAguardandoAuditoria: [], opTodas: [],
 });
 
 export function bucketize(
