@@ -412,6 +412,7 @@ export function useApprovalFlow(assignmentId: string | null) {
       qc.invalidateQueries({ queryKey: ["operational_aprovacao_assignments"] });
       qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
       qc.invalidateQueries({ queryKey: ["operational_approval_contingencies"] });
+      qc.invalidateQueries({ queryKey: ["operational_approval_field_reviews", assignmentId] });
       toast.success("Planos de ação registrados e tarefa devolvida.");
     },
     onError: (e: any) => toast.error(e.message),
