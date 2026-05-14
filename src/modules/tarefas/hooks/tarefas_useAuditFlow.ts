@@ -186,6 +186,7 @@ export function useAuditFlow(assignmentId: string | null) {
   return {
     fieldAnswers,
     existingAuditAnswers,
+    approvalAnswers,
     auditorAnswers,
     updateAuditorAnswer,
     autoSaveAuditorAnswer,
