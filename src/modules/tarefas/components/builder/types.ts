@@ -212,6 +212,18 @@ export const buildAprovadorAutomatico = (p: {
     pergunta_padrao: p.pergunta,
     tipo_resposta: p.tipo,
     tipo: p.tipo,
+    opcoes: p.tipo === "sim_nao" ? ["Sim", "Não", "N/A"] : ["Conforme", "Não conforme", "N/A"],
+    regras_por_opcao: p.tipo === "sim_nao"
+      ? [
+          { valor: "sim", exige_observacao: false, exige_evidencia: false, gera_plano_acao: false, permite_devolucao: false },
+          { valor: "nao", exige_observacao: !!p.exige_observacao, exige_evidencia: !!p.exige_evidencia, gera_plano_acao: !!p.gera_plano_acao, permite_devolucao: !!p.permite_devolucao },
+          { valor: "na", exige_observacao: false, exige_evidencia: false, gera_plano_acao: false, permite_devolucao: false },
+        ]
+      : [
+          { valor: "conforme", exige_observacao: false, exige_evidencia: false, gera_plano_acao: false, permite_devolucao: false },
+          { valor: "nao_conforme", exige_observacao: !!p.exige_observacao, exige_evidencia: !!p.exige_evidencia, gera_plano_acao: !!p.gera_plano_acao, permite_devolucao: !!p.permite_devolucao },
+          { valor: "na", exige_observacao: false, exige_evidencia: false, gera_plano_acao: false, permite_devolucao: false },
+        ],
     peso: p.peso,
     exige_observacao: !!p.exige_observacao,
     exige_evidencia: !!p.exige_evidencia,
