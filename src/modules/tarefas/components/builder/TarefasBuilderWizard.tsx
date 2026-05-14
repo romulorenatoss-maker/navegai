@@ -17,8 +17,6 @@ import {
   WIZARD_STEPS,
   WizardStepId,
 } from "./types";
-import { PenalidadesAutomaticasBlock, type PenalidadesOverrideMap } from "./PenalidadesAutomaticasBlock";
-import type { TarefasPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
 
 interface Props {
   isEditing: boolean;
@@ -36,11 +34,6 @@ interface Props {
   setAprovadorChecks: React.Dispatch<React.SetStateAction<AprovadorCheckItemForm[]>>;
   validadorChecks: AprovadorCheckItemForm[];
   setValidadorChecks: React.Dispatch<React.SetStateAction<AprovadorCheckItemForm[]>>;
-  /** Config global de Pontuação/SLA — usada para popular as penalidades automáticas. */
-  pontuacaoConfig: TarefasPontuacaoConfig | null;
-  /** Overrides locais por rotina das penalidades automáticas. */
-  penalidadesOverride: PenalidadesOverrideMap;
-  setPenalidadesOverride: React.Dispatch<React.SetStateAction<PenalidadesOverrideMap>>;
   setores: any[];
   colaboradores: any[];
   templateId: string | null;
@@ -56,7 +49,7 @@ export function TarefasBuilderWizard(props: Props) {
     isEditing, saving, form, set, sections, setSections, fields, setFields,
     steps, setSteps,
     aprovadorChecks, setAprovadorChecks, validadorChecks, setValidadorChecks,
-    pontuacaoConfig, penalidadesOverride, setPenalidadesOverride,
+    
     setores, colaboradores,
     templateId, draftToRestore, onRestoreDraft, onDiscardDraft, onCancel, onSubmit,
   } = props;
@@ -147,18 +140,7 @@ export function TarefasBuilderWizard(props: Props) {
         )}
 
         {current === "checklist_validador" && hasValidador && (
-          <div className="space-y-4">
-            <PenalidadesAutomaticasBlock
-              camadaKey="sla_validador"
-              titulo="Penalidades automáticas da Auditoria (Validador)"
-              descricao="O Validador não é avaliado: ele audita a execução do Avaliado e do Aprovador. Estas penalidades são aplicadas automaticamente quando a auditoria detecta atraso, ausência de resposta ou não conformidade nas camadas anteriores."
-              nota="Validador audita — não executa nem responde perguntas operacionais."
-              globalConfig={pontuacaoConfig}
-              overrides={penalidadesOverride}
-              onOverridesChange={setPenalidadesOverride}
-            />
-            <StepChecklistValidador items={validadorChecks} setItems={setValidadorChecks} />
-          </div>
+          <StepChecklistValidador items={validadorChecks} setItems={setValidadorChecks} />
         )}
 
         {current === "fluxo" && (

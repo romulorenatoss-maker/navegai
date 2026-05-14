@@ -13,7 +13,7 @@ type TaskType = "simples" | "inspecao";
 import { TarefasBuilderWizard } from "@/modules/tarefas/components/builder/TarefasBuilderWizard";
 import { AprovadorCheckItemForm, buildAprovadorAutomatico } from "@/modules/tarefas/components/builder/types";
 import { normalizeAprovadorList } from "@/modules/tarefas/components/builder/checklistNormalizers";
-import type { PenalidadesOverrideMap } from "@/modules/tarefas/components/builder/PenalidadesAutomaticasBlock";
+
 import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
 import { useDraftAutosave, loadDraft, clearDraft, type BuilderDraftPayload } from "@/modules/tarefas/components/builder/useBuilderDraft";
 
@@ -29,7 +29,7 @@ export default function OperationalCadastroPage() {
   const [steps, setSteps] = useState<StepForm[]>([]);
   const [aprovadorChecks, setAprovadorChecks] = useState<AprovadorCheckItemForm[]>([]);
   const [validadorChecks, setValidadorChecks] = useState<AprovadorCheckItemForm[]>([]);
-  const [penalidadesOverride, setPenalidadesOverride] = useState<PenalidadesOverrideMap>({});
+  
   const [activeTab, setActiveTab] = useState("geral");
   const [filterExecutor, setFilterExecutor] = useState("__all");
   const [filterAvaliador, setFilterAvaliador] = useState("__all");
@@ -227,7 +227,7 @@ export default function OperationalCadastroPage() {
             aprovador: aprovadorChecks,
             validador: validadorChecks,
           },
-          penalidades_override: penalidadesOverride,
+          
         },
       };
 
@@ -412,7 +412,7 @@ export default function OperationalCadastroPage() {
     setValidadorChecks(
       pacoteVal.filter(p => p.ativo !== false).map(p => buildAprovadorAutomatico(p))
     );
-    setPenalidadesOverride({});
+    
     setActiveTab("geral");
     // Detect existing draft for new template
     const existing = loadDraft(null);
@@ -548,10 +548,6 @@ export default function OperationalCadastroPage() {
         ? normalizeAprovadorList(valNormalized)
         : []
     );
-
-    // Hidrata overrides de penalidades automáticas (se houver no snapshot).
-    const ovRaw = (snap?.penalidades_override ?? {}) as any;
-    setPenalidadesOverride(ovRaw && typeof ovRaw === "object" ? ovRaw : {});
 
     setActiveTab("geral");
     // Detect existing draft for this template id
@@ -706,9 +702,6 @@ export default function OperationalCadastroPage() {
               steps={steps} setSteps={setSteps}
               aprovadorChecks={aprovadorChecks} setAprovadorChecks={setAprovadorChecks}
               validadorChecks={validadorChecks} setValidadorChecks={setValidadorChecks}
-              pontuacaoConfig={pontuacaoConfig ?? null}
-              penalidadesOverride={penalidadesOverride}
-              setPenalidadesOverride={setPenalidadesOverride}
               draftToRestore={pendingDraft}
               onRestoreDraft={restoreDraft}
               onDiscardDraft={discardDraft}
