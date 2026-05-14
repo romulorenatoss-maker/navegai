@@ -271,7 +271,7 @@ export function TabTarefasExecutadas({ templateId }: Props) {
         <div className="space-y-2 max-h-[400px] overflow-y-auto">
           {assignments.map((a: any) => {
             const tipoExec = a.template?.tipo_execucao;
-            const isSimples = tipoExec === "tarefa_simples";
+            const isSimples = tipoExec === "simples";
             const TipoIcon = isSimples ? ClipboardList : Workflow;
             const tipoLabel = isSimples ? "Tarefa Simples" : "Inspeção por Etapa";
             const recTipo = a.template?.recorrencia_tipo;

@@ -817,7 +817,7 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
                 fields={fields}
                 setFields={setFields}
                 setores={setores as any[]}
-                tipoExecucao={taskType === "simples" ? "tarefa_simples" : "etapas"}
+                tipoExecucao={taskType === "simples" ? "simples" : "etapas"}
                 requireFieldHorario={taskType !== "simples" && horarioModo === "individual"}
                 planoAcaoEnabled={true}
                 agrupadorExtras={agrupadorExtras}
