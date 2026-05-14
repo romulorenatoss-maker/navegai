@@ -59,15 +59,9 @@ function buildBlocksFromForm(form: TemplateForm): RespBlocksValueV2 {
       ? fromLegacy(form.avaliado_profile_id, form.avaliado_setor_id)
       : fromLegacy(form.executor_profile_id, form.executor_setor_id)
   );
-  const avaliador = multi?.avaliador || fromLegacy(form.avaliador_profile_id, form.avaliador_setor_id);
+  const avaliador = multi?.avaliador || { ...emptyRespBlocksV2.avaliador };
   const aprovadorFinal = multi?.aprovadorFinal || fromLegacy(form.aprovador_profile_id, form.aprovador_setor_id);
-  const validadorFinal = multi?.validadorFinal || (
-    form.ada_quem_avalia_tipo === "pessoa"
-      ? { mode: "individual" as const, profileIds: form.ada_quem_avalia_profile_id ? [form.ada_quem_avalia_profile_id] : [], setorId: "" }
-      : form.ada_quem_avalia_tipo === "setor"
-      ? { mode: "setor_todo" as const, profileIds: [], setorId: form.ada_quem_avalia_setor_id || "" }
-      : { ...emptyRespBlocksV2.validadorFinal }
-  );
+  const validadorFinal = multi?.validadorFinal || fromLegacy(form.auditor_profile_id, form.auditor_setor_id);
 
   return { respondente, avaliado, avaliador, aprovadorFinal, validadorFinal };
 }
@@ -95,31 +89,16 @@ export function TabGeral({ form, set, setores, colaboradores, sections, steps }:
     set("avaliado_profile_id" as any, respV2LegacyProfileId(next.avaliado) as any);
     set("avaliado_setor_id" as any, respV2LegacySetorId(next.avaliado) as any);
 
-    const a3pid = respV2LegacyProfileId(next.avaliador);
-    const a3sid = respV2LegacySetorId(next.avaliador);
-    set("avaliador_profile_id" as any, a3pid as any);
-    set("avaliador_setor_id" as any, a3sid as any);
-    // mantém compat com validador_contingencia_* (mesmo conjunto)
-    set("validador_contingencia_profile_id" as any, a3pid as any);
-    set("validador_contingencia_setor_id" as any, a3sid as any);
+    // Auditor (era avaliador legado): grava nas colunas auditor_*
+    const audPid = respV2LegacyProfileId(next.validadorFinal);
+    const audSid = respV2LegacySetorId(next.validadorFinal);
+    set("auditor_profile_id" as any, audPid as any);
+    set("auditor_setor_id" as any, audSid as any);
 
     set("aprovador_profile_id" as any, respV2LegacyProfileId(next.aprovadorFinal) as any);
     set("aprovador_setor_id" as any, respV2LegacySetorId(next.aprovadorFinal) as any);
     const aprFilled = !!respV2LegacyProfileId(next.aprovadorFinal) || !!respV2LegacySetorId(next.aprovadorFinal);
     set("requer_aprovacao_gestor" as any, aprFilled as any);
-
-    const vfFilled = !!respV2LegacyProfileId(next.validadorFinal) || !!respV2LegacySetorId(next.validadorFinal);
-    set("ada_enabled" as any, vfFilled as any);
-    if (vfFilled) {
-      set("ada_quem_avalia_tipo" as any, (next.validadorFinal.mode === "individual" ? "pessoa" : "setor") as any);
-      set("ada_quem_avalia_profile_id" as any, respV2LegacyProfileId(next.validadorFinal) as any);
-      set("ada_quem_avalia_setor_id" as any, respV2LegacySetorId(next.validadorFinal) as any);
-      if (!form.ada_gerar_em) set("ada_gerar_em" as any, "pos_avaliacao" as any);
-    } else {
-      set("ada_quem_avalia_tipo" as any, "" as any);
-      set("ada_quem_avalia_profile_id" as any, "" as any);
-      set("ada_quem_avalia_setor_id" as any, "" as any);
-    }
 
     // 2) Persistência de responsaveis_multi (snapshot completo) — Fase 2.
     // Por ora, registros novos/edições gravam apenas as colunas legacy mapeadas acima.

@@ -197,14 +197,12 @@ export default function OperationalCadastroPage() {
         permite_devolucao_parcial: form.permite_devolucao_parcial,
         executor_profile_id: form.executor_profile_id || null,
         executor_setor_id: form.executor_setor_id || null,
-        avaliador_profile_id: form.avaliador_profile_id || null,
-        avaliador_setor_id: form.avaliador_setor_id || null,
         avaliado_profile_id: form.avaliado_profile_id || null,
         avaliado_setor_id: form.avaliado_setor_id || null,
         aprovador_profile_id: form.aprovador_profile_id || null,
         aprovador_setor_id: form.aprovador_setor_id || null,
-        validador_contingencia_profile_id: form.validador_contingencia_profile_id || null,
-        validador_contingencia_setor_id: form.validador_contingencia_setor_id || null,
+        auditor_profile_id: form.auditor_profile_id || null,
+        auditor_setor_id: form.auditor_setor_id || null,
         modo_pontuacao: form.modo_pontuacao,
         destino_score: form.destino_score,
         peso_recorrencia: form.peso_recorrencia,
@@ -213,22 +211,6 @@ export default function OperationalCadastroPage() {
         penalidade_sla_contingencia: form.penalidade_sla_contingencia,
         penalidade_fora_prazo: form.penalidade_fora_prazo,
         habilitar_perguntas_automaticas: form.habilitar_perguntas_automaticas,
-        ada_enabled: form.ada_enabled,
-        ada_quem_avalia_tipo: form.ada_enabled ? (form.ada_quem_avalia_tipo || null) : null,
-        ada_quem_avalia_profile_id: form.ada_enabled && form.ada_quem_avalia_tipo === "pessoa" ? (form.ada_quem_avalia_profile_id || null) : null,
-        ada_quem_avalia_setor_id: form.ada_enabled && form.ada_quem_avalia_tipo === "setor" ? (form.ada_quem_avalia_setor_id || null) : null,
-        ada_gerar_em: form.ada_enabled ? (form.ada_gerar_em || "pos_avaliacao") : null,
-        // Snapshot estendido: além do AdA legado, persistimos os novos checklists do
-        // Aprovador Final / Validador Final em ada_config_snapshot.checklists
-        // (sem migration; campo jsonb já existente).
-        ada_config_snapshot: {
-          ...(form.ada_config_snapshot ?? {}),
-          checklists: {
-            aprovador: aprovadorChecks,
-            validador: validadorChecks,
-          },
-          
-        },
       };
 
       let templateId: string;
@@ -439,14 +421,12 @@ export default function OperationalCadastroPage() {
       permite_devolucao_parcial: t.permite_devolucao_parcial || false,
       executor_profile_id: t.executor_profile_id || "",
       executor_setor_id: t.executor_setor_id || "",
-      avaliador_profile_id: t.avaliador_profile_id || "",
-      avaliador_setor_id: t.avaliador_setor_id || "",
       avaliado_profile_id: t.avaliado_profile_id || "",
       avaliado_setor_id: t.avaliado_setor_id || "",
       aprovador_profile_id: t.aprovador_profile_id || "",
       aprovador_setor_id: t.aprovador_setor_id || "",
-      validador_contingencia_profile_id: t.validador_contingencia_profile_id || "",
-      validador_contingencia_setor_id: t.validador_contingencia_setor_id || "",
+      auditor_profile_id: t.auditor_profile_id || "",
+      auditor_setor_id: t.auditor_setor_id || "",
       modo_pontuacao: t.modo_pontuacao || "pontuar_avaliado",
       destino_score: t.destino_score || "individual",
       tipo_atribuicao_avaliado: t.tipo_atribuicao_avaliado || "individual",
@@ -455,12 +435,6 @@ export default function OperationalCadastroPage() {
       penalidade_sla_contingencia: t.penalidade_sla_contingencia ?? 15,
       penalidade_fora_prazo: t.penalidade_fora_prazo ?? 20,
       habilitar_perguntas_automaticas: t.habilitar_perguntas_automaticas ?? true,
-      ada_enabled: t.ada_enabled ?? false,
-      ada_quem_avalia_tipo: t.ada_quem_avalia_tipo ?? "",
-      ada_quem_avalia_profile_id: t.ada_quem_avalia_profile_id ?? "",
-      ada_quem_avalia_setor_id: t.ada_quem_avalia_setor_id ?? "",
-      ada_gerar_em: t.ada_gerar_em ?? "",
-      ada_config_snapshot: t.ada_config_snapshot ?? null,
     });
 
     // Load sections
@@ -701,7 +675,7 @@ export default function OperationalCadastroPage() {
               fields={fields} setFields={setFields}
               steps={steps} setSteps={setSteps}
               aprovadorChecks={aprovadorChecks} setAprovadorChecks={setAprovadorChecks}
-              validadorChecks={validadorChecks} setValidadorChecks={setValidadorChecks}
+              aprovadorChecks={aprovadorChecks} setAprovadorChecks={setAprovadorChecks}
               draftToRestore={pendingDraft}
               onRestoreDraft={restoreDraft}
               onDiscardDraft={discardDraft}
