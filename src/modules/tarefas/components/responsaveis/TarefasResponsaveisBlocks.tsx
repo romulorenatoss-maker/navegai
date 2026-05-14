@@ -47,10 +47,9 @@ interface BlockSpec {
 }
 
 const BLOCKS: BlockSpec[] = [
-  { key: "avaliado", num: 1, title: "Avaliado", hint: "Pessoa que executa a tarefa e recebe a nota.", required: true, Icon: User },
-  { key: "avaliador", num: 2, title: "Avaliador (Plano de Ação)", hint: "Quem confere a execução e responde os planos de ação.", required: false, Icon: ShieldCheck, badge: "Avaliação + PA" },
-  { key: "aprovador", num: 3, title: "Aprovador", hint: "Aprovação final e pontuação. Vazio = sem aprovação final.", required: false, Icon: Award },
-  { key: "validadorFinal", num: 4, title: "Validador Final", hint: "Avalia o avaliador (AdA). Vazio = não gera AdA.", required: false, Icon: UserCheck },
+  { key: "avaliado", num: 1, title: "Executor / Avaliado", hint: "Pessoa que executa a tarefa, responde perguntas e recebe a nota.", required: true, Icon: User },
+  { key: "aprovador", num: 2, title: "Aprovador", hint: "Aprova/reprova, cria plano de ação e define impacto operacional.", required: false, Icon: Award },
+  { key: "validadorFinal", num: 3, title: "Auditor", hint: "Auditoria posterior do processo. Não altera notas.", required: false, Icon: UserCheck },
 ];
 
 interface Props {
