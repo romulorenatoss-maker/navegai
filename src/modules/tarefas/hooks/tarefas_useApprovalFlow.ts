@@ -171,6 +171,7 @@ export function useApprovalFlow(assignmentId: string | null) {
           resposta: draft.resposta,
           observacao: draft.observacao || null,
           peso: f.aprovador_peso || 1,
+          evidencia_url: draft.evidencia_url ?? null,
           respondido_por: profile.id,
           respondido_em: new Date().toISOString(),
         };
