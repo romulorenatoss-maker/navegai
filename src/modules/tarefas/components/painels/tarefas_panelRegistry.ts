@@ -23,9 +23,7 @@ const ValidacaoSolicitante = lazy(() =>
 const PlanoAcao = lazy(() =>
   import("./tarefas_embeddedPlanoAcaoPanel").then((m) => ({ default: m.EmbeddedPlanoAcaoPanel })),
 );
-const Avaliacao = lazy(() =>
-  import("./tarefas_embeddedAvaliacaoPanel").then((m) => ({ default: m.EmbeddedAvaliacaoPanel })),
-);
+// Avaliacao panel removido — fluxo consolidado em Executor (responde) → Aprovador.
 const Aprovacao = lazy(() =>
   import("./tarefas_embeddedAprovacaoPanel").then((m) => ({ default: m.EmbeddedAprovacaoPanel })),
 );
@@ -80,17 +78,7 @@ export const PANEL_REGISTRY: PanelEntry[] = [
     component: PlanoAcao,
   },
 
-  // === Avaliação (wrapper fino do fluxo legado) ===
-  {
-    id: "avaliacao",
-    label: "Avaliação técnica",
-    priority: 10,
-    match: (c) =>
-      [TASK_STATUS.AGUARDANDO_AVALIACAO, TASK_STATUS.EM_AVALIACAO].includes(c.status as any) &&
-      (c.isAval || c.isAdmin),
-    requiredAction: "avaliar_tarefa",
-    component: Avaliacao,
-  },
+  // === Avaliação técnica REMOVIDA — Executor já responde; próxima etapa = Aprovador ===
 
   // === Aprovação (wrapper fino do fluxo legado) ===
   {
