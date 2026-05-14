@@ -126,6 +126,7 @@ export const TAREFAS_PONTUACAO_DEFAULTS: TarefasPontuacaoConfig = {
   sla_aprovador: camadaDefault({ sla_horas: 24 }),
   sla_plano_acao: camadaDefault({ sla_horas: 48, penalidade_atraso: 15, penalidade_nao_resposta: 40, penalidade_nao_conformidade: 25, gera_plano_acao_auto: false }),
   sla_validador: camadaDefault({ sla_horas: 72, penalidade_atraso: 10, penalidade_nao_resposta: 30, penalidade_nao_conformidade: 20, gera_plano_acao_auto: false }),
+  aprovador_pacote_padrao: APROVADOR_PACOTE_PADRAO_DEFAULT,
 };
 
 const mergeCamada = (raw: any, fallback: CamadaSlaConfig): CamadaSlaConfig => ({
