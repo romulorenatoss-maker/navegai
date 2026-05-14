@@ -664,7 +664,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             className="bg-emerald-600 hover:bg-emerald-700 text-white"
           >
             <Send className="w-3.5 h-3.5 mr-1" />
-            {flow.isSaving ? "Salvando..." : "Aprovar Final"}
+            {flow.isSaving ? "Salvando..." : "Aprovar"}
           </Button>
         )}
       </div>
@@ -842,7 +842,7 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
         <div className="flex-1" />
         <Button type="button" size="sm" onClick={aprovar} disabled={blockReasons.length > 0 || flow.isSaving}
           className="bg-emerald-600 hover:bg-emerald-700 text-white">
-          <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> {flow.isSaving ? "Salvando..." : "Aprovar Final"}
+          <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> {flow.isSaving ? "Salvando..." : "Aprovar"}
         </Button>
       </div>
     </div>
