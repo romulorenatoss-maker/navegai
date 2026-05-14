@@ -15,7 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2, XCircle, RotateCcw, Send, Play, AlertTriangle, ShieldCheck } from "lucide-react";
+import { CheckCircle2, XCircle, RotateCcw, Send, Play, AlertTriangle, ShieldCheck, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { useAssignmentReview } from "@/modules/tarefas/hooks/tarefas_useAssignmentReview";
 import { useApprovalFlow } from "@/modules/tarefas/hooks/tarefas_useApprovalFlow";
@@ -235,10 +235,60 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             const existing = flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id);
             const draft = flow.approverAnswers[f.id];
             const value = draft?.resposta ?? existing?.resposta ?? "";
+            const execAnswer = (flow.fieldAnswers || []).find((a: any) => a.field_id === f.id);
             return (
               <div key={f.id} className="border border-border rounded-lg p-3 space-y-2 bg-card">
-                <div className="text-sm font-medium text-foreground">
-                  {f.aprovador_pergunta || f.label}
+                <div className="text-sm font-medium text-foreground">{f.label}</div>
+
+                {/* Resposta do executor (read-only) */}
+                <div className="rounded-md border border-border/60 bg-muted/40 p-2 space-y-1">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Resposta do Executor</p>
+                  {execAnswer ? (
+                    <>
+                      {(f.tipo === "conforme" || f.tipo === "sim_nao") && (
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${execAnswer.valor_booleano === true ? "bg-green-100 text-green-800" : execAnswer.valor_booleano === false ? "bg-red-100 text-red-800" : "bg-muted text-muted-foreground"}`}>
+                          {execAnswer.valor_booleano === true ? "Sim / Conforme" : execAnswer.valor_booleano === false ? "Não / Não Conforme" : "—"}
+                        </span>
+                      )}
+                      {(f.tipo === "numero" || f.tipo === "nota_avaliacao") && (
+                        <span className="font-mono text-sm">{execAnswer.valor_numero ?? "—"}</span>
+                      )}
+                      {f.tipo === "data" && (
+                        <span className="text-sm">{execAnswer.valor_data?.slice(0, 10) || "—"}</span>
+                      )}
+                      {f.tipo === "multi_select" && Array.isArray(execAnswer.valor_json) && (
+                        <div className="flex flex-wrap gap-1">
+                          {(execAnswer.valor_json as string[]).map((i) => (
+                            <span key={i} className="px-2 py-0.5 rounded bg-primary/10 text-primary text-xs">{i}</span>
+                          ))}
+                        </div>
+                      )}
+                      {!["conforme","sim_nao","numero","nota_avaliacao","data","multi_select"].includes(f.tipo) && (
+                        <p className="text-sm whitespace-pre-wrap">{execAnswer.valor_texto || "—"}</p>
+                      )}
+                      {execAnswer.observacao && (
+                        <p className="text-xs text-muted-foreground italic">Obs: {execAnswer.observacao}</p>
+                      )}
+                      {execAnswer.evidencia_url && (
+                        <div className="mt-1">
+                          {f.tipo === "foto" ? (
+                            <img src={execAnswer.evidencia_url} alt="Evidência" className="max-h-28 rounded border border-border cursor-pointer" onClick={() => window.open(execAnswer.evidencia_url, "_blank")} />
+                          ) : (
+                            <a href={execAnswer.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline inline-flex items-center gap-1">
+                              <ExternalLink className="w-3 h-3" />Ver anexo
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground italic text-xs">Sem resposta do executor</span>
+                  )}
+                </div>
+
+                {/* Pergunta do aprovador */}
+                <div className="text-xs font-medium text-foreground pt-1">
+                  {f.aprovador_pergunta || `Avaliar: ${f.label}`}
                 </div>
                 <div className="flex gap-2">
                   {[
