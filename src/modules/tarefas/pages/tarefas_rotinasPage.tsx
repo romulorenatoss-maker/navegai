@@ -408,7 +408,10 @@ export default function OperationalCadastroPage() {
     setAprovadorChecks(
       pacote.filter(p => p.ativo !== false).map(p => buildAprovadorAutomatico(p))
     );
-    setValidadorChecks(buildDefaultValidadorItems());
+    const pacoteVal = pontuacaoConfig?.validador_pacote_padrao ?? [];
+    setValidadorChecks(
+      pacoteVal.filter(p => p.ativo !== false).map(p => buildAprovadorAutomatico(p))
+    );
     setPenalidadesOverride({});
     setActiveTab("geral");
     // Detect existing draft for new template
