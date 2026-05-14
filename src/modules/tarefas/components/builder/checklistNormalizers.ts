@@ -40,6 +40,14 @@ export function normalizeAprovadorItem(
   const tipo_resposta: AprovadorTipoResposta =
     raw?.tipo_resposta ?? "conforme_nao_conforme";
 
+  // Deduz origem para snapshots antigos:
+  //   - se vier do snapshot novo, respeita.
+  //   - se tem field_id → replicada_avaliado.
+  //   - caso contrário → manual.
+  const origem_pergunta =
+    raw?.origem_pergunta
+      ?? (raw?.field_id ? "replicada_avaliado" : "manual");
+
   return {
     tempId: raw?.tempId ?? ensureId(),
     field_id: raw?.field_id ?? "",
@@ -61,11 +69,24 @@ export function normalizeAprovadorItem(
     penalidade_nao_resposta: raw?.penalidade_nao_resposta ?? defaults.penalidade_nao_resposta,
     penalidade_nao_conformidade:
       raw?.penalidade_nao_conformidade ?? defaults.penalidade_nao_conformidade,
+    penalidade_reprovacao: raw?.penalidade_reprovacao,
     permite_ponderacao_auditor:
       raw?.permite_ponderacao_auditor ?? defaults.permite_ponderacao ?? true,
     exige_justificativa_ponderacao:
       raw?.exige_justificativa_ponderacao ?? defaults.exige_justificativa_ponderacao ?? true,
     permite_aumento_prazo_plano: raw?.permite_aumento_prazo_plano ?? false,
+    instrucao_url: raw?.instrucao_url,
+    instrucao_tipo: raw?.instrucao_tipo,
+    origem_pergunta,
+    pergunta_origem_id: raw?.pergunta_origem_id ?? (origem_pergunta === "replicada_avaliado" ? raw?.field_id : undefined),
+    config_global_origem_id: raw?.config_global_origem_id,
+    metrica_calculo: raw?.metrica_calculo,
+    ativo: raw?.ativo ?? true,
+    editado_manual: raw?.editado_manual ?? false,
+    editado_por: raw?.editado_por,
+    editado_em: raw?.editado_em,
+    config_original_snapshot: raw?.config_original_snapshot,
+    config_atual_snapshot: raw?.config_atual_snapshot,
   };
 }
 
