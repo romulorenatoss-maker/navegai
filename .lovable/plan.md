@@ -1,54 +1,124 @@
-## Pacote único — refator do fluxo de aprovação + UX em Minhas Tarefas
+# Aprovador + Auditor: abas de etapa com perguntas automáticas e manuais
 
-### 1. Bug: respostas/anexos do executor não aparecem no painel do aprovador
-**Causa provável:** o painel atual em `tarefas_embeddedActionPanels.tsx` consulta `flow.fieldAnswers` (vindo de `operational_field_answers`) por `field_id`, mas o assignment exibido na tela "Aguardando Aprovação" pode não ter respostas nessa tabela (executor está salvando em outra estrutura, ex.: `template_snapshot.respostas` ou `evidencia_url` único). Validar fonte real lendo um assignment exemplo, e:
-- Padronizar leitura (fallback: `operational_field_answers` → `assignment.respostas_json` → `template_snapshot`).
-- Renderizar valor + observação + anexo (imagem ou link) acima de cada pergunta do aprovador.
-- Mostrar nome do executor + horário de preenchimento.
+## Objetivo
 
-### 2. Auto-save persistente do aprovador
-Hoje `useApprovalFlow.autoSaveApproverAnswer` faz upsert em `operational_approval_answers`. Ao reabrir, o painel monta a UI a partir de `approverAnswers` (estado local vazio). Corrigir:
-- No mount, hidratar `approverAnswers` a partir de `existingApprovalAnswers` para que toggles "Conforme/Não Conforme", observação e (novo) anexo já apareçam preenchidos.
-- Mostrar badge "Salvo automaticamente" por pergunta.
+Após a barra de progresso, mostrar **abas por etapa** (Executor → Aprovador → Auditor) listando apenas as perguntas correspondentes ao papel logado. Cada papel responde só o que é dele. Perguntas podem ser:
 
-### 3. Remover "Reprovar e devolver" como botão direto
-Substituir por **etapa final consolidada de Plano de Ação**:
-- Aprovador responde tudo (Conforme/Não Conforme + opcional anexo + observação).
-- Botão único: **"Revisar e finalizar"**. Se houver qualquer "Não Conforme":
-  - Abre painel `EmbeddedPlanoAcaoFinalPanel` listando todas as NCs.
-  - Para cada NC: campos `descricao_acao` (obrig.), `prazo` (data/hora), `responsavel` (profile **ou** setor), `criticidade`.
-  - Salvar grava em `operational_contingencies` (uma por NC) e dispara transição `reprovar_devolver_final` para o(s) destinatário(s).
-- Se zero NCs: botão executa `aprovar_final` direto.
-- Manter `Encerrar (sem aprovar)` somente para admin como fallback.
+- **Manuais** — cadastradas no template para aquele papel
+- **Automáticas (herdadas)** — copiadas das respostas do executor; vêm preenchidas mas com ícone de **lápis** para editar; ao editar, o aprovador/auditor obrigatoriamente registra **motivo** (texto) e, se o template exigir, **anexo**
 
-### 4. Anexo do aprovador (opcional, controlado pelo template)
-- **Builder** (`tarefas_tabFormBuilder.tsx` ou equivalente): nova flag por campo `aprovador_exige_evidencia` (boolean, default false).
-- **Snapshot**: incluir flag no `template_snapshot.fields[].aprovador_exige_evidencia`.
-- **Painel aprovador**: quando flag = true, renderizar `<input type=file>` + observação obrigatória, mesmo se resposta for "Conforme".
-- Upload usa o mesmo provider de evidências do executor; URL salva em coluna nova `operational_approval_answers.evidencia_url`.
+## 1. Banco
 
-### 5. Barra de progresso no card "Minhas Tarefas"
-No `tarefas_tarefaCard.tsx`:
-- **Barra A — preenchimento**: % de campos obrigatórios da etapa atual do usuário (executor, aprovador ou auditor) já respondidos.
-- **Barra B — tempo SLA**: % decorrido entre `inicio_etapa` (ou `created_at`/`fim_em` da etapa anterior) e `prazo_etapa`. Cores: verde <60%, âmbar 60-90%, vermelho >90% / vencido. Mostrar texto "faltam Xh" ou "vencida há Xh".
-- Etapa atual derivada do papel do usuário no assignment + status atual (mesma lógica do bucketize).
+**Migration nova:**
 
-### 6. Migração (DB)
-- `ALTER TABLE operational_approval_answers ADD COLUMN evidencia_url text;`
-- `ALTER TABLE operational_template_fields ADD COLUMN aprovador_exige_evidencia boolean NOT NULL DEFAULT false;`
-- Sem mudança em RLS (mesmas regras das colunas existentes).
+```sql
+-- Auditor por campo (espelha aprovador_*)
+ALTER TABLE operational_template_fields
+  ADD COLUMN auditor_verificar boolean NOT NULL DEFAULT false,
+  ADD COLUMN auditor_pergunta text DEFAULT '',
+  ADD COLUMN auditor_tipo_resposta text DEFAULT 'conforme',
+  ADD COLUMN auditor_peso numeric DEFAULT 1,
+  ADD COLUMN auditor_obriga_observacao_nao boolean DEFAULT true,
+  ADD COLUMN auditor_exige_evidencia boolean NOT NULL DEFAULT false,
+  ADD COLUMN auditor_exige_evidencia_nao boolean DEFAULT false,
+  ADD COLUMN auditor_tipos_evidencia jsonb DEFAULT '["foto"]'::jsonb,
+  -- Herança da resposta do executor (default desligado)
+  ADD COLUMN aprovador_herdar_resposta boolean NOT NULL DEFAULT false,
+  ADD COLUMN auditor_herdar_resposta boolean NOT NULL DEFAULT false;
 
-### Arquivos impactados
-- `supabase/migrations/<nova>.sql` (nova)
-- `src/modules/tarefas/components/tarefas_embeddedActionPanels.tsx` (refator do bloco aprovador, hidratação, anexos)
-- `src/modules/tarefas/hooks/tarefas_useApprovalFlow.ts` (hidratar estado, suportar `evidencia_url`, novo método `criarPlanoAcao`)
-- `src/modules/tarefas/components/painels/tarefas_embeddedAprovacaoPanel.tsx` (substituir botões por "Revisar e finalizar")
-- **NOVO**: `src/modules/tarefas/components/painels/tarefas_embeddedPlanoAcaoFinalPanel.tsx`
-- `src/modules/tarefas/components/builder/...` (flag `aprovador_exige_evidencia`)
-- `src/modules/tarefas/components/tarefas_tarefaCard.tsx` (duas barras de progresso)
-- `supabase/functions/generate-daily-assignments/index.ts` (incluir flag no snapshot)
+-- Tabela de respostas do auditor (espelha operational_approval_answers)
+CREATE TABLE operational_audit_answers (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  assignment_id uuid NOT NULL REFERENCES operational_assignments(id) ON DELETE CASCADE,
+  field_id uuid NOT NULL REFERENCES operational_template_fields(id) ON DELETE CASCADE,
+  resposta text,
+  observacao text,
+  evidencia_url text,
+  motivo_alteracao text,        -- preenchido quando alterou herdada
+  herdada boolean DEFAULT false,
+  auditor_id uuid REFERENCES profiles(id),
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  UNIQUE(assignment_id, field_id)
+);
 
-### Fora de escopo (não tocar)
-- Lógica de `score_aprovador` e RLS de tabelas existentes.
-- Fluxo do executor e auditor (sem mudanças).
-- Remoção do botão "Encerrar (sem aprovar)" (mantido como fallback admin).
+-- mesma estratégia em operational_approval_answers (motivo + herdada)
+ALTER TABLE operational_approval_answers
+  ADD COLUMN motivo_alteracao text,
+  ADD COLUMN herdada boolean DEFAULT false;
+
+-- Status novo no fluxo
+-- (TASK_STATUS já tem AGUARDANDO_AUDITORIA? confirmar; se não, adicionar)
+```
+
+RLS:
+- `operational_audit_answers`: SELECT/INSERT/UPDATE para `auditor_id = profile.id` ou admin; SELECT também para criador/responsavel/aprovador (para histórico).
+
+## 2. Fluxo (`tarefas_useTransition.ts`)
+
+- Nova ação `enviar_auditoria` (aprovador → status `aguardando_auditoria`)
+- `aprovar_final` agora roteia: se template tem `auditor_id` E há campos com `auditor_verificar=true`, vai para `aguardando_auditoria`; senão, direto para `aprovada/concluida` (comportamento atual)
+- Nova ação `auditor_aprovar` (→ `aprovada`) e `auditor_devolver` (→ `devolvida`, com motivo)
+- Atualizar `VALID_TRANSITIONS` em `services/tarefas_canTransition.ts`
+
+## 3. Builder de template
+
+`src/modules/tarefas/builders/...` (campo a campo): adicionar bloco "Auditor" idêntico ao bloco "Aprovador" já existente, mais checkbox **"Herdar resposta do executor"** em ambos.
+
+## 4. UI — Abas por etapa no drawer
+
+**`tarefas_minhasTarefasPage.tsx`** (drawer de execução):
+
+Abaixo da barra de progresso, renderizar `<Tabs>` com:
+- **Executor** (sempre, se houver campos `visivel_para` contendo executor)
+- **Aprovador** (se há campos com `aprovador_verificar=true`)
+- **Auditor** (se há campos com `auditor_verificar=true`)
+
+Filtros de visibilidade:
+- Papel logado **executor**: vê só a aba Executor
+- Papel logado **aprovador**: vê Executor (read-only) + Aprovador (editável)
+- Papel logado **auditor**: vê Executor + Aprovador (read-only) + Auditor (editável)
+- Admin: vê tudo, edita tudo
+
+**Novo `EmbeddedAuditPanel`** clonado de `EmbeddedApprovalPanel`:
+- Lista campos `auditor_verificar=true`
+- Para cada um, se `auditor_herdar_resposta=true`, pré-carrega a resposta do executor (read-only com ícone de lápis)
+- Ao clicar no lápis: libera edição, abre campo `motivo_alteracao` (obrigatório) e, se `auditor_exige_evidencia(_nao)`, exige anexo
+- Auto-save (mesmo padrão do approval panel)
+
+**Atualizar `EmbeddedApprovalPanel`**:
+- Aplicar mesma lógica de herança (`aprovador_herdar_resposta`) com lápis + motivo + anexo condicional
+
+## 5. Bucketize / abas listagem
+
+`tarefas_bucketize.ts`:
+- `isAuditoriaPendente` já reage a `APROVADA/CONCLUIDA`; ajustar para também reagir a `AGUARDANDO_AUDITORIA`
+- Auditor só vê em "Aguardando Você" quando status = `AGUARDANDO_AUDITORIA`
+
+## 6. Hooks
+
+- Novo `tarefas_useAuditFlow.ts` (clone do `tarefas_useApprovalFlow.ts`)
+- Atualizar `useApprovalFlow`: ação final agora chama `enviar_auditoria` quando aplicável
+
+## Arquivos impactados
+
+```
+NOVO   supabase/migrations/<ts>_auditor_flow.sql
+NOVO   src/modules/tarefas/hooks/tarefas_useAuditFlow.ts
+EDIT   src/modules/tarefas/hooks/tarefas_useApprovalFlow.ts
+EDIT   src/modules/tarefas/hooks/tarefas_useTransition.ts
+EDIT   src/modules/tarefas/services/tarefas_canTransition.ts
+EDIT   src/modules/tarefas/services/tarefas_statusConstants.ts (se faltar AGUARDANDO_AUDITORIA)
+EDIT   src/modules/tarefas/services/tarefas_bucketize.ts
+EDIT   src/modules/tarefas/components/tarefas_embeddedActionPanels.tsx (refactor + EmbeddedAuditPanel + herança)
+EDIT   src/modules/tarefas/pages/tarefas_minhasTarefasPage.tsx (Tabs por etapa, isAuditorMode)
+EDIT   src/modules/tarefas/builders/<arquivo do campo> (UI auditor + checkbox herdar)
+```
+
+## Notas
+
+- A barra de progresso **continua única no topo** (% por papel logado)
+- Tarefas existentes continuam funcionando (todas as novas colunas têm default; sem auditor configurado = fluxo igual ao atual)
+- Filtro de visibilidade do executor já remove campos de aprovador na visão dele — vou reforçar para esconder também aba inteira
+
+Vou aplicar passo a passo: 1) migration, 2) hooks/transition, 3) panels/UI, 4) builder. Aprova?
