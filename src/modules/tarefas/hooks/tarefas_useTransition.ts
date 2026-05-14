@@ -335,9 +335,9 @@ export function useOperationalTransition() {
         if (extraData?.tempoGasto != null) updatePayload.tempo_gasto_minutos = extraData.tempoGasto;
       }
 
-      if (action === "avaliar_aprovar" || action === "avaliar_devolver" || action === "avaliar_reprovar") {
-        updatePayload.avaliador_fim_em = now;
-      }
+      // Saneamento 4 papéis: avaliador_fim_em não existe mais como coluna.
+      // Decisões de aprovador (avaliar_aprovar/devolver/reprovar) agora marcam só o updated_at.
+      // Quando houver auditoria posterior, auditor_fim_em é usado em outro fluxo.
 
       // Negociação de prazo: registrar prazo proposto em campo livre? Sem migration → grava em audit only
       // data_prevista é alterado apenas quando solicitante aceita o novo prazo
