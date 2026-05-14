@@ -130,7 +130,9 @@ export function useAssignmentExecution(assignmentId: string | null) {
     // Auto-save with short debounce (800ms)
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      saveFieldsNow();
+      saveFieldsNow().catch((e) => {
+        console.error("Auto-save failed:", e);
+      });
     }, 800);
   }, [assignmentId, profile?.id]);
 
@@ -151,8 +153,9 @@ export function useAssignmentExecution(assignmentId: string | null) {
         const fieldLabel = fieldLabelsRef.current[fieldId] || fieldId;
         const displayValue = getDisplayValue(entry);
 
-        const { data: existing } = await (supabase as any).from("operational_field_answers")
+        const { data: existing, error: existingError } = await (supabase as any).from("operational_field_answers")
           .select("id, versao, historico_alteracoes").eq("assignment_id", assignmentId).eq("field_id", fieldId).limit(1);
+        if (existingError) throw existingError;
 
         if (existing && existing.length > 0) {
           const oldVersao = existing[0].versao || 1;
@@ -166,7 +169,7 @@ export function useAssignmentExecution(assignmentId: string | null) {
             resposta: displayValue,
           }];
 
-          await (supabase as any).from("operational_field_answers")
+          const { error: updateError } = await (supabase as any).from("operational_field_answers")
             .update({
               valor_texto: entry.valor_texto ?? null,
               valor_numero: entry.valor_numero ?? null,
@@ -179,6 +182,7 @@ export function useAssignmentExecution(assignmentId: string | null) {
               historico_alteracoes: newHistory,
             })
             .eq("id", existing[0].id);
+          if (updateError) throw updateError;
         } else {
           const initialHistory = [{
             nome: profile.nome || "Usuário",
@@ -187,7 +191,7 @@ export function useAssignmentExecution(assignmentId: string | null) {
             campo: fieldLabel,
             resposta: displayValue,
           }];
-          await (supabase as any).from("operational_field_answers")
+          const { error: insertError } = await (supabase as any).from("operational_field_answers")
             .insert({
               assignment_id: assignmentId,
               field_id: fieldId,
@@ -200,6 +204,7 @@ export function useAssignmentExecution(assignmentId: string | null) {
               respondido_por: profile.id,
               historico_alteracoes: initialHistory,
             });
+          if (insertError) throw insertError;
         }
 
         // Update local state with save metadata so UI shows immediately
@@ -242,6 +247,7 @@ export function useAssignmentExecution(assignmentId: string | null) {
       console.error("Auto-save failed:", e);
       // Re-add fields that failed so they retry
       for (const fid of fieldsToSave) pendingFieldsRef.current.add(fid);
+      throw e;
     }
   }, [assignmentId, profile?.id, profile?.nome, getDisplayValue, refetchLogs]);
 
