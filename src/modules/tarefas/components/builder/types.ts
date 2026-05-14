@@ -56,14 +56,42 @@ export const WIZARD_STEPS: WizardStepDef[] = [
 // Checklist Aprovador (replicado a partir das perguntas operacionais)
 // Persistido em ada_config_snapshot.checklists.aprovador (sem migration).
 // ─────────────────────────────────────────────────────────────────────
+// Mantido por compat — usado por itens antigos do checklist do aprovador.
 export type AprovadorTipoResposta = "conforme_nao_conforme" | "sim_nao" | "nota";
+
+// Superset alinhado à engine de Campos Dinâmicos.
+export type CamadaTipoResposta =
+  | "conforme_nao_conforme"
+  | "sim_nao"
+  | "nota"
+  | "texto"
+  | "numero"
+  | "data"
+  | "hora"
+  | "selecao"
+  | "selecao_multipla"
+  | "foto"
+  | "arquivo";
+
+export interface RegraPorOpcao {
+  valor: string;
+  exige_observacao?: boolean;
+  exige_evidencia?: boolean;
+  gera_plano_acao?: boolean;
+  permite_devolucao?: boolean;
+}
 
 export interface AprovadorCheckItemForm {
   tempId: string;
   field_id: string;            // referência ao field operacional original
   field_label?: string;        // cache do label para exibição
   pergunta_padrao: string;
+  /** Compat: tipo simplificado antigo. Novo código usa `tipo`. */
   tipo_resposta: AprovadorTipoResposta;
+  /** Superset (novo). Quando ausente, derive de `tipo_resposta`. */
+  tipo?: CamadaTipoResposta;
+  opcoes?: string[];
+  regras_por_opcao?: RegraPorOpcao[];
   peso: number;
   exige_observacao: boolean;
   exige_evidencia: boolean;
@@ -71,6 +99,15 @@ export interface AprovadorCheckItemForm {
   gera_plano_acao: boolean;
   permite_conclusao: boolean;
   permite_aumento_prazo: boolean;
+  // SLA / penalidades por item (opcionais, herdam config global se ausentes)
+  sla_horas?: number;
+  penalidade_atraso?: number;
+  penalidade_nao_resposta?: number;
+  penalidade_nao_conformidade?: number;
+  // Ponderação pelo auditor
+  permite_ponderacao_auditor?: boolean;
+  exige_justificativa_ponderacao?: boolean;
+  permite_aumento_prazo_plano?: boolean;
 }
 
 export const defaultAprovadorCheckItem = (
@@ -111,8 +148,18 @@ export interface ValidadorCheckItemForm {
   categoria: ValidadorCategoria;
   peso: number;
   tipo_resposta: AprovadorTipoResposta;
+  tipo?: CamadaTipoResposta;
+  opcoes?: string[];
+  regras_por_opcao?: RegraPorOpcao[];
   exige_observacao: boolean;
   exige_evidencia: boolean;
+  // Auditoria
+  pode_ponderar_aprovador?: boolean;
+  pode_ponderar_avaliado?: boolean;
+  exige_justificativa_para_alterar?: boolean;
+  // SLA/penalidades opcionais
+  sla_horas?: number;
+  penalidade_atraso?: number;
 }
 
 export const VALIDADOR_DEFAULT_ITEMS: Array<Omit<ValidadorCheckItemForm, "tempId">> = [
