@@ -177,7 +177,7 @@ function PacotePadraoCard({
         ))}
 
         <div className="flex justify-between pt-2 border-t">
-          <Button type="button" size="sm" variant="ghost" disabled={disabled} onClick={() => onChange(APROVADOR_PACOTE_PADRAO_DEFAULT)}>
+          <Button type="button" size="sm" variant="ghost" disabled={disabled} onClick={() => onChange(defaults)}>
             <RotateCcw className="w-3.5 h-3.5 mr-1" /> Restaurar padrões
           </Button>
           <Button onClick={onSave} disabled={disabled || saving}>
