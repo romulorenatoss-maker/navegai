@@ -181,31 +181,31 @@ function PacotePadraoAprovadorCard({
           value={{
             pergunta_padrao: editing.pergunta,
             tipo_resposta: editing.tipo,
+            tipo: editing.tipo as any,
+            opcoes: (editing as any).opcoes,
+            regras_por_opcao: (editing as any).regras_por_opcao,
             peso: editing.peso,
-            exige_observacao: !!editing.exige_observacao,
-            exige_evidencia: !!editing.exige_evidencia,
-            permite_devolucao: !!editing.permite_devolucao,
-            gera_plano_acao: !!editing.gera_plano_acao,
-            permite_conclusao: !!editing.permite_conclusao,
-            permite_aumento_prazo: !!editing.permite_aumento_prazo,
             permite_ponderacao_auditor: editing.permite_ponderacao_auditor,
             exige_justificativa_ponderacao: editing.exige_justificativa_ponderacao,
             penalidade_reprovacao: editing.penalidade_reprovacao,
           }}
-          onSave={(next) => update(editing.id, {
-            pergunta: next.pergunta_padrao,
-            tipo: next.tipo_resposta as AprovadorPerguntaPadrao["tipo"],
-            peso: next.peso,
-            exige_observacao: next.exige_observacao,
-            exige_evidencia: next.exige_evidencia,
-            permite_devolucao: next.permite_devolucao,
-            gera_plano_acao: next.gera_plano_acao,
-            permite_conclusao: next.permite_conclusao,
-            permite_aumento_prazo: next.permite_aumento_prazo,
-            permite_ponderacao_auditor: next.permite_ponderacao_auditor,
-            exige_justificativa_ponderacao: next.exige_justificativa_ponderacao,
-            penalidade_reprovacao: next.penalidade_reprovacao,
-          })}
+          onSave={(next) => {
+            const regs = next.regras_por_opcao ?? [];
+            update(editing.id, {
+              pergunta: next.pergunta_padrao,
+              tipo: next.tipo_resposta as AprovadorPerguntaPadrao["tipo"],
+              peso: next.peso,
+              exige_observacao: regs.some(r => r.exige_observacao),
+              exige_evidencia: regs.some(r => r.exige_evidencia),
+              permite_devolucao: regs.some(r => r.permite_devolucao),
+              gera_plano_acao: regs.some(r => r.gera_plano_acao),
+              permite_ponderacao_auditor: next.permite_ponderacao_auditor,
+              exige_justificativa_ponderacao: next.exige_justificativa_ponderacao,
+              penalidade_reprovacao: next.penalidade_reprovacao,
+              opcoes: next.opcoes,
+              regras_por_opcao: next.regras_por_opcao,
+            } as any);
+          }}
         />
       )}
     </Card>
