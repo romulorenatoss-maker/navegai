@@ -211,6 +211,13 @@ export default function OperationalCadastroPage() {
         penalidade_sla_contingencia: form.penalidade_sla_contingencia,
         penalidade_fora_prazo: form.penalidade_fora_prazo,
         habilitar_perguntas_automaticas: form.habilitar_perguntas_automaticas,
+        ada_config_snapshot: {
+          ...((form as any).ada_config_snapshot ?? {}),
+          checklists: {
+            aprovador: aprovadorChecks,
+            validador: validadorChecks,
+          },
+        },
       };
 
       let templateId: string;
@@ -490,20 +497,7 @@ export default function OperationalCadastroPage() {
     const checklistsSnap: any = snap?.checklists ?? {};
     const apr: any[] = Array.isArray(checklistsSnap.aprovador) ? checklistsSnap.aprovador : [];
     const val: any[] = Array.isArray(checklistsSnap.validador) ? checklistsSnap.validador : [];
-    setAprovadorChecks(apr.map((i: any) => ({
-      tempId: i.tempId || crypto.randomUUID(),
-      field_id: i.field_id,
-      field_label: i.field_label || "",
-      pergunta_padrao: i.pergunta_padrao || "",
-      tipo_resposta: i.tipo_resposta || "conforme_nao_conforme",
-      peso: Number(i.peso) || 1,
-      exige_observacao: !!i.exige_observacao,
-      exige_evidencia: !!i.exige_evidencia,
-      permite_devolucao: i.permite_devolucao ?? true,
-      gera_plano_acao: i.gera_plano_acao ?? true,
-      permite_conclusao: i.permite_conclusao ?? true,
-      permite_aumento_prazo: i.permite_aumento_prazo ?? true,
-    })));
+    setAprovadorChecks(normalizeAprovadorList(apr));
     // Validador: aceita formato novo (AprovadorCheckItemForm) e formato legacy
     // (ValidadorCheckItemForm com {pergunta, categoria}). Snapshots antigos são
     // convertidos preservando pergunta/peso/tipo, sem perder histórico.
