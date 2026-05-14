@@ -328,16 +328,18 @@ export function bucketize(
       if ([TASK_STATUS.ABERTA, TASK_STATUS.AGUARDANDO_ACEITE_PRAZO].includes(a.status)) b.aguardandoAceite.push(a);
     }
 
-    // === Avaliador ===
-    if (isAval || isAdmin) {
-      if (a.status === TASK_STATUS.AGUARDANDO_AVALIACAO) b.aguardandoAvaliacao.push(a);
-      if (a.status === TASK_STATUS.EM_AVALIACAO) b.reavaliar.push(a);
-      if (["avaliada", TASK_STATUS.AGUARDANDO_APROVACAO, TASK_STATUS.APROVADA].includes(a.status) && (isAval || isAdmin)) b.avaliadas.push(a);
-    }
+    // === Avaliador (DEPRECATED — saneamento 4 papéis) ===
+    // Buckets aguardandoAvaliacao/reavaliar/avaliadas mantidos vazios. Quem tem o legacy
+    // avaliador_id setado vê os mesmos itens nos buckets do aprovador.
 
     // === Aprovador ===
-    if (isAprov || isAdmin) {
-      if (a.status === TASK_STATUS.AGUARDANDO_APROVACAO) b.aguardandoAprovacao.push(a);
+    if (isAprov || isAval || isAdmin) {
+      // Legados aguardando_avaliacao/em_avaliacao caem aqui também.
+      if ([
+        TASK_STATUS.AGUARDANDO_APROVACAO,
+        TASK_STATUS.AGUARDANDO_AVALIACAO,
+        TASK_STATUS.EM_AVALIACAO,
+      ].includes(a.status)) b.aguardandoAprovacao.push(a);
       if (a.status === TASK_STATUS.REPROVADA) b.reprovadas.push(a);
       if (a.status === TASK_STATUS.APROVADA) b.aprovadas.push(a);
     }
@@ -371,8 +373,12 @@ export function bucketize(
     if (inMySetor) {
       b.doMeuSetor.push(a);
       if ([TASK_STATUS.PENDENTE, TASK_STATUS.EM_ANDAMENTO, TASK_STATUS.DEVOLVIDA, TASK_STATUS.REABERTA, TASK_STATUS.ABERTA].includes(a.status)) b.pendentesSetor.push(a);
-      if ([TASK_STATUS.AGUARDANDO_AVALIACAO, TASK_STATUS.EM_AVALIACAO].includes(a.status)) b.emAvaliacaoSetor.push(a);
-      if (a.status === TASK_STATUS.AGUARDANDO_APROVACAO) b.emAprovacaoSetor.push(a);
+      // Saneamento 4 papéis: legados aguardando_avaliacao/em_avaliacao agora caem em emAprovacaoSetor.
+      if ([
+        TASK_STATUS.AGUARDANDO_APROVACAO,
+        TASK_STATUS.AGUARDANDO_AVALIACAO,
+        TASK_STATUS.EM_AVALIACAO,
+      ].includes(a.status)) b.emAprovacaoSetor.push(a);
     }
 
     // ============================================================
@@ -396,13 +402,17 @@ export function bucketize(
       // Aguardando Você (precisa de ação minha como avaliador/aprovador/solicitante).
       // Admin tem permissão operacional total: vê toda etapa que aguarda ação humana.
       const aguardandoMinhaAcao =
-        (isAval && [TASK_STATUS.AGUARDANDO_AVALIACAO, TASK_STATUS.EM_AVALIACAO].includes(a.status)) ||
-        (isAprov && a.status === TASK_STATUS.AGUARDANDO_APROVACAO) ||
-        (isCriador && !isResp && [TASK_STATUS.AGUARDANDO_VALIDACAO, TASK_STATUS.AGUARDANDO_ACEITE_PRAZO].includes(a.status)) ||
-        (isAdmin && [
+        // Saneamento 4 papéis: aprovador (e legacy avaliador_id) cobre AGUARDANDO_APROVACAO + legados.
+        ((isAprov || isAval) && [
+          TASK_STATUS.AGUARDANDO_APROVACAO,
           TASK_STATUS.AGUARDANDO_AVALIACAO,
           TASK_STATUS.EM_AVALIACAO,
+        ].includes(a.status)) ||
+        (isCriador && !isResp && [TASK_STATUS.AGUARDANDO_VALIDACAO, TASK_STATUS.AGUARDANDO_ACEITE_PRAZO].includes(a.status)) ||
+        (isAdmin && [
           TASK_STATUS.AGUARDANDO_APROVACAO,
+          TASK_STATUS.AGUARDANDO_AVALIACAO,
+          TASK_STATUS.EM_AVALIACAO,
           TASK_STATUS.AGUARDANDO_VALIDACAO,
           TASK_STATUS.AGUARDANDO_ACEITE_PRAZO,
           TASK_STATUS.EM_PLANO_ACAO,
