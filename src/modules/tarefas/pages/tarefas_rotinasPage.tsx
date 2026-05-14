@@ -11,7 +11,7 @@ import { TemplateForm, SectionForm, FieldForm, StepForm, defaultTemplate, defaul
 // (Removido) TaskTypeSelectorDialog — builder único, sem seletor prévio.
 type TaskType = "simples" | "inspecao";
 import { TarefasBuilderWizard } from "@/modules/tarefas/components/builder/TarefasBuilderWizard";
-import { CheckItemForm, AprovadorCheckItemForm, ValidadorCheckItemForm, buildDefaultValidadorItems } from "@/modules/tarefas/components/builder/types";
+import { AprovadorCheckItemForm, ValidadorCheckItemForm, buildDefaultValidadorItems } from "@/modules/tarefas/components/builder/types";
 import { useDraftAutosave, loadDraft, clearDraft, type BuilderDraftPayload } from "@/modules/tarefas/components/builder/useBuilderDraft";
 
 export default function OperationalCadastroPage() {
@@ -24,17 +24,15 @@ export default function OperationalCadastroPage() {
   const [sections, setSections] = useState<SectionForm[]>([]);
   const [fields, setFields] = useState<FieldForm[]>([]);
   const [steps, setSteps] = useState<StepForm[]>([]);
-  const [checkItems, setCheckItems] = useState<CheckItemForm[]>([]);
   const [aprovadorChecks, setAprovadorChecks] = useState<AprovadorCheckItemForm[]>([]);
   const [validadorChecks, setValidadorChecks] = useState<ValidadorCheckItemForm[]>([]);
-  const [protectedCheckIds, setProtectedCheckIds] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState("geral");
   const [filterExecutor, setFilterExecutor] = useState("__all");
   const [filterAvaliador, setFilterAvaliador] = useState("__all");
   const [pendingDraft, setPendingDraft] = useState<BuilderDraftPayload | null>(null);
 
   // Autosave (localStorage only — sem banco)
-  useDraftAutosave(editingId, dialogOpen, { form, sections, fields, steps, checkItems });
+  useDraftAutosave(editingId, dialogOpen, { form, sections, fields, steps });
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ["operational_templates"],
