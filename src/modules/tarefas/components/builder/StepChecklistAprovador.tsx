@@ -45,6 +45,15 @@ const TIPO_LABEL: Record<string, string> = {
   nota: "Nota (0–100)",
 };
 
+const normalizeKeyText = (value: unknown) =>
+  String(value ?? "").trim().toLocaleLowerCase("pt-BR");
+
+const fieldReplicationKey = (field: FieldForm) => JSON.stringify([
+  normalizeKeyText(field.label),
+  field.tipo || "",
+  Number(field.ordem) || 0,
+]);
+
 export function StepChecklistAprovador({ fields, items, setItems }: Props) {
   const { profile } = useAuth();
   const [editingTempId, setEditingTempId] = useState<string | null>(null);
@@ -56,9 +65,18 @@ export function StepChecklistAprovador({ fields, items, setItems }: Props) {
       const replicadasPrev = prev.filter(i => i.origem_pergunta === "replicada_avaliado" || (!i.origem_pergunta && i.field_id));
       const naoReplicadas = prev.filter(i => !replicadasPrev.includes(i));
       const byField = new Map(replicadasPrev.map(i => [i.field_id, i]));
-      const fieldIds = new Set(fields.map(f => f.tempId));
+      const fieldsByPergunta = new Map<string, FieldForm>();
+      for (const field of fields) {
+        const key = fieldReplicationKey(field);
+        const current = fieldsByPergunta.get(key);
+        if (!current || byField.has(field.tempId) || (!current.sectionTempId && field.sectionTempId)) {
+          fieldsByPergunta.set(key, field);
+        }
+      }
+      const uniqueFields = Array.from(fieldsByPergunta.values()).sort((a, b) => a.ordem - b.ordem);
+      const fieldIds = new Set(uniqueFields.map(f => f.tempId));
 
-      const replicadasNext: AprovadorCheckItemForm[] = fields.map(f => {
+      const replicadasNext: AprovadorCheckItemForm[] = uniqueFields.map(f => {
         const existing = byField.get(f.tempId);
         if (existing) {
           const oldLabel = existing.field_label || "";
