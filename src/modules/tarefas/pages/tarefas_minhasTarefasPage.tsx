@@ -502,10 +502,10 @@ export default function OperationalExecucaoPage() {
   // Admin sem ser avaliador/aprovador da tarefa NÃO entra nesses modos automaticamente
   // (evita atropelar o reabrir-para-edição). Usa-se apenas a igualdade de id.
   const isAvaliadorMode = !!selectedAssignment
-    && selectedAssignment.aprovador_id === profile?.id
+    && (selectedAssignment.aprovador_id === profile?.id || isAdmin)
     && ["aguardando_avaliacao", "em_avaliacao"].includes(selectedAssignment.status);
   const isAprovadorMode = !!selectedAssignment
-    && selectedAssignment.aprovador_id === profile?.id
+    && (selectedAssignment.aprovador_id === profile?.id || isAdmin)
     && selectedAssignment.status === "aguardando_aprovacao";
 
   const handleStart = () => {
