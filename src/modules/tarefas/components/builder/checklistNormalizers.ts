@@ -5,6 +5,7 @@
  */
 import type {
   AprovadorCheckItemForm,
+  AprovadorOrigem,
   AprovadorTipoResposta,
   CamadaTipoResposta,
   ValidadorCheckItemForm,
