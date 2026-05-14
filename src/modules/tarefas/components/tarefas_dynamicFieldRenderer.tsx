@@ -141,7 +141,7 @@ function validateField(field: SnapshotField, answer: FieldAnswer | undefined): s
 
 export { evaluateVisibility, validateField };
 
-export function DynamicFieldRenderer({ field, answer, review, userRole, disabled, allAnswers, onChange, assignmentId, showValidation = true }: Props) {
+export function DynamicFieldRenderer({ field, answer, review, userRole, disabled, allAnswers, onChange, assignmentId, showValidation = true, approverPlan }: Props) {
   const [uploading, setUploading] = useState(false);
 
   const isVisible = field.visivel_para.includes(userRole) && evaluateVisibility(field.condicao_visibilidade, allAnswers);
