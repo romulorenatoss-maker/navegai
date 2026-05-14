@@ -8,13 +8,12 @@
 import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
-import { Settings, Users, Building2, Calculator, HardDrive, Shield, UserCheck } from "lucide-react";
+import { Settings, Users, Building2, Calculator, HardDrive, Shield } from "lucide-react";
 import PermissoesPage from "@/pages/PermissoesPage";
 import { TarefasConfigColaboradores } from "@/modules/tarefas/components/configuracoes/TarefasConfigColaboradores";
 import { TarefasConfigSetores } from "@/modules/tarefas/components/configuracoes/TarefasConfigSetores";
 import { TarefasConfigPontuacao } from "@/modules/tarefas/components/configuracoes/TarefasConfigPontuacao";
 import { TarefasConfigArmazenamento } from "@/modules/tarefas/components/configuracoes/TarefasConfigArmazenamento";
-import { TarefasConfigAdA } from "@/modules/tarefas/components/configuracoes/TarefasConfigAdA";
 
 export default function ConfiguracoesPage() {
   const [params, setParams] = useSearchParams();
