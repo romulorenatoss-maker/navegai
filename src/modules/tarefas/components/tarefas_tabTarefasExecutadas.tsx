@@ -84,17 +84,39 @@ export function TabTarefasExecutadas({ templateId }: Props) {
       const now = new Date();
       const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
-      // Check if already exists for today (dedupe por template + data; setorizado pode ter responsavel_id NULL)
+      // Determina a data alvo respeitando o início do ciclo configurado no fluxo.
+      // - Se o template ainda não tem nenhuma tarefa gerada, a primeira deve ser do data_inicio (ou hoje se não houver).
+      // - Se a data_inicio for futura, sempre respeitamos ela (não geramos para hoje antes do ciclo começar).
+      // - As próximas datas são geradas automaticamente pelo cron quando a data virar.
+      const { count: existingCount } = await (supabase as any)
+        .from("operational_assignments")
+        .select("id", { count: "exact", head: true })
+        .eq("template_id", templateId);
+
+      const dataInicio: string | null = t.data_inicio || null;
+      const dataFim: string | null = t.data_fim || null;
+      let targetDateStr = todayStr;
+      if (dataInicio && (dataInicio > todayStr || (existingCount ?? 0) === 0)) {
+        targetDateStr = dataInicio;
+      }
+      if (dataFim && targetDateStr > dataFim) {
+        throw new Error("A data alvo está fora do período do ciclo (data_fim).");
+      }
+
+      // Check if already exists for the target date (dedupe por template + data; setorizado pode ter responsavel_id NULL)
       let existingQuery = (supabase as any)
         .from("operational_assignments")
         .select("id")
         .eq("template_id", templateId)
-        .eq("data_prevista", todayStr);
+        .eq("data_prevista", targetDateStr);
       if (executorId) existingQuery = existingQuery.eq("responsavel_id", executorId);
       else existingQuery = existingQuery.is("responsavel_id", null);
       const { data: existing } = await existingQuery.maybeSingle();
 
-      if (existing) throw new Error("Já existe uma tarefa para hoje neste template.");
+      if (existing) {
+        const dt = targetDateStr.split("-").reverse().join("/");
+        throw new Error(`Já existe uma tarefa para ${dt} neste template. Próximas serão geradas automaticamente ao virar a data.`);
+      }
 
       // Build snapshot
       const { data: sections } = await (supabase as any)
