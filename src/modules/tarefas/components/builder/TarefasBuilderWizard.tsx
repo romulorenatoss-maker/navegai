@@ -14,7 +14,6 @@ import { DraftRestoreBanner } from "./DraftRestoreBanner";
 import type { BuilderDraftPayload } from "./useBuilderDraft";
 import {
   AprovadorCheckItemForm,
-  ValidadorCheckItemForm,
   WIZARD_STEPS,
   WizardStepId,
 } from "./types";
