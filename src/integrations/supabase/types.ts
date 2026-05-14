@@ -1539,6 +1539,60 @@ export type Database = {
           },
         ]
       }
+      operational_audit_overrides: {
+        Row: {
+          acao: string
+          assignment_id: string
+          camada: string
+          created_at: string
+          detalhes_json: Json
+          id: string
+          motivo: string
+          nota_automatica: number | null
+          nota_final: number
+          profile_id: string | null
+        }
+        Insert: {
+          acao: string
+          assignment_id: string
+          camada: string
+          created_at?: string
+          detalhes_json?: Json
+          id?: string
+          motivo: string
+          nota_automatica?: number | null
+          nota_final: number
+          profile_id?: string | null
+        }
+        Update: {
+          acao?: string
+          assignment_id?: string
+          camada?: string
+          created_at?: string
+          detalhes_json?: Json
+          id?: string
+          motivo?: string
+          nota_automatica?: number | null
+          nota_final?: number
+          profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operational_audit_overrides_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "operational_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operational_audit_overrides_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       operational_audit_trail: {
         Row: {
           assignment_id: string
@@ -4549,6 +4603,10 @@ export type Database = {
           penalidade_sla_contingencia: number
           pontuacao_automatica_padrao: boolean
           singleton: boolean
+          sla_aprovador: Json
+          sla_executor: Json
+          sla_plano_acao: Json
+          sla_validador: Json
           updated_at: string
           updated_by: string | null
         }
@@ -4563,6 +4621,10 @@ export type Database = {
           penalidade_sla_contingencia?: number
           pontuacao_automatica_padrao?: boolean
           singleton?: boolean
+          sla_aprovador?: Json
+          sla_executor?: Json
+          sla_plano_acao?: Json
+          sla_validador?: Json
           updated_at?: string
           updated_by?: string | null
         }
@@ -4577,6 +4639,10 @@ export type Database = {
           penalidade_sla_contingencia?: number
           pontuacao_automatica_padrao?: boolean
           singleton?: boolean
+          sla_aprovador?: Json
+          sla_executor?: Json
+          sla_plano_acao?: Json
+          sla_validador?: Json
           updated_at?: string
           updated_by?: string | null
         }
