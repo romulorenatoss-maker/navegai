@@ -54,9 +54,6 @@ export default function ConfiguracoesPage() {
                 <TabsTrigger value="pontuacao" className="gap-2">
                   <Calculator className="w-4 h-4" /> Pontuação / Notas
                 </TabsTrigger>
-                <TabsTrigger value="ada" className="gap-2">
-                  <UserCheck className="w-4 h-4" /> Avaliação do Avaliador
-                </TabsTrigger>
                 <TabsTrigger value="armazenamento" className="gap-2">
                   <HardDrive className="w-4 h-4" /> Armazenamento
                 </TabsTrigger>
