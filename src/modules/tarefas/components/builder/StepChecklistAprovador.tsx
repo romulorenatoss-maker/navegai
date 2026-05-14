@@ -19,7 +19,6 @@ import { FieldForm } from "@/modules/tarefas/types/tarefas_types";
 import {
   AprovadorCheckItemForm,
   AprovadorOrigem,
-  defaultAprovadorCheckItem,
   defaultAprovadorManualItem,
   buildAprovadorAutomatico,
 } from "./types";
@@ -114,8 +113,8 @@ export function StepChecklistAprovador({ fields, items, setItems }: Props) {
   }, [items, fields]);
 
   const totalPeso = useMemo(
-    () => items.filter(i => i.ativo !== false).reduce((s, i) => s + (Number(i.peso) || 0), 0),
-    [items],
+    () => ordered.filter(i => i.ativo !== false).reduce((s, i) => s + (Number(i.peso) || 0), 0),
+    [ordered],
   );
 
   const editing = items.find(i => i.tempId === editingTempId) ?? null;
