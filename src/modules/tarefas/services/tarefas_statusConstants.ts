@@ -20,6 +20,7 @@ export const TASK_STATUS = {
   EM_AVALIACAO: "em_avaliacao",
   CONTINGENCIADO: "contingenciado",
   AGUARDANDO_APROVACAO: "aguardando_aprovacao",
+  AGUARDANDO_AUDITORIA: "aguardando_auditoria",
   DEVOLVIDA: "devolvida",
   REABERTA: "reaberta",
   CONCLUIDA: "concluida",
