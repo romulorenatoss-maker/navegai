@@ -25,6 +25,19 @@ const mapTipoSimplesParaSuperset = (t: AprovadorTipoResposta | undefined): Camad
   }
 };
 
+const normalizeKeyText = (value: unknown) =>
+  String(value ?? "").trim().toLocaleLowerCase("pt-BR");
+
+const checklistUniqueKey = (item: AprovadorCheckItemForm) => {
+  if (item.origem_pergunta === "replicada_avaliado") {
+    return `rep:${item.field_id || item.pergunta_origem_id || normalizeKeyText(item.field_label || item.pergunta_padrao)}`;
+  }
+  if (item.config_global_origem_id) {
+    return `pkg:${item.config_global_origem_id}`;
+  }
+  return `manual:${item.tempId}`;
+};
+
 export interface CamadaSlaDefaults {
   sla_horas?: number;
   penalidade_atraso?: number;
@@ -122,8 +135,18 @@ export function normalizeValidadorItem(
   };
 }
 
-export const normalizeAprovadorList = (raw: any[] | undefined, defaults?: CamadaSlaDefaults) =>
-  Array.isArray(raw) ? raw.map(r => normalizeAprovadorItem(r, defaults)) : [];
+export const normalizeAprovadorList = (raw: any[] | undefined, defaults?: CamadaSlaDefaults) => {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  return raw
+    .map(r => normalizeAprovadorItem(r, defaults))
+    .filter(item => {
+      const key = checklistUniqueKey(item);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+};
 
 export const normalizeValidadorList = (raw: any[] | undefined, defaults?: CamadaSlaDefaults) =>
   Array.isArray(raw) ? raw.map(r => normalizeValidadorItem(r, defaults)) : [];

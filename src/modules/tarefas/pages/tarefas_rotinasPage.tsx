@@ -17,28 +17,65 @@ import { normalizeAprovadorList } from "@/modules/tarefas/components/builder/che
 import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
 import { useDraftAutosave, loadDraft, clearDraft, type BuilderDraftPayload } from "@/modules/tarefas/components/builder/useBuilderDraft";
 
+const normalizeKeyText = (value: unknown) =>
+  String(value ?? "").trim().toLocaleLowerCase("pt-BR");
+
 const fieldDuplicateKey = (field: FieldForm) => JSON.stringify([
-  field.sectionTempId || "",
-  field.label?.trim() || "",
+  normalizeKeyText(field.label),
   field.tipo || "",
   Number(field.ordem) || 0,
-  field.descricao || "",
 ]);
 
 const dedupeLoadedFields = (loadedFields: FieldForm[], referencedFieldIds: Set<string>) => {
   const byKey = new Map<string, FieldForm>();
+  const deduped: FieldForm[] = [];
   for (const field of loadedFields) {
     const key = fieldDuplicateKey(field);
     const existing = byKey.get(key);
     if (!existing) {
       byKey.set(key, field);
+      deduped.push(field);
+      continue;
+    }
+    const bothHaveDifferentSections = !!existing.sectionTempId && !!field.sectionTempId && existing.sectionTempId !== field.sectionTempId;
+    if (bothHaveDifferentSections) {
+      deduped.push(field);
       continue;
     }
     const existingIsReferenced = !!existing.id && referencedFieldIds.has(existing.id);
     const fieldIsReferenced = !!field.id && referencedFieldIds.has(field.id);
-    if (!existingIsReferenced && fieldIsReferenced) byKey.set(key, field);
+    const shouldReplace =
+      (!existingIsReferenced && fieldIsReferenced) ||
+      (!existing.sectionTempId && !!field.sectionTempId);
+    if (shouldReplace) {
+      const idx = deduped.findIndex(f => f.tempId === existing.tempId);
+      if (idx >= 0) deduped[idx] = field;
+      byKey.set(key, field);
+    }
   }
-  return Array.from(byKey.values()).sort((a, b) => a.ordem - b.ordem);
+  return deduped.sort((a, b) => a.ordem - b.ordem);
+};
+
+const sanitizeAprovadorChecks = (
+  rawItems: AprovadorCheckItemForm[],
+  currentFields: FieldForm[],
+  pacotePadrao: any[] | undefined,
+  incluirAutomaticas: boolean,
+) => {
+  const fieldIds = new Set(currentFields.map(f => f.tempId));
+  const normalized = normalizeAprovadorList(rawItems).filter(item =>
+    item.origem_pergunta !== "replicada_avaliado" || fieldIds.has(item.field_id)
+  );
+  if (!incluirAutomaticas) {
+    return normalized.filter(item => item.origem_pergunta !== "automatica_configuracao");
+  }
+  const existingConfigIds = new Set(
+    normalized.map(item => item.config_global_origem_id).filter(Boolean)
+  );
+  const missingAutomaticas = (pacotePadrao ?? [])
+    .filter(p => p.ativo !== false && !existingConfigIds.has(p.id))
+    .map(p => buildAprovadorAutomatico(p));
+  return normalizeAprovadorList([...normalized, ...missingAutomaticas]);
 };
 
 const fetchReferencedFieldIds = async (fieldIds: string[]) => {
@@ -256,6 +293,12 @@ export default function OperationalCadastroPage() {
   const upsert = useMutation({
     mutationFn: async () => {
       if (!form.nome.trim()) throw new Error("Nome é obrigatório");
+      const aprovadorSnapshot = sanitizeAprovadorChecks(
+        aprovadorChecks,
+        fields,
+        pontuacaoConfig?.aprovador_pacote_padrao,
+        form.habilitar_perguntas_automaticas,
+      );
       
       const payload: any = {
         nome: form.nome.trim(),
@@ -298,7 +341,7 @@ export default function OperationalCadastroPage() {
         ada_config_snapshot: {
           ...(((form as any).ada_config_snapshot ?? {}) as any),
           checklists: {
-            aprovador: aprovadorChecks,
+            aprovador: aprovadorSnapshot,
             validador: validadorChecks,
           },
         },
@@ -599,7 +642,12 @@ export default function OperationalCadastroPage() {
     const aprRaw: any[] = Array.isArray(checklistsSnap.aprovador) ? checklistsSnap.aprovador : [];
     const apr = aprRaw.filter((i: any) => i?.origem_pergunta !== "replicada_avaliado" || dedupedFieldIds.has(i.field_id));
     const val: any[] = Array.isArray(checklistsSnap.validador) ? checklistsSnap.validador : [];
-    setAprovadorChecks(normalizeAprovadorList(apr));
+    setAprovadorChecks(sanitizeAprovadorChecks(
+      apr,
+      dedupedFields,
+      pontuacaoConfig?.aprovador_pacote_padrao,
+      t.habilitar_perguntas_automaticas ?? true,
+    ));
     // Validador: aceita formato novo (AprovadorCheckItemForm) e formato legacy
     // (ValidadorCheckItemForm com {pergunta, categoria}). Snapshots antigos são
     // convertidos preservando pergunta/peso/tipo, sem perder histórico.
