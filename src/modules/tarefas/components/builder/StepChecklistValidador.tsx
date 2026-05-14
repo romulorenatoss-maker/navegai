@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ClipboardCheck, Plus, Settings2, Paperclip, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   AprovadorCheckItemForm,
