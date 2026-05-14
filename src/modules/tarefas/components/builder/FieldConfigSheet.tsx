@@ -152,11 +152,13 @@ export function FieldConfigSheet({ open, onOpenChange, title, perguntaBloqueada,
   };
 
   const setRegra = (label: string, patch: Partial<RegraPorOpcao>) => {
-    const regs = [...regras];
-    const ri = regs.findIndex(r => r.valor === label);
-    if (ri >= 0) regs[ri] = { ...regs[ri], ...patch };
-    else regs.push({ ...defaultRegra(label), ...patch });
-    setDraft(prev => ({ ...prev, regras_por_opcao: regs }));
+    setDraft(prev => {
+      const regs = [...(prev.regras_por_opcao ?? [])];
+      const ri = regs.findIndex(r => r.valor === label);
+      if (ri >= 0) regs[ri] = { ...regs[ri], ...patch };
+      else regs.push({ ...defaultRegra(label), ...patch });
+      return { ...prev, regras_por_opcao: regs };
+    });
   };
 
   const getRegra = (label: string): RegraPorOpcao =>
