@@ -79,24 +79,22 @@ export function AssignmentCard({ assignment: a, onClick }: Props) {
   }, [profile?.id, a.aprovador_id, a.auditor_id, a.responsavel_id, a.status]);
 
   // ─── Progresso de conclusão (% de respostas da etapa atual) ────────
+  // Só renderiza se a query expuser as contagens (campos *_answer_count).
   const completionPct = useMemo(() => {
     const fields: any[] = (snapshot?.fields || []).filter((f: any) => f?.obrigatorio !== false);
-    if (myRole === "aprovador") {
+    if (myRole === "aprovador" && a.approver_answer_count != null) {
       const apFields = fields.filter((f: any) => f.aprovador_verificar);
       if (apFields.length === 0) return null;
-      const done = a.approver_answer_count ?? 0;
-      return Math.min(100, Math.round((done / apFields.length) * 100));
+      return Math.min(100, Math.round((a.approver_answer_count / apFields.length) * 100));
     }
-    if (myRole === "executor") {
+    if (myRole === "executor" && a.field_answer_count != null) {
       if (fields.length === 0) return null;
-      const done = a.field_answer_count ?? 0;
-      return Math.min(100, Math.round((done / fields.length) * 100));
+      return Math.min(100, Math.round((a.field_answer_count / fields.length) * 100));
     }
-    if (myRole === "auditor") {
+    if (myRole === "auditor" && a.audit_answer_count != null) {
       const items = (snapshot?.ada_config_snapshot?.checklists?.validador || []) as any[];
       if (items.length === 0) return null;
-      const done = a.audit_answer_count ?? 0;
-      return Math.min(100, Math.round((done / items.length) * 100));
+      return Math.min(100, Math.round((a.audit_answer_count / items.length) * 100));
     }
     return null;
   }, [snapshot, myRole, a.field_answer_count, a.approver_answer_count, a.audit_answer_count]);
