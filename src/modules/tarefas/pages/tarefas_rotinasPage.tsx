@@ -65,9 +65,9 @@ const sanitizeAprovadorChecks = (
   const uniqueFields = [...currentFields]
     .filter(f => !!f.tempId)
     .sort((a, b) => a.ordem - b.ordem);
-  const normalized = normalizeAprovadorList(rawItems);
-  const replicadasPrev = normalized.filter(item => item.origem_pergunta === "replicada_avaliado");
-  const naoReplicadas = normalized.filter(item => item.origem_pergunta !== "replicada_avaliado");
+  const baseItems = normalizeAprovadorList(rawItems);
+  const replicadasPrev = baseItems.filter(item => item.origem_pergunta === "replicada_avaliado");
+  const naoReplicadas = baseItems.filter(item => item.origem_pergunta !== "replicada_avaliado");
   const replicadasByField = new Map(replicadasPrev.map(item => [item.field_id, item]));
   const replicadasEspelhadas = uniqueFields.map(field => {
     const existing = replicadasByField.get(field.tempId);
