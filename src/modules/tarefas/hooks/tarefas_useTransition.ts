@@ -87,6 +87,9 @@ export type TransitionAction =
   | "enviar_contingencia"
   | "retornar_avaliacao"
   | "aprovar_final"
+  | "enviar_auditoria"          // aprovador → aguardando_auditoria (quando template tem auditor configurado)
+  | "auditor_aprovar"           // auditor → aprovada/concluida
+  | "auditor_devolver"          // auditor → devolvida (com motivo)
   | "reprovar_devolver_final"
   | "encerrar_final"
   | "reabrir"
