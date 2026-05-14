@@ -17,6 +17,90 @@ import { normalizeAprovadorList } from "@/modules/tarefas/components/builder/che
 import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
 import { useDraftAutosave, loadDraft, clearDraft, type BuilderDraftPayload } from "@/modules/tarefas/components/builder/useBuilderDraft";
 
+const fieldDuplicateKey = (field: FieldForm) => JSON.stringify([
+  field.sectionTempId || "",
+  field.label?.trim() || "",
+  field.tipo || "",
+  Number(field.ordem) || 0,
+  field.descricao || "",
+]);
+
+const dedupeLoadedFields = (loadedFields: FieldForm[], referencedFieldIds: Set<string>) => {
+  const byKey = new Map<string, FieldForm>();
+  for (const field of loadedFields) {
+    const key = fieldDuplicateKey(field);
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, field);
+      continue;
+    }
+    const existingIsReferenced = !!existing.id && referencedFieldIds.has(existing.id);
+    const fieldIsReferenced = !!field.id && referencedFieldIds.has(field.id);
+    if (!existingIsReferenced && fieldIsReferenced) byKey.set(key, field);
+  }
+  return Array.from(byKey.values()).sort((a, b) => a.ordem - b.ordem);
+};
+
+const fetchReferencedFieldIds = async (fieldIds: string[]) => {
+  const referenced = new Set<string>();
+  if (fieldIds.length === 0) return referenced;
+
+  const readRefs = async (table: string, column: string) => {
+    const { data, error } = await (supabase as any).from(table).select(column).in(column, fieldIds);
+    if (error) throw error;
+    (data || []).forEach((row: any) => row?.[column] && referenced.add(row[column]));
+  };
+
+  await readRefs("operational_field_answers", "field_id");
+  await readRefs("operational_field_reviews", "field_id");
+  await readRefs("operational_approval_answers", "field_id");
+  await readRefs("operational_audit_answers", "field_id");
+  await readRefs("operational_contingencies", "origin_field_id");
+  return referenced;
+};
+
+const sectionPayload = (templateId: string, section: SectionForm, index: number) => ({
+  template_id: templateId,
+  nome: section.nome || `Seção ${index + 1}`,
+  descricao: section.descricao || null,
+  peso: section.peso,
+  ordem: index,
+  cor: section.cor,
+  horario_inicio: section.horario_inicio || null,
+  horario_fim: section.horario_fim || null,
+});
+
+const fieldPayload = (templateId: string, field: FieldForm, sectionIdMap: Record<string, string>) => ({
+  template_id: templateId,
+  section_id: sectionIdMap[field.sectionTempId] || null,
+  label: field.label || "Campo sem nome",
+  descricao: field.descricao || null,
+  tipo: field.tipo,
+  ordem: field.ordem,
+  obrigatorio: field.obrigatorio,
+  peso: field.peso,
+  nota_maxima: field.nota_maxima,
+  impacta_score: field.impacta_score,
+  criticidade: field.criticidade,
+  gera_contingencia: field.gera_contingencia,
+  exige_evidencia: field.exige_evidencia,
+  tipo_evidencia: field.tipo_evidencia || "foto",
+  opcoes: field.opcoes?.length > 0 ? field.opcoes : null,
+  opcoes_regras: field.opcoes_regras?.length > 0 ? field.opcoes_regras : [],
+  validacao: field.validacao,
+  condicao_visibilidade: field.condicao_visibilidade,
+  formula: field.formula,
+  visivel_para: field.visivel_para,
+  editavel_por: field.editavel_por,
+  aprovador_verificar: field.aprovador_verificar || false,
+  aprovador_pergunta: field.aprovador_verificar ? (field.aprovador_pergunta || null) : null,
+  aprovador_tipo_resposta: field.aprovador_tipo_resposta || "conforme",
+  aprovador_peso: field.aprovador_peso ?? 1,
+  aprovador_obriga_observacao_nao: field.aprovador_obriga_observacao_nao ?? true,
+  aprovador_exige_evidencia_nao: field.aprovador_exige_evidencia_nao ?? false,
+  aprovador_tipos_evidencia: field.aprovador_tipos_evidencia || ["foto"],
+});
+
 export default function OperationalCadastroPage() {
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
