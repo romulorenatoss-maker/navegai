@@ -299,8 +299,16 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                                 ? "Pergunta"
                                 : `${sectionFields.length} campo${sectionFields.length !== 1 ? "s" : ""} · Σ ${sectionFields.reduce((a, f) => a + (Number(f.peso) || 0), 0)} pts`}
                             </span>
-                            <Input type="number" min={0.1} step={0.1} value={section.peso} onChange={e => updateSection(section.tempId, "peso", +e.target.value)}
-                              className="h-7 w-16 text-sm text-center" title="Peso da etapa" />
+                            {etapaPergunta ? (
+                              <Input type="number" min={0} step={0.5} value={section.peso}
+                                onChange={e => updateSection(section.tempId, "peso", Math.max(0, +e.target.value || 0))}
+                                className="h-7 w-16 text-sm text-center" title="Nota desta pergunta" />
+                            ) : (
+                              <Input type="number" readOnly tabIndex={-1}
+                                value={sectionFields.reduce((a, f) => a + (Number(f.peso) || 0), 0)}
+                                className="h-7 w-16 text-sm text-center bg-muted/60 cursor-not-allowed"
+                                title="Soma das notas das perguntas deste agrupador (somente leitura)" />
+                            )}
                             <Select value={section.cor} onValueChange={v => updateSection(section.tempId, "cor", v)}>
                               <SelectTrigger className="h-7 w-10 p-1">
                                 <div className="w-4 h-4 rounded-full" style={{ backgroundColor: section.cor }} />
