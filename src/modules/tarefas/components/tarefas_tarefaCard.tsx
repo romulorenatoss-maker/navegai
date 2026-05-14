@@ -49,6 +49,7 @@ function useCountdown(dataPrevista: string, horarioLimite: string | null) {
 }
 
 export function AssignmentCard({ assignment: a, onClick }: Props) {
+  const { profile } = useAuth();
   const snapshot = a.template_snapshot;
   const nome = snapshot?.nome || a.operational_templates?.nome || "Rotina";
   const tipo = snapshot?.tipo_execucao || a.operational_templates?.tipo_execucao;
@@ -65,6 +66,60 @@ export function AssignmentCard({ assignment: a, onClick }: Props) {
 
   const isActive = ["pendente", "em_andamento", "devolvida"].includes(a.status);
   const countdown = useCountdown(a.data_prevista, isActive ? a.horario_limite : null);
+
+  // ─── Papel do usuário nesta tarefa ─────────────────────────────────
+  const myRole = useMemo<"executor" | "aprovador" | "auditor" | null>(() => {
+    if (!profile?.id) return null;
+    if (a.aprovador_id === profile.id || ["aguardando_aprovacao"].includes(a.status)) {
+      if (a.aprovador_id === profile.id) return "aprovador";
+    }
+    if (a.auditor_id === profile.id) return "auditor";
+    if (a.responsavel_id === profile.id) return "executor";
+    return null;
+  }, [profile?.id, a.aprovador_id, a.auditor_id, a.responsavel_id, a.status]);
+
+  // ─── Progresso de conclusão (% de respostas da etapa atual) ────────
+  const completionPct = useMemo(() => {
+    const fields: any[] = (snapshot?.fields || []).filter((f: any) => f?.obrigatorio !== false);
+    if (myRole === "aprovador") {
+      const apFields = fields.filter((f: any) => f.aprovador_verificar);
+      if (apFields.length === 0) return null;
+      const done = a.approver_answer_count ?? 0;
+      return Math.min(100, Math.round((done / apFields.length) * 100));
+    }
+    if (myRole === "executor") {
+      if (fields.length === 0) return null;
+      const done = a.field_answer_count ?? 0;
+      return Math.min(100, Math.round((done / fields.length) * 100));
+    }
+    if (myRole === "auditor") {
+      const items = (snapshot?.ada_config_snapshot?.checklists?.validador || []) as any[];
+      if (items.length === 0) return null;
+      const done = a.audit_answer_count ?? 0;
+      return Math.min(100, Math.round((done / items.length) * 100));
+    }
+    return null;
+  }, [snapshot, myRole, a.field_answer_count, a.approver_answer_count, a.audit_answer_count]);
+
+  // ─── Progresso temporal (% do SLA consumido) ───────────────────────
+  const timePct = useMemo(() => {
+    if (!a.data_prevista || !a.horario_limite) return null;
+    const [h, m] = a.horario_limite.split(":").map(Number);
+    const deadline = new Date(`${a.data_prevista}T00:00:00`);
+    deadline.setHours(h, m, 0, 0);
+    const start = a.criado_em ? new Date(a.criado_em).getTime() : new Date(`${a.data_prevista}T00:00:00`).getTime();
+    const total = deadline.getTime() - start;
+    if (total <= 0) return null;
+    const elapsed = Date.now() - start;
+    return Math.max(0, Math.min(100, Math.round((elapsed / total) * 100)));
+  }, [a.data_prevista, a.horario_limite, a.criado_em, countdown?.label]);
+
+  const timeBarColor = timePct == null
+    ? "bg-muted"
+    : timePct >= 100 ? "bg-destructive"
+    : timePct >= 90 ? "bg-red-500"
+    : timePct >= 60 ? "bg-amber-500"
+    : "bg-emerald-500";
 
   return (
     <div onClick={() => onClick(a)}
