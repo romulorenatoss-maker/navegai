@@ -1,103 +1,99 @@
+# Limpeza Arquitetural do Módulo Tarefas
 
-# Pacote padrão do Validador/Auditor — análise + plano
+Operação grande, irreversível em parte (drop conceitual de Avaliador/Validador/AdA). Antes de tocar em qualquer arquivo ou rodar migration, preciso da sua confirmação explícita do escopo e da ordem de fases. Conforme suas regras: nada será alterado sem o "ok" final.
 
-## 1. Estrutura atual mapeada
+---
 
-### Camada de configuração (já existente — reaproveitar 100%)
-- `src/modules/tarefas/services/tarefas_pontuacao_config_service.ts`
-  - `AprovadorPerguntaPadrao` (shape único compartilhado Aprovador/Validador)
-  - `AprovadorMetricaCalculo` (union de metric_keys)
-  - `APROVADOR_PACOTE_PADRAO_DEFAULT` (5 perguntas)
-  - `VALIDADOR_PACOTE_PADRAO_DEFAULT` (7 perguntas atuais — todas `metrica_calculo: "manual"`)
-- `src/modules/tarefas/components/configuracoes/TarefasConfigPontuacao.tsx`
-  - Componente reutilizável `PacotePadraoCard` (mesmo modal + lista p/ Aprovador e Validador)
-  - Modal `FieldConfigSheet` para configurar cada pergunta
-- Tabela `public.tarefas_pontuacao_config` — coluna `validador_pacote_padrao jsonb` já criada
+## Escopo aceito
 
-### Camada da rotina (snapshot)
-- `src/modules/tarefas/components/builder/types.ts` — `AprovadorCheckItemForm` (shape único)
-- `src/modules/tarefas/components/builder/StepChecklistValidador.tsx` — hidrata pacote do config global
-- `src/modules/tarefas/pages/tarefas_rotinasPage.tsx:411` — carrega `validador_pacote_padrao` em novas rotinas via `buildAprovadorAutomatico`
-- Snapshot persistido em `operational_templates.ada_config_snapshot.checklists.validador`
+Fluxo oficial passa a ser **somente**: `Executor → Avaliado → Aprovador → Auditor`.
+Removido conceitualmente: Avaliador, Conferência Técnica, Validador separado, AdA / Avaliação do Avaliador.
 
-### Fontes de dados disponíveis (verificadas no banco)
-| metric_key proposto | Fonte real | Confiabilidade |
-|---|---|---|
-| `aprovador_fora_sla` | `operational_assignments.avaliador_fim_em` vs `prazo_sla_correcao_horas` (já calculado em `calculate_operational_score_on_complete`) | ALTA |
-| `aprovou_com_alerta_pendente` | Cruzar `operational_field_reviews.conforme=true` com contingências abertas / evidência ausente / SLA vencido na mesma execução | MÉDIA — exige consulta cruzada |
-| `nao_conformidade_sem_regra_obrigatoria` | `operational_field_reviews.conforme=false` + checagem de `exige_observacao/exige_evidencia/gera_plano_acao` no snapshot | MÉDIA |
-| `ponderacao_manual_realizada` | Comparar `score_logs.detalhe_calculo->>nota_automatica` vs `score_final` (campo de ponderação ainda não persistido como log dedicado) | BAIXA — sinal pendente |
-| `prorrogacao_plano_acao` | `operational_assignment_history.tipo_evento = 'contingencia_prazo_definido'` (constante já existe em `AUDIT_EVENT_LABELS`) | MÉDIA — requer registro consistente do evento |
-| `prorrogacao_plano_acao_recorrente` | mesma fonte, `count > 1` | MÉDIA |
-| `plano_acao_vencido` | `operational_contingencies.dentro_prazo = false` OU `prazo_sla < now() AND status NOT IN (validada, descartada)` | ALTA |
-| `aprovador_reabriu_ou_devolveu` | `operational_assignment_history.tipo_evento IN ('reabertura','avaliacao_devolvida','aprovacao_devolucao')` | ALTA |
+Módulo OS legado (`AvaliacaoOSPage`, `RelatoriosPage`, tabelas `ordens_servico`, `perguntas_avaliacao`, etc.) **não será tocado**.
 
-## 2. Mudanças propostas (mínimas e localizadas)
+---
 
-### A. `tarefas_pontuacao_config_service.ts` (única alteração de código de config)
-1. Estender união `AprovadorMetricaCalculo` adicionando os 8 metric_keys novos:
-   - `aprovador_fora_sla`, `aprovou_com_alerta_pendente`, `nao_conformidade_sem_regra_obrigatoria`, `ponderacao_manual_realizada`, `prorrogacao_plano_acao`, `prorrogacao_plano_acao_recorrente`, `plano_acao_vencido`, `aprovador_reabriu_ou_devolveu`
-   - manter os antigos para compat
-2. Adicionar 3 campos opcionais em `AprovadorPerguntaPadrao` (sem migration — vão direto no JSON):
-   - `origem_pergunta?: "automatica_sistema" | "manual_padrao_configuracao"`
-   - `camada_alvo?: "aprovador"` (literal por ora)
-   - `fonte_dados?: string` (descrição curta da query/fonte)
-   - `regra_calculo?: string` (descrição humana)
-   - `metrica_pendente?: boolean` (true → renderiza chip "métrica pendente de implementação", default `ativo=false`)
-3. Substituir `VALIDADOR_PACOTE_PADRAO_DEFAULT` pelos 12 itens novos:
+## Estratégia de execução em 6 fases
 
-**Bloco AUTO (8 itens — soma 100):**
-| ord | metric_key | pergunta | tipo | peso | ativo padrão |
-|---|---|---|---|---|---|
-| 1 | aprovador_fora_sla | Aprovador avaliou fora do SLA? | sim_nao | 20 | true |
-| 2 | aprovou_com_alerta_pendente | Aprovador aprovou item com alerta automático pendente? | sim_nao | 15 | true (pendente=true → marcar como pendente) |
-| 3 | nao_conformidade_sem_regra_obrigatoria | Aprovador marcou NC sem cumprir regra exigida? | sim_nao | 15 | true |
-| 4 | ponderacao_manual_realizada | Aprovador alterou/ponderou nota manualmente? | sim_nao | 10 | inativo + pendente=true |
-| 5 | prorrogacao_plano_acao | Aprovador prorrogou prazo do plano de ação? | sim_nao | 10 | true |
-| 6 | prorrogacao_plano_acao_recorrente | Aprovador prorrogou mais de uma vez? | sim_nao | 10 | true |
-| 7 | plano_acao_vencido | Plano de ação aberto pelo aprovador venceu o SLA? | sim_nao | 10 | true |
-| 8 | aprovador_reabriu_ou_devolveu | Aprovador reabriu/devolveu tarefa? | sim_nao | 10 | true |
+Cada fase entrega artefatos e pode ser pausada/revertida antes da próxima.
 
-**Bloco MANUAL (4 itens — soma 100):**
-| ord | id | pergunta | tipo | peso |
-|---|---|---|---|---|
-| 9 | val-man-justificativa | Justificativa do aprovador é plausível? | conforme_nao_conforme | 25 |
-| 10 | val-man-evidencia | Evidência comprova a decisão? | conforme_nao_conforme | 25 |
-| 11 | val-man-ponderacao | Ponderação aplicada foi correta? | conforme_nao_conforme | 25 |
-| 12 | val-man-nota-final | Nota final do aprovador deve ser mantida? | conforme_nao_conforme | 25 |
+### Fase 0 — Backup e baseline (sem alteração)
+- `backup_tarefas_pre_limpeza.zip` (snapshot dos ~40 arquivos do módulo)
+- `mapa_arquivos_alterados.md` (matriz arquivo × ação: remover/renomear/alterar)
+- `mapa_banco_rpc_triggers.md` (estado atual de colunas, funções, triggers)
+- `manifest_limpeza_fluxo_tarefas.json` (inventário formal)
 
-Todos com `permite_ponderacao_auditor: true`, `exige_justificativa_ponderacao: true`, `exige_observacao: true` para os manuais.
+### Fase 1 — Banco: novas colunas + migração de dados (aditiva, sem DROP)
+Migration `migration_fase1_aditiva.sql`:
+- Adiciona em `operational_assignments`:
+  - `auditor_id`, `auditor_inicio_em`, `auditor_fim_em`, `score_auditor`, `setor_auditor_id`
+  - `aprovado_em`, `aprovado_por`, `auditado_em`, `auditado_por`
+  - Cancelamento: `cancelada_em/por/motivo/justificada`
+  - Reagendamento: `reagendada_em/por/motivo`, `data_prevista_original`, `horario_limite_original`, `reagendamento_justificado`
+  - Atestado: `possui_atestado`, `atestado_url`, `atestado_aprovado/_por/_em`
+  - Média: `excluir_da_media`, `motivo_exclusao_media`
+- Cria `operational_action_plans` (com RLS).
+- Cria `tarefas_auditor_pacote_padrao` espelhando `tarefas_pontuacao_config` (ou renomeia interno mantendo alias).
+- Migra dados: `avaliador_id → auditor_id` onde aplicável; copia `validador_pacote_padrao → auditor_pacote_padrao`.
+- Colunas antigas (`avaliador_id`, `score_avaliador`, `ada_*`) ficam como **legado read-only** — nada novo escreve.
+- Rollback: `rollback_fase1.sql` (DROPs reversos).
 
-### B. UI mínima: chip "pendente"
-- `TarefasConfigPontuacao.tsx` (`PacotePadraoCard`): se `item.metrica_pendente`, exibir badge cinza "métrica pendente" ao lado do badge AUTO.
-- `StepChecklistValidador.tsx`: idem (reaproveita o card já existente do Aprovador via `AprovadorCheckItemForm`).
+### Fase 2 — Score real (nova RPC)
+- Cria `tarefas_rpc_calcular_score_operacional` consumindo:
+  respostas executor + evidências + atraso + respostas do **aprovador** (com pesos de `tarefas_pontuacao_config`) + respostas do **auditor** + contingências + cancelamento/reagendamento/atestado/exclusão da média.
+- Cria/ajusta trigger para usar a nova função; trigger antiga `calculate_operational_score_on_complete` vira wrapper que delega.
+- `operational_score_logs.tipo_score` passa a aceitar `'auditor'`; `'avaliador'` mantido só para histórico.
+- Remove trigger `fn_gerar_ada_assignment` (não gera mais filhos AdA).
 
-### C. Hidratação em rotinas novas
-- `tarefas_rotinasPage.tsx` linha 411: já usa `pontuacaoConfig.validador_pacote_padrao` + `buildAprovadorAutomatico` → funciona automático. Apenas garantir que `buildAprovadorAutomatico` propague `origem_pergunta` quando vier explícito no item de config (default mantém `"automatica_configuracao"` para compat).
+### Fase 3 — RPCs de BI/Dashboard do módulo Tarefas
+Cria novas, sem tocar nas legadas de OS:
+- `tarefas_rpc_calcular_media_operacional`
+- `tarefas_rpc_dashboard_metricas_operacionais`
+- `tarefas_rpc_calcular_notas_por_setor_operacional`
+- `tarefas_rpc_indicadores_por_colaborador`
+- `tarefas_rpc_indicadores_por_setor`
 
-### D. Compat / legacy
-- Não tocar em `ValidadorCheckItemForm`, `VALIDADOR_DEFAULT_ITEMS`, `buildDefaultValidadorItems` — permanecem para snapshots antigos via `normalizeValidadorLegacy` em `checklistNormalizers.ts`.
-- Rotinas antigas com `ada_config_snapshot.checklists.validador` continuam abrindo (normalizer já trata).
+### Fase 4 — Frontend: rename Avaliador→Auditor + remoção AdA/Validador
+Arquivos **renomeados**:
+- `StepChecklistValidador.tsx` → `StepChecklistAuditor.tsx`
+- `tarefas_embeddedAvaliacaoPanel.tsx` → `tarefas_embeddedAuditoriaPanel.tsx`
+- `tarefas_aguardandoAvaliacaoPanel.tsx` → `tarefas_aguardandoAuditoriaPanel.tsx`
+- `tarefas_avaliacaoAvaliadorPage.tsx` → `tarefas_auditoriaPage.tsx` (rota antiga vira redirect)
 
-## 3. O que NÃO muda nesta entrega
-- Nenhuma migration estrutural
-- Nenhuma alteração no trigger `calculate_operational_score_on_complete`
-- Nenhum drop de tabela / coluna
-- Nenhuma exclusão de histórico
-- Cálculo automático efetivo das metric_keys → fica para entrega seguinte (perguntas aparecem com `metrica_pendente=true` quando ainda não há fonte real cabeada)
+Arquivos **removidos**:
+- `TarefasConfigAdA.tsx` (substituído por `TarefasConfigAuditor.tsx`)
+- `tarefas_ada_config_service.ts`
 
-## 4. Arquivos a alterar
-1. `src/modules/tarefas/services/tarefas_pontuacao_config_service.ts` — union, interface, default
-2. `src/modules/tarefas/components/configuracoes/TarefasConfigPontuacao.tsx` — badge "pendente"
-3. `src/modules/tarefas/components/builder/types.ts` — propagar `origem_pergunta`/`metric_key`/`metrica_pendente` em `buildAprovadorAutomatico`
-4. `src/modules/tarefas/components/builder/StepChecklistValidador.tsx` — badge "pendente" no card
+Arquivos **alterados** (rename de termos, remoção de filtros/labels/chips de Avaliador/Validador/AdA):
+builder/types.ts, TarefasBuilderWizard.tsx, StepResumo.tsx, checklistNormalizers.ts, TarefasConfigPontuacao.tsx, painels (router/registry/types/aprovacao/validacaoSolicitante), responsaveis (V2/Blocks), reviewFieldCard, quickCreateDialog, quickViewDialog, tarefaCard, hooks (Review/ApprovalFlow/Execution/Transition/Dashboard/Scoring), pages (minhasTarefas/rotinas/desempenho/relatorios), services (canTransition/messages/pontuacao/statusConstants), types/tarefas_types.ts.
 
-Total: 4 arquivos. Zero migration. Zero edge function. Zero alteração em RPC/trigger.
+Steps do Wizard finais: Tipo → Geral → Perguntas Executor → Avaliado → Perguntas Aprovador → Perguntas Auditor → Fluxo → Resumo.
 
-## 5. Dado existente no banco
-Há registros antigos em `tarefas_pontuacao_config.validador_pacote_padrao` (7 perguntas atuais). Pergunta de decisão abaixo.
+### Fase 5 — Validação
+`checklist_validacao_limpeza_fluxo_tarefas.md` cobrindo os 17 cenários que você listou.
 
-## 6. Confirmações pedidas antes de executar
-1. **Sobrescrever** o `validador_pacote_padrao` atual no banco (singleton row) com o novo pacote padrão de 12 perguntas? Se sim, faço via `supabase--insert` UPDATE. Se não, mantenho o antigo no banco e novas instalações pegam o default.
-2. As 4 perguntas com confiabilidade ALTA/MÉDIA podem entrar **ativas** mesmo sem o cálculo automático cabeado (auditor responde manualmente até o engine subir)? Ou todas as AUTO entram **inativas + pendente=true** até implementarmos o cálculo?
-3. Confirma `id`s estáveis sugeridos (`val-aprovador-fora-sla`, `val-aprovou-alerta-pendente`, …, `val-man-justificativa`, …) — usados como `config_global_origem_id` nos snapshots?
+### Fase 6 — Entregáveis finais
+- `diff_limpeza_fluxo_tarefas.md`
+- `migration_limpeza_fluxo_tarefas.sql` (consolidado das fases 1–3)
+- `rollback_limpeza_fluxo_tarefas.sql`
+- `manifest_limpeza_fluxo_tarefas.json` (final)
+- `backup_tarefas_pos_limpeza.zip`
+- Relatório final com listas pedidas (removidos / renomeados / alterados / colunas / RPCs / compat temporária / testes).
+
+---
+
+## Riscos que precisam de "ok" antes de eu começar
+
+1. **Trigger de score atual** (`calculate_operational_score_on_complete`) será substituída por nova função. Tarefas em andamento durante deploy podem calcular score pelo modelo antigo até a migration rodar. **Aceitável quebrar temporariamente?** Você disse que sim — confirma?
+2. **Coluna `avaliador_id` permanece** como legado read-only (não dá pra dropar agora sem reescrever 40+ refs em uma única passada e quebrar histórico). Confirma manter como legado?
+3. **Trigger `fn_gerar_ada_assignment` será removida**. Assignments-filho AdA já existentes ficam órfãos (status preservado, mas não geram novos). Confirma?
+4. **Rota `/tarefas/avaliacao-avaliador`** vira redirect 30 dias e depois removida. Ou remoção imediata?
+5. **`validador_pacote_padrao` em `tarefas_pontuacao_config`**: copio para `auditor_pacote_padrao` e mantenho ambos por 1 release, ou rename direto?
+
+---
+
+## Próximo passo
+
+Se aprovar este plano, eu começo pela **Fase 0** (apenas backup + mapas, zero alteração) e te entrego os artefatos para revisar antes da Fase 1 (migration aditiva). Cada fase seguinte só roda com seu "ok" explícito.
+
+Posso seguir?
