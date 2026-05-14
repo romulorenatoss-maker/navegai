@@ -87,7 +87,7 @@ export function TarefasConfigPontuacao() {
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Accordion type="multiple" defaultValue={["sla_executor"]} className="w-full">
+          <Accordion type="multiple" defaultValue={["sla_aprovador"]} className="w-full">
             {CAMADAS.map(({ key, titulo, descricao }) => {
               const c = form[key];
               return (
