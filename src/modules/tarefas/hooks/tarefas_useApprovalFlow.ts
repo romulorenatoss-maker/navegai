@@ -87,9 +87,29 @@ export function useApprovalFlow(assignmentId: string | null) {
     enabled: !!assignmentId,
   });
 
+  // Hidrata approverAnswers a partir de respostas já salvas
+  // (auto-save persistente: ao reabrir, toggles/observação/anexo já vêm preenchidos).
+  useEffect(() => {
+    if (!existingApprovalAnswers || existingApprovalAnswers.length === 0) return;
+    setApproverAnswers(prev => {
+      const next = { ...prev };
+      for (const a of existingApprovalAnswers as any[]) {
+        if (next[a.field_id]) continue; // não sobrescreve edição local
+        next[a.field_id] = {
+          field_id: a.field_id,
+          resposta: a.resposta ?? "",
+          observacao: a.observacao ?? "",
+          peso: a.peso ?? 1,
+          evidencia_url: a.evidencia_url ?? null,
+        };
+      }
+      return next;
+    });
+  }, [existingApprovalAnswers]);
+
   // Auto-save a single approver answer (upsert)
   const autoSaveApproverAnswer = useMutation({
-    mutationFn: async ({ fieldId, resposta, observacao, peso }: { fieldId: string; resposta: string; observacao?: string; peso?: number }) => {
+    mutationFn: async ({ fieldId, resposta, observacao, peso, evidenciaUrl }: { fieldId: string; resposta: string; observacao?: string; peso?: number; evidenciaUrl?: string | null }) => {
       if (!profile?.id || !assignmentId) throw new Error("Não autenticado");
       const payload: any = {
         assignment_id: assignmentId,
@@ -97,6 +117,7 @@ export function useApprovalFlow(assignmentId: string | null) {
         resposta,
         observacao: observacao || null,
         peso: peso ?? 1,
+        evidencia_url: evidenciaUrl ?? null,
         respondido_por: profile.id,
         respondido_em: new Date().toISOString(),
       };
