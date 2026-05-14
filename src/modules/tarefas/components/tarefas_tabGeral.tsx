@@ -26,7 +26,7 @@ interface Props {
 }
 
 const EXEC_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: "tarefa_simples", label: "Tarefa simples" },
+  { value: "simples", label: "Tarefa simples" },
   { value: "etapas", label: "Por etapas (mais de um agrupador)" },
 ];
 
@@ -106,9 +106,9 @@ export function TabGeral({ form, set, setores, colaboradores, sections, steps }:
   };
 
   // Normaliza tipo_execucao legacy → "etapas".
-  const displayedExec = form.tipo_execucao === "tarefa_simples" ? "tarefa_simples" : "etapas";
+  const displayedExec = form.tipo_execucao === "simples" ? "simples" : "etapas";
   useEffect(() => {
-    if (form.tipo_execucao !== "tarefa_simples" && form.tipo_execucao !== "etapas") {
+    if (form.tipo_execucao !== "simples" && form.tipo_execucao !== "etapas") {
       set("tipo_execucao" as any, "etapas" as any);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

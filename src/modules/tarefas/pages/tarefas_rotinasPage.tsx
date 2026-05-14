@@ -378,7 +378,7 @@ export default function OperationalCadastroPage() {
     setEditingId(null);
     const tpl = {
       ...defaultTemplate,
-      tipo_execucao: type === "simples" ? "tarefa_simples" : "checklist_inspecao",
+      tipo_execucao: type === "simples" ? "simples" : "checklist_inspecao",
       setor_id: setorId || "",
     };
     setForm(tpl);
