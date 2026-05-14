@@ -295,7 +295,9 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                               placeholder={etapaPergunta ? "Pergunta principal (ex: O local foi limpo?)" : "Nome da etapa/formulário"}
                               className="h-7 text-sm font-medium flex-1" maxLength={100} />
                             <span className={`text-[10px] whitespace-nowrap px-1.5 py-0.5 rounded ${etapaPergunta ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}>
-                              {etapaPergunta ? "Pergunta" : `${sectionFields.length} campo${sectionFields.length !== 1 ? "s" : ""}`}
+                              {etapaPergunta
+                                ? "Pergunta"
+                                : `${sectionFields.length} campo${sectionFields.length !== 1 ? "s" : ""} · Σ ${sectionFields.reduce((a, f) => a + (Number(f.peso) || 0), 0)} pts`}
                             </span>
                             <Input type="number" min={0.1} step={0.1} value={section.peso} onChange={e => updateSection(section.tempId, "peso", +e.target.value)}
                               className="h-7 w-16 text-sm text-center" title="Peso da etapa" />
@@ -474,6 +476,16 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
                                               <SelectTrigger className="h-7 w-[140px] text-caption"><SelectValue /></SelectTrigger>
                                               <SelectContent>{Object.entries(FIELD_TYPES).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
                                             </Select>
+                                            <Input
+                                              type="number"
+                                              min={0}
+                                              step={0.5}
+                                              value={field.peso ?? 1}
+                                              onChange={e => updateField(field.tempId, { peso: Math.max(0, +e.target.value || 0) })}
+                                              className="h-7 w-14 text-xs text-center"
+                                              title="Nota desta pergunta"
+                                              aria-label="Nota"
+                                            />
                                             {field.gera_contingencia && <span className="text-[10px] px-1.5 py-0.5 rounded border border-orange-200 bg-orange-100 text-orange-700">Conting.</span>}
                                             {field.aprovador_verificar && <span className="text-[10px] px-1.5 py-0.5 rounded border border-primary/30 bg-primary/10 text-primary">Aprovador</span>}
 
@@ -534,6 +546,15 @@ export function TabFormBuilder({ sections, setSections, fields, setFields, setor
           )}
         </Droppable>
       </DragDropContext>
+
+      {fields.length > 0 && (
+        <div className="flex items-center justify-end gap-2 mt-2 px-3 py-2 bg-muted/40 border border-border rounded-md">
+          <span className="text-xs text-muted-foreground">Total de notas (Avaliado):</span>
+          <span className="text-sm font-semibold text-foreground font-tabular">
+            {fields.reduce((a, f) => a + (Number(f.peso) || 0), 0)} pts
+          </span>
+        </div>
+      )}
 
       {editingField && (
         <FieldDetailDialog
