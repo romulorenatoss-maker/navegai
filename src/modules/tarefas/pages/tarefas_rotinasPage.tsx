@@ -210,7 +210,16 @@ export default function OperationalCadastroPage() {
         ada_quem_avalia_profile_id: form.ada_enabled && form.ada_quem_avalia_tipo === "pessoa" ? (form.ada_quem_avalia_profile_id || null) : null,
         ada_quem_avalia_setor_id: form.ada_enabled && form.ada_quem_avalia_tipo === "setor" ? (form.ada_quem_avalia_setor_id || null) : null,
         ada_gerar_em: form.ada_enabled ? (form.ada_gerar_em || "pos_avaliacao") : null,
-        ada_config_snapshot: form.ada_enabled ? (form.ada_config_snapshot ?? null) : null,
+        // Snapshot estendido: além do AdA legado, persistimos os novos checklists do
+        // Aprovador Final / Validador Final em ada_config_snapshot.checklists
+        // (sem migration; campo jsonb já existente).
+        ada_config_snapshot: {
+          ...(form.ada_config_snapshot ?? {}),
+          checklists: {
+            aprovador: aprovadorChecks,
+            validador: validadorChecks,
+          },
+        },
       };
 
       let templateId: string;
