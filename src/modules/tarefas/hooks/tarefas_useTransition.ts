@@ -80,7 +80,7 @@ export type TransitionAction =
   | "enviar_validacao_designante"
   | "validar_designada_aprovar"
   | "validar_designada_devolver"
-  | "iniciar_avaliacao"
+  // "iniciar_avaliacao" removido (saneamento 4 papéis — sem etapa intermediária)
   | "avaliar_aprovar"
   | "avaliar_devolver"
   | "avaliar_reprovar"
@@ -124,11 +124,11 @@ interface TransitionResult {
 const REOPEN_CLEAR_FIELDS = {
   fim_em: null,
   pontuacao_obtida: null,
-  avaliador_inicio_em: null,
-  avaliador_fim_em: null,
+  // Saneamento 4 papéis: avaliador_inicio_em / avaliador_fim_em / score_avaliador
+  // não existem mais como colunas em operational_assignments — removidos do payload.
   score_executor: null,
   score_avaliado: null,
-  score_avaliador: null,
+  score_aprovador: null,
   score_final_ajustado: null,
 };
 
@@ -310,10 +310,7 @@ export function useOperationalTransition() {
         Object.assign(updatePayload, REOPEN_CLEAR_FIELDS);
       }
 
-      if (action === "iniciar_avaliacao") {
-        updatePayload.avaliador_inicio_em = now;
-        if (profile.id) updatePayload.avaliador_id = profile.id;
-      }
+      // "iniciar_avaliacao" removido (saneamento 4 papéis). Colunas avaliador_* já não existem.
 
       if (
         action === "avaliar_devolver"

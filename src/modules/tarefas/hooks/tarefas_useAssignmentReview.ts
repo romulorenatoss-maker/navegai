@@ -281,21 +281,21 @@ export function useAssignmentReview(assignmentId: string | null) {
     onError: (e: any) => toast.error(e.message),
   });
 
+  // Saneamento 4 papéis: não existe mais "iniciar avaliação". Mantemos a mutation
+  // como compat para chamadores antigos, redirecionando para enviar_avaliacao
+  // (que hoje aterrissa em AGUARDANDO_APROVACAO).
   const startEvaluation = useMutation({
     mutationFn: async (aId: string) => {
       if (!profile?.id) throw new Error("Não autenticado");
       await transition.mutateAsync({
         assignmentId: aId,
-        action: "iniciar_avaliacao",
-        origem: "avaliacao",
-      });
-      await (supabase as any).from("operational_execution_logs").insert({
-        assignment_id: aId, acao: "avaliador_iniciou", executado_por: profile.id,
+        action: "enviar_avaliacao",
+        origem: "avaliacao_legacy_redirect",
       });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["operational_avaliador_assignments"] });
-      toast.success("Avaliação iniciada!");
+      toast.success("Encaminhado para aprovação.");
     },
     onError: (e: any) => toast.error(e.message),
   });

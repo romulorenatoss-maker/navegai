@@ -39,8 +39,10 @@ export function EmbeddedReviewPanel({ assignment, fields, onClose }: ReviewProps
     return fields.filter(f => evaluateVisibility(f.condicao_visibilidade, answersMap));
   }, [fields, review.fieldAnswers]);
 
-  const needsStart = assignment?.status === "aguardando_avaliacao";
-  const canDecide = assignment?.status === "em_avaliacao" && review.isReviewComplete(visibleFields);
+  // Saneamento 4 papéis: não há mais etapa "em_avaliacao". Aprovador decide direto sobre AGUARDANDO_APROVACAO.
+  // Mantemos compat com legados aguardando_avaliacao/em_avaliacao (após migration já não devem ocorrer).
+  const needsStart = false;
+  const canDecide = ["aguardando_aprovacao", "em_avaliacao", "aguardando_avaliacao"].includes(assignment?.status) && review.isReviewComplete(visibleFields);
 
   const handleStart = async () => {
     try {
