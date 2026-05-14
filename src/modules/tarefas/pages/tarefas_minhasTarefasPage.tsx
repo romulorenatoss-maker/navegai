@@ -793,7 +793,14 @@ export default function OperationalExecucaoPage() {
                   const sFieldsVisible = sFields.filter(f => evaluateVisibility(f.condicao_visibilidade, exec.answers));
                   const filled = sFieldsVisible.filter(f => {
                     const a = exec.answers[f.id];
-                    return a && (a.valor_texto != null && a.valor_texto !== "" || a.valor_numero != null || a.valor_booleano != null || a.valor_data != null || a.valor_json != null);
+                    return !!a && (
+                      (a.valor_texto != null && a.valor_texto !== "") ||
+                      a.valor_numero != null ||
+                      a.valor_booleano != null ||
+                      a.valor_data != null ||
+                      a.valor_json != null ||
+                      (a.evidencia_url != null && a.evidencia_url !== "")
+                    );
                   }).length;
                   const allFilled = filled === sFieldsVisible.length && sFieldsVisible.length > 0;
                   const isLate = (() => {
