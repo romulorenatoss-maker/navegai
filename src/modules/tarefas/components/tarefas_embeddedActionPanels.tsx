@@ -255,6 +255,9 @@ const getAllowedActions = (rule: ReviewRule | null) => [
   ...(rule?.permite_devolucao ? ["devolver" as const] : []),
 ];
 
+const getDefaultReviewAction = (rule: ReviewRule | null): "plano" | "devolver" =>
+  rule?.gera_plano_acao ? "plano" : "devolver";
+
 export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalProps) {
   const { profile } = useAuth();
   const flow = useApprovalFlow(assignment?.id || null);
