@@ -985,7 +985,7 @@ export default function OperationalExecucaoPage() {
                         review={exec.getLatestReview(f.id)} userRole="executor"
                         disabled={isDevolvida && exec.getLatestReview(f.id)?.devolvido !== true}
                         allAnswers={exec.answers} onChange={exec.updateAnswer} assignmentId={selectedAssignment.id}
-                        showValidation={submitAttempted} />
+                        showValidation={submitAttempted} approverPlan={approverPlanByField[f.id]} />
                     ))}
                   </div>
                 ) : (
