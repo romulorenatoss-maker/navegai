@@ -11,7 +11,7 @@ import { TemplateForm, SectionForm, FieldForm, StepForm, defaultTemplate, defaul
 // (Removido) TaskTypeSelectorDialog — builder único, sem seletor prévio.
 type TaskType = "simples" | "inspecao";
 import { TarefasBuilderWizard } from "@/modules/tarefas/components/builder/TarefasBuilderWizard";
-import { CheckItemForm, AprovadorCheckItemForm, ValidadorCheckItemForm, buildDefaultValidadorItems } from "@/modules/tarefas/components/builder/types";
+import { AprovadorCheckItemForm, ValidadorCheckItemForm, buildDefaultValidadorItems } from "@/modules/tarefas/components/builder/types";
 import { useDraftAutosave, loadDraft, clearDraft, type BuilderDraftPayload } from "@/modules/tarefas/components/builder/useBuilderDraft";
 
 export default function OperationalCadastroPage() {
@@ -24,17 +24,15 @@ export default function OperationalCadastroPage() {
   const [sections, setSections] = useState<SectionForm[]>([]);
   const [fields, setFields] = useState<FieldForm[]>([]);
   const [steps, setSteps] = useState<StepForm[]>([]);
-  const [checkItems, setCheckItems] = useState<CheckItemForm[]>([]);
   const [aprovadorChecks, setAprovadorChecks] = useState<AprovadorCheckItemForm[]>([]);
   const [validadorChecks, setValidadorChecks] = useState<ValidadorCheckItemForm[]>([]);
-  const [protectedCheckIds, setProtectedCheckIds] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState("geral");
   const [filterExecutor, setFilterExecutor] = useState("__all");
   const [filterAvaliador, setFilterAvaliador] = useState("__all");
   const [pendingDraft, setPendingDraft] = useState<BuilderDraftPayload | null>(null);
 
   // Autosave (localStorage only — sem banco)
-  useDraftAutosave(editingId, dialogOpen, { form, sections, fields, steps, checkItems });
+  useDraftAutosave(editingId, dialogOpen, { form, sections, fields, steps });
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ["operational_templates"],
@@ -333,57 +331,9 @@ export default function OperationalCadastroPage() {
         if (error) throw error;
       }
 
-      // Sync check_items (preserve existing ids → preserva respostas)
-      // RISCO: operational_execution_check_answers tem FK ON DELETE CASCADE → deletar item apaga histórico.
-      // Estratégia (sem migration): só deletar fisicamente itens SEM respostas.
-      if (editingId) {
-        const { data: existingChks } = await (supabase as any)
-          .from("operational_template_check_items").select("id").eq("template_id", templateId);
-        const keepIds = new Set(checkItems.filter(c => c.id).map(c => c.id as string));
-        const candidatesToDelete = (existingChks || [])
-          .filter((c: any) => !keepIds.has(c.id))
-          .map((c: any) => c.id);
-        let toDelete: string[] = candidatesToDelete;
-        if (candidatesToDelete.length > 0) {
-          const { data: answered } = await (supabase as any)
-            .from("operational_execution_check_answers")
-            .select("check_item_id")
-            .in("check_item_id", candidatesToDelete);
-          const answeredSet = new Set((answered || []).map((a: any) => a.check_item_id));
-          toDelete = candidatesToDelete.filter((id: string) => !answeredSet.has(id));
-          const blocked = candidatesToDelete.length - toDelete.length;
-          if (blocked > 0) {
-            toast.warning(
-              `${blocked} item(s) do checklist possuem respostas e foram preservados (não removidos) para manter o histórico.`
-            );
-          }
-        }
-        if (toDelete.length > 0) {
-          await (supabase as any).from("operational_template_check_items").delete().in("id", toDelete);
-        }
-      }
-      for (let i = 0; i < checkItems.length; i++) {
-        const c = checkItems[i];
-        const payloadCi = {
-          template_id: templateId,
-          pergunta: c.pergunta?.trim() || `Item ${i + 1}`,
-          ordem: i,
-          tipo_resposta: c.tipo_resposta,
-          exige_foto: c.exige_foto,
-          exige_observacao: c.exige_observacao,
-          gera_contingencia_se_reprovado: c.gera_contingencia_se_reprovado,
-          peso: c.peso,
-          nota_maxima: c.nota_maxima,
-          penalidade_reprovacao: c.penalidade_reprovacao,
-        };
-        if (c.id) {
-          const { error } = await (supabase as any).from("operational_template_check_items").update(payloadCi).eq("id", c.id);
-          if (error) throw error;
-        } else {
-          const { error } = await (supabase as any).from("operational_template_check_items").insert(payloadCi);
-          if (error) throw error;
-        }
-      }
+      // Checklist legacy (operational_template_check_items) NÃO é mais escrito pelo novo
+      // builder. A tabela é mantida viva apenas para histórico/leitura legada.
+      // Substituído por: Campos + Checklist Aprovador + Checklist Validador (snapshot).
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["operational_templates"] });
@@ -442,10 +392,8 @@ export default function OperationalCadastroPage() {
     setSections([]);
     setFields([]);
     setSteps([]);
-    setCheckItems([]);
     setAprovadorChecks([]);
     setValidadorChecks(buildDefaultValidadorItems());
-    setProtectedCheckIds(new Set());
     setActiveTab("geral");
     // Detect existing draft for new template
     const existing = loadDraft(null);
@@ -540,18 +488,8 @@ export default function OperationalCadastroPage() {
       exige_observacao: s.exige_observacao || false, exige_video: s.exige_video || false,
     })));
 
-    // Load check items
-    const { data: chks } = await (supabase as any).from("operational_template_check_items")
-      .select("*").eq("template_id", t.id).order("ordem");
-    const checkItemsLoaded = (chks || []).map((c: any) => ({
-      id: c.id, tempId: c.id, pergunta: c.pergunta, ordem: c.ordem,
-      tipo_resposta: c.tipo_resposta, exige_foto: !!c.exige_foto,
-      exige_observacao: !!c.exige_observacao,
-      gera_contingencia_se_reprovado: !!c.gera_contingencia_se_reprovado,
-      peso: Number(c.peso) || 1, nota_maxima: Number(c.nota_maxima) || 100,
-      penalidade_reprovacao: Number(c.penalidade_reprovacao) || 100,
-    }));
-    setCheckItems(checkItemsLoaded);
+    // (Legado) operational_template_check_items NÃO é mais lido pelo novo builder.
+    // Mantido vivo no banco apenas para histórico/relatórios antigos.
 
     // Hidrata checklists do Aprovador/Validador a partir de ada_config_snapshot.checklists
     // (Fase 2). Tolerante a registros antigos sem o campo.
@@ -585,18 +523,6 @@ export default function OperationalCadastroPage() {
         }))
       : buildDefaultValidadorItems());
 
-    // Detect which check items already have execution answers (cannot be deleted without losing history)
-    const checkIds = checkItemsLoaded.map((c: any) => c.id).filter(Boolean);
-    if (checkIds.length > 0) {
-      const { data: answered } = await (supabase as any)
-        .from("operational_execution_check_answers")
-        .select("check_item_id")
-        .in("check_item_id", checkIds);
-      setProtectedCheckIds(new Set((answered || []).map((a: any) => a.check_item_id)));
-    } else {
-      setProtectedCheckIds(new Set());
-    }
-
     setActiveTab("geral");
     // Detect existing draft for this template id
     const existing = loadDraft(t.id);
@@ -610,7 +536,7 @@ export default function OperationalCadastroPage() {
     setSections(pendingDraft.sections);
     setFields(pendingDraft.fields);
     setSteps(pendingDraft.steps);
-    setCheckItems(pendingDraft.checkItems);
+    
     setPendingDraft(null);
     toast.success("Rascunho restaurado.");
   };
@@ -748,10 +674,8 @@ export default function OperationalCadastroPage() {
               sections={sections} setSections={setSections}
               fields={fields} setFields={setFields}
               steps={steps} setSteps={setSteps}
-              checkItems={checkItems} setCheckItems={setCheckItems}
               aprovadorChecks={aprovadorChecks} setAprovadorChecks={setAprovadorChecks}
               validadorChecks={validadorChecks} setValidadorChecks={setValidadorChecks}
-              protectedCheckIds={protectedCheckIds}
               draftToRestore={pendingDraft}
               onRestoreDraft={restoreDraft}
               onDiscardDraft={discardDraft}

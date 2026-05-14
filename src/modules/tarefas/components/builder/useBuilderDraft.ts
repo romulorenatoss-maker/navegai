@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import { TemplateForm, SectionForm, FieldForm, StepForm } from "@/modules/tarefas/types/tarefas_types";
-import { CheckItemForm } from "./types";
 
 const PREFIX = "tarefas_builder_draft_v1::";
 const DEBOUNCE_MS = 800;
@@ -12,7 +11,6 @@ export interface BuilderDraftPayload {
   sections: SectionForm[];
   fields: FieldForm[];
   steps: StepForm[];
-  checkItems: CheckItemForm[];
 }
 
 export const draftKey = (templateId: string | null) =>
@@ -62,7 +60,7 @@ export function useDraftAutosave(
     if (timer.current) window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => {
       // Skip empty new templates (avoid creating noise drafts)
-      if (templateId === null && !payload.form.nome?.trim() && payload.fields.length === 0 && payload.checkItems.length === 0 && payload.sections.length === 0) {
+      if (templateId === null && !payload.form.nome?.trim() && payload.fields.length === 0 && payload.sections.length === 0) {
         return;
       }
       saveDraft(templateId, payload);

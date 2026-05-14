@@ -1,6 +1,6 @@
-import { CheckCircle2, ListChecks, ClipboardList, Settings2, CalendarClock, FileText, ShieldCheck, ClipboardCheck, Award } from "lucide-react";
+import { CheckCircle2, ClipboardList, Settings2, CalendarClock, FileText, ShieldCheck, ClipboardCheck, Award } from "lucide-react";
 import { TemplateForm, SectionForm, FieldForm, StepForm } from "@/modules/tarefas/types/tarefas_types";
-import { CheckItemForm, AprovadorCheckItemForm, ValidadorCheckItemForm } from "./types";
+import { AprovadorCheckItemForm, ValidadorCheckItemForm } from "./types";
 import { TIPO_EXECUCAO_LABELS, RECORRENCIA_LABELS } from "@/modules/tarefas/hooks/tarefas_useScoring";
 
 interface Props {
@@ -8,7 +8,6 @@ interface Props {
   sections: SectionForm[];
   fields: FieldForm[];
   steps: StepForm[];
-  checkItems: CheckItemForm[];
   aprovadorChecks?: AprovadorCheckItemForm[];
   validadorChecks?: ValidadorCheckItemForm[];
   hasAprovador?: boolean;
@@ -24,7 +23,7 @@ function nameOf(list: any[], id: string | undefined) {
 }
 
 export function StepResumo({
-  form, sections, fields, steps, checkItems,
+  form, sections, fields, steps,
   aprovadorChecks = [], validadorChecks = [],
   hasAprovador = false, hasValidador = false,
   setores, colaboradores, isEditing,
@@ -92,7 +91,7 @@ export function StepResumo({
           <dl className="text-xs space-y-1">
             <div className="flex gap-2"><dt className="text-muted-foreground w-32 shrink-0">Seções:</dt><dd>{sections.length}</dd></div>
             <div className="flex gap-2"><dt className="text-muted-foreground w-32 shrink-0">Campos avaliativos:</dt><dd>{fields.length}</dd></div>
-            <div className="flex gap-2"><dt className="text-muted-foreground w-32 shrink-0">Itens checklist (legacy):</dt><dd className="flex items-center gap-1">{checkItems.length} <ListChecks className="w-3.5 h-3.5 text-muted-foreground" /></dd></div>
+            
             <div className="flex gap-2"><dt className="text-muted-foreground w-32 shrink-0">Etapas:</dt><dd>{steps.length}</dd></div>
           </dl>
         </div>
