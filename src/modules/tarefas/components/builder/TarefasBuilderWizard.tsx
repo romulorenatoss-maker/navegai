@@ -17,8 +17,6 @@ import {
   WIZARD_STEPS,
   WizardStepId,
 } from "./types";
-import { PenalidadesAutomaticasBlock, type PenalidadesOverrideMap } from "./PenalidadesAutomaticasBlock";
-import type { TarefasPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
 
 interface Props {
   isEditing: boolean;
