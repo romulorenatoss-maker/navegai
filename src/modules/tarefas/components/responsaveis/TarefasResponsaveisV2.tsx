@@ -1,21 +1,19 @@
 /**
- * Tarefas — Responsáveis V2 (Fase 1 / Maio 2026)
+ * Tarefas — Responsáveis V2
  *
- * Reescrita visual do bloco "Responsáveis" seguindo o layout aprovado
- * (5 papéis: Respondente / Avaliado / Avaliador / Aprovador Final / Validador Final).
+ * Fluxo oficial (4 papéis):
+ *   - Executor (Respondente): executa, responde, envia evidências, marca conforme/não conforme inicial.
+ *   - Avaliado: recebe a nota/impacto (pode ser o próprio executor).
+ *   - Aprovador: aprova/reprova, cria plano de ação, define impacto operacional.
+ *   - Auditor: auditoria posterior; não altera notas.
  *
- * Esta entrega cobre apenas UI + estado local + mapeamento legacy.
- * As regras de quem pode criar plano de ação / encerrar / definir nota final
- * NÃO mudam nesta fase (Fase 3 separada).
+ * O bloco "Avaliador (Conferência)" foi removido — era duplicidade semântica com Executor.
  *
- * Mapeamento legacy (sem migration):
- *   respondente   → executor_*       (quem responde o checklist)
- *   avaliado      → avaliado_*       (quem recebe a nota; fallback = executor_* em registros antigos)
- *   avaliador     → avaliador_*  +  validador_contingencia_*  (mantém compat)
+ * Mapeamento legacy mantido para compat de leitura/gravação:
+ *   respondente   → executor_*
+ *   avaliado      → avaliado_*       (fallback = executor_*)
  *   aprovadorFinal → aprovador_*
- *   validadorFinal → ada_*
- *
- * Persistência multi: array completo gravado em template_snapshot.responsaveis_multi[papel].
+ *   validadorFinal → auditor_*
  */
 import { useMemo, useState } from "react";
 import {

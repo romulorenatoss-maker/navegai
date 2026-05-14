@@ -271,7 +271,7 @@ export const VALIDADOR_DEFAULT_ITEMS: Array<Omit<ValidadorCheckItemForm, "tempId
   { categoria: "devolucao", pergunta: "As devoluções foram tratadas corretamente?", peso: 1, tipo_resposta: "sim_nao", exige_observacao: true, exige_evidencia: false },
   { categoria: "evidencia", pergunta: "Evidências obrigatórias foram anexadas?", peso: 2, tipo_resposta: "sim_nao", exige_observacao: false, exige_evidencia: false },
   { categoria: "plano_acao", pergunta: "Planos de ação foram encerrados no prazo?", peso: 2, tipo_resposta: "sim_nao", exige_observacao: true, exige_evidencia: false },
-  { categoria: "conformidade_avaliador", pergunta: "Avaliador atuou conforme o fluxo?", peso: 1, tipo_resposta: "conforme_nao_conforme", exige_observacao: true, exige_evidencia: false },
+  { categoria: "conformidade_avaliador", pergunta: "Executor atuou conforme o fluxo?", peso: 1, tipo_resposta: "conforme_nao_conforme", exige_observacao: true, exige_evidencia: false },
   { categoria: "conformidade_aprovador", pergunta: "Aprovador atuou conforme o fluxo?", peso: 1, tipo_resposta: "conforme_nao_conforme", exige_observacao: true, exige_evidencia: false },
 ];
 
