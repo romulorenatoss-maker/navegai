@@ -157,7 +157,7 @@ export default function OperationalExecucaoPage() {
   const [pickedSetorId] = useState<string>("");
   const isMobile = useIsMobile();
   // Accordion vertical aberto (5 grupos fixos)
-  type OpGroup = "hoje" | "emAndamento" | "aguardandoVoce" | "criticas" | "concluidas";
+  type OpGroup = "hoje" | "criticas" | "aguardandoAprovacao" | "aguardandoAuditoria" | "concluidas" | "todas";
   const [openGroup, setOpenGroup] = useState<OpGroup | null>("hoje");
   // Ordenação única
   const [sortKey, setSortKey] = useState<SortKey>("sla");
@@ -171,12 +171,13 @@ export default function OperationalExecucaoPage() {
     const chipParam = searchParams.get("chip");
     if (!chipParam) return;
     const chipToGroup: Record<string, OpGroup> = {
-      todas: "hoje",
+      todas: "todas",
       executar: "hoje",
-      avaliar: "aguardandoVoce",
-      aprovar: "aguardandoVoce",
-      plano_acao: "emAndamento",
-      contingencias: "emAndamento",
+      avaliar: "aguardandoAprovacao",
+      aprovar: "aguardandoAprovacao",
+      auditar: "aguardandoAuditoria",
+      plano_acao: "criticas",
+      contingencias: "criticas",
       atrasadas: "criticas",
       concluidas: "concluidas",
     };
@@ -342,11 +343,11 @@ export default function OperationalExecucaoPage() {
   // Listas das 5 abas operacionais (vindas direto do bucketize)
   const opLists = useMemo(() => ({
     hoje: sorted(buckets.opHoje),
-    emAndamento: sorted(buckets.opEmAndamento),
-    aguardandoVoce: sorted(buckets.opAguardandoVoce),
+    aguardandoAprovacao: sorted(buckets.opAguardandoAprovacao),
+    aguardandoAuditoria: sorted(buckets.opAguardandoAuditoria),
     concluidas: sorted(buckets.opConcluidas).slice(0, 100),
-    // Críticas: sempre ordenadas pelo menor tempo restante (mais urgente primeiro),
-    // independente do sort selecionado pelo usuário.
+    todas: sorted(buckets.opTodas),
+    // Críticas: sempre ordenadas pelo menor tempo restante (mais urgente primeiro).
     criticas: sortAssignments(buckets.opCriticas, "sla"),
   }), [buckets, sorted]);
 
