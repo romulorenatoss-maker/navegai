@@ -181,6 +181,83 @@ interface ApprovalProps {
   onClose: () => void;
 }
 
+type ReviewRule = {
+  valor: string;
+  label?: string;
+  exige_observacao?: boolean;
+  exige_evidencia?: boolean;
+  gera_plano_acao?: boolean;
+  permite_devolucao?: boolean;
+};
+
+const normalizeOptionKey = (value: unknown) =>
+  String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+const optionAliases = (value: unknown) => {
+  const key = normalizeOptionKey(value);
+  if (["conforme", "sim", "yes"].includes(key)) return [key, "conforme", "sim"];
+  if (["nao_conforme", "nao", "não", "no"].includes(key)) return [key, "nao_conforme", "nao"];
+  if (["n_a", "na", "nao_aplica", "nao_aplicavel"].includes(key)) return [key, "na", "n_a"];
+  return [key];
+};
+
+const getRuleForResposta = (f: SnapshotField, resposta: string, scope: "aprovador" | "auditor"): ReviewRule | null => {
+  const rules = (scope === "aprovador" ? f.aprovador_regras_por_opcao : f.auditor_regras_por_opcao) ?? [];
+  const selectedAliases = optionAliases(resposta);
+  const rule = rules.find((r) => {
+    const keys = [...optionAliases(r.valor), ...optionAliases(r.label)];
+    return keys.some(k => selectedAliases.includes(k));
+  });
+  if (rule) return rule;
+  if (scope === "aprovador" && rules.length === 0 && resposta === "nao_conforme") {
+    return {
+      valor: "nao_conforme",
+      exige_observacao: !!f.aprovador_obriga_observacao_nao,
+      exige_evidencia: !!f.aprovador_exige_evidencia_nao,
+      gera_plano_acao: true,
+      permite_devolucao: true,
+    };
+  }
+  return null;
+};
+
+const getReviewOptions = (f: SnapshotField, scope: "aprovador" | "auditor") => {
+  const configured = scope === "aprovador" ? f.aprovador_opcoes : f.auditor_opcoes;
+  const rules = scope === "aprovador" ? f.aprovador_regras_por_opcao : f.auditor_regras_por_opcao;
+  const labels = (Array.isArray(configured) && configured.length > 0)
+    ? configured
+    : (Array.isArray(rules) && rules.length > 0)
+      ? rules.map(r => r.label || r.valor)
+      : ["Conforme", "Não Conforme", "N/A"];
+  return labels.map(label => {
+    const key = normalizeOptionKey(label);
+    const v = key === "conforme" || key === "sim" ? "conforme"
+      : key === "nao_conforme" || key === "nao" ? "nao_conforme"
+      : key === "n_a" || key === "na" ? "na"
+      : String(label);
+    const danger = optionAliases(v).includes("nao_conforme");
+    const neutral = optionAliases(v).includes("na");
+    return {
+      v,
+      label: String(label),
+      cls: danger ? "border-red-300 text-red-700" : neutral ? "border-muted-foreground/30 text-muted-foreground" : "border-emerald-300 text-emerald-700",
+    };
+  });
+};
+
+const getAllowedActions = (rule: ReviewRule | null) => [
+  ...(rule?.gera_plano_acao ? ["plano" as const] : []),
+  ...(rule?.permite_devolucao ? ["devolver" as const] : []),
+];
+
+const getDefaultReviewAction = (rule: ReviewRule | null): "plano" | "devolver" =>
+  rule?.gera_plano_acao ? "plano" : "devolver";
+
 export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalProps) {
   const { profile } = useAuth();
   const flow = useApprovalFlow(assignment?.id || null);
@@ -209,7 +286,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   const [acaoPorNC, setAcaoPorNC] = useState<Record<string, "plano" | "devolver">>({});
   const saveTimers = useRef<Record<string, any>>({});
 
-  const blockReasons = flow.getBlockingReasons(assignment);
+  const baseBlockReasons = flow.getBlockingReasons(assignment);
   // Mostra TODAS as perguntas (replicadas do template + manuais), não só as marcadas
   // `aprovador_verificar`. O flag continua disponível em f.aprovador_verificar para
   // destacar como "extra/fora do padrão" quando precisar.
@@ -218,6 +295,22 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     () => fields.filter((f) => !["secao", "divisor", "titulo"].includes(String(f.tipo))),
     [fields]
   );
+
+  const blockReasons = useMemo(() => {
+    const ruleReasons = approverFields.flatMap((f) => {
+      const existing = flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id);
+      const draft = flow.approverAnswers[f.id];
+      const resposta = draft?.resposta ?? existing?.resposta ?? "";
+      const rule = resposta ? getRuleForResposta(f, resposta, "aprovador") : null;
+      const obs = (draft?.observacao ?? existing?.observacao ?? "").trim();
+      const evid = draft?.evidencia_url ?? existing?.evidencia_url ?? null;
+      const reasons: string[] = [];
+      if (rule?.exige_observacao && !obs) reasons.push(`Observação obrigatória em "${f.label}".`);
+      if (rule?.exige_evidencia && !evid) reasons.push(`Evidência obrigatória em "${f.label}".`);
+      return reasons;
+    });
+    return [...baseBlockReasons, ...ruleReasons];
+  }, [baseBlockReasons, approverFields, flow.approverAnswers, flow.existingApprovalAnswers]);
 
   // Auto-save debounced (campo único)
   const scheduleAutoSave = (fieldId: string, payload: { resposta: string; observacao: string; peso: number; evidencia_url?: string | null }) => {
@@ -282,23 +375,32 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     }
   };
 
-  // Quais perguntas estão marcadas como "nao_conforme"
-  const naoConformes = useMemo(() => {
+  // Perguntas cuja opção selecionada pede plano de ação ou devolução.
+  const perguntasComAcao = useMemo(() => {
     return approverFields.filter(f => {
       const draft = flow.approverAnswers[f.id];
       const existing = flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id);
       const v = draft?.resposta ?? existing?.resposta;
-      return v === "nao_conforme";
+      const rule = v ? getRuleForResposta(f, v, "aprovador") : null;
+      return !!rule?.gera_plano_acao || !!rule?.permite_devolucao;
     });
   }, [approverFields, flow.approverAnswers, flow.existingApprovalAnswers]);
 
   const naoConformesPlano = useMemo(
-    () => naoConformes.filter(f => (acaoPorNC[f.id] ?? "plano") === "plano"),
-    [naoConformes, acaoPorNC]
+    () => perguntasComAcao.filter(f => {
+      const v = flow.approverAnswers[f.id]?.resposta ?? flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.resposta;
+      const rule = v ? getRuleForResposta(f, v, "aprovador") : null;
+      return getAllowedActions(rule).includes("plano") && (acaoPorNC[f.id] ?? getDefaultReviewAction(rule)) === "plano";
+    }),
+    [perguntasComAcao, acaoPorNC, flow.approverAnswers, flow.existingApprovalAnswers]
   );
   const naoConformesDevolver = useMemo(
-    () => naoConformes.filter(f => acaoPorNC[f.id] === "devolver"),
-    [naoConformes, acaoPorNC]
+    () => perguntasComAcao.filter(f => {
+      const v = flow.approverAnswers[f.id]?.resposta ?? flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.resposta;
+      const rule = v ? getRuleForResposta(f, v, "aprovador") : null;
+      return getAllowedActions(rule).includes("devolver") && (acaoPorNC[f.id] ?? getDefaultReviewAction(rule)) === "devolver";
+    }),
+    [perguntasComAcao, acaoPorNC, flow.approverAnswers, flow.existingApprovalAnswers]
   );
 
   const irParaPlano = () => {
@@ -549,8 +651,8 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             }).length}</div>
           </div>
           <div>
-            <div className="text-muted-foreground">Não Conformes</div>
-            <div className="font-bold text-red-700">{naoConformes.length}</div>
+            <div className="text-muted-foreground">Com ação</div>
+            <div className="font-bold text-red-700">{perguntasComAcao.length}</div>
           </div>
           <div>
             <div className="text-muted-foreground">Pendentes</div>
@@ -572,7 +674,9 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             const obs = draft?.observacao ?? existing?.observacao ?? "";
             const evid = draft?.evidencia_url ?? existing?.evidencia_url ?? null;
             const execAnswer = (flow.fieldAnswers || []).find((a: any) => a.field_id === f.id);
-            const exigeEvidNC = !!f.aprovador_exige_evidencia_nao;
+            const selectedRule = value ? getRuleForResposta(f, value, "aprovador") : null;
+            const allowedActions = getAllowedActions(selectedRule);
+            const selectedAction = acaoPorNC[f.id] ?? getDefaultReviewAction(selectedRule);
             const isSavedHere = !!existing && (draft ? draft.resposta === existing.resposta && (draft.observacao ?? "") === (existing.observacao ?? "") : true);
             return (
               <div key={f.id} className="border border-border rounded-lg p-3 space-y-2 bg-card">
@@ -649,11 +753,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                 </div>
 
                 <div className="flex gap-2 pt-1">
-                  {[
-                    { v: "conforme", label: "Conforme", cls: "border-emerald-300 text-emerald-700" },
-                    { v: "nao_conforme", label: "Não Conforme", cls: "border-red-300 text-red-700" },
-                    { v: "na", label: "N/A", cls: "border-muted-foreground/30 text-muted-foreground" },
-                  ].map((opt) => (
+                  {getReviewOptions(f, "aprovador").map((opt) => (
                     <button
                       key={opt.v}
                       type="button"
@@ -673,16 +773,16 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                   onChange={(e) => handleObs(f, e.target.value)}
                 />
 
-                {/* Seletor de ação para NC: plano de ação OU devolver para refazer */}
-                {value === "nao_conforme" && (
+                {/* Seletor de ação: aparece apenas se a opção marcada permitir plano/devolução */}
+                {allowedActions.length > 0 && (
                   <div className="border-t border-border/50 pt-2 space-y-1">
-                    <Label className="text-[11px]">Tratamento desta não conformidade</Label>
+                    <Label className="text-[11px]">Tratamento desta resposta</Label>
                     <div className="flex gap-2">
                       {[
                         { v: "plano", label: "Plano de ação", cls: "border-amber-300 text-amber-700" },
                         { v: "devolver", label: "Devolver p/ refazer", cls: "border-orange-300 text-orange-700" },
-                      ].map(opt => {
-                        const sel = (acaoPorNC[f.id] ?? "plano") === opt.v;
+                      ].filter(opt => allowedActions.includes(opt.v as "plano" | "devolver")).map(opt => {
+                        const sel = selectedAction === opt.v;
                         return (
                           <button
                             key={opt.v}
@@ -698,15 +798,15 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                       })}
                     </div>
                     <p className="text-[10px] text-muted-foreground">
-                      {(acaoPorNC[f.id] ?? "plano") === "plano"
+                      {selectedAction === "plano"
                         ? "Será criado um plano de ação com prazo na próxima etapa."
                         : "Esta pergunta volta ao executor para refazer (a observação acima vira o motivo)."}
                     </p>
                   </div>
                 )}
 
-                {/* Anexo do aprovador — só onde template exigir (NC) */}
-                {exigeEvidNC && value === "nao_conforme" && (
+                {/* Anexo do aprovador — só onde a regra da opção marcada exigir */}
+                {selectedRule?.exige_evidencia && (
                   <div className="space-y-1 border-t border-border/50 pt-2">
                     <Label className="text-[11px]">Anexo de comprovação (obrigatório)</Label>
                     {evid ? (
@@ -774,7 +874,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
           </Button>
         )}
         <div className="flex-1" />
-        {naoConformes.length > 0 ? (
+        {perguntasComAcao.length > 0 ? (
           <Button
             type="button" size="sm"
             onClick={() => {
@@ -795,7 +895,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             }
           >
             <ClipboardList className="w-3.5 h-3.5 mr-1" />
-            Finalizar revisão ({naoConformes.length} NC
+            Finalizar revisão ({perguntasComAcao.length} ação
             {naoConformesPlano.length > 0 && naoConformesDevolver.length > 0
               ? `: ${naoConformesPlano.length} plano + ${naoConformesDevolver.length} devolver`
               : ""})

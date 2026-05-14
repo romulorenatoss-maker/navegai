@@ -32,6 +32,44 @@ import { bucketize, sortAssignments, type SortKey } from "@/modules/tarefas/serv
 import { PainelRetornoCard } from "@/modules/tarefas/components/tarefas_painelRetornoCard";
 import { DrawerActionRouter } from "@/modules/tarefas/components/painels/tarefas_drawerActionRouter";
 
+const normalizeTextKey = (value: unknown) =>
+  String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+const getCheckItemKeys = (item: any) => [
+  item?.field_id,
+  item?.pergunta_origem_id,
+  normalizeTextKey(item?.field_label),
+  normalizeTextKey(item?.pergunta_padrao),
+].filter(Boolean) as string[];
+
+const applyChecklistConfigToFields = (fields: SnapshotField[], snapshot: any, type: "aprovador" | "auditor") => {
+  const list = snapshot?.ada_config_snapshot?.checklists?.[type === "aprovador" ? "aprovador" : "validador"];
+  if (!Array.isArray(list) || list.length === 0) return fields;
+  const byKey = new Map<string, any>();
+  for (const item of list) {
+    if (item?.ativo === false) continue;
+    for (const key of getCheckItemKeys(item)) byKey.set(key, item);
+  }
+  return fields.map((field: any) => {
+    const item = byKey.get(field.id) || byKey.get(normalizeTextKey(field.label));
+    if (!item) return field;
+    const prefix = type === "aprovador" ? "aprovador" : "auditor";
+    return {
+      ...field,
+      [`${prefix}_verificar`]: true,
+      [`${prefix}_pergunta`]: item.pergunta_padrao || field[`${prefix}_pergunta`] || field.label,
+      [`${prefix}_tipo`]: item.tipo || item.tipo_resposta || field[`${prefix}_tipo`],
+      [`${prefix}_opcoes`]: Array.isArray(item.opcoes) ? item.opcoes : field[`${prefix}_opcoes`],
+      [`${prefix}_regras_por_opcao`]: Array.isArray(item.regras_por_opcao) ? item.regras_por_opcao : field[`${prefix}_regras_por_opcao`],
+      [`${prefix}_peso`]: item.peso ?? field[`${prefix}_peso`],
+    };
+  });
+};
+
 // === Accordion vertical (layout antigo) ===
 interface AccordionSectionProps {
   title: string;
@@ -224,7 +262,7 @@ export default function OperationalExecucaoPage() {
     queryFn: async () => {
       if (!profile?.id) return [];
       let q = (supabase as any).from("operational_assignments")
-        .select("*, operational_templates(nome, tipo_execucao, origem), profiles:responsavel_id(id, nome, foto_url), criador:created_by(id, nome), aprovador:profiles!operational_assignments_aprovador_id_fkey(nome)")
+        .select("*, operational_templates(nome, tipo_execucao, origem, ada_config_snapshot), profiles:responsavel_id(id, nome, foto_url), criador:created_by(id, nome), aprovador:profiles!operational_assignments_aprovador_id_fkey(nome)")
         .order("data_prevista", { ascending: true });
       if (!isAdmin) {
         const orParts: string[] = [
@@ -364,7 +402,12 @@ export default function OperationalExecucaoPage() {
 
   const exec = useAssignmentExecution(selectedAssignment?.id || null);
 
-  const snapshot = selectedAssignment?.template_snapshot;
+  const snapshot = useMemo(() => {
+    const base = selectedAssignment?.template_snapshot;
+    const liveAda = selectedAssignment?.operational_templates?.ada_config_snapshot;
+    if (!base || base.ada_config_snapshot || !liveAda) return base;
+    return { ...base, ada_config_snapshot: liveAda };
+  }, [selectedAssignment?.template_snapshot, selectedAssignment?.operational_templates?.ada_config_snapshot]);
 
   // Deduplicate sections and fields by id
   const snapshotSections: any[] = useMemo(() => {
@@ -466,8 +509,13 @@ export default function OperationalExecucaoPage() {
           auditor_verificar: pick(live.auditor_verificar, f.auditor_verificar),
         };
       });
-    if (result.length > 0) exec.setFieldLabels(result);
-    return result;
+    const withChecklistRules = applyChecklistConfigToFields(
+      applyChecklistConfigToFields(result, snapshot, "aprovador"),
+      snapshot,
+      "auditor",
+    );
+    if (withChecklistRules.length > 0) exec.setFieldLabels(withChecklistRules);
+    return withChecklistRules;
   }, [snapshot, liveFieldOverlayMap, isAssignmentLive]);
 
   const sectionIds = useMemo(() => new Set(snapshotSections.map(s => s.id)), [snapshotSections]);
