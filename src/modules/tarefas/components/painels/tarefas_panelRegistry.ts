@@ -79,14 +79,7 @@ export const PANEL_REGISTRY: PanelEntry[] = [
 
   // === Avaliação técnica REMOVIDA — Executor já responde; próxima etapa = Aprovador ===
 
-  // === Aprovação (wrapper fino do fluxo legado) ===
-  {
-    id: "aprovacao",
-    label: "Aprovação",
-    priority: 10,
-    match: (c) =>
-      c.status === TASK_STATUS.AGUARDANDO_APROVACAO && (c.isAprov || c.isAdmin),
-    requiredAction: "aprovar_tarefa",
-    component: Aprovacao,
-  },
-];
+  // === Aprovação removida do router declarativo ===
+  // Renderizada diretamente por EmbeddedApprovalPanel em /tarefas/minhas
+  // (mostra respostas/anexos do executor, anexo opcional do aprovador,
+  // hidrata auto-save, e abre etapa final de Plano de Ação consolidada).
