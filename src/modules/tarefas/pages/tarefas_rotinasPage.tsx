@@ -11,7 +11,7 @@ import { TemplateForm, SectionForm, FieldForm, StepForm, defaultTemplate, defaul
 // (Removido) TaskTypeSelectorDialog — builder único, sem seletor prévio.
 type TaskType = "simples" | "inspecao";
 import { TarefasBuilderWizard } from "@/modules/tarefas/components/builder/TarefasBuilderWizard";
-import { AprovadorCheckItemForm, buildAprovadorAutomatico } from "@/modules/tarefas/components/builder/types";
+import { AprovadorCheckItemForm, buildAprovadorAutomatico, defaultAprovadorCheckItem } from "@/modules/tarefas/components/builder/types";
 import { normalizeAprovadorList } from "@/modules/tarefas/components/builder/checklistNormalizers";
 
 import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
@@ -62,10 +62,28 @@ const sanitizeAprovadorChecks = (
   pacotePadrao: any[] | undefined,
   incluirAutomaticas: boolean,
 ) => {
-  const fieldIds = new Set(currentFields.map(f => f.tempId));
-  const normalized = normalizeAprovadorList(rawItems).filter(item =>
-    item.origem_pergunta !== "replicada_avaliado" || fieldIds.has(item.field_id)
-  );
+  const uniqueFields = [...currentFields]
+    .filter(f => !!f.tempId)
+    .sort((a, b) => a.ordem - b.ordem);
+  const baseItems = normalizeAprovadorList(rawItems);
+  const replicadasPrev = baseItems.filter(item => item.origem_pergunta === "replicada_avaliado");
+  const naoReplicadas = baseItems.filter(item => item.origem_pergunta !== "replicada_avaliado");
+  const replicadasByField = new Map(replicadasPrev.map(item => [item.field_id, item]));
+  const replicadasEspelhadas = uniqueFields.map(field => {
+    const existing = replicadasByField.get(field.tempId);
+    const label = field.label || "Pergunta sem nome";
+    const pergunta = `Aprovador confirma: ${label}?`;
+    if (!existing) return defaultAprovadorCheckItem(field.tempId, label);
+    return {
+      ...existing,
+      field_id: field.tempId,
+      field_label: label,
+      pergunta_padrao: pergunta,
+      origem_pergunta: "replicada_avaliado" as const,
+      pergunta_origem_id: field.tempId,
+    };
+  });
+  const normalized = [...replicadasEspelhadas, ...naoReplicadas];
   if (!incluirAutomaticas) {
     return normalized.filter(item => item.origem_pergunta !== "automatica_configuracao");
   }
@@ -299,6 +317,12 @@ export default function OperationalCadastroPage() {
         pontuacaoConfig?.aprovador_pacote_padrao,
         form.habilitar_perguntas_automaticas,
       );
+      const activeAvaliadorFields = fields.map(f => ({
+        id: f.id ?? null,
+        key: fieldDuplicateKey(f),
+      }));
+      const activeAvaliadorFieldIds = activeAvaliadorFields.map(f => f.id).filter(Boolean);
+      const adaSnapshotBase = (((form as any).ada_config_snapshot ?? {}) as any);
       
       const payload: any = {
         nome: form.nome.trim(),
@@ -339,8 +363,11 @@ export default function OperationalCadastroPage() {
         penalidade_fora_prazo: form.penalidade_fora_prazo,
         habilitar_perguntas_automaticas: form.habilitar_perguntas_automaticas,
         ada_config_snapshot: {
-          ...(((form as any).ada_config_snapshot ?? {}) as any),
+          ...adaSnapshotBase,
           checklists: {
+            ...((adaSnapshotBase.checklists ?? {}) as any),
+            avaliado_fields: activeAvaliadorFields,
+            avaliado_field_ids: activeAvaliadorFieldIds,
             aprovador: aprovadorSnapshot,
             validador: validadorChecks,
           },
@@ -549,6 +576,15 @@ export default function OperationalCadastroPage() {
   };
 
   const openEdit = async (t: any) => {
+    const snap: any = t.ada_config_snapshot ?? {};
+    const checklistsSnap: any = snap?.checklists ?? {};
+    const savedAvaliadorFieldIds = Array.isArray(checklistsSnap.avaliado_field_ids)
+      ? new Set(checklistsSnap.avaliado_field_ids.filter(Boolean))
+      : null;
+    const savedAvaliadorFieldKeys = Array.isArray(checklistsSnap.avaliado_fields)
+      ? new Set(checklistsSnap.avaliado_fields.map((f: any) => f?.key).filter(Boolean))
+      : null;
+
     setEditingId(t.id);
     setForm({
       nome: t.nome, descricao: t.descricao || "", tipo_execucao: t.tipo_execucao,
@@ -581,7 +617,8 @@ export default function OperationalCadastroPage() {
       penalidade_sla_contingencia: t.penalidade_sla_contingencia ?? 15,
       penalidade_fora_prazo: t.penalidade_fora_prazo ?? 20,
       habilitar_perguntas_automaticas: t.habilitar_perguntas_automaticas ?? true,
-    });
+      ada_config_snapshot: snap,
+    } as TemplateForm & { ada_config_snapshot?: any });
 
     // Load sections
     const { data: secs } = await (supabase as any).from("operational_template_sections")
@@ -615,10 +652,16 @@ export default function OperationalCadastroPage() {
       aprovador_exige_evidencia_nao: f.aprovador_exige_evidencia_nao ?? false,
       aprovador_tipos_evidencia: f.aprovador_tipos_evidencia || ["foto"],
     }));
+    const activeLoadedFields = savedAvaliadorFieldIds || savedAvaliadorFieldKeys
+      ? loadedFields.filter(f =>
+          (savedAvaliadorFieldIds?.has(f.id ?? f.tempId) ?? false) ||
+          (savedAvaliadorFieldKeys?.has(fieldDuplicateKey(f)) ?? false)
+        )
+      : loadedFields;
     const referencedFieldIds = await fetchReferencedFieldIds(
-      loadedFields.map(f => f.id).filter(Boolean) as string[],
+      activeLoadedFields.map(f => f.id).filter(Boolean) as string[],
     );
-    const dedupedFields = dedupeLoadedFields(loadedFields, referencedFieldIds);
+    const dedupedFields = dedupeLoadedFields(activeLoadedFields, referencedFieldIds);
     setFields(dedupedFields);
 
     // Load steps
@@ -636,8 +679,6 @@ export default function OperationalCadastroPage() {
 
     // Hidrata checklists do Aprovador/Validador a partir de ada_config_snapshot.checklists
     // (Fase 2). Tolerante a registros antigos sem o campo.
-    const snap: any = t.ada_config_snapshot ?? {};
-    const checklistsSnap: any = snap?.checklists ?? {};
     const dedupedFieldIds = new Set(dedupedFields.map(f => f.tempId));
     const aprRaw: any[] = Array.isArray(checklistsSnap.aprovador) ? checklistsSnap.aprovador : [];
     const apr = aprRaw.filter((i: any) => i?.origem_pergunta !== "replicada_avaliado" || dedupedFieldIds.has(i.field_id));
