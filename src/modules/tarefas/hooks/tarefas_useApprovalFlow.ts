@@ -391,6 +391,111 @@ export function useApprovalFlow(assignmentId: string | null) {
     onError: (e: any) => toast.error(e.message),
   });
 
+  // Devolve perguntas individuais para refazer (sem criar plano de ação).
+  // Reaproveita operational_field_reviews: marca devolvido=true e grava motivo_devolucao.
+  // O executor verá apenas estes campos liberados (gate em useAssignmentExecution.ts:263).
+  // Histórico preservado pela rodada (constraint UNIQUE assignment_id+field_id+rodada).
+  const devolverPerguntasParaRefazer = useMutation({
+    mutationFn: async ({ assignment, perguntas, motivoGeral }: {
+      assignment: any;
+      perguntas: Array<{ field_id: string; field_label: string; motivo: string }>;
+      motivoGeral?: string;
+    }) => {
+      if (!profile?.id || !assignmentId) throw new Error("Não autenticado");
+      if (!perguntas.length) throw new Error("Selecione ao menos uma pergunta para devolver.");
+      const semMotivo = perguntas.find(p => !p.motivo?.trim());
+      if (semMotivo) throw new Error(`Informe o motivo para "${semMotivo.field_label}".`);
+
+      const snapshotFields: SnapshotField[] = assignment.template_snapshot?.fields || [];
+      if (Object.keys(approverAnswers).length > 0) {
+        await saveApproverAnswers.mutateAsync(snapshotFields);
+      }
+
+      const rodada = assignment.rodada_atual || 1;
+
+      for (const p of perguntas) {
+        // Recupera answer_id mais recente do executor para vincular o review ao histórico
+        const answerExec = (fieldAnswers as any[]).find((a: any) => a.field_id === p.field_id);
+        const payload: any = {
+          assignment_id: assignmentId,
+          field_id: p.field_id,
+          answer_id: answerExec?.id ?? null,
+          conforme: false,
+          devolvido: true,
+          motivo_devolucao: p.motivo.trim(),
+          observacao: p.motivo.trim(),
+          rodada,
+          avaliador_id: profile.id,
+          avaliado_em: new Date().toISOString(),
+        };
+        // Upsert por (assignment_id, field_id, rodada)
+        const existing = (fieldReviews as any[]).find(
+          (r: any) => r.field_id === p.field_id && r.rodada === rodada
+        );
+        if (existing) {
+          await (supabase as any).from("operational_field_reviews")
+            .update(payload).eq("id", existing.id);
+        } else {
+          await (supabase as any).from("operational_field_reviews").insert(payload);
+        }
+      }
+
+      // Marca também na resposta do aprovador (visível ao auditor)
+      for (const p of perguntas) {
+        const existing = (existingApprovalAnswers as any[]).find((a: any) => a.field_id === p.field_id);
+        const ansPayload: any = {
+          conforme: false,
+          observacao: p.motivo.trim(),
+        };
+        if (existing) {
+          await (supabase as any).from("operational_approval_answers")
+            .update(ansPayload).eq("id", existing.id);
+        } else {
+          await (supabase as any).from("operational_approval_answers").insert({
+            assignment_id: assignmentId,
+            field_id: p.field_id,
+            resposta: "nao_conforme",
+            respondido_por: profile.id,
+            respondido_em: new Date().toISOString(),
+            ...ansPayload,
+          });
+        }
+      }
+
+      // Devolve a tarefa ao executor (status DEVOLVIDA via reprovar_devolver_final)
+      await transition.mutateAsync({
+        assignmentId,
+        action: "reprovar_devolver_final",
+        motivo: motivoGeral || `${perguntas.length} pergunta(s) devolvida(s) para refazer pelo aprovador`,
+        origem: "aprovacao_devolver_perguntas",
+        extraData: {
+          aprovadorId: profile.id,
+          rodadaAtual: rodada,
+          total_perguntas_devolvidas: perguntas.length,
+          modo: "devolver_perguntas_sem_plano",
+        },
+      });
+
+      await (supabase as any).from("operational_execution_logs").insert({
+        assignment_id: assignmentId,
+        acao: "aprovador_devolveu_perguntas_para_refazer",
+        executado_por: profile.id,
+        detalhes: {
+          total_perguntas: perguntas.length,
+          rodada,
+          field_ids: perguntas.map(p => p.field_id),
+        },
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["operational_aprovacao_assignments"] });
+      qc.invalidateQueries({ queryKey: ["operational_my_assignments"] });
+      qc.invalidateQueries({ queryKey: ["operational_approval_field_reviews", assignmentId] });
+      toast.success("Perguntas devolvidas ao executor para refazer.");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   return {
     fieldAnswers,
     fieldReviews,
@@ -405,6 +510,7 @@ export function useApprovalFlow(assignmentId: string | null) {
     getBlockingReasons,
     finalDecision,
     criarPlanosAcaoEDevolver,
-    isSaving: finalDecision.isPending || saveApproverAnswers.isPending || criarPlanosAcaoEDevolver.isPending,
+    devolverPerguntasParaRefazer,
+    isSaving: finalDecision.isPending || saveApproverAnswers.isPending || criarPlanosAcaoEDevolver.isPending || devolverPerguntasParaRefazer.isPending,
   };
 }
