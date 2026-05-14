@@ -132,12 +132,8 @@ function PacotePadraoCard({
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
           <div>
-            <CardTitle className="text-base">Pacote padrão do Aprovador</CardTitle>
-            <p className="text-xs text-muted-foreground mt-1">
-              Estas perguntas são carregadas automaticamente em <strong>novas rotinas</strong>,
-              após as perguntas replicadas do Avaliado. Cada uma vira um item editável no snapshot da rotina.
-              Alterações aqui não afetam rotinas já criadas.
-            </p>
+            <CardTitle className="text-base">{title}</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">{description}</p>
           </div>
           <div className="text-right shrink-0">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Nota total ativo</div>
