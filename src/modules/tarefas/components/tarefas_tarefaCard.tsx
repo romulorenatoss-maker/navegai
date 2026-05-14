@@ -203,6 +203,30 @@ export function AssignmentCard({ assignment: a, onClick }: Props) {
           <span className="flex items-center gap-1 text-[10px] text-primary"><CheckCircle2 className="w-3 h-3" />{Math.round(a.score_executor)}pts</span>
         )}
       </div>
+
+      {/* Progresso (conclusão da minha etapa + tempo SLA) */}
+      {isActive && (completionPct != null || timePct != null) && (
+        <div className="ml-12 mt-2 space-y-1">
+          {completionPct != null && (
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] uppercase tracking-wider text-muted-foreground w-14 shrink-0">Etapa</span>
+              <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-primary transition-all" style={{ width: `${completionPct}%` }} />
+              </div>
+              <span className="text-[10px] tabular-nums text-muted-foreground w-9 text-right">{completionPct}%</span>
+            </div>
+          )}
+          {timePct != null && (
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] uppercase tracking-wider text-muted-foreground w-14 shrink-0">Tempo</span>
+              <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                <div className={`h-full transition-all ${timeBarColor}`} style={{ width: `${timePct}%` }} />
+              </div>
+              <span className="text-[10px] tabular-nums text-muted-foreground w-9 text-right">{timePct}%</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
