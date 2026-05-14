@@ -135,7 +135,7 @@ export function usePendingNotifications() {
           .from("operational_assignments")
           .select("id")
           .or(
-            `setor_executor_id.in.(${mySetorIds.join(",")}),setor_avaliador_id.in.(${mySetorIds.join(",")}),setor_avaliado_id.in.(${mySetorIds.join(",")})`
+            `setor_executor_id.in.(${mySetorIds.join(",")}),setor_aprovador_id.in.(${mySetorIds.join(",")}),setor_avaliado_id.in.(${mySetorIds.join(",")}),setor_auditor_id.in.(${mySetorIds.join(",")})`
           );
         const aIds = (setorAssignments || []).map((a: any) => a.id);
         if (aIds.length > 0) {
