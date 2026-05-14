@@ -20,8 +20,10 @@ import {
   AprovadorOrigem,
   defaultAprovadorCheckItem,
   defaultAprovadorManualItem,
+  buildAprovadorAutomatico,
 } from "./types";
 import { FieldConfigSheet } from "./FieldConfigSheet";
+import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
 
 interface Props {
   fields: FieldForm[];
@@ -94,6 +96,37 @@ export function StepChecklistAprovador({ fields, items, setItems }: Props) {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fields]);
+
+  // Carrega o pacote padrão global e injeta na lista, preservando edições locais.
+  // Idempotente: só adiciona itens automáticos que ainda não existem (por config_global_origem_id).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const cfg = await getPontuacaoConfig();
+        if (cancelled) return;
+        const pacote = (cfg.aprovador_pacote_padrao ?? []).filter(p => p.ativo !== false);
+        if (pacote.length === 0) return;
+        setItems(prev => {
+          const existentes = new Set(
+            prev
+              .filter(i => i.origem_pergunta === "automatica_configuracao")
+              .map(i => i.config_global_origem_id)
+              .filter(Boolean)
+          );
+          const novos = pacote
+            .filter(p => !existentes.has(p.id))
+            .map(p => buildAprovadorAutomatico(p));
+          if (novos.length === 0) return prev;
+          return [...prev, ...novos];
+        });
+      } catch {
+        /* silencioso — usuário pode editar manualmente */
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Lista ordenada para exibição
   const ordered = useMemo(() => {
