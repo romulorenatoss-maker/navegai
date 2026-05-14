@@ -73,6 +73,22 @@ const DEFAULT_OPCOES: Record<TipoMarcavel, string[]> = {
   selecao_multipla: ["Opção 1", "Opção 2"],
 };
 
+const normalizeValor = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+const canonicalValor = (label: string) => {
+  const key = normalizeValor(label);
+  if (key === "nao_conforme" || key === "nao") return key === "nao" ? "nao" : "nao_conforme";
+  if (key === "n_a" || key === "na" || key === "nao_aplica" || key === "nao_aplicavel") return "na";
+  return key || label;
+};
+
 /** Heurística: opções "negativas" recebem regras padrão de NC. */
 const isNegativa = (label: string) => {
   const l = label.toLowerCase().trim();
@@ -81,7 +97,7 @@ const isNegativa = (label: string) => {
 };
 
 const defaultRegra = (label: string): RegraPorOpcao => ({
-  valor: label,
+  valor: canonicalValor(label),
   exige_observacao: isNegativa(label),
   exige_evidencia: false,
   gera_plano_acao: isNegativa(label),
@@ -127,8 +143,10 @@ export function FieldConfigSheet({ open, onOpenChange, title, perguntaBloqueada,
     const antigo = ops[idx];
     ops[idx] = novoLabel;
     const regs = [...regras];
-    const ri = regs.findIndex(r => r.valor === antigo);
-    if (ri >= 0) regs[ri] = { ...regs[ri], valor: novoLabel };
+    const antigoValor = canonicalValor(antigo);
+    const novoValor = canonicalValor(novoLabel);
+    const ri = regs.findIndex(r => r.valor === antigo || r.valor === antigoValor || normalizeValor(r.valor) === antigoValor);
+    if (ri >= 0) regs[ri] = { ...regs[ri], valor: novoValor };
     else regs.push(defaultRegra(novoLabel));
     setDraft(prev => ({ ...prev, opcoes: ops, regras_por_opcao: regs }));
   };
@@ -144,17 +162,19 @@ export function FieldConfigSheet({ open, onOpenChange, title, perguntaBloqueada,
 
   const removeOpcao = (idx: number) => {
     const alvo = opcoes[idx];
+    const alvoValor = canonicalValor(alvo);
     setDraft(prev => ({
       ...prev,
       opcoes: opcoes.filter((_, i) => i !== idx),
-      regras_por_opcao: regras.filter(r => r.valor !== alvo),
+      regras_por_opcao: regras.filter(r => r.valor !== alvo && normalizeValor(r.valor) !== alvoValor),
     }));
   };
 
   const setRegra = (label: string, patch: Partial<RegraPorOpcao>) => {
     setDraft(prev => {
       const regs = [...(prev.regras_por_opcao ?? [])];
-      const ri = regs.findIndex(r => r.valor === label);
+      const valor = canonicalValor(label);
+      const ri = regs.findIndex(r => r.valor === label || r.valor === valor || normalizeValor(r.valor) === valor);
       if (ri >= 0) regs[ri] = { ...regs[ri], ...patch };
       else regs.push({ ...defaultRegra(label), ...patch });
       return { ...prev, regras_por_opcao: regs };
@@ -162,7 +182,7 @@ export function FieldConfigSheet({ open, onOpenChange, title, perguntaBloqueada,
   };
 
   const getRegra = (label: string): RegraPorOpcao =>
-    regras.find(r => r.valor === label) ?? defaultRegra(label);
+    regras.find(r => r.valor === label || r.valor === canonicalValor(label) || normalizeValor(r.valor) === canonicalValor(label)) ?? defaultRegra(label);
 
   const podeEditarOpcoes = tipoAtual === "selecao" || tipoAtual === "selecao_multipla";
 
