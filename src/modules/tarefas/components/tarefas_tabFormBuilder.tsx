@@ -646,7 +646,7 @@ export function FieldDetailDialog({ field, allFields = [], setores, onSave, onCl
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Informações Básicas</p>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Pergunta do Avaliador *</Label>
+                <Label>Pergunta (operacional) *</Label>
                 <Input value={local.label} onChange={e => upd("label", e.target.value)} placeholder="Ex: Verificar nível do óleo" maxLength={255} />
               </div>
               <div className="space-y-1.5">
