@@ -91,38 +91,31 @@ interface BlockSpec {
 
 const BLOCKS: BlockSpec[] = [
   {
-    key: "respondente", num: 1, title: "Respondente", required: true,
-    description: "Quem irá responder e preencher as perguntas desta tarefa (executa o checklist).",
-    example: "Ex.: técnico, operador, equipe.", Icon: User,
+    key: "respondente", num: 1, title: "Executor", required: true,
+    description: "Quem executa a tarefa: responde as perguntas, envia evidências e marca conforme/não conforme inicial.",
+    example: "Ex.: técnico, operador, equipe responsável pela execução.", Icon: User,
     helper: "Primeiro selecione o setor. Depois escolha \"Setor todo\" OU selecione colaboradores individuais (não é permitido os dois).",
     helperVariant: "info",
   },
   {
     key: "avaliado", num: 2, title: "Avaliado", required: true,
-    description: "Quem receberá a nota final desta tarefa.",
+    description: "Quem recebe a nota/impacto final desta tarefa (pode ser o próprio executor).",
     example: "Ex.: pessoa, equipe ou setor avaliado.", Icon: User,
     helper: "A nota final pertence a este responsável/setor configurado.",
     helperVariant: "info",
   },
   {
-    key: "avaliador", num: 3, title: "Avaliador (Conferência)", required: false,
-    description: "Quem confere tecnicamente as respostas, aplica nota inicial e valida conformidades.",
-    example: "Ex.: supervisor, analista, inspetor.", Icon: ShieldCheck,
-    helper: "Se não definido, o respondente será considerado como avaliador.",
-    helperVariant: "info",
-  },
-  {
-    key: "aprovadorFinal", num: 4, title: "Aprovador Final", required: false,
-    description: "Quem aprova/reprova a avaliação final, cria o plano de ação, define prazo e encerra pendências.",
+    key: "aprovadorFinal", num: 3, title: "Aprovador", required: false,
+    description: "Quem aprova/reprova a execução, cria o plano de ação, define impacto operacional e encerra pendências.",
     example: "Ex.: gestor, coordenador, gerente.", Icon: Award,
-    helper: "Somente o aprovador final pode criar o plano de ação, devolver, aumentar prazo e definir a nota final.",
+    helper: "Somente o aprovador pode criar o plano de ação, devolver, aumentar prazo e definir a nota final.",
     helperVariant: "warn",
   },
   {
-    key: "validadorFinal", num: 5, title: "Validador Final (Auditoria)", required: false,
-    description: "Quem valida/audita todo o processo realizado pelo avaliador e aprovador.",
+    key: "validadorFinal", num: 4, title: "Auditor", required: false,
+    description: "Quem realiza a auditoria posterior do processo (executor + aprovador). Não altera notas.",
     example: "Ex.: auditor, qualidade, compliance.", Icon: Eye,
-    helper: "Valida o processo do avaliador e aprovador. Não altera notas.",
+    helper: "Auditoria posterior. Não altera notas nem fluxo operacional.",
     helperVariant: "info",
   },
 ];
@@ -172,7 +165,7 @@ export function TarefasResponsaveisV2({
         <div className="rounded-lg border border-blue-200/60 dark:border-blue-900/40 bg-blue-50/70 dark:bg-blue-950/30 px-3 py-2.5 flex items-start gap-2">
           <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
           <p className="text-[12px] text-blue-900 dark:text-blue-200 flex-1 leading-relaxed">
-            Defina quem fará, quem receberá a nota e quem aprovará a execução. O plano de ação é criado pelo aprovador final.
+            Defina quem executa, quem recebe a nota, quem aprova e (opcional) quem audita. O plano de ação é criado pelo aprovador.
           </p>
           <button
             type="button"
