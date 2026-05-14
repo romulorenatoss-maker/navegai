@@ -1,7 +1,7 @@
 /**
- * Subaba Configurações → Tarefas → Pontuação / Notas.
- * Edita valores padrão globais usados na criação de novas tarefas.
- * Snapshot por tarefa permanece editável e independente.
+ * Subaba Configurações → Tarefas → Pontuação / SLA.
+ * Configura pontos e penalidades por camada (Avaliado, Aprovador, Plano de Ação, Validador).
+ * Cada camada tem seu próprio SLA e regras de penalidade.
  */
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { toast } from "sonner";
 import { Save } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,7 +20,33 @@ import {
   setPontuacaoConfig,
   TAREFAS_PONTUACAO_DEFAULTS,
   type TarefasPontuacaoConfig,
+  type CamadaSlaConfig,
 } from "../../services/tarefas_pontuacao_config_service";
+
+type CamadaKey = "sla_executor" | "sla_aprovador" | "sla_plano_acao" | "sla_validador";
+
+const CAMADAS: Array<{ key: CamadaKey; titulo: string; descricao: string }> = [
+  {
+    key: "sla_executor",
+    titulo: "Avaliado (Executor)",
+    descricao: "Penalidades aplicadas ao executor da tarefa.",
+  },
+  {
+    key: "sla_aprovador",
+    titulo: "Aprovador",
+    descricao: "Penalidades aplicadas ao aprovador na revisão da execução.",
+  },
+  {
+    key: "sla_plano_acao",
+    titulo: "Plano de Ação",
+    descricao: "Penalidades aplicadas quando há plano de ação aberto (atraso, não conclusão).",
+  },
+  {
+    key: "sla_validador",
+    titulo: "Validador (Auditoria)",
+    descricao: "Penalidades aplicadas ao validador / auditor final.",
+  },
+];
 
 export function TarefasConfigPontuacao() {
   const { profile, isAdmin } = useAuth();
@@ -47,6 +74,9 @@ export function TarefasConfigPontuacao() {
   const upd = <K extends keyof TarefasPontuacaoConfig>(k: K, v: TarefasPontuacaoConfig[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
+  const updCamada = (key: CamadaKey, patch: Partial<CamadaSlaConfig>) =>
+    setForm((f) => ({ ...f, [key]: { ...f[key], ...patch } }));
+
   if (isLoading) return <p className="text-sm text-muted-foreground">Carregando…</p>;
 
   const disabled = !isAdmin;
@@ -55,45 +85,81 @@ export function TarefasConfigPontuacao() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Pontuação / Notas — padrões globais</CardTitle>
+          <CardTitle className="text-base">Pontuação / SLA — padrões globais por camada</CardTitle>
           <p className="text-xs text-muted-foreground">
-            Esses valores são carregados como padrão ao criar uma nova tarefa. Cada tarefa salva seu
-            próprio snapshot editável — alterar valores aqui não afeta tarefas já criadas.
+            Define quantos pontos cada infração custa, por camada. Cada nova tarefa nasce com esse
+            padrão e mantém um snapshot editável próprio. Alterar aqui não afeta tarefas já criadas.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <Field label="Penalidade fora do prazo (pts)">
-              <Input type="number" min={0} max={100} disabled={disabled}
-                value={form.penalidade_fora_prazo}
-                onChange={(e) => upd("penalidade_fora_prazo", Number(e.target.value))} />
-            </Field>
-            <Field label="Penalidade plano de ação (pts)">
-              <Input type="number" min={0} max={100} disabled={disabled}
-                value={form.penalidade_contingencia}
-                onChange={(e) => upd("penalidade_contingencia", Number(e.target.value))} />
-            </Field>
-            <Field label="Penalidade SLA plano de ação (pts)">
-              <Input type="number" min={0} max={100} disabled={disabled}
-                value={form.penalidade_sla_contingencia}
-                onChange={(e) => upd("penalidade_sla_contingencia", Number(e.target.value))} />
-            </Field>
-            <Field label="Nota mínima">
-              <Input type="number" min={0} max={100} disabled={disabled}
-                value={form.nota_minima}
-                onChange={(e) => upd("nota_minima", Number(e.target.value))} />
-            </Field>
-            <Field label="Nota máxima">
-              <Input type="number" min={0} max={1000} disabled={disabled}
-                value={form.nota_maxima}
-                onChange={(e) => upd("nota_maxima", Number(e.target.value))} />
-            </Field>
-            <Field label="Penalidade por reprovação (pts)">
-              <Input type="number" min={0} max={100} disabled={disabled}
-                value={form.penalidade_reprovacao}
-                onChange={(e) => upd("penalidade_reprovacao", Number(e.target.value))} />
-            </Field>
-          </div>
+          <Accordion type="multiple" defaultValue={["sla_executor"]} className="w-full">
+            {CAMADAS.map(({ key, titulo, descricao }) => {
+              const c = form[key];
+              return (
+                <AccordionItem key={key} value={key}>
+                  <AccordionTrigger className="text-sm font-medium">
+                    {titulo}
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-3">
+                    <p className="text-xs text-muted-foreground">{descricao}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Field label="SLA (horas)">
+                        <Input type="number" min={0} disabled={disabled}
+                          value={c.sla_horas}
+                          onChange={(e) => updCamada(key, { sla_horas: Number(e.target.value) })} />
+                      </Field>
+                      <Field label="Atrasou — penalidade (pts)">
+                        <Input type="number" min={0} max={100} disabled={disabled}
+                          value={c.penalidade_atraso}
+                          onChange={(e) => updCamada(key, { penalidade_atraso: Number(e.target.value) })} />
+                      </Field>
+                      <Field label="Não respondeu — penalidade (pts)">
+                        <Input type="number" min={0} max={100} disabled={disabled}
+                          value={c.penalidade_nao_resposta}
+                          onChange={(e) => updCamada(key, { penalidade_nao_resposta: Number(e.target.value) })} />
+                      </Field>
+                      <Field label="Não conformidade — penalidade (pts)">
+                        <Input type="number" min={0} max={100} disabled={disabled}
+                          value={c.penalidade_nao_conformidade}
+                          onChange={(e) => updCamada(key, { penalidade_nao_conformidade: Number(e.target.value) })} />
+                      </Field>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t">
+                      <SwitchField
+                        label="Permite ponderação manual"
+                        hint="Auditor pode ajustar a nota automática."
+                        checked={c.permite_ponderacao}
+                        disabled={disabled}
+                        onChange={(v) => updCamada(key, { permite_ponderacao: v })}
+                      />
+                      <SwitchField
+                        label="Exige justificativa ao ponderar"
+                        hint="Obriga texto explicando a alteração da nota."
+                        checked={c.exige_justificativa_ponderacao}
+                        disabled={disabled}
+                        onChange={(v) => updCamada(key, { exige_justificativa_ponderacao: v })}
+                      />
+                      <SwitchField
+                        label="Gera plano de ação automático"
+                        hint="Cria plano de ação quando há não conformidade."
+                        checked={c.gera_plano_acao_auto}
+                        disabled={disabled}
+                        onChange={(v) => updCamada(key, { gera_plano_acao_auto: v })}
+                      />
+                      <SwitchField
+                        label="Permite reabertura"
+                        hint="Permite reabrir a camada após concluída."
+                        checked={c.permite_reabertura}
+                        disabled={disabled}
+                        onChange={(v) => updCamada(key, { permite_reabertura: v })}
+                      />
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              );
+            })}
+          </Accordion>
 
           <div className="flex items-center gap-3 pt-2 border-t">
             <Switch checked={form.pontuacao_automatica_padrao} disabled={disabled}
@@ -133,6 +199,30 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div className="space-y-1.5">
       <Label className="text-xs">{label}</Label>
       {children}
+    </div>
+  );
+}
+
+function SwitchField({
+  label,
+  hint,
+  checked,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-start gap-3 rounded border p-2">
+      <Switch checked={checked} disabled={disabled} onCheckedChange={onChange} />
+      <div className="min-w-0">
+        <Label className="text-xs">{label}</Label>
+        {hint && <p className="text-[11px] text-muted-foreground leading-snug">{hint}</p>}
+      </div>
     </div>
   );
 }
