@@ -71,7 +71,6 @@ interface AssignmentRoleInput {
   assignment?: {
     responsavel_id?: string | null;
     aprovador_id?: string | null;
-    aprovador_id?: string | null;
     created_by?: string | null;
   } | null;
 }

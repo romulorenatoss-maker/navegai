@@ -20,7 +20,6 @@ import {
 interface AssignmentLike {
   responsavel_id?: string | null;
   aprovador_id?: string | null;
-  aprovador_id?: string | null;
   status?: string;
 }
 
