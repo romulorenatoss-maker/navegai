@@ -149,6 +149,9 @@ export async function getPontuacaoConfig(): Promise<TarefasPontuacaoConfig> {
     sla_aprovador: mergeCamada(data.sla_aprovador, TAREFAS_PONTUACAO_DEFAULTS.sla_aprovador),
     sla_plano_acao: mergeCamada(data.sla_plano_acao, TAREFAS_PONTUACAO_DEFAULTS.sla_plano_acao),
     sla_validador: mergeCamada(data.sla_validador, TAREFAS_PONTUACAO_DEFAULTS.sla_validador),
+    aprovador_pacote_padrao: Array.isArray(data.aprovador_pacote_padrao) && data.aprovador_pacote_padrao.length > 0
+      ? data.aprovador_pacote_padrao
+      : APROVADOR_PACOTE_PADRAO_DEFAULT,
   } as TarefasPontuacaoConfig;
 }
 
