@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ClipboardCheck, Plus, Settings2, Paperclip, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   AprovadorCheckItemForm,
@@ -87,7 +88,10 @@ export function StepChecklistValidador({ items, setItems }: Props) {
     return [...items].sort((a, b) => ord(a) - ord(b));
   }, [items]);
 
-  const totalPeso = useMemo(() => items.reduce((s, i) => s + (Number(i.peso) || 0), 0), [items]);
+  const totalPeso = useMemo(
+    () => items.filter(i => i.ativo !== false).reduce((s, i) => s + (Number(i.peso) || 0), 0),
+    [items],
+  );
   const editing = items.find(i => i.tempId === editingTempId) ?? null;
 
   const updateItem = (tempId: string, patch: Partial<AprovadorCheckItemForm>) => {
@@ -143,8 +147,10 @@ export function StepChecklistValidador({ items, setItems }: Props) {
         {ordered.map((it, idx) => {
           const origem: AprovadorOrigem = it.origem_pergunta ?? "manual";
           const badge = ORIGEM_BADGE[origem];
+          const isDoPacote = origem === "automatica_configuracao" || origem === "replicada_padrao_manual";
+          const inativa = it.ativo === false;
           return (
-            <div key={it.tempId} className="border border-border rounded-lg bg-card p-3">
+            <div key={it.tempId} className={`border rounded-lg bg-card p-3 ${inativa ? "border-dashed border-border opacity-60" : "border-border"}`}>
               <div className="flex items-start gap-2">
                 <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-[11px] font-bold shrink-0">
                   {idx + 1}
@@ -154,6 +160,11 @@ export function StepChecklistValidador({ items, setItems }: Props) {
                     <Badge variant="outline" className={`text-[9px] px-1.5 py-0 h-4 font-semibold ${badge.cls}`}>
                       {badge.label}
                     </Badge>
+                    {inativa && (
+                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 bg-muted text-muted-foreground">
+                        DESATIVADA · não conta na nota
+                      </Badge>
+                    )}
                     {it.metrica_pendente && (
                       <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 bg-muted text-muted-foreground" title={it.regra_calculo || "Métrica ainda não cabeada"}>
                         métrica pendente
@@ -176,12 +187,21 @@ export function StepChecklistValidador({ items, setItems }: Props) {
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                  {isDoPacote && (
+                    <Switch
+                      checked={it.ativo !== false}
+                      onCheckedChange={(v) => updateItem(it.tempId, { ativo: v })}
+                      title={it.ativo !== false ? "Desativar (não contabilizar na nota)" : "Reativar"}
+                    />
+                  )}
                   <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setEditingTempId(it.tempId)}>
                     <Settings2 className="w-3.5 h-3.5" />
                   </Button>
-                  <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => removeItem(it.tempId)}>
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
+                  {!isDoPacote && (
+                    <Button type="button" size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => removeItem(it.tempId)}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>

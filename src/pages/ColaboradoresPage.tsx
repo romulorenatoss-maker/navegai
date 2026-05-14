@@ -47,7 +47,7 @@ export default function ColaboradoresPage() {
     queryFn: async () => {
       // Parallel fetch profiles and setor links
       const [profilesRes, setorLinksRes] = await Promise.all([
-        supabase.from("profiles").select("*, setores(nome)").order("nome"),
+        supabase.from("profiles").select("*, setores!profiles_setor_id_fkey(nome)").order("nome"),
         supabase.from("colaborador_setores").select("profile_id, setores(nome)"),
       ]);
       if (profilesRes.error) throw profilesRes.error;
