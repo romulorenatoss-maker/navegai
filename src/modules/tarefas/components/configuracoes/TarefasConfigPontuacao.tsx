@@ -19,9 +19,14 @@ import {
   getPontuacaoConfig,
   setPontuacaoConfig,
   TAREFAS_PONTUACAO_DEFAULTS,
+  APROVADOR_PACOTE_PADRAO_DEFAULT,
   type TarefasPontuacaoConfig,
   type CamadaSlaConfig,
+  type AprovadorPerguntaPadrao,
 } from "../../services/tarefas_pontuacao_config_service";
+import { Badge } from "@/components/ui/badge";
+import { Settings2, RotateCcw } from "lucide-react";
+import { FieldConfigSheet } from "@/modules/tarefas/components/builder/FieldConfigSheet";
 
 type CamadaKey = "sla_aprovador" | "sla_plano_acao" | "sla_validador";
 
