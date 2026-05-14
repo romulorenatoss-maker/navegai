@@ -874,7 +874,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
           </Button>
         )}
         <div className="flex-1" />
-        {naoConformes.length > 0 ? (
+        {perguntasComAcao.length > 0 ? (
           <Button
             type="button" size="sm"
             onClick={() => {
@@ -895,7 +895,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             }
           >
             <ClipboardList className="w-3.5 h-3.5 mr-1" />
-            Finalizar revisão ({naoConformes.length} NC
+            Finalizar revisão ({perguntasComAcao.length} ação
             {naoConformesPlano.length > 0 && naoConformesDevolver.length > 0
               ? `: ${naoConformesPlano.length} plano + ${naoConformesDevolver.length} devolver`
               : ""})
