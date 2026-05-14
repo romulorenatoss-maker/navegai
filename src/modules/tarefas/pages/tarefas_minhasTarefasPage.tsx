@@ -306,7 +306,7 @@ export default function OperationalExecucaoPage() {
       list = list.filter((a) => (a.template_snapshot?.nome || a.operational_templates?.nome || "").toLowerCase().includes(term));
     }
     return list;
-  }, [assignments, isAdmin, filterResponsavel, adminExecutor, adminSetor, searchTerm, profile?.id]);
+  }, [assignments, isAdmin, filterResponsavel, adminExecutor, adminSetor, searchTerm, profile?.id, meusSetorIds]);
 
   // === BUCKETIZE — núcleo único ===
   const buckets = useMemo(
