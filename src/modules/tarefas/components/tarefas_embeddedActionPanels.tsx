@@ -9,6 +9,9 @@
  * Não tocam em banco, RPCs, triggers, scoring, builder ou execução.
  */
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -18,6 +21,7 @@ import { useAssignmentReview } from "@/modules/tarefas/hooks/tarefas_useAssignme
 import { useApprovalFlow } from "@/modules/tarefas/hooks/tarefas_useApprovalFlow";
 import { ReviewFieldCard } from "@/modules/tarefas/components/tarefas_reviewFieldCard";
 import { SnapshotField, evaluateVisibility } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
+import { VALIDADOR_PACOTE_PADRAO_DEFAULT } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
 
 /* =========================================================================
  * EmbeddedReviewPanel — usado quando current user é avaliador
