@@ -292,11 +292,20 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     });
   }, [approverFields, flow.approverAnswers, flow.existingApprovalAnswers]);
 
+  const naoConformesPlano = useMemo(
+    () => naoConformes.filter(f => (acaoPorNC[f.id] ?? "plano") === "plano"),
+    [naoConformes, acaoPorNC]
+  );
+  const naoConformesDevolver = useMemo(
+    () => naoConformes.filter(f => acaoPorNC[f.id] === "devolver"),
+    [naoConformes, acaoPorNC]
+  );
+
   const irParaPlano = () => {
     // Garante registros default no formulário (com prazo padrão pré-aplicado)
     const next: typeof planos = { ...planos };
     const defaultPrazo = computeDefaultPrazo();
-    for (const f of naoConformes) {
+    for (const f of naoConformesPlano) {
       if (!next[f.id]) {
         const draft = flow.approverAnswers[f.id];
         next[f.id] = {
@@ -319,8 +328,29 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     } catch (e: any) { toast.error(e.message); }
   };
 
+  // Devolve apenas as NCs marcadas como "devolver" (sem plano).
+  // Quando NÃO há nenhuma NC marcada como "plano", isto encerra a revisão.
+  const devolverApenas = async () => {
+    const perguntas = naoConformesDevolver.map(f => ({
+      field_id: f.id,
+      field_label: f.label,
+      motivo: (flow.approverAnswers[f.id]?.observacao
+        ?? flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.observacao
+        ?? "").trim(),
+    }));
+    const semMotivo = perguntas.find(p => !p.motivo);
+    if (semMotivo) {
+      toast.error(`Escreva uma observação (motivo) em "${semMotivo.field_label}" antes de devolver.`);
+      return;
+    }
+    try {
+      await flow.devolverPerguntasParaRefazer.mutateAsync({ assignment, perguntas, motivoGeral: motivoFinal });
+      onClose();
+    } catch (e: any) { toast.error(e.message); }
+  };
+
   const submeterPlanos = async () => {
-    const lista = naoConformes.map(f => {
+    const lista = naoConformesPlano.map(f => {
       const p = planos[f.id];
       const prazoAlterado = !!(p?.prazo && p?.prazo_padrao && p.prazo !== p.prazo_padrao);
       return {
@@ -339,6 +369,47 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     const invalidoJust = lista.find(p => p.prazo_alterado && !p.justificativa_alteracao_prazo);
     if (invalidoJust) { toast.error(`Justifique a alteração do prazo padrão em "${invalidoJust.field_label}".`); return; }
     try {
+      // Se houver perguntas marcadas para apenas devolver, marca-as como devolvidas antes
+      // (mesma transição final do plano cobre status). Inserções diretas em field_reviews.
+      if (naoConformesDevolver.length > 0) {
+        const perguntasDev = naoConformesDevolver.map(f => ({
+          field_id: f.id,
+          field_label: f.label,
+          motivo: (flow.approverAnswers[f.id]?.observacao
+            ?? flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.observacao
+            ?? "").trim(),
+        }));
+        const semMotivoDev = perguntasDev.find(p => !p.motivo);
+        if (semMotivoDev) {
+          toast.error(`Escreva uma observação (motivo) na pergunta "${semMotivoDev.field_label}" marcada como devolver.`);
+          return;
+        }
+        // Insere apenas os reviews (devolvido=true) reaproveitando o RPC; transição vem do criarPlanosAcaoEDevolver.
+        const rodada = assignment.rodada_atual || 1;
+        for (const p of perguntasDev) {
+          const existing = (flow.fieldReviews as any[]).find(
+            (r: any) => r.field_id === p.field_id && r.rodada === rodada
+          );
+          const answerExec = (flow.fieldAnswers as any[]).find((a: any) => a.field_id === p.field_id);
+          const payload: any = {
+            assignment_id: assignment.id,
+            field_id: p.field_id,
+            answer_id: answerExec?.id ?? null,
+            conforme: false,
+            devolvido: true,
+            motivo_devolucao: p.motivo,
+            observacao: p.motivo,
+            rodada,
+            avaliador_id: (assignment as any)?.aprovador_id ?? undefined,
+            avaliado_em: new Date().toISOString(),
+          };
+          if (existing) {
+            await (supabase as any).from("operational_field_reviews").update(payload).eq("id", existing.id);
+          } else {
+            await (supabase as any).from("operational_field_reviews").insert(payload);
+          }
+        }
+      }
       await flow.criarPlanosAcaoEDevolver.mutateAsync({ assignment, planos: lista, motivoGeral: motivoFinal });
       onClose();
     } catch (e: any) { toast.error(e.message); }
