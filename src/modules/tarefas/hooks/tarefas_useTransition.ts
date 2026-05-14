@@ -323,15 +323,20 @@ export function useOperationalTransition() {
       if (
         action === "avaliar_devolver"
         || action === "reprovar_devolver_final"
+        || action === "auditor_devolver"
         || action === "validar_designada_devolver"
         || action === "validar_solicitante_devolver"
       ) {
         updatePayload.rodada_atual = (extraData?.rodadaAtual || 1) + 1;
       }
 
-      if (action === "aprovar_final" || action === "encerrar_final") {
+      if (action === "aprovar_final" || action === "encerrar_final" || action === "auditor_aprovar") {
         if (extraData?.aprovadorId) updatePayload.aprovador_id = extraData.aprovadorId;
         if (extraData?.scoreFinal != null) updatePayload.score_final_ajustado = extraData.scoreFinal;
+      }
+
+      if (action === "auditor_aprovar" || action === "auditor_devolver") {
+        updatePayload.auditor_fim_em = now;
       }
 
       if (action === "avaliar_aprovar" && extraData?.requerAprovacao && extraData?.aprovadorProfileId) {
