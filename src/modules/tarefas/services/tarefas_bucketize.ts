@@ -403,8 +403,16 @@ export function bucketize(
     if (hasMyRole && isFinal && !isAuditoriaPendente) {
       b.opConcluidas.push(a);
     } else if (hasMyRole) {
-      // Críticas: SLA estourado OU sem movimento (não final)
-      if (slaEstourado || semMov) {
+      // Críticas (replica — pode aparecer também em outras abas):
+      // - SLA estourado / prazo operacional vencido
+      // - Sem movimento prolongado
+      // - Devolvida / Reprovada / Em plano de ação (devolutiva ou correção pendente)
+      const isCriticalStatus = [
+        TASK_STATUS.DEVOLVIDA,
+        TASK_STATUS.REPROVADA,
+        TASK_STATUS.EM_PLANO_ACAO,
+      ].includes(a.status);
+      if (slaEstourado || semMov || isCriticalStatus) {
         b.opCriticas.push(a);
       }
 
