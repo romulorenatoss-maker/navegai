@@ -581,6 +581,9 @@ export default function OperationalCadastroPage() {
     const savedAvaliadorFieldIds = Array.isArray(checklistsSnap.avaliado_field_ids)
       ? new Set(checklistsSnap.avaliado_field_ids.filter(Boolean))
       : null;
+    const savedAvaliadorFieldKeys = Array.isArray(checklistsSnap.avaliado_fields)
+      ? new Set(checklistsSnap.avaliado_fields.map((f: any) => f?.key).filter(Boolean))
+      : null;
 
     setEditingId(t.id);
     setForm({
@@ -649,8 +652,11 @@ export default function OperationalCadastroPage() {
       aprovador_exige_evidencia_nao: f.aprovador_exige_evidencia_nao ?? false,
       aprovador_tipos_evidencia: f.aprovador_tipos_evidencia || ["foto"],
     }));
-    const activeLoadedFields = savedAvaliadorFieldIds
-      ? loadedFields.filter(f => savedAvaliadorFieldIds.has(f.id ?? f.tempId))
+    const activeLoadedFields = savedAvaliadorFieldIds || savedAvaliadorFieldKeys
+      ? loadedFields.filter(f =>
+          (savedAvaliadorFieldIds?.has(f.id ?? f.tempId) ?? false) ||
+          (savedAvaliadorFieldKeys?.has(fieldDuplicateKey(f)) ?? false)
+        )
       : loadedFields;
     const referencedFieldIds = await fetchReferencedFieldIds(
       activeLoadedFields.map(f => f.id).filter(Boolean) as string[],
