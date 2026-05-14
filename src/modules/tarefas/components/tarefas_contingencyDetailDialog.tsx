@@ -212,7 +212,7 @@ export function ContingencyDetailDialog({ contingency, open, onOpenChange }: Pro
                 <div className="p-2 border rounded bg-card text-xs space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="font-medium">Pergunta: {selected.origin_field.label}</span>
-                    <span className="text-muted-foreground">Peso: {selected.origin_field.peso || 1}</span>
+                    <span className="text-muted-foreground">Nota: {selected.origin_field.peso || 1}</span>
                   </div>
                   <span className="text-muted-foreground">Tipo: {selected.origin_field.tipo}</span>
                 </div>

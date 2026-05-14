@@ -31,7 +31,7 @@ import type {
   RegraPorOpcao,
 } from "./types";
 
-type TipoMarcavel = Extract<CamadaTipoResposta, "conforme_nao_conforme" | "sim_nao" | "selecao" | "selecao_multipla">;
+type TipoMarcavel = Extract<CamadaTipoResposta, "conforme_nao_conforme" | "sim_nao" | "selecao" | "selecao_multipla"> | "excelente_bom_ruim";
 
 type Editable = Pick<
   AprovadorCheckItemForm,
@@ -61,6 +61,7 @@ interface Props {
 const TIPO_LABEL: Record<TipoMarcavel, string> = {
   conforme_nao_conforme: "Conforme / Não conforme",
   sim_nao: "Sim / Não",
+  excelente_bom_ruim: "Excelente / Bom / Ruim",
   selecao: "Seleção única (botões)",
   selecao_multipla: "Seleção múltipla (checkbox)",
 };
@@ -68,6 +69,7 @@ const TIPO_LABEL: Record<TipoMarcavel, string> = {
 const DEFAULT_OPCOES: Record<TipoMarcavel, string[]> = {
   conforme_nao_conforme: ["Conforme", "Não conforme", "N/A"],
   sim_nao: ["Sim", "Não", "N/A"],
+  excelente_bom_ruim: ["Excelente", "Bom", "Ruim"],
   selecao: ["Opção 1", "Opção 2"],
   selecao_multipla: ["Opção 1", "Opção 2"],
 };
@@ -75,7 +77,8 @@ const DEFAULT_OPCOES: Record<TipoMarcavel, string[]> = {
 /** Heurística: opções "negativas" recebem regras padrão de NC. */
 const isNegativa = (label: string) => {
   const l = label.toLowerCase().trim();
-  return l === "não conforme" || l === "nao conforme" || l === "não" || l === "nao" || l.startsWith("reprov");
+  return l === "não conforme" || l === "nao conforme" || l === "não" || l === "nao"
+    || l === "ruim" || l.startsWith("reprov");
 };
 
 const defaultRegra = (label: string): RegraPorOpcao => ({
@@ -217,7 +220,7 @@ export function FieldConfigSheet({ open, onOpenChange, title, perguntaBloqueada,
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Peso</Label>
+              <Label className="text-xs">Nota</Label>
               <Input
                 type="number" min={0} max={100}
                 className="h-9 text-xs"

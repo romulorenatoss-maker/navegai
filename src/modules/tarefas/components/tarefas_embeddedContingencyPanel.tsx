@@ -295,7 +295,7 @@ export function EmbeddedContingencyPanel({ assignmentId }: Props) {
                     <p className="text-xs"><span className="text-muted-foreground">Instrução:</span> {c.motivo_instrucao}</p>
                   )}
                   {c.origin_field && (
-                    <p><span className="text-muted-foreground">Pergunta:</span> <span className="font-medium">{c.origin_field.label}</span> (peso {c.origin_field.peso || 1})</p>
+                    <p><span className="text-muted-foreground">Pergunta:</span> <span className="font-medium">{c.origin_field.label}</span> (nota {c.origin_field.peso || 1})</p>
                   )}
                   {c.origin_review && (
                     <div className="space-y-0.5">

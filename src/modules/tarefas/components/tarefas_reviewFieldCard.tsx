@@ -105,7 +105,7 @@ export function ReviewFieldCard({ field, answer, review, previousReview, onChang
             {answerTriggersContingency && <span className="text-[10px] bg-orange-100 text-orange-700 border border-orange-200 px-1.5 py-0.5 rounded">Gera Plano de Ação</span>}
             {isReincidente && <span className="text-[10px] bg-red-200 text-red-800 border border-red-300 px-1.5 py-0.5 rounded flex items-center gap-0.5"><AlertTriangle className="w-2.5 h-2.5" />Reincidente</span>}
           </div>
-          <div className="text-xs text-muted-foreground">Peso: {field.peso} | Máx: {field.nota_maxima}</div>
+          <div className="text-xs text-muted-foreground">Nota: {field.peso} | Máx: {field.nota_maxima}</div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-0 divide-y md:divide-y-0 md:divide-x divide-border/50">

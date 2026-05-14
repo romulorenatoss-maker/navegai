@@ -76,7 +76,7 @@ export function StepChecklistValidador({ items, setItems }: Props) {
           </p>
         </div>
         <div className="text-right shrink-0">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Peso total</div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Nota total</div>
           <div className="text-sm font-bold text-primary">{totalPeso}</div>
         </div>
       </div>
@@ -125,7 +125,7 @@ export function StepChecklistValidador({ items, setItems }: Props) {
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label className="text-[11px]">Peso</Label>
+                <Label className="text-[11px]">Nota</Label>
                 <Input
                   type="number" min={0} max={100}
                   className="h-8 text-xs"
