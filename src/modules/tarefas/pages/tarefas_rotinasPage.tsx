@@ -571,6 +571,12 @@ export default function OperationalCadastroPage() {
   };
 
   const openEdit = async (t: any) => {
+    const snap: any = t.ada_config_snapshot ?? {};
+    const checklistsSnap: any = snap?.checklists ?? {};
+    const savedAvaliadorFieldIds = Array.isArray(checklistsSnap.avaliado_field_ids)
+      ? new Set(checklistsSnap.avaliado_field_ids.filter(Boolean))
+      : null;
+
     setEditingId(t.id);
     setForm({
       nome: t.nome, descricao: t.descricao || "", tipo_execucao: t.tipo_execucao,
@@ -603,7 +609,8 @@ export default function OperationalCadastroPage() {
       penalidade_sla_contingencia: t.penalidade_sla_contingencia ?? 15,
       penalidade_fora_prazo: t.penalidade_fora_prazo ?? 20,
       habilitar_perguntas_automaticas: t.habilitar_perguntas_automaticas ?? true,
-    });
+      ada_config_snapshot: snap,
+    } as TemplateForm & { ada_config_snapshot?: any });
 
     // Load sections
     const { data: secs } = await (supabase as any).from("operational_template_sections")
@@ -637,10 +644,13 @@ export default function OperationalCadastroPage() {
       aprovador_exige_evidencia_nao: f.aprovador_exige_evidencia_nao ?? false,
       aprovador_tipos_evidencia: f.aprovador_tipos_evidencia || ["foto"],
     }));
+    const activeLoadedFields = savedAvaliadorFieldIds
+      ? loadedFields.filter(f => savedAvaliadorFieldIds.has(f.id ?? f.tempId))
+      : loadedFields;
     const referencedFieldIds = await fetchReferencedFieldIds(
-      loadedFields.map(f => f.id).filter(Boolean) as string[],
+      activeLoadedFields.map(f => f.id).filter(Boolean) as string[],
     );
-    const dedupedFields = dedupeLoadedFields(loadedFields, referencedFieldIds);
+    const dedupedFields = dedupeLoadedFields(activeLoadedFields, referencedFieldIds);
     setFields(dedupedFields);
 
     // Load steps
@@ -658,8 +668,6 @@ export default function OperationalCadastroPage() {
 
     // Hidrata checklists do Aprovador/Validador a partir de ada_config_snapshot.checklists
     // (Fase 2). Tolerante a registros antigos sem o campo.
-    const snap: any = t.ada_config_snapshot ?? {};
-    const checklistsSnap: any = snap?.checklists ?? {};
     const dedupedFieldIds = new Set(dedupedFields.map(f => f.tempId));
     const aprRaw: any[] = Array.isArray(checklistsSnap.aprovador) ? checklistsSnap.aprovador : [];
     const apr = aprRaw.filter((i: any) => i?.origem_pergunta !== "replicada_avaliado" || dedupedFieldIds.has(i.field_id));
