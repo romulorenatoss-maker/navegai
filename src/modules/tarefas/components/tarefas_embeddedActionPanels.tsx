@@ -283,7 +283,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   const [acaoPorNC, setAcaoPorNC] = useState<Record<string, "plano" | "devolver">>({});
   const saveTimers = useRef<Record<string, any>>({});
 
-  const blockReasons = flow.getBlockingReasons(assignment);
+  const baseBlockReasons = flow.getBlockingReasons(assignment);
   // Mostra TODAS as perguntas (replicadas do template + manuais), não só as marcadas
   // `aprovador_verificar`. O flag continua disponível em f.aprovador_verificar para
   // destacar como "extra/fora do padrão" quando precisar.
@@ -292,6 +292,22 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     () => fields.filter((f) => !["secao", "divisor", "titulo"].includes(String(f.tipo))),
     [fields]
   );
+
+  const blockReasons = useMemo(() => {
+    const ruleReasons = approverFields.flatMap((f) => {
+      const existing = flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id);
+      const draft = flow.approverAnswers[f.id];
+      const resposta = draft?.resposta ?? existing?.resposta ?? "";
+      const rule = resposta ? getRuleForResposta(f, resposta, "aprovador") : null;
+      const obs = (draft?.observacao ?? existing?.observacao ?? "").trim();
+      const evid = draft?.evidencia_url ?? existing?.evidencia_url ?? null;
+      const reasons: string[] = [];
+      if (rule?.exige_observacao && !obs) reasons.push(`Observação obrigatória em "${f.label}".`);
+      if (rule?.exige_evidencia && !evid) reasons.push(`Evidência obrigatória em "${f.label}".`);
+      return reasons;
+    });
+    return [...baseBlockReasons, ...ruleReasons];
+  }, [baseBlockReasons, approverFields, flow.approverAnswers, flow.existingApprovalAnswers]);
 
   // Auto-save debounced (campo único)
   const scheduleAutoSave = (fieldId: string, payload: { resposta: string; observacao: string; peso: number; evidencia_url?: string | null }) => {
