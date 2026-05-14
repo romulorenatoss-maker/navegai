@@ -166,7 +166,7 @@ export function usePendingNotifications() {
           .from("operational_assignments")
           .select("id", { count: "exact", head: true })
           .is("aprovador_id", null)
-          .in("setor_avaliador_id", mySetorIds)
+          .in("setor_aprovador_id", mySetorIds)
           .eq("status", "aguardando_aprovacao");
         pendingAprovacoes += (aprovSetor || 0);
       }
