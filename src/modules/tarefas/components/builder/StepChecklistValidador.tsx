@@ -79,7 +79,11 @@ export function StepChecklistValidador({ items, setItems }: Props) {
   }, []);
 
   const ordered = useMemo(() => {
-    const ord = (i: AprovadorCheckItemForm) => i.origem_pergunta === "automatica_configuracao" ? 0 : 1;
+    const ord = (i: AprovadorCheckItemForm) => {
+      if (i.origem_pergunta === "automatica_configuracao") return 0;
+      if (i.origem_pergunta === "replicada_padrao_manual") return 1;
+      return 2;
+    };
     return [...items].sort((a, b) => ord(a) - ord(b));
   }, [items]);
 
