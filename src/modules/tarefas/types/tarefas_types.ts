@@ -114,14 +114,12 @@ export interface TemplateForm {
   permite_devolucao_parcial: boolean;
   executor_profile_id: string;
   executor_setor_id: string;
-  avaliador_profile_id: string;
-  avaliador_setor_id: string;
   avaliado_profile_id: string;
   avaliado_setor_id: string;
   aprovador_profile_id: string;
   aprovador_setor_id: string;
-  validador_contingencia_profile_id: string;
-  validador_contingencia_setor_id: string;
+  auditor_profile_id: string;
+  auditor_setor_id: string;
   modo_pontuacao: string;
   destino_score: string;
   peso_recorrencia: number;
@@ -130,14 +128,6 @@ export interface TemplateForm {
   penalidade_sla_contingencia: number;
   penalidade_fora_prazo: number;
   habilitar_perguntas_automaticas: boolean;
-
-  // Avaliação do Avaliador (AdA)
-  ada_enabled: boolean;
-  ada_quem_avalia_tipo: "" | "pessoa" | "setor" | "administrador" | "responsavel_padrao";
-  ada_quem_avalia_profile_id: string;
-  ada_quem_avalia_setor_id: string;
-  ada_gerar_em: "" | "pos_avaliacao" | "pos_aprovacao" | "pos_plano_acao";
-  ada_config_snapshot: any | null;
 }
 
 export const FIELD_TYPES: Record<string, string> = {
