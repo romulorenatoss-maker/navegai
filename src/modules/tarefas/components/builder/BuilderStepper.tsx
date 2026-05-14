@@ -1,5 +1,5 @@
 import { Check } from "lucide-react";
-import { WIZARD_STEPS, WizardStepId } from "./types";
+import { WIZARD_STEPS, WizardStepDef, WizardStepId } from "./types";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -7,15 +7,18 @@ interface Props {
   completed: Set<WizardStepId>;
   onJump: (id: WizardStepId) => void;
   isEditing: boolean;
+  /** Lista filtrada (passos condicionais resolvidos). Default: WIZARD_STEPS. */
+  steps?: WizardStepDef[];
 }
 
-export function BuilderStepper({ current, completed, onJump, isEditing }: Props) {
-  const currentIdx = WIZARD_STEPS.findIndex(s => s.id === current);
+export function BuilderStepper({ current, completed, onJump, isEditing, steps }: Props) {
+  const visible = steps ?? WIZARD_STEPS;
+  const currentIdx = visible.findIndex(s => s.id === current);
   return (
     <div className="border-b border-border bg-background sticky top-0 z-10">
       {/* Desktop */}
       <ol className="hidden md:flex items-center gap-1 px-4 py-3 overflow-x-auto">
-        {WIZARD_STEPS.map((s, i) => {
+        {visible.map((s, i) => {
           const isDone = completed.has(s.id);
           const isCurrent = s.id === current;
           const reachable = isEditing || i <= currentIdx || isDone;
@@ -45,7 +48,7 @@ export function BuilderStepper({ current, completed, onJump, isEditing }: Props)
                 </span>
                 {s.short}
               </button>
-              {i < WIZARD_STEPS.length - 1 && <span className="text-muted-foreground/30">›</span>}
+              {i < visible.length - 1 && <span className="text-muted-foreground/30">›</span>}
             </li>
           );
         })}
@@ -54,16 +57,16 @@ export function BuilderStepper({ current, completed, onJump, isEditing }: Props)
       <div className="md:hidden px-4 py-2.5">
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-xs font-semibold text-foreground">
-            Passo {currentIdx + 1} de {WIZARD_STEPS.length}
+            Passo {currentIdx + 1} de {visible.length}
           </span>
           <span className="text-xs text-muted-foreground">
-            {WIZARD_STEPS[currentIdx]?.label}
+            {visible[currentIdx]?.label}
           </span>
         </div>
         <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
           <div
             className="h-full bg-primary transition-all"
-            style={{ width: `${((currentIdx + 1) / WIZARD_STEPS.length) * 100}%` }}
+            style={{ width: `${((currentIdx + 1) / Math.max(visible.length, 1)) * 100}%` }}
           />
         </div>
       </div>

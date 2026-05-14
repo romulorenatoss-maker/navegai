@@ -11,7 +11,7 @@ import { TemplateForm, SectionForm, FieldForm, StepForm, defaultTemplate, defaul
 // (Removido) TaskTypeSelectorDialog — builder único, sem seletor prévio.
 type TaskType = "simples" | "inspecao";
 import { TarefasBuilderWizard } from "@/modules/tarefas/components/builder/TarefasBuilderWizard";
-import { CheckItemForm } from "@/modules/tarefas/components/builder/types";
+import { CheckItemForm, AprovadorCheckItemForm, ValidadorCheckItemForm, buildDefaultValidadorItems } from "@/modules/tarefas/components/builder/types";
 import { useDraftAutosave, loadDraft, clearDraft, type BuilderDraftPayload } from "@/modules/tarefas/components/builder/useBuilderDraft";
 
 export default function OperationalCadastroPage() {
@@ -25,6 +25,8 @@ export default function OperationalCadastroPage() {
   const [fields, setFields] = useState<FieldForm[]>([]);
   const [steps, setSteps] = useState<StepForm[]>([]);
   const [checkItems, setCheckItems] = useState<CheckItemForm[]>([]);
+  const [aprovadorChecks, setAprovadorChecks] = useState<AprovadorCheckItemForm[]>([]);
+  const [validadorChecks, setValidadorChecks] = useState<ValidadorCheckItemForm[]>([]);
   const [protectedCheckIds, setProtectedCheckIds] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState("geral");
   const [filterExecutor, setFilterExecutor] = useState("__all");
@@ -208,7 +210,16 @@ export default function OperationalCadastroPage() {
         ada_quem_avalia_profile_id: form.ada_enabled && form.ada_quem_avalia_tipo === "pessoa" ? (form.ada_quem_avalia_profile_id || null) : null,
         ada_quem_avalia_setor_id: form.ada_enabled && form.ada_quem_avalia_tipo === "setor" ? (form.ada_quem_avalia_setor_id || null) : null,
         ada_gerar_em: form.ada_enabled ? (form.ada_gerar_em || "pos_avaliacao") : null,
-        ada_config_snapshot: form.ada_enabled ? (form.ada_config_snapshot ?? null) : null,
+        // Snapshot estendido: além do AdA legado, persistimos os novos checklists do
+        // Aprovador Final / Validador Final em ada_config_snapshot.checklists
+        // (sem migration; campo jsonb já existente).
+        ada_config_snapshot: {
+          ...(form.ada_config_snapshot ?? {}),
+          checklists: {
+            aprovador: aprovadorChecks,
+            validador: validadorChecks,
+          },
+        },
       };
 
       let templateId: string;
@@ -432,6 +443,8 @@ export default function OperationalCadastroPage() {
     setFields([]);
     setSteps([]);
     setCheckItems([]);
+    setAprovadorChecks([]);
+    setValidadorChecks(buildDefaultValidadorItems());
     setProtectedCheckIds(new Set());
     setActiveTab("geral");
     // Detect existing draft for new template
@@ -539,6 +552,38 @@ export default function OperationalCadastroPage() {
       penalidade_reprovacao: Number(c.penalidade_reprovacao) || 100,
     }));
     setCheckItems(checkItemsLoaded);
+
+    // Hidrata checklists do Aprovador/Validador a partir de ada_config_snapshot.checklists
+    // (Fase 2). Tolerante a registros antigos sem o campo.
+    const snap: any = t.ada_config_snapshot ?? {};
+    const checklistsSnap: any = snap?.checklists ?? {};
+    const apr: any[] = Array.isArray(checklistsSnap.aprovador) ? checklistsSnap.aprovador : [];
+    const val: any[] = Array.isArray(checklistsSnap.validador) ? checklistsSnap.validador : [];
+    setAprovadorChecks(apr.map((i: any) => ({
+      tempId: i.tempId || crypto.randomUUID(),
+      field_id: i.field_id,
+      field_label: i.field_label || "",
+      pergunta_padrao: i.pergunta_padrao || "",
+      tipo_resposta: i.tipo_resposta || "conforme_nao_conforme",
+      peso: Number(i.peso) || 1,
+      exige_observacao: !!i.exige_observacao,
+      exige_evidencia: !!i.exige_evidencia,
+      permite_devolucao: i.permite_devolucao ?? true,
+      gera_plano_acao: i.gera_plano_acao ?? true,
+      permite_conclusao: i.permite_conclusao ?? true,
+      permite_aumento_prazo: i.permite_aumento_prazo ?? true,
+    })));
+    setValidadorChecks(val.length > 0
+      ? val.map((i: any) => ({
+          tempId: i.tempId || crypto.randomUUID(),
+          pergunta: i.pergunta || "",
+          categoria: i.categoria || "manual",
+          peso: Number(i.peso) || 1,
+          tipo_resposta: i.tipo_resposta || "sim_nao",
+          exige_observacao: !!i.exige_observacao,
+          exige_evidencia: !!i.exige_evidencia,
+        }))
+      : buildDefaultValidadorItems());
 
     // Detect which check items already have execution answers (cannot be deleted without losing history)
     const checkIds = checkItemsLoaded.map((c: any) => c.id).filter(Boolean);
@@ -704,6 +749,8 @@ export default function OperationalCadastroPage() {
               fields={fields} setFields={setFields}
               steps={steps} setSteps={setSteps}
               checkItems={checkItems} setCheckItems={setCheckItems}
+              aprovadorChecks={aprovadorChecks} setAprovadorChecks={setAprovadorChecks}
+              validadorChecks={validadorChecks} setValidadorChecks={setValidadorChecks}
               protectedCheckIds={protectedCheckIds}
               draftToRestore={pendingDraft}
               onRestoreDraft={restoreDraft}
