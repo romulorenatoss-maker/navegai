@@ -20,8 +20,10 @@ import {
   AprovadorOrigem,
   defaultAprovadorCheckItem,
   defaultAprovadorManualItem,
+  buildAprovadorAutomatico,
 } from "./types";
 import { FieldConfigSheet } from "./FieldConfigSheet";
+import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
 
 interface Props {
   fields: FieldForm[];
