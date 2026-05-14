@@ -274,15 +274,32 @@ export default function OperationalExecucaoPage() {
   // === Filtragem base (busca + admin filtros) ===
   const filteredAssignments = useMemo(() => {
     let list = assignments as any[];
+    const setorSet = new Set(meusSetorIds);
+    const matchesSetor = (a: any) =>
+      (a.responsavel_id == null && a.setor_executor_id && setorSet.has(a.setor_executor_id)) ||
+      (a.avaliado_id == null && a.setor_avaliado_id && setorSet.has(a.setor_avaliado_id)) ||
+      (a.aprovador_id == null && a.setor_aprovador_id && setorSet.has(a.setor_aprovador_id)) ||
+      (a.auditor_id == null && a.setor_auditor_id && setorSet.has(a.setor_auditor_id));
     if (isAdmin && adminExecutor !== "__all") {
       list = list.filter((a) => a.responsavel_id === adminExecutor);
     } else if (isAdmin && filterResponsavel !== "__all") {
       list = list.filter((a) =>
-        a.responsavel_id === filterResponsavel || a.avaliado_id === filterResponsavel || a.created_by === filterResponsavel || a.created_by === profile?.id
+        a.responsavel_id === filterResponsavel ||
+        a.avaliado_id === filterResponsavel ||
+        a.aprovador_id === filterResponsavel ||
+        a.auditor_id === filterResponsavel ||
+        a.created_by === filterResponsavel ||
+        a.created_by === profile?.id ||
+        matchesSetor(a)
       );
     }
     if (isAdmin && adminSetor !== "__all") {
-      list = list.filter((a) => a.setor_id === adminSetor);
+      list = list.filter((a) =>
+        a.setor_executor_id === adminSetor ||
+        a.setor_avaliado_id === adminSetor ||
+        a.setor_aprovador_id === adminSetor ||
+        a.setor_auditor_id === adminSetor
+      );
     }
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
