@@ -1023,7 +1023,7 @@ export default function OperationalExecucaoPage() {
               />
             )}
 
-            {!isEditable && selectedAssignment && isAprovadorMode && (
+            {!isEditable && selectedAssignment && isAprovadorMode && viewMode === "aprovacao" && (
               <EmbeddedApprovalPanel
                 assignment={selectedAssignment}
                 fields={effectiveFields}
@@ -1031,7 +1031,7 @@ export default function OperationalExecucaoPage() {
               />
             )}
 
-            {!isEditable && selectedAssignment && isAuditorMode && (
+            {!isEditable && selectedAssignment && isAuditorMode && viewMode === "auditor" && (
               <EmbeddedAuditPanel
                 assignment={selectedAssignment}
                 fields={effectiveFields}
@@ -1039,7 +1039,10 @@ export default function OperationalExecucaoPage() {
               />
             )}
 
-            {!isEditable && selectedAssignment && !isAvaliadorMode && !isAprovadorMode && !isAuditorMode && (
+            {!isEditable && selectedAssignment && (
+              (!isAvaliadorMode && !isAprovadorMode && !isAuditorMode) ||
+              ((isAprovadorMode || isAuditorMode) && viewMode === "registro")
+            ) && (
               <div className="space-y-3">
                 {effectiveFields.map(f => (
                   <DynamicFieldRenderer key={f.id} field={f} answer={exec.answers[f.id]}
