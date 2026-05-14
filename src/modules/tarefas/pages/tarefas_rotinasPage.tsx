@@ -279,6 +279,12 @@ export default function OperationalCadastroPage() {
   const upsert = useMutation({
     mutationFn: async () => {
       if (!form.nome.trim()) throw new Error("Nome é obrigatório");
+      const aprovadorSnapshot = sanitizeAprovadorChecks(
+        aprovadorChecks,
+        fields,
+        pontuacaoConfig?.aprovador_pacote_padrao,
+        form.habilitar_perguntas_automaticas,
+      );
       
       const payload: any = {
         nome: form.nome.trim(),
@@ -321,7 +327,7 @@ export default function OperationalCadastroPage() {
         ada_config_snapshot: {
           ...(((form as any).ada_config_snapshot ?? {}) as any),
           checklists: {
-            aprovador: aprovadorChecks,
+            aprovador: aprovadorSnapshot,
             validador: validadorChecks,
           },
         },
