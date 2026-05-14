@@ -392,10 +392,8 @@ export default function OperationalCadastroPage() {
     setSections([]);
     setFields([]);
     setSteps([]);
-    setCheckItems([]);
     setAprovadorChecks([]);
     setValidadorChecks(buildDefaultValidadorItems());
-    setProtectedCheckIds(new Set());
     setActiveTab("geral");
     // Detect existing draft for new template
     const existing = loadDraft(null);
@@ -490,18 +488,8 @@ export default function OperationalCadastroPage() {
       exige_observacao: s.exige_observacao || false, exige_video: s.exige_video || false,
     })));
 
-    // Load check items
-    const { data: chks } = await (supabase as any).from("operational_template_check_items")
-      .select("*").eq("template_id", t.id).order("ordem");
-    const checkItemsLoaded = (chks || []).map((c: any) => ({
-      id: c.id, tempId: c.id, pergunta: c.pergunta, ordem: c.ordem,
-      tipo_resposta: c.tipo_resposta, exige_foto: !!c.exige_foto,
-      exige_observacao: !!c.exige_observacao,
-      gera_contingencia_se_reprovado: !!c.gera_contingencia_se_reprovado,
-      peso: Number(c.peso) || 1, nota_maxima: Number(c.nota_maxima) || 100,
-      penalidade_reprovacao: Number(c.penalidade_reprovacao) || 100,
-    }));
-    setCheckItems(checkItemsLoaded);
+    // (Legado) operational_template_check_items NÃO é mais lido pelo novo builder.
+    // Mantido vivo no banco apenas para histórico/relatórios antigos.
 
     // Hidrata checklists do Aprovador/Validador a partir de ada_config_snapshot.checklists
     // (Fase 2). Tolerante a registros antigos sem o campo.
@@ -535,18 +523,6 @@ export default function OperationalCadastroPage() {
         }))
       : buildDefaultValidadorItems());
 
-    // Detect which check items already have execution answers (cannot be deleted without losing history)
-    const checkIds = checkItemsLoaded.map((c: any) => c.id).filter(Boolean);
-    if (checkIds.length > 0) {
-      const { data: answered } = await (supabase as any)
-        .from("operational_execution_check_answers")
-        .select("check_item_id")
-        .in("check_item_id", checkIds);
-      setProtectedCheckIds(new Set((answered || []).map((a: any) => a.check_item_id)));
-    } else {
-      setProtectedCheckIds(new Set());
-    }
-
     setActiveTab("geral");
     // Detect existing draft for this template id
     const existing = loadDraft(t.id);
@@ -560,7 +536,7 @@ export default function OperationalCadastroPage() {
     setSections(pendingDraft.sections);
     setFields(pendingDraft.fields);
     setSteps(pendingDraft.steps);
-    setCheckItems(pendingDraft.checkItems);
+    
     setPendingDraft(null);
     toast.success("Rascunho restaurado.");
   };
