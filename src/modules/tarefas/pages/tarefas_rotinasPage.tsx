@@ -17,6 +17,90 @@ import { normalizeAprovadorList } from "@/modules/tarefas/components/builder/che
 import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
 import { useDraftAutosave, loadDraft, clearDraft, type BuilderDraftPayload } from "@/modules/tarefas/components/builder/useBuilderDraft";
 
+const fieldDuplicateKey = (field: FieldForm) => JSON.stringify([
+  field.sectionTempId || "",
+  field.label?.trim() || "",
+  field.tipo || "",
+  Number(field.ordem) || 0,
+  field.descricao || "",
+]);
+
+const dedupeLoadedFields = (loadedFields: FieldForm[], referencedFieldIds: Set<string>) => {
+  const byKey = new Map<string, FieldForm>();
+  for (const field of loadedFields) {
+    const key = fieldDuplicateKey(field);
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, field);
+      continue;
+    }
+    const existingIsReferenced = !!existing.id && referencedFieldIds.has(existing.id);
+    const fieldIsReferenced = !!field.id && referencedFieldIds.has(field.id);
+    if (!existingIsReferenced && fieldIsReferenced) byKey.set(key, field);
+  }
+  return Array.from(byKey.values()).sort((a, b) => a.ordem - b.ordem);
+};
+
+const fetchReferencedFieldIds = async (fieldIds: string[]) => {
+  const referenced = new Set<string>();
+  if (fieldIds.length === 0) return referenced;
+
+  const readRefs = async (table: string, column: string) => {
+    const { data, error } = await (supabase as any).from(table).select(column).in(column, fieldIds);
+    if (error) throw error;
+    (data || []).forEach((row: any) => row?.[column] && referenced.add(row[column]));
+  };
+
+  await readRefs("operational_field_answers", "field_id");
+  await readRefs("operational_field_reviews", "field_id");
+  await readRefs("operational_approval_answers", "field_id");
+  await readRefs("operational_audit_answers", "field_id");
+  await readRefs("operational_contingencies", "origin_field_id");
+  return referenced;
+};
+
+const sectionPayload = (templateId: string, section: SectionForm, index: number) => ({
+  template_id: templateId,
+  nome: section.nome || `Seção ${index + 1}`,
+  descricao: section.descricao || null,
+  peso: section.peso,
+  ordem: index,
+  cor: section.cor,
+  horario_inicio: section.horario_inicio || null,
+  horario_fim: section.horario_fim || null,
+});
+
+const fieldPayload = (templateId: string, field: FieldForm, sectionIdMap: Record<string, string>) => ({
+  template_id: templateId,
+  section_id: sectionIdMap[field.sectionTempId] || null,
+  label: field.label || "Campo sem nome",
+  descricao: field.descricao || null,
+  tipo: field.tipo,
+  ordem: field.ordem,
+  obrigatorio: field.obrigatorio,
+  peso: field.peso,
+  nota_maxima: field.nota_maxima,
+  impacta_score: field.impacta_score,
+  criticidade: field.criticidade,
+  gera_contingencia: field.gera_contingencia,
+  exige_evidencia: field.exige_evidencia,
+  tipo_evidencia: field.tipo_evidencia || "foto",
+  opcoes: field.opcoes?.length > 0 ? field.opcoes : null,
+  opcoes_regras: field.opcoes_regras?.length > 0 ? field.opcoes_regras : [],
+  validacao: field.validacao,
+  condicao_visibilidade: field.condicao_visibilidade,
+  formula: field.formula,
+  visivel_para: field.visivel_para,
+  editavel_por: field.editavel_por,
+  aprovador_verificar: field.aprovador_verificar || false,
+  aprovador_pergunta: field.aprovador_verificar ? (field.aprovador_pergunta || null) : null,
+  aprovador_tipo_resposta: field.aprovador_tipo_resposta || "conforme",
+  aprovador_peso: field.aprovador_peso ?? 1,
+  aprovador_obriga_observacao_nao: field.aprovador_obriga_observacao_nao ?? true,
+  aprovador_exige_evidencia_nao: field.aprovador_exige_evidencia_nao ?? false,
+  aprovador_tipos_evidencia: field.aprovador_tipos_evidencia || ["foto"],
+});
+
 export default function OperationalCadastroPage() {
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -263,57 +347,69 @@ export default function OperationalCadastroPage() {
           }
         }
 
-        // Clean old sections/fields
-        await (supabase as any).from("operational_template_fields").delete().eq("template_id", templateId);
-        await (supabase as any).from("operational_template_sections").delete().eq("template_id", templateId);
-        await (supabase as any).from("operational_template_steps").delete().eq("template_id", templateId);
-        // NOTE: check_items NÃO são deletados em massa para preservar respostas (operational_execution_check_answers FK ON DELETE CASCADE).
+        // Campos/seções não podem ser apagados em massa quando já existem respostas.
+        // Atualizamos os registros existentes e removemos apenas órfãos sem vínculo,
+        // evitando reinserir duplicados a cada salvamento.
       } else {
         const { data, error } = await (supabase as any).from("operational_templates").insert(payload).select().single();
         if (error) throw error;
         templateId = data.id;
       }
 
-      // Insert sections
+      // Persist sections/fields
       const sectionIdMap: Record<string, string> = {};
-      if (sections.length > 0) {
+      if (editingId) {
+        for (const [i, s] of sections.entries()) {
+          const payloadSection = sectionPayload(templateId, s, i);
+          if (s.id) {
+            const { error } = await (supabase as any).from("operational_template_sections").update(payloadSection).eq("id", s.id);
+            if (error) throw error;
+            sectionIdMap[s.tempId] = s.id;
+          } else {
+            const { data, error } = await (supabase as any).from("operational_template_sections").insert(payloadSection).select("id").single();
+            if (error) throw error;
+            sectionIdMap[s.tempId] = data.id;
+          }
+        }
+
+        const { data: existingFields, error: existingFieldsError } = await (supabase as any)
+          .from("operational_template_fields")
+          .select("id")
+          .eq("template_id", templateId);
+        if (existingFieldsError) throw existingFieldsError;
+        const existingFieldIds = (existingFields || []).map((f: any) => f.id).filter(Boolean);
+        const currentFieldIds = new Set(fields.map(f => f.id).filter(Boolean) as string[]);
+        const referencedFieldIds = await fetchReferencedFieldIds(existingFieldIds);
+        const removableFieldIds = existingFieldIds.filter((id: string) => !currentFieldIds.has(id) && !referencedFieldIds.has(id));
+        if (removableFieldIds.length > 0) {
+          const { error } = await (supabase as any).from("operational_template_fields").delete().in("id", removableFieldIds);
+          if (error) throw error;
+        }
+
+        for (const f of fields) {
+          const payloadField = fieldPayload(templateId, f, sectionIdMap);
+          if (f.id) {
+            const { error } = await (supabase as any).from("operational_template_fields").update(payloadField).eq("id", f.id);
+            if (error) throw error;
+          } else {
+            const { error } = await (supabase as any).from("operational_template_fields").insert(payloadField);
+            if (error) throw error;
+          }
+        }
+
+        const { error: stepsDeleteError } = await (supabase as any).from("operational_template_steps").delete().eq("template_id", templateId);
+        if (stepsDeleteError) throw stepsDeleteError;
+      } else if (sections.length > 0) {
         const { data: inserted, error } = await (supabase as any).from("operational_template_sections").insert(
-          sections.map((s, i) => ({
-            template_id: templateId, nome: s.nome || `Seção ${i + 1}`, descricao: s.descricao || null,
-            peso: s.peso, ordem: i, cor: s.cor,
-            horario_inicio: s.horario_inicio || null, horario_fim: s.horario_fim || null,
-          }))
+          sections.map((s, i) => sectionPayload(templateId, s, i))
         ).select();
         if (error) throw error;
         sections.forEach((s, i) => { sectionIdMap[s.tempId] = inserted[i].id; });
       }
 
-      // Insert fields
-      if (fields.length > 0) {
+      if (!editingId && fields.length > 0) {
         const { error } = await (supabase as any).from("operational_template_fields").insert(
-          fields.map(f => ({
-            template_id: templateId,
-            section_id: sectionIdMap[f.sectionTempId] || null,
-            label: f.label || "Campo sem nome",
-            descricao: f.descricao || null,
-            tipo: f.tipo, ordem: f.ordem,
-            obrigatorio: f.obrigatorio, peso: f.peso, nota_maxima: f.nota_maxima,
-            impacta_score: f.impacta_score,
-            criticidade: f.criticidade, gera_contingencia: f.gera_contingencia,
-            exige_evidencia: f.exige_evidencia, tipo_evidencia: f.tipo_evidencia || "foto",
-            opcoes: f.opcoes?.length > 0 ? f.opcoes : null,
-            opcoes_regras: f.opcoes_regras?.length > 0 ? f.opcoes_regras : [],
-            validacao: f.validacao, condicao_visibilidade: f.condicao_visibilidade,
-            formula: f.formula,
-            visivel_para: f.visivel_para, editavel_por: f.editavel_por,
-            aprovador_verificar: f.aprovador_verificar || false,
-            aprovador_pergunta: f.aprovador_verificar ? (f.aprovador_pergunta || null) : null,
-            aprovador_tipo_resposta: f.aprovador_tipo_resposta || "conforme",
-            aprovador_peso: f.aprovador_peso ?? 1,
-            aprovador_obriga_observacao_nao: f.aprovador_obriga_observacao_nao ?? true,
-            aprovador_exige_evidencia_nao: f.aprovador_exige_evidencia_nao ?? false,
-            aprovador_tipos_evidencia: f.aprovador_tipos_evidencia || ["foto"],
-          }))
+          fields.map(f => fieldPayload(templateId, f, sectionIdMap))
         );
         if (error) throw error;
       }
@@ -476,7 +572,11 @@ export default function OperationalCadastroPage() {
       aprovador_exige_evidencia_nao: f.aprovador_exige_evidencia_nao ?? false,
       aprovador_tipos_evidencia: f.aprovador_tipos_evidencia || ["foto"],
     }));
-    setFields(loadedFields);
+    const referencedFieldIds = await fetchReferencedFieldIds(
+      loadedFields.map(f => f.id).filter(Boolean) as string[],
+    );
+    const dedupedFields = dedupeLoadedFields(loadedFields, referencedFieldIds);
+    setFields(dedupedFields);
 
     // Load steps
     const { data: stps } = await (supabase as any).from("operational_template_steps")
@@ -495,7 +595,9 @@ export default function OperationalCadastroPage() {
     // (Fase 2). Tolerante a registros antigos sem o campo.
     const snap: any = t.ada_config_snapshot ?? {};
     const checklistsSnap: any = snap?.checklists ?? {};
-    const apr: any[] = Array.isArray(checklistsSnap.aprovador) ? checklistsSnap.aprovador : [];
+    const dedupedFieldIds = new Set(dedupedFields.map(f => f.tempId));
+    const aprRaw: any[] = Array.isArray(checklistsSnap.aprovador) ? checklistsSnap.aprovador : [];
+    const apr = aprRaw.filter((i: any) => i?.origem_pergunta !== "replicada_avaliado" || dedupedFieldIds.has(i.field_id));
     const val: any[] = Array.isArray(checklistsSnap.validador) ? checklistsSnap.validador : [];
     setAprovadorChecks(normalizeAprovadorList(apr));
     // Validador: aceita formato novo (AprovadorCheckItemForm) e formato legacy
