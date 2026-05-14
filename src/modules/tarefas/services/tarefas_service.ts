@@ -43,13 +43,13 @@ export const operationalService = {
     return ensure("getAssignmentsByResponsavel", error, data);
   },
 
-  async getAssignmentsByAvaliador(avaliadorId: string) {
+  async getAssignmentsByAuditor(auditorId: string) {
     const { data, error } = await supabase
       .from("operational_assignments")
       .select("*")
-      .eq("avaliador_id", avaliadorId)
+      .eq("auditor_id", auditorId)
       .order("data_prevista", { ascending: true });
-    return ensure("getAssignmentsByAvaliador", error, data);
+    return ensure("getAssignmentsByAuditor", error, data);
   },
 
   async getAssignmentsByAprovador(aprovadorId: string) {
