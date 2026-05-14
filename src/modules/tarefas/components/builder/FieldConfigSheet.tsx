@@ -73,6 +73,22 @@ const DEFAULT_OPCOES: Record<TipoMarcavel, string[]> = {
   selecao_multipla: ["Opção 1", "Opção 2"],
 };
 
+const normalizeValor = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+const canonicalValor = (label: string) => {
+  const key = normalizeValor(label);
+  if (key === "nao_conforme" || key === "nao") return key === "nao" ? "nao" : "nao_conforme";
+  if (key === "n_a" || key === "na" || key === "nao_aplica" || key === "nao_aplicavel") return "na";
+  return key || label;
+};
+
 /** Heurística: opções "negativas" recebem regras padrão de NC. */
 const isNegativa = (label: string) => {
   const l = label.toLowerCase().trim();
@@ -81,7 +97,7 @@ const isNegativa = (label: string) => {
 };
 
 const defaultRegra = (label: string): RegraPorOpcao => ({
-  valor: label,
+  valor: canonicalValor(label),
   exige_observacao: isNegativa(label),
   exige_evidencia: false,
   gera_plano_acao: isNegativa(label),
