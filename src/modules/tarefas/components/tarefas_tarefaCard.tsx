@@ -258,6 +258,22 @@ export function AssignmentCard({ assignment: a, onClick }: Props) {
           )}
         </div>
       )}
+
+      {/* Botão Iniciar — visível só para o executor em status startable */}
+      {canStart && (
+        <div className="ml-12 mt-2 flex">
+          <Button
+            size="sm"
+            variant="default"
+            className="h-7 px-3 text-xs gap-1.5"
+            onClick={handleStart}
+            disabled={transition.isPending}
+          >
+            <Play className="w-3 h-3" />
+            {a.status === TASK_STATUS.ABERTA ? "Aceitar e iniciar" : "Iniciar"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
