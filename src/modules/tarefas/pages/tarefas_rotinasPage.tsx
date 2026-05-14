@@ -211,6 +211,13 @@ export default function OperationalCadastroPage() {
         penalidade_sla_contingencia: form.penalidade_sla_contingencia,
         penalidade_fora_prazo: form.penalidade_fora_prazo,
         habilitar_perguntas_automaticas: form.habilitar_perguntas_automaticas,
+        ada_config_snapshot: {
+          ...((form as any).ada_config_snapshot ?? {}),
+          checklists: {
+            aprovador: aprovadorChecks,
+            validador: validadorChecks,
+          },
+        },
       };
 
       let templateId: string;
