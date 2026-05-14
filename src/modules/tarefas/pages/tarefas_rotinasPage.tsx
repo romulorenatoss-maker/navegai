@@ -553,6 +553,38 @@ export default function OperationalCadastroPage() {
     }));
     setCheckItems(checkItemsLoaded);
 
+    // Hidrata checklists do Aprovador/Validador a partir de ada_config_snapshot.checklists
+    // (Fase 2). Tolerante a registros antigos sem o campo.
+    const snap: any = t.ada_config_snapshot ?? {};
+    const checklistsSnap: any = snap?.checklists ?? {};
+    const apr: any[] = Array.isArray(checklistsSnap.aprovador) ? checklistsSnap.aprovador : [];
+    const val: any[] = Array.isArray(checklistsSnap.validador) ? checklistsSnap.validador : [];
+    setAprovadorChecks(apr.map((i: any) => ({
+      tempId: i.tempId || crypto.randomUUID(),
+      field_id: i.field_id,
+      field_label: i.field_label || "",
+      pergunta_padrao: i.pergunta_padrao || "",
+      tipo_resposta: i.tipo_resposta || "conforme_nao_conforme",
+      peso: Number(i.peso) || 1,
+      exige_observacao: !!i.exige_observacao,
+      exige_evidencia: !!i.exige_evidencia,
+      permite_devolucao: i.permite_devolucao ?? true,
+      gera_plano_acao: i.gera_plano_acao ?? true,
+      permite_conclusao: i.permite_conclusao ?? true,
+      permite_aumento_prazo: i.permite_aumento_prazo ?? true,
+    })));
+    setValidadorChecks(val.length > 0
+      ? val.map((i: any) => ({
+          tempId: i.tempId || crypto.randomUUID(),
+          pergunta: i.pergunta || "",
+          categoria: i.categoria || "manual",
+          peso: Number(i.peso) || 1,
+          tipo_resposta: i.tipo_resposta || "sim_nao",
+          exige_observacao: !!i.exige_observacao,
+          exige_evidencia: !!i.exige_evidencia,
+        }))
+      : buildDefaultValidadorItems());
+
     // Detect which check items already have execution answers (cannot be deleted without losing history)
     const checkIds = checkItemsLoaded.map((c: any) => c.id).filter(Boolean);
     if (checkIds.length > 0) {
