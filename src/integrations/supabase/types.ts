@@ -2479,6 +2479,57 @@ export type Database = {
           },
         ]
       }
+      operational_score_logs_backup_fase8: {
+        Row: {
+          assignment_id: string | null
+          conformidade: number | null
+          created_at: string | null
+          detalhe_calculo: Json | null
+          id: string | null
+          peso_item: number | null
+          pontualidade: number | null
+          profile_id: string | null
+          qualidade_evidencia: number | null
+          score_final: number | null
+          sla_correcoes: number | null
+          target_profile_id: string | null
+          target_setor_id: string | null
+          tipo_score: string | null
+        }
+        Insert: {
+          assignment_id?: string | null
+          conformidade?: number | null
+          created_at?: string | null
+          detalhe_calculo?: Json | null
+          id?: string | null
+          peso_item?: number | null
+          pontualidade?: number | null
+          profile_id?: string | null
+          qualidade_evidencia?: number | null
+          score_final?: number | null
+          sla_correcoes?: number | null
+          target_profile_id?: string | null
+          target_setor_id?: string | null
+          tipo_score?: string | null
+        }
+        Update: {
+          assignment_id?: string | null
+          conformidade?: number | null
+          created_at?: string | null
+          detalhe_calculo?: Json | null
+          id?: string | null
+          peso_item?: number | null
+          pontualidade?: number | null
+          profile_id?: string | null
+          qualidade_evidencia?: number | null
+          score_final?: number | null
+          sla_correcoes?: number | null
+          target_profile_id?: string | null
+          target_setor_id?: string | null
+          tipo_score?: string | null
+        }
+        Relationships: []
+      }
       operational_score_overrides: {
         Row: {
           aprovador_id: string
