@@ -1,6 +1,6 @@
-import { CheckCircle2, ListChecks, ClipboardList, Settings2, CalendarClock, FileText, ShieldCheck, ClipboardCheck, Award } from "lucide-react";
+import { CheckCircle2, ClipboardList, Settings2, CalendarClock, FileText, ShieldCheck, ClipboardCheck, Award } from "lucide-react";
 import { TemplateForm, SectionForm, FieldForm, StepForm } from "@/modules/tarefas/types/tarefas_types";
-import { CheckItemForm, AprovadorCheckItemForm, ValidadorCheckItemForm } from "./types";
+import { AprovadorCheckItemForm, ValidadorCheckItemForm } from "./types";
 import { TIPO_EXECUCAO_LABELS, RECORRENCIA_LABELS } from "@/modules/tarefas/hooks/tarefas_useScoring";
 
 interface Props {
@@ -8,7 +8,6 @@ interface Props {
   sections: SectionForm[];
   fields: FieldForm[];
   steps: StepForm[];
-  checkItems: CheckItemForm[];
   aprovadorChecks?: AprovadorCheckItemForm[];
   validadorChecks?: ValidadorCheckItemForm[];
   hasAprovador?: boolean;
@@ -24,7 +23,7 @@ function nameOf(list: any[], id: string | undefined) {
 }
 
 export function StepResumo({
-  form, sections, fields, steps, checkItems,
+  form, sections, fields, steps,
   aprovadorChecks = [], validadorChecks = [],
   hasAprovador = false, hasValidador = false,
   setores, colaboradores, isEditing,
