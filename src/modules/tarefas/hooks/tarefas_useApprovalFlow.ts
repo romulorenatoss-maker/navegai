@@ -160,9 +160,12 @@ export function useApprovalFlow(assignmentId: string | null) {
     mutationFn: async (fields: SnapshotField[]) => {
       if (!profile?.id || !assignmentId) throw new Error("Não autenticado");
 
-      const approverFields = fields.filter(f => f.aprovador_verificar);
+      // Persiste para TODAS as perguntas com rascunho (replicadas + manuais),
+      // não só as marcadas aprovador_verificar.
+      const approverFields = fields.filter(f => !!approverAnswers[f.id]);
       for (const f of approverFields) {
         const draft = approverAnswers[f.id];
+        if (!draft) continue;
         if (!draft) continue;
 
         const payload = {
@@ -211,9 +214,10 @@ export function useApprovalFlow(assignmentId: string | null) {
       }
     }
 
-    // Block if approval questions are unanswered — only check aprovador_verificar fields
+    // Block if approval questions are unanswered — exige resposta para TODAS as perguntas
+    // do snapshot (replicadas + manuais), exceto tipos puramente estruturais.
     const snapshotFields: SnapshotField[] = snapshot?.fields || [];
-    const approvalFields = snapshotFields.filter(f => f.aprovador_verificar);
+    const approvalFields = snapshotFields.filter(f => !["secao", "divisor", "titulo"].includes(String((f as any).tipo)));
     const unanswered = approvalFields.filter(f => {
       const existing = existingApprovalAnswers.find((a: any) => a.field_id === f.id);
       const draft = approverAnswers[f.id];
@@ -241,8 +245,8 @@ export function useApprovalFlow(assignmentId: string | null) {
 
       // Save any pending approver answers before final decision
       const snapshotFields: SnapshotField[] = assignment.template_snapshot?.fields || [];
-      const approverFields = snapshotFields.filter(f => f.aprovador_verificar && f.aprovador_pergunta);
-      if (approverFields.length > 0 && Object.keys(approverAnswers).length > 0) {
+      // Save TODOS os rascunhos pendentes do aprovador (todas perguntas, não só aprovador_verificar)
+      if (Object.keys(approverAnswers).length > 0) {
         await saveApproverAnswers.mutateAsync(snapshotFields);
       }
 

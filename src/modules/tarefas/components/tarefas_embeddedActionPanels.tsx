@@ -208,7 +208,14 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   const saveTimers = useRef<Record<string, any>>({});
 
   const blockReasons = flow.getBlockingReasons(assignment);
-  const approverFields = useMemo(() => fields.filter((f) => f.aprovador_verificar), [fields]);
+  // Mostra TODAS as perguntas (replicadas do template + manuais), não só as marcadas
+  // `aprovador_verificar`. O flag continua disponível em f.aprovador_verificar para
+  // destacar como "extra/fora do padrão" quando precisar.
+  // Filtramos apenas tipos puramente estruturais (seção/divisor) que não têm resposta.
+  const approverFields = useMemo(
+    () => fields.filter((f) => !["secao", "divisor", "titulo"].includes(String(f.tipo))),
+    [fields]
+  );
 
   // Auto-save debounced (campo único)
   const scheduleAutoSave = (fieldId: string, payload: { resposta: string; observacao: string; peso: number; evidencia_url?: string | null }) => {
