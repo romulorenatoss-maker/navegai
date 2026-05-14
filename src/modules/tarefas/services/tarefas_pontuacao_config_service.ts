@@ -44,6 +44,9 @@ export interface TarefasPontuacaoConfig {
   sla_validador: CamadaSlaConfig;
   // Pacote padrão de perguntas do Aprovador (carregado em novas rotinas).
   aprovador_pacote_padrao: AprovadorPerguntaPadrao[];
+  // Pacote padrão de perguntas do Validador/Auditor (carregado em novas rotinas).
+  // Reusa o shape AprovadorPerguntaPadrao p/ compartilhar UI/modal/normalizers.
+  validador_pacote_padrao: AprovadorPerguntaPadrao[];
 }
 
 /**
