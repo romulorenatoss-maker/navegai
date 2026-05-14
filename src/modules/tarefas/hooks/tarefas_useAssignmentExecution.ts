@@ -446,10 +446,17 @@ export function useAssignmentExecution(assignmentId: string | null) {
         origem: "execucao",
       });
 
-      // Set inicio_em separately (transition handles status)
+      // Set inicio_em separately (transition handles status).
+      // Auto-claim: se a tarefa estava aberta para o setor (responsavel_id = null),
+      // o primeiro do setor a iniciar passa a ser o responsável.
+      await (supabase as any).from("operational_assignments")
+        .update({ inicio_em: now, responsavel_id: profile.id })
+        .eq("id", aId)
+        .is("responsavel_id", null);
       await (supabase as any).from("operational_assignments")
         .update({ inicio_em: now })
-        .eq("id", aId);
+        .eq("id", aId)
+        .not("responsavel_id", "is", null);
 
       await (supabase as any).from("operational_execution_logs").insert({
         assignment_id: aId,
