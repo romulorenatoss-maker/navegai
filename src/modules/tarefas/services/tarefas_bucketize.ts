@@ -484,6 +484,37 @@ export function bucketize(
         }
       }
     }
+
+    // ============================================================
+    // === Fase 1 (fluxo oficial) — Aguardando Aprovação / Auditoria / Todas
+    // ============================================================
+    if (hasMyRole) {
+      // Todas: qualquer papel do usuário
+      b.opTodas.push(a);
+
+      // Aguardando Aprovação:
+      //  - executor: tarefa concluída por ele aguardando aprovador
+      //  - aprovador: precisa aprovar
+      //  - admin
+      const isAguardandoAprov = [
+        TASK_STATUS.AGUARDANDO_APROVACAO,
+        TASK_STATUS.AGUARDANDO_AVALIACAO,
+        TASK_STATUS.EM_AVALIACAO,
+      ].includes(a.status);
+      if (isAguardandoAprov && (isResp || isAprov || isAdmin)) {
+        b.opAguardandoAprovacao.push(a);
+      }
+
+      // Aguardando Auditoria:
+      //  - status AGUARDANDO_AUDITORIA, OU
+      //  - APROVADA/CONCLUIDA com auditor designado mas sem auditor_fim_em
+      const isAguardandoAud =
+        a.status === TASK_STATUS.AGUARDANDO_AUDITORIA ||
+        temAuditorPendente;
+      if (isAguardandoAud && (isResp || isAprov || isAuditor || isAdmin)) {
+        b.opAguardandoAuditoria.push(a);
+      }
+    }
   }
 
   return b;
