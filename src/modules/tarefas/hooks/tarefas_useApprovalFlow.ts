@@ -55,7 +55,9 @@ export function useApprovalFlow(assignmentId: string | null) {
     queryFn: async () => {
       if (!assignmentId) return [];
       const { data, error } = await (supabase as any).from("operational_field_reviews")
-        .select("*").eq("assignment_id", assignmentId).order("rodada", { ascending: false });
+        .select("*, profiles:avaliador_id(nome)")
+        .eq("assignment_id", assignmentId)
+        .order("rodada", { ascending: true });
       if (error) throw error;
       return data;
     },
@@ -387,6 +389,8 @@ export function useApprovalFlow(assignmentId: string | null) {
           devolvido: true,
           motivo_devolucao: p.descricao_acao,
           observacao: p.descricao_acao,
+          instrucao_aprovador: p.descricao_acao,
+          tipo_evidencia_exigida: (p as any).tipo_evidencia_exigida || "nenhuma",
           rodada: rodadaPA,
           avaliador_id: profile.id,
           avaliado_em: new Date().toISOString(),
@@ -467,6 +471,8 @@ export function useApprovalFlow(assignmentId: string | null) {
           devolvido: true,
           motivo_devolucao: p.motivo.trim(),
           observacao: p.motivo.trim(),
+          instrucao_aprovador: p.motivo.trim(),
+          tipo_evidencia_exigida: (p as any).tipo_evidencia_exigida || "nenhuma",
           rodada,
           avaliador_id: profile.id,
           avaliado_em: new Date().toISOString(),
