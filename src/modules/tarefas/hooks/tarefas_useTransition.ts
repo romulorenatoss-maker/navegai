@@ -150,7 +150,7 @@ async function hasOpenContingencies(assignmentId: string): Promise<number> {
     .from("operational_contingencies")
     .select("id")
     .eq("assignment_id", assignmentId)
-    .in("status", ["aberta", "em_andamento", "resolvida"]);
+    .in("status", ["aberta", "em_andamento"]);
   if (error) throw error;
   return data?.length || 0;
 }
