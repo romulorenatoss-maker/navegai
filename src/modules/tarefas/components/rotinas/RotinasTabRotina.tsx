@@ -444,6 +444,30 @@ export function RotinasTabRotina({ form, set, templateId, onSave, saving }: Prop
                     <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border shrink-0", badge.cls)}>
                       {badge.label}
                     </span>
+                    {(() => {
+                      const podeExcluir = a.status === "pendente";
+                      return (
+                        <button
+                          type="button"
+                          disabled={!podeExcluir || deleteMutation.isPending}
+                          title={podeExcluir ? "Excluir tarefa" : "Só é possível excluir tarefas pendentes"}
+                          onClick={() => {
+                            if (!podeExcluir) return;
+                            if (window.confirm("Excluir esta tarefa? Esta ação não pode ser desfeita.")) {
+                              deleteMutation.mutate(a.id);
+                            }
+                          }}
+                          className={cn(
+                            "p-1.5 rounded shrink-0 transition-colors",
+                            podeExcluir
+                              ? "text-destructive hover:bg-destructive/10"
+                              : "text-muted-foreground/40 cursor-not-allowed"
+                          )}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      );
+                    })()}
                   </div>
                 );
               })}
