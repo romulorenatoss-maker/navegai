@@ -8,7 +8,7 @@
  *
  * Não tocam em banco, RPCs, triggers, scoring, builder ou execução.
  */
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
