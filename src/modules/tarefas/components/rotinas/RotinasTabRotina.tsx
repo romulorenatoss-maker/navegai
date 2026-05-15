@@ -44,15 +44,25 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
 
 function gerarDatas(form: TemplateForm): Date[] {
   if (form.recorrencia_tipo === "unica") {
-    return form.data_inicio ? [new Date(form.data_inicio + "T12:00:00")] : [new Date()];
+    if (!form.data_inicio) return [];
+    const d = new Date(form.data_inicio + "T12:00:00");
+    return isNaN(d.getTime()) ? [] : [d];
   }
   const now = new Date();
   const start = form.data_inicio ? new Date(form.data_inicio + "T00:00:00") : now;
-  const repetirSempre = !form.data_fim && form.recorrencia_tipo !== "unica";
+  if (isNaN(start.getTime())) return [];
+
+  const repetirSempre = !form.data_fim || form.data_fim === "";
   const endLimit = new Date(now); endLimit.setMonth(endLimit.getMonth() + 3);
-  const end = form.data_fim && !repetirSempre
-    ? new Date(Math.min(new Date(form.data_fim + "T23:59:59").getTime(), endLimit.getTime()))
-    : endLimit;
+
+  let end = endLimit;
+  if (!repetirSempre && form.data_fim) {
+    const dataFimParsed = new Date(form.data_fim + "T23:59:59");
+    if (!isNaN(dataFimParsed.getTime())) {
+      end = new Date(Math.min(dataFimParsed.getTime(), endLimit.getTime()));
+    }
+  }
+
   const dates: Date[] = [];
   const cursor = new Date(Math.max(start.getTime(), now.getTime()));
   cursor.setHours(0, 0, 0, 0);
@@ -412,12 +422,11 @@ export function RotinasTabRotina({ form, set, templateId, onSave, saving }: Prop
             <div className="divide-y divide-border max-h-[280px] overflow-y-auto">
               {assignments.map((a: any) => {
                 const badge = STATUS_BADGE[a.status] ?? { label: a.status, cls: "bg-muted text-muted-foreground border-border" };
-                const dataPrevista = a.data_prevista
-                  ? new Date(a.data_prevista).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })
+                const raw = a.data_prevista ? String(a.data_prevista) : null;
+                const dataPrevista = raw
+                  ? raw.slice(8, 10) + "/" + raw.slice(5, 7) + "/" + raw.slice(0, 4)
                   : "—";
-                const horario = a.data_prevista
-                  ? new Date(a.data_prevista).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
-                  : "";
+                const horario = raw && raw.length >= 16 ? raw.slice(11, 16) : "";
                 return (
                   <div key={a.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors">
                     <div className="flex-1 min-w-0">
