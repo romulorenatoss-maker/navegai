@@ -644,11 +644,26 @@ export default function OperationalCadastroPage() {
           if (error) throw error;
           setFields(prev =>
             prev.map(field =>
-              field.tempId === f.tempId ? { ...field, id: data.id } : field
+              field.tempId === f.tempId
+                ? { ...field, id: data.id, tempId: data.id }
+                : field
             )
           );
         }
       }
+
+      // Após persistir fields, re-sincroniza aprovadorChecks com os tempIds atualizados.
+      // Necessário porque saveFieldsOnly atualiza tempId dos fields novos para o id real,
+      // e as replicadas existentes podem ter field_id com o tempId efêmero antigo.
+      setAprovadorChecks(prev =>
+        syncAprovadorReplicadasFromFields(
+          prev,
+          activeFields.map(f => ({
+            ...f,
+            tempId: f.id ?? f.tempId,
+          }))
+        )
+      );
 
       // Atualiza avaliado_fields/avaliado_field_ids no ada_config_snapshot
       const activeAvaliadorFieldsFinal = activeFields.map(f => ({
