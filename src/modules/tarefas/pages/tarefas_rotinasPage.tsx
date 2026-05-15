@@ -673,6 +673,8 @@ export default function OperationalCadastroPage() {
     },
     onError: (e: any) => toast.error(`Erro ao salvar campos: ${e.message}`),
   });
+
+  const toggleAtivo = useMutation({
     mutationFn: async (t: any) => {
       const { error } = await (supabase as any).from("operational_templates").update({ ativo: !t.ativo }).eq("id", t.id);
       if (error) throw error;
