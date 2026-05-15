@@ -1,33 +1,40 @@
 import { FieldForm } from "@/modules/tarefas/types/tarefas_types";
 
+export function buildFieldKey(field: FieldForm) {
+  return `${field.label}_${field.tipo}_${field.ordem}`;
+}
+
 export function buildActiveFieldIds(fields: FieldForm[]): string[] {
   return fields
     .filter(field => !!field.id)
     .map(field => field.id as string);
 }
 
-export function buildActiveFieldsSnapshot(fields: FieldForm[]) {
+export function buildActiveFieldSnapshot(fields: FieldForm[]) {
   return fields.map(field => ({
     id: field.id ?? null,
-    key: `${field.label}_${field.tipo}_${field.ordem}`,
+    key: buildFieldKey(field),
   }));
 }
 
-export function filterOnlyActiveFields(
-  allFields: FieldForm[],
-  activeFieldIds: string[] | null | undefined
+// Alias retrocompatível.
+export const buildActiveFieldsSnapshot = buildActiveFieldSnapshot;
+
+export function filterActiveFields(
+  dbFields: FieldForm[],
+  activeIds: string[]
 ): FieldForm[] {
-  if (!activeFieldIds) {
+  if (!Array.isArray(activeIds)) {
     return [];
   }
 
-  if (activeFieldIds.length === 0) {
+  if (activeIds.length === 0) {
     return [];
   }
 
-  const activeSet = new Set(activeFieldIds);
+  const activeSet = new Set(activeIds);
 
-  return allFields.filter(field => {
+  return dbFields.filter(field => {
     if (!field.id) {
       return false;
     }
@@ -35,3 +42,5 @@ export function filterOnlyActiveFields(
     return activeSet.has(field.id);
   });
 }
+
+export const filterOnlyActiveFields = filterActiveFields;

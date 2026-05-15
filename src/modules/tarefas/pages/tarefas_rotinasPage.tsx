@@ -8,33 +8,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TIPO_EXECUCAO_LABELS, RECORRENCIA_LABELS } from "@/modules/tarefas/hooks/tarefas_useScoring";
 import { TemplateForm, SectionForm, FieldForm, StepForm, defaultTemplate } from "@/modules/tarefas/types/tarefas_types";
-// (Removido) TaskTypeSelectorDialog — builder único, sem seletor prévio.
 type TaskType = "simples" | "inspecao";
 import { TarefasBuilderWizard } from "@/modules/tarefas/components/builder/TarefasBuilderWizard";
-import { AprovadorCheckItemForm, buildAprovadorAutomatico, defaultAprovadorCheckItem } from "@/modules/tarefas/components/builder/types";
-import { normalizeAprovadorList } from "@/modules/tarefas/components/builder/checklistNormalizers";
+import { AprovadorCheckItemForm, buildAprovadorAutomatico } from "@/modules/tarefas/components/builder/types";
 
-import {
-  buildActiveFieldIds,
-  buildActiveFieldsSnapshot,
-} from "@/modules/tarefas/core/tarefas_builder_fields";
-
-import {
-  extractChecklistSnapshot,
-  extractAvaliadoFieldIds,
-} from "@/modules/tarefas/core/tarefas_builder_snapshot";
-
-import {
-  hydrateActiveFields,
-} from "@/modules/tarefas/core/tarefas_builder_hydrate";
-
-import {
-  rebuildAprovadorFromActiveFields,
-} from "@/modules/tarefas/core/tarefas_builder_aprovador";
+import { buildChecklistSnapshot } from "@/modules/tarefas/core/tarefas_builder_save";
+import { getChecklistSnapshot, getActiveFieldIds } from "@/modules/tarefas/core/tarefas_builder_snapshot";
+import { hydrateFields } from "@/modules/tarefas/core/tarefas_builder_hydrate";
+import { rebuildAprovadorChecks } from "@/modules/tarefas/core/tarefas_builder_aprovador";
+import { rebuildValidadorChecks } from "@/modules/tarefas/core/tarefas_builder_validador";
 
 import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
-// Draft/rascunho automático REMOVIDO: a única fonte de verdade é o estado salvo da rotina.
-// Limpeza preventiva de qualquer entrada antiga ainda presente no navegador.
+
+// Limpeza preventiva de drafts antigos do localStorage.
 const LEGACY_DRAFT_PREFIX = "tarefas_builder_draft_v1::";
 const purgeLegacyBuilderDrafts = () => {
   try {
@@ -47,91 +33,15 @@ const purgeLegacyBuilderDrafts = () => {
   } catch { /* ignore */ }
 };
 
-const normalizeKeyText = (value: unknown) =>
-  String(value ?? "").trim().toLocaleLowerCase("pt-BR");
-
-const fieldDuplicateKey = (field: FieldForm) => JSON.stringify([
-  normalizeKeyText(field.label),
-  field.tipo || "",
-  Number(field.ordem) || 0,
-]);
-
-const dedupeLoadedFields = (loadedFields: FieldForm[], referencedFieldIds: Set<string>) => {
-  const byKey = new Map<string, FieldForm>();
-  const deduped: FieldForm[] = [];
-  for (const field of loadedFields) {
-    const key = fieldDuplicateKey(field);
-    const existing = byKey.get(key);
-    if (!existing) {
-      byKey.set(key, field);
-      deduped.push(field);
-      continue;
-    }
-    const bothHaveDifferentSections = !!existing.sectionTempId && !!field.sectionTempId && existing.sectionTempId !== field.sectionTempId;
-    if (bothHaveDifferentSections) {
-      deduped.push(field);
-      continue;
-    }
-    const existingIsReferenced = !!existing.id && referencedFieldIds.has(existing.id);
-    const fieldIsReferenced = !!field.id && referencedFieldIds.has(field.id);
-    const shouldReplace =
-      (!existingIsReferenced && fieldIsReferenced) ||
-      (!existing.sectionTempId && !!field.sectionTempId);
-    if (shouldReplace) {
-      const idx = deduped.findIndex(f => f.tempId === existing.tempId);
-      if (idx >= 0) deduped[idx] = field;
-      byKey.set(key, field);
-    }
-  }
-  return deduped.sort((a, b) => a.ordem - b.ordem);
-};
-
-const sanitizeAprovadorChecks = (
-  rawItems: AprovadorCheckItemForm[],
-  currentFields: FieldForm[],
-  pacotePadrao: any[] | undefined,
-  incluirAutomaticas: boolean,
-) => {
-  const uniqueFields = [...currentFields]
-    .filter(f => !!f.tempId)
-    .sort((a, b) => a.ordem - b.ordem);
-  const baseItems = normalizeAprovadorList(rawItems);
-  const replicadasPrev = baseItems.filter(item => item.origem_pergunta === "replicada_avaliado");
-  const naoReplicadas = baseItems.filter(item => item.origem_pergunta !== "replicada_avaliado");
-  const replicadasByField = new Map(replicadasPrev.map(item => [item.field_id, item]));
-  const replicadasEspelhadas = uniqueFields.map(field => {
-    const existing = replicadasByField.get(field.tempId);
-    const label = field.label || "Pergunta sem nome";
-    const pergunta = `Aprovador confirma: ${label}?`;
-    if (!existing) return defaultAprovadorCheckItem(field.tempId, label);
-    return {
-      ...existing,
-      field_id: field.tempId,
-      field_label: label,
-      pergunta_padrao: pergunta,
-      origem_pergunta: "replicada_avaliado" as const,
-      pergunta_origem_id: field.tempId,
-    };
-  });
-  const normalized = [...replicadasEspelhadas, ...naoReplicadas];
-  if (!incluirAutomaticas) {
-    return normalized.filter(item => item.origem_pergunta !== "automatica_configuracao");
-  }
-  const existingConfigIds = new Set(
-    normalized.map(item => item.config_global_origem_id).filter(Boolean)
-  );
-  const missingAutomaticas = (pacotePadrao ?? [])
-    .filter(p => p.ativo !== false && !existingConfigIds.has(p.id))
-    .map(p => buildAprovadorAutomatico(p));
-  return normalizeAprovadorList([...normalized, ...missingAutomaticas]);
-};
-
+/**
+ * Busca ids de fields que possuem histórico (respostas, reviews, contingências).
+ * Uso EXCLUSIVO: impedir DELETE físico no banco.
+ * NÃO controla mais a UI — UI é controlada pelo snapshot.checklists.avaliado_field_ids.
+ */
 const fetchReferencedFieldIds = async (fieldIds: string[]) => {
   const referenced = new Set<string>();
   if (fieldIds.length === 0) return referenced;
 
-  // Busca assignments ativos (não deletados) para filtrar respostas órfãs.
-  // Respostas de assignments deletados não devem proteger o field do delete.
   const { data: activeAssignments } = await (supabase as any)
     .from("operational_assignments")
     .select("id");
@@ -147,7 +57,6 @@ const fetchReferencedFieldIds = async (fieldIds: string[]) => {
     if (error) throw error;
     (data || []).forEach((row: any) => {
       if (!row?.[column]) return;
-      // Só protege o field se o assignment ainda existe (não foi deletado).
       const assignmentId = row[assignmentColumn];
       if (!assignmentId || activeAssignmentIds.has(assignmentId)) {
         referenced.add(row[column]);
@@ -209,8 +118,7 @@ export default function OperationalCadastroPage() {
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  // (Removido) seletor "Tipo de tarefa" — abre o builder direto.
-  
+
   const [form, setForm] = useState<TemplateForm>(defaultTemplate);
   const [sections, setSections] = useState<SectionForm[]>([]);
   const [fields, setFields] = useState<FieldForm[]>([]);
@@ -221,16 +129,13 @@ export default function OperationalCadastroPage() {
   const [activeTab, setActiveTab] = useState("geral");
   const [filterExecutor, setFilterExecutor] = useState("__all");
   const [filterAvaliador, setFilterAvaliador] = useState("__all");
-  // Draft/rascunho removido — sem autosave, sem restore.
+  const [savingFieldsTab, setSavingFieldsTab] = useState(false);
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ["operational_templates"],
     queryFn: async () => {
       const { data, error } = await (supabase as any).from("operational_templates")
         .select("*, setores!operational_templates_setor_id_fkey(nome)")
-        // LEGADO: origem.is.null incluído por compat com templates antigos sem o campo origem.
-        // Tarefas avulsas novas são sempre gravadas com origem='ad_hoc' e NÃO aparecem aqui.
-        // TODO(rotinas): após migration backfill (origem='rotina' onde recorrencia_tipo!='unica'), remover origem.is.null.
         .or("origem.eq.rotina,origem.is.null")
         .order("ordem", { ascending: true })
         .order("created_at", { ascending: false });
@@ -258,13 +163,12 @@ export default function OperationalCadastroPage() {
     },
   });
 
-  // Config global de Pontuação/SLA — usada para exibir as penalidades automáticas
-  // como "perguntas" no topo das abas Avaliado / Aprovador / Validador.
   const { data: pontuacaoConfig } = useQuery({
     queryKey: ["tarefas_pontuacao_config"],
     queryFn: getPontuacaoConfig,
     staleTime: 60_000,
   });
+
   const { executorProfiles, avaliadorProfiles } = useMemo(() => {
     const execMap = new Map<string, string>();
     const avalMap = new Map<string, string>();
@@ -288,7 +192,6 @@ export default function OperationalCadastroPage() {
     return list;
   }, [templates, filterExecutor, filterAvaliador]);
 
-  // Group templates by setor
   const groupedTemplates = useMemo(() => {
     const groups: { setor: string; setorId: string | null; items: any[] }[] = [];
     const map = new Map<string, any[]>();
@@ -306,7 +209,6 @@ export default function OperationalCadastroPage() {
     return groups;
   }, [filteredTemplates]);
 
-  // Drag-and-drop state
   const dragItem = useRef<{ id: string; setorKey: string } | null>(null);
   const dragOverItem = useRef<{ id: string; setorKey: string } | null>(null);
 
@@ -331,7 +233,7 @@ export default function OperationalCadastroPage() {
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     if (!dragItem.current || !dragOverItem.current) return;
-    if (dragItem.current.setorKey !== dragOverItem.current.setorKey) return; // only within same setor
+    if (dragItem.current.setorKey !== dragOverItem.current.setorKey) return;
     if (dragItem.current.id === dragOverItem.current.id) return;
 
     const setorKey = dragItem.current.setorKey;
@@ -354,343 +256,246 @@ export default function OperationalCadastroPage() {
 
   const set = <K extends keyof TemplateForm>(k: K, v: TemplateForm[K]) => setForm(f => ({ ...f, [k]: v }));
 
-  const upsert = useMutation({
-    mutationFn: async () => {
-      if (!form.nome.trim()) throw new Error("Nome é obrigatório");
-      // Causa raiz: fields órfãos (sem section_id ativo) eram serializados no snapshot
-      // e reapareciam como fantasmas no Aprovador ao reabrir. Filtrar antes do sync.
-      const activeSectionIds = new Set(sections.map(s => s.tempId).filter(Boolean));
-      const activeFields = fields.filter(f => f.sectionTempId && activeSectionIds.has(f.sectionTempId));
-      const aprovadorSync = rebuildAprovadorFromActiveFields(aprovadorChecks, activeFields);
-      const aprovadorSnapshot = sanitizeAprovadorChecks(
-        aprovadorSync,
-        activeFields,
-        pontuacaoConfig?.aprovador_pacote_padrao,
-        form.habilitar_perguntas_automaticas,
-      );
-      const activeAvaliadorFields = activeFields.map(f => ({
-        id: f.id ?? null,
-        key: fieldDuplicateKey(f),
-      }));
-      const activeAvaliadorFieldIds = activeAvaliadorFields.map(f => f.id).filter(Boolean);
-      const adaSnapshotBase = (((form as any).ada_config_snapshot ?? {}) as any);
-      
-      const payload: any = {
-        nome: form.nome.trim(),
-        descricao: form.descricao.trim() || null,
-        tipo_execucao: form.tipo_execucao,
-        setor_id: form.setor_id || null,
-        responsavel_id: form.responsavel_id || null,
-        recorrencia_tipo: form.recorrencia_tipo,
-        dias_da_semana: form.dias_da_semana,
-        intervalo_dias: form.intervalo_dias,
-        pular_semanas: form.pular_semanas,
-        dia_fixo_mes: form.dia_fixo_mes,
-        data_inicio: form.data_inicio || null,
-        data_fim: form.repetir_sempre ? null : (form.data_fim || null),
-        horario_inicio_previsto: form.horario_inicio_previsto || null,
-        horario_limite_execucao: form.horario_limite_execucao || null,
-        tolerancia_minutos: form.tolerancia_minutos,
-        sla_horas: form.sla_horas,
-        gerar_contingencia_automatica: form.gerar_contingencia_automatica,
-        prazo_sla_correcao_horas: form.prazo_sla_correcao_horas,
-        requer_aprovacao_gestor: form.requer_aprovacao_gestor,
-        bloquear_fechamento_com_contingencia: form.bloquear_fechamento_com_contingencia,
-        permite_devolucao_parcial: form.permite_devolucao_parcial,
-        executor_profile_id: form.executor_profile_id || null,
-        executor_setor_id: form.executor_setor_id || null,
-        avaliado_profile_id: form.avaliado_profile_id || null,
-        avaliado_setor_id: form.avaliado_setor_id || null,
-        aprovador_profile_id: form.aprovador_profile_id || null,
-        aprovador_setor_id: form.aprovador_setor_id || null,
-        auditor_profile_id: form.auditor_profile_id || null,
-        auditor_setor_id: form.auditor_setor_id || null,
-        modo_pontuacao: form.modo_pontuacao,
-        destino_score: form.destino_score,
-        peso_recorrencia: form.peso_recorrencia,
-        tipo_atribuicao_avaliado: form.tipo_atribuicao_avaliado,
-        penalidade_contingencia: form.penalidade_contingencia,
-        penalidade_sla_contingencia: form.penalidade_sla_contingencia,
-        penalidade_fora_prazo: form.penalidade_fora_prazo,
-        habilitar_perguntas_automaticas: form.habilitar_perguntas_automaticas,
-        ada_config_snapshot: {
-          ...adaSnapshotBase,
-          checklists: {
-            ...((adaSnapshotBase.checklists ?? {}) as any),
-            avaliado_fields: buildActiveFieldsSnapshot(activeFields),
-            avaliado_field_ids: buildActiveFieldIds(activeFields),
-            aprovador: aprovadorSnapshot,
-            validador: validadorChecks,
-          },
-        },
-      };
+  /**
+   * SAVE OFICIAL ÚNICO. Sem saveFieldsOnly. Sem snapshot inline.
+   *
+   * Ordem determinística:
+   *  1. Cria/atualiza template (sem snapshot ainda).
+   *  2. Persiste sections, capturando ids reais.
+   *  3. Persiste fields (insert ganha id; update mantém). Atualiza estado local.
+   *  4. Deleta fields fora da UI (respeitando referencedFieldIds = histórico).
+   *  5. Persiste steps.
+   *  6. Filtra aprovadorChecks contra fields ativos (sem replicação automática).
+   *  7. Monta snapshot final usando ids reais e UPDATE template apenas com snapshot.
+   *
+   * Retorna o templateId.
+   */
+  const performUpsert = async (): Promise<string> => {
+    if (!form.nome.trim()) throw new Error("Nome é obrigatório");
 
-      let templateId: string;
-      if (editingId) {
-        // Fetch current data for audit trail before updating
-        const { data: currentTemplate } = await (supabase as any).from("operational_templates")
-          .select("*").eq("id", editingId).single();
-        
-        const { error } = await (supabase as any).from("operational_templates").update(payload).eq("id", editingId);
-        if (error) throw error;
-        templateId = editingId;
+    const activeSectionIds = new Set(sections.map(s => s.tempId).filter(Boolean));
+    const activeFieldsInput = fields.filter(f => f.sectionTempId && activeSectionIds.has(f.sectionTempId));
 
-        // Audit: log role changes
-        if (currentTemplate) {
-          const trackedFields = [
-            "executor_profile_id", "executor_setor_id",
-            "aprovador_profile_id", "aprovador_setor_id",
-            "aprovador_profile_id", "aprovador_setor_id",
-            "validador_contingencia_profile_id", "validador_contingencia_setor_id",
-            "nome", "setor_id", "recorrencia_tipo", "tipo_execucao",
-          ];
-          const changes: Record<string, { de: any; para: any }> = {};
-          for (const field of trackedFields) {
-            const oldVal = currentTemplate[field] ?? null;
-            const newVal = payload[field] ?? null;
-            if (oldVal !== newVal) {
-              changes[field] = { de: oldVal, para: newVal };
-            }
-          }
-          if (Object.keys(changes).length > 0) {
-            const { data: profile } = await supabase.from("profiles")
-              .select("id").eq("user_id", (await supabase.auth.getUser()).data.user?.id || "").single();
-            if (profile) {
-              await (supabase as any).from("audit_logs").insert({
-                tabela: "operational_templates",
-                acao: "update_template",
-                registro_id: editingId,
-                user_id: profile.id,
-                dados_anteriores: changes,
-                dados_novos: payload,
-              });
-            }
-          }
-        }
+    const adaSnapshotBase = (((form as any).ada_config_snapshot ?? {}) as any);
 
-        // Campos/seções não podem ser apagados em massa quando já existem respostas.
-        // Atualizamos os registros existentes e removemos apenas órfãos sem vínculo,
-        // evitando reinserir duplicados a cada salvamento.
-      } else {
-        const { data, error } = await (supabase as any).from("operational_templates").insert(payload).select().single();
-        if (error) throw error;
-        templateId = data.id;
-      }
+    const basePayload: any = {
+      nome: form.nome.trim(),
+      descricao: form.descricao.trim() || null,
+      tipo_execucao: form.tipo_execucao,
+      setor_id: form.setor_id || null,
+      responsavel_id: form.responsavel_id || null,
+      recorrencia_tipo: form.recorrencia_tipo,
+      dias_da_semana: form.dias_da_semana,
+      intervalo_dias: form.intervalo_dias,
+      pular_semanas: form.pular_semanas,
+      dia_fixo_mes: form.dia_fixo_mes,
+      data_inicio: form.data_inicio || null,
+      data_fim: form.repetir_sempre ? null : (form.data_fim || null),
+      horario_inicio_previsto: form.horario_inicio_previsto || null,
+      horario_limite_execucao: form.horario_limite_execucao || null,
+      tolerancia_minutos: form.tolerancia_minutos,
+      sla_horas: form.sla_horas,
+      gerar_contingencia_automatica: form.gerar_contingencia_automatica,
+      prazo_sla_correcao_horas: form.prazo_sla_correcao_horas,
+      requer_aprovacao_gestor: form.requer_aprovacao_gestor,
+      bloquear_fechamento_com_contingencia: form.bloquear_fechamento_com_contingencia,
+      permite_devolucao_parcial: form.permite_devolucao_parcial,
+      executor_profile_id: form.executor_profile_id || null,
+      executor_setor_id: form.executor_setor_id || null,
+      avaliado_profile_id: form.avaliado_profile_id || null,
+      avaliado_setor_id: form.avaliado_setor_id || null,
+      aprovador_profile_id: form.aprovador_profile_id || null,
+      aprovador_setor_id: form.aprovador_setor_id || null,
+      auditor_profile_id: form.auditor_profile_id || null,
+      auditor_setor_id: form.auditor_setor_id || null,
+      modo_pontuacao: form.modo_pontuacao,
+      destino_score: form.destino_score,
+      peso_recorrencia: form.peso_recorrencia,
+      tipo_atribuicao_avaliado: form.tipo_atribuicao_avaliado,
+      penalidade_contingencia: form.penalidade_contingencia,
+      penalidade_sla_contingencia: form.penalidade_sla_contingencia,
+      penalidade_fora_prazo: form.penalidade_fora_prazo,
+      habilitar_perguntas_automaticas: form.habilitar_perguntas_automaticas,
+    };
 
-      // Persist sections/fields
-      const sectionIdMap: Record<string, string> = {};
-      if (editingId) {
-        for (const [i, s] of sections.entries()) {
-          const payloadSection = sectionPayload(templateId, s, i);
-          if (s.id) {
-            const { error } = await (supabase as any).from("operational_template_sections").update(payloadSection).eq("id", s.id);
-            if (error) throw error;
-            sectionIdMap[s.tempId] = s.id;
-          } else {
-            const { data, error } = await (supabase as any).from("operational_template_sections").insert(payloadSection).select("id").single();
-            if (error) throw error;
-            sectionIdMap[s.tempId] = data.id;
-          }
-        }
+    let templateId: string;
+    let currentTemplateForAudit: any = null;
+    if (editingId) {
+      const { data: currentTemplate } = await (supabase as any).from("operational_templates")
+        .select("*").eq("id", editingId).single();
+      currentTemplateForAudit = currentTemplate;
+      const { error } = await (supabase as any).from("operational_templates").update(basePayload).eq("id", editingId);
+      if (error) throw error;
+      templateId = editingId;
+    } else {
+      const { data, error } = await (supabase as any).from("operational_templates").insert(basePayload).select().single();
+      if (error) throw error;
+      templateId = data.id;
+    }
 
-        const { data: existingFields, error: existingFieldsError } = await (supabase as any)
-          .from("operational_template_fields")
-          .select("id")
-          .eq("template_id", templateId);
-        if (existingFieldsError) throw existingFieldsError;
-        const existingFieldIds = (existingFields || []).map((f: any) => f.id).filter(Boolean);
-        // currentFieldIds = ids dos campos que o usuário manteve na UI agora.
-        // activeAvaliadorFieldIds = ids ativos (já calculado acima no upsert).
-        // Um campo é removível se: saiu da UI E não tem respostas vinculadas.
-        const currentFieldIds = new Set(activeAvaliadorFieldIds.filter(Boolean) as string[]);
-        const referencedFieldIds = await fetchReferencedFieldIds(existingFieldIds);
-        const removableFieldIds = existingFieldIds.filter((id: string) => !currentFieldIds.has(id) && !referencedFieldIds.has(id));
-        if (removableFieldIds.length > 0) {
-          const { error } = await (supabase as any).from("operational_template_fields").delete().in("id", removableFieldIds);
+    // ===== Sections =====
+    const sectionIdMap: Record<string, string> = {};
+    if (editingId) {
+      for (const [i, s] of sections.entries()) {
+        const payloadSection = sectionPayload(templateId, s, i);
+        if (s.id) {
+          const { error } = await (supabase as any).from("operational_template_sections").update(payloadSection).eq("id", s.id);
           if (error) throw error;
+          sectionIdMap[s.tempId] = s.id;
+        } else {
+          const { data, error } = await (supabase as any).from("operational_template_sections").insert(payloadSection).select("id").single();
+          if (error) throw error;
+          sectionIdMap[s.tempId] = data.id;
+          setSections(prev => prev.map(sec => sec.tempId === s.tempId ? { ...sec, id: data.id } : sec));
         }
+      }
+    } else if (sections.length > 0) {
+      const { data: inserted, error } = await (supabase as any).from("operational_template_sections").insert(
+        sections.map((s, i) => sectionPayload(templateId, s, i))
+      ).select();
+      if (error) throw error;
+      sections.forEach((s, i) => { sectionIdMap[s.tempId] = inserted[i].id; });
+    }
 
-        for (const f of fields) {
-          const payloadField = fieldPayload(templateId, f, sectionIdMap);
-          if (f.id) {
-            const { error } = await (supabase as any).from("operational_template_fields").update(payloadField).eq("id", f.id);
-            if (error) throw error;
-          } else {
-            const { error } = await (supabase as any).from("operational_template_fields").insert(payloadField);
-            if (error) throw error;
-          }
+    // ===== Fields (persistência REAL antes do snapshot) =====
+    const persistedFields: FieldForm[] = [];
+    for (const f of activeFieldsInput) {
+      const payloadField = fieldPayload(templateId, f, sectionIdMap);
+      if (f.id) {
+        const { error } = await (supabase as any).from("operational_template_fields").update(payloadField).eq("id", f.id);
+        if (error) throw error;
+        persistedFields.push(f);
+      } else {
+        const { data, error } = await (supabase as any).from("operational_template_fields").insert(payloadField).select("id").single();
+        if (error) throw error;
+        const newId = data.id;
+        setFields(prev => prev.map(field =>
+          field.tempId === f.tempId ? { ...field, id: newId, tempId: newId } : field
+        ));
+        persistedFields.push({ ...f, id: newId, tempId: newId });
+      }
+    }
+
+    // ===== Delete fields removidos da UI (respeitando histórico) =====
+    if (editingId) {
+      const keepFieldIds = new Set(persistedFields.map(f => f.id).filter(Boolean) as string[]);
+      const { data: existingDbFields, error: existingFieldsError } = await (supabase as any)
+        .from("operational_template_fields")
+        .select("id")
+        .eq("template_id", templateId);
+      if (existingFieldsError) throw existingFieldsError;
+      const removedFieldIds: string[] = (existingDbFields || [])
+        .map((f: any) => f.id)
+        .filter((id: string) => id && !keepFieldIds.has(id));
+      const referenced = await fetchReferencedFieldIds(removedFieldIds);
+      const deletableIds = removedFieldIds.filter(id => !referenced.has(id));
+      if (deletableIds.length > 0) {
+        const { error } = await (supabase as any).from("operational_template_fields").delete().in("id", deletableIds);
+        if (error) throw error;
+      }
+    }
+
+    // ===== Steps =====
+    if (editingId) {
+      const { error: stepsDeleteError } = await (supabase as any).from("operational_template_steps").delete().eq("template_id", templateId);
+      if (stepsDeleteError) throw stepsDeleteError;
+    }
+    if (steps.length > 0) {
+      const { error } = await (supabase as any).from("operational_template_steps").insert(
+        steps.map((s, i) => ({
+          template_id: templateId, nome: s.nome || `Etapa ${i + 1}`, ordem: i,
+          peso: s.peso, horario_inicio: s.horario_inicio || null, horario_fim: s.horario_fim || null,
+          prazo_limite_minutos: s.prazo_limite_minutos, exige_foto: s.exige_foto,
+          exige_observacao: s.exige_observacao, exige_video: s.exige_video,
+        }))
+      );
+      if (error) throw error;
+    }
+
+    // ===== Aprovador: filtragem determinística (sem replicação automática) =====
+    const aprovadorFinal = rebuildAprovadorChecks(aprovadorChecks, persistedFields);
+    const validadorFinal = rebuildValidadorChecks(validadorChecks);
+    setAprovadorChecks(aprovadorFinal);
+    setValidadorChecks(validadorFinal);
+
+    // ===== Snapshot final com ids REAIS =====
+    const checklistsSnapshot = buildChecklistSnapshot(persistedFields, aprovadorFinal, validadorFinal);
+    const finalSnapshotPayload = {
+      ada_config_snapshot: {
+        ...adaSnapshotBase,
+        checklists: {
+          ...((adaSnapshotBase.checklists ?? {}) as any),
+          ...checklistsSnapshot,
+        },
+      },
+    };
+    const { error: snapErr } = await (supabase as any)
+      .from("operational_templates")
+      .update(finalSnapshotPayload)
+      .eq("id", templateId);
+    if (snapErr) throw snapErr;
+
+    // ===== Audit log (apenas em edição) =====
+    if (editingId && currentTemplateForAudit) {
+      const trackedFields = [
+        "executor_profile_id", "executor_setor_id",
+        "aprovador_profile_id", "aprovador_setor_id",
+        "validador_contingencia_profile_id", "validador_contingencia_setor_id",
+        "nome", "setor_id", "recorrencia_tipo", "tipo_execucao",
+      ];
+      const changes: Record<string, { de: any; para: any }> = {};
+      for (const field of trackedFields) {
+        const oldVal = currentTemplateForAudit[field] ?? null;
+        const newVal = (basePayload as any)[field] ?? null;
+        if (oldVal !== newVal) changes[field] = { de: oldVal, para: newVal };
+      }
+      if (Object.keys(changes).length > 0) {
+        const { data: profile } = await supabase.from("profiles")
+          .select("id").eq("user_id", (await supabase.auth.getUser()).data.user?.id || "").single();
+        if (profile) {
+          await (supabase as any).from("audit_logs").insert({
+            tabela: "operational_templates",
+            acao: "update_template",
+            registro_id: editingId,
+            user_id: profile.id,
+            dados_anteriores: changes,
+            dados_novos: basePayload,
+          });
         }
-
-        const { error: stepsDeleteError } = await (supabase as any).from("operational_template_steps").delete().eq("template_id", templateId);
-        if (stepsDeleteError) throw stepsDeleteError;
-      } else if (sections.length > 0) {
-        const { data: inserted, error } = await (supabase as any).from("operational_template_sections").insert(
-          sections.map((s, i) => sectionPayload(templateId, s, i))
-        ).select();
-        if (error) throw error;
-        sections.forEach((s, i) => { sectionIdMap[s.tempId] = inserted[i].id; });
       }
+    }
 
-      if (!editingId && fields.length > 0) {
-        const { error } = await (supabase as any).from("operational_template_fields").insert(
-          fields.map(f => fieldPayload(templateId, f, sectionIdMap))
-        );
-        if (error) throw error;
-      }
+    return templateId;
+  };
 
-      // Insert steps
-      if (steps.length > 0) {
-        const { error } = await (supabase as any).from("operational_template_steps").insert(
-          steps.map((s, i) => ({
-            template_id: templateId, nome: s.nome || `Etapa ${i + 1}`, ordem: i,
-            peso: s.peso, horario_inicio: s.horario_inicio || null, horario_fim: s.horario_fim || null,
-            prazo_limite_minutos: s.prazo_limite_minutos, exige_foto: s.exige_foto,
-            exige_observacao: s.exige_observacao, exige_video: s.exige_video,
-          }))
-        );
-        if (error) throw error;
-      }
-
-      // Checklist legacy (operational_template_check_items) NÃO é mais escrito pelo novo
-      // builder. A tabela é mantida viva apenas para histórico/leitura legada.
-      // Substituído por: Campos + Checklist Aprovador + Checklist Validador (snapshot).
-    },
+  const upsert = useMutation({
+    mutationFn: performUpsert,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["operational_templates"] });
-      toast.success(editingId ? "Template atualizado (versão incrementada)." : "Template criado.");
+      toast.success(editingId ? "Template atualizado." : "Template criado.");
       purgeLegacyBuilderDrafts();
       closeDialog();
     },
     onError: (e: any) => toast.error(e.message),
   });
 
-  // Save parcial: persiste apenas sections + fields (aba Avaliado).
-  // Usado quando o usuário avança da aba "campos" sem chegar ao Resumo.
-  // Só roda em edição (isEditing). Não fecha dialog, não invalida queries.
-  const saveFieldsOnly = async (
-    currentFields: FieldForm[],
-    currentSections: SectionForm[],
-  ) => {
+  /**
+   * Auto-save da aba Avaliado quando o usuário avança no wizard.
+   * Reusa o save oficial completo (sem closeDialog, sem invalidate). Mais lento
+   * porém consistente: garante que field novo já esteja persistido com `id` real.
+   */
+  const saveOnTabAdvance = async () => {
     if (!editingId) return;
-
-    // Upsert sections
-    const sectionIdMap: Record<string, string> = {};
-    for (const [i, s] of currentSections.entries()) {
-      const payloadSection = sectionPayload(editingId, s, i);
-      if (s.id) {
-        const { error } = await (supabase as any)
-          .from("operational_template_sections")
-          .update(payloadSection).eq("id", s.id);
-        if (error) throw error;
-        sectionIdMap[s.tempId] = s.id;
-      } else {
-        const { data, error } = await (supabase as any)
-          .from("operational_template_sections")
-          .insert(payloadSection).select("id").single();
-        if (error) throw error;
-        sectionIdMap[s.tempId] = data.id;
-        setSections(prev => prev.map(sec =>
-          sec.tempId === s.tempId ? { ...sec, id: data.id } : sec
-        ));
-      }
+    setSavingFieldsTab(true);
+    try {
+      await performUpsert();
+      qc.invalidateQueries({ queryKey: ["operational_templates"] });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao salvar");
+      throw e;
+    } finally {
+      setSavingFieldsTab(false);
     }
-
-    // Upsert fields — rastreia ids reais (inclusive de inserts) em savedFields.
-    const savedFields: FieldForm[] = [];
-    for (const f of currentFields) {
-      const payloadField = fieldPayload(editingId, f, sectionIdMap);
-      if (f.id) {
-        const { error } = await (supabase as any)
-          .from("operational_template_fields")
-          .update(payloadField).eq("id", f.id);
-        if (error) throw error;
-        savedFields.push(f);
-      } else {
-        const { data, error } = await (supabase as any)
-          .from("operational_template_fields")
-          .insert(payloadField).select("id").single();
-        if (error) throw error;
-        const newId = data.id;
-        setFields(prev => prev.map(field =>
-          field.tempId === f.tempId
-            ? { ...field, id: newId, tempId: newId }
-            : field
-        ));
-        savedFields.push({ ...f, id: newId, tempId: newId });
-      }
-    }
-
-    // Deletar fields removidos: banco deve ficar igual à tela atual.
-    // keepFieldIds inclui ids reais (inclusive dos inserts recém-criados).
-    const keepFieldIds = new Set(
-      savedFields.map((f: any) => f.id).filter(Boolean) as string[]
-    );
-    const { data: existingDbFields, error: existingFieldsError } = await (supabase as any)
-      .from("operational_template_fields")
-      .select("id")
-      .eq("template_id", editingId);
-    if (existingFieldsError) throw existingFieldsError;
-    const removedFieldIds: string[] = (existingDbFields || [])
-      .map((f: any) => f.id)
-      .filter((id: string) => id && !keepFieldIds.has(id));
-    const referenced = await fetchReferencedFieldIds(removedFieldIds);
-    const deletableIds = removedFieldIds.filter(id => !referenced.has(id));
-    if (deletableIds.length > 0) {
-      const { error: deleteError } = await (supabase as any)
-        .from("operational_template_fields")
-        .delete().in("id", deletableIds);
-      if (deleteError) throw deleteError;
-    }
-
-    // Buscar ids reais do banco APÓS o delete — só ids que realmente existem agora
-    const { data: freshFields } = await (supabase as any)
-      .from("operational_template_fields")
-      .select("id")
-      .eq("template_id", editingId);
-    const freshFieldIds = (freshFields || []).map((f: any) => f.id).filter(Boolean);
-
-    console.log('[SAVE_FIELDS_FINAL] keepFieldIds (UI savedFields)=', Array.from(keepFieldIds));
-    console.log('[SAVE_FIELDS_FINAL] removedFieldIds (UI removeu)=', removedFieldIds);
-    console.log('[SAVE_FIELDS_FINAL] referenced (protegidos do delete)=', Array.from(referenced));
-    console.log('[SAVE_FIELDS_FINAL] deletableIds (efetivamente deletados)=', deletableIds);
-    console.log('[FRESH_FIELD_IDS] (DB pós-delete; será gravado em snapshot.avaliado_field_ids)=', freshFieldIds);
-    console.log('[FRESH_FIELD_IDS] DIFF freshFieldIds - keepFieldIds (estes são órfãos protegidos que voltarão na UI)=',
-      freshFieldIds.filter((id: string) => !keepFieldIds.has(id)));
-
-    // Atualizar avaliado_field_ids no snapshot com ids reais
-    const { data: currentTemplateData } = await (supabase as any)
-      .from("operational_templates")
-      .select("ada_config_snapshot")
-      .eq("id", editingId).single();
-    const currentSnap = currentTemplateData?.ada_config_snapshot ?? {};
-    const activeAvaliadorFields = currentFields.map(f => ({
-      id: f.id ?? null,
-      key: fieldDuplicateKey(f),
-    }));
-    await (supabase as any)
-      .from("operational_templates")
-      .update({
-        ada_config_snapshot: {
-          ...currentSnap,
-          checklists: {
-            ...(currentSnap.checklists ?? {}),
-            avaliado_fields: buildActiveFieldsSnapshot(currentFields),
-            avaliado_field_ids: buildActiveFieldIds(currentFields),
-          },
-        },
-      })
-      .eq("id", editingId);
-
-    // Re-sync aprovador
-    setAprovadorChecks(prev => {
-      const next = rebuildAprovadorFromActiveFields(
-        prev,
-        currentFields.map(f => ({ ...f, tempId: f.id ?? f.tempId }))
-      );
-      console.log('[APROVADOR_RESYNC] prev.field_ids=', prev.map((x: any) => x.field_id),
-        ' next.field_ids=', next.map((x: any) => x.field_id));
-      return next;
-    });
   };
 
   const toggleAtivo = useMutation({
@@ -704,7 +509,6 @@ export default function OperationalCadastroPage() {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      // Check if there are any assignments linked to this template
       const { count } = await supabase
         .from("operational_assignments")
         .select("id", { count: "exact", head: true })
@@ -712,7 +516,8 @@ export default function OperationalCadastroPage() {
       if (count && count > 0) {
         throw new Error(`Não é possível excluir: existem ${count} tarefa(s) executada(s) vinculada(s). Remova todas as tarefas executadas primeiro na tela de Gestão.`);
       }
-      await (supabase as any).from("operational_template_check_items").delete().eq("template_id", id);
+      // operational_template_check_items NÃO é mais tocado pelo builder.
+      // Contingências usam direto e seguem intactas.
       await (supabase as any).from("operational_template_steps").delete().eq("template_id", id);
       await (supabase as any).from("operational_template_fields").delete().eq("template_id", id);
       await (supabase as any).from("operational_template_sections").delete().eq("template_id", id);
@@ -724,8 +529,6 @@ export default function OperationalCadastroPage() {
   });
 
   const openCreate = () => {
-    // Abre o builder unificado direto (sem seletor de tipo).
-    // O usuário define simples vs por etapas no próprio builder, criando agrupadores ou só perguntas.
     handleWizardPick({ type: "inspecao", setorId: "" });
   };
 
@@ -740,7 +543,6 @@ export default function OperationalCadastroPage() {
     setSections([]);
     setFields([]);
     setSteps([]);
-    // Hidrata aba Aprovador com pacote padrão da config global (apenas em criação).
     const pacote = pontuacaoConfig?.aprovador_pacote_padrao ?? [];
     setAprovadorChecks(
       pacote.filter(p => p.ativo !== false).map(p => buildAprovadorAutomatico(p))
@@ -749,17 +551,21 @@ export default function OperationalCadastroPage() {
     setValidadorChecks(
       pacoteVal.filter(p => p.ativo !== false).map(p => buildAprovadorAutomatico(p))
     );
-    
+
     setActiveTab("geral");
     purgeLegacyBuilderDrafts();
     setDialogOpen(true);
   };
 
+  /**
+   * OPENEDIT — hidratação determinística.
+   *
+   * Sem dedupe, sem fallback, sem normalização legado.
+   * UI = banco filtrado por snapshot.checklists.avaliado_field_ids.
+   * Field com histórico mas sem id no snapshot NÃO volta para UI.
+   */
   const openEdit = async (t: any) => {
     const snap: any = t.ada_config_snapshot ?? {};
-    const checklistsSnap: any = extractChecklistSnapshot(snap);
-    const savedAvaliadorFieldIds: Set<string> = new Set(extractAvaliadoFieldIds(snap));
-    // (Etapa 1 limpeza) savedAvaliadorFieldKeys removido — nunca foi aplicado como filtro.
 
     setEditingId(t.id);
     setForm({
@@ -796,7 +602,6 @@ export default function OperationalCadastroPage() {
       ada_config_snapshot: snap,
     } as TemplateForm & { ada_config_snapshot?: any });
 
-    // Load sections
     const { data: secs } = await (supabase as any).from("operational_template_sections")
       .select("*").eq("template_id", t.id).order("ordem");
     const loadedSections: SectionForm[] = (secs || []).map((s: any) => ({
@@ -805,7 +610,6 @@ export default function OperationalCadastroPage() {
     }));
     setSections(loadedSections);
 
-    // Load fields
     const { data: flds } = await (supabase as any).from("operational_template_fields")
       .select("*").eq("template_id", t.id).order("ordem");
     const loadedFields: FieldForm[] = (flds || []).map((f: any) => ({
@@ -828,33 +632,19 @@ export default function OperationalCadastroPage() {
       aprovador_exige_evidencia_nao: f.aprovador_exige_evidencia_nao ?? false,
       aprovador_tipos_evidencia: f.aprovador_tipos_evidencia || ["foto"],
     }));
-    // Causa raiz: filtrar loadedFields por snapshot antigo "ressuscitava" estado obsoleto
-    // (perguntas removidas voltavam ao reabrir; novas eram descartadas).
-    // Banco (`operational_template_fields`) é a única fonte de verdade aqui.
-    // Variável savedAvaliadorFieldIds segue sendo lida apenas para retrocompatibilidade.
-    // Se existe snapshot com avaliado_field_ids, usar como lista de campos ativos.
-    // Campos com respostas vinculadas (referencedFieldIds) são protegidos do delete
-    // mas NÃO devem reaparecer na UI se o usuário os removeu explicitamente.
-    const referencedFieldIds = await fetchReferencedFieldIds(
-      loadedFields.map(f => f.id).filter(Boolean) as string[],
-    );
-    const dedupedFields = dedupeLoadedFields(loadedFields, referencedFieldIds);
 
-    // Filtra apenas os campos que o usuário manteve ativos (salvos em avaliado_field_ids).
-    // Se não há snapshot ainda (primeiro save), usa todos os campos do banco.
-    const activeLoadedFields = hydrateActiveFields(
-      dedupedFields,
-      Array.from(savedAvaliadorFieldIds ?? [])
-    );
+    // ── HIDRATAÇÃO DETERMINÍSTICA ──
+    // Snapshot vazio (template recém-criado sem checklists ainda) → exibe todos os fields do banco.
+    // Snapshot presente → filtra por avaliado_field_ids. Field órfão NÃO ressuscita.
+    const checklistsSnapshot = getChecklistSnapshot(snap);
+    const activeFieldIds = getActiveFieldIds(snap);
+    const hasSnapshotIds = Array.isArray(snap?.checklists?.avaliado_field_ids);
+    const activeLoadedFields = hasSnapshotIds
+      ? hydrateFields(loadedFields, activeFieldIds)
+      : loadedFields;
 
-    console.log('[SNAPSHOT_LOAD] avaliado_field_ids do snapshot=', savedAvaliadorFieldIds ? Array.from(savedAvaliadorFieldIds) : null);
-    console.log('[SNAPSHOT_LOAD] loadedFields do banco (ids)=', loadedFields.map(f => f.id));
-    console.log('[SNAPSHOT_LOAD] referencedFieldIds (protegidos)=', Array.from(referencedFieldIds));
-    console.log('[REHYDRATE_FIELDS] activeLoadedFields que irão para a UI (ids)=', activeLoadedFields.map(f => f.id),
-      ' labels=', activeLoadedFields.map(f => f.label));
     setFields(activeLoadedFields);
 
-    // Load steps
     const { data: stps } = await (supabase as any).from("operational_template_steps")
       .select("*").eq("template_id", t.id).order("ordem");
     setSteps((stps || []).map((s: any) => ({
@@ -864,42 +654,16 @@ export default function OperationalCadastroPage() {
       exige_observacao: s.exige_observacao || false, exige_video: s.exige_video || false,
     })));
 
-    // (Legado) operational_template_check_items NÃO é mais lido pelo novo builder.
-    // Mantido vivo no banco apenas para histórico/relatórios antigos.
-
-    // Hidrata checklists do Aprovador/Validador a partir de ada_config_snapshot.checklists
-    // (Fase 2). Tolerante a registros antigos sem o campo.
-    const dedupedFieldIds = new Set(activeLoadedFields.map(f => f.tempId));
-    const aprRaw: any[] = Array.isArray(checklistsSnap.aprovador) ? checklistsSnap.aprovador : [];
-    const apr = aprRaw.filter((i: any) => i?.origem_pergunta !== "replicada_avaliado" || dedupedFieldIds.has(i.field_id));
-    const val: any[] = Array.isArray(checklistsSnap.validador) ? checklistsSnap.validador : [];
-    setAprovadorChecks(prev => {
-      const hydrated = sanitizeAprovadorChecks(
-        apr,
-        activeLoadedFields,
-        pontuacaoConfig?.aprovador_pacote_padrao,
-        t.habilitar_perguntas_automaticas ?? true,
-      );
-      // Re-sincroniza com fields atuais para descartar órfãos do snapshot.
-      return rebuildAprovadorFromActiveFields(hydrated, activeLoadedFields);
-    });
-    // Validador: aceita formato novo (AprovadorCheckItemForm) e formato legacy
-    // (ValidadorCheckItemForm com {pergunta, categoria}). Snapshots antigos são
-    // convertidos preservando pergunta/peso/tipo, sem perder histórico.
-    const valNormalized = val.map((i: any) => {
-      if (i.pergunta_padrao) return i; // já no formato novo
-      // legacy: ValidadorCheckItemForm
-      return {
-        ...i,
-        pergunta_padrao: i.pergunta ?? "",
-        field_id: "",
-        origem_pergunta: "manual" as const,
-      };
-    });
+    setAprovadorChecks(
+      rebuildAprovadorChecks(
+        Array.isArray(checklistsSnapshot.aprovador) ? checklistsSnapshot.aprovador : [],
+        activeLoadedFields
+      )
+    );
     setValidadorChecks(
-      valNormalized.length > 0
-        ? normalizeAprovadorList(valNormalized)
-        : []
+      rebuildValidadorChecks(
+        Array.isArray(checklistsSnapshot.validador) ? checklistsSnapshot.validador : []
+      )
     );
 
     setActiveTab("geral");
@@ -919,7 +683,6 @@ export default function OperationalCadastroPage() {
         <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Gerar Nova Tarefa</Button>
       </div>
 
-      {/* Filters */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
         <Select value={filterExecutor} onValueChange={setFilterExecutor}>
@@ -938,7 +701,6 @@ export default function OperationalCadastroPage() {
         </Select>
       </div>
 
-      {/* Templates grouped by setor with drag-and-drop */}
       <div className="space-y-4">
         {isLoading ? (
           <div className="bg-card border border-border rounded-lg p-8 text-center text-body text-muted-foreground">Carregando...</div>
@@ -1020,7 +782,6 @@ export default function OperationalCadastroPage() {
         })}
       </div>
 
-      {/* Builder Wizard */}
       <Dialog open={dialogOpen} onOpenChange={(o) => { if (!o) closeDialog(); }}>
         <DialogContent className="max-w-5xl w-[96vw] h-[92vh] p-0 flex flex-col gap-0 overflow-hidden">
           <DialogHeader className="px-4 py-3 border-b border-border">
@@ -1040,16 +801,12 @@ export default function OperationalCadastroPage() {
               templateId={editingId}
               onCancel={closeDialog}
               onSubmit={() => upsert.mutate()}
-              onSaveFields={(currentFields, currentSections) =>
-                saveFieldsOnly(currentFields, currentSections)
-              }
-              savingFields={false}
+              onSaveFields={async () => { await saveOnTabAdvance(); }}
+              savingFields={savingFieldsTab}
             />
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* (Removido) TaskTypeSelectorDialog — botão "+" abre o builder direto. */}
     </div>
   );
 }

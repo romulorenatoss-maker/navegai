@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight, Save, CheckCircle2 } from "lucide-react";
 import { TabGeral } from "@/modules/tarefas/components/tarefas_tabGeral";
@@ -15,7 +15,6 @@ import {
   WIZARD_STEPS,
   WizardStepId,
 } from "./types";
-import { syncAprovadorReplicadasFromFields } from "./checklistNormalizers";
 
 interface Props {
   isEditing: boolean;
@@ -69,10 +68,8 @@ export function TarefasBuilderWizard(props: Props) {
   const [current, setCurrent] = useState<WizardStepId>("geral");
   const [completed, setCompleted] = useState<Set<WizardStepId>>(new Set(["tipo"]));
 
-  useEffect(() => {
-    if (!hasAprovador) return;
-    setAprovadorChecks(prev => syncAprovadorReplicadasFromFields(prev, fields));
-  }, [fields, hasAprovador, setAprovadorChecks]);
+  // Sync automático REMOVIDO. Aprovador não replica mais campos do Avaliado.
+  // Filtragem de itens órfãos acontece no save oficial (rebuildAprovadorChecks).
 
   if (!visibleSteps.find(s => s.id === current)) {
     setTimeout(() => setCurrent("geral"), 0);
@@ -90,41 +87,27 @@ export function TarefasBuilderWizard(props: Props) {
   const goNext = async () => {
     if (!canAdvance) return;
 
-    // Ao sair da aba Avaliado em modo edição, persiste fields no banco antes de avançar.
-    // Garante que remoções não se percam caso o usuário feche o dialog antes do Resumo.
+    // Ao sair da aba Avaliado em modo edição, persiste no banco (save oficial).
     if (current === "campos" && isEditing) {
       try {
         await onSaveFields(fields, sections);
       } catch {
-        // erro já tratado no onError da mutation
         return;
       }
     }
 
-    if (current === "campos") {
-      setAprovadorChecks(prev => syncAprovadorReplicadasFromFields(prev, fields));
-    }
     setCompleted(prev => new Set(prev).add(current));
     const next = visibleSteps[Math.min(idx + 1, visibleSteps.length - 1)];
-    if (next.id === "checklist_aprovador") {
-      setAprovadorChecks(prev => syncAprovadorReplicadasFromFields(prev, fields));
-    }
     setCurrent(next.id);
   };
 
   const goPrev = () => {
     const prev = visibleSteps[Math.max(idx - 1, 1)];
-    if (prev.id === "checklist_aprovador") {
-      setAprovadorChecks(currentItems => syncAprovadorReplicadasFromFields(currentItems, fields));
-    }
     setCurrent(prev.id);
   };
 
   const jump = (id: WizardStepId) => {
     if (id === "tipo") return;
-    if (current === "campos" || id === "checklist_aprovador") {
-      setAprovadorChecks(prev => syncAprovadorReplicadasFromFields(prev, fields));
-    }
     setCurrent(id);
   };
 

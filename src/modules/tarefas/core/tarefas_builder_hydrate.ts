@@ -1,12 +1,12 @@
 import { FieldForm } from "@/modules/tarefas/types/tarefas_types";
-import { filterOnlyActiveFields } from "./tarefas_builder_fields";
+import { filterActiveFields } from "./tarefas_builder_fields";
 
-export function hydrateActiveFields(
-  loadedFields: FieldForm[],
+export function hydrateFields(
+  dbFields: FieldForm[],
   activeFieldIds: string[]
 ): FieldForm[] {
-  return filterOnlyActiveFields(
-    loadedFields,
-    activeFieldIds
-  );
+  return filterActiveFields(dbFields, activeFieldIds);
 }
+
+// Alias retrocompatível.
+export const hydrateActiveFields = hydrateFields;

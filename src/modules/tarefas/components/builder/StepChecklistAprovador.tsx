@@ -24,7 +24,9 @@ import {
 } from "./types";
 import { FieldConfigSheet } from "./FieldConfigSheet";
 import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
-import { isAprovadorReplicada, syncAprovadorReplicadasFromFields } from "./checklistNormalizers";
+// Sync automático REMOVIDO (Etapa 3). Filtragem agora é determinística no save.
+const isAprovadorReplicada = (i: { origem_pergunta?: string; field_id?: string; pergunta_origem_id?: string }) =>
+  i.origem_pergunta === "replicada_avaliado" || Boolean(i.field_id || i.pergunta_origem_id);
 
 interface Props {
   fields: FieldForm[];
@@ -56,10 +58,8 @@ export function StepChecklistAprovador({ fields, items, setItems }: Props) {
   // - Sempre sobrescreve field_label e pergunta_padrao para refletir o Avaliado.
   // - Remove órfãos (replicadas cujo field não existe mais).
   // - Itens AUTO/MANUAL não são tocados.
-  useEffect(() => {
-    setItems(prev => syncAprovadorReplicadasFromFields(prev, fields));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fields]);
+  // Sync automático REMOVIDO. Sem replicação invisível, sem reidratação a partir de fields.
+  // Itens órfãos são filtrados na render (abaixo) e descartados no save oficial.
 
   // Carrega o pacote padrão global e injeta na lista, preservando edições locais.
   // Idempotente: só adiciona itens automáticos que ainda não existem (por config_global_origem_id).
