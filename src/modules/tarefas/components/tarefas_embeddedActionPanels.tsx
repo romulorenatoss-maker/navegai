@@ -21,6 +21,7 @@ import { CheckCircle2, XCircle, RotateCcw, Send, Play, AlertTriangle, ShieldChec
 import { toast } from "sonner";
 import { useAssignmentReview } from "@/modules/tarefas/hooks/tarefas_useAssignmentReview";
 import { useApprovalFlow } from "@/modules/tarefas/hooks/tarefas_useApprovalFlow";
+import { useAuditFlow } from "@/modules/tarefas/hooks/tarefas_useAuditFlow";
 import { ReviewFieldCard } from "@/modules/tarefas/components/tarefas_reviewFieldCard";
 import { SnapshotField, evaluateVisibility } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
 
@@ -1324,7 +1325,6 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
  *   status: aguardando_auditoria
  * ========================================================================= */
 export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProps) {
-  const { useAuditFlow } = require("@/modules/tarefas/hooks/tarefas_useAuditFlow");
   const flow = useAuditFlow(assignment?.id || null);
   const { profile } = useAuth();
   const qc = useQueryClient();
