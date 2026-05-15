@@ -700,19 +700,19 @@ export default function OperationalCadastroPage() {
 
     // Hidrata checklists do Aprovador/Validador a partir de ada_config_snapshot.checklists
     // (Fase 2). Tolerante a registros antigos sem o campo.
-    const dedupedFieldIds = new Set(dedupedFields.map(f => f.tempId));
+    const dedupedFieldIds = new Set(activeLoadedFields.map(f => f.tempId));
     const aprRaw: any[] = Array.isArray(checklistsSnap.aprovador) ? checklistsSnap.aprovador : [];
     const apr = aprRaw.filter((i: any) => i?.origem_pergunta !== "replicada_avaliado" || dedupedFieldIds.has(i.field_id));
     const val: any[] = Array.isArray(checklistsSnap.validador) ? checklistsSnap.validador : [];
     setAprovadorChecks(prev => {
       const hydrated = sanitizeAprovadorChecks(
         apr,
-        dedupedFields,
+        activeLoadedFields,
         pontuacaoConfig?.aprovador_pacote_padrao,
         t.habilitar_perguntas_automaticas ?? true,
       );
       // Re-sincroniza com fields atuais para descartar órfãos do snapshot.
-      return syncAprovadorReplicadasFromFields(hydrated, dedupedFields);
+      return syncAprovadorReplicadasFromFields(hydrated, activeLoadedFields);
     });
     // Validador: aceita formato novo (AprovadorCheckItemForm) e formato legacy
     // (ValidadorCheckItemForm com {pergunta, categoria}). Snapshots antigos são
