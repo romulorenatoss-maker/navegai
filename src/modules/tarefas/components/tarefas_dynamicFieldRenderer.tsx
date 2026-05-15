@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -411,6 +411,27 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
 
       {renderInput()}
 
+      {/* Indicador de regra ativa por resposta */}
+      {activeRule && (
+        <div className="mt-1 flex flex-wrap gap-1">
+          {activeRule.gera_contingencia && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 border border-orange-200 dark:bg-orange-950/30 dark:text-orange-400 font-medium">
+              ⚠ Gera plano de ação
+            </span>
+          )}
+          {activeRule.requer_evidencia && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 font-medium">
+              📎 {(activeRule.tipos_evidencia || []).includes("foto") ? "📷 Foto" : (activeRule.tipos_evidencia || []).includes("video") ? "🎥 Vídeo" : (activeRule.tipos_evidencia || []).includes("audio") ? "🎵 Áudio" : "Evidência"} obrigatória
+            </span>
+          )}
+          {activeRule.requer_descricao && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border font-medium">
+              ✏️ Observação obrigatória
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Follow-up dinâmico baseado na regra da opção selecionada */}
       {activeRule && (activeRule.requer_descricao || activeRule.requer_evidencia || activeRule.gera_contingencia) && (
         <div className="mt-2 p-2.5 rounded-md border border-amber-300/60 bg-amber-50/40 dark:bg-amber-950/20 dark:border-amber-800/50 space-y-2">
@@ -481,23 +502,61 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
       )}
 
       {/* Who answered and when */}
-      {val.respondido_por_nome && val.respondido_em && (
-        <div className={`flex items-center gap-1.5 text-[10px] mt-1 ${preenchidoComAtraso ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
-          <button
-            type="button"
-            title="Ver histórico de preenchimento"
-            className={`shrink-0 transition-colors ${preenchidoComAtraso ? "text-red-500" : "text-emerald-500"}`}
-            onClick={() => {/* histórico — implementar depois */}}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          </button>
-          <span>
-            Preenchido por <strong>{val.respondido_por_nome}</strong> em{" "}
-            {format(new Date(val.respondido_em), "dd/MM/yyyy HH:mm")}
-            {preenchidoComAtraso && <span className="ml-1 font-semibold">⚠ Atrasado</span>}
-          </span>
-        </div>
-      )}
+      {val.respondido_por_nome && val.respondido_em && (() => {
+        const historico: Array<{ nome: string; data: string; versao: number; resposta?: string }> =
+          Array.isArray(val.historico_alteracoes) ? val.historico_alteracoes : [];
+        const [historicoOpen, setHistoricoOpen] = React.useState(false);
+        return (
+          <div className="mt-1 space-y-1">
+            <div className={`flex items-center gap-1.5 text-[10px] ${preenchidoComAtraso ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
+              <button
+                type="button"
+                title="Ver histórico de preenchimento"
+                onClick={() => setHistoricoOpen(v => !v)}
+                className={`shrink-0 transition-colors hover:opacity-70 ${preenchidoComAtraso ? "text-red-500" : "text-emerald-500"}`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+              </button>
+              <span>
+                Preenchido por <strong>{val.respondido_por_nome}</strong> em{" "}
+                {format(new Date(val.respondido_em), "dd/MM/yyyy HH:mm")}
+                {preenchidoComAtraso && <span className="ml-1 font-semibold">⚠ Atrasado</span>}
+              </span>
+              {historico.length > 1 && (
+                <span className="text-muted-foreground">· {historico.length} versões</span>
+              )}
+            </div>
+            {/* Histórico expandido */}
+            {historicoOpen && historico.length > 0 && (
+              <div className="ml-5 border-l-2 border-border pl-2 space-y-1">
+                {historico.slice().reverse().map((h, i) => {
+                  let isAtrasado = false;
+                  try {
+                    if (dataPrevista && horarioLimite) {
+                      const limite = new Date(`${String(dataPrevista).slice(0, 10)}T${String(horarioLimite).slice(0, 5)}:00`);
+                      isAtrasado = new Date(h.data) > limite;
+                    }
+                  } catch {}
+                  return (
+                    <div key={i} className={`text-[10px] flex items-start gap-1.5 ${isAtrasado ? "text-red-500" : "text-muted-foreground"}`}>
+                      <span className={`mt-0.5 shrink-0 ${isAtrasado ? "text-red-500" : "text-emerald-500"}`}>
+                        {isAtrasado ? "⚠" : "✓"}
+                      </span>
+                      <span>
+                        <strong>{h.nome}</strong> — v{h.versao} — {format(new Date(h.data), "dd/MM HH:mm")}
+                        {h.resposta && <span className="ml-1 text-foreground">"{h.resposta}"</span>}
+                        {isAtrasado && <span className="ml-1 font-semibold">Atrasado</span>}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Evidence upload for non-file fields that require evidence */}
       {field.exige_evidencia && !["foto", "arquivo", "assinatura"].includes(field.tipo) && (
