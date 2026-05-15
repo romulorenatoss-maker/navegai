@@ -155,8 +155,19 @@ export function RotinasTabRotina({ form, set, templateId, onSave, saving }: Prop
       if (!templateId) throw new Error("Salve a aba Geral primeiro.");
       if (!form.data_inicio) throw new Error("Configure a data de início antes de gerar.");
 
-      // Data alvo: data_inicio configurada
-      const dataAlvo = form.data_inicio; // formato YYYY-MM-DD
+      // Usa próxima data futura válida — se data_inicio já passou usa hoje
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      const dataInicio = new Date(form.data_inicio + "T00:00:00");
+      let dataAlvo: string;
+      if (dataInicio >= hoje) {
+        dataAlvo = form.data_inicio;
+      } else {
+        const y = hoje.getFullYear();
+        const mo = String(hoje.getMonth() + 1).padStart(2, "0");
+        const d = String(hoje.getDate()).padStart(2, "0");
+        dataAlvo = `${y}-${mo}-${d}`;
+      }
       const dataKey = dataAlvo;
 
       // Verifica se já existe assignment para esta data
