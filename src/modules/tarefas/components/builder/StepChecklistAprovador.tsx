@@ -24,7 +24,9 @@ import {
 } from "./types";
 import { FieldConfigSheet } from "./FieldConfigSheet";
 import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
-import { isAprovadorReplicada, syncAprovadorReplicadasFromFields } from "./checklistNormalizers";
+// Sync automático REMOVIDO (Etapa 3). Filtragem agora é determinística no save.
+const isAprovadorReplicada = (i: { origem_pergunta?: string; field_id?: string; pergunta_origem_id?: string }) =>
+  i.origem_pergunta === "replicada_avaliado" || Boolean(i.field_id || i.pergunta_origem_id);
 
 interface Props {
   fields: FieldForm[];
