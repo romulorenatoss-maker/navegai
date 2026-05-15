@@ -27,7 +27,7 @@ import {
 } from "../../services/tarefas_pontuacao_config_service";
 import { Badge } from "@/components/ui/badge";
 import { Settings2, RotateCcw } from "lucide-react";
-import { FieldConfigSheet } from "@/modules/tarefas/components/builder/FieldConfigSheet";
+
 
 type CamadaKey = "sla_aprovador" | "sla_plano_acao" | "sla_validador";
 
@@ -195,39 +195,6 @@ function PacotePadraoCard({
         </div>
       </CardContent>
 
-      {editing && (
-        <FieldConfigSheet
-          open={!!editingId}
-          onOpenChange={(o) => { if (!o) setEditingId(null); }}
-          title={`Configurar: ${editing.pergunta}`}
-          value={{
-            pergunta_padrao: editing.pergunta,
-            tipo_resposta: editing.tipo,
-            tipo: editing.tipo as any,
-            opcoes: (editing as any).opcoes,
-            regras_por_opcao: (editing as any).regras_por_opcao,
-            peso: editing.peso,
-            permite_ponderacao_auditor: editing.permite_ponderacao_auditor,
-            exige_justificativa_ponderacao: editing.exige_justificativa_ponderacao,
-          }}
-          onSave={(next) => {
-            const regs = next.regras_por_opcao ?? [];
-            update(editing.id, {
-              pergunta: next.pergunta_padrao,
-              tipo: next.tipo_resposta as AprovadorPerguntaPadrao["tipo"],
-              peso: next.peso,
-              exige_observacao: regs.some(r => r.exige_observacao),
-              exige_evidencia: regs.some(r => r.exige_evidencia),
-              permite_devolucao: regs.some(r => r.permite_devolucao),
-              gera_plano_acao: regs.some(r => r.gera_plano_acao),
-              permite_ponderacao_auditor: next.permite_ponderacao_auditor,
-              exige_justificativa_ponderacao: next.exige_justificativa_ponderacao,
-              opcoes: next.opcoes,
-              regras_por_opcao: next.regras_por_opcao,
-            } as any);
-          }}
-        />
-      )}
     </Card>
   );
 }
