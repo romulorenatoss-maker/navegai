@@ -195,7 +195,7 @@ export default function OperationalExecucaoPage() {
   const [pickedSetorId] = useState<string>("");
   const isMobile = useIsMobile();
   // Accordion vertical aberto (5 grupos fixos)
-  type OpGroup = "hoje" | "criticas" | "aguardandoAprovacao" | "aguardandoAuditoria" | "concluidas" | "todas";
+  type OpGroup = "hoje" | "emAndamento" | "criticas" | "aguardandoAprovacao" | "aguardandoAuditoria" | "concluidas" | "todas";
   const [openGroup, setOpenGroup] = useState<OpGroup | null>("hoje");
   // Ordenação única
   const [sortKey, setSortKey] = useState<SortKey>("sla");
