@@ -834,6 +834,11 @@ export default function OperationalCadastroPage() {
       ? dedupedFields.filter(f => f.id && savedAvaliadorFieldIds.has(f.id))
       : dedupedFields;
 
+    console.log('[SNAPSHOT_LOAD] avaliado_field_ids do snapshot=', savedAvaliadorFieldIds ? Array.from(savedAvaliadorFieldIds) : null);
+    console.log('[SNAPSHOT_LOAD] loadedFields do banco (ids)=', loadedFields.map(f => f.id));
+    console.log('[SNAPSHOT_LOAD] referencedFieldIds (protegidos)=', Array.from(referencedFieldIds));
+    console.log('[REHYDRATE_FIELDS] activeLoadedFields que irão para a UI (ids)=', activeLoadedFields.map(f => f.id),
+      ' labels=', activeLoadedFields.map(f => f.label));
     setFields(activeLoadedFields);
 
     // Load steps
