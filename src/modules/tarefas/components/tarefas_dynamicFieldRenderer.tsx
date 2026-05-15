@@ -173,13 +173,33 @@ function validateField(field: SnapshotField, answer: FieldAnswer | undefined): s
 
 export { evaluateVisibility, validateField };
 
-export function DynamicFieldRenderer({ field, answer, review, userRole, disabled, allAnswers, onChange, assignmentId, showValidation = true, approverPlan }: Props) {
+export function DynamicFieldRenderer({ field, answer, review, userRole, disabled, allAnswers, onChange, assignmentId, showValidation = true, approverPlan, horarioLimite, dataPrevista, profileId, responsavelId, setorExecutorId, meusSetorIds = [], isAdmin = false }: Props) {
   const [uploading, setUploading] = useState(false);
 
   const isVisible = field.visivel_para.includes(userRole) && evaluateVisibility(field.condicao_visibilidade, allAnswers);
   if (!isVisible) return null;
 
   const isEditable = !disabled && field.editavel_por.includes(userRole);
+
+  const isExecutorCorreto = useMemo(() => {
+    if (userRole !== "executor") return true;
+    if (!profileId) return false;
+    if (responsavelId) return profileId === responsavelId;
+    if (setorExecutorId) return meusSetorIds.includes(setorExecutorId);
+    return true;
+  }, [userRole, profileId, responsavelId, setorExecutorId, meusSetorIds]);
+
+  const isEditableEfetivo = isEditable && isExecutorCorreto && !(isAdmin && !isExecutorCorreto);
+
+  const preenchidoComAtraso = useMemo(() => {
+    if (!answer?.respondido_em || !dataPrevista || !horarioLimite) return false;
+    try {
+      const limite = new Date(`${String(dataPrevista).slice(0, 10)}T${String(horarioLimite).slice(0, 5)}:00`);
+      const respondidoEm = new Date(answer.respondido_em);
+      return respondidoEm > limite;
+    } catch { return false; }
+  }, [answer?.respondido_em, dataPrevista, horarioLimite]);
+
   const isReturned = review?.devolvido === true;
   const [openRodada, setOpenRodada] = useState<number | null>(review?.rodada ?? null);
   const error = showValidation ? validateField(field, answer) : null;
