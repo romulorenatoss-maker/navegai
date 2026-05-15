@@ -1324,162 +1324,267 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
  *   status: aguardando_auditoria
  * ========================================================================= */
 export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProps) {
-  // import lazy para evitar ciclo
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { useAuditFlow } = require("@/modules/tarefas/hooks/tarefas_useAuditFlow");
   const flow = useAuditFlow(assignment?.id || null);
+  const { profile } = useAuth();
+  const qc = useQueryClient();
   const [motivoFinal, setMotivoFinal] = useState("");
-  const auditorFields = useMemo(() => fields.filter((f: any) => f.auditor_verificar), [fields]);
-  const blockReasons = flow.getBlockingReasons(assignment);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [respostasAuto, setRespostasAuto] = useState<Record<string, { na: boolean; justificativa: string }>>({});
 
-  const saveTimers = useRef<Record<string, any>>({});
-  const scheduleAutoSave = (fieldId: string, payload: any) => {
-    if (saveTimers.current[fieldId]) clearTimeout(saveTimers.current[fieldId]);
-    saveTimers.current[fieldId] = setTimeout(() => {
-      flow.autoSaveAuditorAnswer.mutate({
-        fieldId,
-        resposta: payload.resposta,
-        observacao: payload.observacao,
-        evidenciaUrl: payload.evidencia_url ?? null,
-        motivoAlteracao: payload.motivo_alteracao ?? null,
-        herdada: payload.herdada ?? false,
-      });
-    }, 600);
+  // Perguntas AUTO do auditor — vêm do ada_config_snapshot.checklists.validador
+  const perguntasAutoAuditor = useMemo(() => {
+    const snap = assignment?.operational_templates?.ada_config_snapshot
+      ?? assignment?.template_snapshot?.ada_config_snapshot;
+    const lista = snap?.checklists?.validador;
+    if (!Array.isArray(lista)) return [];
+    return lista.filter((p: any) => p.ativo !== false);
+  }, [assignment]);
+
+  // Calcula resposta automática para perguntas do auditor (auditando o APROVADOR)
+  const calcRespostaAuditor = useCallback((metrica: string): { resposta: "sim" | "nao" | null; label: string; tiraPonto: boolean } => {
+    const a = assignment;
+    if (!a) return { resposta: null, label: "Sem dados", tiraPonto: false };
+    switch (metrica) {
+      case "aprovador_respondeu_no_sla": {
+        if (a.flag_sla_etapa_estourado) return { resposta: "sim", label: "Sim — avaliou fora do SLA", tiraPonto: true };
+        return { resposta: "nao", label: "Não — avaliou no prazo", tiraPonto: false };
+      }
+      case "aprovador_reabriu_tarefa":
+        if ((a.rodada_atual ?? 1) > 1) return { resposta: "sim", label: "Sim — devolveu/reabriu", tiraPonto: true };
+        return { resposta: "nao", label: "Não", tiraPonto: false };
+      case "aprovador_aprovou_com_pendencia":
+        return { resposta: null, label: "Verificação manual", tiraPonto: false };
+      case "plano_acao_sla_estourado":
+        if (a.flag_atraso_plano_acao) return { resposta: "sim", label: "Sim — SLA do plano estourou", tiraPonto: true };
+        return { resposta: "nao", label: "Não — dentro do prazo", tiraPonto: false };
+      case "plano_acao_prazo_prorrogado":
+        if (a.flag_atraso_plano_acao) return { resposta: "sim", label: "Sim — prazo foi prorrogado", tiraPonto: true };
+        return { resposta: "nao", label: "Não", tiraPonto: false };
+      case "plano_acao_prazo_prorrogado_2x":
+        if (a.flag_reincidencia_atraso) return { resposta: "sim", label: "Sim — prorrogado mais de 1 vez", tiraPonto: true };
+        return { resposta: "nao", label: "Não", tiraPonto: false };
+      default:
+        return { resposta: null, label: "Avaliação manual", tiraPonto: false };
+    }
+  }, [assignment]);
+
+  const notaMaximaAuditor = perguntasAutoAuditor.reduce((sum: number, p: any) => sum + (p.peso || 0), 0);
+  const notaEfetivaAuditor = perguntasAutoAuditor.reduce((sum: number, p: any) => {
+    const key = p.tempId ?? p.id ?? p.pergunta;
+    const r = respostasAuto[key] ?? { na: false };
+    const auto = calcRespostaAuditor(p.metrica_calculo ?? "manual");
+    if (r.na) return sum + (p.peso || 0);
+    if (auto.tiraPonto) return sum;
+    return sum + (p.peso || 0);
+  }, 0);
+
+  const slaEtapa = !!assignment?.flag_sla_etapa_estourado;
+  const reincidencia = !!assignment?.flag_reincidencia_atraso;
+  const atrasoPlano = !!assignment?.flag_atraso_plano_acao;
+
+  const aprovar = async () => setShowConfirmModal(true);
+
+  const confirmarAuditoria = async () => {
+    for (const p of perguntasAutoAuditor) {
+      const key = p.tempId ?? p.id ?? p.pergunta;
+      const r = respostasAuto[key];
+      if (r?.na && !r?.justificativa?.trim()) {
+        toast.error(`Justificativa obrigatória para N/A em: "${p.pergunta}"`);
+        return;
+      }
+    }
+    try {
+      const destino = assignment?.template_snapshot?.destino_score
+        ?? assignment?.operational_templates?.destino_score
+        ?? "individual";
+      await (supabase as any)
+        .from("operational_assignments")
+        .update({ score_auditor: notaEfetivaAuditor })
+        .eq("id", assignment.id);
+
+      if (destino === "setor" && assignment?.setor_avaliado_id) {
+        const { data: membros } = await (supabase as any)
+          .from("colaborador_setores")
+          .select("profile_id")
+          .eq("setor_id", assignment.setor_avaliado_id);
+        if (membros?.length > 0) {
+          await (supabase as any).from("operational_score_logs").insert(
+            membros.map((m: any) => ({
+              assignment_id: assignment.id,
+              profile_id: profile?.id,
+              target_profile_id: m.profile_id,
+              target_setor_id: assignment.setor_avaliado_id,
+              tipo_score: "auditoria",
+              score_final: notaEfetivaAuditor,
+              detalhe_calculo: { nota_efetiva: notaEfetivaAuditor, nota_maxima: notaMaximaAuditor, destino: "setor" },
+              created_at: new Date().toISOString(),
+            }))
+          );
+        }
+      } else {
+        const avaliadoId = assignment?.avaliado_id || assignment?.responsavel_id;
+        if (avaliadoId) {
+          await (supabase as any).from("operational_score_logs").insert({
+            assignment_id: assignment.id,
+            profile_id: profile?.id,
+            target_profile_id: avaliadoId,
+            tipo_score: "auditoria",
+            score_final: notaEfetivaAuditor,
+            detalhe_calculo: { nota_efetiva: notaEfetivaAuditor, nota_maxima: notaMaximaAuditor, destino: "individual" },
+            created_at: new Date().toISOString(),
+          });
+        }
+      }
+
+      await flow.finalDecision.mutateAsync({ assignment, action: "aprovar" });
+      setShowConfirmModal(false);
+      onClose();
+    } catch (e: any) { toast.error(e.message); }
   };
 
-  const handleResposta = (f: any, value: string) => {
-    const draft = flow.auditorAnswers[f.id];
-    flow.updateAuditorAnswer(f.id, { resposta: value });
-    scheduleAutoSave(f.id, {
-      resposta: value, observacao: draft?.observacao ?? "",
-      evidencia_url: draft?.evidencia_url ?? null,
-      motivo_alteracao: draft?.motivo_alteracao ?? null,
-      herdada: draft?.herdada ?? false,
-    });
-  };
-
-  const handleObs = (f: any, observacao: string) => {
-    const draft = flow.auditorAnswers[f.id];
-    flow.updateAuditorAnswer(f.id, { observacao });
-    scheduleAutoSave(f.id, {
-      resposta: draft?.resposta ?? "", observacao,
-      evidencia_url: draft?.evidencia_url ?? null,
-      motivo_alteracao: draft?.motivo_alteracao ?? null,
-      herdada: draft?.herdada ?? false,
-    });
-  };
-
-  const aprovar = async () => {
-    try { await flow.finalDecision.mutateAsync({ assignment, action: "aprovar" }); onClose(); }
-    catch (e: any) { toast.error(e.message); }
-  };
   const devolver = async () => {
     if (!motivoFinal.trim()) { toast.error("Justifique a devolução."); return; }
     try { await flow.finalDecision.mutateAsync({ assignment, action: "devolver", motivo: motivoFinal }); onClose(); }
     catch (e: any) { toast.error(e.message); }
   };
 
-  // Alertas/anormalidades para o auditor revisar
-  const approvalAnswers = (flow.approvalAnswers || []) as any[];
-  const planosComPrazoAlterado = approvalAnswers.filter(a => a.flag_prazo_alterado);
-  const atrasos = approvalAnswers.filter(a => a.resolucao_atrasada);
-  const fieldById = (id: string) => fields.find((f: any) => f.id === id);
-  const slaEtapa = !!assignment?.flag_sla_etapa_estourado;
-  const reincidencia = !!assignment?.flag_reincidencia_atraso;
-  const temAlertas = planosComPrazoAlterado.length > 0 || atrasos.length > 0 || slaEtapa || reincidencia;
+  if (showConfirmModal) {
+    return (
+      <div className="space-y-4">
+        <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 flex items-start gap-2">
+          <ShieldCheck className="w-4 h-4 text-blue-700 dark:text-blue-400 shrink-0 mt-0.5" />
+          <div className="text-xs text-blue-800 dark:text-blue-300">
+            <strong>Confirmar Auditoria.</strong> Revise as notas automáticas abaixo. Marque N/A com justificativa se alguma não se aplicar.
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {perguntasAutoAuditor.map((p: any) => {
+            const key = p.tempId ?? p.id ?? p.pergunta;
+            const r = respostasAuto[key] ?? { na: false, justificativa: "" };
+            const auto = calcRespostaAuditor(p.metrica_calculo ?? "manual");
+            return (
+              <div key={key} className={`border rounded-lg p-3 space-y-2 ${r.na ? "opacity-60 bg-muted/20 border-border" : auto.tiraPonto ? "bg-red-50 dark:bg-red-950/20 border-red-200" : "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200"}`}>
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-foreground">{p.pergunta}</p>
+                    {auto.resposta && !r.na && (
+                      <div className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded text-[10px] font-semibold ${auto.tiraPonto ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}>
+                        {auto.tiraPonto ? "✗" : "✓"} {auto.label}
+                      </div>
+                    )}
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Nota: <span className={`font-semibold ${auto.tiraPonto && !r.na ? "text-red-600 line-through" : "text-emerald-600"}`}>{p.peso} pts</span>
+                      {auto.tiraPonto && !r.na && <span className="text-red-600 ml-1">→ 0 pts</span>}
+                      {r.na && <span className="text-amber-600 ml-1">→ N/A (nota mantida)</span>}
+                    </p>
+                  </div>
+                  {p.permite_na !== false && (
+                    <label className="flex items-center gap-1 shrink-0 cursor-pointer mt-0.5">
+                      <input type="checkbox" checked={r.na}
+                        onChange={e => setRespostasAuto(prev => ({ ...prev, [key]: { ...r, na: e.target.checked } }))}
+                        className="w-3.5 h-3.5" />
+                      <span className="text-[11px] text-muted-foreground">N/A</span>
+                    </label>
+                  )}
+                </div>
+                {r.na && (
+                  <div className="space-y-1 ml-1">
+                    <Label className="text-[10px] text-amber-700">Justificativa obrigatória</Label>
+                    <Textarea value={r.justificativa}
+                      onChange={e => setRespostasAuto(prev => ({ ...prev, [key]: { ...r, justificativa: e.target.value } }))}
+                      placeholder="Por que não se aplica..."
+                      className="text-xs min-h-[36px]" />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="border border-primary/30 rounded-lg px-4 py-3 bg-primary/5 space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold text-foreground">Nota final da Auditoria</span>
+            <span className="text-primary text-lg font-bold">{notaEfetivaAuditor} pts</span>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            {(() => {
+              const destino = assignment?.template_snapshot?.destino_score ?? assignment?.operational_templates?.destino_score ?? "individual";
+              const nomeAvaliado = assignment?.profiles_aval?.nome ?? assignment?.profiles?.nome ?? null;
+              if (nomeAvaliado) return `👤 Ao confirmar, nota será gravada para: ${nomeAvaliado}`;
+              return "👤 Ao confirmar, nota será gravada para o avaliado";
+            })()}
+          </p>
+        </div>
+
+        <div className="flex gap-2 pt-2 sticky bottom-0 bg-background pb-1 border-t border-border">
+          <Button type="button" size="sm" variant="outline" onClick={() => setShowConfirmModal(false)} disabled={flow.isSaving}>
+            <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Voltar
+          </Button>
+          <div className="flex-1" />
+          <Button type="button" size="sm" onClick={confirmarAuditoria} disabled={flow.isSaving}
+            className="bg-blue-600 hover:bg-blue-700 text-white">
+            <Send className="w-3.5 h-3.5 mr-1" />
+            {flow.isSaving ? "Confirmando..." : "Confirmar Auditoria"}
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
-      <div className="bg-primary/5 border border-primary/30 rounded-lg p-3 flex items-start gap-2">
-        <ShieldCheck className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-        <div className="text-xs text-foreground"><strong>Modo Auditor.</strong> Responda as perguntas de auditoria configuradas no template.</div>
+      <div className="bg-blue-500/5 border border-blue-500/30 rounded-lg p-3 flex items-start gap-2">
+        <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+        <div className="text-xs text-foreground">
+          <strong>Modo Auditor.</strong> Revise o trabalho do executor e do aprovador. Verifique as abas de respostas e confirme a auditoria.
+        </div>
       </div>
 
-      {temAlertas && (
-        <div className="border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 rounded-lg p-3 space-y-2">
-          <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
-            <AlertTriangle className="w-4 h-4" />
-            <strong className="text-xs uppercase tracking-wider">Anormalidades detectadas</strong>
+      {(slaEtapa || reincidencia || atrasoPlano) && (
+        <div className="border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 rounded-lg p-3 space-y-1">
+          <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 text-xs font-semibold">
+            <AlertTriangle className="w-4 h-4" /> Anormalidades detectadas automaticamente
           </div>
-          {reincidencia && (
-            <div className="text-xs text-red-700 font-semibold bg-red-50 border border-red-200 rounded px-2 py-1">
-              ⚠ Reincidência de atraso em plano de ação
-            </div>
-          )}
-          {slaEtapa && (
-            <div className="text-xs text-amber-800">
-              <strong>SLA da etapa estourado.</strong>
-              {assignment?.justificativa_sla_etapa && <> Justificativa: <em>{assignment.justificativa_sla_etapa}</em></>}
-            </div>
-          )}
-          {planosComPrazoAlterado.map((a) => {
-            const f = fieldById(a.field_id);
-            return (
-              <div key={`pa-${a.id}`} className="text-xs text-amber-800 border-t border-amber-200 pt-1">
-                <strong>Prazo alterado pelo aprovador</strong> em "{f?.label || a.field_id}".
-                {a.justificativa_alteracao_prazo && <> Justificativa: <em>{a.justificativa_alteracao_prazo}</em></>}
-              </div>
-            );
-          })}
-          {atrasos.map((a) => {
-            const f = fieldById(a.field_id);
-            return (
-              <div key={`at-${a.id}`} className="text-xs text-red-800 border-t border-amber-200 pt-1">
-                <strong>Atraso na execução do plano</strong> em "{f?.label || a.field_id}".
-                {a.plano_acao_prazo && <> Prazo: {new Date(a.plano_acao_prazo).toLocaleString("pt-BR")} → resolvido: {a.resolvido_em ? new Date(a.resolvido_em).toLocaleString("pt-BR") : "—"}.</>}
-                {a.justificativa_atraso && <> Justificativa do executor: <em>{a.justificativa_atraso}</em></>}
-              </div>
-            );
-          })}
+          {slaEtapa && <p className="text-xs text-amber-800">⚠ SLA da etapa estourado</p>}
+          {atrasoPlano && <p className="text-xs text-amber-800">⚠ Plano de ação entregue fora do prazo</p>}
+          {reincidencia && <p className="text-xs text-red-700 font-semibold">⚠ Reincidência de atraso em plano de ação</p>}
         </div>
       )}
 
-      {auditorFields.length === 0 ? (
-        <p className="text-xs text-muted-foreground text-center py-4">Nenhuma pergunta de auditoria configurada neste template.</p>
-      ) : (
-        auditorFields.map((f: any) => {
-          const existing = flow.existingAuditAnswers.find((a: any) => a.field_id === f.id);
-          const draft = flow.auditorAnswers[f.id];
-          const value = draft?.resposta ?? existing?.resposta ?? "";
-          const obs = draft?.observacao ?? existing?.observacao ?? "";
-          const execAnswer = (flow.fieldAnswers || []).find((a: any) => a.field_id === f.id);
-          return (
-            <div key={f.id} className="border border-border rounded-lg p-3 space-y-2 bg-card">
-              <div className="text-sm font-medium text-foreground">{f.auditor_pergunta || `Auditar: ${f.label}`}</div>
-              {execAnswer && (
-                <div className="rounded-md border border-border/60 bg-muted/40 p-2 text-xs">
-                  <span className="text-muted-foreground">Resposta executor: </span>
-                  <strong>{execAnswer.valor_booleano === true ? "Conforme" : execAnswer.valor_booleano === false ? "Não Conforme" : execAnswer.valor_texto || "—"}</strong>
+      {perguntasAutoAuditor.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Perguntas automáticas da auditoria</p>
+          {perguntasAutoAuditor.map((p: any) => {
+            const auto = calcRespostaAuditor(p.metrica_calculo ?? "manual");
+            return (
+              <div key={p.tempId ?? p.pergunta} className={`border rounded-lg px-3 py-2 flex items-center justify-between ${auto.tiraPonto ? "bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800" : "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-800"}`}>
+                <div>
+                  <p className="text-xs font-medium text-foreground">{p.pergunta}</p>
+                  {auto.resposta && (
+                    <p className={`text-[10px] mt-0.5 ${auto.tiraPonto ? "text-red-600" : "text-emerald-600"}`}>
+                      {auto.tiraPonto ? "✗" : "✓"} {auto.label}
+                    </p>
+                  )}
                 </div>
-              )}
-              <div className="flex gap-2">
-                {[
-                  { v: "conforme", label: "Conforme", cls: "border-emerald-300 text-emerald-700" },
-                  { v: "nao_conforme", label: "Não Conforme", cls: "border-red-300 text-red-700" },
-                  { v: "na", label: "N/A", cls: "border-muted-foreground/30 text-muted-foreground" },
-                ].map((opt) => (
-                  <button key={opt.v} type="button" onClick={() => handleResposta(f, opt.v)}
-                    className={`flex-1 text-xs px-2 py-1.5 rounded border transition-colors ${
-                      value === opt.v ? `${opt.cls} ring-2 ring-current/20 font-semibold` : "border-border text-muted-foreground hover:bg-muted"
-                    }`}>{opt.label}</button>
-                ))}
+                <span className={`text-xs font-semibold ${auto.tiraPonto ? "text-red-600" : "text-emerald-600"}`}>
+                  {auto.tiraPonto ? "0" : p.peso} pts
+                </span>
               </div>
-              <Textarea placeholder="Observação..." className="text-xs min-h-[40px]" value={obs} onChange={(e) => handleObs(f, e.target.value)} />
-            </div>
-          );
-        })
-      )}
-
-      <div className="space-y-1 pt-2 border-t border-border">
-        <Label className="text-[11px]">Justificativa (obrigatória para devolver)</Label>
-        <Textarea value={motivoFinal} onChange={(e) => setMotivoFinal(e.target.value)} className="text-xs min-h-[44px]" maxLength={2000} />
-      </div>
-
-      {blockReasons.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-xs text-amber-800">
-          {blockReasons.map((r: string, i: number) => <div key={i}>• {r}</div>)}
+            );
+          })}
+          <div className="flex items-center justify-between px-3 py-2 bg-muted/50 border border-border rounded-lg">
+            <span className="text-xs text-muted-foreground">Total parcial (sem N/A)</span>
+            <span className="text-sm font-bold text-primary">{notaEfetivaAuditor} / {notaMaximaAuditor} pts</span>
+          </div>
         </div>
       )}
+
+      <div className="space-y-2 pt-2 border-t border-border">
+        <Label className="text-[11px]">Justificativa para devolução (obrigatória se devolver)</Label>
+        <Textarea value={motivoFinal} onChange={e => setMotivoFinal(e.target.value)} className="text-xs min-h-[44px]" maxLength={2000} />
+      </div>
 
       <div className="flex gap-2 pt-2 sticky bottom-0 bg-background pb-1">
         <Button type="button" size="sm" variant="outline" onClick={devolver} disabled={flow.isSaving}
@@ -1487,9 +1592,9 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
           <RotateCcw className="w-3.5 h-3.5 mr-1" /> Devolver
         </Button>
         <div className="flex-1" />
-        <Button type="button" size="sm" onClick={aprovar} disabled={blockReasons.length > 0 || flow.isSaving}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white">
-          <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> {flow.isSaving ? "Salvando..." : "Aprovar"}
+        <Button type="button" size="sm" onClick={aprovar} disabled={flow.isSaving}
+          className="bg-blue-600 hover:bg-blue-700 text-white">
+          <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Confirmar Auditoria
         </Button>
       </div>
     </div>
