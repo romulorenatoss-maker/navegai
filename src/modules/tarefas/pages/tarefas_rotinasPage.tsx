@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TIPO_EXECUCAO_LABELS, RECORRENCIA_LABELS } from "@/modules/tarefas/hooks/tarefas_useScoring";
-import { TemplateForm, SectionForm, FieldForm, StepForm, defaultTemplate, defaultSection, defaultField, defaultStep } from "@/modules/tarefas/types/tarefas_types";
+import { TemplateForm, SectionForm, FieldForm, StepForm, defaultTemplate } from "@/modules/tarefas/types/tarefas_types";
 // (Removido) TaskTypeSelectorDialog — builder único, sem seletor prévio.
 type TaskType = "simples" | "inspecao";
 import { TarefasBuilderWizard } from "@/modules/tarefas/components/builder/TarefasBuilderWizard";
@@ -743,9 +743,7 @@ export default function OperationalCadastroPage() {
     const savedAvaliadorFieldIds = Array.isArray(checklistsSnap.avaliado_field_ids)
       ? new Set(checklistsSnap.avaliado_field_ids.filter(Boolean))
       : null;
-    const savedAvaliadorFieldKeys = Array.isArray(checklistsSnap.avaliado_fields)
-      ? new Set(checklistsSnap.avaliado_fields.map((f: any) => f?.key).filter(Boolean))
-      : null;
+    // (Etapa 1 limpeza) savedAvaliadorFieldKeys removido — nunca foi aplicado como filtro.
 
     setEditingId(t.id);
     setForm({
@@ -817,9 +815,7 @@ export default function OperationalCadastroPage() {
     // Causa raiz: filtrar loadedFields por snapshot antigo "ressuscitava" estado obsoleto
     // (perguntas removidas voltavam ao reabrir; novas eram descartadas).
     // Banco (`operational_template_fields`) é a única fonte de verdade aqui.
-    // Variáveis savedAvaliadorFieldIds/Keys ficam apenas para retrocompatibilidade
-    // de leitura, mas não são mais aplicadas como filtro.
-    void savedAvaliadorFieldKeys;
+    // Variável savedAvaliadorFieldIds segue sendo lida apenas para retrocompatibilidade.
     // Se existe snapshot com avaliado_field_ids, usar como lista de campos ativos.
     // Campos com respostas vinculadas (referencedFieldIds) são protegidos do delete
     // mas NÃO devem reaparecer na UI se o usuário os removeu explicitamente.
