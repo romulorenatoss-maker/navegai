@@ -361,7 +361,7 @@ export default function OperationalCadastroPage() {
       // e reapareciam como fantasmas no Aprovador ao reabrir. Filtrar antes do sync.
       const activeSectionIds = new Set(sections.map(s => s.tempId).filter(Boolean));
       const activeFields = fields.filter(f => f.sectionTempId && activeSectionIds.has(f.sectionTempId));
-      const aprovadorSync = syncAprovadorReplicadasFromFields(aprovadorChecks, activeFields);
+      const aprovadorSync = rebuildAprovadorFromActiveFields(aprovadorChecks, activeFields);
       const aprovadorSnapshot = sanitizeAprovadorChecks(
         aprovadorSync,
         activeFields,
@@ -417,8 +417,8 @@ export default function OperationalCadastroPage() {
           ...adaSnapshotBase,
           checklists: {
             ...((adaSnapshotBase.checklists ?? {}) as any),
-            avaliado_fields: activeAvaliadorFields,
-            avaliado_field_ids: activeAvaliadorFieldIds,
+            avaliado_fields: buildActiveFieldsSnapshot(activeFields),
+            avaliado_field_ids: buildActiveFieldIds(activeFields),
             aprovador: aprovadorSnapshot,
             validador: validadorChecks,
           },
@@ -674,8 +674,8 @@ export default function OperationalCadastroPage() {
           ...currentSnap,
           checklists: {
             ...(currentSnap.checklists ?? {}),
-            avaliado_fields: activeAvaliadorFields,
-            avaliado_field_ids: Array.from(keepFieldIds),
+            avaliado_fields: buildActiveFieldsSnapshot(currentFields),
+            avaliado_field_ids: buildActiveFieldIds(currentFields),
           },
         },
       })
@@ -683,7 +683,7 @@ export default function OperationalCadastroPage() {
 
     // Re-sync aprovador
     setAprovadorChecks(prev => {
-      const next = syncAprovadorReplicadasFromFields(
+      const next = rebuildAprovadorFromActiveFields(
         prev,
         currentFields.map(f => ({ ...f, tempId: f.id ?? f.tempId }))
       );
@@ -844,9 +844,10 @@ export default function OperationalCadastroPage() {
 
     // Filtra apenas os campos que o usuário manteve ativos (salvos em avaliado_field_ids).
     // Se não há snapshot ainda (primeiro save), usa todos os campos do banco.
-    const activeLoadedFields = savedAvaliadorFieldIds && savedAvaliadorFieldIds.size > 0
-      ? dedupedFields.filter(f => f.id && savedAvaliadorFieldIds.has(f.id))
-      : dedupedFields;
+    const activeLoadedFields = hydrateActiveFields(
+      dedupedFields,
+      Array.from(savedAvaliadorFieldIds ?? [])
+    );
 
     console.log('[SNAPSHOT_LOAD] avaliado_field_ids do snapshot=', savedAvaliadorFieldIds ? Array.from(savedAvaliadorFieldIds) : null);
     console.log('[SNAPSHOT_LOAD] loadedFields do banco (ids)=', loadedFields.map(f => f.id));
@@ -882,7 +883,7 @@ export default function OperationalCadastroPage() {
         t.habilitar_perguntas_automaticas ?? true,
       );
       // Re-sincroniza com fields atuais para descartar órfãos do snapshot.
-      return syncAprovadorReplicadasFromFields(hydrated, activeLoadedFields);
+      return rebuildAprovadorFromActiveFields(hydrated, activeLoadedFields);
     });
     // Validador: aceita formato novo (AprovadorCheckItemForm) e formato legacy
     // (ValidadorCheckItemForm com {pergunta, categoria}). Snapshots antigos são
