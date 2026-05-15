@@ -576,6 +576,7 @@ export function useAssignmentExecution(assignmentId: string | null) {
     saveDraft,
     validateAll,
     getLatestReview,
+    getAllReviews,
     submit,
     startTask,
     isSubmitting: submit.isPending,
