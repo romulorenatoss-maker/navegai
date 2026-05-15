@@ -522,6 +522,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   };
 
   const confirmarAprovacao = async () => {
+    // Valida justificativas de N/A obrigatórias
     for (const p of perguntasAutoTemplate) {
       const key = p.tempId ?? p.id ?? p.pergunta;
       const r = respostasAuto[key];
@@ -530,7 +531,71 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
         return;
       }
     }
+
+    // Calcula nota final para gravar no banco
+    const fieldsComPlano = new Set(
+      (flow.fieldReviews as any[])
+        .filter((r: any) => r.devolvido === true)
+        .map((r: any) => r.field_id)
+    );
+
+    const notaAutoFinal = perguntasAutoTemplate.reduce((sum: number, p: any) => {
+      const key = p.tempId ?? p.id ?? p.pergunta;
+      const r = respostasAuto[key] ?? { na: false };
+      const auto = calcRespostaAuto(p.metrica_calculo ?? "manual");
+      if (r.na) return sum + (p.peso || 0); // N/A mantém nota
+      if (auto.tiraPonto) return sum; // penalidade
+      return sum + (p.peso || 0);
+    }, 0);
+
+    const notaAvaliadorFinal = approverFields.reduce((sum: number, f: any) => {
+      const keyNA = `avaliado_na_${f.id}`;
+      const rNA = respostasAuto[keyNA] ?? { na: false };
+      const tevePlano = fieldsComPlano.has(f.id);
+      if (tevePlano && !rNA.na) return sum;
+      return sum + (f.aprovador_peso || 1);
+    }, 0);
+
+    const notaFinalTotal = notaAutoFinal + notaAvaliadorFinal;
+
     try {
+      // Grava nota no assignment antes de fechar
+      await (supabase as any)
+        .from("operational_assignments")
+        .update({
+          score_avaliado: notaFinalTotal,
+          score_final_ajustado: notaFinalTotal,
+          pontuacao_obtida: notaFinalTotal,
+        })
+        .eq("id", assignment.id);
+
+      // Se destino_score = setor, propaga nota para todos do setor avaliado
+      const destino = assignment?.template_snapshot?.destino_score
+        ?? assignment?.operational_templates?.destino_score
+        ?? "individual";
+
+      if (destino === "setor" && assignment?.setor_avaliado_id) {
+        const { data: membros } = await (supabase as any)
+          .from("colaborador_setores")
+          .select("profile_id")
+          .eq("setor_id", assignment.setor_avaliado_id);
+
+        if (membros && membros.length > 0) {
+          await (supabase as any).from("operational_execution_logs").insert({
+            assignment_id: assignment.id,
+            acao: "nota_distribuida_setor",
+            executado_por: profile?.id,
+            detalhes: {
+              nota_final: notaFinalTotal,
+              destino_score: "setor",
+              setor_id: assignment.setor_avaliado_id,
+              membros: membros.map((m: any) => m.profile_id),
+              distribuido_em: new Date().toISOString(),
+            },
+          });
+        }
+      }
+
       await flow.finalDecision.mutateAsync({ assignment, action: "aprovar" });
       setShowConfirmModal(false);
       onClose();
@@ -893,10 +958,24 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                   );
                 })}
 
-                <div className="border border-border rounded-lg px-4 py-3 flex items-center justify-between bg-card">
-                  <span className="text-sm font-semibold text-foreground">Nota total do Avaliado</span>
-                  <span className="text-primary text-sm font-bold">{notaAutoTotal + notaAvaliadorTotal} pts</span>
-                </div>
+                {(() => {
+                  const destino = assignment?.template_snapshot?.destino_score
+                    ?? assignment?.operational_templates?.destino_score
+                    ?? "individual";
+                  return (
+                    <div className="border border-primary/30 rounded-lg px-4 py-3 bg-primary/5 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-foreground">Nota final do Avaliado</span>
+                        <span className="text-primary text-lg font-bold">{notaAutoTotal + notaAvaliadorTotal} pts</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        {destino === "setor"
+                          ? "📊 Nota distribuída para todos os membros do setor avaliado"
+                          : "👤 Nota atribuída individualmente ao avaliado"}
+                      </p>
+                    </div>
+                  );
+                })()}
               </>
             );
           })()}
