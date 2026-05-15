@@ -1423,17 +1423,23 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
           );
         }
       } else {
-        const avaliadoId = assignment?.avaliado_id || assignment?.responsavel_id;
-        if (avaliadoId) {
+        // Nota da auditoria vai para o APROVADOR (não para o avaliado)
+        const aprovadorId = assignment?.aprovador_id;
+        if (aprovadorId) {
           await (supabase as any).from("operational_score_logs").insert({
             assignment_id: assignment.id,
             profile_id: profile?.id,
-            target_profile_id: avaliadoId,
-            tipo_score: "auditoria",
+            target_profile_id: aprovadorId,
+            tipo_score: "aprovador",
             score_final: notaEfetivaAuditor,
-            detalhe_calculo: { nota_efetiva: notaEfetivaAuditor, nota_maxima: notaMaximaAuditor, destino: "individual" },
+            detalhe_calculo: { nota_efetiva: notaEfetivaAuditor, nota_maxima: notaMaximaAuditor, destino: "aprovador" },
             created_at: new Date().toISOString(),
           });
+          // Grava também no assignment
+          await (supabase as any)
+            .from("operational_assignments")
+            .update({ score_aprovador: notaEfetivaAuditor })
+            .eq("id", assignment.id);
         }
       }
 
