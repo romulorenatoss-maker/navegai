@@ -211,6 +211,22 @@ export function RotinasTabRotina({ form, set, templateId, onSave, saving }: Prop
     onError: (e: any) => toast.error(e.message),
   });
 
+  // ── Excluir tarefa pendente ──
+  const deleteMutation = useMutation({
+    mutationFn: async (assignmentId: string) => {
+      const { error } = await (supabase as any)
+        .from("operational_assignments")
+        .delete()
+        .eq("id", assignmentId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["rotina_assignments", templateId] });
+      toast.success("Tarefa excluída.");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   return (
     <div className="space-y-5 p-1">
       {/* Tipo de Recorrência */}
