@@ -342,6 +342,7 @@ export function RotinasModal({ open, onClose, templateId, setores, colaboradores
     geral: false, avaliado: false, aprovador: false, auditor: false, rotina: false,
   });
   const [loading, setLoading] = useState(false);
+  const [tarefasAbertas, setTarefasAbertas] = useState(0);
 
   const set = useCallback(<K extends keyof TemplateForm>(k: K, v: TemplateForm[K]) => {
     setFormState((prev) => ({ ...prev, [k]: v }));
@@ -356,12 +357,19 @@ export function RotinasModal({ open, onClose, templateId, setores, colaboradores
     if (templateId) {
       setLoading(true);
       loadTemplate(templateId)
-        .then(({ form: f, sections: s, fields: fl, aprovadorItems: ai, auditorItems: aui }) => {
+        .then(async ({ form: f, sections: s, fields: fl, aprovadorItems: ai, auditorItems: aui }) => {
           setFormState(f);
           setSections(s);
           setFields(fl);
           setAprovadorItems(ai);
           setAuditorItems(aui);
+          // Verifica tarefas abertas
+          const { count } = await (supabase as any)
+            .from("operational_assignments")
+            .select("id", { count: "exact", head: true })
+            .eq("template_id", templateId)
+            .in("status", ["pendente", "em_andamento", "devolvida", "aguardando_aprovacao", "aguardando_auditoria"]);
+          setTarefasAbertas(count || 0);
         })
         .catch((e) => toast.error("Erro ao carregar template: " + e.message))
         .finally(() => setLoading(false));
