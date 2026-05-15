@@ -1006,8 +1006,10 @@ export default function OperationalCadastroPage() {
               templateId={editingId}
               onCancel={closeDialog}
               onSubmit={() => upsert.mutate()}
-              onSaveFields={() => saveFieldsOnly.mutateAsync()}
-              savingFields={saveFieldsOnly.isPending}
+              onSaveFields={(currentFields, currentSections) =>
+                saveFieldsOnly(currentFields, currentSections)
+              }
+              savingFields={false}
             />
           </div>
         </DialogContent>
