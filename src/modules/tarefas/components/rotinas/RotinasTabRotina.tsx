@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Save, CalendarDays, Play, RefreshCw, Trash2 } from "lucide-react";
+import { Save, CalendarDays, Play, RefreshCw } from "lucide-react";
 import { TemplateForm, getLocalToday } from "@/modules/tarefas/types/tarefas_types";
 import { cn } from "@/lib/utils";
 
@@ -121,16 +121,16 @@ export function RotinasTabRotina({ form, set, templateId, onSave, saving }: Prop
         .select("id, status, data_prevista, created_at, responsavel_id, profiles:responsavel_id(nome)")
         .eq("template_id", templateId)
         .order("data_prevista", { ascending: false })
-        .limit(60);
+        .limit(100);
       if (error) throw error;
       return data || [];
     },
   });
 
-  // Datas já geradas (chave YYYY-MM-DD)
+  // Datas já geradas (chave YYYY-MM-DD) — usa slice para evitar problema de fuso
   const assignmentDates = useMemo(() =>
     new Set(assignments.map((a: any) =>
-      a.data_prevista ? a.data_prevista.slice(0, 10) : null
+      a.data_prevista ? String(a.data_prevista).slice(0, 10) : null
     ).filter(Boolean)),
     [assignments]
   );
@@ -142,7 +142,7 @@ export function RotinasTabRotina({ form, set, templateId, onSave, saving }: Prop
       if (!form.data_inicio) throw new Error("Configure a data de início antes de gerar.");
 
       // Data alvo: data_inicio configurada
-      const dataAlvo = form.data_inicio;
+      const dataAlvo = form.data_inicio; // formato YYYY-MM-DD
       const dataKey = dataAlvo;
 
       // Verifica se já existe assignment para esta data
@@ -150,9 +150,10 @@ export function RotinasTabRotina({ form, set, templateId, onSave, saving }: Prop
         throw new Error("Já existe uma tarefa gerada para este dia. Remova a existente antes de gerar outra.");
       }
 
-      // Monta o horário previsto
-      const horario = form.horario_inicio_previsto || "08:00";
-      const dataPrevista = `${dataAlvo}T${horario}:00`;
+      // Monta o horário previsto — pega só HH:MM, ignora segundos se vier do banco
+      const horarioRaw = form.horario_inicio_previsto || "08:00";
+      const horario = horarioRaw.slice(0, 5); // garante formato HH:MM
+      const dataPrevista = `${dataAlvo}T${horario}:00`; // YYYY-MM-DDTHH:MM:00
 
       // Busca o template completo para pegar executor/aprovador/auditor
       const { data: tmpl, error: tmplErr } = await (supabase as any)
@@ -207,22 +208,6 @@ export function RotinasTabRotina({ form, set, templateId, onSave, saving }: Prop
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["rotina_assignments", templateId] });
       toast.success("Tarefa gerada com sucesso.");
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  // ── Excluir tarefa pendente ──
-  const deleteMutation = useMutation({
-    mutationFn: async (assignmentId: string) => {
-      const { error } = await (supabase as any)
-        .from("operational_assignments")
-        .delete()
-        .eq("id", assignmentId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["rotina_assignments", templateId] });
-      toast.success("Tarefa excluída.");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -444,30 +429,6 @@ export function RotinasTabRotina({ form, set, templateId, onSave, saving }: Prop
                     <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border shrink-0", badge.cls)}>
                       {badge.label}
                     </span>
-                    {(() => {
-                      const podeExcluir = a.status === "pendente";
-                      return (
-                        <button
-                          type="button"
-                          disabled={!podeExcluir || deleteMutation.isPending}
-                          title={podeExcluir ? "Excluir tarefa" : "Só é possível excluir tarefas pendentes"}
-                          onClick={() => {
-                            if (!podeExcluir) return;
-                            if (window.confirm("Excluir esta tarefa? Esta ação não pode ser desfeita.")) {
-                              deleteMutation.mutate(a.id);
-                            }
-                          }}
-                          className={cn(
-                            "p-1.5 rounded shrink-0 transition-colors",
-                            podeExcluir
-                              ? "text-destructive hover:bg-destructive/10"
-                              : "text-muted-foreground/40 cursor-not-allowed"
-                          )}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      );
-                    })()}
                   </div>
                 );
               })}
