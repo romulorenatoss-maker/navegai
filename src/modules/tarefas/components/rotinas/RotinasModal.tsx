@@ -59,7 +59,6 @@ function buildRotinaPayload(form: TemplateForm) {
     dia_fixo_mes: form.dia_fixo_mes,
     data_inicio: form.data_inicio || null,
     data_fim: form.repetir_sempre ? null : (form.data_fim || null),
-    repetir_sempre: form.repetir_sempre,
     horario_inicio_previsto: form.horario_inicio_previsto || null,
     horario_limite_execucao: form.horario_limite_execucao || null,
     tolerancia_minutos: form.tolerancia_minutos,
@@ -86,7 +85,49 @@ async function saveFieldsToDb(
   sections: SectionForm[],
   fields: FieldForm[]
 ): Promise<{ sections: SectionForm[]; fields: FieldForm[] }> {
-  // ── Sections ──
+
+  // ── IDs que a UI quer manter ──
+  const keepSectionIds = new Set(sections.map((s) => s.id).filter(Boolean) as string[]);
+  const keepFieldIds   = new Set(fields.map((f) => f.id).filter(Boolean) as string[]);
+
+  // ── Delete fields removidos da UI (sem histórico de respostas — tenta direto) ──
+  const { data: dbFields } = await (supabase as any)
+    .from("operational_template_fields")
+    .select("id")
+    .eq("template_id", templateId);
+
+  const fieldIdsToDelete = (dbFields || [])
+    .map((f: any) => f.id)
+    .filter((id: string) => !keepFieldIds.has(id));
+
+  if (fieldIdsToDelete.length > 0) {
+    // Só deleta se não tiver respostas vinculadas
+    const { data: comResposta } = await (supabase as any)
+      .from("operational_field_answers")
+      .select("field_id")
+      .in("field_id", fieldIdsToDelete);
+    const comRespostaIds = new Set((comResposta || []).map((r: any) => r.field_id));
+    const deletaveis = fieldIdsToDelete.filter((id: string) => !comRespostaIds.has(id));
+    if (deletaveis.length > 0) {
+      await (supabase as any).from("operational_template_fields").delete().in("id", deletaveis);
+    }
+  }
+
+  // ── Delete sections removidas da UI ──
+  const { data: dbSections } = await (supabase as any)
+    .from("operational_template_sections")
+    .select("id")
+    .eq("template_id", templateId);
+
+  const sectionIdsToDelete = (dbSections || [])
+    .map((s: any) => s.id)
+    .filter((id: string) => !keepSectionIds.has(id));
+
+  if (sectionIdsToDelete.length > 0) {
+    await (supabase as any).from("operational_template_sections").delete().in("id", sectionIdsToDelete);
+  }
+
+  // ── Upsert sections ──
   const sectionIdMap: Record<string, string> = {};
   const savedSections: SectionForm[] = [];
 
@@ -114,7 +155,7 @@ async function saveFieldsToDb(
     }
   }
 
-  // ── Fields ──
+  // ── Upsert fields ──
   const savedFields: FieldForm[] = [];
   for (const f of fields) {
     if (!f.sectionTempId || !sectionIdMap[f.sectionTempId]) continue;
@@ -148,9 +189,19 @@ async function saveFieldsToDb(
 
   // ── Atualiza snapshot com avaliado_field_ids ──
   const fieldIds = savedFields.map((f) => f.id).filter(Boolean);
+  const { data: snapAtual } = await (supabase as any)
+    .from("operational_templates")
+    .select("ada_config_snapshot")
+    .eq("id", templateId)
+    .single();
+  const snapExistente = snapAtual?.ada_config_snapshot ?? {};
   await (supabase as any).from("operational_templates").update({
     ada_config_snapshot: {
-      checklists: { avaliado_field_ids: fieldIds },
+      ...snapExistente,
+      checklists: {
+        ...(snapExistente.checklists ?? {}),
+        avaliado_field_ids: fieldIds,
+      },
     },
   }).eq("id", templateId);
 
@@ -163,6 +214,10 @@ async function saveChecklistToDb(
   items: RotinaCheckItem[],
   extraPayload?: Record<string, any>
 ) {
+  // "auditor" é salvo como "validador" no snapshot para manter compatibilidade
+  // com tarefas_minhasTarefasPage que lê checklists.validador
+  const chaveSnapshot = chave === "auditor" ? "validador" : "aprovador";
+
   // Lê snapshot atual para não sobrescrever a outra chave
   const { data: tmpl } = await (supabase as any).from("operational_templates").select("ada_config_snapshot").eq("id", templateId).single();
   const snapAtual = tmpl?.ada_config_snapshot ?? {};
@@ -173,7 +228,7 @@ async function saveChecklistToDb(
       ...snapAtual,
       checklists: {
         ...checklistsAtuais,
-        [chave]: items,
+        [chaveSnapshot]: items,
       },
     },
     ...extraPayload,
@@ -203,7 +258,7 @@ async function loadTemplate(templateId: string) {
     ? snap.checklists.aprovador
     : PERGUNTAS_PADRAO_APROVADOR.map((p) => ({ ...p, tempId: crypto.randomUUID() }));
   const auditorItems: RotinaCheckItem[] = Array.isArray(snap.checklists?.auditor)
-    ? snap.checklists.auditor
+    ? snap.checklists.validador
     : PERGUNTAS_PADRAO_AUDITOR.map((p) => ({ ...p, tempId: crypto.randomUUID() }));
 
   const loadedSections: SectionForm[] = (secs || []).map((s: any) => ({
@@ -480,7 +535,7 @@ export function RotinasModal({ open, onClose, templateId, setores, colaboradores
               </TabsContent>
 
               <TabsContent value="rotina" className="mt-0 h-full">
-                <RotinasTabRotina form={form} set={set} onSave={saveRotina} saving={saving.rotina} />
+                <RotinasTabRotina form={form} set={set} templateId={currentId} onSave={saveRotina} saving={saving.rotina} />
               </TabsContent>
             </div>
           </Tabs>
