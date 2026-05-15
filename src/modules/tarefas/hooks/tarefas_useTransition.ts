@@ -285,7 +285,8 @@ export function useOperationalTransition() {
         // o cleanup já rodou antes desta chamada — não bloquear
         const isReenvioPosDevolucao =
           action === "enviar_avaliacao" &&
-          ((extraData as any)?.rodadaAtual ?? 1) > 1;
+          (((extraData as any)?.rodadaAtual ?? 1) > 1 ||
+            (extraData as any)?.contingenciesCleanupDone === true);
         if (!isReenvioPosDevolucao) {
           const openCount = await hasOpenContingencies(assignmentId);
           if (openCount > 0) {
