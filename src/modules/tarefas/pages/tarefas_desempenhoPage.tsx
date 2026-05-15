@@ -36,7 +36,35 @@ export default function DesempenhoOperacionalPage() {
   const [endDate, setEndDate] = useState<Date>(endOfMonth(now));
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const profileId = profile?.id;
+  // Admin pode visualizar o desempenho de qualquer colaborador
+  const [viewAsProfileId, setViewAsProfileId] = useState<string>(profile?.id || "");
+  const profileId = isAdmin && viewAsProfileId ? viewAsProfileId : (profile?.id || "");
+
+  // Lista de colaboradores que têm tarefas associadas (apenas para admin)
+  const { data: colaboradoresComTarefas = [] } = useQuery({
+    queryKey: ["desempenho_colaboradores_com_tarefas"],
+    enabled: !!isAdmin,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("operational_assignments")
+        .select("responsavel_id, avaliado_id, aprovador_id, auditor_id, profiles_resp:responsavel_id(id, nome), profiles_aval:avaliado_id(id, nome), profiles_aprov:aprovador_id(id, nome), profiles_audit:auditor_id(id, nome)")
+        .not("status", "in", "(cancelada,arquivada)")
+        .limit(500);
+
+      if (!data) return [];
+
+      const map = new Map<string, string>();
+      for (const a of data) {
+        if (a.profiles_resp?.id) map.set(a.profiles_resp.id, a.profiles_resp.nome);
+        if (a.profiles_aval?.id) map.set(a.profiles_aval.id, a.profiles_aval.nome);
+        if (a.profiles_aprov?.id) map.set(a.profiles_aprov.id, a.profiles_aprov.nome);
+        if (a.profiles_audit?.id) map.set(a.profiles_audit.id, a.profiles_audit.nome);
+      }
+
+      return Array.from(map, ([id, nome]) => ({ id, nome }))
+        .sort((a, b) => a.nome.localeCompare(b.nome));
+    },
+  });
 
   // ── Fetch score logs for logged user ──
   const { data: scoreLogs = [], isLoading } = useQuery({
@@ -124,10 +152,33 @@ export default function DesempenhoOperacionalPage() {
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-section font-semibold text-foreground">📊 Meu Desempenho Operacional</h1>
-          <p className="text-body text-muted-foreground">Transparência total: veja como suas notas são calculadas.</p>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-section font-semibold text-foreground">
+            📊 {isAdmin && viewAsProfileId !== profile?.id
+              ? `Desempenho — ${colaboradoresComTarefas.find(c => c.id === viewAsProfileId)?.nome || "Colaborador"}`
+              : "Meu Desempenho Operacional"}
+          </h1>
+          <p className="text-body text-muted-foreground">Transparência total: veja como as notas são calculadas.</p>
         </div>
+
+        {/* Seletor de visão — apenas admin */}
+        {isAdmin && (
+          <div className="flex items-center gap-2 shrink-0">
+            <Users className="w-4 h-4 text-muted-foreground" />
+            <select
+              value={viewAsProfileId}
+              onChange={(e) => setViewAsProfileId(e.target.value)}
+              className="text-sm border border-border rounded-md px-3 py-1.5 bg-card text-foreground focus:outline-none focus:ring-1 focus:ring-primary min-w-[180px]"
+            >
+              <option value={profile?.id || ""}>👤 Meu desempenho</option>
+              {colaboradoresComTarefas
+                .filter(c => c.id !== profile?.id)
+                .map(c => (
+                  <option key={c.id} value={c.id}>{c.nome}</option>
+                ))}
+            </select>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <Popover>
             <PopoverTrigger asChild>
