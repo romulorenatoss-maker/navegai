@@ -880,6 +880,19 @@ export default function OperationalExecucaoPage() {
           </AccordionSection>
 
           <AccordionSection
+            title="Em Andamento"
+            count={opLists.emAndamento.length}
+            icon={<Play className="w-4 h-4" style={{ color: "#3b82f6" }} />}
+            borderColor="#3b82f6"
+            badgeBg="bg-blue-500/15"
+            badgeText="text-blue-700 dark:text-blue-400"
+            isOpen={openGroup === "emAndamento"}
+            onToggle={() => setOpenGroup(openGroup === "emAndamento" ? null : "emAndamento")}
+          >
+            {listOrEmpty(opLists.emAndamento, openExecution, "Nenhuma tarefa em andamento.")}
+          </AccordionSection>
+
+          <AccordionSection
             title="Crítico"
             count={opLists.criticas.length}
             icon={<AlertTriangle className="w-4 h-4" style={{ color: "#dc2626" }} />}
