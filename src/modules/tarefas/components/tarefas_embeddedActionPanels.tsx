@@ -791,12 +791,12 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             }, 0);
 
             const notaAvaliadorTotal = approverFields.reduce((sum: number, f: any) => {
-              const tevePlano = fieldsComPlano.has(f.id);
               const keyNA = `avaliado_na_${f.id}`;
               const rNA = respostasAuto[keyNA] ?? { na: false, justificativa: "" };
-              const peso = f.aprovador_peso || 1;
-              if (rNA.na) return sum + peso;
-              return sum + (tevePlano ? 0 : peso);
+              // N/A mantém nota | plano de ação perde ponto (exceto se N/A)
+              const tevePlano = fieldsComPlano.has(f.id);
+              if (tevePlano && !rNA.na) return sum; // perdeu ponto
+              return sum + (f.aprovador_peso || 1); // mantém nota
             }, 0);
 
             let idx = 0;
