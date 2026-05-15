@@ -112,10 +112,29 @@ const fetchReferencedFieldIds = async (fieldIds: string[]) => {
   const referenced = new Set<string>();
   if (fieldIds.length === 0) return referenced;
 
-  const readRefs = async (table: string, column: string) => {
-    const { data, error } = await (supabase as any).from(table).select(column).in(column, fieldIds);
+  // Busca assignments ativos (não deletados) para filtrar respostas órfãs.
+  // Respostas de assignments deletados não devem proteger o field do delete.
+  const { data: activeAssignments } = await (supabase as any)
+    .from("operational_assignments")
+    .select("id");
+  const activeAssignmentIds = new Set<string>(
+    (activeAssignments || []).map((a: any) => a.id).filter(Boolean)
+  );
+
+  const readRefs = async (table: string, column: string, assignmentColumn = "assignment_id") => {
+    const { data, error } = await (supabase as any)
+      .from(table)
+      .select(`${column}, ${assignmentColumn}`)
+      .in(column, fieldIds);
     if (error) throw error;
-    (data || []).forEach((row: any) => row?.[column] && referenced.add(row[column]));
+    (data || []).forEach((row: any) => {
+      if (!row?.[column]) return;
+      // Só protege o field se o assignment ainda existe (não foi deletado).
+      const assignmentId = row[assignmentColumn];
+      if (!assignmentId || activeAssignmentIds.has(assignmentId)) {
+        referenced.add(row[column]);
+      }
+    });
   };
 
   await readRefs("operational_field_answers", "field_id");
