@@ -6,10 +6,9 @@
 import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
-import { Settings, Users, Building2, Calculator, HardDrive } from "lucide-react";
+import { Settings, Users, Building2, HardDrive } from "lucide-react";
 import { TarefasConfigColaboradores } from "@/modules/tarefas/components/configuracoes/TarefasConfigColaboradores";
 import { TarefasConfigSetores } from "@/modules/tarefas/components/configuracoes/TarefasConfigSetores";
-import { TarefasConfigPontuacao } from "@/modules/tarefas/components/configuracoes/TarefasConfigPontuacao";
 import { TarefasConfigArmazenamento } from "@/modules/tarefas/components/configuracoes/TarefasConfigArmazenamento";
 
 export default function ConfiguracoesPage() {
