@@ -308,21 +308,17 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     [perguntasAutoTemplate, respostasAuto]
   );
 
-  const totalNotaAvaliado = useMemo(() =>
-    approverFields.reduce((sum, f) => sum + (f.aprovador_peso || 1), 0),
-    [approverFields]
-  );
-
   const saveTimers = useRef<Record<string, any>>({});
 
   const baseBlockReasons = flow.getBlockingReasons(assignment);
-  // Mostra TODAS as perguntas (replicadas do template + manuais), não só as marcadas
-  // `aprovador_verificar`. O flag continua disponível em f.aprovador_verificar para
-  // destacar como "extra/fora do padrão" quando precisar.
-  // Filtramos apenas tipos puramente estruturais (seção/divisor) que não têm resposta.
   const approverFields = useMemo(
     () => fields.filter((f) => !["secao", "divisor", "titulo"].includes(String(f.tipo))),
     [fields]
+  );
+
+  const totalNotaAvaliado = useMemo(() =>
+    approverFields.reduce((sum, f) => sum + (f.aprovador_peso || 1), 0),
+    [approverFields]
   );
 
   const blockReasons = useMemo(() => {
