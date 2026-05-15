@@ -492,6 +492,12 @@ export default function OperationalCadastroPage() {
         const currentFieldIds = new Set(activeAvaliadorFieldIds.filter(Boolean) as string[]);
         const referencedFieldIds = await fetchReferencedFieldIds(existingFieldIds);
         const removableFieldIds = existingFieldIds.filter((id: string) => !currentFieldIds.has(id) && !referencedFieldIds.has(id));
+        // [DEBUG TEMP] inspecionar cálculo de removableFieldIds
+        console.log("[DEBUG removableFieldIds]", {
+          existingFieldIds,
+          currentFieldIds: Array.from(currentFieldIds),
+          removableFieldIds,
+        });
         if (removableFieldIds.length > 0) {
           const { error } = await (supabase as any).from("operational_template_fields").delete().in("id", removableFieldIds);
           if (error) throw error;
