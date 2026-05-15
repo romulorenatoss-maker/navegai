@@ -812,7 +812,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                   </div>
                   {r.na && (
                     <div className="space-y-1">
-                      <Label className="text-[10px] text-amber-700">Justificativa obrigatória para N/A</Label>
+                      <Label className="text-[10px] text-amber-700">Justificativa obrigatória — por que N/A? (nota será mantida)</Label>
                       <Textarea
                         value={r.justificativa}
                         onChange={(e) => setRespostasAuto(prev => ({ ...prev, [key]: { ...r, justificativa: e.target.value } }))}
