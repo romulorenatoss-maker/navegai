@@ -900,7 +900,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
               return sum + (f.aprovador_peso || 1);
             }, 0);
 
-            const notaEfetivaTotal = notaAutoTotal + notaAvaliadorTotal;
+            const notaEfetivaTotal = notaMaximaTotal;
 
             let idx = 0;
 
@@ -996,9 +996,25 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                   );
                 })}
 
-                <div className="border border-primary/30 rounded-lg px-4 py-3 flex items-center justify-between bg-primary/5">
-                  <span className="text-sm font-semibold text-foreground">Nota final</span>
-                  <span className="text-primary text-lg font-bold">{notaEfetivaTotal} pts</span>
+                <div className="border border-primary/30 rounded-lg px-4 py-3 bg-primary/5 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-foreground">Nota final</span>
+                    <span className="text-primary text-lg font-bold">{notaEfetivaTotal} pts</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    {(() => {
+                      const destino = assignment?.template_snapshot?.destino_score
+                        ?? assignment?.operational_templates?.destino_score
+                        ?? "individual";
+                      const nomeAvaliado = assignment?.profiles_aval?.nome
+                        ?? assignment?.profiles?.nome
+                        ?? null;
+                      const nomeSetor = assignment?.setor_avaliado?.nome ?? null;
+                      if (destino === "setor" && nomeSetor) return `📊 Nota para o setor: ${nomeSetor}`;
+                      if (nomeAvaliado) return `👤 Nota para: ${nomeAvaliado}`;
+                      return "👤 Nota atribuída ao avaliado";
+                    })()}
+                  </p>
                 </div>
               </>
             );
