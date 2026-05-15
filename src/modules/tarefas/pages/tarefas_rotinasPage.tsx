@@ -883,6 +883,28 @@ export default function OperationalCadastroPage() {
           <p className="text-body text-muted-foreground">Cadastre templates com seções, campos dinâmicos, workflow e recorrência.</p>
         </div>
         <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Gerar Nova Tarefa</Button>
+        {editingId && (
+          <Button
+            variant="outline"
+            onClick={async () => {
+              const { data: fieldsData } = await (supabase as any)
+                .from("operational_template_fields")
+                .select("*")
+                .eq("template_id", editingId);
+              console.log("[DB fields]", fieldsData);
+              const ids = (fieldsData || []).map((f: any) => f.id).filter(Boolean);
+              const { data: answersData } = ids.length > 0
+                ? await (supabase as any)
+                    .from("operational_field_answers")
+                    .select("*")
+                    .in("field_id", ids)
+                : { data: [] };
+              console.log("[DB answers]", answersData);
+            }}
+          >
+            DEBUG DB
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
