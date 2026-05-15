@@ -438,6 +438,9 @@ export function useAssignmentExecution(assignmentId: string | null) {
             .update({ status: "resolvida", resolvida_em: nowTs, dentro_prazo: true, updated_at: nowTs })
             .eq("assignment_id", assignment.id)
             .eq("status", "em_andamento");
+          // Invalida cache para garantir que hasOpenContingencies leia do banco
+          await qc.invalidateQueries({ queryKey: ["operational_contingencies"] });
+          await qc.invalidateQueries({ queryKey: ["operational_contingencies_management"] });
         }
         const actionFinal = assignment.status === "devolvida"
           ? "enviar_avaliacao"
