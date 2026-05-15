@@ -1618,9 +1618,9 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
           </div>
           <p className="text-[11px] text-muted-foreground">
             {(() => {
-              const nomeAvaliado = assignment?.profiles_aval?.nome ?? assignment?.profiles?.nome ?? null;
-              if (nomeAvaliado) return `👤 Ao confirmar, nota será gravada para: ${nomeAvaliado}`;
-              return "👤 Ao confirmar, nota será gravada para o avaliado";
+              const nomeAprovador = assignment?.aprovador?.nome ?? assignment?.profiles_aprov?.nome ?? null;
+              if (nomeAprovador) return `🔍 Ao confirmar, nota do aprovador será gravada para: ${nomeAprovador}`;
+              return "🔍 Ao confirmar, nota será gravada para o aprovador";
             })()}
           </p>
         </div>
