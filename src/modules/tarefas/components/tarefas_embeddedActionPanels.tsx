@@ -973,7 +973,10 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                     <div className="border border-primary/30 rounded-lg px-4 py-3 bg-primary/5 space-y-1">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-semibold text-foreground">Nota final do Avaliado</span>
-                        <span className="text-primary text-lg font-bold">{notaEfetivaTotal} / {notaMaximaTotal} pts</span>
+                        <div className="flex flex-col items-end">
+                          <span className="text-primary text-lg font-bold">{notaEfetivaTotal} pts</span>
+                          <span className="text-[11px] text-muted-foreground">de {notaMaximaTotal} pts possíveis</span>
+                        </div>
                       </div>
                       <p className="text-[10px] text-muted-foreground">
                         {destino === "setor"
