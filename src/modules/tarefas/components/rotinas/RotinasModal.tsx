@@ -342,6 +342,7 @@ export function RotinasModal({ open, onClose, templateId, setores, colaboradores
     geral: false, avaliado: false, aprovador: false, auditor: false, rotina: false,
   });
   const [loading, setLoading] = useState(false);
+  const [tarefasAbertas, setTarefasAbertas] = useState(0);
 
   const set = useCallback(<K extends keyof TemplateForm>(k: K, v: TemplateForm[K]) => {
     setFormState((prev) => ({ ...prev, [k]: v }));
@@ -356,12 +357,19 @@ export function RotinasModal({ open, onClose, templateId, setores, colaboradores
     if (templateId) {
       setLoading(true);
       loadTemplate(templateId)
-        .then(({ form: f, sections: s, fields: fl, aprovadorItems: ai, auditorItems: aui }) => {
+        .then(async ({ form: f, sections: s, fields: fl, aprovadorItems: ai, auditorItems: aui }) => {
           setFormState(f);
           setSections(s);
           setFields(fl);
           setAprovadorItems(ai);
           setAuditorItems(aui);
+          // Verifica tarefas abertas
+          const { count } = await (supabase as any)
+            .from("operational_assignments")
+            .select("id", { count: "exact", head: true })
+            .eq("template_id", templateId)
+            .in("status", ["pendente", "em_andamento", "devolvida", "aguardando_aprovacao", "aguardando_auditoria"]);
+          setTarefasAbertas(count || 0);
         })
         .catch((e) => toast.error("Erro ao carregar template: " + e.message))
         .finally(() => setLoading(false));
@@ -524,35 +532,59 @@ export function RotinasModal({ open, onClose, templateId, setores, colaboradores
                   onSave={saveGeral} saving={saving.geral} />
               </TabsContent>
 
+              {/* Banner de bloqueio quando há tarefas abertas */}
+              {tarefasAbertas > 0 && activeTab !== "geral" && (
+                <div className="m-4 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg p-4 dark:bg-amber-950/30 dark:border-amber-800">
+                  <span className="text-amber-600 text-lg shrink-0">⚠️</span>
+                  <div>
+                    <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                      {tarefasAbertas} tarefa{tarefasAbertas > 1 ? "s" : ""} em andamento
+                    </p>
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                      Esta rotina não pode ser editada enquanto houver tarefas abertas ou em andamento. 
+                      Aguarde todas as tarefas serem concluídas ou cancele-as antes de editar.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <TabsContent value="avaliado" className="mt-0 h-full">
-                <RotinasTabAvaliado
-                  sections={sections} setSections={setSections}
-                  fields={fields} setFields={setFields}
-                  onSave={saveAvaliado} saving={saving.avaliado}
-                  onFieldsChanged={setFields}
-                />
+                {tarefasAbertas === 0 ? (
+                  <RotinasTabAvaliado
+                    sections={sections} setSections={setSections}
+                    fields={fields} setFields={setFields}
+                    onSave={saveAvaliado} saving={saving.avaliado}
+                    onFieldsChanged={setFields}
+                  />
+                ) : null}
               </TabsContent>
 
               <TabsContent value="aprovador" className="mt-0 h-full">
-                <RotinasTabAprovador
-                  aprovadorConfigurado={aprovadorConfigurado}
-                  form={form} setForm={set}
-                  items={aprovadorItems} setItems={setAprovadorItems}
-                  onSave={saveAprovador} saving={saving.aprovador}
-                />
+                {tarefasAbertas === 0 ? (
+                  <RotinasTabAprovador
+                    aprovadorConfigurado={aprovadorConfigurado}
+                    form={form} setForm={set}
+                    items={aprovadorItems} setItems={setAprovadorItems}
+                    onSave={saveAprovador} saving={saving.aprovador}
+                  />
+                ) : null}
               </TabsContent>
 
               <TabsContent value="auditor" className="mt-0 h-full">
-                <RotinasTabAuditor
-                  auditorConfigurado={auditorConfigurado}
-                  form={form} setForm={set}
-                  items={auditorItems} setItems={setAuditorItems}
-                  onSave={saveAuditor} saving={saving.auditor}
-                />
+                {tarefasAbertas === 0 ? (
+                  <RotinasTabAuditor
+                    auditorConfigurado={auditorConfigurado}
+                    form={form} setForm={set}
+                    items={auditorItems} setItems={setAuditorItems}
+                    onSave={saveAuditor} saving={saving.auditor}
+                  />
+                ) : null}
               </TabsContent>
 
               <TabsContent value="rotina" className="mt-0 h-full">
-                <RotinasTabRotina form={form} set={set} templateId={currentId} onSave={saveRotina} saving={saving.rotina} />
+                {tarefasAbertas === 0 ? (
+                  <RotinasTabRotina form={form} set={set} templateId={currentId} onSave={saveRotina} saving={saving.rotina} />
+                ) : null}
               </TabsContent>
             </div>
           </Tabs>
