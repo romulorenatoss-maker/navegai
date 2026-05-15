@@ -275,8 +275,9 @@ export function useApprovalFlow(assignmentId: string | null) {
       const perguntasAuditor = snap?.checklists?.validador;
       const temPerguntasAuditor = Array.isArray(perguntasAuditor) && perguntasAuditor.length > 0;
       const auditorFields = snapshotFields.filter((f: any) => f.auditor_verificar);
+      const temAuditor = !!assignment?.auditor_id || !!assignment?.setor_auditor_id;
       const requerAuditoria = action === "aprovar"
-        && !!assignment?.auditor_id
+        && temAuditor
         && (temPerguntasAuditor || auditorFields.length > 0);
 
       let transitionAction: "aprovar_final" | "reprovar_devolver_final" | "encerrar_final";
