@@ -887,25 +887,20 @@ export default function OperationalCadastroPage() {
           variant="outline"
           style={{ position: "fixed", bottom: 16, right: 16, zIndex: 9999 }}
           onClick={async () => {
-            const tid = editingId ?? templates[0]?.id;
-            if (!tid) {
-              console.log("[DB fields]", null);
-              console.log("[DB answers]", null);
-              return;
-            }
-            const { data: fieldsData } = await (supabase as any)
-              .from("operational_template_fields")
-              .select("*")
-              .eq("template_id", tid);
-            console.log("[DB fields]", fieldsData);
+            const tid = editingId || (templates[0]?.id ?? null);
+            if (!tid) { alert('Nenhum template disponível'); return; }
+            const { data: fieldsData, error: e1 } = await (supabase as any)
+              .from('operational_template_fields')
+              .select('id, label, section_id')
+              .eq('template_id', tid);
+            alert('[DB fields] ' + JSON.stringify(fieldsData) + ' erro: ' + JSON.stringify(e1));
             const ids = (fieldsData || []).map((f: any) => f.id).filter(Boolean);
-            const { data: answersData } = ids.length > 0
-              ? await (supabase as any)
-                  .from("operational_field_answers")
-                  .select("*")
-                  .in("field_id", ids)
-              : { data: [] };
-            console.log("[DB answers]", answersData);
+            if (ids.length === 0) { alert('[DB answers] nenhum field encontrado'); return; }
+            const { data: answersData, error: e2 } = await (supabase as any)
+              .from('operational_field_answers')
+              .select('id, field_id, assignment_id')
+              .in('field_id', ids);
+            alert('[DB answers] ' + JSON.stringify(answersData) + ' erro: ' + JSON.stringify(e2));
           }}
         >
           DEBUG DB
