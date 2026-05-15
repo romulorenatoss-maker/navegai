@@ -815,9 +815,7 @@ export default function OperationalCadastroPage() {
     // Causa raiz: filtrar loadedFields por snapshot antigo "ressuscitava" estado obsoleto
     // (perguntas removidas voltavam ao reabrir; novas eram descartadas).
     // Banco (`operational_template_fields`) é a única fonte de verdade aqui.
-    // Variáveis savedAvaliadorFieldIds/Keys ficam apenas para retrocompatibilidade
-    // de leitura, mas não são mais aplicadas como filtro.
-    void savedAvaliadorFieldKeys;
+    // Variável savedAvaliadorFieldIds segue sendo lida apenas para retrocompatibilidade.
     // Se existe snapshot com avaliado_field_ids, usar como lista de campos ativos.
     // Campos com respostas vinculadas (referencedFieldIds) são protegidos do delete
     // mas NÃO devem reaparecer na UI se o usuário os removeu explicitamente.
