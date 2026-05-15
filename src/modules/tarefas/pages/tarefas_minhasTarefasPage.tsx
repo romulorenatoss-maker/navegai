@@ -195,7 +195,7 @@ export default function OperationalExecucaoPage() {
   const [pickedSetorId] = useState<string>("");
   const isMobile = useIsMobile();
   // Accordion vertical aberto (5 grupos fixos)
-  type OpGroup = "hoje" | "criticas" | "aguardandoAprovacao" | "aguardandoAuditoria" | "concluidas" | "todas";
+  type OpGroup = "hoje" | "emAndamento" | "criticas" | "aguardandoAprovacao" | "aguardandoAuditoria" | "concluidas" | "todas";
   const [openGroup, setOpenGroup] = useState<OpGroup | null>("hoje");
   // Ordenação única
   const [sortKey, setSortKey] = useState<SortKey>("sla");
@@ -392,6 +392,7 @@ export default function OperationalExecucaoPage() {
   // Listas das 5 abas operacionais (vindas direto do bucketize)
   const opLists = useMemo(() => ({
     hoje: sorted(buckets.opHoje),
+    emAndamento: sorted(buckets.opEmAndamento),
     aguardandoAprovacao: sorted(buckets.opAguardandoAprovacao),
     aguardandoAuditoria: sorted(buckets.opAguardandoAuditoria),
     concluidas: sorted(buckets.opConcluidas).slice(0, 100),
@@ -876,6 +877,19 @@ export default function OperationalExecucaoPage() {
             onToggle={() => setOpenGroup(openGroup === "hoje" ? null : "hoje")}
           >
             {listOrEmpty(opLists.hoje, openExecution, "Nenhuma tarefa para hoje.")}
+          </AccordionSection>
+
+          <AccordionSection
+            title="Em Andamento"
+            count={opLists.emAndamento.length}
+            icon={<Play className="w-4 h-4" style={{ color: "#3b82f6" }} />}
+            borderColor="#3b82f6"
+            badgeBg="bg-blue-500/15"
+            badgeText="text-blue-700 dark:text-blue-400"
+            isOpen={openGroup === "emAndamento"}
+            onToggle={() => setOpenGroup(openGroup === "emAndamento" ? null : "emAndamento")}
+          >
+            {listOrEmpty(opLists.emAndamento, openExecution, "Nenhuma tarefa em andamento.")}
           </AccordionSection>
 
           <AccordionSection
