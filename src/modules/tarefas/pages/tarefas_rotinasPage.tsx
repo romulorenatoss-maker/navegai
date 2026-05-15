@@ -888,23 +888,27 @@ export default function OperationalCadastroPage() {
           style={{ position: "fixed", bottom: 16, right: 16, zIndex: 9999 }}
           onClick={async () => {
             const tid = editingId || (templates[0]?.id ?? null);
-            if (!tid) { alert('Nenhum template disponível'); return; }
-            const { data: fieldsData, error: e1 } = await (supabase as any)
+            if (!tid) return;
+            const { data: fieldsData } = await (supabase as any)
               .from('operational_template_fields')
               .select('id, label, section_id')
               .eq('template_id', tid);
-            alert('[DB fields] ' + JSON.stringify(fieldsData) + ' erro: ' + JSON.stringify(e1));
             const ids = (fieldsData || []).map((f: any) => f.id).filter(Boolean);
-            if (ids.length === 0) { alert('[DB answers] nenhum field encontrado'); return; }
-            const { data: answersData, error: e2 } = await (supabase as any)
-              .from('operational_field_answers')
-              .select('id, field_id, assignment_id')
-              .in('field_id', ids);
-            alert('[DB answers] ' + JSON.stringify(answersData) + ' erro: ' + JSON.stringify(e2));
+            const { data: answersData } = ids.length > 0
+              ? await (supabase as any).from('operational_field_answers').select('id, field_id, assignment_id').in('field_id', ids)
+              : { data: [] };
+            const el = document.getElementById('__debug_output__');
+            if (el) el.innerText = JSON.stringify({ fields: fieldsData, answers: answersData }, null, 2);
           }}
         >
           DEBUG DB
         </Button>
+        <pre id="__debug_output__" style={{
+          position: 'fixed', bottom: 80, right: 16, zIndex: 99999,
+          background: 'black', color: 'lime', fontSize: 11,
+          maxWidth: 500, maxHeight: 300, overflow: 'auto',
+          padding: 8, borderRadius: 4, whiteSpace: 'pre-wrap'
+        }}>aguardando...</pre>
       </div>
 
       {/* Filters */}
