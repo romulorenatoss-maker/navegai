@@ -83,6 +83,7 @@ export interface FieldAnswer {
   valor_data?: string | null;
   valor_json?: any;
   evidencia_url?: string | null;
+  observacao?: string | null;
   // Metadata for display
   respondido_por_nome?: string | null;
   respondido_em?: string | null;
@@ -115,6 +116,7 @@ interface Props {
     plano_acao_anexo_url?: string | null;
     flag_prazo_alterado?: boolean | null;
     justificativa_alteracao_prazo?: string | null;
+    tipo_evidencia_exigida?: string | null;
   } | null;
 }
 
@@ -482,36 +484,118 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
         </div>
       )}
 
-      {/* Devolution info */}
+      {/* Devolution info + evidência exigida + histórico */}
       {isReturned && review && (
-        <div className="flex items-start gap-2 mt-2 p-2 bg-amber-100/50 rounded border border-amber-200">
-          <RotateCcw className="w-3.5 h-3.5 text-amber-600 mt-0.5 shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-amber-800">
-              {approverPlan?.plano_acao_descricao ? "Plano de ação do aprovador" : "Campo devolvido"} — Rodada {review.rodada}
-            </p>
-            {review.motivo_devolucao && <p className="text-xs text-amber-700 mt-0.5 whitespace-pre-wrap">{review.motivo_devolucao}</p>}
-            {userRole === "executor" && approverPlan && (
-              <div className="mt-1.5 space-y-0.5 text-xs text-amber-800">
-                {approverPlan.plano_acao_prazo && (
-                  <p><span className="font-medium">Prazo:</span> {format(new Date(approverPlan.plano_acao_prazo), "dd/MM/yyyy HH:mm")}</p>
-                )}
-                {approverPlan.flag_prazo_alterado && (
-                  <p className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-200/60 text-amber-900 font-medium">
-                    ⚑ Prazo alterado pelo aprovador
-                    {approverPlan.justificativa_alteracao_prazo ? `: ${approverPlan.justificativa_alteracao_prazo}` : ""}
-                  </p>
-                )}
-                {approverPlan.plano_acao_anexo_url && (
-                  <p>
-                    <a href={approverPlan.plano_acao_anexo_url} target="_blank" rel="noreferrer" className="text-primary underline">
-                      Ver anexo do aprovador
-                    </a>
-                  </p>
-                )}
-              </div>
-            )}
+        <div className="mt-2 rounded-lg border border-amber-300 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-800 overflow-hidden">
+          {/* Banner */}
+          <div className="flex items-center justify-between px-3 py-2 bg-amber-100/80 dark:bg-amber-900/30">
+            <div className="flex items-center gap-2">
+              <RotateCcw className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              <p className="text-xs font-semibold text-amber-900 dark:text-amber-300">
+                {approverPlan?.plano_acao_descricao ? "⚠ Plano de ação pendente" : "Campo devolvido"} — Rodada {review.rodada}
+              </p>
+            </div>
           </div>
+
+          {/* Motivo */}
+          {review.motivo_devolucao && (
+            <div className="px-3 py-2 border-t border-amber-200 dark:border-amber-800">
+              <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide mb-0.5">Motivo</p>
+              <p className="text-xs text-amber-800 dark:text-amber-300 whitespace-pre-wrap">{review.motivo_devolucao}</p>
+            </div>
+          )}
+
+          {/* Plano de ação do aprovador */}
+          {userRole === "executor" && approverPlan?.plano_acao_descricao && (
+            <div className="px-3 py-2 border-t border-amber-200 dark:border-amber-800 space-y-1">
+              <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide">Instrução do aprovador</p>
+              <p className="text-xs text-amber-800 dark:text-amber-300 whitespace-pre-wrap">{approverPlan.plano_acao_descricao}</p>
+              {approverPlan.plano_acao_prazo && (
+                <p className="text-xs text-amber-700 font-medium">
+                  Prazo: {new Date(approverPlan.plano_acao_prazo).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                </p>
+              )}
+              {approverPlan.flag_prazo_alterado && (
+                <p className="text-[10px] px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 font-medium inline-flex items-center gap-1">
+                  ⚑ Prazo alterado · {approverPlan.justificativa_alteracao_prazo || ""}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Evidência exigida pelo aprovador */}
+          {userRole === "executor" && approverPlan?.tipo_evidencia_exigida && approverPlan.tipo_evidencia_exigida !== "nenhuma" && (
+            <div className="px-3 py-2 border-t border-amber-200 dark:border-amber-800 space-y-2">
+              <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide">
+                Evidência exigida: {approverPlan.tipo_evidencia_exigida === "foto" ? "📷 Foto" : approverPlan.tipo_evidencia_exigida === "video" ? "🎥 Vídeo" : approverPlan.tipo_evidencia_exigida === "audio" ? "🎵 Áudio" : "✏️ Descrição"}
+              </p>
+              {/* Upload de evidência específica para devolução */}
+              {val.evidencia_url ? (
+                <div className="space-y-1">
+                  {/\.(jpg|jpeg|png|gif|webp)$/i.test(val.evidencia_url) ? (
+                    <img
+                      src={val.evidencia_url}
+                      alt="Evidência"
+                      className="max-h-40 rounded border border-border cursor-pointer w-full object-cover"
+                      onClick={() => window.open(val.evidencia_url!, "_blank")}
+                    />
+                  ) : /\.(mp4|webm|mov)$/i.test(val.evidencia_url) ? (
+                    <video src={val.evidencia_url} controls className="w-full max-h-48 rounded border border-border" />
+                  ) : /\.(mp3|wav|ogg|m4a)$/i.test(val.evidencia_url) ? (
+                    <audio src={val.evidencia_url} controls className="w-full" />
+                  ) : (
+                    <a href={val.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver evidência anexada</a>
+                  )}
+                  {isEditable && (
+                    <button type="button" onClick={() => update({ evidencia_url: null })}
+                      className="text-[10px] text-destructive hover:underline">
+                      Remover evidência
+                    </button>
+                  )}
+                </div>
+              ) : isEditable ? (
+                <label className={`flex items-center justify-center gap-2 border border-dashed border-amber-400 rounded-lg p-3 cursor-pointer hover:border-amber-600 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
+                  {uploading ? (
+                    <span className="text-xs text-amber-700">Enviando...</span>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4 text-amber-600" />
+                      <span className="text-xs text-amber-800 font-medium">
+                        Anexar {approverPlan.tipo_evidencia_exigida === "foto" ? "foto" : approverPlan.tipo_evidencia_exigida === "video" ? "vídeo" : approverPlan.tipo_evidencia_exigida === "audio" ? "áudio" : "arquivo"} *
+                      </span>
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept={
+                      approverPlan.tipo_evidencia_exigida === "foto" ? "image/*" :
+                      approverPlan.tipo_evidencia_exigida === "video" ? "video/*" :
+                      approverPlan.tipo_evidencia_exigida === "audio" ? "audio/*" : "*"
+                    }
+                    capture={approverPlan.tipo_evidencia_exigida === "foto" ? "environment" : undefined}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); }}
+                  />
+                </label>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">Sem evidência anexada</p>
+              )}
+            </div>
+          )}
+
+          {/* Justificativa escrita obrigatória para devolução */}
+          {userRole === "executor" && isEditable && (
+            <div className="px-3 py-2 border-t border-amber-200 dark:border-amber-800 space-y-1">
+              <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide">Justificativa do que foi feito *</p>
+              <textarea
+                value={val.observacao ?? ""}
+                onChange={e => update({ observacao: e.target.value })}
+                placeholder="Descreva o que foi corrigido/feito..."
+                rows={2}
+                className="w-full text-xs rounded border border-amber-300 bg-white dark:bg-amber-950/10 px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-amber-400"
+              />
+            </div>
+          )}
         </div>
       )}
 
