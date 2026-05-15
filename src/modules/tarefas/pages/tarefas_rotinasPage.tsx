@@ -14,6 +14,24 @@ import { TarefasBuilderWizard } from "@/modules/tarefas/components/builder/Taref
 import { AprovadorCheckItemForm, buildAprovadorAutomatico, defaultAprovadorCheckItem } from "@/modules/tarefas/components/builder/types";
 import { normalizeAprovadorList, syncAprovadorReplicadasFromFields } from "@/modules/tarefas/components/builder/checklistNormalizers";
 
+import {
+  buildActiveFieldIds,
+  buildActiveFieldsSnapshot,
+} from "@/modules/tarefas/core/tarefas_builder_fields";
+
+import {
+  extractChecklistSnapshot,
+  extractAvaliadoFieldIds,
+} from "@/modules/tarefas/core/tarefas_builder_snapshot";
+
+import {
+  hydrateActiveFields,
+} from "@/modules/tarefas/core/tarefas_builder_hydrate";
+
+import {
+  rebuildAprovadorFromActiveFields,
+} from "@/modules/tarefas/core/tarefas_builder_aprovador";
+
 import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
 // Draft/rascunho automático REMOVIDO: a única fonte de verdade é o estado salvo da rotina.
 // Limpeza preventiva de qualquer entrada antiga ainda presente no navegador.
