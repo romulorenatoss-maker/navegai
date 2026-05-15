@@ -14,6 +14,22 @@ export interface ApproverAnswerDraft {
   evidencia_url?: string | null;
 }
 
+// Statuses finais: snapshot congelado (histórico imutável).
+// Demais statuses: aplica overlay com ada_config_snapshot vivo do template
+// (mantém fields do snapshot p/ alinhar FK das respostas; sobrepõe apenas
+// ada_config_snapshot, que carrega o checklist atual do Aprovador).
+const STATUSES_FINAIS_TASK = ["concluida", "aprovada", "auditada", "cancelada", "arquivada"];
+const getEffectiveSnapshot = (assignment: any) => {
+  const base = assignment?.template_snapshot;
+  if (!base) return base;
+  const liveAda = assignment?.operational_templates?.ada_config_snapshot;
+  const status = assignment?.status;
+  const isLive = !!status && !STATUSES_FINAIS_TASK.includes(status);
+  if (isLive && liveAda) return { ...base, ada_config_snapshot: liveAda };
+  if (!base.ada_config_snapshot && liveAda) return { ...base, ada_config_snapshot: liveAda };
+  return base;
+};
+
 export function useApprovalFlow(assignmentId: string | null) {
   const { profile } = useAuth();
   const qc = useQueryClient();
