@@ -689,12 +689,16 @@ export default function OperationalCadastroPage() {
     const aprRaw: any[] = Array.isArray(checklistsSnap.aprovador) ? checklistsSnap.aprovador : [];
     const apr = aprRaw.filter((i: any) => i?.origem_pergunta !== "replicada_avaliado" || dedupedFieldIds.has(i.field_id));
     const val: any[] = Array.isArray(checklistsSnap.validador) ? checklistsSnap.validador : [];
-    setAprovadorChecks(sanitizeAprovadorChecks(
-      apr,
-      dedupedFields,
-      pontuacaoConfig?.aprovador_pacote_padrao,
-      t.habilitar_perguntas_automaticas ?? true,
-    ));
+    setAprovadorChecks(prev => {
+      const hydrated = sanitizeAprovadorChecks(
+        apr,
+        dedupedFields,
+        pontuacaoConfig?.aprovador_pacote_padrao,
+        t.habilitar_perguntas_automaticas ?? true,
+      );
+      // Re-sincroniza com fields atuais para descartar órfãos do snapshot.
+      return syncAprovadorReplicadasFromFields(hydrated, dedupedFields);
+    });
     // Validador: aceita formato novo (AprovadorCheckItemForm) e formato legacy
     // (ValidadorCheckItemForm com {pergunta, categoria}). Snapshots antigos são
     // convertidos preservando pergunta/peso/tipo, sem perder histórico.
