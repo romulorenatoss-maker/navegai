@@ -420,7 +420,14 @@ export function useAssignmentExecution(assignmentId: string | null) {
         const isDesignada = !!assignment.created_by
           && assignment.created_by !== assignment.responsavel_id
           && !assignment.aprovador_id;
-        // Quando devolvida pelo aprovador: vai direto para aguardando_aprovacao
+        // Quando devolvida: fecha todas as contingências abertas antes de transicionar
+        if (assignment.status === "devolvida") {
+          await (supabase as any)
+            .from("operational_contingencies")
+            .update({ status: "resolvida", resolved_at: new Date().toISOString() })
+            .eq("assignment_id", assignment.id)
+            .in("status", ["aberta", "em_andamento"]);
+        }
         const actionFinal = assignment.status === "devolvida"
           ? "enviar_avaliacao"
           : isDesignada ? "enviar_validacao_designante" : "enviar_avaliacao";
