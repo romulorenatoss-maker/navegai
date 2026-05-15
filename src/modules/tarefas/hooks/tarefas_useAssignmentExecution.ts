@@ -301,6 +301,12 @@ export function useAssignmentExecution(assignmentId: string | null) {
     return reviews.find((r: any) => r.field_id === fieldId);
   }, [reviews]);
 
+  const getAllReviews = useCallback((fieldId: string) => {
+    return (reviews as any[])
+      .filter((r: any) => r.field_id === fieldId)
+      .sort((a: any, b: any) => (a.rodada || 0) - (b.rodada || 0));
+  }, [reviews]);
+
   // Submit
   const submit = useMutation({
     mutationFn: async ({ assignment, fields }: { assignment: any; fields: SnapshotField[] }) => {
