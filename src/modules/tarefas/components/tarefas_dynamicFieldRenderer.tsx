@@ -505,20 +505,17 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
       {val.respondido_por_nome && val.respondido_em && (() => {
         const historico: Array<{ nome: string; data: string; versao: number; resposta?: string }> =
           Array.isArray(val.historico_alteracoes) ? val.historico_alteracoes : [];
-        const [historicoOpen, setHistoricoOpen] = React.useState(false);
         return (
-          <div className="mt-1 space-y-1">
-            <div className={`flex items-center gap-1.5 text-[10px] ${preenchidoComAtraso ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
-              <button
-                type="button"
+          <details className="mt-1 space-y-1 group">
+            <summary className={`flex items-center gap-1.5 text-[10px] cursor-pointer list-none ${preenchidoComAtraso ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
+              <span
                 title="Ver histórico de preenchimento"
-                onClick={() => setHistoricoOpen(v => !v)}
                 className={`shrink-0 transition-colors hover:opacity-70 ${preenchidoComAtraso ? "text-red-500" : "text-emerald-500"}`}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
                 </svg>
-              </button>
+              </span>
               <span>
                 Preenchido por <strong>{val.respondido_por_nome}</strong> em{" "}
                 {format(new Date(val.respondido_em), "dd/MM/yyyy HH:mm")}
@@ -527,10 +524,9 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
               {historico.length > 1 && (
                 <span className="text-muted-foreground">· {historico.length} versões</span>
               )}
-            </div>
-            {/* Histórico expandido */}
-            {historicoOpen && historico.length > 0 && (
-              <div className="ml-5 border-l-2 border-border pl-2 space-y-1">
+            </summary>
+            {historico.length > 0 && (
+              <div className="ml-5 border-l-2 border-border pl-2 space-y-1 mt-1">
                 {historico.slice().reverse().map((h, i) => {
                   let isAtrasado = false;
                   try {
@@ -554,7 +550,7 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                 })}
               </div>
             )}
-          </div>
+          </details>
         );
       })()}
 
