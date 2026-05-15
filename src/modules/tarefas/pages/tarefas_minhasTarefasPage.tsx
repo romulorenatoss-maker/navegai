@@ -1125,7 +1125,7 @@ export default function OperationalExecucaoPage() {
                     </button>
                   );
                 })}
-                {isAprovadorMode && (
+                {(isAprovadorMode || isAuditorMode) && (
                   <button type="button" onClick={() => setViewMode("aprovacao")}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border whitespace-nowrap transition-colors ${viewMode === "aprovacao" ? "bg-emerald-500/10 border-emerald-500 text-emerald-700 dark:text-emerald-400" : "bg-card border-border text-muted-foreground hover:bg-muted"}`}>
                     <CheckCircle2 className="w-3 h-3" /> Aprovação
