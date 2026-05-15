@@ -574,6 +574,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             prazo_padrao: computeDefaultPrazo(),
             justificativa_alteracao_prazo: "",
             criticidade: "media" as const,
+            tipo_evidencia_exigida: "descricao" as const,
           };
           const prazoAlterado = !!(p.prazo && p.prazo_padrao && p.prazo !== p.prazo_padrao);
           return (
