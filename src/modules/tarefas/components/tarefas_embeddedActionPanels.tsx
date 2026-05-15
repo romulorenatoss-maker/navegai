@@ -1538,50 +1538,90 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
       <div className="bg-blue-500/5 border border-blue-500/30 rounded-lg p-3 flex items-start gap-2">
         <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
         <div className="text-xs text-foreground">
-          <strong>Modo Auditor.</strong> Revise o trabalho do executor e do aprovador. Verifique as abas de respostas e confirme a auditoria.
+          <strong>Modo Auditor.</strong> Revise as perguntas automáticas abaixo. Confirme ou devolva para o aprovador.
         </div>
       </div>
 
+      {/* Alertas */}
       {(slaEtapa || reincidencia || atrasoPlano) && (
-        <div className="border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 rounded-lg p-3 space-y-1">
+        <div className="border border-amber-300 bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3 space-y-1">
           <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 text-xs font-semibold">
-            <AlertTriangle className="w-4 h-4" /> Anormalidades detectadas automaticamente
+            <AlertTriangle className="w-4 h-4" /> Anormalidades detectadas
           </div>
           {slaEtapa && <p className="text-xs text-amber-800">⚠ SLA da etapa estourado</p>}
           {atrasoPlano && <p className="text-xs text-amber-800">⚠ Plano de ação entregue fora do prazo</p>}
-          {reincidencia && <p className="text-xs text-red-700 font-semibold">⚠ Reincidência de atraso em plano de ação</p>}
+          {reincidencia && <p className="text-xs text-red-700 font-semibold">⚠ Reincidência de atraso</p>}
         </div>
       )}
 
-      {perguntasAutoAuditor.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Perguntas automáticas da auditoria</p>
-          {perguntasAutoAuditor.map((p: any) => {
+      {/* Lista corrida — igual ao aprovador */}
+      <div className="space-y-2">
+        {(() => {
+          let idx = 0;
+          return perguntasAutoAuditor.map((p: any) => {
+            idx++;
+            const key = p.tempId ?? p.id ?? p.pergunta;
+            const r = respostasAuto[key] ?? { na: false, justificativa: "" };
             const auto = calcRespostaAuditor(p.metrica_calculo ?? "manual");
+            const currentIdx = idx;
             return (
-              <div key={p.tempId ?? p.pergunta} className={`border rounded-lg px-3 py-2 flex items-center justify-between ${auto.tiraPonto ? "bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800" : "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-800"}`}>
-                <div>
-                  <p className="text-xs font-medium text-foreground">{p.pergunta}</p>
-                  {auto.resposta && (
-                    <p className={`text-[10px] mt-0.5 ${auto.tiraPonto ? "text-red-600" : "text-emerald-600"}`}>
-                      {auto.tiraPonto ? "✗" : "✓"} {auto.label}
+              <div key={key} className={`border rounded-lg p-3 space-y-2 ${r.na ? "opacity-70 bg-muted/20 border-border" : auto.tiraPonto ? "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800" : "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"}`}>
+                <div className="flex items-start gap-2">
+                  <span className="text-[10px] font-bold text-muted-foreground w-5 shrink-0 mt-0.5">{currentIdx}.</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-foreground">{p.pergunta}</p>
+                    {auto.resposta && !r.na && (
+                      <div className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded text-[10px] font-semibold ${auto.tiraPonto ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"}`}>
+                        {auto.tiraPonto ? "✗" : "✓"} {auto.label}
+                      </div>
+                    )}
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Nota: <span className={`font-semibold ${auto.tiraPonto && !r.na ? "text-red-600 line-through" : "text-emerald-600"}`}>{p.peso} pts</span>
+                      {auto.tiraPonto && !r.na && <span className="text-red-600 ml-1">→ 0 pts</span>}
+                      {r.na && <span className="text-amber-600 ml-1">→ N/A (nota mantida)</span>}
                     </p>
+                  </div>
+                  {p.permite_na !== false && (
+                    <label className="flex items-center gap-1 shrink-0 cursor-pointer mt-0.5">
+                      <input type="checkbox" checked={r.na}
+                        onChange={e => setRespostasAuto(prev => ({ ...prev, [key]: { ...r, na: e.target.checked } }))}
+                        className="w-3.5 h-3.5" />
+                      <span className="text-[11px] text-muted-foreground">N/A</span>
+                    </label>
                   )}
                 </div>
-                <span className={`text-xs font-semibold ${auto.tiraPonto ? "text-red-600" : "text-emerald-600"}`}>
-                  {auto.tiraPonto ? "0" : p.peso} pts
-                </span>
+                {r.na && (
+                  <div className="space-y-1 ml-7">
+                    <Label className="text-[10px] text-amber-700">Justificativa obrigatória — por que N/A? (nota será mantida)</Label>
+                    <Textarea value={r.justificativa}
+                      onChange={e => setRespostasAuto(prev => ({ ...prev, [key]: { ...r, justificativa: e.target.value } }))}
+                      placeholder="Por que este item não se aplica..."
+                      className="text-xs min-h-[36px]" />
+                  </div>
+                )}
               </div>
             );
-          })}
-          <div className="flex items-center justify-between px-3 py-2 bg-muted/50 border border-border rounded-lg">
-            <span className="text-xs text-muted-foreground">Total parcial (sem N/A)</span>
-            <span className="text-sm font-bold text-primary">{notaEfetivaAuditor} / {notaMaximaAuditor} pts</span>
-          </div>
-        </div>
-      )}
+          });
+        })()}
 
-      <div className="space-y-2 pt-2 border-t border-border">
+        {/* Total */}
+        <div className="border border-primary/30 rounded-lg px-4 py-3 bg-primary/5 space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold text-foreground">Nota final da Auditoria</span>
+            <span className="text-primary text-lg font-bold">{notaEfetivaAuditor} pts</span>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            {(() => {
+              const nomeAvaliado = assignment?.profiles_aval?.nome ?? assignment?.profiles?.nome ?? null;
+              if (nomeAvaliado) return `👤 Ao confirmar, nota será gravada para: ${nomeAvaliado}`;
+              return "👤 Ao confirmar, nota será gravada para o avaliado";
+            })()}
+          </p>
+        </div>
+      </div>
+
+      {/* Devolução */}
+      <div className="space-y-1 pt-2 border-t border-border">
         <Label className="text-[11px]">Justificativa para devolução (obrigatória se devolver)</Label>
         <Textarea value={motivoFinal} onChange={e => setMotivoFinal(e.target.value)} className="text-xs min-h-[44px]" maxLength={2000} />
       </div>
