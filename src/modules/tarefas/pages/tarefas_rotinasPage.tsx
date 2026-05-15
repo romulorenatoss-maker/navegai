@@ -668,14 +668,22 @@ export default function OperationalCadastroPage() {
     // Banco (`operational_template_fields`) é a única fonte de verdade aqui.
     // Variáveis savedAvaliadorFieldIds/Keys ficam apenas para retrocompatibilidade
     // de leitura, mas não são mais aplicadas como filtro.
-    void savedAvaliadorFieldIds;
     void savedAvaliadorFieldKeys;
-    const activeLoadedFields = loadedFields;
+    // Se existe snapshot com avaliado_field_ids, usar como lista de campos ativos.
+    // Campos com respostas vinculadas (referencedFieldIds) são protegidos do delete
+    // mas NÃO devem reaparecer na UI se o usuário os removeu explicitamente.
     const referencedFieldIds = await fetchReferencedFieldIds(
-      activeLoadedFields.map(f => f.id).filter(Boolean) as string[],
+      loadedFields.map(f => f.id).filter(Boolean) as string[],
     );
-    const dedupedFields = dedupeLoadedFields(activeLoadedFields, referencedFieldIds);
-    setFields(dedupedFields);
+    const dedupedFields = dedupeLoadedFields(loadedFields, referencedFieldIds);
+
+    // Filtra apenas os campos que o usuário manteve ativos (salvos em avaliado_field_ids).
+    // Se não há snapshot ainda (primeiro save), usa todos os campos do banco.
+    const activeLoadedFields = savedAvaliadorFieldIds && savedAvaliadorFieldIds.size > 0
+      ? dedupedFields.filter(f => f.id && savedAvaliadorFieldIds.has(f.id))
+      : dedupedFields;
+
+    setFields(activeLoadedFields);
 
     // Load steps
     const { data: stps } = await (supabase as any).from("operational_template_steps")
