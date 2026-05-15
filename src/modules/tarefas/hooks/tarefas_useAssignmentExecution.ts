@@ -420,13 +420,21 @@ export function useAssignmentExecution(assignmentId: string | null) {
         const isDesignada = !!assignment.created_by
           && assignment.created_by !== assignment.responsavel_id
           && !assignment.aprovador_id;
-        // Quando devolvida: fecha todas as contingências abertas antes de transicionar
+        // Quando devolvida: fecha contingências seguindo fluxo aberta→em_andamento→resolvida
         if (assignment.status === "devolvida") {
+          const nowTs = new Date().toISOString();
+          // Passo 1: aberta → em_andamento
           await (supabase as any)
             .from("operational_contingencies")
-            .update({ status: "resolvida", resolved_at: new Date().toISOString() })
+            .update({ status: "em_andamento", updated_at: nowTs })
             .eq("assignment_id", assignment.id)
-            .in("status", ["aberta", "em_andamento"]);
+            .eq("status", "aberta");
+          // Passo 2: em_andamento → resolvida
+          await (supabase as any)
+            .from("operational_contingencies")
+            .update({ status: "resolvida", resolvida_em: nowTs, dentro_prazo: true, updated_at: nowTs })
+            .eq("assignment_id", assignment.id)
+            .eq("status", "em_andamento");
         }
         const actionFinal = assignment.status === "devolvida"
           ? "enviar_avaliacao"
