@@ -569,25 +569,22 @@ export default function OperationalCadastroPage() {
     mutationFn: async () => {
       if (!editingId) return;
 
+      const currentFields = fieldsRef.current;
+      const currentSections = sectionsRef.current;
+
       const activeSectionIds = new Set(
-        sections.flatMap(s => [s.tempId, s.id].filter(Boolean))
+        currentSections.flatMap(s => [s.tempId, s.id].filter(Boolean))
       );
-      const activeFields = fields.filter(
+      const activeFields = currentFields.filter(
         f => f.sectionTempId && activeSectionIds.has(f.sectionTempId)
       );
       const activeAvaliadorFieldIds = activeFields
         .map(f => f.id)
         .filter(Boolean) as string[];
 
-      console.log('[D2]', {
-        sections: sections.map(s => ({ tempId: s.tempId, id: s.id })),
-        fieldsSnapshot: fields.map(f => ({ tempId: f.tempId, id: f.id, sectionTempId: f.sectionTempId })),
-        activeSectionIds: Array.from(activeSectionIds),
-      });
-
       // Upsert sections
       const sectionIdMap: Record<string, string> = {};
-      for (const [i, s] of sections.entries()) {
+      for (const [i, s] of currentSections.entries()) {
         const payloadSection = sectionPayload(editingId, s, i);
         if (s.id) {
           const { error } = await (supabase as any)
@@ -622,13 +619,6 @@ export default function OperationalCadastroPage() {
       const removableFieldIds = existingFieldIds.filter(
         (id: string) => !currentFieldIds.has(id) && !referencedFieldIds.has(id)
       );
-      // [DEBUG TEMP] inspecionar cálculo de removableFieldIds em saveFieldsOnly
-      console.log("[DEBUG saveFieldsOnly removable]", {
-        existingFieldIds,
-        currentFieldIds: Array.from(currentFieldIds),
-        removableFieldIds,
-        referencedFieldIds: Array.from(referencedFieldIds),
-      });
       if (removableFieldIds.length > 0) {
         const { error } = await (supabase as any)
           .from("operational_template_fields")
@@ -667,7 +657,7 @@ export default function OperationalCadastroPage() {
       // React atualizado — garante que campos recém-inseridos tenham id real.
       // Usar os sectionIds já resolvidos para filtrar fields ativos.
       const resolvedActiveSectionIds = new Set(
-        sections.flatMap(s => [s.tempId, s.id, sectionIdMap[s.tempId]].filter(Boolean))
+        currentSections.flatMap(s => [s.tempId, s.id, sectionIdMap[s.tempId]].filter(Boolean))
       );
 
       // Buscar ids reais atualizados do banco para este template
