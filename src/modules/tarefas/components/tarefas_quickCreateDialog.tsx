@@ -58,6 +58,7 @@ interface Props {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   defaultAvaliadoId?: string;
+  defaultResponsavelId?: string;
   /** Tipo escolhido no seletor inicial. "simples" oculta workflow de etapas/seções e simplifica a Step 2. */
   taskType?: "simples" | "inspecao";
   /** Setor pré-selecionado no wizard inicial (trava o campo Setor no Step 1 e filtra avaliados). */
@@ -73,7 +74,7 @@ interface Props {
 
 type Step = 1 | 2 | 3;
 
-export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId, taskType = "inspecao", initialSetorId = "", origemContexto = "rotina" }: Props) {
+export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId, defaultResponsavelId, taskType = "inspecao", initialSetorId = "", origemContexto = "rotina" }: Props) {
   const isAvulsa = origemContexto === "avulsa";
   const qc = useQueryClient();
   const { profile } = useAuth();
@@ -174,8 +175,10 @@ export default function QuickTaskDialog({ open, onOpenChange, defaultAvaliadoId,
       setSections([s]);
       // Pré-seleciona o avaliado quando há um default (visão admin de outro user)
       if (defaultAvaliadoId) setAvaliadoId(defaultAvaliadoId);
+      // Pré-seleciona o próprio usuário como executor (pode ser alterado)
+      if (defaultResponsavelId && !defaultAvaliadoId) setAvaliadoId(defaultResponsavelId);
     }
-  }, [open, defaultAvaliadoId]);
+  }, [open, defaultAvaliadoId, defaultResponsavelId]);
 
   // Em contexto avulsa: blindagem — recorrência sempre desligada.
   // Em contexto avulsa: blindagem — recorrência sempre desligada.
