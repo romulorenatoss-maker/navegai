@@ -8,7 +8,7 @@
  *
  * Não tocam em banco, RPCs, triggers, scoring, builder ou execução.
  */
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -289,6 +289,41 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Perguntas AUTO do template (ada_config_snapshot.checklists.aprovador)
+  // Calcula resposta automática por métrica baseado nas flags reais do assignment
+  const calcRespostaAuto = useCallback((metrica: string): { resposta: "sim" | "nao" | null; label: string; tiraPonto: boolean } => {
+    const a = assignment;
+    if (!a) return { resposta: null, label: "Sem dados", tiraPonto: false };
+    switch (metrica) {
+      case "executor_entregou_no_prazo":
+        if (a.flag_sla_etapa_estourado) return { resposta: "nao", label: "Não — atrasou", tiraPonto: true };
+        return { resposta: "sim", label: "Sim — dentro do prazo", tiraPonto: false };
+      case "executor_teve_atraso_etapa":
+        if (a.flag_sla_etapa_estourado) return { resposta: "sim", label: "Sim — houve atraso em etapa", tiraPonto: true };
+        return { resposta: "nao", label: "Não — sem atraso", tiraPonto: false };
+      case "executor_obrigatorias_respondidas":
+        return { resposta: "sim", label: "Sim — todas respondidas", tiraPonto: false };
+      case "executor_evidencias_anexadas":
+        return { resposta: "sim", label: "Sim — evidências anexadas", tiraPonto: false };
+      case "executor_teve_devolucao":
+        if ((a.rodada_atual ?? 1) > 1) return { resposta: "sim", label: "Sim — tarefa foi devolvida", tiraPonto: true };
+        return { resposta: "nao", label: "Não — sem devolução", tiraPonto: false };
+      case "plano_acao_foi_criado":
+        if ((a.rodada_atual ?? 1) > 1) return { resposta: "sim", label: "Sim — plano de ação gerado", tiraPonto: true };
+        return { resposta: "nao", label: "Não — sem plano de ação", tiraPonto: false };
+      case "plano_acao_sla_estourado":
+        if (a.flag_atraso_plano_acao) return { resposta: "sim", label: "Sim — SLA do plano estourou", tiraPonto: true };
+        return { resposta: "nao", label: "Não — dentro do prazo", tiraPonto: false };
+      case "plano_acao_prazo_prorrogado":
+        if (a.flag_atraso_plano_acao) return { resposta: "sim", label: "Sim — prazo prorrogado", tiraPonto: true };
+        return { resposta: "nao", label: "Não", tiraPonto: false };
+      case "plano_acao_prazo_prorrogado_2x":
+        if (a.flag_reincidencia_atraso) return { resposta: "sim", label: "Sim — prorrogado mais de 1 vez", tiraPonto: true };
+        return { resposta: "nao", label: "Não", tiraPonto: false };
+      default:
+        return { resposta: null, label: "Avaliação manual", tiraPonto: false };
+    }
+  }, [assignment]);
+
   const perguntasAutoTemplate = useMemo(() => {
     const snap = assignment?.operational_templates?.ada_config_snapshot
       ?? assignment?.template_snapshot?.ada_config_snapshot;
@@ -710,20 +745,26 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             {perguntasAutoTemplate.map((p: any) => {
               const key = p.tempId ?? p.id ?? p.pergunta;
               const r = respostasAuto[key] ?? { na: false, justificativa: "" };
+              const auto = calcRespostaAuto(p.metrica_calculo ?? "manual");
+              const pontosEfetivos = r.na ? 0 : (auto.tiraPonto ? 0 : p.peso);
               return (
-                <div key={key} className={`border rounded-lg p-3 space-y-2 bg-card ${r.na ? "opacity-60" : ""}`}>
+                <div key={key} className={`border rounded-lg p-3 space-y-2 ${r.na ? "opacity-60 bg-muted/30 border-border" : auto.tiraPonto ? "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800" : "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"}`}>
                   <div className="flex items-start justify-between gap-2">
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium text-foreground">{p.pergunta}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        Tipo: {p.tipo === "sim_nao" ? "Sim / Não" : "Conforme / Não conforme"} · Nota: <span className="font-semibold text-primary">{p.peso}</span> pts
-                      </p>
-                      {p.metrica_calculo && p.metrica_calculo !== "manual" && (
-                        <p className="text-[10px] text-blue-600 dark:text-blue-400">Auto: {p.metrica_calculo.replace(/_/g, " ")}</p>
+                      {auto.resposta && !r.na && (
+                        <div className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded text-[10px] font-semibold ${auto.tiraPonto ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"}`}>
+                          {auto.tiraPonto ? "✗" : "✓"} {auto.label}
+                        </div>
                       )}
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Nota: <span className={`font-semibold ${r.na ? "text-muted-foreground line-through" : auto.tiraPonto ? "text-red-600 line-through" : "text-emerald-600"}`}>{p.peso} pts</span>
+                        {auto.tiraPonto && !r.na && <span className="text-red-600 ml-1">→ 0 pts (penalidade)</span>}
+                        {r.na && <span className="text-muted-foreground ml-1">→ desconsiderado</span>}
+                      </p>
                     </div>
                     {p.permite_na !== false && (
-                      <label className="flex items-center gap-1.5 shrink-0 cursor-pointer">
+                      <label className="flex items-center gap-1.5 shrink-0 cursor-pointer mt-1">
                         <input
                           type="checkbox"
                           checked={r.na}
@@ -736,7 +777,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                   </div>
                   {r.na && (
                     <div className="space-y-1">
-                      <Label className="text-[10px] text-amber-700">Justificativa obrigatória</Label>
+                      <Label className="text-[10px] text-amber-700">Justificativa obrigatória para N/A</Label>
                       <Textarea
                         value={r.justificativa}
                         onChange={(e) => setRespostasAuto(prev => ({ ...prev, [key]: { ...r, justificativa: e.target.value } }))}
