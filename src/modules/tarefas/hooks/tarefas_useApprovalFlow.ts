@@ -260,7 +260,7 @@ export function useApprovalFlow(assignmentId: string | null) {
       }
 
       // Save any pending approver answers before final decision
-      const snapshotFields: SnapshotField[] = assignment.template_snapshot?.fields || [];
+      const snapshotFields: SnapshotField[] = getEffectiveSnapshot(assignment)?.fields || [];
       // Save TODOS os rascunhos pendentes do aprovador (todas perguntas, não só aprovador_verificar)
       if (Object.keys(approverAnswers).length > 0) {
         await saveApproverAnswers.mutateAsync(snapshotFields);
@@ -331,7 +331,7 @@ export function useApprovalFlow(assignmentId: string | null) {
       if (!profile?.id || !assignmentId) throw new Error("Não autenticado");
       if (!planos.length) throw new Error("Nenhum plano de ação para registrar.");
 
-      const snapshotFields: SnapshotField[] = assignment.template_snapshot?.fields || [];
+      const snapshotFields: SnapshotField[] = getEffectiveSnapshot(assignment)?.fields || [];
       if (Object.keys(approverAnswers).length > 0) {
         await saveApproverAnswers.mutateAsync(snapshotFields);
       }
@@ -449,7 +449,7 @@ export function useApprovalFlow(assignmentId: string | null) {
       const semMotivo = perguntas.find(p => !p.motivo?.trim());
       if (semMotivo) throw new Error(`Informe o motivo para "${semMotivo.field_label}".`);
 
-      const snapshotFields: SnapshotField[] = assignment.template_snapshot?.fields || [];
+      const snapshotFields: SnapshotField[] = getEffectiveSnapshot(assignment)?.fields || [];
       if (Object.keys(approverAnswers).length > 0) {
         await saveApproverAnswers.mutateAsync(snapshotFields);
       }
