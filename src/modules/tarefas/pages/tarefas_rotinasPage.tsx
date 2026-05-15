@@ -320,14 +320,18 @@ export default function OperationalCadastroPage() {
   const upsert = useMutation({
     mutationFn: async () => {
       if (!form.nome.trim()) throw new Error("Nome é obrigatório");
-      const aprovadorSync = syncAprovadorReplicadasFromFields(aprovadorChecks, fields);
+      // Causa raiz: fields órfãos (sem section_id ativo) eram serializados no snapshot
+      // e reapareciam como fantasmas no Aprovador ao reabrir. Filtrar antes do sync.
+      const activeSectionIds = new Set(sections.map(s => s.tempId).filter(Boolean));
+      const activeFields = fields.filter(f => f.sectionTempId && activeSectionIds.has(f.sectionTempId));
+      const aprovadorSync = syncAprovadorReplicadasFromFields(aprovadorChecks, activeFields);
       const aprovadorSnapshot = sanitizeAprovadorChecks(
         aprovadorSync,
-        fields,
+        activeFields,
         pontuacaoConfig?.aprovador_pacote_padrao,
         form.habilitar_perguntas_automaticas,
       );
-      const activeAvaliadorFields = fields.map(f => ({
+      const activeAvaliadorFields = activeFields.map(f => ({
         id: f.id ?? null,
         key: fieldDuplicateKey(f),
       }));
@@ -659,12 +663,14 @@ export default function OperationalCadastroPage() {
       aprovador_exige_evidencia_nao: f.aprovador_exige_evidencia_nao ?? false,
       aprovador_tipos_evidencia: f.aprovador_tipos_evidencia || ["foto"],
     }));
-    const activeLoadedFields = savedAvaliadorFieldIds || savedAvaliadorFieldKeys
-      ? loadedFields.filter(f =>
-          (savedAvaliadorFieldIds?.has(f.id ?? f.tempId) ?? false) ||
-          (savedAvaliadorFieldKeys?.has(fieldDuplicateKey(f)) ?? false)
-        )
-      : loadedFields;
+    // Causa raiz: filtrar loadedFields por snapshot antigo "ressuscitava" estado obsoleto
+    // (perguntas removidas voltavam ao reabrir; novas eram descartadas).
+    // Banco (`operational_template_fields`) é a única fonte de verdade aqui.
+    // Variáveis savedAvaliadorFieldIds/Keys ficam apenas para retrocompatibilidade
+    // de leitura, mas não são mais aplicadas como filtro.
+    void savedAvaliadorFieldIds;
+    void savedAvaliadorFieldKeys;
+    const activeLoadedFields = loadedFields;
     const referencedFieldIds = await fetchReferencedFieldIds(
       activeLoadedFields.map(f => f.id).filter(Boolean) as string[],
     );
