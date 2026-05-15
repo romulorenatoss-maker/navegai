@@ -175,6 +175,7 @@ async function saveFieldsToDb(
       exige_evidencia: f.exige_evidencia,
       tipo_evidencia: f.tipo_evidencia || "foto",
       opcoes: f.opcoes?.length > 0 ? f.opcoes : null,
+      opcoes_regras: f.opcoes_regras?.length > 0 ? f.opcoes_regras : null,
     };
     if (f.id) {
       const { error } = await (supabase as any).from("operational_template_fields").update(payload).eq("id", f.id);
