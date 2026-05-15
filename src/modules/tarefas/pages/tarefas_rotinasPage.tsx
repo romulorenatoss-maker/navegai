@@ -12,7 +12,7 @@ import { TemplateForm, SectionForm, FieldForm, StepForm, defaultTemplate } from 
 type TaskType = "simples" | "inspecao";
 import { TarefasBuilderWizard } from "@/modules/tarefas/components/builder/TarefasBuilderWizard";
 import { AprovadorCheckItemForm, buildAprovadorAutomatico, defaultAprovadorCheckItem } from "@/modules/tarefas/components/builder/types";
-import { normalizeAprovadorList, syncAprovadorReplicadasFromFields } from "@/modules/tarefas/components/builder/checklistNormalizers";
+import { normalizeAprovadorList } from "@/modules/tarefas/components/builder/checklistNormalizers";
 
 import {
   buildActiveFieldIds,
