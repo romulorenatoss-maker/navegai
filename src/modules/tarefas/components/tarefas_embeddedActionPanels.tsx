@@ -1423,17 +1423,23 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
           );
         }
       } else {
-        const avaliadoId = assignment?.avaliado_id || assignment?.responsavel_id;
-        if (avaliadoId) {
+        // Nota da auditoria vai para o APROVADOR (não para o avaliado)
+        const aprovadorId = assignment?.aprovador_id;
+        if (aprovadorId) {
           await (supabase as any).from("operational_score_logs").insert({
             assignment_id: assignment.id,
             profile_id: profile?.id,
-            target_profile_id: avaliadoId,
-            tipo_score: "auditoria",
+            target_profile_id: aprovadorId,
+            tipo_score: "aprovador",
             score_final: notaEfetivaAuditor,
-            detalhe_calculo: { nota_efetiva: notaEfetivaAuditor, nota_maxima: notaMaximaAuditor, destino: "individual" },
+            detalhe_calculo: { nota_efetiva: notaEfetivaAuditor, nota_maxima: notaMaximaAuditor, destino: "aprovador" },
             created_at: new Date().toISOString(),
           });
+          // Grava também no assignment
+          await (supabase as any)
+            .from("operational_assignments")
+            .update({ score_aprovador: notaEfetivaAuditor })
+            .eq("id", assignment.id);
         }
       }
 
@@ -1511,9 +1517,9 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
           <p className="text-[11px] text-muted-foreground">
             {(() => {
               const destino = assignment?.template_snapshot?.destino_score ?? assignment?.operational_templates?.destino_score ?? "individual";
-              const nomeAvaliado = assignment?.profiles_aval?.nome ?? assignment?.profiles?.nome ?? null;
-              if (nomeAvaliado) return `👤 Ao confirmar, nota será gravada para: ${nomeAvaliado}`;
-              return "👤 Ao confirmar, nota será gravada para o avaliado";
+              const nomeAprovador = assignment?.aprovador?.nome ?? assignment?.profiles_aprov?.nome ?? null;
+              if (nomeAprovador) return `🔍 Ao confirmar, nota do aprovador será gravada para: ${nomeAprovador}`;
+              return "🔍 Ao confirmar, nota será gravada para o aprovador";
             })()}
           </p>
         </div>
@@ -1612,9 +1618,9 @@ export function EmbeddedAuditPanel({ assignment, fields, onClose }: ApprovalProp
           </div>
           <p className="text-[11px] text-muted-foreground">
             {(() => {
-              const nomeAvaliado = assignment?.profiles_aval?.nome ?? assignment?.profiles?.nome ?? null;
-              if (nomeAvaliado) return `👤 Ao confirmar, nota será gravada para: ${nomeAvaliado}`;
-              return "👤 Ao confirmar, nota será gravada para o avaliado";
+              const nomeAprovador = assignment?.aprovador?.nome ?? assignment?.profiles_aprov?.nome ?? null;
+              if (nomeAprovador) return `🔍 Ao confirmar, nota do aprovador será gravada para: ${nomeAprovador}`;
+              return "🔍 Ao confirmar, nota será gravada para o aprovador";
             })()}
           </p>
         </div>
