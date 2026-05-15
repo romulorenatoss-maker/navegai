@@ -392,6 +392,7 @@ export default function OperationalExecucaoPage() {
   // Listas das 5 abas operacionais (vindas direto do bucketize)
   const opLists = useMemo(() => ({
     hoje: sorted(buckets.opHoje),
+    emAndamento: sorted(buckets.opEmAndamento),
     aguardandoAprovacao: sorted(buckets.opAguardandoAprovacao),
     aguardandoAuditoria: sorted(buckets.opAguardandoAuditoria),
     concluidas: sorted(buckets.opConcluidas).slice(0, 100),
