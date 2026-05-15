@@ -115,6 +115,7 @@ interface Props {
     plano_acao_anexo_url?: string | null;
     flag_prazo_alterado?: boolean | null;
     justificativa_alteracao_prazo?: string | null;
+    tipo_evidencia_exigida?: string | null;
   } | null;
 }
 
