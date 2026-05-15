@@ -462,7 +462,10 @@ export default function OperationalCadastroPage() {
           .eq("template_id", templateId);
         if (existingFieldsError) throw existingFieldsError;
         const existingFieldIds = (existingFields || []).map((f: any) => f.id).filter(Boolean);
-        const currentFieldIds = new Set(fields.map(f => f.id).filter(Boolean) as string[]);
+        // currentFieldIds = ids dos campos que o usuário manteve na UI agora.
+        // activeAvaliadorFieldIds = ids ativos (já calculado acima no upsert).
+        // Um campo é removível se: saiu da UI E não tem respostas vinculadas.
+        const currentFieldIds = new Set(activeAvaliadorFieldIds.filter(Boolean) as string[]);
         const referencedFieldIds = await fetchReferencedFieldIds(existingFieldIds);
         const removableFieldIds = existingFieldIds.filter((id: string) => !currentFieldIds.has(id) && !referencedFieldIds.has(id));
         if (removableFieldIds.length > 0) {
