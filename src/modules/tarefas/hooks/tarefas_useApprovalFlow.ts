@@ -220,7 +220,7 @@ export function useApprovalFlow(assignmentId: string | null) {
   // Check blocking conditions — only count aprovador_verificar fields
   const getBlockingReasons = useCallback((assignment: any): string[] => {
     const reasons: string[] = [];
-    const snapshot = assignment?.template_snapshot;
+    const snapshot = getEffectiveSnapshot(assignment);
 
     // Block if open contingencies exist and template requires it
     if (snapshot?.bloquear_fechamento_contingencia) {
