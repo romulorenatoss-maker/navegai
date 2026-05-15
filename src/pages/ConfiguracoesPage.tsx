@@ -6,10 +6,9 @@
 import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
-import { Settings, Users, Building2, Calculator, HardDrive } from "lucide-react";
+import { Settings, Users, Building2, HardDrive } from "lucide-react";
 import { TarefasConfigColaboradores } from "@/modules/tarefas/components/configuracoes/TarefasConfigColaboradores";
 import { TarefasConfigSetores } from "@/modules/tarefas/components/configuracoes/TarefasConfigSetores";
-import { TarefasConfigPontuacao } from "@/modules/tarefas/components/configuracoes/TarefasConfigPontuacao";
 import { TarefasConfigArmazenamento } from "@/modules/tarefas/components/configuracoes/TarefasConfigArmazenamento";
 
 export default function ConfiguracoesPage() {
@@ -38,9 +37,6 @@ export default function ConfiguracoesPage() {
             <TabsTrigger value="setores" className="gap-2">
               <Building2 className="w-4 h-4" /> Setores
             </TabsTrigger>
-            <TabsTrigger value="pontuacao" className="gap-2">
-              <Calculator className="w-4 h-4" /> Pontuação / Notas
-            </TabsTrigger>
             <TabsTrigger value="armazenamento" className="gap-2">
               <HardDrive className="w-4 h-4" /> Armazenamento
             </TabsTrigger>
@@ -52,9 +48,6 @@ export default function ConfiguracoesPage() {
             </TabsContent>
             <TabsContent value="setores" className="m-0">
               <TarefasConfigSetores />
-            </TabsContent>
-            <TabsContent value="pontuacao" className="m-0">
-              <TarefasConfigPontuacao />
             </TabsContent>
             <TabsContent value="armazenamento" className="m-0">
               <TarefasConfigArmazenamento />
