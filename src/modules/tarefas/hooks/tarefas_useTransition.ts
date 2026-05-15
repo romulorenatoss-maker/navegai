@@ -281,9 +281,16 @@ export function useOperationalTransition() {
       // Bloqueia avanço com contingências em aberto
       if ([TASK_STATUS.AGUARDANDO_APROVACAO, TASK_STATUS.AGUARDANDO_AUDITORIA, TASK_STATUS.CONCLUIDA, TASK_STATUS.APROVADA].includes(targetStatus as any)
           && action !== "encerrar_final" && action !== "validar_solicitante_aprovar") {
-        const openCount = await hasOpenContingencies(assignmentId);
-        if (openCount > 0) {
-          throw new Error(`Não é possível avançar: existem ${openCount} plano de ação(s) pendente(s).`);
+        // Quando executor reenvia após devolução (rodada > 1 ou status devolvida),
+        // o cleanup já rodou antes desta chamada — não bloquear
+        const isReenvioPosDevolucao =
+          action === "enviar_avaliacao" &&
+          ((extraData as any)?.rodadaAtual ?? 1) > 1;
+        if (!isReenvioPosDevolucao) {
+          const openCount = await hasOpenContingencies(assignmentId);
+          if (openCount > 0) {
+            throw new Error(`Não é possível avançar: existem ${openCount} plano de ação(s) pendente(s).`);
+          }
         }
       }
 
