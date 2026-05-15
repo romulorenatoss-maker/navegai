@@ -280,10 +280,39 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     prazo_padrao: string;
     justificativa_alteracao_prazo: string;
     criticidade: "baixa" | "media" | "alta";
+    tipo_evidencia_exigida: "foto" | "video" | "descricao" | "nenhuma";
   }>>({});
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
   // Por NC, o aprovador escolhe se vira plano de ação ou só devolução para refazer
   const [acaoPorNC, setAcaoPorNC] = useState<Record<string, "plano" | "devolver">>({});
+  // Modal de confirmação de aprovação com perguntas AUTO do template
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  // Perguntas AUTO do template (ada_config_snapshot.checklists.aprovador)
+  const perguntasAutoTemplate = useMemo(() => {
+    const snap = assignment?.operational_templates?.ada_config_snapshot
+      ?? assignment?.template_snapshot?.ada_config_snapshot;
+    const lista = snap?.checklists?.aprovador;
+    if (!Array.isArray(lista)) return [];
+    return lista.filter((p: any) => p.ativo !== false);
+  }, [assignment]);
+
+  const [respostasAuto, setRespostasAuto] = useState<Record<string, { na: boolean; justificativa: string }>>({});
+
+  const totalNotaAuto = useMemo(() =>
+    perguntasAutoTemplate.reduce((sum: number, p: any) => {
+      const r = respostasAuto[p.tempId ?? p.id ?? p.pergunta];
+      if (r?.na) return sum;
+      return sum + (Number(p.peso) || 0);
+    }, 0),
+    [perguntasAutoTemplate, respostasAuto]
+  );
+
+  const totalNotaAvaliado = useMemo(() =>
+    approverFields.reduce((sum, f) => sum + (f.aprovador_peso || 1), 0),
+    [approverFields]
+  );
+
   const saveTimers = useRef<Record<string, any>>({});
 
   const baseBlockReasons = flow.getBlockingReasons(assignment);
@@ -416,6 +445,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
           prazo_padrao: defaultPrazo,
           justificativa_alteracao_prazo: "",
           criticidade: "media",
+          tipo_evidencia_exigida: "descricao",
         };
       }
     }
@@ -464,6 +494,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
         prazo_alterado: prazoAlterado,
         justificativa_alteracao_prazo: prazoAlterado ? (p?.justificativa_alteracao_prazo?.trim() || "") : null,
         criticidade: p?.criticidade || "media" as const,
+        tipo_evidencia_exigida: p?.tipo_evidencia_exigida || "descricao",
       };
     });
     const invalidoBasico = lista.find(p => !p.descricao_acao || !p.prazo_iso);
@@ -548,6 +579,28 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
           return (
             <div key={f.id} className="border border-border rounded-lg p-3 bg-card space-y-2">
               <div className="text-sm font-medium text-foreground">{f.label}</div>
+              <div className="space-y-1 pb-1">
+                <Label className="text-[11px]">Evidência exigida do executor</Label>
+                <div className="flex gap-1.5 flex-wrap">
+                  {([
+                    { v: "foto", label: "📷 Foto" },
+                    { v: "video", label: "🎥 Vídeo" },
+                    { v: "descricao", label: "✏️ Descrição" },
+                    { v: "nenhuma", label: "Nenhuma" },
+                  ] as const).map(opt => (
+                    <button
+                      key={opt.v}
+                      type="button"
+                      onClick={() => setPlanos(prev => ({ ...prev, [f.id]: { ...p, tipo_evidencia_exigida: opt.v } }))}
+                      className={`px-2 py-1 rounded border text-xs transition-colors ${
+                        (p.tipo_evidencia_exigida ?? "descricao") === opt.v
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "border-border text-muted-foreground hover:bg-muted"
+                      }`}
+                    >{opt.label}</button>
+                  ))}
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <Label className="text-[11px]">
