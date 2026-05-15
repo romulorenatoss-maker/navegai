@@ -652,27 +652,37 @@ export default function OperationalCadastroPage() {
         }
       }
 
-      // Após persistir fields, re-sincroniza aprovadorChecks com os tempIds atualizados.
-      // Necessário porque saveFieldsOnly atualiza tempId dos fields novos para o id real,
-      // e as replicadas existentes podem ter field_id com o tempId efêmero antigo.
-      setAprovadorChecks(prev =>
-        syncAprovadorReplicadasFromFields(
-          prev,
-          activeFields.map(f => ({
-            ...f,
-            tempId: f.id ?? f.tempId,
-          }))
-        )
+      // Após o loop de upsert, reconstruir a lista de ids a partir do estado
+      // React atualizado — garante que campos recém-inseridos tenham id real.
+      // Usar os sectionIds já resolvidos para filtrar fields ativos.
+      const resolvedActiveSectionIds = new Set(
+        sections.flatMap(s => [s.tempId, s.id, sectionIdMap[s.tempId]].filter(Boolean))
       );
 
-      // Atualiza avaliado_fields/avaliado_field_ids no ada_config_snapshot
+      // Buscar ids reais atualizados do banco para este template
+      const { data: freshFields } = await (supabase as any)
+        .from("operational_template_fields")
+        .select("id")
+        .eq("template_id", editingId);
+
+      const freshFieldIds = (freshFields || []).map((f: any) => f.id).filter(Boolean);
+
+      // Re-sincroniza aprovadorChecks com os ids reais
+      const activeFieldsWithRealIds = activeFields.map(f => ({
+        ...f,
+        tempId: f.id ?? f.tempId,
+      }));
+
+      setAprovadorChecks(prev =>
+        syncAprovadorReplicadasFromFields(prev, activeFieldsWithRealIds)
+      );
+
+      // Atualiza avaliado_fields/avaliado_field_ids com ids reais do banco
       const activeAvaliadorFieldsFinal = activeFields.map(f => ({
         id: f.id ?? null,
         key: fieldDuplicateKey(f),
       }));
-      const activeAvaliadorFieldIdsFinal = activeAvaliadorFieldsFinal
-        .map(f => f.id)
-        .filter(Boolean);
+      const activeAvaliadorFieldIdsFinal = freshFieldIds;
 
       const { data: currentTemplate } = await (supabase as any)
         .from("operational_templates")
