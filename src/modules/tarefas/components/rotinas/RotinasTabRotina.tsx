@@ -189,19 +189,19 @@ export function RotinasTabRotina({ form, set, templateId, onSave, saving }: Prop
         ada_config_snapshot: tmpl.ada_config_snapshot,
       };
 
-      // Calcula prazo limite
-      const slaHoras = tmpl.sla_horas || 24;
-      const prazoLimite = new Date(new Date(dataPrevista).getTime() + slaHoras * 60 * 60 * 1000).toISOString();
-
       const payload: any = {
         template_id: templateId,
         status: "pendente",
         data_prevista: dataPrevista,
-        prazo_limite: prazoLimite,
+        horario_limite: form.horario_limite_execucao
+          ? `${dataAlvo}T${form.horario_limite_execucao.slice(0, 5)}:00`
+          : null,
         template_snapshot: templateSnapshot,
+        template_versao: 1,
+        rodada_atual: 1,
         // Responsáveis
         responsavel_id: tmpl.executor_profile_id || null,
-        setor_responsavel_id: tmpl.executor_setor_id || null,
+        setor_executor_id: tmpl.executor_setor_id || null,
         avaliado_id: tmpl.avaliado_profile_id || null,
         setor_avaliado_id: tmpl.avaliado_setor_id || null,
         aprovador_id: tmpl.aprovador_profile_id || null,
