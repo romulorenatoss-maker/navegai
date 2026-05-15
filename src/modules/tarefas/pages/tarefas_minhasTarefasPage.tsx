@@ -402,12 +402,26 @@ export default function OperationalExecucaoPage() {
 
   const exec = useAssignmentExecution(selectedAssignment?.id || null);
 
+  // Em tarefas EM ANDAMENTO, sobrepõe ada_config_snapshot vivo do template
+  // (inclui checklists.aprovador com replicadas/manual/pacote padrão atualizados).
+  // Em tarefas FINAIS, mantém snapshot congelado para histórico imutável.
+  // FKs de respostas (operational_field_answers) seguem alinhadas porque a
+  // estrutura de fields/sections continua vindo de template_snapshot — o overlay
+  // afeta apenas regras (opcoes/regras) e o checklist do Aprovador.
   const snapshot = useMemo(() => {
     const base = selectedAssignment?.template_snapshot;
     const liveAda = selectedAssignment?.operational_templates?.ada_config_snapshot;
-    if (!base || base.ada_config_snapshot || !liveAda) return base;
-    return { ...base, ada_config_snapshot: liveAda };
-  }, [selectedAssignment?.template_snapshot, selectedAssignment?.operational_templates?.ada_config_snapshot]);
+    if (!base) return base;
+    const status = selectedAssignment?.status;
+    const isLive = !!status && !["concluida", "aprovada", "auditada", "cancelada", "arquivada"].includes(status);
+    if (isLive && liveAda) {
+      return { ...base, ada_config_snapshot: liveAda };
+    }
+    if (!base.ada_config_snapshot && liveAda) {
+      return { ...base, ada_config_snapshot: liveAda };
+    }
+    return base;
+  }, [selectedAssignment?.template_snapshot, selectedAssignment?.operational_templates?.ada_config_snapshot, selectedAssignment?.status]);
 
   // Deduplicate sections and fields by id
   const snapshotSections: any[] = useMemo(() => {
