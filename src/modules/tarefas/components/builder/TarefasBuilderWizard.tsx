@@ -38,6 +38,8 @@ interface Props {
   templateId: string | null;
   onCancel: () => void;
   onSubmit: () => void;
+  onSaveFields: () => Promise<void>;
+  savingFields: boolean;
 }
 
 export function TarefasBuilderWizard(props: Props) {
@@ -47,6 +49,7 @@ export function TarefasBuilderWizard(props: Props) {
     aprovadorChecks, setAprovadorChecks, validadorChecks, setValidadorChecks,
     setores, colaboradores,
     templateId, onCancel, onSubmit,
+    onSaveFields, savingFields,
   } = props;
 
   // Aprovador Final detectado pelos campos do form.
@@ -84,8 +87,20 @@ export function TarefasBuilderWizard(props: Props) {
     return true;
   }, [current, form.nome]);
 
-  const goNext = () => {
+  const goNext = async () => {
     if (!canAdvance) return;
+
+    // Ao sair da aba Avaliado em modo edição, persiste fields no banco antes de avançar.
+    // Garante que remoções não se percam caso o usuário feche o dialog antes do Resumo.
+    if (current === "campos" && isEditing) {
+      try {
+        await onSaveFields();
+      } catch {
+        // erro já tratado no onError da mutation
+        return;
+      }
+    }
+
     if (current === "campos") {
       setAprovadorChecks(prev => syncAprovadorReplicadasFromFields(prev, fields));
     }
@@ -183,8 +198,16 @@ export function TarefasBuilderWizard(props: Props) {
             </Button>
           )}
           {!isLast ? (
-            <Button type="button" onClick={goNext} disabled={!canAdvance}>
-              Avançar <ArrowRight className="w-4 h-4 ml-1" />
+            <Button
+              type="button"
+              onClick={goNext}
+              disabled={!canAdvance || (current === "campos" && savingFields)}
+            >
+              {current === "campos" && savingFields ? (
+                "Salvando..."
+              ) : (
+                <>Avançar <ArrowRight className="w-4 h-4 ml-1" /></>
+              )}
             </Button>
           ) : (
             <Button type="button" onClick={onSubmit} disabled={saving}>
