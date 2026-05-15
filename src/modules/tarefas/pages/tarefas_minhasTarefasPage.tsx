@@ -659,7 +659,12 @@ export default function OperationalExecucaoPage() {
     && (selectedAssignment.aprovador_id === profile?.id || isAdmin)
     && ["aguardando_avaliacao", "em_avaliacao"].includes(selectedAssignment.status);
   const isAprovadorMode = !!selectedAssignment
-    && (selectedAssignment.aprovador_id === profile?.id || isAdmin)
+    && (
+      selectedAssignment.aprovador_id === profile?.id ||
+      isAdmin ||
+      // Sem aprovador definido: quem criou a tarefa assume o papel de aprovador
+      (selectedAssignment.aprovador_id === null && selectedAssignment.created_by === profile?.id)
+    )
     && selectedAssignment.status === "aguardando_aprovacao";
   const isAuditorMode = !!selectedAssignment
     && (selectedAssignment.auditor_id === profile?.id || isAdmin)
@@ -1373,6 +1378,7 @@ export default function OperationalExecucaoPage() {
         open={quickTaskOpen}
         onOpenChange={setQuickTaskOpen}
         defaultAvaliadoId={effectiveFilterProfileId}
+        defaultResponsavelId={profile?.id}
         taskType={pickedTaskType}
         initialSetorId={pickedSetorId}
         origemContexto="avulsa"
