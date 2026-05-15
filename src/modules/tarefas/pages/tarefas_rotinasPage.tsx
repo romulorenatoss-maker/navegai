@@ -598,13 +598,6 @@ export default function OperationalCadastroPage() {
       }
     }
 
-    // Buscar ids reais do banco após todos os inserts
-    const { data: freshFields } = await (supabase as any)
-      .from("operational_template_fields")
-      .select("id")
-      .eq("template_id", editingId);
-    const freshFieldIds = (freshFields || []).map((f: any) => f.id).filter(Boolean);
-
     // Deletar fields removidos (existem no banco mas não estão em currentFields)
     const currentFieldIds = new Set(
       currentFields.map(f => f.id).filter(Boolean) as string[]
@@ -625,6 +618,13 @@ export default function OperationalCadastroPage() {
         .delete().in("id", removableFieldIds);
       if (error) throw error;
     }
+
+    // Buscar ids reais do banco APÓS o delete — só ids que realmente existem agora
+    const { data: freshFields } = await (supabase as any)
+      .from("operational_template_fields")
+      .select("id")
+      .eq("template_id", editingId);
+    const freshFieldIds = (freshFields || []).map((f: any) => f.id).filter(Boolean);
 
     // Atualizar avaliado_field_ids no snapshot com ids reais
     const { data: currentTemplateData } = await (supabase as any)
