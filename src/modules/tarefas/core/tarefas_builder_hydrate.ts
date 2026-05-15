@@ -3,10 +3,11 @@ import { filterActiveFields } from "./tarefas_builder_fields";
 
 export function hydrateFields(
   dbFields: FieldForm[],
-  activeFieldIds: string[]
+  activeFieldIds: string[],
+  removedFieldIds: string[] = [],
+  allowLegacyWithoutSnapshot = false,
 ): FieldForm[] {
-  return filterActiveFields(dbFields, activeFieldIds);
+  return filterActiveFields(dbFields, activeFieldIds, removedFieldIds, allowLegacyWithoutSnapshot);
 }
 
-// Alias retrocompatível.
 export const hydrateActiveFields = hydrateFields;

@@ -94,7 +94,7 @@ export function StepChecklistAprovador({ fields, items, setItems }: Props) {
 
   // Lista ordenada para exibição (filtra órfãos como defesa em profundidade)
   const ordered = useMemo(() => {
-    const validFieldIds = new Set(fields.map(f => f.tempId));
+    const validFieldIds = new Set(fields.map(f => f.id || f.tempId).filter(Boolean));
     const ord = (i: AprovadorCheckItemForm) => {
       switch (i.origem_pergunta) {
         case "replicada_avaliado": return 0;

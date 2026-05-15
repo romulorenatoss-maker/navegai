@@ -1,9 +1,8 @@
-/**
- * Núcleo Validador: hidratação determinística sem normalização legado.
- *
- * Mantém configs visíveis (peso, SLA, evidência, opções, regras).
- * Apenas descarta entradas falsy (null/undefined) que possam vir de snapshots quebrados.
- */
-export function rebuildValidadorChecks(checks: any[]) {
-  return (checks || []).filter(Boolean);
+export function rebuildValidadorChecks(checks: any[], activeFieldIds: string[] = []) {
+  const active = new Set((activeFieldIds || []).filter(Boolean));
+  return (checks || []).filter(check => {
+    if (!check) return false;
+    if (!check.field_id) return true;
+    return active.has(check.field_id);
+  });
 }

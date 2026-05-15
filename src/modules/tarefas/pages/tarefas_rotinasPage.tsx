@@ -13,10 +13,11 @@ import { TarefasBuilderWizard } from "@/modules/tarefas/components/builder/Taref
 import { AprovadorCheckItemForm, buildAprovadorAutomatico } from "@/modules/tarefas/components/builder/types";
 
 import { buildChecklistSnapshot } from "@/modules/tarefas/core/tarefas_builder_save";
-import { getChecklistSnapshot, getActiveFieldIds } from "@/modules/tarefas/core/tarefas_builder_snapshot";
+import { getChecklistSnapshot, getActiveFieldIds, getRemovedFieldIds, hasChecklistFieldSource } from "@/modules/tarefas/core/tarefas_builder_snapshot";
 import { hydrateFields } from "@/modules/tarefas/core/tarefas_builder_hydrate";
 import { rebuildAprovadorChecks } from "@/modules/tarefas/core/tarefas_builder_aprovador";
 import { rebuildValidadorChecks } from "@/modules/tarefas/core/tarefas_builder_validador";
+import { mergeRemovedFieldIds, normalizeRemovedFieldIds } from "@/modules/tarefas/core/tarefas_builder_fields";
 
 import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
 
@@ -125,6 +126,7 @@ export default function OperationalCadastroPage() {
   const [steps, setSteps] = useState<StepForm[]>([]);
   const [aprovadorChecks, setAprovadorChecks] = useState<AprovadorCheckItemForm[]>([]);
   const [validadorChecks, setValidadorChecks] = useState<AprovadorCheckItemForm[]>([]);
+  const [removedFieldIds, setRemovedFieldIds] = useState<string[]>([]);
 
   const [activeTab, setActiveTab] = useState("geral");
   const [filterExecutor, setFilterExecutor] = useState("__all");
@@ -254,6 +256,21 @@ export default function OperationalCadastroPage() {
     dragOverItem.current = null;
   }, [templates, filterExecutor, filterAvaliador]);
 
+  const setFieldsGuarded: React.Dispatch<React.SetStateAction<FieldForm[]>> = useCallback((action) => {
+    setFields(prev => {
+      const nextRaw = typeof action === "function" ? (action as (p: FieldForm[]) => FieldForm[])(prev) : action;
+      const next = Array.isArray(nextRaw) ? nextRaw : [];
+      const nextKeys = new Set(next.map(f => f.id || f.tempId).filter(Boolean));
+      const removed = prev
+        .filter(f => f.id && !nextKeys.has(f.id))
+        .map(f => f.id as string);
+      if (removed.length > 0) {
+        setRemovedFieldIds(old => mergeRemovedFieldIds(old, removed));
+      }
+      return next;
+    });
+  }, []);
+
   const set = <K extends keyof TemplateForm>(k: K, v: TemplateForm[K]) => setForm(f => ({ ...f, [k]: v }));
 
   /**
@@ -265,7 +282,7 @@ export default function OperationalCadastroPage() {
    *  3. Persiste fields (insert ganha id; update mantém). Atualiza estado local.
    *  4. Deleta fields fora da UI (respeitando referencedFieldIds = histórico).
    *  5. Persiste steps.
-   *  6. Filtra aprovadorChecks contra fields ativos (sem replicação automática).
+   *  6. Reconstrói aprovador contra fields ativos (replica novas, remove órfãs).
    *  7. Monta snapshot final usando ids reais e UPDATE template apenas com snapshot.
    *
    * Retorna o templateId.
@@ -274,9 +291,10 @@ export default function OperationalCadastroPage() {
     if (!form.nome.trim()) throw new Error("Nome é obrigatório");
 
     const activeSectionIds = new Set(sections.map(s => s.tempId).filter(Boolean));
-    const activeFieldsInput = fields.filter(f => f.sectionTempId && activeSectionIds.has(f.sectionTempId));
-
     const adaSnapshotBase = (((form as any).ada_config_snapshot ?? {}) as any);
+    const snapshotRemovedFieldIds = getRemovedFieldIds(adaSnapshotBase);
+    const activeRemovedSet = new Set(mergeRemovedFieldIds(snapshotRemovedFieldIds, removedFieldIds));
+    const activeFieldsInput = fields.filter(f => f.sectionTempId && activeSectionIds.has(f.sectionTempId) && !(f.id && activeRemovedSet.has(f.id)));
 
     const basePayload: any = {
       nome: form.nome.trim(),
@@ -384,11 +402,12 @@ export default function OperationalCadastroPage() {
         .select("id")
         .eq("template_id", templateId);
       if (existingFieldsError) throw existingFieldsError;
-      const removedFieldIds: string[] = (existingDbFields || [])
+      const idsRemovedFromUi: string[] = (existingDbFields || [])
         .map((f: any) => f.id)
         .filter((id: string) => id && !keepFieldIds.has(id));
-      const referenced = await fetchReferencedFieldIds(removedFieldIds);
-      const deletableIds = removedFieldIds.filter(id => !referenced.has(id));
+      idsRemovedFromUi.forEach(id => activeRemovedSet.add(id));
+      const referenced = await fetchReferencedFieldIds(idsRemovedFromUi);
+      const deletableIds = idsRemovedFromUi.filter(id => !referenced.has(id));
       if (deletableIds.length > 0) {
         const { error } = await (supabase as any).from("operational_template_fields").delete().in("id", deletableIds);
         if (error) throw error;
@@ -412,14 +431,18 @@ export default function OperationalCadastroPage() {
       if (error) throw error;
     }
 
-    // ===== Aprovador: filtragem determinística (sem replicação automática) =====
-    const aprovadorFinal = rebuildAprovadorChecks(aprovadorChecks, persistedFields);
-    const validadorFinal = rebuildValidadorChecks(validadorChecks);
+    // ===== Aprovador/Validador determinísticos =====
+    const hasAprovador = !!(form.aprovador_profile_id || form.aprovador_setor_id || form.requer_aprovacao_gestor);
+    const finalRemovedFieldIds = normalizeRemovedFieldIds(Array.from(activeRemovedSet));
+    const activePersistedFields = persistedFields.filter(f => !(f.id && activeRemovedSet.has(f.id)));
+    const activePersistedIds = activePersistedFields.map(f => f.id).filter(Boolean) as string[];
+    const aprovadorFinal = rebuildAprovadorChecks(aprovadorChecks, activePersistedFields, { shouldReplicate: hasAprovador });
+    const validadorFinal = rebuildValidadorChecks(validadorChecks, activePersistedIds);
     setAprovadorChecks(aprovadorFinal);
     setValidadorChecks(validadorFinal);
 
     // ===== Snapshot final com ids REAIS =====
-    const checklistsSnapshot = buildChecklistSnapshot(persistedFields, aprovadorFinal, validadorFinal);
+    const checklistsSnapshot = buildChecklistSnapshot(activePersistedFields, aprovadorFinal, validadorFinal, finalRemovedFieldIds);
     const finalSnapshotPayload = {
       ada_config_snapshot: {
         ...adaSnapshotBase,
@@ -434,6 +457,9 @@ export default function OperationalCadastroPage() {
       .update(finalSnapshotPayload)
       .eq("id", templateId);
     if (snapErr) throw snapErr;
+    setRemovedFieldIds(finalRemovedFieldIds);
+    setFields(activePersistedFields);
+    setForm(prev => ({ ...prev, ada_config_snapshot: finalSnapshotPayload.ada_config_snapshot } as TemplateForm & { ada_config_snapshot?: any }));
 
     // ===== Audit log (apenas em edição) =====
     if (editingId && currentTemplateForAudit) {
@@ -551,6 +577,7 @@ export default function OperationalCadastroPage() {
     setValidadorChecks(
       pacoteVal.filter(p => p.ativo !== false).map(p => buildAprovadorAutomatico(p))
     );
+    setRemovedFieldIds([]);
 
     setActiveTab("geral");
     purgeLegacyBuilderDrafts();
@@ -638,11 +665,11 @@ export default function OperationalCadastroPage() {
     // Snapshot presente → filtra por avaliado_field_ids. Field órfão NÃO ressuscita.
     const checklistsSnapshot = getChecklistSnapshot(snap);
     const activeFieldIds = getActiveFieldIds(snap);
-    const hasSnapshotIds = Array.isArray(snap?.checklists?.avaliado_field_ids);
-    const activeLoadedFields = hasSnapshotIds
-      ? hydrateFields(loadedFields, activeFieldIds)
-      : loadedFields;
+    const removedFromSnapshot = getRemovedFieldIds(snap);
+    const hasSnapshotIds = hasChecklistFieldSource(snap);
+    const activeLoadedFields = hydrateFields(loadedFields, activeFieldIds, removedFromSnapshot, !hasSnapshotIds);
 
+    setRemovedFieldIds(removedFromSnapshot);
     setFields(activeLoadedFields);
 
     const { data: stps } = await (supabase as any).from("operational_template_steps")
@@ -657,12 +684,14 @@ export default function OperationalCadastroPage() {
     setAprovadorChecks(
       rebuildAprovadorChecks(
         Array.isArray(checklistsSnapshot.aprovador) ? checklistsSnapshot.aprovador : [],
-        activeLoadedFields
+        activeLoadedFields,
+        { shouldReplicate: !!(t.aprovador_profile_id || t.aprovador_setor_id || t.requer_aprovacao_gestor) }
       )
     );
     setValidadorChecks(
       rebuildValidadorChecks(
-        Array.isArray(checklistsSnapshot.validador) ? checklistsSnapshot.validador : []
+        Array.isArray(checklistsSnapshot.validador) ? checklistsSnapshot.validador : [],
+        activeLoadedFields.map(f => f.id).filter(Boolean) as string[]
       )
     );
 
@@ -793,7 +822,7 @@ export default function OperationalCadastroPage() {
               saving={upsert.isPending}
               form={form} set={set}
               sections={sections} setSections={setSections}
-              fields={fields} setFields={setFields}
+              fields={fields} setFields={setFieldsGuarded}
               steps={steps} setSteps={setSteps}
               aprovadorChecks={aprovadorChecks} setAprovadorChecks={setAprovadorChecks}
               validadorChecks={validadorChecks} setValidadorChecks={setValidadorChecks}

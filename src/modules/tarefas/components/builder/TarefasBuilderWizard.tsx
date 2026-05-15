@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight, Save, CheckCircle2 } from "lucide-react";
 import { TabGeral } from "@/modules/tarefas/components/tarefas_tabGeral";
@@ -15,6 +15,7 @@ import {
   WIZARD_STEPS,
   WizardStepId,
 } from "./types";
+import { rebuildAprovadorChecks } from "@/modules/tarefas/core/tarefas_builder_aprovador";
 
 interface Props {
   isEditing: boolean;
@@ -68,8 +69,12 @@ export function TarefasBuilderWizard(props: Props) {
   const [current, setCurrent] = useState<WizardStepId>("geral");
   const [completed, setCompleted] = useState<Set<WizardStepId>>(new Set(["tipo"]));
 
-  // Sync automático REMOVIDO. Aprovador não replica mais campos do Avaliado.
-  // Filtragem de itens órfãos acontece no save oficial (rebuildAprovadorChecks).
+  // Replicação determinística: sempre que houver Aprovador ativo, toda pergunta ativa
+  // do Avaliado tem exatamente 1 item REPLICADA no Aprovador. Sem duplicar e sem
+  // ressuscitar removidas, pois a lista fields já vem filtrada pela página/snapshot.
+  useEffect(() => {
+    setAprovadorChecks(prev => rebuildAprovadorChecks(prev, fields, { shouldReplicate: hasAprovador }));
+  }, [fields, hasAprovador, setAprovadorChecks]);
 
   if (!visibleSteps.find(s => s.id === current)) {
     setTimeout(() => setCurrent("geral"), 0);
