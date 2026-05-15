@@ -557,6 +557,123 @@ export default function OperationalCadastroPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  // Save parcial: persiste apenas sections + fields (aba Avaliado).
+  // Usado quando o usuário avança da aba "campos" sem chegar ao Resumo.
+  // Só roda em edição (isEditing). Não fecha dialog, não invalida queries.
+  const saveFieldsOnly = useMutation({
+    mutationFn: async () => {
+      if (!editingId) return;
+
+      const activeSectionIds = new Set(sections.map(s => s.tempId).filter(Boolean));
+      const activeFields = fields.filter(
+        f => f.sectionTempId && activeSectionIds.has(f.sectionTempId)
+      );
+      const activeAvaliadorFieldIds = activeFields
+        .map(f => f.id)
+        .filter(Boolean) as string[];
+
+      // Upsert sections
+      const sectionIdMap: Record<string, string> = {};
+      for (const [i, s] of sections.entries()) {
+        const payloadSection = sectionPayload(editingId, s, i);
+        if (s.id) {
+          const { error } = await (supabase as any)
+            .from("operational_template_sections")
+            .update(payloadSection)
+            .eq("id", s.id);
+          if (error) throw error;
+          sectionIdMap[s.tempId] = s.id;
+        } else {
+          const { data, error } = await (supabase as any)
+            .from("operational_template_sections")
+            .insert(payloadSection)
+            .select("id")
+            .single();
+          if (error) throw error;
+          sectionIdMap[s.tempId] = data.id;
+          setSections(prev =>
+            prev.map(sec => sec.tempId === s.tempId ? { ...sec, id: data.id } : sec)
+          );
+        }
+      }
+
+      // Delete fields removidos (mesma lógica do upsert)
+      const { data: existingFields, error: existingFieldsError } = await (supabase as any)
+        .from("operational_template_fields")
+        .select("id")
+        .eq("template_id", editingId);
+      if (existingFieldsError) throw existingFieldsError;
+      const existingFieldIds = (existingFields || []).map((f: any) => f.id).filter(Boolean);
+      const currentFieldIds = new Set(activeAvaliadorFieldIds);
+      const referencedFieldIds = await fetchReferencedFieldIds(existingFieldIds);
+      const removableFieldIds = existingFieldIds.filter(
+        (id: string) => !currentFieldIds.has(id) && !referencedFieldIds.has(id)
+      );
+      if (removableFieldIds.length > 0) {
+        const { error } = await (supabase as any)
+          .from("operational_template_fields")
+          .delete()
+          .in("id", removableFieldIds);
+        if (error) throw error;
+      }
+
+      // Upsert fields ativos
+      for (const f of activeFields) {
+        const payloadField = fieldPayload(editingId, f, sectionIdMap);
+        if (f.id) {
+          const { error } = await (supabase as any)
+            .from("operational_template_fields")
+            .update(payloadField)
+            .eq("id", f.id);
+          if (error) throw error;
+        } else {
+          const { data, error } = await (supabase as any)
+            .from("operational_template_fields")
+            .insert(payloadField)
+            .select("id")
+            .single();
+          if (error) throw error;
+          setFields(prev =>
+            prev.map(field =>
+              field.tempId === f.tempId ? { ...field, id: data.id } : field
+            )
+          );
+        }
+      }
+
+      // Atualiza avaliado_fields/avaliado_field_ids no ada_config_snapshot
+      const activeAvaliadorFieldsFinal = activeFields.map(f => ({
+        id: f.id ?? null,
+        key: fieldDuplicateKey(f),
+      }));
+      const activeAvaliadorFieldIdsFinal = activeAvaliadorFieldsFinal
+        .map(f => f.id)
+        .filter(Boolean);
+
+      const { data: currentTemplate } = await (supabase as any)
+        .from("operational_templates")
+        .select("ada_config_snapshot")
+        .eq("id", editingId)
+        .single();
+
+      const currentSnap = currentTemplate?.ada_config_snapshot ?? {};
+      await (supabase as any)
+        .from("operational_templates")
+        .update({
+          ada_config_snapshot: {
+            ...currentSnap,
+            checklists: {
+              ...(currentSnap.checklists ?? {}),
+              avaliado_fields: activeAvaliadorFieldsFinal,
+              avaliado_field_ids: activeAvaliadorFieldIdsFinal,
+            },
+          },
+        })
+        .eq("id", editingId);
+    },
+    onError: (e: any) => toast.error(`Erro ao salvar campos: ${e.message}`),
+  });
+
   const toggleAtivo = useMutation({
     mutationFn: async (t: any) => {
       const { error } = await (supabase as any).from("operational_templates").update({ ativo: !t.ativo }).eq("id", t.id);
@@ -904,6 +1021,8 @@ export default function OperationalCadastroPage() {
               templateId={editingId}
               onCancel={closeDialog}
               onSubmit={() => upsert.mutate()}
+              onSaveFields={() => saveFieldsOnly.mutateAsync()}
+              savingFields={saveFieldsOnly.isPending}
             />
           </div>
         </DialogContent>
