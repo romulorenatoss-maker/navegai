@@ -609,6 +609,13 @@ export default function OperationalCadastroPage() {
       const removableFieldIds = existingFieldIds.filter(
         (id: string) => !currentFieldIds.has(id) && !referencedFieldIds.has(id)
       );
+      // [DEBUG TEMP] inspecionar cálculo de removableFieldIds em saveFieldsOnly
+      console.log("[DEBUG saveFieldsOnly removable]", {
+        existingFieldIds,
+        currentFieldIds: Array.from(currentFieldIds),
+        removableFieldIds,
+        referencedFieldIds: Array.from(referencedFieldIds),
+      });
       if (removableFieldIds.length > 0) {
         const { error } = await (supabase as any)
           .from("operational_template_fields")
