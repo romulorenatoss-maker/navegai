@@ -557,6 +557,9 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     }, 0);
 
     const notaFinalTotal = notaAutoFinal + notaAvaliadorFinal;
+    const notaMaximaAutoCalc = perguntasAutoTemplate.reduce((s: number, p: any) => s + (p.peso || 0), 0);
+    const notaMaximaAvaliadorCalc = approverFields.reduce((s: number, f: any) => s + (f.aprovador_peso || 1), 0);
+    const notaMaximaTotal = notaMaximaAutoCalc + notaMaximaAvaliadorCalc;
 
     try {
       const now = new Date().toISOString();
