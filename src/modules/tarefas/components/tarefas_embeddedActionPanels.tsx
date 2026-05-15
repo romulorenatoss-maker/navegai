@@ -450,8 +450,21 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   };
 
   const aprovarDireto = async () => {
+    setShowConfirmModal(true);
+  };
+
+  const confirmarAprovacao = async () => {
+    for (const p of perguntasAutoTemplate) {
+      const key = p.tempId ?? p.id ?? p.pergunta;
+      const r = respostasAuto[key];
+      if (r?.na && !r?.justificativa?.trim()) {
+        toast.error(`Justificativa obrigatória para N/A em: "${p.pergunta}"`);
+        return;
+      }
+    }
     try {
       await flow.finalDecision.mutateAsync({ assignment, action: "aprovar" });
+      setShowConfirmModal(false);
       onClose();
     } catch (e: any) { toast.error(e.message); }
   };
@@ -674,6 +687,97 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
           >
             <Send className="w-3.5 h-3.5 mr-1" />
             {flow.isSaving ? "Enviando..." : `Registrar ${naoConformesPlano.length} plano(s)${naoConformesDevolver.length ? ` + devolver ${naoConformesDevolver.length}` : ""} e devolver tarefa`}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Modal de confirmação de aprovação
+  if (showConfirmModal) {
+    return (
+      <div className="space-y-4">
+        <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3 flex items-start gap-2">
+          <ShieldCheck className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0 mt-0.5" />
+          <div className="text-xs text-emerald-800 dark:text-emerald-300">
+            <strong>Confirmar Aprovação.</strong> Revise as notas automáticas abaixo antes de confirmar. Marque N/A com justificativa se alguma não se aplicar.
+          </div>
+        </div>
+
+        {perguntasAutoTemplate.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Perguntas Automáticas do Aprovador</p>
+            {perguntasAutoTemplate.map((p: any) => {
+              const key = p.tempId ?? p.id ?? p.pergunta;
+              const r = respostasAuto[key] ?? { na: false, justificativa: "" };
+              return (
+                <div key={key} className={`border rounded-lg p-3 space-y-2 bg-card ${r.na ? "opacity-60" : ""}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-medium text-foreground">{p.pergunta}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        Tipo: {p.tipo === "sim_nao" ? "Sim / Não" : "Conforme / Não conforme"} · Nota: <span className="font-semibold text-primary">{p.peso}</span> pts
+                      </p>
+                      {p.metrica_calculo && p.metrica_calculo !== "manual" && (
+                        <p className="text-[10px] text-blue-600 dark:text-blue-400">Auto: {p.metrica_calculo.replace(/_/g, " ")}</p>
+                      )}
+                    </div>
+                    {p.permite_na !== false && (
+                      <label className="flex items-center gap-1.5 shrink-0 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={r.na}
+                          onChange={(e) => setRespostasAuto(prev => ({ ...prev, [key]: { ...r, na: e.target.checked } }))}
+                          className="w-3.5 h-3.5"
+                        />
+                        <span className="text-[11px] text-muted-foreground">N/A</span>
+                      </label>
+                    )}
+                  </div>
+                  {r.na && (
+                    <div className="space-y-1">
+                      <Label className="text-[10px] text-amber-700">Justificativa obrigatória</Label>
+                      <Textarea
+                        value={r.justificativa}
+                        onChange={(e) => setRespostasAuto(prev => ({ ...prev, [key]: { ...r, justificativa: e.target.value } }))}
+                        placeholder="Por que este item não se aplica..."
+                        className="text-xs min-h-[36px]"
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="border border-border rounded-lg p-3 space-y-1">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Perguntas do Avaliado</p>
+          {approverFields.map(f => (
+            <div key={f.id} className="flex items-center justify-between text-xs py-0.5">
+              <span className="text-foreground truncate flex-1">{f.label}</span>
+              <span className="text-primary font-semibold ml-2 shrink-0">{f.aprovador_peso || 1} pts</span>
+            </div>
+          ))}
+          <div className="border-t border-border mt-2 pt-2 flex items-center justify-between text-sm font-semibold">
+            <span>Nota total do Avaliado</span>
+            <span className="text-primary">{totalNotaAuto + totalNotaAvaliado} pts</span>
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-2 sticky bottom-0 bg-background pb-1 border-t border-border">
+          <Button type="button" size="sm" variant="outline" onClick={() => setShowConfirmModal(false)} disabled={flow.isSaving}>
+            <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Voltar
+          </Button>
+          <div className="flex-1" />
+          <Button
+            type="button" size="sm"
+            onClick={confirmarAprovacao}
+            disabled={flow.isSaving}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+          >
+            <Send className="w-3.5 h-3.5 mr-1" />
+            {flow.isSaving ? "Aprovando..." : "Confirmar Aprovação"}
           </Button>
         </div>
       </div>
