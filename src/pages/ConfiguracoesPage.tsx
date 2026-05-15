@@ -37,9 +37,6 @@ export default function ConfiguracoesPage() {
             <TabsTrigger value="setores" className="gap-2">
               <Building2 className="w-4 h-4" /> Setores
             </TabsTrigger>
-            <TabsTrigger value="pontuacao" className="gap-2">
-              <Calculator className="w-4 h-4" /> Pontuação / Notas
-            </TabsTrigger>
             <TabsTrigger value="armazenamento" className="gap-2">
               <HardDrive className="w-4 h-4" /> Armazenamento
             </TabsTrigger>
