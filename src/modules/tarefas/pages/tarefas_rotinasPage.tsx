@@ -564,7 +564,9 @@ export default function OperationalCadastroPage() {
     mutationFn: async () => {
       if (!editingId) return;
 
-      const activeSectionIds = new Set(sections.map(s => s.tempId).filter(Boolean));
+      const activeSectionIds = new Set(
+        sections.flatMap(s => [s.tempId, s.id].filter(Boolean))
+      );
       const activeFields = fields.filter(
         f => f.sectionTempId && activeSectionIds.has(f.sectionTempId)
       );
