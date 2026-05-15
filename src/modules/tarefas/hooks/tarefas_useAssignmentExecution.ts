@@ -420,8 +420,11 @@ export function useAssignmentExecution(assignmentId: string | null) {
         const isDesignada = !!assignment.created_by
           && assignment.created_by !== assignment.responsavel_id
           && !assignment.aprovador_id;
-        // Quando devolvida: fecha contingências seguindo fluxo aberta→em_andamento→resolvida
-        if (assignment.status === "devolvida") {
+        // Quando devolvida (ou reaberta após devolução: rodada > 1):
+        // fecha contingências da rodada anterior seguindo fluxo aberta→em_andamento→resolvida
+        const veioDeDevolucao =
+          assignment.status === "devolvida" || (assignment.rodada_atual ?? 1) > 1;
+        if (veioDeDevolucao) {
           const nowTs = new Date().toISOString();
           // Passo 1: aberta → em_andamento
           await (supabase as any)
