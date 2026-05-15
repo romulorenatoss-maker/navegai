@@ -1,41 +1,72 @@
-# Remoção do sistema de rascunho/restore — Builder de Rotina
+# Aprovador sync fix — cirúrgico
 
-## Arquivos alterados
-- `src/modules/tarefas/pages/tarefas_rotinasPage.tsx`
-  - Removidos: import de `useDraftAutosave/loadDraft/clearDraft/BuilderDraftPayload`,
-    estado `pendingDraft`, chamada `useDraftAutosave`, `loadDraft` em `openNew`/`openEdit`,
-    `clearDraft` em `onSuccess`, funções `restoreDraft` e `discardDraft`, props
-    `draftToRestore/onRestoreDraft/onDiscardDraft` passadas ao wizard, limpeza de
-    `pendingDraft` em `closeDialog`.
-  - Adicionado helper `purgeLegacyBuilderDrafts()` que apaga qualquer chave antiga
-    `tarefas_builder_draft_v1::*` do `localStorage` ao abrir o builder e ao salvar.
-- `src/modules/tarefas/components/builder/TarefasBuilderWizard.tsx`
-  - Removidos: import de `DraftRestoreBanner` e `BuilderDraftPayload`, props
-    `draftToRestore/onRestoreDraft/onDiscardDraft`, renderização do banner.
-- `src/modules/tarefas/components/builder/useBuilderDraft.ts` — **deletado**.
-- `src/modules/tarefas/components/builder/DraftRestoreBanner.tsx` — **deletado**.
+## Causa raiz
+- `openEdit` hidratava `aprovadorChecks` a partir de `ada_config_snapshot.checklists.aprovador`
+  e do `sanitizeAprovadorChecks`, mas **não** re-sincronizava com a lista atual de `fields`
+  do Avaliado. Snapshot continha replicadas órfãs → reapareciam ao reabrir.
+- `upsert` (save) também serializava `aprovadorChecks` direto, sem antes reconciliar com
+  os `fields` atuais → órfãos voltavam para o snapshot.
 
-## Onde o draft era salvo
-- `localStorage`, prefixo `tarefas_builder_draft_v1::<templateId|__new__>`,
-  com debounce de 800 ms via `useDraftAutosave` enquanto o diálogo ficasse aberto.
+## Pontos A/B/C (checklistNormalizers.ts)
+Já existentes na base atual (`isAprovadorReplicada`, detector unificado em
+`normalizeAprovadorItem` por `field_id || pergunta_origem_id`, e
+`syncAprovadorReplicadasFromFields`). Nenhuma alteração nova necessária neste arquivo.
 
-## Onde o restore foi removido
-- `openNew`: não chama mais `loadDraft(null)` nem seta `pendingDraft`.
-- `openEdit`: não chama mais `loadDraft(t.id)` nem seta `pendingDraft`.
-- Wizard: banner `DraftRestoreBanner` removido — não há mais popup/banner de restaurar.
-- `restoreDraft`/`discardDraft` deixaram de existir.
+## Pontos D/E/F (StepChecklistAprovador.tsx)
+Já existentes na base: `useEffect` reduz a `setItems(prev => syncAprovadorReplicadasFromFields(prev, fields))`,
+filtro do `ordered` usa `isAprovadorReplicada`, total `totalPeso` usa `ordered`. Sem mudanças.
 
-## Comportamento resultante
-- A única fonte de verdade passa a ser o registro salvo de
-  `operational_templates` (carregado em `openEdit`).
-- Edições não salvas são perdidas ao fechar — esperado.
-- Cache local antigo é purgado automaticamente ao abrir/salvar o builder,
-  evitando que rascunhos legados ressurjam.
+## Ponto G (TarefasBuilderWizard.tsx)
+Já existente: `useEffect` re-sincroniza ao mudar `fields` quando `hasAprovador`. Sem mudanças.
+
+## Ponto H — openEdit (NOVO)
+`src/modules/tarefas/pages/tarefas_rotinasPage.tsx`
+
+```diff
+- setAprovadorChecks(sanitizeAprovadorChecks(
+-   apr, dedupedFields, pontuacaoConfig?.aprovador_pacote_padrao,
+-   t.habilitar_perguntas_automaticas ?? true,
+- ));
++ setAprovadorChecks(prev => {
++   const hydrated = sanitizeAprovadorChecks(
++     apr, dedupedFields, pontuacaoConfig?.aprovador_pacote_padrao,
++     t.habilitar_perguntas_automaticas ?? true,
++   );
++   // Re-sincroniza com fields atuais para descartar órfãos do snapshot.
++   return syncAprovadorReplicadasFromFields(hydrated, dedupedFields);
++ });
+```
+
+## Ponto I — upsert/save (NOVO)
+`src/modules/tarefas/pages/tarefas_rotinasPage.tsx`
+
+```diff
+- const aprovadorSnapshot = sanitizeAprovadorChecks(
+-   aprovadorChecks, fields, pontuacaoConfig?.aprovador_pacote_padrao,
+-   form.habilitar_perguntas_automaticas,
+- );
++ const aprovadorSync = syncAprovadorReplicadasFromFields(aprovadorChecks, fields);
++ const aprovadorSnapshot = sanitizeAprovadorChecks(
++   aprovadorSync, fields, pontuacaoConfig?.aprovador_pacote_padrao,
++   form.habilitar_perguntas_automaticas,
++ );
+```
+
+## Import adicionado
+```diff
+- import { normalizeAprovadorList } from "@/modules/tarefas/components/builder/checklistNormalizers";
++ import { normalizeAprovadorList, syncAprovadorReplicadasFromFields } from "@/modules/tarefas/components/builder/checklistNormalizers";
+```
 
 ## Confirmação de escopo
-- ❌ Sem alterações em banco/schema.
-- ❌ Sem migrations criadas.
-- ❌ Sem alteração em RPC/edge functions.
-- ❌ Sem alteração em runtime de execução (`tarefas_minhasTarefasPage.tsx`),
-  cron, auditor, fluxo, SLA ou pacote padrão.
-- ✅ Mudanças restritas à UI do builder da rotina.
+- ✅ Apenas `src/modules/tarefas/pages/tarefas_rotinasPage.tsx` alterado nesta etapa
+  (pontos A–G já estavam aplicados na base).
+- ❌ Sem alteração em banco / migrations / RPCs / triggers.
+- ❌ Sem alteração em `tarefas_minhasTarefasPage.tsx` (runtime).
+- ❌ Sem alteração em pacote padrão / Auditor / Executor / `useBuilderDraft`.
+
+## Resultado esperado
+- Avaliado com N perguntas → Aprovador mostra N replicadas (em tempo real).
+- Remover/renomear no Avaliado reflete imediatamente no Aprovador.
+- Salvar e reabrir não restaura replicadas órfãs do snapshot.
+- AUTO (pacote padrão) e MANUAL preservados intactos.
