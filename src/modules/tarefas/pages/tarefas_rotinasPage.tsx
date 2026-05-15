@@ -320,8 +320,9 @@ export default function OperationalCadastroPage() {
   const upsert = useMutation({
     mutationFn: async () => {
       if (!form.nome.trim()) throw new Error("Nome é obrigatório");
+      const aprovadorSync = syncAprovadorReplicadasFromFields(aprovadorChecks, fields);
       const aprovadorSnapshot = sanitizeAprovadorChecks(
-        aprovadorChecks,
+        aprovadorSync,
         fields,
         pontuacaoConfig?.aprovador_pacote_padrao,
         form.habilitar_perguntas_automaticas,
