@@ -779,7 +779,9 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
               const key = p.tempId ?? p.id ?? p.pergunta;
               const r = respostasAuto[key] ?? { na: false, justificativa: "" };
               const auto = calcRespostaAuto(p.metrica_calculo ?? "manual");
-              const pontosEfetivos = r.na ? 0 : (auto.tiraPonto ? 0 : p.peso);
+              // N/A = mantém nota cheia (aprovador ponderou — não penaliza)
+              // Sem N/A e tirou ponto = 0 pts | Sem N/A e ok = peso total
+              const pontosEfetivos = r.na ? p.peso : (auto.tiraPonto ? 0 : p.peso);
               return (
                 <div key={key} className={`border rounded-lg p-3 space-y-2 ${r.na ? "opacity-60 bg-muted/30 border-border" : auto.tiraPonto ? "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800" : "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"}`}>
                   <div className="flex items-start justify-between gap-2">
