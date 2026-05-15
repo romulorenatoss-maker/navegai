@@ -482,8 +482,20 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
 
       {/* Who answered and when */}
       {val.respondido_por_nome && val.respondido_em && (
-        <div className="text-[10px] text-muted-foreground mt-1">
-          Preenchido por <strong>{val.respondido_por_nome}</strong> em {format(new Date(val.respondido_em), "dd/MM/yyyy HH:mm")}
+        <div className={`flex items-center gap-1.5 text-[10px] mt-1 ${preenchidoComAtraso ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
+          <button
+            type="button"
+            title="Ver histórico de preenchimento"
+            className={`shrink-0 transition-colors ${preenchidoComAtraso ? "text-red-500" : "text-emerald-500"}`}
+            onClick={() => {/* histórico — implementar depois */}}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </button>
+          <span>
+            Preenchido por <strong>{val.respondido_por_nome}</strong> em{" "}
+            {format(new Date(val.respondido_em), "dd/MM/yyyy HH:mm")}
+            {preenchidoComAtraso && <span className="ml-1 font-semibold">⚠ Atrasado</span>}
+          </span>
         </div>
       )}
 
