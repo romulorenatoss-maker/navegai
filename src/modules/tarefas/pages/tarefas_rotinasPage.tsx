@@ -657,7 +657,7 @@ export default function OperationalCadastroPage() {
           checklists: {
             ...(currentSnap.checklists ?? {}),
             avaliado_fields: activeAvaliadorFields,
-            avaliado_field_ids: freshFieldIds,
+            avaliado_field_ids: Array.from(keepFieldIds),
           },
         },
       })
