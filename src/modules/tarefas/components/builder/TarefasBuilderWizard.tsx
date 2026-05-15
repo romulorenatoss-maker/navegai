@@ -38,7 +38,7 @@ interface Props {
   templateId: string | null;
   onCancel: () => void;
   onSubmit: () => void;
-  onSaveFields: () => Promise<void>;
+  onSaveFields: (fields: FieldForm[], sections: SectionForm[]) => Promise<void>;
   savingFields: boolean;
 }
 
