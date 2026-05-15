@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Save, CalendarDays, Play, RefreshCw } from "lucide-react";
+import { Save, CalendarDays, Play, RefreshCw, Trash2 } from "lucide-react";
 import { TemplateForm, getLocalToday } from "@/modules/tarefas/types/tarefas_types";
 import { cn } from "@/lib/utils";
 
@@ -207,6 +207,22 @@ export function RotinasTabRotina({ form, set, templateId, onSave, saving }: Prop
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["rotina_assignments", templateId] });
       toast.success("Tarefa gerada com sucesso.");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  // ── Excluir tarefa pendente ──
+  const deleteMutation = useMutation({
+    mutationFn: async (assignmentId: string) => {
+      const { error } = await (supabase as any)
+        .from("operational_assignments")
+        .delete()
+        .eq("id", assignmentId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["rotina_assignments", templateId] });
+      toast.success("Tarefa excluída.");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -428,6 +444,30 @@ export function RotinasTabRotina({ form, set, templateId, onSave, saving }: Prop
                     <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border shrink-0", badge.cls)}>
                       {badge.label}
                     </span>
+                    {(() => {
+                      const podeExcluir = a.status === "pendente";
+                      return (
+                        <button
+                          type="button"
+                          disabled={!podeExcluir || deleteMutation.isPending}
+                          title={podeExcluir ? "Excluir tarefa" : "Só é possível excluir tarefas pendentes"}
+                          onClick={() => {
+                            if (!podeExcluir) return;
+                            if (window.confirm("Excluir esta tarefa? Esta ação não pode ser desfeita.")) {
+                              deleteMutation.mutate(a.id);
+                            }
+                          }}
+                          className={cn(
+                            "p-1.5 rounded shrink-0 transition-colors",
+                            podeExcluir
+                              ? "text-destructive hover:bg-destructive/10"
+                              : "text-muted-foreground/40 cursor-not-allowed"
+                          )}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      );
+                    })()}
                   </div>
                 );
               })}
