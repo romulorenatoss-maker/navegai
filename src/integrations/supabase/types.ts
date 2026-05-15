@@ -2273,10 +2273,12 @@ export type Database = {
           devolvido: boolean
           field_id: string
           id: string
+          instrucao_aprovador: string | null
           motivo_devolucao: string | null
           observacao: string | null
           reincidencia_ref: string | null
           rodada: number
+          tipo_evidencia_exigida: string | null
         }
         Insert: {
           answer_id?: string | null
@@ -2288,10 +2290,12 @@ export type Database = {
           devolvido?: boolean
           field_id: string
           id?: string
+          instrucao_aprovador?: string | null
           motivo_devolucao?: string | null
           observacao?: string | null
           reincidencia_ref?: string | null
           rodada?: number
+          tipo_evidencia_exigida?: string | null
         }
         Update: {
           answer_id?: string | null
@@ -2303,10 +2307,12 @@ export type Database = {
           devolvido?: boolean
           field_id?: string
           id?: string
+          instrucao_aprovador?: string | null
           motivo_devolucao?: string | null
           observacao?: string | null
           reincidencia_ref?: string | null
           rodada?: number
+          tipo_evidencia_exigida?: string | null
         }
         Relationships: [
           {
