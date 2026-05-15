@@ -97,7 +97,11 @@ function gerarDatas(form: TemplateForm): Date[] {
 
 // Formata data para chave de comparação YYYY-MM-DD
 function toDateKey(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  // Usa data local para evitar problema de fuso com toISOString (que converte pra UTC)
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 export function RotinasTabRotina({ form, set, templateId, onSave, saving }: Props) {
@@ -128,7 +132,7 @@ export function RotinasTabRotina({ form, set, templateId, onSave, saving }: Prop
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("operational_assignments")
-        .select("id, status, data_prevista, created_at, responsavel_id, profiles:responsavel_id(nome)")
+        .select("id, status, data_prevista, horario_inicio_previsto, created_at, responsavel_id, profiles:responsavel_id(nome)")
         .eq("template_id", templateId)
         .order("data_prevista", { ascending: false })
         .limit(100);
@@ -160,10 +164,10 @@ export function RotinasTabRotina({ form, set, templateId, onSave, saving }: Prop
         throw new Error("Já existe uma tarefa gerada para este dia. Remova a existente antes de gerar outra.");
       }
 
-      // Monta o horário previsto — pega só HH:MM, ignora segundos se vier do banco
-      const horarioRaw = form.horario_inicio_previsto || "08:00";
-      const horario = horarioRaw.slice(0, 5); // garante formato HH:MM
-      const dataPrevista = `${dataAlvo}T${horario}:00`; // YYYY-MM-DDTHH:MM:00
+      // data_prevista = DATE (YYYY-MM-DD), horario = TIME (HH:MM)
+      const dataPrevista = dataAlvo; // só a data, sem hora
+      const horarioInicio = (form.horario_inicio_previsto || "08:00").slice(0, 5);
+      const horarioLimite = (form.horario_limite_execucao || "18:00").slice(0, 5);
 
       // Busca o template completo para pegar executor/aprovador/auditor
       const { data: tmpl, error: tmplErr } = await (supabase as any)
@@ -187,19 +191,23 @@ export function RotinasTabRotina({ form, set, templateId, onSave, saving }: Prop
         sections: secs || [],
         fields: flds || [],
         ada_config_snapshot: tmpl.ada_config_snapshot,
+        sla_horas: tmpl.sla_horas,
+        requer_aprovacao_gestor: tmpl.requer_aprovacao_gestor,
+        horario_inicio_previsto: horarioInicio,
+        horario_limite_execucao: horarioLimite,
       };
 
       const payload: any = {
         template_id: templateId,
         status: "pendente",
+        // DATE e TIME separados conforme schema real
         data_prevista: dataPrevista,
-        horario_limite: form.horario_limite_execucao
-          ? `${dataAlvo}T${form.horario_limite_execucao.slice(0, 5)}:00`
-          : null,
+        horario_inicio_previsto: horarioInicio,
+        horario_limite: horarioLimite,
         template_snapshot: templateSnapshot,
         template_versao: 1,
         rodada_atual: 1,
-        // Responsáveis
+        // Responsáveis — nomes exatos das colunas do banco
         responsavel_id: tmpl.executor_profile_id || null,
         setor_executor_id: tmpl.executor_setor_id || null,
         avaliado_id: tmpl.avaliado_profile_id || null,
@@ -423,10 +431,13 @@ export function RotinasTabRotina({ form, set, templateId, onSave, saving }: Prop
               {assignments.map((a: any) => {
                 const badge = STATUS_BADGE[a.status] ?? { label: a.status, cls: "bg-muted text-muted-foreground border-border" };
                 const raw = a.data_prevista ? String(a.data_prevista) : null;
+                // data_prevista é DATE (YYYY-MM-DD), hora vem de horario_inicio_previsto (TIME HH:MM)
                 const dataPrevista = raw
                   ? raw.slice(8, 10) + "/" + raw.slice(5, 7) + "/" + raw.slice(0, 4)
                   : "—";
-                const horario = raw && raw.length >= 16 ? raw.slice(11, 16) : "";
+                const horario = a.horario_inicio_previsto
+                  ? String(a.horario_inicio_previsto).slice(0, 5)
+                  : "";
                 return (
                   <div key={a.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors">
                     <div className="flex-1 min-w-0">
