@@ -83,6 +83,7 @@ export interface FieldAnswer {
   valor_data?: string | null;
   valor_json?: any;
   evidencia_url?: string | null;
+  observacao?: string | null;
   // Metadata for display
   respondido_por_nome?: string | null;
   respondido_em?: string | null;
