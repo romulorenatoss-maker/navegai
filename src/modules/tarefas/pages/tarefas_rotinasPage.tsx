@@ -142,11 +142,6 @@ const fetchReferencedFieldIds = async (fieldIds: string[]) => {
   await readRefs("operational_approval_answers", "field_id");
   await readRefs("operational_audit_answers", "field_id");
   await readRefs("operational_contingencies", "origin_field_id");
-  // [DEBUG TEMP] inspecionar resultado de fetchReferencedFieldIds
-  console.log("[DEBUG fetchReferencedFieldIds]", {
-    fieldIds,
-    referenced: Array.from(referenced),
-  });
   return referenced;
 };
 
