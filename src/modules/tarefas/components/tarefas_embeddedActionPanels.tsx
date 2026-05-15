@@ -559,7 +559,9 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     const notaFinalTotal = notaAutoFinal + notaAvaliadorFinal;
 
     try {
-      // Grava nota no assignment antes de fechar
+      const now = new Date().toISOString();
+
+      // Grava nota no assignment
       await (supabase as any)
         .from("operational_assignments")
         .update({
@@ -569,29 +571,55 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
         })
         .eq("id", assignment.id);
 
-      // Se destino_score = setor, propaga nota para todos do setor avaliado
+      // Destino da nota
       const destino = assignment?.template_snapshot?.destino_score
         ?? assignment?.operational_templates?.destino_score
         ?? "individual";
 
       if (destino === "setor" && assignment?.setor_avaliado_id) {
+        // Busca todos os membros do setor avaliado
         const { data: membros } = await (supabase as any)
           .from("colaborador_setores")
           .select("profile_id")
           .eq("setor_id", assignment.setor_avaliado_id);
 
         if (membros && membros.length > 0) {
-          await (supabase as any).from("operational_execution_logs").insert({
+          // Insere 1 linha em operational_score_logs por membro do setor
+          await (supabase as any).from("operational_score_logs").insert(
+            membros.map((m: any) => ({
+              assignment_id: assignment.id,
+              profile_id: profile?.id,           // quem avaliou
+              target_profile_id: m.profile_id,   // quem recebe a nota
+              target_setor_id: assignment.setor_avaliado_id,
+              tipo_score: "avaliado",
+              score_final: notaFinalTotal,
+              detalhe_calculo: {
+                nota_efetiva: notaFinalTotal,
+                nota_maxima: notaMaximaTotal,
+                destino: "setor",
+                distribuido_em: now,
+              },
+              created_at: now,
+            }))
+          );
+        }
+      } else {
+        // Individual — insere 1 linha para o avaliado
+        const avaliadoId = assignment?.avaliado_id || assignment?.responsavel_id;
+        if (avaliadoId) {
+          await (supabase as any).from("operational_score_logs").insert({
             assignment_id: assignment.id,
-            acao: "nota_distribuida_setor",
-            executado_por: profile?.id,
-            detalhes: {
-              nota_final: notaFinalTotal,
-              destino_score: "setor",
-              setor_id: assignment.setor_avaliado_id,
-              membros: membros.map((m: any) => m.profile_id),
-              distribuido_em: new Date().toISOString(),
+            profile_id: profile?.id,
+            target_profile_id: avaliadoId,
+            tipo_score: "avaliado",
+            score_final: notaFinalTotal,
+            detalhe_calculo: {
+              nota_efetiva: notaFinalTotal,
+              nota_maxima: notaMaximaTotal,
+              destino: "individual",
+              aprovado_em: now,
             },
+            created_at: now,
           });
         }
       }
@@ -972,7 +1000,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                   return (
                     <div className="border border-primary/30 rounded-lg px-4 py-3 bg-primary/5 space-y-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold text-foreground">Nota final do Avaliado</span>
+                        <span className="text-sm font-semibold text-foreground">Nota final Avaliada</span>
                         <div className="flex flex-col items-end">
                           <span className="text-primary text-lg font-bold">{notaEfetivaTotal} pts</span>
                           <span className="text-[11px] text-muted-foreground">de {notaMaximaTotal} pts possíveis</span>
