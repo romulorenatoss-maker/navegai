@@ -172,9 +172,9 @@ function resolveTargetStatus(action: TransitionAction, _currentStatus: string, e
     // retorno do aprovador para o executor é DEVOLVIDA (saneamento 4 papéis)
     case "retornar_avaliacao": return TASK_STATUS.DEVOLVIDA;
     case "aprovar_final":
-      return extraData?.requerAuditoria ? TASK_STATUS.AGUARDANDO_AUDITORIA : TASK_STATUS.APROVADA;
+      return extraData?.requerAuditoria ? TASK_STATUS.AGUARDANDO_AUDITORIA : TASK_STATUS.CONCLUIDA;
     case "enviar_auditoria": return TASK_STATUS.AGUARDANDO_AUDITORIA;
-    case "auditor_aprovar": return TASK_STATUS.APROVADA;
+    case "auditor_aprovar": return TASK_STATUS.CONCLUIDA;
     case "auditor_devolver": return TASK_STATUS.DEVOLVIDA;
     case "reprovar_devolver_final": return TASK_STATUS.DEVOLVIDA;
     case "encerrar_final": return TASK_STATUS.CONCLUIDA;
