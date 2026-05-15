@@ -449,7 +449,7 @@ export function useAssignmentExecution(assignmentId: string | null) {
           assignmentId: assignment.id,
           action: actionFinal,
           origem: "execucao",
-          extraData: { tempoGasto, atrasado, rodadaAtual: assignment.rodada_atual ?? 1 },
+          extraData: { tempoGasto, atrasado, rodadaAtual: assignment.rodada_atual ?? 1, contingenciesCleanupDone: veioDeDevolucao },
         });
       }
 
