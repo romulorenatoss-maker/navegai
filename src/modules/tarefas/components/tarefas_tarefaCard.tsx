@@ -247,13 +247,16 @@ export function AssignmentCard({ assignment: a, onClick }: Props) {
               <span className="text-[10px] tabular-nums text-muted-foreground w-9 text-right">{completionPct}%</span>
             </div>
           )}
-          {timePct != null && (
-            <div className="flex items-center gap-2">
-              <span className="text-[9px] uppercase tracking-wider text-muted-foreground w-14 shrink-0">Tempo</span>
-              <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                <div className={`h-full transition-all ${timeBarColor}`} style={{ width: `${timePct}%` }} />
-              </div>
-              <span className="text-[10px] tabular-nums text-muted-foreground w-9 text-right">{timePct}%</span>
+          {countdown != null && (
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className={`text-[11px] font-medium tabular-nums ${
+                countdown.isExpired ? "text-destructive" :
+                countdown.isUrgent ? "text-orange-600" :
+                countdown.isWarning ? "text-amber-600" :
+                "text-muted-foreground"
+              }`}>
+                {countdown.isExpired ? "⚠ " : "⏱ "}{countdown.label}
+              </span>
             </div>
           )}
         </div>
