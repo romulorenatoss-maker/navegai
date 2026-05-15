@@ -398,6 +398,21 @@ export function RotinasModal({ open, onClose, templateId, setores, colaboradores
   // ── Save Avaliado ──
   const saveAvaliado = async () => {
     if (!currentId) { toast.error("Salve a aba Geral primeiro."); return; }
+
+    // Verifica se há tarefas em andamento vinculadas — avisa mas não bloqueia
+    const { count } = await (supabase as any)
+      .from("operational_assignments")
+      .select("id", { count: "exact", head: true })
+      .eq("template_id", currentId)
+      .in("status", ["pendente", "em_andamento", "devolvida", "aguardando_aprovacao", "aguardando_auditoria"]);
+
+    if (count && count > 0) {
+      const confirmar = window.confirm(
+        `Existem ${count} tarefa(s) em andamento vinculadas a esta rotina.\n\nAs alterações serão aplicadas nas próximas aberturas dessas tarefas. Tarefas já concluídas não serão afetadas.\n\nDeseja continuar salvando?`
+      );
+      if (!confirmar) return;
+    }
+
     setSaving1("avaliado", true);
     try {
       const { sections: s, fields: f } = await saveFieldsToDb(currentId, sections, fields);
@@ -406,7 +421,8 @@ export function RotinasModal({ open, onClose, templateId, setores, colaboradores
       invalidate();
       toast.success("Avaliado salvo.");
     } catch (e: any) {
-      toast.error(e.message);
+      toast.error("Erro ao salvar: " + e.message);
+      console.error("saveAvaliado error:", e);
     } finally {
       setSaving1("avaliado", false);
     }
