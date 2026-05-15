@@ -883,33 +883,6 @@ export default function OperationalCadastroPage() {
           <p className="text-body text-muted-foreground">Cadastre templates com seções, campos dinâmicos, workflow e recorrência.</p>
         </div>
         <Button onClick={openCreate} className="press-effect"><Plus className="w-4 h-4 mr-2" /> Gerar Nova Tarefa</Button>
-        <Button
-          variant="outline"
-          style={{ position: "fixed", bottom: 16, right: 16, zIndex: 9999 }}
-          onClick={async () => {
-            const tid = editingId || (templates[0]?.id ?? null);
-            if (!tid) return;
-            const { data: fieldsData } = await (supabase as any)
-              .from('operational_template_fields')
-              .select('id, label, section_id')
-              .eq('template_id', tid);
-            const ids = (fieldsData || []).map((f: any) => f.id).filter(Boolean);
-            const { data: answersData } = ids.length > 0
-              ? await (supabase as any).from('operational_field_answers').select('id, field_id, assignment_id').in('field_id', ids)
-              : { data: [] };
-            const { data: assignmentsData } = await (supabase as any)
-              .from('operational_assignments')
-              .select('id, status, template_id')
-              .eq('template_id', tid);
-            const blob = new Blob([JSON.stringify({ tid, fields: fieldsData, answers: answersData, assignments: assignmentsData }, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = 'debug_db.json'; a.click();
-            URL.revokeObjectURL(url);
-          }}
-        >
-          DEBUG DB
-        </Button>
       </div>
 
       {/* Filters */}
