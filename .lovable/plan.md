@@ -1,196 +1,88 @@
-# Reconstrução Controlada — Núcleo do Módulo Tarefas
+# Reconstrução do Núcleo do Builder de Rotinas
 
-## Princípios (não negociáveis)
-- **Source of truth única:** banco. Snapshot vira cache. React state vira só UI.
-- **Nada de fallback implícito, dedupe mágico, sync invisível, hidratação parcial.**
-- **Rotas, tabs, layout, menu e UX preservados** — só o núcleo muda.
-- **Banco não é tocado** sem migração explícita revisada.
-- **Cada etapa termina com gate de aprovação do usuário** antes da próxima.
+## Escopo confirmado por você
 
-## Pré-requisito (já entregue)
-Backup completo em `builder_rotinas_backup.zip` + 5 docs (`mapa_tecnico`, `fluxo`, `dependencias`, `tabelas_campos`, `pontos_de_risco`). Esse é o estado-base de rollback.
+Apagar `checklistNormalizers.ts` e reescrever 4 arquivos do builder mantendo apenas o layout visual. **Nenhuma regra antiga de normalização, sync, hidratação inline ou save parcial é preservada.**
 
----
+## Volume real
 
-## Etapa 0 — Confirmação de escopo (este plano)
-Antes de qualquer arquivo ser alterado, o usuário aprova:
-1. Lista de arquivos a tocar (abaixo).
-2. Decisão sobre **field ativo** (3 opções na Etapa 4).
-3. Decisão sobre **migração de banco** (sim/não, ver Etapa 4).
+| Arquivo | Linhas | Ação |
+|---|---|---|
+| `pages/tarefas_rotinasPage.tsx` | 1055 | Reescrever |
+| `components/builder/StepChecklistAprovador.tsx` | 275 | Reescrever |
+| `components/builder/StepChecklistValidador.tsx` | 254 | Reescrever |
+| `components/builder/TarefasBuilderWizard.tsx` | 222 | Reescrever |
+| `components/builder/checklistNormalizers.ts` | 212 | Deletar |
+| `core/tarefas_builder_*.ts` | — | (Re)criar 6 arquivos |
 
----
+Total: ~2.000 linhas de rewrite + criação. Não dá pra fazer tudo num único call sem perder UX/tabs.
 
-## Etapa 1 — Limpeza congelada (sem reescrita)
-Objetivo: remover código comprovadamente morto, **sem mudar comportamento**.
+## Confirmações necessárias antes de eu tocar em qualquer arquivo
 
-Ações:
-- Remover `purgeLegacyBuilderDrafts` se já não houver draft legado em produção (verificar telemetria/console).
-- Remover imports não usados em `tarefas_rotinasPage.tsx` (`buildAprovadorAutomatico`, `defaultAprovadorCheckItem`, `defaultSection`, `defaultField`, `defaultStep` se não referenciados).
-- Marcar `operational_template_check_items` como legado (delete-only) — adicionar comentário formal e isolar em uma única função `removeLegacyCheckItems(templateId)`.
-- Remover `savedAvaliadorFieldKeys` (já é `void` no openEdit).
+Esses pontos não estão no seu texto e mudam o resultado. Preciso da sua decisão escrita:
 
-Entregáveis: diff, ZIP, manifest, lista do que foi removido.
-**Gate de aprovação.**
+1. **`field.id` ausente em fields novos.** A regra `buildActiveFieldIds` só inclui fields com `id`. Field recém-criado pelo usuário (ainda sem `id` do banco) **não entra** no snapshot. Confirma que isso é intencional? (na prática significa: não dá pra salvar sem antes inserir no banco e recarregar — ou o save tem que persistir fields novos antes de montar o snapshot).
 
----
+2. **`StepChecklistAprovador` reescrito sem normalizer.** Hoje ele usa `defaultAprovadorCheckItem`, `isAprovadorReplicada`, `normalizeAprovadorList` para pesos, SLA, opções, regras, evidência, ponderação. **Você quer perder tudo isso** e ficar só com `{ field_id, pergunta, ativo }` minimalista? Ou manter a UI atual (peso/SLA/evidência/etc.) e só remover o sync automático? Sua instrução literal implica perda total — confirme.
 
-## Etapa 2 — Criar camada `core/` (vazia, com contratos)
-Criar a pasta `src/modules/tarefas/core/` e os arquivos com **assinaturas e tipos**, sem implementação ainda:
+3. **`StepChecklistValidador` idem.** Hoje normaliza `tipo_resposta`, peso, opções, ponderação, SLA. `rebuildValidadorChecks` proposto **só faz `filter(Boolean)`** — descarta toda lógica. Confirma perda total?
 
-```
-core/
-  tarefas_builder_types.ts        // FieldAtivo, SectionAtiva, BuilderState, SaveResult
-  tarefas_builder_fields.ts       // loadActiveFields, saveFields
-  tarefas_builder_sections.ts     // loadSections, saveSections
-  tarefas_builder_snapshot.ts     // readSnapshot, writeSnapshot (cache only)
-  tarefas_builder_hydrate.ts      // hydrateBuilder(templateId) → BuilderState
-  tarefas_builder_save.ts         // saveBuilder(state) — orquestra tudo
-  tarefas_builder_aprovador.ts    // syncAprovador (puro)
-  tarefas_builder_validador.ts    // syncValidador (puro)
-  tarefas_builder_visibility.ts   // resolveVisibility (puro)
-  tarefas_builder_scoring.ts      // resolveScoring (puro)
-```
+4. **Migration de banco.** Você disse antes "NÃO mexer em banco". Confirmando: **não vou criar coluna `ativo` nem nada novo**. O contrato continua sendo: fields ativos = `snapshot.checklists.avaliado_field_ids`. Banco fica intacto.
 
-Regras:
-- Funções **puras** sempre que possível.
-- Acesso ao Supabase isolado em `_repo.ts` interno.
-- Zero `setState` dentro de core.
+5. **`saveFieldsOnly` atualmente é chamada no auto-save da aba Builder.** Removendo, o auto-save da aba precisa virar `upsert` completo. Isso é mais lento (salva tudo). Confirma?
 
-Entregáveis: arquivos novos + diff.
-**Gate de aprovação.**
+6. **Componentes que importam normalizer indiretamente** (`tarefas_useContingencyManagement`, `tarefas_embeddedContingencyPanel`) usam `operational_template_check_items` mas **não importam o normalizer**. Eles ficam intactos — só removo `operational_template_check_items` do código do **builder**, não das contingências. Confirma?
 
----
+## Ordem de execução proposta (após suas respostas)
 
-## Etapa 3 — Decisão sobre "field ativo" (bloqueia Etapa 4)
-Três opções (precisamos de uma escolha do usuário):
+```text
+Fase A — Core (zero impacto, só cria arquivos)
+  1. Criar/reescrever 6 arquivos em src/modules/tarefas/core/
+     - tarefas_builder_fields.ts
+     - tarefas_builder_snapshot.ts
+     - tarefas_builder_hydrate.ts
+     - tarefas_builder_aprovador.ts
+     - tarefas_builder_validador.ts
+     - tarefas_builder_save.ts
 
-| Opção | Como | Migração DB | Custo | Risco |
-|---|---|---|---|---|
-| **A. Coluna `ativo` em `operational_template_fields`** | `ALTER TABLE ADD COLUMN ativo BOOLEAN DEFAULT TRUE`; "remover" = `UPDATE ativo=false` | SIM (1 coluna + backfill) | Baixo | Baixo — padrão clássico, não quebra histórico |
-| **B. Tabela relacional `operational_template_active_fields`** | Lista explícita de fields ativos por template | SIM (nova tabela) | Médio | Médio |
-| **C. Snapshot oficializado (`avaliado_field_ids`) com regra estrita** | Sem mudança de DB, mas snapshot vira contrato (vazio = vazio) | NÃO | Mínimo | Mantém o snapshot como source of truth parcial — viola o princípio "snapshot ≠ mini-banco" |
+Fase B — Page (alto risco)
+  2. Reescrever tarefas_rotinasPage.tsx
+     - openEdit usa core
+     - save unificado (sem saveFieldsOnly)
+     - sem dedupe, sem fallback, sem hydrate inline
+     - mantém tabs, layout, dialogs
 
-**Recomendação:** Opção A. Mínima, alinhada ao princípio, resolve definitivamente o bug "perguntas removidas voltam".
+Fase C — Builder Wizard
+  3. Reescrever TarefasBuilderWizard.tsx (sem normalizers)
+  4. Reescrever StepChecklistAprovador.tsx
+  5. Reescrever StepChecklistValidador.tsx
 
-**Gate de aprovação obrigatório aqui.**
+Fase D — Limpeza
+  6. Deletar checklistNormalizers.ts
+  7. Verificar imports órfãos (rg)
+  8. Build check
 
----
-
-## Etapa 4 — Migração de banco (se Opção A ou B)
-Se A:
-```sql
-ALTER TABLE operational_template_fields
-  ADD COLUMN ativo BOOLEAN NOT NULL DEFAULT TRUE;
-CREATE INDEX idx_otf_template_ativo ON operational_template_fields(template_id, ativo);
--- Backfill: marcar como inativo todos os ids que não estão em avaliado_field_ids do snapshot
--- (script auditado e revisado linha-a-linha antes de rodar)
+Fase E — Entrega
+  9. diff + ZIP + manifest
 ```
 
-Ajustar:
-- `fetchReferencedFieldIds` continua existindo, mas só serve para **logs/UI** ("este campo tem histórico"), nunca para decidir UI.
-- Todos os `SELECT operational_template_fields` no app passam a filtrar `ativo=true`.
+Cada fase tem gate. Se algo quebrar visualmente em B, paro antes de C/D.
 
-Entregáveis: migração + script de backfill auditável + plano de rollback (`UPDATE ... ativo=true; DROP COLUMN`).
-**Gate de aprovação obrigatório.**
+## O que NÃO farei sem nova confirmação
 
----
+- Tocar em `tarefas_useContingencyManagement.ts`
+- Tocar em `tarefas_embeddedContingencyPanel.tsx`
+- Tocar em qualquer hook do executor/avaliado/auditor
+- Tocar em `FieldConfigSheet.tsx`, `BuilderStepper.tsx`, `StepResumo.tsx`, `FieldVisibilityEditor.tsx`
+- Migrations SQL
+- Edge functions
 
-## Etapa 5 — Reescrita de `hydrate` e `save` (core)
-Implementar de fato:
-- `hydrateBuilder(templateId)`: lê banco (com `ativo=true`), monta `BuilderState`. **Sem fallbacks**.
-- `saveBuilder(state)`: transação lógica → upsert sections, upsert fields ativos, **soft-delete** dos removidos (`ativo=false`), atualiza snapshot **só como cache derivado**.
-- `saveFieldsOnly` deixa de existir como caminho paralelo — vira chamada do mesmo `saveBuilder`.
+## Risco principal
 
-A page `tarefas_rotinasPage.tsx` passa a chamar:
-```ts
-const state = await hydrateBuilder(t.id);
-setBuilderState(state);
-// ...
-await saveBuilder(builderState);
-```
+Reescrever Aprovador/Validador "sem aproveitar regra antiga" significa **perder configuração visível ao usuário** (peso, SLA, evidência, opções por resposta). Se o objetivo é "snapshot ≠ ressuscita pergunta", isso é resolvido só com o `rebuildAprovadorChecks` filtrando por `field_id`. Os outros campos (peso, SLA…) podem ser preservados sem quebrar o objetivo.
 
-Estados React reduzidos a um único `builderState` (ou poucos slices coesos).
+**Recomendo (mas só executo se você confirmar):** manter os campos de configuração no Aprovador/Validador (peso, SLA, evidência, opções), mas remover toda a sincronização automática e os normalizers legados. O filtro por `field_id` ativo é suficiente pra resolver "pergunta ressuscitada".
 
-Entregáveis: diff completo + testes manuais documentados.
-**Gate de aprovação.**
+## Aguardando
 
----
-
-## Etapa 6 — Snapshot vira cache
-- Remover qualquer leitura crítica do snapshot.
-- `ada_config_snapshot.checklists` mantém-se **apenas** como cache para resumos rápidos / relatórios.
-- `openEdit` ignora `avaliado_field_ids` para decidir UI (usa `ativo=true` do banco).
-- Snapshot é regravado pelo `saveBuilder` sempre como derivação do estado.
-
-**Gate de aprovação.**
-
----
-
-## Etapa 7 — Aprovador / Validador limpos
-- `syncAprovadorReplicadasFromFields` movido para `core/tarefas_builder_aprovador.ts` como função pura.
-- Replicadas sempre derivadas do estado de fields ativos no momento do save (sem hydrate paralelo).
-- Validador idem.
-- `StepChecklistAprovador` e `StepChecklistValidador` continuam sendo só apresentação.
-
-**Gate de aprovação.**
-
----
-
-## Etapa 8 — Auditoria de botões e tabs
-- Varredura de `TarefasBuilderWizard` + tabs (`tarefas_tabGeral`, `tarefas_tabRecorrencia`, `tarefas_tabFormBuilder`, etc).
-- Lista de botões/tabs sem função real ou com placeholder.
-- Cada item: ou implementa função real ou é removido. **Sem placebo.**
-
-Entregáveis: relatório `auditoria_botoes_tabs.md` + diff.
-**Gate de aprovação.**
-
----
-
-## Etapa 9 — Limpeza final + reorganização de pastas
-- Mover utilitários puros restantes para `core/` ou `utils/`.
-- Remover arquivos comprovadamente sem import (`rg -l`).
-- Confirmar estrutura final:
-  ```
-  src/modules/tarefas/
-    pages/  components/  components/builder/
-    hooks/  services/  utils/  types/  core/
-  ```
-- Manifest final + ZIP de comparação contra backup inicial.
-
-**Gate final.**
-
----
-
-## Arquivos previstos para alteração
-| Etapa | Arquivos |
-|---|---|
-| 1 | `tarefas_rotinasPage.tsx` (limpeza imports/dead code) |
-| 2 | **novos** em `core/` |
-| 4 | migração SQL + backfill |
-| 5 | `tarefas_rotinasPage.tsx`, novos `core/*` |
-| 6 | `core/tarefas_builder_snapshot.ts`, `tarefas_rotinasPage.tsx` |
-| 7 | `core/tarefas_builder_aprovador.ts`, `core/tarefas_builder_validador.ts`, `checklistNormalizers.ts` (provável obsoleto) |
-| 8 | `TarefasBuilderWizard.tsx`, `tarefas_tab*.tsx`, subcomponentes builder |
-| 9 | Reorganização final |
-
-**Não tocados:** `src/integrations/supabase/*`, hooks de execução/auditoria/aprovação fora do builder, qualquer outra tela do app.
-
----
-
-## Riscos e mitigação
-| Risco | Mitigação |
-|---|---|
-| Migração de DB com dados em produção | Backfill em dry-run + revisão linha-a-linha + janela de manutenção |
-| Quebrar telas que leem snapshot | Mapeamento prévio de todos os leitores do snapshot antes da Etapa 6 |
-| Perda de regra implícita não documentada | Cada etapa tem gate; rollback via revert da chat |
-| Aprovador/Validador desincronizados | Etapa 7 inclui teste manual roteirizado |
-
----
-
-## O que preciso do usuário antes de começar
-1. **Aprovar este plano** (ou pedir ajustes).
-2. **Escolher Opção A / B / C** da Etapa 3.
-3. **Confirmar autorização para migração de banco** (se A ou B).
-4. Confirmar que aceita o modelo etapa-por-etapa com gate (sem execução em massa).
-
-Sem essas respostas, **nada será alterado**.
+Responda os 6 pontos acima (mesmo que com "sim a tudo literal" ou "aceito a recomendação") e eu executo Fase A→E em sequência, parando entre fases.
