@@ -420,9 +420,13 @@ export function useAssignmentExecution(assignmentId: string | null) {
         const isDesignada = !!assignment.created_by
           && assignment.created_by !== assignment.responsavel_id
           && !assignment.aprovador_id;
+        // Quando devolvida pelo aprovador: vai direto para aguardando_aprovacao
+        const actionFinal = assignment.status === "devolvida"
+          ? "enviar_avaliacao"
+          : isDesignada ? "enviar_validacao_designante" : "enviar_avaliacao";
         await transition.mutateAsync({
           assignmentId: assignment.id,
-          action: isDesignada ? "enviar_validacao_designante" : "enviar_avaliacao",
+          action: actionFinal,
           origem: "execucao",
           extraData: { tempoGasto, atrasado },
         });
