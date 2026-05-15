@@ -772,73 +772,134 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
           </div>
         </div>
 
-        {perguntasAutoTemplate.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Perguntas Automáticas do Aprovador</p>
-            {perguntasAutoTemplate.map((p: any) => {
+        {/* Lista corrida unificada: perguntas AUTO + perguntas do Avaliado */}
+        <div className="space-y-2">
+          {(() => {
+            const fieldsComPlano = new Set(
+              (flow.fieldReviews as any[])
+                .filter((r: any) => r.devolvido === true)
+                .map((r: any) => r.field_id)
+            );
+
+            const notaAutoTotal = perguntasAutoTemplate.reduce((sum: number, p: any) => {
               const key = p.tempId ?? p.id ?? p.pergunta;
               const r = respostasAuto[key] ?? { na: false, justificativa: "" };
               const auto = calcRespostaAuto(p.metrica_calculo ?? "manual");
-              // N/A = mantém nota cheia (aprovador ponderou — não penaliza)
-              // Sem N/A e tirou ponto = 0 pts | Sem N/A e ok = peso total
-              const pontosEfetivos = r.na ? p.peso : (auto.tiraPonto ? 0 : p.peso);
-              return (
-                <div key={key} className={`border rounded-lg p-3 space-y-2 ${r.na ? "opacity-60 bg-muted/30 border-border" : auto.tiraPonto ? "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800" : "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"}`}>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-foreground">{p.pergunta}</p>
-                      {auto.resposta && !r.na && (
-                        <div className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded text-[10px] font-semibold ${auto.tiraPonto ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"}`}>
-                          {auto.tiraPonto ? "✗" : "✓"} {auto.label}
+              if (r.na) return sum + (p.peso || 0);
+              if (auto.tiraPonto) return sum;
+              return sum + (p.peso || 0);
+            }, 0);
+
+            const notaAvaliadorTotal = approverFields.reduce((sum: number, f: any) => {
+              const tevePlano = fieldsComPlano.has(f.id);
+              const keyNA = `avaliado_na_${f.id}`;
+              const rNA = respostasAuto[keyNA] ?? { na: false, justificativa: "" };
+              const peso = f.aprovador_peso || 1;
+              if (rNA.na) return sum + peso;
+              return sum + (tevePlano ? 0 : peso);
+            }, 0);
+
+            let idx = 0;
+
+            return (
+              <>
+                {perguntasAutoTemplate.map((p: any) => {
+                  idx++;
+                  const key = p.tempId ?? p.id ?? p.pergunta;
+                  const r = respostasAuto[key] ?? { na: false, justificativa: "" };
+                  const auto = calcRespostaAuto(p.metrica_calculo ?? "manual");
+                  const currentIdx = idx;
+                  return (
+                    <div key={key} className={`border rounded-lg p-3 space-y-2 ${r.na ? "opacity-70 bg-muted/20 border-border" : auto.tiraPonto ? "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800" : "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"}`}>
+                      <div className="flex items-start gap-2">
+                        <span className="text-[10px] font-bold text-muted-foreground w-5 shrink-0 mt-0.5">{currentIdx}.</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-foreground">{p.pergunta}</p>
+                          {auto.resposta && !r.na && (
+                            <div className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded text-[10px] font-semibold ${auto.tiraPonto ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"}`}>
+                              {auto.tiraPonto ? "✗" : "✓"} {auto.label}
+                            </div>
+                          )}
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            Nota: <span className={`font-semibold ${auto.tiraPonto && !r.na ? "text-red-600 line-through" : "text-emerald-600"}`}>{p.peso} pts</span>
+                            {auto.tiraPonto && !r.na && <span className="text-red-600 ml-1">→ 0 pts</span>}
+                            {r.na && <span className="text-amber-600 ml-1">→ N/A (nota mantida)</span>}
+                          </p>
+                        </div>
+                        {p.permite_na !== false && (
+                          <label className="flex items-center gap-1 shrink-0 cursor-pointer mt-0.5">
+                            <input type="checkbox" checked={r.na}
+                              onChange={(e) => setRespostasAuto(prev => ({ ...prev, [key]: { ...r, na: e.target.checked } }))}
+                              className="w-3.5 h-3.5" />
+                            <span className="text-[11px] text-muted-foreground">N/A</span>
+                          </label>
+                        )}
+                      </div>
+                      {r.na && (
+                        <div className="space-y-1 ml-7">
+                          <Label className="text-[10px] text-amber-700">Justificativa obrigatória — por que N/A? (nota será mantida)</Label>
+                          <Textarea value={r.justificativa}
+                            onChange={(e) => setRespostasAuto(prev => ({ ...prev, [key]: { ...r, justificativa: e.target.value } }))}
+                            placeholder="Por que este item não se aplica..."
+                            className="text-xs min-h-[36px]" />
                         </div>
                       )}
-                      <p className="text-[10px] text-muted-foreground mt-1">
-                        Nota: <span className={`font-semibold ${auto.tiraPonto && !r.na ? "text-red-600 line-through" : "text-emerald-600"}`}>{p.peso} pts</span>
-                        {auto.tiraPonto && !r.na && <span className="text-red-600 ml-1">→ 0 pts (penalidade)</span>}
-                        {r.na && <span className="text-amber-600 ml-1">→ N/A (nota mantida, justificativa obrigatória)</span>}
-                      </p>
                     </div>
-                    {p.permite_na !== false && (
-                      <label className="flex items-center gap-1.5 shrink-0 cursor-pointer mt-1">
-                        <input
-                          type="checkbox"
-                          checked={r.na}
-                          onChange={(e) => setRespostasAuto(prev => ({ ...prev, [key]: { ...r, na: e.target.checked } }))}
-                          className="w-3.5 h-3.5"
-                        />
-                        <span className="text-[11px] text-muted-foreground">N/A</span>
-                      </label>
-                    )}
-                  </div>
-                  {r.na && (
-                    <div className="space-y-1">
-                      <Label className="text-[10px] text-amber-700">Justificativa obrigatória — por que N/A? (nota será mantida)</Label>
-                      <Textarea
-                        value={r.justificativa}
-                        onChange={(e) => setRespostasAuto(prev => ({ ...prev, [key]: { ...r, justificativa: e.target.value } }))}
-                        placeholder="Por que este item não se aplica..."
-                        className="text-xs min-h-[36px]"
-                      />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
+                  );
+                })}
 
-        <div className="border border-border rounded-lg p-3 space-y-1">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Perguntas do Avaliado</p>
-          {approverFields.map(f => (
-            <div key={f.id} className="flex items-center justify-between text-xs py-0.5">
-              <span className="text-foreground truncate flex-1">{f.label}</span>
-              <span className="text-primary font-semibold ml-2 shrink-0">{f.aprovador_peso || 1} pts</span>
-            </div>
-          ))}
-          <div className="border-t border-border mt-2 pt-2 flex items-center justify-between text-sm font-semibold">
-            <span>Nota total do Avaliado</span>
-            <span className="text-primary">{totalNotaAuto + totalNotaAvaliado} pts</span>
-          </div>
+                {approverFields.map((f: any) => {
+                  idx++;
+                  const tevePlano = fieldsComPlano.has(f.id);
+                  const keyNA = `avaliado_na_${f.id}`;
+                  const rNA = respostasAuto[keyNA] ?? { na: false, justificativa: "" };
+                  const currentIdx = idx;
+                  return (
+                    <div key={f.id} className={`border rounded-lg p-3 space-y-2 ${tevePlano && !rNA.na ? "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800" : rNA.na ? "opacity-70 bg-muted/20 border-border" : "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"}`}>
+                      <div className="flex items-start gap-2">
+                        <span className="text-[10px] font-bold text-muted-foreground w-5 shrink-0 mt-0.5">{currentIdx}.</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-foreground">{f.label}</p>
+                          {tevePlano && !rNA.na && (
+                            <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400">
+                              ✗ Teve plano de ação — penalidade
+                            </div>
+                          )}
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            Nota: <span className={`font-semibold ${tevePlano && !rNA.na ? "text-red-600 line-through" : "text-emerald-600"}`}>{f.aprovador_peso || 1} pts</span>
+                            {tevePlano && !rNA.na && <span className="text-red-600 ml-1">→ 0 pts</span>}
+                            {rNA.na && <span className="text-amber-600 ml-1">→ N/A (nota mantida)</span>}
+                          </p>
+                        </div>
+                        {tevePlano && (
+                          <label className="flex items-center gap-1 shrink-0 cursor-pointer mt-0.5">
+                            <input type="checkbox" checked={rNA.na}
+                              onChange={(e) => setRespostasAuto(prev => ({ ...prev, [keyNA]: { ...rNA, na: e.target.checked } }))}
+                              className="w-3.5 h-3.5" />
+                            <span className="text-[11px] text-muted-foreground">N/A</span>
+                          </label>
+                        )}
+                      </div>
+                      {tevePlano && rNA.na && (
+                        <div className="space-y-1 ml-7">
+                          <Label className="text-[10px] text-amber-700">Justificativa obrigatória — por que N/A? (nota será mantida)</Label>
+                          <Textarea value={rNA.justificativa}
+                            onChange={(e) => setRespostasAuto(prev => ({ ...prev, [keyNA]: { ...rNA, justificativa: e.target.value } }))}
+                            placeholder="Por que o plano de ação não deve penalizar esta pergunta..."
+                            className="text-xs min-h-[36px]" />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                <div className="border border-border rounded-lg px-4 py-3 flex items-center justify-between bg-card">
+                  <span className="text-sm font-semibold text-foreground">Nota total do Avaliado</span>
+                  <span className="text-primary text-sm font-bold">{notaAutoTotal + notaAvaliadorTotal} pts</span>
+                </div>
+              </>
+            );
+          })()}
         </div>
 
         <div className="flex gap-2 pt-2 sticky bottom-0 bg-background pb-1 border-t border-border">
