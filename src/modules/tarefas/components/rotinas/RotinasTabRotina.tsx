@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Save, CalendarDays, Play, RefreshCw } from "lucide-react";
+import { Save, CalendarDays, Play, RefreshCw, Trash2 } from "lucide-react";
 import { TemplateForm, getLocalToday } from "@/modules/tarefas/types/tarefas_types";
 import { cn } from "@/lib/utils";
 
