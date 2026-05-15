@@ -1202,6 +1202,7 @@ export default function OperationalExecucaoPage() {
                         allAnswers={exec.answers} onChange={exec.updateAnswer} assignmentId={selectedAssignment.id}
                         showValidation={submitAttempted}
                         approverPlan={approverPlanByField[f.id]}
+                        allReviews={exec.getAllReviews(f.id)}
                         horarioLimite={selectedAssignment?.horario_limite}
                         dataPrevista={selectedAssignment?.data_prevista}
                         profileId={profile?.id}
@@ -1270,6 +1271,7 @@ export default function OperationalExecucaoPage() {
                               allAnswers={exec.answers} onChange={exec.updateAnswer} assignmentId={selectedAssignment.id}
                               showValidation={submitAttempted}
                               approverPlan={approverPlanByField[f.id]}
+                              allReviews={exec.getAllReviews(f.id)}
                               horarioLimite={selectedAssignment?.horario_limite}
                               dataPrevista={selectedAssignment?.data_prevista}
                               profileId={profile?.id}

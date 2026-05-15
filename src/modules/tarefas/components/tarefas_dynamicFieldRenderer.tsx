@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Upload, X, AlertTriangle, RotateCcw, Camera, Eye } from "lucide-react";
+import { Upload, X, AlertTriangle, RotateCcw, Camera, Eye, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface SnapshotField {
@@ -118,6 +118,7 @@ interface Props {
     justificativa_alteracao_prazo?: string | null;
     tipo_evidencia_exigida?: string | null;
   } | null;
+  allReviews?: any[];
   horarioLimite?: string | null;
   dataPrevista?: string | null;
   profileId?: string | null;
@@ -173,7 +174,7 @@ function validateField(field: SnapshotField, answer: FieldAnswer | undefined): s
 
 export { evaluateVisibility, validateField };
 
-export function DynamicFieldRenderer({ field, answer, review, userRole, disabled, allAnswers, onChange, assignmentId, showValidation = true, approverPlan, horarioLimite, dataPrevista, profileId, responsavelId, setorExecutorId, meusSetorIds = [], isAdmin = false }: Props) {
+export function DynamicFieldRenderer({ field, answer, review, userRole, disabled, allAnswers, onChange, assignmentId, showValidation = true, approverPlan, allReviews = [], horarioLimite, dataPrevista, profileId, responsavelId, setorExecutorId, meusSetorIds = [], isAdmin = false }: Props) {
   const [uploading, setUploading] = useState(false);
 
   const isVisible = field.visivel_para.includes(userRole) && evaluateVisibility(field.condicao_visibilidade, allAnswers);
@@ -589,121 +590,114 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
         </div>
       )}
 
-      {/* Histórico de rodadas — accordion */}
-      {isReturned && review && (
-        <div className="mt-2 rounded-lg border border-amber-300 dark:border-amber-800 overflow-hidden">
-          {/* Cabeçalho */}
-          <div className="flex items-center justify-between px-3 py-2 bg-amber-100/80 dark:bg-amber-900/30">
-            <div className="flex items-center gap-2">
-              <RotateCcw className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-              <p className="text-xs font-semibold text-amber-900 dark:text-amber-300">
-                Histórico de devoluções ({review.rodada} rodada{review.rodada > 1 ? "s" : ""})
-              </p>
-            </div>
-          </div>
+      {/* Histórico tipo chat — planos de ação e devoluções por rodada */}
+      {allReviews.length > 0 && (
+        <div className="mt-2 space-y-2">
+          {allReviews.map((r: any, idx: number) => {
+            const isPlano = !!(approverPlan?.plano_acao_descricao) || !!(r.instrucao_aprovador && r.instrucao_aprovador !== r.motivo_devolucao);
+            const isReincidencia = idx > 0;
+            const tipoLabel = isPlano ? `Plano de ação — R${r.rodada}` : `Devolução — R${r.rodada}`;
+            const corBorda = isReincidencia ? "#ba7517" : "#e24b4a";
+            const corHeader = isReincidencia ? "#faeeda" : "#fcebeb";
+            const corTexto = isReincidencia ? "#854f0b" : "#a32d2d";
+            const instrucao = r.instrucao_aprovador || r.motivo_devolucao || "";
+            const tipoEv = r.tipo_evidencia_exigida || "nenhuma";
+            const prazo = approverPlan?.plano_acao_prazo;
+            const prazoAlterado = approverPlan?.flag_prazo_alterado && idx === allReviews.length - 1;
+            const aguardando = isReturned && idx === allReviews.length - 1 && !val.observacao && !val.evidencia_url;
 
-          {/* Rodada atual aberta por padrão */}
-          <div className="divide-y divide-amber-200 dark:divide-amber-800">
-            {[review].map((r: any) => {
-              const isOpen = openRodada === r.rodada;
-              const tipoEv = r.tipo_evidencia_exigida || "nenhuma";
-              return (
-                <div key={r.rodada}>
-                  {/* Tab da rodada */}
-                  <button
-                    type="button"
-                    onClick={() => setOpenRodada(isOpen ? null : r.rodada)}
-                    className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
-                  >
-                    <span className="text-xs font-medium text-amber-800 dark:text-amber-300">
-                      Rodada {r.rodada}
-                      {r.profiles?.nome && <span className="text-[10px] text-muted-foreground ml-2">· {r.profiles.nome}</span>}
+            return (
+              <div key={r.id || idx} className="flex gap-2">
+                {/* Linha colorida lateral */}
+                <div className="w-0.5 rounded-full shrink-0 mt-1" style={{ backgroundColor: corBorda, minHeight: "100%" }} />
+                <div className="flex-1 border border-border rounded-lg overflow-hidden bg-card">
+                  {/* Header da rodada */}
+                  <div className="flex items-center justify-between px-3 py-1.5 border-b border-border" style={{ backgroundColor: corHeader }}>
+                    <span className="text-[11px] font-semibold" style={{ color: corTexto }}>{tipoLabel}</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {r.avaliado_em ? format(new Date(r.avaliado_em), "dd/MM HH:mm") : ""}{r.profiles?.nome ? ` · ${r.profiles.nome}` : ""}
                     </span>
-                    <span className="text-[10px] text-muted-foreground">{isOpen ? "▲" : "▼"}</span>
-                  </button>
-
-                  {isOpen && (
-                    <div className="px-3 pb-3 pt-1 space-y-3 bg-amber-50/40 dark:bg-amber-950/10">
-                      {/* Instrução do aprovador */}
-                      {r.instrucao_aprovador && (
+                  </div>
+                  {/* Instrução do aprovador */}
+                  {instrucao && (
+                    <div className="px-3 py-2 space-y-1.5">
+                      <p className="text-xs text-foreground whitespace-pre-wrap">{instrucao}</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {prazo && (
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full ${prazoAlterado ? "bg-amber-100 text-amber-800" : "bg-blue-50 text-blue-800"}`}>
+                            {prazoAlterado ? "⚑ " : ""}Prazo: {format(new Date(prazo), "dd/MM HH:mm")}
+                          </span>
+                        )}
+                        {tipoEv !== "nenhuma" && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-800">
+                            {tipoEv === "foto" ? "📷 Foto" : tipoEv === "video" ? "🎥 Vídeo" : tipoEv === "audio" ? "🎵 Áudio" : "✏️ Descrição"}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {/* Resposta do executor */}
+                  {(val.observacao || val.evidencia_url) && idx === allReviews.length - 1 ? (
+                    <div className="px-3 py-2 border-t border-border bg-muted/30 space-y-1">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Resposta do executor</p>
+                      {val.observacao && <p className="text-xs text-foreground">{val.observacao}</p>}
+                      {val.evidencia_url && (
                         <div>
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium mb-0.5">Instrução do aprovador</p>
-                          <p className="text-xs text-amber-800 dark:text-amber-300 whitespace-pre-wrap">{r.instrucao_aprovador}</p>
-                        </div>
-                      )}
-
-                      {/* Tipo de evidência exigida */}
-                      {tipoEv !== "nenhuma" && (
-                        <div>
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium mb-1.5">
-                            Evidência exigida: {tipoEv === "foto" ? "📷 Foto (câmera)" : tipoEv === "video" ? "🎥 Vídeo" : tipoEv === "audio" ? "🎵 Áudio" : "✏️ Descrição"}
-                          </p>
-                          {/* Upload — câmera sempre, nunca galeria */}
-                          {val.evidencia_url ? (
-                            <div className="space-y-1">
-                              {/\.(jpg|jpeg|png|gif|webp)$/i.test(val.evidencia_url) ? (
-                                <img
-                                  src={val.evidencia_url}
-                                  alt="Evidência"
-                                  className="w-full max-h-48 rounded border border-border object-cover cursor-pointer"
-                                  onClick={() => window.open(val.evidencia_url!, "_blank")}
-                                />
-                              ) : /\.(mp4|webm|mov)$/i.test(val.evidencia_url) ? (
-                                <video src={val.evidencia_url} controls playsInline className="w-full max-h-48 rounded border border-border" />
-                              ) : /\.(mp3|wav|ogg|m4a)$/i.test(val.evidencia_url) ? (
-                                <audio src={val.evidencia_url} controls className="w-full" />
-                              ) : (
-                                <a href={val.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver evidência</a>
-                              )}
-                              {isEditableEfetivo && (
-                                <button type="button" onClick={() => update({ evidencia_url: null })} className="text-[10px] text-destructive hover:underline">Remover</button>
-                              )}
-                            </div>
-                          ) : isEditableEfetivo ? (
-                            <label className={`flex items-center justify-center gap-2 border border-dashed border-amber-400 rounded-lg p-3 cursor-pointer hover:border-amber-600 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
-                              {uploading ? (
-                                <span className="text-xs text-amber-700">Enviando...</span>
-                              ) : (
-                                <>
-                                  <Upload className="w-4 h-4 text-amber-600" />
-                                  <span className="text-xs text-amber-800 font-medium">
-                                    {tipoEv === "foto" ? "📷 Abrir câmera" : tipoEv === "video" ? "🎥 Gravar vídeo" : "🎵 Gravar áudio"} *
-                                  </span>
-                                </>
-                              )}
-                              <input
-                                type="file"
-                                className="hidden"
-                                accept={tipoEv === "foto" ? "image/*" : tipoEv === "video" ? "video/*" : tipoEv === "audio" ? "audio/*" : "*"}
-                                capture={tipoEv === "foto" || tipoEv === "video" ? "environment" : tipoEv === "audio" ? "user" : undefined}
-                                onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); }}
-                              />
-                            </label>
+                          {/\.(jpg|jpeg|png|gif|webp)$/i.test(val.evidencia_url) ? (
+                            <img src={val.evidencia_url} alt="Evidência" className="max-h-32 rounded border border-border cursor-pointer w-full object-cover" onClick={() => window.open(val.evidencia_url!, "_blank")} />
+                          ) : /\.(mp4|webm|mov)$/i.test(val.evidencia_url) ? (
+                            <video src={val.evidencia_url} controls playsInline className="w-full max-h-40 rounded border border-border" />
+                          ) : /\.(mp3|wav|ogg|m4a)$/i.test(val.evidencia_url) ? (
+                            <audio src={val.evidencia_url} controls className="w-full" />
                           ) : (
-                            <p className="text-xs text-muted-foreground italic">Sem evidência anexada</p>
+                            <a href={val.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver evidência</a>
                           )}
                         </div>
                       )}
-
-                      {/* Justificativa do executor */}
-                      {userRole === "executor" && isEditableEfetivo && (
-                        <div>
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium mb-1">Justificativa do que foi feito *</p>
-                          <textarea
-                            value={val.observacao ?? ""}
-                            onChange={e => update({ observacao: e.target.value })}
-                            placeholder="Descreva o que foi corrigido..."
-                            rows={2}
-                            className="w-full text-xs rounded border border-amber-300 bg-white dark:bg-amber-950/10 px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-amber-400"
-                          />
-                        </div>
+                      {val.respondido_por_nome && (
+                        <p className="text-[10px] text-muted-foreground">{val.respondido_por_nome} · {val.respondido_em ? format(new Date(val.respondido_em), "dd/MM HH:mm") : ""}</p>
                       )}
+                    </div>
+                  ) : aguardando ? (
+                    <div className="px-3 py-2 border-t border-border bg-muted/20 flex items-center gap-2">
+                      <Clock className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground italic">Aguardando resposta do executor...</span>
+                    </div>
+                  ) : null}
+
+                  {/* Campos para o executor preencher (última rodada ativa) */}
+                  {isReturned && idx === allReviews.length - 1 && isEditable && (
+                    <div className="px-3 py-2 border-t border-border space-y-2">
+                      {tipoEv !== "nenhuma" && !val.evidencia_url && (
+                        <label className={`flex items-center justify-center gap-2 border border-dashed border-amber-400 rounded-lg p-2.5 cursor-pointer hover:border-amber-600 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
+                          {uploading ? <span className="text-xs text-amber-700">Enviando...</span> : (
+                            <>
+                              <Upload className="w-3.5 h-3.5 text-amber-600" />
+                              <span className="text-xs text-amber-800 font-medium">
+                                {tipoEv === "foto" ? "📷 Abrir câmera" : tipoEv === "video" ? "🎥 Gravar vídeo" : tipoEv === "audio" ? "🎵 Gravar áudio" : "Anexar arquivo"} *
+                              </span>
+                            </>
+                          )}
+                          <input type="file" className="hidden"
+                            accept={tipoEv === "foto" ? "image/*" : tipoEv === "video" ? "video/*" : tipoEv === "audio" ? "audio/*" : "*"}
+                            capture={tipoEv === "foto" || tipoEv === "video" ? "environment" : tipoEv === "audio" ? "user" : undefined}
+                            onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); }}
+                          />
+                        </label>
+                      )}
+                      <textarea
+                        value={val.observacao ?? ""}
+                        onChange={e => update({ observacao: e.target.value })}
+                        placeholder="Descreva o que foi corrigido..."
+                        rows={2}
+                        className="w-full text-xs rounded border border-amber-300 bg-white dark:bg-amber-950/10 px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-amber-400"
+                      />
                     </div>
                   )}
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
