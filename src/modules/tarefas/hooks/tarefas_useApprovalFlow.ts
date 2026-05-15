@@ -268,12 +268,16 @@ export function useApprovalFlow(assignmentId: string | null) {
         await saveApproverAnswers.mutateAsync(snapshotFields);
       }
 
-      // Roteamento auditor: se template tem auditor configurado E há campos auditor_verificar,
-      // a aprovação vai para AGUARDANDO_AUDITORIA em vez de APROVADA.
+      // Roteamento auditor: se template tem auditor_id configurado,
+      // vai para AGUARDANDO_AUDITORIA. Perguntas do auditor vêm de checklists.validador.
+      const snap = assignment?.operational_templates?.ada_config_snapshot
+        ?? assignment?.template_snapshot?.ada_config_snapshot;
+      const perguntasAuditor = snap?.checklists?.validador;
+      const temPerguntasAuditor = Array.isArray(perguntasAuditor) && perguntasAuditor.length > 0;
       const auditorFields = snapshotFields.filter((f: any) => f.auditor_verificar);
       const requerAuditoria = action === "aprovar"
         && !!assignment?.auditor_id
-        && auditorFields.length > 0;
+        && (temPerguntasAuditor || auditorFields.length > 0);
 
       let transitionAction: "aprovar_final" | "reprovar_devolver_final" | "encerrar_final";
       switch (action) {
