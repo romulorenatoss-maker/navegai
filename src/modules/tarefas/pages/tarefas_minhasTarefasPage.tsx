@@ -1295,7 +1295,7 @@ export default function OperationalExecucaoPage() {
               />
             )}
 
-            {!isEditable && selectedAssignment && isAprovadorMode && viewMode === "aprovacao" && (
+            {!isEditable && selectedAssignment && (isAprovadorMode || isAuditorMode) && viewMode === "aprovacao" && (
               <EmbeddedApprovalPanel
                 assignment={selectedAssignment}
                 fields={effectiveFields}
