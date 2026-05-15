@@ -793,9 +793,9 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                         </div>
                       )}
                       <p className="text-[10px] text-muted-foreground mt-1">
-                        Nota: <span className={`font-semibold ${r.na ? "text-muted-foreground line-through" : auto.tiraPonto ? "text-red-600 line-through" : "text-emerald-600"}`}>{p.peso} pts</span>
+                        Nota: <span className={`font-semibold ${auto.tiraPonto && !r.na ? "text-red-600 line-through" : "text-emerald-600"}`}>{p.peso} pts</span>
                         {auto.tiraPonto && !r.na && <span className="text-red-600 ml-1">→ 0 pts (penalidade)</span>}
-                        {r.na && <span className="text-muted-foreground ml-1">→ desconsiderado</span>}
+                        {r.na && <span className="text-amber-600 ml-1">→ N/A (nota mantida, justificativa obrigatória)</span>}
                       </p>
                     </div>
                     {p.permite_na !== false && (
