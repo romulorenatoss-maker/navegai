@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -118,6 +118,13 @@ interface Props {
     justificativa_alteracao_prazo?: string | null;
     tipo_evidencia_exigida?: string | null;
   } | null;
+  horarioLimite?: string | null;
+  dataPrevista?: string | null;
+  profileId?: string | null;
+  responsavelId?: string | null;
+  setorExecutorId?: string | null;
+  meusSetorIds?: string[];
+  isAdmin?: boolean;
 }
 
 function evaluateVisibility(condition: any, allAnswers: Record<string, FieldAnswer>): boolean {
@@ -166,13 +173,33 @@ function validateField(field: SnapshotField, answer: FieldAnswer | undefined): s
 
 export { evaluateVisibility, validateField };
 
-export function DynamicFieldRenderer({ field, answer, review, userRole, disabled, allAnswers, onChange, assignmentId, showValidation = true, approverPlan }: Props) {
+export function DynamicFieldRenderer({ field, answer, review, userRole, disabled, allAnswers, onChange, assignmentId, showValidation = true, approverPlan, horarioLimite, dataPrevista, profileId, responsavelId, setorExecutorId, meusSetorIds = [], isAdmin = false }: Props) {
   const [uploading, setUploading] = useState(false);
 
   const isVisible = field.visivel_para.includes(userRole) && evaluateVisibility(field.condicao_visibilidade, allAnswers);
   if (!isVisible) return null;
 
   const isEditable = !disabled && field.editavel_por.includes(userRole);
+
+  const isExecutorCorreto = useMemo(() => {
+    if (userRole !== "executor") return true;
+    if (!profileId) return false;
+    if (responsavelId) return profileId === responsavelId;
+    if (setorExecutorId) return meusSetorIds.includes(setorExecutorId);
+    return true;
+  }, [userRole, profileId, responsavelId, setorExecutorId, meusSetorIds]);
+
+  const isEditableEfetivo = isEditable && isExecutorCorreto && !(isAdmin && !isExecutorCorreto);
+
+  const preenchidoComAtraso = useMemo(() => {
+    if (!answer?.respondido_em || !dataPrevista || !horarioLimite) return false;
+    try {
+      const limite = new Date(`${String(dataPrevista).slice(0, 10)}T${String(horarioLimite).slice(0, 5)}:00`);
+      const respondidoEm = new Date(answer.respondido_em);
+      return respondidoEm > limite;
+    } catch { return false; }
+  }, [answer?.respondido_em, dataPrevista, horarioLimite]);
+
   const isReturned = review?.devolvido === true;
   const [openRodada, setOpenRodada] = useState<number | null>(review?.rodada ?? null);
   const error = showValidation ? validateField(field, answer) : null;
@@ -235,9 +262,9 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
         return (
           <div className="flex gap-2 flex-wrap">
             {opts.map(opt => (
-              <button key={String(opt.val) + opt.label} type="button" disabled={!isEditable}
+              <button key={String(opt.val) + opt.label} type="button" disabled={!isEditableEfetivo}
                 onClick={() => update({ valor_booleano: opt.val })}
-                className={`flex-1 min-w-[100px] px-3 py-2 rounded-md border text-sm font-medium transition-colors ${val.valor_booleano === opt.val ? opt.cls + " ring-2 ring-offset-1 ring-primary/30" : "bg-card border-border text-muted-foreground"} ${!isEditable ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
+                className={`flex-1 min-w-[100px] px-3 py-2 rounded-md border text-sm font-medium transition-colors ${val.valor_booleano === opt.val ? opt.cls + " ring-2 ring-offset-1 ring-primary/30" : "bg-card border-border text-muted-foreground"} ${!isEditableEfetivo ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
                 {opt.label}
               </button>
             ))}
@@ -261,9 +288,9 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
         return (
           <div className="flex gap-2 flex-wrap">
             {opts.map(opt => (
-              <button key={String(opt.val) + opt.label} type="button" disabled={!isEditable}
+              <button key={String(opt.val) + opt.label} type="button" disabled={!isEditableEfetivo}
                 onClick={() => update({ valor_booleano: opt.val })}
-                className={`flex-1 min-w-[100px] px-3 py-2 rounded-md border text-sm font-medium transition-colors ${val.valor_booleano === opt.val ? opt.cls + " ring-2 ring-offset-1 ring-primary/30" : "bg-card border-border text-muted-foreground"} ${!isEditable ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
+                className={`flex-1 min-w-[100px] px-3 py-2 rounded-md border text-sm font-medium transition-colors ${val.valor_booleano === opt.val ? opt.cls + " ring-2 ring-offset-1 ring-primary/30" : "bg-card border-border text-muted-foreground"} ${!isEditableEfetivo ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
                 {opt.label}
               </button>
             ))}
@@ -274,26 +301,26 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
       case "nota_avaliacao":
       case "numero":
         return <Input type="number" value={val.valor_numero ?? ""} onChange={e => update({ valor_numero: e.target.value === "" ? null : +e.target.value })}
-          disabled={!isEditable} min={field.validacao?.min} max={field.validacao?.max ?? field.nota_maxima}
-          className={!isEditable ? "opacity-60" : ""} />;
+          disabled={!isEditableEfetivo} min={field.validacao?.min} max={field.validacao?.max ?? field.nota_maxima}
+          className={!isEditableEfetivo ? "opacity-60" : ""} />;
 
       case "texto":
         return <Textarea value={val.valor_texto ?? ""} onChange={e => update({ valor_texto: e.target.value })}
-          disabled={!isEditable} placeholder={field.descricao || "Digite..."} maxLength={5000}
-          className={!isEditable ? "opacity-60" : ""} />;
+          disabled={!isEditableEfetivo} placeholder={field.descricao || "Digite..."} maxLength={5000}
+          className={!isEditableEfetivo ? "opacity-60" : ""} />;
 
       case "data":
         return <Input type="date" value={val.valor_data?.slice(0, 10) ?? ""} onChange={e => update({ valor_data: e.target.value })}
-          disabled={!isEditable} className={!isEditable ? "opacity-60" : ""} />;
+          disabled={!isEditableEfetivo} className={!isEditableEfetivo ? "opacity-60" : ""} />;
 
       case "hora":
         return <Input type="time" value={val.valor_texto ?? ""} onChange={e => update({ valor_texto: e.target.value })}
-          disabled={!isEditable} className={!isEditable ? "opacity-60" : ""} />;
+          disabled={!isEditableEfetivo} className={!isEditableEfetivo ? "opacity-60" : ""} />;
 
       case "select":
         return (
-          <Select value={val.valor_texto ?? ""} onValueChange={v => update({ valor_texto: v })} disabled={!isEditable}>
-            <SelectTrigger className={!isEditable ? "opacity-60" : ""}><SelectValue placeholder="Selecione" /></SelectTrigger>
+          <Select value={val.valor_texto ?? ""} onValueChange={v => update({ valor_texto: v })} disabled={!isEditableEfetivo}>
+            <SelectTrigger className={!isEditableEfetivo ? "opacity-60" : ""}><SelectValue placeholder="Selecione" /></SelectTrigger>
             <SelectContent>{(field.opcoes || []).map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
           </Select>
         );
@@ -303,12 +330,12 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
         return (
           <div className="flex flex-wrap gap-1.5">
             {(field.opcoes || []).map(o => (
-              <button key={o} type="button" disabled={!isEditable}
+              <button key={o} type="button" disabled={!isEditableEfetivo}
                 onClick={() => {
                   const next = selected.includes(o) ? selected.filter(s => s !== o) : [...selected, o];
                   update({ valor_json: next });
                 }}
-                className={`px-2.5 py-1 rounded text-xs border transition-colors ${selected.includes(o) ? "bg-primary/10 border-primary text-primary" : "bg-card border-border text-muted-foreground"} ${!isEditable ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
+                className={`px-2.5 py-1 rounded text-xs border transition-colors ${selected.includes(o) ? "bg-primary/10 border-primary text-primary" : "bg-card border-border text-muted-foreground"} ${!isEditableEfetivo ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
                 {o}
               </button>
             ))}
@@ -331,14 +358,14 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                 ) : (
                   <a href={val.evidencia_url} target="_blank" rel="noreferrer" className="text-sm text-primary underline">Ver arquivo</a>
                 )}
-                {isEditable && (
+                {isEditableEfetivo && (
                   <Button type="button" variant="destructive" size="sm" className="absolute -top-2 -right-2 h-6 w-6 p-0 rounded-full"
                     onClick={() => update({ evidencia_url: null })}>
                     <X className="w-3 h-3" />
                   </Button>
                 )}
               </div>
-            ) : isEditable ? (
+            ) : isEditableEfetivo ? (
               <label className={`flex items-center justify-center gap-2 border-2 border-dashed border-border rounded-lg p-4 cursor-pointer hover:border-primary/50 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
                 {uploading ? <span className="text-sm text-muted-foreground">Enviando...</span> : (
                   <>
@@ -356,7 +383,7 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
         );
 
       default:
-        return <Input value={val.valor_texto ?? ""} onChange={e => update({ valor_texto: e.target.value })} disabled={!isEditable} />;
+        return <Input value={val.valor_texto ?? ""} onChange={e => update({ valor_texto: e.target.value })} disabled={!isEditableEfetivo} />;
     }
   };
 
@@ -402,10 +429,10 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
               <Textarea
                 value={val.valor_texto ?? ""}
                 onChange={e => update({ valor_texto: e.target.value })}
-                disabled={!isEditable}
+                disabled={!isEditableEfetivo}
                 placeholder="Descreva o motivo / ação corretiva..."
                 rows={2}
-                className={!isEditable ? "opacity-60" : ""}
+                className={!isEditableEfetivo ? "opacity-60" : ""}
                 maxLength={2000}
               />
             </div>
@@ -422,13 +449,13 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                   ) : (
                     <a href={val.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver evidência</a>
                   )}
-                  {isEditable && (
+                  {isEditableEfetivo && (
                     <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => update({ evidencia_url: null })}>
                       <X className="w-3 h-3" />
                     </Button>
                   )}
                 </div>
-              ) : isEditable ? (
+              ) : isEditableEfetivo ? (
                 <label className={`flex items-center justify-center gap-2 border border-dashed border-amber-400/60 rounded p-2 cursor-pointer hover:border-amber-500 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
                   {uploading ? <span className="text-xs text-muted-foreground">Enviando...</span> : (
                     <>
@@ -455,8 +482,20 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
 
       {/* Who answered and when */}
       {val.respondido_por_nome && val.respondido_em && (
-        <div className="text-[10px] text-muted-foreground mt-1">
-          Preenchido por <strong>{val.respondido_por_nome}</strong> em {format(new Date(val.respondido_em), "dd/MM/yyyy HH:mm")}
+        <div className={`flex items-center gap-1.5 text-[10px] mt-1 ${preenchidoComAtraso ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
+          <button
+            type="button"
+            title="Ver histórico de preenchimento"
+            className={`shrink-0 transition-colors ${preenchidoComAtraso ? "text-red-500" : "text-emerald-500"}`}
+            onClick={() => {/* histórico — implementar depois */}}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </button>
+          <span>
+            Preenchido por <strong>{val.respondido_por_nome}</strong> em{" "}
+            {format(new Date(val.respondido_em), "dd/MM/yyyy HH:mm")}
+            {preenchidoComAtraso && <span className="ml-1 font-semibold">⚠ Atrasado</span>}
+          </span>
         </div>
       )}
 
@@ -474,9 +513,9 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
               ) : (
                 <a href={val.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Evidência anexada</a>
               )}
-              {isEditable && <Button type="button" variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => update({ evidencia_url: null })}><X className="w-3 h-3" /></Button>}
+              {isEditableEfetivo && <Button type="button" variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => update({ evidencia_url: null })}><X className="w-3 h-3" /></Button>}
             </div>
-          ) : isEditable ? (
+          ) : isEditableEfetivo ? (
             <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer hover:text-primary transition-colors">
               <Upload className="w-3.5 h-3.5" /> Anexar evidência
               <input type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
@@ -551,11 +590,11 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                               ) : (
                                 <a href={val.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver evidência</a>
                               )}
-                              {isEditable && (
+                              {isEditableEfetivo && (
                                 <button type="button" onClick={() => update({ evidencia_url: null })} className="text-[10px] text-destructive hover:underline">Remover</button>
                               )}
                             </div>
-                          ) : isEditable ? (
+                          ) : isEditableEfetivo ? (
                             <label className={`flex items-center justify-center gap-2 border border-dashed border-amber-400 rounded-lg p-3 cursor-pointer hover:border-amber-600 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
                               {uploading ? (
                                 <span className="text-xs text-amber-700">Enviando...</span>
@@ -582,7 +621,7 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                       )}
 
                       {/* Justificativa do executor */}
-                      {userRole === "executor" && isEditable && (
+                      {userRole === "executor" && isEditableEfetivo && (
                         <div>
                           <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium mb-1">Justificativa do que foi feito *</p>
                           <textarea
