@@ -444,18 +444,28 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
               </span>
             )}
           </div>
-          {activeRule.requer_descricao && (
+          {activeRule.requer_descricao && !activeRule.gera_contingencia && (
             <div className="space-y-1">
-              <Label className="text-[11px]">Justificativa / Plano de ação *</Label>
+              <Label className="text-[11px]">Observação obrigatória *</Label>
               <Textarea
-                value={val.valor_texto ?? ""}
-                onChange={e => update({ valor_texto: e.target.value })}
+                value={val.observacao ?? val.valor_texto ?? ""}
+                onChange={e => update({ observacao: e.target.value })}
                 disabled={!isEditableEfetivo}
-                placeholder="Descreva o motivo / ação corretiva..."
+                placeholder="Descreva o motivo..."
                 rows={2}
                 className={!isEditableEfetivo ? "opacity-60" : ""}
                 maxLength={2000}
               />
+            </div>
+          )}
+          {activeRule.gera_contingencia && (
+            <div className="space-y-2 p-2.5 rounded-md border border-orange-300/60 bg-orange-50/40 dark:bg-orange-950/20">
+              <p className="text-[11px] font-semibold text-orange-800 dark:text-orange-300 flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5" /> Gera plano de ação
+              </p>
+              <p className="text-[10px] text-orange-700 dark:text-orange-400">
+                O aprovador criará as instruções e prazo para correção após o envio.
+              </p>
             </div>
           )}
           {activeRule.requer_evidencia && (
