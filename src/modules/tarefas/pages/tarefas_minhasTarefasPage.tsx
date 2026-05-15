@@ -1251,7 +1251,16 @@ export default function OperationalExecucaoPage() {
                               review={exec.getLatestReview(f.id)} userRole="executor"
                               disabled={isDevolvida && exec.getLatestReview(f.id)?.devolvido !== true}
                               allAnswers={exec.answers} onChange={exec.updateAnswer} assignmentId={selectedAssignment.id}
-                              showValidation={submitAttempted} approverPlan={approverPlanByField[f.id]} />
+                              showValidation={submitAttempted}
+                              approverPlan={approverPlanByField[f.id]}
+                              horarioLimite={selectedAssignment?.horario_limite}
+                              dataPrevista={selectedAssignment?.data_prevista}
+                              profileId={profile?.id}
+                              responsavelId={selectedAssignment?.responsavel_id}
+                              setorExecutorId={selectedAssignment?.setor_executor_id}
+                              meusSetorIds={meusSetorIds}
+                              isAdmin={isAdmin}
+                            />
                           ))}
                         </div>
                       </div>
