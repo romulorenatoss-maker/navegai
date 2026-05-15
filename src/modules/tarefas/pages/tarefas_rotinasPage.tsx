@@ -910,12 +910,6 @@ export default function OperationalCadastroPage() {
         >
           DEBUG DB
         </Button>
-        <pre id="__debug_output__" style={{
-          position: 'fixed', bottom: 80, right: 16, zIndex: 99999,
-          background: 'black', color: 'lime', fontSize: 11,
-          maxWidth: 500, maxHeight: 300, overflow: 'auto',
-          padding: 8, borderRadius: 4, whiteSpace: 'pre-wrap'
-        }}>aguardando...</pre>
       </div>
 
       {/* Filters */}
