@@ -846,23 +846,30 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                 .map((r: any) => r.field_id)
             );
 
+            // Nota efetiva após penalidades (o que o avaliado realmente ganhou)
             const notaAutoTotal = perguntasAutoTemplate.reduce((sum: number, p: any) => {
               const key = p.tempId ?? p.id ?? p.pergunta;
-              const r = respostasAuto[key] ?? { na: false, justificativa: "" };
+              const r = respostasAuto[key] ?? { na: false };
               const auto = calcRespostaAuto(p.metrica_calculo ?? "manual");
-              if (r.na) return sum + (p.peso || 0);
-              if (auto.tiraPonto) return sum;
+              if (r.na) return sum + (p.peso || 0); // N/A mantém nota
+              if (auto.tiraPonto) return sum;        // penalidade = 0
               return sum + (p.peso || 0);
             }, 0);
 
+            // Nota máxima possível (soma de todos os pesos)
+            const notaMaximaAuto = perguntasAutoTemplate.reduce((sum: number, p: any) => sum + (p.peso || 0), 0);
+            const notaMaximaAvaliado = approverFields.reduce((sum: number, f: any) => sum + (f.aprovador_peso || 1), 0);
+            const notaMaximaTotal = notaMaximaAuto + notaMaximaAvaliado;
+
             const notaAvaliadorTotal = approverFields.reduce((sum: number, f: any) => {
               const keyNA = `avaliado_na_${f.id}`;
-              const rNA = respostasAuto[keyNA] ?? { na: false, justificativa: "" };
-              // N/A mantém nota | plano de ação perde ponto (exceto se N/A)
+              const rNA = respostasAuto[keyNA] ?? { na: false };
               const tevePlano = fieldsComPlano.has(f.id);
               if (tevePlano && !rNA.na) return sum; // perdeu ponto
-              return sum + (f.aprovador_peso || 1); // mantém nota
+              return sum + (f.aprovador_peso || 1);
             }, 0);
+
+            const notaEfetivaTotal = notaAutoTotal + notaAvaliadorTotal;
 
             let idx = 0;
 
@@ -966,7 +973,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                     <div className="border border-primary/30 rounded-lg px-4 py-3 bg-primary/5 space-y-1">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-semibold text-foreground">Nota final do Avaliado</span>
-                        <span className="text-primary text-lg font-bold">{notaAutoTotal + notaAvaliadorTotal} pts</span>
+                        <span className="text-primary text-lg font-bold">{notaEfetivaTotal} / {notaMaximaTotal} pts</span>
                       </div>
                       <p className="text-[10px] text-muted-foreground">
                         {destino === "setor"
