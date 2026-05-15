@@ -924,13 +924,6 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   // ─── PASSO 1: PERGUNTAS DO APROVADOR ───────────────────────────────
   return (
     <div className="space-y-3">
-      <div className="bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg p-3 flex items-start gap-2">
-        <ShieldCheck className="w-4 h-4 text-purple-700 dark:text-purple-400 shrink-0 mt-0.5" />
-        <div className="text-xs text-purple-800 dark:text-purple-300">
-          <strong>Aprovação Final.</strong> Revise as respostas do executor. Toque em cada pergunta para confirmar, e marque "Não Conforme" para itens que precisam de plano de ação.
-        </div>
-      </div>
-
       <div className="bg-card border border-border rounded-lg p-3">
         <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Resumo</p>
         <div className="grid grid-cols-3 gap-2 text-xs">
