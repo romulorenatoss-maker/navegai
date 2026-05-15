@@ -462,7 +462,10 @@ export default function OperationalCadastroPage() {
           .eq("template_id", templateId);
         if (existingFieldsError) throw existingFieldsError;
         const existingFieldIds = (existingFields || []).map((f: any) => f.id).filter(Boolean);
-        const currentFieldIds = new Set(fields.map(f => f.id).filter(Boolean) as string[]);
+        // currentFieldIds = ids dos campos que o usuário manteve na UI agora.
+        // activeAvaliadorFieldIds = ids ativos (já calculado acima no upsert).
+        // Um campo é removível se: saiu da UI E não tem respostas vinculadas.
+        const currentFieldIds = new Set(activeAvaliadorFieldIds.filter(Boolean) as string[]);
         const referencedFieldIds = await fetchReferencedFieldIds(existingFieldIds);
         const removableFieldIds = existingFieldIds.filter((id: string) => !currentFieldIds.has(id) && !referencedFieldIds.has(id));
         if (removableFieldIds.length > 0) {
@@ -668,14 +671,22 @@ export default function OperationalCadastroPage() {
     // Banco (`operational_template_fields`) é a única fonte de verdade aqui.
     // Variáveis savedAvaliadorFieldIds/Keys ficam apenas para retrocompatibilidade
     // de leitura, mas não são mais aplicadas como filtro.
-    void savedAvaliadorFieldIds;
     void savedAvaliadorFieldKeys;
-    const activeLoadedFields = loadedFields;
+    // Se existe snapshot com avaliado_field_ids, usar como lista de campos ativos.
+    // Campos com respostas vinculadas (referencedFieldIds) são protegidos do delete
+    // mas NÃO devem reaparecer na UI se o usuário os removeu explicitamente.
     const referencedFieldIds = await fetchReferencedFieldIds(
-      activeLoadedFields.map(f => f.id).filter(Boolean) as string[],
+      loadedFields.map(f => f.id).filter(Boolean) as string[],
     );
-    const dedupedFields = dedupeLoadedFields(activeLoadedFields, referencedFieldIds);
-    setFields(dedupedFields);
+    const dedupedFields = dedupeLoadedFields(loadedFields, referencedFieldIds);
+
+    // Filtra apenas os campos que o usuário manteve ativos (salvos em avaliado_field_ids).
+    // Se não há snapshot ainda (primeiro save), usa todos os campos do banco.
+    const activeLoadedFields = savedAvaliadorFieldIds && savedAvaliadorFieldIds.size > 0
+      ? dedupedFields.filter(f => f.id && savedAvaliadorFieldIds.has(f.id))
+      : dedupedFields;
+
+    setFields(activeLoadedFields);
 
     // Load steps
     const { data: stps } = await (supabase as any).from("operational_template_steps")
@@ -692,19 +703,19 @@ export default function OperationalCadastroPage() {
 
     // Hidrata checklists do Aprovador/Validador a partir de ada_config_snapshot.checklists
     // (Fase 2). Tolerante a registros antigos sem o campo.
-    const dedupedFieldIds = new Set(dedupedFields.map(f => f.tempId));
+    const dedupedFieldIds = new Set(activeLoadedFields.map(f => f.tempId));
     const aprRaw: any[] = Array.isArray(checklistsSnap.aprovador) ? checklistsSnap.aprovador : [];
     const apr = aprRaw.filter((i: any) => i?.origem_pergunta !== "replicada_avaliado" || dedupedFieldIds.has(i.field_id));
     const val: any[] = Array.isArray(checklistsSnap.validador) ? checklistsSnap.validador : [];
     setAprovadorChecks(prev => {
       const hydrated = sanitizeAprovadorChecks(
         apr,
-        dedupedFields,
+        activeLoadedFields,
         pontuacaoConfig?.aprovador_pacote_padrao,
         t.habilitar_perguntas_automaticas ?? true,
       );
       // Re-sincroniza com fields atuais para descartar órfãos do snapshot.
-      return syncAprovadorReplicadasFromFields(hydrated, dedupedFields);
+      return syncAprovadorReplicadasFromFields(hydrated, activeLoadedFields);
     });
     // Validador: aceita formato novo (AprovadorCheckItemForm) e formato legacy
     // (ValidadorCheckItemForm com {pergunta, categoria}). Snapshots antigos são
