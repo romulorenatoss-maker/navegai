@@ -118,6 +118,13 @@ interface Props {
     justificativa_alteracao_prazo?: string | null;
     tipo_evidencia_exigida?: string | null;
   } | null;
+  horarioLimite?: string | null;
+  dataPrevista?: string | null;
+  profileId?: string | null;
+  responsavelId?: string | null;
+  setorExecutorId?: string | null;
+  meusSetorIds?: string[];
+  isAdmin?: boolean;
 }
 
 function evaluateVisibility(condition: any, allAnswers: Record<string, FieldAnswer>): boolean {
