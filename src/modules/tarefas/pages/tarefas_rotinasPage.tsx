@@ -577,7 +577,8 @@ export default function OperationalCadastroPage() {
       }
     }
 
-    // Upsert fields
+    // Upsert fields — rastreia ids reais (inclusive de inserts) em savedFields.
+    const savedFields: FieldForm[] = [];
     for (const f of currentFields) {
       const payloadField = fieldPayload(editingId, f, sectionIdMap);
       if (f.id) {
@@ -585,38 +586,42 @@ export default function OperationalCadastroPage() {
           .from("operational_template_fields")
           .update(payloadField).eq("id", f.id);
         if (error) throw error;
+        savedFields.push(f);
       } else {
         const { data, error } = await (supabase as any)
           .from("operational_template_fields")
           .insert(payloadField).select("id").single();
         if (error) throw error;
+        const newId = data.id;
         setFields(prev => prev.map(field =>
           field.tempId === f.tempId
-            ? { ...field, id: data.id, tempId: data.id }
+            ? { ...field, id: newId, tempId: newId }
             : field
         ));
+        savedFields.push({ ...f, id: newId, tempId: newId });
       }
     }
 
-    // Deletar fields removidos (existem no banco mas não estão em currentFields)
-    const currentFieldIds = new Set(
-      currentFields.map(f => f.id).filter(Boolean) as string[]
+    // Deletar fields removidos: banco deve ficar igual à tela atual.
+    // keepFieldIds inclui ids reais (inclusive dos inserts recém-criados).
+    const keepFieldIds = new Set(
+      savedFields.map((f: any) => f.id).filter(Boolean) as string[]
     );
-    const { data: existingFieldsData } = await (supabase as any)
+    const { data: existingDbFields, error: existingFieldsError } = await (supabase as any)
       .from("operational_template_fields")
       .select("id")
       .eq("template_id", editingId);
-    const existingFieldIds = (existingFieldsData || [])
-      .map((f: any) => f.id).filter(Boolean);
-    const referencedFieldIds = await fetchReferencedFieldIds(existingFieldIds);
-    const removableFieldIds = existingFieldIds.filter(
-      (id: string) => !currentFieldIds.has(id) && !referencedFieldIds.has(id)
-    );
-    if (removableFieldIds.length > 0) {
-      const { error } = await (supabase as any)
+    if (existingFieldsError) throw existingFieldsError;
+    const removedFieldIds: string[] = (existingDbFields || [])
+      .map((f: any) => f.id)
+      .filter((id: string) => id && !keepFieldIds.has(id));
+    const referenced = await fetchReferencedFieldIds(removedFieldIds);
+    const deletableIds = removedFieldIds.filter(id => !referenced.has(id));
+    if (deletableIds.length > 0) {
+      const { error: deleteError } = await (supabase as any)
         .from("operational_template_fields")
-        .delete().in("id", removableFieldIds);
-      if (error) throw error;
+        .delete().in("id", deletableIds);
+      if (deleteError) throw deleteError;
     }
 
     // Buscar ids reais do banco APÓS o delete — só ids que realmente existem agora
