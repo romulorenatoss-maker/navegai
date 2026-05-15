@@ -289,6 +289,41 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Perguntas AUTO do template (ada_config_snapshot.checklists.aprovador)
+  // Calcula resposta automática por métrica baseado nas flags reais do assignment
+  const calcRespostaAuto = useCallback((metrica: string): { resposta: "sim" | "nao" | null; label: string; tiraPonto: boolean } => {
+    const a = assignment;
+    if (!a) return { resposta: null, label: "Sem dados", tiraPonto: false };
+    switch (metrica) {
+      case "executor_entregou_no_prazo":
+        if (a.flag_sla_etapa_estourado) return { resposta: "nao", label: "Não — atrasou", tiraPonto: true };
+        return { resposta: "sim", label: "Sim — dentro do prazo", tiraPonto: false };
+      case "executor_teve_atraso_etapa":
+        if (a.flag_sla_etapa_estourado) return { resposta: "sim", label: "Sim — houve atraso em etapa", tiraPonto: true };
+        return { resposta: "nao", label: "Não — sem atraso", tiraPonto: false };
+      case "executor_obrigatorias_respondidas":
+        return { resposta: "sim", label: "Sim — todas respondidas", tiraPonto: false };
+      case "executor_evidencias_anexadas":
+        return { resposta: "sim", label: "Sim — evidências anexadas", tiraPonto: false };
+      case "executor_teve_devolucao":
+        if ((a.rodada_atual ?? 1) > 1) return { resposta: "sim", label: "Sim — tarefa foi devolvida", tiraPonto: true };
+        return { resposta: "nao", label: "Não — sem devolução", tiraPonto: false };
+      case "plano_acao_foi_criado":
+        if ((a.rodada_atual ?? 1) > 1) return { resposta: "sim", label: "Sim — plano de ação gerado", tiraPonto: true };
+        return { resposta: "nao", label: "Não — sem plano de ação", tiraPonto: false };
+      case "plano_acao_sla_estourado":
+        if (a.flag_atraso_plano_acao) return { resposta: "sim", label: "Sim — SLA do plano estourou", tiraPonto: true };
+        return { resposta: "nao", label: "Não — dentro do prazo", tiraPonto: false };
+      case "plano_acao_prazo_prorrogado":
+        if (a.flag_atraso_plano_acao) return { resposta: "sim", label: "Sim — prazo prorrogado", tiraPonto: true };
+        return { resposta: "nao", label: "Não", tiraPonto: false };
+      case "plano_acao_prazo_prorrogado_2x":
+        if (a.flag_reincidencia_atraso) return { resposta: "sim", label: "Sim — prorrogado mais de 1 vez", tiraPonto: true };
+        return { resposta: "nao", label: "Não", tiraPonto: false };
+      default:
+        return { resposta: null, label: "Avaliação manual", tiraPonto: false };
+    }
+  }, [assignment]);
+
   const perguntasAutoTemplate = useMemo(() => {
     const snap = assignment?.operational_templates?.ada_config_snapshot
       ?? assignment?.template_snapshot?.ada_config_snapshot;
