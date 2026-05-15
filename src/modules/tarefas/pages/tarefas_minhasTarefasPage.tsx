@@ -673,15 +673,44 @@ export default function OperationalExecucaoPage() {
 
   // Planos de ação do aprovador (visíveis ao executor quando o campo foi devolvido com plano)
   const { data: approverPlansList = [] } = useQuery({
-    queryKey: ["operational_approval_answers_executor_view", selectedAssignment?.id],
+    queryKey: ["operational_approver_plans_executor_view", selectedAssignment?.id],
     queryFn: async () => {
       if (!selectedAssignment?.id) return [];
-      const { data, error } = await (supabase as any)
+      // Busca planos de ação do approval_answers
+      const { data: plans } = await (supabase as any)
         .from("operational_approval_answers")
         .select("field_id, plano_acao_descricao, plano_acao_prazo, plano_acao_anexo_url, flag_prazo_alterado, justificativa_alteracao_prazo")
         .eq("assignment_id", selectedAssignment.id);
-      if (error) throw error;
-      return data || [];
+      // Busca tipo_evidencia_exigida e instrucao do field_reviews
+      const { data: reviews } = await (supabase as any)
+        .from("operational_field_reviews")
+        .select("field_id, tipo_evidencia_exigida, instrucao_aprovador, rodada")
+        .eq("assignment_id", selectedAssignment.id)
+        .eq("devolvido", true)
+        .order("rodada", { ascending: false });
+      // Mescla: para cada field_id, pega o review mais recente (já ordenado desc)
+      const reviewMap: Record<string, any> = {};
+      for (const r of (reviews || [])) {
+        if (!reviewMap[r.field_id]) reviewMap[r.field_id] = r;
+      }
+      // Combina plans + reviews
+      const merged = (plans || []).map((p: any) => ({
+        ...p,
+        tipo_evidencia_exigida: reviewMap[p.field_id]?.tipo_evidencia_exigida || "nenhuma",
+        instrucao_aprovador: reviewMap[p.field_id]?.instrucao_aprovador || p.plano_acao_descricao || "",
+      }));
+      // Inclui fields devolvidos sem plano de ação (devolução simples)
+      for (const r of (reviews || [])) {
+        if (!merged.find((m: any) => m.field_id === r.field_id)) {
+          merged.push({
+            field_id: r.field_id,
+            plano_acao_descricao: r.instrucao_aprovador || "",
+            tipo_evidencia_exigida: r.tipo_evidencia_exigida || "nenhuma",
+            instrucao_aprovador: r.instrucao_aprovador || "",
+          });
+        }
+      }
+      return merged;
     },
     enabled: !!selectedAssignment?.id && (isDevolvida || selectedAssignment?.status === "em_plano_acao"),
   });
