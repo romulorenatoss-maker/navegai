@@ -745,20 +745,26 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             {perguntasAutoTemplate.map((p: any) => {
               const key = p.tempId ?? p.id ?? p.pergunta;
               const r = respostasAuto[key] ?? { na: false, justificativa: "" };
+              const auto = calcRespostaAuto(p.metrica_calculo ?? "manual");
+              const pontosEfetivos = r.na ? 0 : (auto.tiraPonto ? 0 : p.peso);
               return (
-                <div key={key} className={`border rounded-lg p-3 space-y-2 bg-card ${r.na ? "opacity-60" : ""}`}>
+                <div key={key} className={`border rounded-lg p-3 space-y-2 ${r.na ? "opacity-60 bg-muted/30 border-border" : auto.tiraPonto ? "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800" : "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"}`}>
                   <div className="flex items-start justify-between gap-2">
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium text-foreground">{p.pergunta}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        Tipo: {p.tipo === "sim_nao" ? "Sim / Não" : "Conforme / Não conforme"} · Nota: <span className="font-semibold text-primary">{p.peso}</span> pts
-                      </p>
-                      {p.metrica_calculo && p.metrica_calculo !== "manual" && (
-                        <p className="text-[10px] text-blue-600 dark:text-blue-400">Auto: {p.metrica_calculo.replace(/_/g, " ")}</p>
+                      {auto.resposta && !r.na && (
+                        <div className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded text-[10px] font-semibold ${auto.tiraPonto ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"}`}>
+                          {auto.tiraPonto ? "✗" : "✓"} {auto.label}
+                        </div>
                       )}
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Nota: <span className={`font-semibold ${r.na ? "text-muted-foreground line-through" : auto.tiraPonto ? "text-red-600 line-through" : "text-emerald-600"}`}>{p.peso} pts</span>
+                        {auto.tiraPonto && !r.na && <span className="text-red-600 ml-1">→ 0 pts (penalidade)</span>}
+                        {r.na && <span className="text-muted-foreground ml-1">→ desconsiderado</span>}
+                      </p>
                     </div>
                     {p.permite_na !== false && (
-                      <label className="flex items-center gap-1.5 shrink-0 cursor-pointer">
+                      <label className="flex items-center gap-1.5 shrink-0 cursor-pointer mt-1">
                         <input
                           type="checkbox"
                           checked={r.na}
@@ -771,7 +777,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                   </div>
                   {r.na && (
                     <div className="space-y-1">
-                      <Label className="text-[10px] text-amber-700">Justificativa obrigatória</Label>
+                      <Label className="text-[10px] text-amber-700">Justificativa obrigatória para N/A</Label>
                       <Textarea
                         value={r.justificativa}
                         onChange={(e) => setRespostasAuto(prev => ({ ...prev, [key]: { ...r, justificativa: e.target.value } }))}
