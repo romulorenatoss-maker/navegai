@@ -49,9 +49,6 @@ export default function ConfiguracoesPage() {
             <TabsContent value="setores" className="m-0">
               <TarefasConfigSetores />
             </TabsContent>
-            <TabsContent value="pontuacao" className="m-0">
-              <TarefasConfigPontuacao />
-            </TabsContent>
             <TabsContent value="armazenamento" className="m-0">
               <TarefasConfigArmazenamento />
             </TabsContent>
