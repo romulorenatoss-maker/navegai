@@ -12,7 +12,7 @@ import { TemplateForm, SectionForm, FieldForm, StepForm, defaultTemplate, defaul
 type TaskType = "simples" | "inspecao";
 import { TarefasBuilderWizard } from "@/modules/tarefas/components/builder/TarefasBuilderWizard";
 import { AprovadorCheckItemForm, buildAprovadorAutomatico, defaultAprovadorCheckItem } from "@/modules/tarefas/components/builder/types";
-import { normalizeAprovadorList } from "@/modules/tarefas/components/builder/checklistNormalizers";
+import { normalizeAprovadorList, syncAprovadorReplicadasFromFields } from "@/modules/tarefas/components/builder/checklistNormalizers";
 
 import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
 // Draft/rascunho automático REMOVIDO: a única fonte de verdade é o estado salvo da rotina.
@@ -320,8 +320,9 @@ export default function OperationalCadastroPage() {
   const upsert = useMutation({
     mutationFn: async () => {
       if (!form.nome.trim()) throw new Error("Nome é obrigatório");
+      const aprovadorSync = syncAprovadorReplicadasFromFields(aprovadorChecks, fields);
       const aprovadorSnapshot = sanitizeAprovadorChecks(
-        aprovadorChecks,
+        aprovadorSync,
         fields,
         pontuacaoConfig?.aprovador_pacote_padrao,
         form.habilitar_perguntas_automaticas,
@@ -689,12 +690,16 @@ export default function OperationalCadastroPage() {
     const aprRaw: any[] = Array.isArray(checklistsSnap.aprovador) ? checklistsSnap.aprovador : [];
     const apr = aprRaw.filter((i: any) => i?.origem_pergunta !== "replicada_avaliado" || dedupedFieldIds.has(i.field_id));
     const val: any[] = Array.isArray(checklistsSnap.validador) ? checklistsSnap.validador : [];
-    setAprovadorChecks(sanitizeAprovadorChecks(
-      apr,
-      dedupedFields,
-      pontuacaoConfig?.aprovador_pacote_padrao,
-      t.habilitar_perguntas_automaticas ?? true,
-    ));
+    setAprovadorChecks(prev => {
+      const hydrated = sanitizeAprovadorChecks(
+        apr,
+        dedupedFields,
+        pontuacaoConfig?.aprovador_pacote_padrao,
+        t.habilitar_perguntas_automaticas ?? true,
+      );
+      // Re-sincroniza com fields atuais para descartar órfãos do snapshot.
+      return syncAprovadorReplicadasFromFields(hydrated, dedupedFields);
+    });
     // Validador: aceita formato novo (AprovadorCheckItemForm) e formato legacy
     // (ValidadorCheckItemForm com {pergunta, categoria}). Snapshots antigos são
     // convertidos preservando pergunta/peso/tipo, sem perder histórico.
