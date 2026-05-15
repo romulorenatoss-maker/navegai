@@ -12,7 +12,7 @@ import { TemplateForm, SectionForm, FieldForm, StepForm, defaultTemplate, defaul
 type TaskType = "simples" | "inspecao";
 import { TarefasBuilderWizard } from "@/modules/tarefas/components/builder/TarefasBuilderWizard";
 import { AprovadorCheckItemForm, buildAprovadorAutomatico, defaultAprovadorCheckItem } from "@/modules/tarefas/components/builder/types";
-import { normalizeAprovadorList } from "@/modules/tarefas/components/builder/checklistNormalizers";
+import { normalizeAprovadorList, syncAprovadorReplicadasFromFields } from "@/modules/tarefas/components/builder/checklistNormalizers";
 
 import { getPontuacaoConfig } from "@/modules/tarefas/services/tarefas_pontuacao_config_service";
 // Draft/rascunho automático REMOVIDO: a única fonte de verdade é o estado salvo da rotina.
