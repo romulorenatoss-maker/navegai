@@ -1010,9 +1010,9 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                         ?? assignment?.profiles?.nome
                         ?? null;
                       const nomeSetor = assignment?.setor_avaliado?.nome ?? null;
-                      if (destino === "setor" && nomeSetor) return `📊 Nota para o setor: ${nomeSetor}`;
-                      if (nomeAvaliado) return `👤 Nota para: ${nomeAvaliado}`;
-                      return "👤 Nota atribuída ao avaliado";
+                      if (destino === "setor" && nomeSetor) return `📊 Ao confirmar, nota será gravada para todos do setor: ${nomeSetor}`;
+                      if (nomeAvaliado) return `👤 Ao confirmar, nota será gravada para: ${nomeAvaliado}`;
+                      return "👤 Ao confirmar, nota será gravada para o avaliado";
                     })()}
                   </p>
                 </div>
