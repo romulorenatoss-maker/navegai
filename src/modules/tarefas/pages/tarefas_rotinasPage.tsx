@@ -757,10 +757,8 @@ export default function OperationalCadastroPage() {
 
   const openEdit = async (t: any) => {
     const snap: any = t.ada_config_snapshot ?? {};
-    const checklistsSnap: any = snap?.checklists ?? {};
-    const savedAvaliadorFieldIds = Array.isArray(checklistsSnap.avaliado_field_ids)
-      ? new Set(checklistsSnap.avaliado_field_ids.filter(Boolean))
-      : null;
+    const checklistsSnap: any = extractChecklistSnapshot(snap);
+    const savedAvaliadorFieldIds: Set<string> = new Set(extractAvaliadoFieldIds(snap));
     // (Etapa 1 limpeza) savedAvaliadorFieldKeys removido — nunca foi aplicado como filtro.
 
     setEditingId(t.id);
