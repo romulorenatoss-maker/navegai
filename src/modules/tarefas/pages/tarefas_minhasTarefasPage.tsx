@@ -556,7 +556,12 @@ export default function OperationalExecucaoPage() {
     setShowHistory(false);
     const sections = a.template_snapshot?.sections?.sort((x: any, y: any) => x.ordem - y.ordem);
     setActiveSection(sections?.[0]?.id || null);
-    setViewMode("registro");
+    // Se é auditor → abre direto na aba Auditor
+    // Se é aprovador → abre direto na aba Aprovação
+    // Caso contrário → abre no registro (executor)
+    const isAud = !!a.auditor_id && a.status === "aguardando_auditoria";
+    const isAprov = (!!a.aprovador_id || !!a.created_by) && a.status === "aguardando_aprovacao";
+    setViewMode(isAud ? "auditor" : isAprov ? "aprovacao" : "registro");
 
     if (profile?.id) {
       // Auditoria enriquecida: papel_usado derivado do contexto
