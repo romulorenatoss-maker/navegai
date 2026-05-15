@@ -631,6 +631,14 @@ export default function OperationalCadastroPage() {
       .eq("template_id", editingId);
     const freshFieldIds = (freshFields || []).map((f: any) => f.id).filter(Boolean);
 
+    console.log('[SAVE_FIELDS_FINAL] keepFieldIds (UI savedFields)=', Array.from(keepFieldIds));
+    console.log('[SAVE_FIELDS_FINAL] removedFieldIds (UI removeu)=', removedFieldIds);
+    console.log('[SAVE_FIELDS_FINAL] referenced (protegidos do delete)=', Array.from(referenced));
+    console.log('[SAVE_FIELDS_FINAL] deletableIds (efetivamente deletados)=', deletableIds);
+    console.log('[FRESH_FIELD_IDS] (DB pós-delete; será gravado em snapshot.avaliado_field_ids)=', freshFieldIds);
+    console.log('[FRESH_FIELD_IDS] DIFF freshFieldIds - keepFieldIds (estes são órfãos protegidos que voltarão na UI)=',
+      freshFieldIds.filter((id: string) => !keepFieldIds.has(id)));
+
     // Atualizar avaliado_field_ids no snapshot com ids reais
     const { data: currentTemplateData } = await (supabase as any)
       .from("operational_templates")
@@ -656,12 +664,15 @@ export default function OperationalCadastroPage() {
       .eq("id", editingId);
 
     // Re-sync aprovador
-    setAprovadorChecks(prev =>
-      syncAprovadorReplicadasFromFields(
+    setAprovadorChecks(prev => {
+      const next = syncAprovadorReplicadasFromFields(
         prev,
         currentFields.map(f => ({ ...f, tempId: f.id ?? f.tempId }))
-      )
-    );
+      );
+      console.log('[APROVADOR_RESYNC] prev.field_ids=', prev.map((x: any) => x.field_id),
+        ' next.field_ids=', next.map((x: any) => x.field_id));
+      return next;
+    });
   };
 
   const toggleAtivo = useMutation({
@@ -823,6 +834,11 @@ export default function OperationalCadastroPage() {
       ? dedupedFields.filter(f => f.id && savedAvaliadorFieldIds.has(f.id))
       : dedupedFields;
 
+    console.log('[SNAPSHOT_LOAD] avaliado_field_ids do snapshot=', savedAvaliadorFieldIds ? Array.from(savedAvaliadorFieldIds) : null);
+    console.log('[SNAPSHOT_LOAD] loadedFields do banco (ids)=', loadedFields.map(f => f.id));
+    console.log('[SNAPSHOT_LOAD] referencedFieldIds (protegidos)=', Array.from(referencedFieldIds));
+    console.log('[REHYDRATE_FIELDS] activeLoadedFields que irão para a UI (ids)=', activeLoadedFields.map(f => f.id),
+      ' labels=', activeLoadedFields.map(f => f.label));
     setFields(activeLoadedFields);
 
     // Load steps
