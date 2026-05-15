@@ -383,7 +383,9 @@ export function useAssignmentExecution(assignmentId: string | null) {
         if (triggers) contingencyFields.push({ field: f, answer: ans });
       }
 
-      if (contingencyFields.length > 0) {
+      // Quando devolvida: não gera contingência nova — vai direto para aprovação
+      const isDevolvida = assignment.status === "devolvida";
+      if (contingencyFields.length > 0 && !isDevolvida) {
         // Create contingencies and set status to contingenciado
         await transition.mutateAsync({
           assignmentId: assignment.id,
