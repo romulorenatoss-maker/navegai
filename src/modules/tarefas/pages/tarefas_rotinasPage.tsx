@@ -897,8 +897,15 @@ export default function OperationalCadastroPage() {
             const { data: answersData } = ids.length > 0
               ? await (supabase as any).from('operational_field_answers').select('id, field_id, assignment_id').in('field_id', ids)
               : { data: [] };
-            const el = document.getElementById('__debug_output__');
-            if (el) el.innerText = JSON.stringify({ fields: fieldsData, answers: answersData }, null, 2);
+            const { data: assignmentsData } = await (supabase as any)
+              .from('operational_assignments')
+              .select('id, status, template_id')
+              .eq('template_id', tid);
+            const blob = new Blob([JSON.stringify({ tid, fields: fieldsData, answers: answersData, assignments: assignmentsData }, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'debug_db.json'; a.click();
+            URL.revokeObjectURL(url);
           }}
         >
           DEBUG DB
