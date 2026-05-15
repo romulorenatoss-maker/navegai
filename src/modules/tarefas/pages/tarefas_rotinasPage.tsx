@@ -743,9 +743,7 @@ export default function OperationalCadastroPage() {
     const savedAvaliadorFieldIds = Array.isArray(checklistsSnap.avaliado_field_ids)
       ? new Set(checklistsSnap.avaliado_field_ids.filter(Boolean))
       : null;
-    const savedAvaliadorFieldKeys = Array.isArray(checklistsSnap.avaliado_fields)
-      ? new Set(checklistsSnap.avaliado_fields.map((f: any) => f?.key).filter(Boolean))
-      : null;
+    // (Etapa 1 limpeza) savedAvaliadorFieldKeys removido — nunca foi aplicado como filtro.
 
     setEditingId(t.id);
     setForm({
