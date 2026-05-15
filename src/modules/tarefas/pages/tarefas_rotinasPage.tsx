@@ -574,6 +574,12 @@ export default function OperationalCadastroPage() {
         .map(f => f.id)
         .filter(Boolean) as string[];
 
+      console.log('[D2]', {
+        sections: sections.map(s => ({ tempId: s.tempId, id: s.id })),
+        fieldsSnapshot: fields.map(f => ({ tempId: f.tempId, id: f.id, sectionTempId: f.sectionTempId })),
+        activeSectionIds: Array.from(activeSectionIds),
+      });
+
       // Upsert sections
       const sectionIdMap: Record<string, string> = {};
       for (const [i, s] of sections.entries()) {
