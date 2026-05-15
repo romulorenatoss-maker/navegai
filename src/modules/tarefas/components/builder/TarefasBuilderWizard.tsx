@@ -38,7 +38,7 @@ interface Props {
   templateId: string | null;
   onCancel: () => void;
   onSubmit: () => void;
-  onSaveFields: () => Promise<void>;
+  onSaveFields: (fields: FieldForm[], sections: SectionForm[]) => Promise<void>;
   savingFields: boolean;
 }
 
@@ -94,7 +94,7 @@ export function TarefasBuilderWizard(props: Props) {
     // Garante que remoções não se percam caso o usuário feche o dialog antes do Resumo.
     if (current === "campos" && isEditing) {
       try {
-        await onSaveFields();
+        await onSaveFields(fields, sections);
       } catch {
         // erro já tratado no onError da mutation
         return;

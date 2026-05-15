@@ -200,11 +200,6 @@ export default function OperationalCadastroPage() {
   const [aprovadorChecks, setAprovadorChecks] = useState<AprovadorCheckItemForm[]>([]);
   const [validadorChecks, setValidadorChecks] = useState<AprovadorCheckItemForm[]>([]);
 
-  const fieldsRef = useRef<FieldForm[]>([]);
-  const sectionsRef = useRef<SectionForm[]>([]);
-  fieldsRef.current = fields;
-  sectionsRef.current = sections;
-  
   const [activeTab, setActiveTab] = useState("geral");
   const [filterExecutor, setFilterExecutor] = useState("__all");
   const [filterAvaliador, setFilterAvaliador] = useState("__all");
@@ -554,149 +549,115 @@ export default function OperationalCadastroPage() {
   // Save parcial: persiste apenas sections + fields (aba Avaliado).
   // Usado quando o usuário avança da aba "campos" sem chegar ao Resumo.
   // Só roda em edição (isEditing). Não fecha dialog, não invalida queries.
-  const saveFieldsOnly = useMutation({
-    mutationFn: async () => {
-      if (!editingId) return;
+  const saveFieldsOnly = async (
+    currentFields: FieldForm[],
+    currentSections: SectionForm[],
+  ) => {
+    if (!editingId) return;
 
-      const currentFields = fieldsRef.current;
-      const currentSections = sectionsRef.current;
-
-      const activeSectionIds = new Set(
-        currentSections.flatMap(s => [s.tempId, s.id].filter(Boolean))
-      );
-      const activeFields = currentFields.filter(
-        f => f.sectionTempId && activeSectionIds.has(f.sectionTempId)
-      );
-      const activeAvaliadorFieldIds = activeFields
-        .map(f => f.id)
-        .filter(Boolean) as string[];
-
-      // Upsert sections
-      const sectionIdMap: Record<string, string> = {};
-      for (const [i, s] of currentSections.entries()) {
-        const payloadSection = sectionPayload(editingId, s, i);
-        if (s.id) {
-          const { error } = await (supabase as any)
-            .from("operational_template_sections")
-            .update(payloadSection)
-            .eq("id", s.id);
-          if (error) throw error;
-          sectionIdMap[s.tempId] = s.id;
-        } else {
-          const { data, error } = await (supabase as any)
-            .from("operational_template_sections")
-            .insert(payloadSection)
-            .select("id")
-            .single();
-          if (error) throw error;
-          sectionIdMap[s.tempId] = data.id;
-          setSections(prev =>
-            prev.map(sec => sec.tempId === s.tempId ? { ...sec, id: data.id } : sec)
-          );
-        }
+    // Upsert sections
+    const sectionIdMap: Record<string, string> = {};
+    for (const [i, s] of currentSections.entries()) {
+      const payloadSection = sectionPayload(editingId, s, i);
+      if (s.id) {
+        const { error } = await (supabase as any)
+          .from("operational_template_sections")
+          .update(payloadSection).eq("id", s.id);
+        if (error) throw error;
+        sectionIdMap[s.tempId] = s.id;
+      } else {
+        const { data, error } = await (supabase as any)
+          .from("operational_template_sections")
+          .insert(payloadSection).select("id").single();
+        if (error) throw error;
+        sectionIdMap[s.tempId] = data.id;
+        setSections(prev => prev.map(sec =>
+          sec.tempId === s.tempId ? { ...sec, id: data.id } : sec
+        ));
       }
+    }
 
-      // Delete fields removidos (mesma lógica do upsert)
-      const { data: existingFields, error: existingFieldsError } = await (supabase as any)
-        .from("operational_template_fields")
-        .select("id")
-        .eq("template_id", editingId);
-      if (existingFieldsError) throw existingFieldsError;
-      const existingFieldIds = (existingFields || []).map((f: any) => f.id).filter(Boolean);
-      const currentFieldIds = new Set(activeAvaliadorFieldIds);
-      const referencedFieldIds = await fetchReferencedFieldIds(existingFieldIds);
-      const removableFieldIds = existingFieldIds.filter(
-        (id: string) => !currentFieldIds.has(id) && !referencedFieldIds.has(id)
-      );
-      if (removableFieldIds.length > 0) {
+    // Upsert fields
+    for (const f of currentFields) {
+      const payloadField = fieldPayload(editingId, f, sectionIdMap);
+      if (f.id) {
         const { error } = await (supabase as any)
           .from("operational_template_fields")
-          .delete()
-          .in("id", removableFieldIds);
+          .update(payloadField).eq("id", f.id);
         if (error) throw error;
+      } else {
+        const { data, error } = await (supabase as any)
+          .from("operational_template_fields")
+          .insert(payloadField).select("id").single();
+        if (error) throw error;
+        setFields(prev => prev.map(field =>
+          field.tempId === f.tempId
+            ? { ...field, id: data.id, tempId: data.id }
+            : field
+        ));
       }
+    }
 
-      // Upsert fields ativos
-      for (const f of activeFields) {
-        const payloadField = fieldPayload(editingId, f, sectionIdMap);
-        if (f.id) {
-          const { error } = await (supabase as any)
-            .from("operational_template_fields")
-            .update(payloadField)
-            .eq("id", f.id);
-          if (error) throw error;
-        } else {
-          const { data, error } = await (supabase as any)
-            .from("operational_template_fields")
-            .insert(payloadField)
-            .select("id")
-            .single();
-          if (error) throw error;
-          setFields(prev =>
-            prev.map(field =>
-              field.tempId === f.tempId
-                ? { ...field, id: data.id, tempId: data.id }
-                : field
-            )
-          );
-        }
-      }
+    // Buscar ids reais do banco após todos os inserts
+    const { data: freshFields } = await (supabase as any)
+      .from("operational_template_fields")
+      .select("id")
+      .eq("template_id", editingId);
+    const freshFieldIds = (freshFields || []).map((f: any) => f.id).filter(Boolean);
 
-      // Após o loop de upsert, reconstruir a lista de ids a partir do estado
-      // React atualizado — garante que campos recém-inseridos tenham id real.
-      // Usar os sectionIds já resolvidos para filtrar fields ativos.
-      const resolvedActiveSectionIds = new Set(
-        currentSections.flatMap(s => [s.tempId, s.id, sectionIdMap[s.tempId]].filter(Boolean))
-      );
-
-      // Buscar ids reais atualizados do banco para este template
-      const { data: freshFields } = await (supabase as any)
+    // Deletar fields removidos (existem no banco mas não estão em currentFields)
+    const currentFieldIds = new Set(
+      currentFields.map(f => f.id).filter(Boolean) as string[]
+    );
+    const { data: existingFieldsData } = await (supabase as any)
+      .from("operational_template_fields")
+      .select("id")
+      .eq("template_id", editingId);
+    const existingFieldIds = (existingFieldsData || [])
+      .map((f: any) => f.id).filter(Boolean);
+    const referencedFieldIds = await fetchReferencedFieldIds(existingFieldIds);
+    const removableFieldIds = existingFieldIds.filter(
+      (id: string) => !currentFieldIds.has(id) && !referencedFieldIds.has(id)
+    );
+    if (removableFieldIds.length > 0) {
+      const { error } = await (supabase as any)
         .from("operational_template_fields")
-        .select("id")
-        .eq("template_id", editingId);
+        .delete().in("id", removableFieldIds);
+      if (error) throw error;
+    }
 
-      const freshFieldIds = (freshFields || []).map((f: any) => f.id).filter(Boolean);
-
-      // Re-sincroniza aprovadorChecks com os ids reais
-      const activeFieldsWithRealIds = activeFields.map(f => ({
-        ...f,
-        tempId: f.id ?? f.tempId,
-      }));
-
-      setAprovadorChecks(prev =>
-        syncAprovadorReplicadasFromFields(prev, activeFieldsWithRealIds)
-      );
-
-      // Atualiza avaliado_fields/avaliado_field_ids com ids reais do banco
-      const activeAvaliadorFieldsFinal = activeFields.map(f => ({
-        id: f.id ?? null,
-        key: fieldDuplicateKey(f),
-      }));
-      const activeAvaliadorFieldIdsFinal = freshFieldIds;
-
-      const { data: currentTemplate } = await (supabase as any)
-        .from("operational_templates")
-        .select("ada_config_snapshot")
-        .eq("id", editingId)
-        .single();
-
-      const currentSnap = currentTemplate?.ada_config_snapshot ?? {};
-      await (supabase as any)
-        .from("operational_templates")
-        .update({
-          ada_config_snapshot: {
-            ...currentSnap,
-            checklists: {
-              ...(currentSnap.checklists ?? {}),
-              avaliado_fields: activeAvaliadorFieldsFinal,
-              avaliado_field_ids: activeAvaliadorFieldIdsFinal,
-            },
+    // Atualizar avaliado_field_ids no snapshot com ids reais
+    const { data: currentTemplateData } = await (supabase as any)
+      .from("operational_templates")
+      .select("ada_config_snapshot")
+      .eq("id", editingId).single();
+    const currentSnap = currentTemplateData?.ada_config_snapshot ?? {};
+    const activeAvaliadorFields = currentFields.map(f => ({
+      id: f.id ?? null,
+      key: fieldDuplicateKey(f),
+    }));
+    await (supabase as any)
+      .from("operational_templates")
+      .update({
+        ada_config_snapshot: {
+          ...currentSnap,
+          checklists: {
+            ...(currentSnap.checklists ?? {}),
+            avaliado_fields: activeAvaliadorFields,
+            avaliado_field_ids: freshFieldIds,
           },
-        })
-        .eq("id", editingId);
-    },
-    onError: (e: any) => toast.error(`Erro ao salvar campos: ${e.message}`),
-  });
+        },
+      })
+      .eq("id", editingId);
+
+    // Re-sync aprovador
+    setAprovadorChecks(prev =>
+      syncAprovadorReplicadasFromFields(
+        prev,
+        currentFields.map(f => ({ ...f, tempId: f.id ?? f.tempId }))
+      )
+    );
+  };
 
   const toggleAtivo = useMutation({
     mutationFn: async (t: any) => {
@@ -1045,8 +1006,10 @@ export default function OperationalCadastroPage() {
               templateId={editingId}
               onCancel={closeDialog}
               onSubmit={() => upsert.mutate()}
-              onSaveFields={() => saveFieldsOnly.mutateAsync()}
-              savingFields={saveFieldsOnly.isPending}
+              onSaveFields={(currentFields, currentSections) =>
+                saveFieldsOnly(currentFields, currentSections)
+              }
+              savingFields={false}
             />
           </div>
         </DialogContent>
