@@ -643,7 +643,10 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   const submeterPlanos = async () => {
     const lista = naoConformesPlano.map(f => {
       const p = planos[f.id];
-      const prazoAlterado = !!(p?.prazo && p?.prazo_padrao && p.prazo !== p.prazo_padrao);
+      const prazoAlterado = !!(p?.prazo && p?.prazo_padrao && (() => {
+        try { return new Date(p.prazo).getTime() > new Date(p.prazo_padrao).getTime() + 60000; }
+        catch { return false; }
+      })());
       return {
         field_id: f.id,
         field_label: f.label,
