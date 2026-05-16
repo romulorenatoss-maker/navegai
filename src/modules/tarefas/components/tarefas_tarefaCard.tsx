@@ -201,7 +201,7 @@ export function AssignmentCard({ assignment: a, onClick }: Props) {
           </div>
           {/* Executor + setor + tipo */}
           <p className="text-[11px] text-muted-foreground truncate">
-            {responsavelNome}{tipo ? ` · ${TIPO_EXECUCAO_LABELS[tipo] || tipo}` : ""}
+            {nomeExecutor}{tipo ? ` · ${TIPO_EXECUCAO_LABELS[tipo] || tipo}` : ""}
           </p>
         </div>
 
