@@ -355,6 +355,7 @@ export function useApprovalFlow(assignmentId: string | null) {
           status: "aberta",
           responsavel_id: p.responsavel_profile_id ?? null,
           motivo_instrucao: `Criticidade: ${p.criticidade}`,
+          itens_plano: p.itens_plano || [],
         });
 
         // 2) Persiste detalhes do plano em operational_approval_answers (para auditor)
