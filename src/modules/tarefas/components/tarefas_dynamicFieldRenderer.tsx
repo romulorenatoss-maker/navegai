@@ -718,10 +718,10 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
             Resposta do Plano de Ação — R{planRound}
           </div>
 
-          {approverPlan?.instrucao_aprovador || approverPlan?.plano_acao_descricao ? (
+          {((approverPlan as any)?.instrucao_aprovador) || approverPlan?.plano_acao_descricao ? (
             <div className="text-xs text-amber-900 bg-white/70 border border-amber-200 rounded p-2">
               <strong>Solicitado pelo aprovador:</strong>{" "}
-              {approverPlan?.instrucao_aprovador || approverPlan?.plano_acao_descricao}
+              {((approverPlan as any)?.instrucao_aprovador) || approverPlan?.plano_acao_descricao}
             </div>
           ) : null}
 
