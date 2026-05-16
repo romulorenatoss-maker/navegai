@@ -47,9 +47,43 @@ const getFieldId = (item: any) =>
 
 const getAnswerValue = (item: any) => {
   if (item == null) return null;
+
   if (item.valor_booleano === true) return "conforme";
   if (item.valor_booleano === false) return "nao_conforme";
-  return item?.resposta ?? item?.answer ?? item?.valor ?? item?.value ?? item?.status ?? item?.resultado ?? null;
+
+  const direct =
+    item?.resposta ??
+    item?.answer ??
+    item?.valor ??
+    item?.value ??
+    item?.status ??
+    item?.resultado ??
+    item?.valor_texto ??
+    item?.texto ??
+    item?.label ??
+    item?.opcao ??
+    null;
+
+  if (direct != null && String(direct).trim() !== "") return direct;
+
+  const json = item?.valor_json;
+  if (json && typeof json === "object") {
+    return (
+      json.resposta ??
+      json.answer ??
+      json.valor ??
+      json.value ??
+      json.status ??
+      json.resultado ??
+      json.opcao ??
+      json.option ??
+      json.label ??
+      json.texto ??
+      null
+    );
+  }
+
+  return null;
 };
 
 const getObservation = (item: any) =>
