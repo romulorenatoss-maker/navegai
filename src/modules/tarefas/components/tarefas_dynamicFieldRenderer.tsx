@@ -202,11 +202,22 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
   }, [answer?.respondido_em, dataPrevista, horarioLimite]);
 
   const isReturned = review?.devolvido === true;
+  const hasApproverPlan = !!approverPlan && review?.devolvido === true;
+  const planRound = Number(review?.rodada ?? 1);
+  const planResponseFieldId = `${field.id}__plano_acao__r${planRound}`;
+  const planAnswer: FieldAnswer = allAnswers?.[planResponseFieldId] || { field_id: planResponseFieldId };
+  const isOriginalLockedByPlan = hasApproverPlan;
   const [openRodada, setOpenRodada] = useState<number | null>(review?.rodada ?? null);
   const error = showValidation ? validateField(field, answer) : null;
   const val: FieldAnswer = answer || { field_id: field.id };
 
-  const update = (patch: Partial<FieldAnswer>) => onChange(field.id, patch);
+  const originalEditable = isEditableEfetivo && !isOriginalLockedByPlan;
+  const updateOriginal = (patch: Partial<FieldAnswer>) => onChange(field.id, patch);
+  const updatePlanAnswer = (patch: Partial<FieldAnswer>) => onChange(planResponseFieldId, patch);
+  const update = (patch: Partial<FieldAnswer>) => {
+    if (isOriginalLockedByPlan) return;
+    updateOriginal(patch);
+  };
 
   const handleUpload = async (file: File) => {
     setUploading(true);
