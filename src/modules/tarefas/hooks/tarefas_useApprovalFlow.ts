@@ -332,6 +332,8 @@ export function useApprovalFlow(assignmentId: string | null) {
         anexo_url?: string | null;
         responsavel_profile_id?: string | null;
         criticidade: "baixa" | "media" | "alta";
+        tipo_evidencia_exigida?: string;
+        itens_plano?: Array<{ tipo: "foto" | "video" | "audio" | "texto"; titulo: string; obrigatorio: boolean }>;
       }>;
       motivoGeral?: string;
     }) => {
@@ -355,6 +357,7 @@ export function useApprovalFlow(assignmentId: string | null) {
           status: "aberta",
           responsavel_id: p.responsavel_profile_id ?? null,
           motivo_instrucao: `Criticidade: ${p.criticidade}`,
+          itens_plano: p.itens_plano || [],
         });
 
         // 2) Persiste detalhes do plano em operational_approval_answers (para auditor)
@@ -367,6 +370,7 @@ export function useApprovalFlow(assignmentId: string | null) {
           prazo_padrao_aplicado: p.prazo_padrao_iso ?? null,
           flag_prazo_alterado: !!p.prazo_alterado,
           justificativa_alteracao_prazo: p.prazo_alterado ? (p.justificativa_alteracao_prazo || null) : null,
+          itens_plano: p.itens_plano || [],
         };
         if (existing) {
           await (supabase as any).from("operational_approval_answers")

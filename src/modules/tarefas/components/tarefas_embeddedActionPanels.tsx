@@ -275,13 +275,19 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     const pad = (n: number) => n.toString().padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
+  type ItemPlano = {
+    tipo: "foto" | "video" | "audio" | "texto";
+    titulo: string;
+    obrigatorio: boolean;
+  };
   const [planos, setPlanos] = useState<Record<string, {
     descricao_acao: string;
     prazo: string;
     prazo_padrao: string;
     justificativa_alteracao_prazo: string;
     criticidade: "baixa" | "media" | "alta";
-    tipo_evidencia_exigida: "foto" | "video" | "audio" | "descricao" | "nenhuma";
+    tipo_evidencia_exigida: string;
+    itens_plano: ItemPlano[];
   }>>({});
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
   // Por NC, o aprovador escolhe se vira plano de ação ou só devolução para refazer
@@ -507,6 +513,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
           justificativa_alteracao_prazo: "",
           criticidade: "media",
           tipo_evidencia_exigida: "descricao",
+          itens_plano: [],
         };
       }
     }
@@ -665,6 +672,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
         justificativa_alteracao_prazo: prazoAlterado ? (p?.justificativa_alteracao_prazo?.trim() || "") : null,
         criticidade: p?.criticidade || "media" as const,
         tipo_evidencia_exigida: p?.tipo_evidencia_exigida || "descricao",
+        itens_plano: p?.itens_plano || [],
       };
     });
     const invalidoBasico = lista.find(p => !p.descricao_acao || !p.prazo_iso);
@@ -745,6 +753,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             justificativa_alteracao_prazo: "",
             criticidade: "media" as const,
             tipo_evidencia_exigida: "descricao" as const,
+            itens_plano: [] as ItemPlano[],
           };
           const prazoAlterado = !!(p.prazo && p.prazo_padrao && p.prazo !== p.prazo_padrao);
           return (
@@ -1232,51 +1241,96 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                 {allowedActions.length > 0 && (
                   <div className="border-t border-border/50 pt-2 space-y-1">
                     <Label className="text-[11px]">Tratamento desta resposta</Label>
-                    {/* Campos inline do plano de ação — aparecem direto ao marcar Não Conforme */}
-                    <div className="mt-2 border border-amber-300 dark:border-amber-800 rounded-lg overflow-hidden">
-                      <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800">
-                        <ClipboardList className="w-3.5 h-3.5 text-amber-700 shrink-0" aria-hidden="true" />
-                        <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-300">Plano de ação</span>
-                      </div>
-                      <div className="p-3 space-y-2">
-                        {/* Instrução */}
-                        <div className="space-y-1">
-                          <Label className="text-[11px]">O que precisa ser feito *</Label>
-                          <Textarea
-                            value={planos[f.id]?.descricao_acao ?? ""}
-                            onChange={e => setPlanos(prev => ({ ...prev, [f.id]: { ...prev[f.id] ?? { prazo: computeDefaultPrazo(), prazo_padrao: computeDefaultPrazo(), justificativa_alteracao_prazo: "", criticidade: "media" as const, tipo_evidencia_exigida: "descricao" }, descricao_acao: e.target.value } }))}
-                            className="text-xs min-h-[48px]"
-                            placeholder="Descreva o que precisa ser corrigido..."
-                          />
-                        </div>
-                        {/* Evidência exigida */}
-                        <div className="space-y-1">
-                          <Label className="text-[11px]">Evidência exigida do executor</Label>
-                          <div className="flex gap-1.5 flex-wrap">
-                            {([
-                              { v: "foto", label: "📷 Foto" },
-                              { v: "video", label: "🎥 Vídeo" },
-                              { v: "audio", label: "🎵 Áudio" },
-                              { v: "descricao", label: "✏️ Texto" },
-                              { v: "nenhuma", label: "Nenhuma" },
-                            ] as const).map(opt => (
-                              <button key={opt.v} type="button"
-                                onClick={() => setPlanos(prev => ({ ...prev, [f.id]: { ...prev[f.id] ?? { descricao_acao: "", prazo: computeDefaultPrazo(), prazo_padrao: computeDefaultPrazo(), justificativa_alteracao_prazo: "", criticidade: "media" as const }, tipo_evidencia_exigida: opt.v } }))}
-                                className={`px-2 py-1 rounded border text-[11px] transition-colors ${(planos[f.id]?.tipo_evidencia_exigida ?? "descricao") === opt.v ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}
-                              >{opt.label}</button>
-                            ))}
+                    {/* Plano de ação inline com itens separados */}
+                    {(() => {
+                      const p = planos[f.id] ?? {
+                        descricao_acao: "",
+                        prazo: computeDefaultPrazo(),
+                        prazo_padrao: computeDefaultPrazo(),
+                        justificativa_alteracao_prazo: "",
+                        criticidade: "media" as const,
+                        tipo_evidencia_exigida: "descricao",
+                        itens_plano: [] as ItemPlano[],
+                      };
+                      const updateP = (patch: Partial<typeof p>) =>
+                        setPlanos(prev => ({ ...prev, [f.id]: { ...p, ...patch } }));
+                      const toggleItem = (tipo: ItemPlano["tipo"]) => {
+                        const existe = p.itens_plano.find(i => i.tipo === tipo);
+                        if (existe) {
+                          updateP({ itens_plano: p.itens_plano.filter(i => i.tipo !== tipo) });
+                        } else {
+                          updateP({ itens_plano: [...p.itens_plano, { tipo, titulo: "", obrigatorio: true }] });
+                        }
+                      };
+                      const updateItemTitulo = (tipo: ItemPlano["tipo"], titulo: string) => {
+                        updateP({ itens_plano: p.itens_plano.map(i => i.tipo === tipo ? { ...i, titulo } : i) });
+                      };
+                      const ITENS_CONFIG = [
+                        { tipo: "foto" as const, icon: "📷", label: "Foto", placeholder: "O que fotografar? Ex: frente e lateral da área limpa" },
+                        { tipo: "video" as const, icon: "🎥", label: "Vídeo", placeholder: "O que filmar? Ex: processo de limpeza completo" },
+                        { tipo: "audio" as const, icon: "🎵", label: "Áudio", placeholder: "O que gravar? Ex: confirmação verbal do procedimento" },
+                        { tipo: "texto" as const, icon: "✏️", label: "Descrição escrita", placeholder: "O que descrever? Ex: motivo do problema e solução aplicada" },
+                      ];
+                      return (
+                        <div className="mt-2 border border-amber-300 dark:border-amber-800 rounded-lg overflow-hidden">
+                          <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800">
+                            <ClipboardList className="w-3.5 h-3.5 text-amber-700 shrink-0" aria-hidden="true" />
+                            <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-300">Plano de ação</span>
+                          </div>
+                          <div className="p-3 space-y-3">
+                            {/* Instrução geral opcional */}
+                            <div className="space-y-1">
+                              <Label className="text-[11px]">Instrução geral (opcional)</Label>
+                              <Textarea value={p.descricao_acao}
+                                onChange={e => updateP({ descricao_acao: e.target.value })}
+                                className="text-xs min-h-[44px]"
+                                placeholder="Descreva o que precisa ser corrigido..." />
+                            </div>
+
+                            {/* Itens separados */}
+                            <div className="space-y-1">
+                              <Label className="text-[11px]">O que quero de volta <span className="text-muted-foreground">(marque ao menos 1)</span></Label>
+                              <div className="flex flex-col gap-2">
+                                {ITENS_CONFIG.map(cfg => {
+                                  const ativo = p.itens_plano.find(i => i.tipo === cfg.tipo);
+                                  return (
+                                    <div key={cfg.tipo}
+                                      className={`border rounded-lg overflow-hidden transition-colors ${ativo ? "border-primary" : "border-border"}`}>
+                                      <button type="button" onClick={() => toggleItem(cfg.tipo)}
+                                        className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors ${ativo ? "bg-primary/10" : "hover:bg-muted/50"}`}>
+                                        <div className={`w-4 h-4 rounded flex items-center justify-center border flex-shrink-0 ${ativo ? "bg-primary border-primary" : "border-border"}`}>
+                                          {ativo && <span className="text-primary-foreground text-[10px] font-bold">✓</span>}
+                                        </div>
+                                        <span className="text-sm">{cfg.icon}</span>
+                                        <span className="text-xs font-medium">{cfg.label}</span>
+                                      </button>
+                                      {ativo && (
+                                        <div className="px-3 pb-2 pt-1 border-t border-border bg-muted/10">
+                                          <Input
+                                            value={ativo.titulo}
+                                            onChange={e => updateItemTitulo(cfg.tipo, e.target.value)}
+                                            placeholder={cfg.placeholder}
+                                            className="h-7 text-xs"
+                                          />
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Prazo */}
+                            <div className="space-y-1">
+                              <Label className="text-[11px]">Prazo para resolver (SLA padrão: {prazoPadraoHoras}h)</Label>
+                              <Input type="datetime-local" className="h-8 text-xs"
+                                value={p.prazo}
+                                onChange={e => updateP({ prazo: e.target.value })} />
+                            </div>
                           </div>
                         </div>
-                        {/* Prazo */}
-                        <div className="space-y-1">
-                          <Label className="text-[11px]">Prazo para resolver (SLA padrão: {prazoPadraoHoras}h)</Label>
-                          <Input type="datetime-local" className="h-8 text-xs"
-                            value={planos[f.id]?.prazo ?? computeDefaultPrazo()}
-                            onChange={e => setPlanos(prev => ({ ...prev, [f.id]: { ...prev[f.id] ?? { descricao_acao: "", prazo_padrao: computeDefaultPrazo(), justificativa_alteracao_prazo: "", criticidade: "media" as const, tipo_evidencia_exigida: "descricao" }, prazo: e.target.value } }))}
-                          />
-                        </div>
-                      </div>
-                    </div>
+                      );
+                    })()}
                   </div>
                 )}
 
