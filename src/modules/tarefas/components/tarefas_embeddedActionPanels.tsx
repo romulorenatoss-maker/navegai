@@ -500,25 +500,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   );
 
   const irParaPlano = () => {
-    // Garante registros default no formulário (com prazo padrão pré-aplicado)
-    const next: typeof planos = { ...planos };
-    const defaultPrazo = computeDefaultPrazo();
-    for (const f of naoConformesPlano) {
-      if (!next[f.id]) {
-        const draft = flow.approverAnswers[f.id];
-        next[f.id] = {
-          descricao_acao: draft?.observacao ?? "",
-          prazo: defaultPrazo,
-          prazo_padrao: defaultPrazo,
-          justificativa_alteracao_prazo: "",
-          criticidade: "media",
-          tipo_evidencia_exigida: "descricao",
-          itens_plano: [],
-        };
-      }
-    }
-    setPlanos(next);
-    setStep("plano");
+    submeterPlanos();
   };
 
   const aprovarDireto = async () => {
@@ -1320,12 +1302,36 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                               </div>
                             </div>
 
-                            {/* Prazo */}
+                            {/* Prazo + alerta de SLA */}
                             <div className="space-y-1">
                               <Label className="text-[11px]">Prazo para resolver (SLA padrão: {prazoPadraoHoras}h)</Label>
                               <Input type="datetime-local" className="h-8 text-xs"
                                 value={p.prazo}
                                 onChange={e => updateP({ prazo: e.target.value })} />
+                              {p.prazo && p.prazo_padrao && p.prazo > p.prazo_padrao && (
+                                <div className="flex items-start gap-1.5 p-2 rounded bg-amber-50 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-800">
+                                  <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0 mt-0.5" />
+                                  <p className="text-[10px] text-amber-700 dark:text-amber-400">
+                                    Prazo estendido além do padrão — será descontado ponto automaticamente no indicador do aprovador.
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Criticidade */}
+                            <div className="space-y-1">
+                              <Label className="text-[11px]">Criticidade</Label>
+                              <div className="flex gap-1.5">
+                                {(["baixa", "media", "alta"] as const).map(c => (
+                                  <button key={c} type="button"
+                                    onClick={() => updateP({ criticidade: c })}
+                                    className={`flex-1 py-1 rounded border text-xs font-medium transition-colors ${p.criticidade === c
+                                      ? c === "alta" ? "bg-red-100 border-red-400 text-red-700" : c === "media" ? "bg-amber-100 border-amber-400 text-amber-700" : "bg-emerald-100 border-emerald-400 text-emerald-700"
+                                      : "border-border text-muted-foreground hover:bg-muted"}`}>
+                                    {c === "baixa" ? "Baixa" : c === "media" ? "Média" : "Alta"}
+                                  </button>
+                                ))}
+                              </div>
                             </div>
                           </div>
                         </div>
