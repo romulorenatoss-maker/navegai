@@ -1240,9 +1240,18 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                             : execAnswer?.valor_booleano === false
                             ? (opt.v === "nao_conforme" || opt.v === "nao")
                             : execAnswer?.resposta === opt.v);
+                      const highlightCls = marcado
+                        ? (optStatus === "conforme"
+                            ? "bg-emerald-100 border-emerald-500 text-emerald-800 ring-2 ring-emerald-300"
+                            : optStatus === "nao_conforme"
+                            ? "bg-red-100 border-red-500 text-red-800 ring-2 ring-red-300"
+                            : optStatus === "na"
+                            ? "bg-slate-200 border-slate-500 text-slate-800 ring-2 ring-slate-300"
+                            : "bg-primary/10 border-primary text-primary ring-2 ring-primary/30")
+                        : "border-border text-muted-foreground opacity-40";
                       return (
                         <div key={opt.v}
-                          className={`flex-1 text-xs px-2 py-2 rounded border text-center font-medium transition-none ${marcado ? opt.cls + " ring-2 ring-current/20" : "border-border text-muted-foreground opacity-40"}`}>
+                          className={`flex-1 text-xs px-2 py-2 rounded border text-center font-medium transition-none ${highlightCls}`}>
                           {marcado && "✓ "}{opt.label}
                         </div>
                       );
