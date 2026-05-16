@@ -672,6 +672,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
         justificativa_alteracao_prazo: prazoAlterado ? (p?.justificativa_alteracao_prazo?.trim() || "") : null,
         criticidade: p?.criticidade || "media" as const,
         tipo_evidencia_exigida: p?.tipo_evidencia_exigida || "descricao",
+        itens_plano: p?.itens_plano || [],
       };
     });
     const invalidoBasico = lista.find(p => !p.descricao_acao || !p.prazo_iso);
