@@ -489,12 +489,8 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     [perguntasComAcao, acaoPorNC, flow.approverAnswers, flow.existingApprovalAnswers]
   );
   const naoConformesDevolver = useMemo(
-    () => perguntasComAcao.filter(f => {
-      const v = flow.approverAnswers[f.id]?.resposta ?? flow.existingApprovalAnswers.find((a: any) => a.field_id === f.id)?.resposta;
-      const rule = v ? getRuleForResposta(f, v, "aprovador") : null;
-      return getAllowedActions(rule).includes("devolver") && (acaoPorNC[f.id] ?? getDefaultReviewAction(rule)) === "devolver";
-    }),
-    [perguntasComAcao, acaoPorNC, flow.approverAnswers, flow.existingApprovalAnswers]
+    () => [] as typeof approverFields,
+    []
   );
 
   const irParaPlano = () => {
@@ -810,6 +806,29 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                   placeholder="O que precisa ser feito para corrigir..."
                 />
               </div>
+              <div className="space-y-1">
+                <Label className="text-[11px]">Evidência exigida do executor</Label>
+                <div className="flex gap-1.5 flex-wrap">
+                  {([
+                    { v: "foto", label: "📷 Foto (câmera)" },
+                    { v: "video", label: "🎥 Vídeo" },
+                    { v: "audio", label: "🎵 Áudio" },
+                    { v: "descricao", label: "✏️ Só texto" },
+                    { v: "nenhuma", label: "Nenhuma" },
+                  ] as const).map(opt => (
+                    <button
+                      key={opt.v}
+                      type="button"
+                      onClick={() => setPlanos(prev => ({ ...prev, [f.id]: { ...p, tipo_evidencia_exigida: opt.v as any } }))}
+                      className={`px-2 py-1 rounded border text-xs transition-colors ${
+                        (p.tipo_evidencia_exigida ?? "descricao") === opt.v
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "border-border text-muted-foreground hover:bg-muted"
+                      }`}
+                    >{opt.label}</button>
+                  ))}
+                </div>
+              </div>
               {prazoAlterado && (
                 <div className="space-y-1 border-t border-amber-200 pt-2 bg-amber-50/50 dark:bg-amber-950/20 -mx-3 px-3 -mb-3 pb-3 rounded-b-lg">
                   <Label className="text-[11px] text-amber-800 dark:text-amber-300 font-semibold">
@@ -851,7 +870,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             className="bg-amber-600 hover:bg-amber-700 text-white"
           >
             <Send className="w-3.5 h-3.5 mr-1" />
-            {flow.isSaving ? "Enviando..." : `Registrar ${naoConformesPlano.length} plano(s)${naoConformesDevolver.length ? ` + devolver ${naoConformesDevolver.length}` : ""} e devolver tarefa`}
+            {flow.isSaving ? "Enviando..." : `Registrar ${naoConformesPlano.length} plano(s) e devolver ao executor`}
           </Button>
         </div>
       </div>
@@ -1044,6 +1063,38 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   // ─── PASSO 1: PERGUNTAS DO APROVADOR ───────────────────────────────
   return (
     <div className="space-y-3">
+      {/* Instrução do auditor — aparece no topo quando auditor criou plano para o aprovador */}
+      {(() => {
+        const auditPlan = (flow.fieldReviews as any[])?.find(
+          (r: any) => r.tipo_review === "auditor_para_aprovador" && r.status_plano !== "resolvido"
+        );
+        if (!auditPlan) return null;
+        return (
+          <div className="border border-purple-300 dark:border-purple-800 rounded-lg overflow-hidden mb-1">
+            <div className="flex items-center justify-between px-3 py-2 bg-purple-50 dark:bg-purple-950/30 border-b border-purple-200 dark:border-purple-800">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-3.5 h-3.5 text-purple-700 dark:text-purple-400 shrink-0" />
+                <span className="text-[11px] font-semibold text-purple-800 dark:text-purple-300">Instrução do Auditor</span>
+              </div>
+              <span className="text-[10px] text-muted-foreground">{auditPlan.avaliado_em ? new Date(auditPlan.avaliado_em).toLocaleDateString("pt-BR") : ""}</span>
+            </div>
+            <div className="px-3 py-2 space-y-1">
+              <p className="text-xs text-foreground">{auditPlan.instrucao_aprovador || auditPlan.motivo_devolucao}</p>
+              {auditPlan.plano_acao_prazo && (
+                <p className="text-[10px] text-purple-700 dark:text-purple-400 font-medium">
+                  Prazo para responder: {new Date(auditPlan.plano_acao_prazo).toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" })}
+                </p>
+              )}
+              {auditPlan.tipo_evidencia_exigida && auditPlan.tipo_evidencia_exigida !== "nenhuma" && (
+                <p className="text-[10px] text-purple-700 dark:text-purple-400">
+                  Evidência exigida: {auditPlan.tipo_evidencia_exigida === "foto" ? "📷 Foto" : auditPlan.tipo_evidencia_exigida === "video" ? "🎥 Vídeo" : auditPlan.tipo_evidencia_exigida === "audio" ? "🎵 Áudio" : "✏️ Descrição"}
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="bg-card border border-border rounded-lg p-3">
         <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Resumo</p>
         <div className="grid grid-cols-3 gap-2 text-xs">
@@ -1302,19 +1353,10 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             }}
             disabled={flow.isSaving || blockReasons.length > 0}
             className="bg-amber-600 hover:bg-amber-700 text-white"
-            title={
-              naoConformesPlano.length > 0 && naoConformesDevolver.length > 0
-                ? `${naoConformesPlano.length} plano(s) + ${naoConformesDevolver.length} devolução(ões)`
-                : naoConformesPlano.length > 0
-                ? `${naoConformesPlano.length} plano(s) de ação`
-                : `${naoConformesDevolver.length} devolução(ões)`
-            }
+            title={`${perguntasComAcao.length} item(s) para plano de ação`}
           >
             <ClipboardList className="w-3.5 h-3.5 mr-1" />
-            Finalizar revisão ({perguntasComAcao.length} ação
-            {naoConformesPlano.length > 0 && naoConformesDevolver.length > 0
-              ? `: ${naoConformesPlano.length} plano + ${naoConformesDevolver.length} devolver`
-              : ""})
+            Finalizar revisão ({perguntasComAcao.length} ação)
           </Button>
         ) : (
           <Button
