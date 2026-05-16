@@ -70,6 +70,33 @@ export function AssignmentCard({ assignment: a, onClick }: Props) {
   const isReturned = a.status === "devolvida";
   const hasContingency = a.contingency_count > 0;
 
+  // Nome do executor: setor ou individual
+  const nomeExecutor = a.setor_executor?.nome
+    ? `${a.setor_executor.nome} (setor)`
+    : a.profiles?.nome || "";
+
+  // Criticidade vinda dos planos de ação ativos
+  const criticidadePlano = (() => {
+    const planos: any[] = a.contingencias || [];
+    if (planos.some((p: any) => p.criticidade === "alta")) return "alta";
+    if (planos.some((p: any) => p.criticidade === "media")) return "media";
+    if (planos.length > 0) return "baixa";
+    return null;
+  })();
+
+  // Planos de ação resumo
+  const planosRaw: any[] = a.contingencias || [];
+  const planosResumo = planosRaw.map((p: any) => {
+    const prazoMs = p.prazo_resolucao ? new Date(p.prazo_resolucao).getTime() : null;
+    const resolvidoEm = p.resolvida_em ? new Date(p.resolvida_em).getTime() : null;
+    const agora = Date.now();
+    if (resolvidoEm && prazoMs) return resolvidoEm <= prazoMs ? "ok" : "atrasado";
+    if (!resolvidoEm && prazoMs) return agora > prazoMs ? "atrasado" : "andamento";
+    return "andamento";
+  });
+
+  const criticidade = criticidadePlano;
+
   const descricao = snapshot?.descricao || "";
   const responsavelNome = a.profiles?.nome || "";
   const responsavelFoto = a.profiles?.foto_url || "";
@@ -152,23 +179,6 @@ export function AssignmentCard({ assignment: a, onClick }: Props) {
     : timePct >= 60 ? "bg-amber-500"
     : "bg-emerald-500";
 
-  // Planos de ação: pegar do assignment
-  const planosRaw: any[] = a.contingencias || a.planos_acao || [];
-  const planosResumo = planosRaw.map((p: any) => {
-    const prazoMs = p.prazo_resolucao ? new Date(p.prazo_resolucao).getTime() : null;
-    const resolvidoEm = p.resolvida_em ? new Date(p.resolvida_em).getTime() : null;
-    const agora = Date.now();
-    if (resolvidoEm && prazoMs) {
-      return resolvidoEm <= prazoMs ? "ok" : "atrasado";
-    }
-    if (!resolvidoEm && prazoMs) {
-      return agora > prazoMs ? "atrasado" : "andamento";
-    }
-    return "andamento";
-  });
-
-  // Criticidade da tarefa
-  const criticidade = a.criticidade || a.template_snapshot?.criticidade_padrao || null;
   const corBorda = isReturned ? "border-amber-400" : countdown?.isExpired ? "border-destructive/60" : countdown?.isUrgent ? "border-orange-400" : "border-border";
   const corBordaEsq = isReturned ? "#ef9f27" : countdown?.isExpired ? "#e24b4a" : countdown?.isUrgent ? "#f97316" : "transparent";
 
@@ -191,7 +201,7 @@ export function AssignmentCard({ assignment: a, onClick }: Props) {
           </div>
           {/* Executor + setor + tipo */}
           <p className="text-[11px] text-muted-foreground truncate">
-            {responsavelNome}{tipo ? ` · ${TIPO_EXECUCAO_LABELS[tipo] || tipo}` : ""}
+            {nomeExecutor}{tipo ? ` · ${TIPO_EXECUCAO_LABELS[tipo] || tipo}` : ""}
           </p>
         </div>
 

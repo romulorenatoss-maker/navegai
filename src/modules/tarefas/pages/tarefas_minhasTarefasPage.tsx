@@ -262,7 +262,7 @@ export default function OperationalExecucaoPage() {
     queryFn: async () => {
       if (!profile?.id) return [];
       let q = (supabase as any).from("operational_assignments")
-        .select("*, operational_templates(nome, tipo_execucao, origem, ada_config_snapshot, destino_score), profiles:responsavel_id(id, nome, foto_url), profiles_aval:avaliado_id(id, nome), criador:created_by(id, nome), aprovador:profiles!operational_assignments_aprovador_id_fkey(nome)")
+        .select("*, operational_templates(nome, tipo_execucao, origem, ada_config_snapshot, destino_score), profiles:responsavel_id(id, nome, foto_url), profiles_aval:avaliado_id(id, nome), criador:created_by(id, nome), aprovador:profiles!operational_assignments_aprovador_id_fkey(nome), setor_executor:setores!operational_assignments_setor_executor_id_fkey(id, nome), contingencias:operational_contingencies(id, status, criticidade, prazo_resolucao, resolvida_em, itens_plano)")
         .order("data_prevista", { ascending: true });
       if (!isAdmin) {
         const orParts: string[] = [
