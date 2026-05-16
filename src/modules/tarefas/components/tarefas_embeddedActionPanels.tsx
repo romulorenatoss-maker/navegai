@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle2, XCircle, RotateCcw, Send, Play, AlertTriangle, ShieldCheck, ExternalLink, Upload, ArrowLeft, ClipboardList } from "lucide-react";
+import { CheckCircle2, XCircle, RotateCcw, Send, Play, AlertTriangle, ShieldCheck, ExternalLink, Upload, ArrowLeft, ClipboardList, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { useAssignmentReview } from "@/modules/tarefas/hooks/tarefas_useAssignmentReview";
 import { useApprovalFlow } from "@/modules/tarefas/hooks/tarefas_useApprovalFlow";
@@ -1138,22 +1138,202 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                     <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Salvo</span>
                   )}
                 </div>
-                {/* Histórico: devoluções anteriores desta pergunta */}
+                {/* Layout chat: resposta original + planos de ação R1, R2... */}
                 {(() => {
-                  const devolucoes = (flow.fieldReviews as any[]).filter(
-                    (r: any) => r.field_id === f.id && r.devolvido === true
-                  );
-                  if (devolucoes.length === 0) return null;
+                  const planos = (flow.fieldReviews as any[])
+                    .filter((r: any) => r.field_id === f.id && r.devolvido === true)
+                    .sort((a: any, b: any) => (a.rodada || 0) - (b.rodada || 0));
+
+                  // Calcula se o plano foi entregue no prazo
+                  const calcStatusPlano = (r: any) => {
+                    const contingencia = (flow.contingencies as any[]).find(
+                      (c: any) => c.origin_field_id === f.id && c.rodada === r.rodada
+                    );
+                    if (!contingencia) return null;
+                    const prazoMs = contingencia.prazo_resolucao ? new Date(contingencia.prazo_resolucao).getTime() : null;
+                    const resolvidoMs = contingencia.resolvida_em ? new Date(contingencia.resolvida_em).getTime() : null;
+                    const agora = Date.now();
+                    if (resolvidoMs && prazoMs) {
+                      const diffMin = Math.round((resolvidoMs - prazoMs) / 60000);
+                      return resolvidoMs <= prazoMs
+                        ? { ok: true, label: "✓ No prazo", prazo: contingencia.prazo_resolucao, cor: "#085041", bg: "#edf9f4", bgBadge: "#b8ead8" }
+                        : { ok: false, label: `✗ Atrasado ${diffMin}min`, prazo: contingencia.prazo_resolucao, cor: "#a32d2d", bg: "#fcebeb", bgBadge: "#f09595" };
+                    }
+                    if (!resolvidoMs && prazoMs) {
+                      const diffMin = Math.round((agora - prazoMs) / 60000);
+                      return agora > prazoMs
+                        ? { ok: false, label: `✗ Atrasado ${diffMin}min`, prazo: contingencia.prazo_resolucao, cor: "#a32d2d", bg: "#fcebeb", bgBadge: "#f09595" }
+                        : { ok: true, label: `⏳ ${Math.round((prazoMs - agora) / 60000)}min restantes`, prazo: contingencia.prazo_resolucao, cor: "#854f0b", bg: "#faeeda", bgBadge: "#ef9f27" };
+                    }
+                    return null;
+                  };
+
                   return (
-                    <div className="rounded-md border border-orange-200 bg-orange-50 dark:bg-orange-950/20 p-2 text-[11px] text-orange-800 dark:text-orange-300">
-                      <div className="font-semibold mb-0.5">
-                        Devolvida {devolucoes.length}x ao executor
+                    <div className="space-y-0">
+                      {/* Resposta original do executor */}
+                      <div className="rounded-t-md border border-border/60 bg-muted/30 p-2 space-y-1.5">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Resposta original</p>
+                        {execAnswer ? (
+                          <>
+                            {(f.tipo === "conforme" || f.tipo === "sim_nao") && (
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${execAnswer.valor_booleano === true ? "bg-green-100 text-green-800" : execAnswer.valor_booleano === false ? "bg-red-100 text-red-800" : "bg-muted text-muted-foreground"}`}>
+                                {execAnswer.valor_booleano === true ? "Sim / Conforme" : execAnswer.valor_booleano === false ? "Não / Não Conforme" : "—"}
+                              </span>
+                            )}
+                            {execAnswer.observacao && <p className="text-xs text-muted-foreground italic">Obs: {execAnswer.observacao}</p>}
+                            {execAnswer.evidencia_url && (
+                              <div>
+                                {/\.(jpg|jpeg|png|gif|webp)$/i.test(execAnswer.evidencia_url) ? (
+                                  <img src={execAnswer.evidencia_url} alt="Evidência" className="max-h-24 rounded border border-border cursor-pointer" onClick={() => window.open(execAnswer.evidencia_url, "_blank")} />
+                                ) : /\.(mp4|webm|mov)$/i.test(execAnswer.evidencia_url) ? (
+                                  <video src={execAnswer.evidencia_url} controls className="w-full max-h-32 rounded border border-border" />
+                                ) : /\.(mp3|wav|ogg|m4a)$/i.test(execAnswer.evidencia_url) ? (
+                                  <audio src={execAnswer.evidencia_url} controls className="w-full" />
+                                ) : (
+                                  <a href={execAnswer.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver anexo</a>
+                                )}
+                              </div>
+                            )}
+                            {execAnswer.respondido_por_nome && (
+                              <p className="text-[10px] text-muted-foreground">
+                                {execAnswer.respondido_por_nome} · {execAnswer.respondido_em ? new Date(execAnswer.respondido_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : ""}
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground italic text-xs">Sem resposta do executor</span>
+                        )}
                       </div>
-                      {devolucoes.slice(0, 2).map((d: any) => (
-                        <div key={d.id} className="opacity-80">
-                          Rodada {d.rodada}: {d.motivo_devolucao || d.observacao || "—"}
-                        </div>
-                      ))}
+
+                      {/* Planos de ação R1, R2... */}
+                      {planos.map((r: any, idx: number) => {
+                        const isReincidencia = idx > 0;
+                        const statusPlano = calcStatusPlano(r);
+                        const corBorda = statusPlano?.ok === false ? "#e24b4a" : statusPlano?.ok === true ? "#1D9E75" : "#ba7517";
+                        const corHeader = statusPlano?.ok === false ? "#fcebeb" : statusPlano?.ok === true ? "#edf9f4" : "#faeeda";
+                        const corTexto = statusPlano?.ok === false ? "#a32d2d" : statusPlano?.ok === true ? "#085041" : "#854f0b";
+                        const itens: any[] = Array.isArray(r.itens_plano) ? r.itens_plano : [];
+
+                        // Busca resposta do executor a este plano específico
+                        const execRespPlano = (flow.fieldAnswers as any[]).find(
+                          (a: any) => a.field_id === f.id && a.rodada === r.rodada + 1
+                        );
+
+                        return (
+                          <div key={r.id || idx} className="flex gap-0">
+                            <div className="w-[3px] flex-shrink-0" style={{ background: corBorda }} />
+                            <div className="flex-1 border-x border-b border-border overflow-hidden">
+
+                              {/* Header do plano */}
+                              <div className="flex items-center justify-between px-3 py-2 border-b border-border" style={{ background: corHeader }}>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[11px] font-semibold" style={{ color: corTexto }}>
+                                    Plano de ação — R{r.rodada}
+                                  </span>
+                                  {isReincidencia && (
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded-full font-medium" style={{ background: "#f09595", color: "#501313" }}>Reincidência</span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {statusPlano && (
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: statusPlano.bgBadge, color: corTexto }}>
+                                      {statusPlano.label}
+                                    </span>
+                                  )}
+                                  <span className="text-[10px] text-muted-foreground">
+                                    {r.avaliado_em ? new Date(r.avaliado_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : ""}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Instrução + itens exigidos */}
+                              <div className="px-3 py-2 border-b border-border space-y-1.5">
+                                {r.instrucao_aprovador && (
+                                  <p className="text-xs text-foreground">{r.instrucao_aprovador}</p>
+                                )}
+                                <div className="flex flex-wrap gap-1.5">
+                                  {statusPlano?.prazo && (
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400">
+                                      Prazo: {new Date(statusPlano.prazo).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                                    </span>
+                                  )}
+                                  {itens.map((item: any, i: number) => (
+                                    <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400">
+                                      {item.tipo === "foto" ? "📷" : item.tipo === "video" ? "🎥" : item.tipo === "audio" ? "🎵" : "✏️"} {item.titulo || item.tipo}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Resposta do executor ao plano */}
+                              {execRespPlano ? (
+                                <div className="px-3 py-2 bg-muted/20 border-b border-border space-y-1.5">
+                                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Respondido pelo executor:</p>
+                                  {execRespPlano.observacao && (
+                                    <div className="bg-card border border-border rounded-md p-2">
+                                      <p className="text-[10px] text-muted-foreground mb-1">✏️ {itens.find((i: any) => i.tipo === "texto")?.titulo || "Descrição"}</p>
+                                      <p className="text-xs text-foreground">{execRespPlano.observacao}</p>
+                                    </div>
+                                  )}
+                                  {execRespPlano.evidencia_url && (
+                                    <div className="bg-card border border-border rounded-md overflow-hidden">
+                                      <div className="px-2 py-1.5 bg-blue-50 dark:bg-blue-950/20 border-b border-border flex items-center gap-1.5">
+                                        <span className="text-[10px] font-medium text-blue-800 dark:text-blue-400">
+                                          {/\.(jpg|jpeg|png|gif|webp)$/i.test(execRespPlano.evidencia_url) ? "📷" : /\.(mp4|webm|mov)$/i.test(execRespPlano.evidencia_url) ? "🎥" : "🎵"} {itens.find((i: any) => i.tipo !== "texto")?.titulo || "Evidência"}
+                                        </span>
+                                      </div>
+                                      <div className="p-2">
+                                        {/\.(jpg|jpeg|png|gif|webp)$/i.test(execRespPlano.evidencia_url) ? (
+                                          <div className="flex gap-2 items-center">
+                                            <img src={execRespPlano.evidencia_url} alt="Evidência" className="w-12 h-9 rounded border border-border object-cover cursor-pointer" onClick={() => window.open(execRespPlano.evidencia_url, "_blank")} />
+                                            <a href={execRespPlano.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver em tela cheia</a>
+                                          </div>
+                                        ) : /\.(mp4|webm|mov)$/i.test(execRespPlano.evidencia_url) ? (
+                                          <video src={execRespPlano.evidencia_url} controls className="w-full max-h-32 rounded border border-border" />
+                                        ) : /\.(mp3|wav|ogg|m4a)$/i.test(execRespPlano.evidencia_url) ? (
+                                          <audio src={execRespPlano.evidencia_url} controls className="w-full" />
+                                        ) : null}
+                                      </div>
+                                    </div>
+                                  )}
+                                  {execRespPlano.respondido_por_nome && (
+                                    <p className="text-[10px] text-muted-foreground">
+                                      {execRespPlano.respondido_por_nome} · {execRespPlano.respondido_em ? new Date(execRespPlano.respondido_em).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : ""}
+                                      {statusPlano?.ok === false && <span className="ml-1 text-red-600 font-medium">· Atrasado</span>}
+                                    </p>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="px-3 py-2 bg-muted/10 border-b border-border flex items-center gap-2">
+                                  <Clock className="w-3 h-3 text-muted-foreground" />
+                                  <span className="text-xs text-muted-foreground italic">Aguardando resposta do executor...</span>
+                                </div>
+                              )}
+
+                              {/* Botões Conforme / Não Conforme para este plano */}
+                              <div className="px-3 py-2 flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleResposta(f, "conforme")}
+                                  className={`flex-1 text-xs px-2 py-1.5 rounded border transition-colors font-medium ${value === "conforme" ? "bg-emerald-100 border-emerald-500 text-emerald-800" : "border-border text-muted-foreground hover:bg-muted"}`}
+                                >
+                                  ✓ Conforme
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleResposta(f, "nao_conforme")}
+                                  className={`flex-1 text-xs px-2 py-1.5 rounded border transition-colors font-medium ${value === "nao_conforme" ? "bg-red-100 border-red-400 text-red-800" : "border-border text-muted-foreground hover:bg-muted"}`}
+                                >
+                                  ✗ Não Conforme → R{r.rodada + 1}
+                                </button>
+                              </div>
+
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Se não tem planos ainda — botões normais aparecem abaixo */}
                     </div>
                   );
                 })()}
