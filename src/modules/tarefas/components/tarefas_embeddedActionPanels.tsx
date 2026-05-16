@@ -25,6 +25,83 @@ import { useAuditFlow } from "@/modules/tarefas/hooks/tarefas_useAuditFlow";
 import { ReviewFieldCard } from "@/modules/tarefas/components/tarefas_reviewFieldCard";
 import { SnapshotField, evaluateVisibility } from "@/modules/tarefas/components/tarefas_dynamicFieldRenderer";
 
+/* =========================================================================
+ * Helpers defensivos de leitura (somente UI) — não alteram dados.
+ * Tolerantes a variações de nomes de campos retornados pelo flow.
+ * ========================================================================= */
+const sameId = (a: any, b: any) => String(a ?? "") === String(b ?? "");
+
+const normalizeAnswer = (value: any): "conforme" | "nao_conforme" | "na" | null => {
+  if (value === true) return "conforme";
+  if (value === false) return "nao_conforme";
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (!raw) return null;
+  if (["conforme", "ok", "true", "sim", "c"].includes(raw)) return "conforme";
+  if (["nao_conforme", "não conforme", "nao conforme", "nc", "false", "nao", "não", "n"].includes(raw)) return "nao_conforme";
+  if (["na", "n/a", "nao_aplica", "não aplica", "nao aplica", "nao se aplica", "não se aplica", "nao_se_aplica"].includes(raw)) return "na";
+  return null;
+};
+
+const getFieldId = (item: any) =>
+  item?.field_id ?? item?.campo_id ?? item?.pergunta_id ?? item?.question_id ?? item?.checklist_item_id ?? null;
+
+const getAnswerValue = (item: any) => {
+  if (item == null) return null;
+  if (item.valor_booleano === true) return "conforme";
+  if (item.valor_booleano === false) return "nao_conforme";
+  return item?.resposta ?? item?.answer ?? item?.valor ?? item?.value ?? item?.status ?? item?.resultado ?? null;
+};
+
+const getObservation = (item: any) =>
+  item?.observacao ?? item?.observation ?? item?.comentario ?? item?.comment ?? item?.justificativa ?? "";
+
+const getEvidence = (item: any) =>
+  item?.evidencia_url ?? item?.evidencia ?? item?.evidence ?? item?.arquivo ?? item?.anexo ?? item?.attachment ?? item?.attachments ?? item?.file_url ?? item?.url ?? null;
+
+const findOriginalFieldAnswer = (field: any, flow: any) => {
+  const answers = Array.isArray(flow?.fieldAnswers) ? flow.fieldAnswers : [];
+  // resposta original = rodada 1 (ou sem rodada)
+  const matches = answers.filter((a: any) => sameId(getFieldId(a), field?.id));
+  if (matches.length === 0) return null;
+  const original = matches.find((a: any) => {
+    const r = Number(a?.rodada ?? a?.round ?? 1);
+    return r <= 1;
+  });
+  return original ?? matches[0];
+};
+
+const findExecutorPlanResponse = (field: any, review: any, contingency: any, flow: any) => {
+  const answers = Array.isArray(flow?.fieldAnswers) ? flow.fieldAnswers : [];
+  const reviewId = review?.id;
+  const contingencyId = contingency?.id;
+  const reviewRound = Number(review?.rodada ?? review?.round ?? 0);
+
+  return answers.find((answer: any) => {
+    if (reviewId && (
+      sameId(answer?.plano_acao_id, reviewId) ||
+      sameId(answer?.field_review_id, reviewId) ||
+      sameId(answer?.review_id, reviewId) ||
+      sameId(answer?.devolucao_id, reviewId) ||
+      sameId(answer?.parent_id, reviewId)
+    )) return true;
+
+    if (contingencyId && sameId(answer?.contingency_id, contingencyId)) return true;
+
+    if (!sameId(getFieldId(answer), field?.id)) return false;
+
+    const answerRound = Number(answer?.rodada ?? answer?.round ?? 0);
+    const answerPlanRound = Number(answer?.rodada_plano ?? answer?.plan_round ?? 0);
+    const answerType = String(answer?.tipo ?? answer?.type ?? answer?.kind ?? "").toLowerCase();
+
+    return (
+      answerRound === reviewRound + 1 ||
+      answerPlanRound === reviewRound ||
+      answerType.includes("plano") ||
+      answerType.includes("devolucao") ||
+      answerType.includes("devolução")
+    );
+  }) ?? null;
+};
 
 /* =========================================================================
  * EmbeddedReviewPanel — usado quando current user é avaliador
