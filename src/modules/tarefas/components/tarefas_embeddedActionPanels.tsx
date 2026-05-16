@@ -1202,7 +1202,10 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             const value = draft?.resposta ?? existing?.resposta ?? "";
             const obs = draft?.observacao ?? existing?.observacao ?? "";
             const evid = draft?.evidencia_url ?? existing?.evidencia_url ?? null;
-            const execAnswer = (flow.fieldAnswers || []).find((a: any) => a.field_id === f.id);
+            const execAnswer = findOriginalFieldAnswer(f, flow);
+            const execAnswerStatus = normalizeAnswer(getAnswerValue(execAnswer));
+            const execObservation = getObservation(execAnswer);
+            const execEvidence = getEvidence(execAnswer);
             const selectedRule = value ? getRuleForResposta(f, value, "aprovador") : null;
             const allowedActions = getAllowedActions(selectedRule);
             const selectedAction = acaoPorNC[f.id] ?? getDefaultReviewAction(selectedRule);
