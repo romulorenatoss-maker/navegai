@@ -281,7 +281,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
     prazo_padrao: string;
     justificativa_alteracao_prazo: string;
     criticidade: "baixa" | "media" | "alta";
-    tipo_evidencia_exigida: "foto" | "video" | "descricao" | "nenhuma";
+    tipo_evidencia_exigida: "foto" | "video" | "audio" | "descricao" | "nenhuma";
   }>>({});
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
   // Por NC, o aprovador escolhe se vira plano de ação ou só devolução para refazer
