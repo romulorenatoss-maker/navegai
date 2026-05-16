@@ -885,19 +885,8 @@ export default function OperationalExecucaoPage() {
 
       {isAdmin && (
         <div className="flex items-center gap-2 mb-3 flex-wrap p-2 rounded-lg bg-muted/40 border border-border">
-          <Select value={adminExecutor} onValueChange={setAdminExecutor}>
-            <SelectTrigger className="w-[200px] h-8 text-xs">
-              <Users className="w-3 h-3 mr-1" />
-              <SelectValue placeholder="Executor" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all">Todos os executores</SelectItem>
-              {profilesWithTasks.map((p: any) => (
-                <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={adminSetor} onValueChange={setAdminSetor}>
+          {/* Setor primeiro — filtra os executores abaixo */}
+          <Select value={adminSetor} onValueChange={v => { setAdminSetor(v); setAdminExecutor("__all"); }}>
             <SelectTrigger className="w-[180px] h-8 text-xs">
               <Filter className="w-3 h-3 mr-1" />
               <SelectValue placeholder="Setor" />
@@ -907,6 +896,31 @@ export default function OperationalExecucaoPage() {
               {setoresEmAssignments.map((s) => (
                 <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+
+          {/* Executores — filtrados pelo setor selecionado */}
+          <Select value={adminExecutor} onValueChange={setAdminExecutor}>
+            <SelectTrigger className="w-[200px] h-8 text-xs">
+              <Users className="w-3 h-3 mr-1" />
+              <SelectValue placeholder="Executor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">
+                {adminSetor !== "__all" ? "Todos do setor" : "Todos os executores"}
+              </SelectItem>
+              {profilesWithTasks
+                .filter((p: any) => {
+                  if (adminSetor === "__all") return true;
+                  return (assignments as any[]).some(a =>
+                    (a.responsavel_id === p.id || a.avaliado_id === p.id) &&
+                    (a.setor_executor_id === adminSetor || a.setor_avaliado_id === adminSetor)
+                  );
+                })
+                .map((p: any) => (
+                  <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>
+                ))
+              }
             </SelectContent>
           </Select>
           {(adminExecutor !== "__all" || adminSetor !== "__all") && (
