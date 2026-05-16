@@ -806,6 +806,29 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                   placeholder="O que precisa ser feito para corrigir..."
                 />
               </div>
+              <div className="space-y-1">
+                <Label className="text-[11px]">Evidência exigida do executor</Label>
+                <div className="flex gap-1.5 flex-wrap">
+                  {([
+                    { v: "foto", label: "📷 Foto (câmera)" },
+                    { v: "video", label: "🎥 Vídeo" },
+                    { v: "audio", label: "🎵 Áudio" },
+                    { v: "descricao", label: "✏️ Só texto" },
+                    { v: "nenhuma", label: "Nenhuma" },
+                  ] as const).map(opt => (
+                    <button
+                      key={opt.v}
+                      type="button"
+                      onClick={() => setPlanos(prev => ({ ...prev, [f.id]: { ...p, tipo_evidencia_exigida: opt.v as any } }))}
+                      className={`px-2 py-1 rounded border text-xs transition-colors ${
+                        (p.tipo_evidencia_exigida ?? "descricao") === opt.v
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "border-border text-muted-foreground hover:bg-muted"
+                      }`}
+                    >{opt.label}</button>
+                  ))}
+                </div>
+              </div>
               {prazoAlterado && (
                 <div className="space-y-1 border-t border-amber-200 pt-2 bg-amber-50/50 dark:bg-amber-950/20 -mx-3 px-3 -mb-3 pb-3 rounded-b-lg">
                   <Label className="text-[11px] text-amber-800 dark:text-amber-300 font-semibold">
