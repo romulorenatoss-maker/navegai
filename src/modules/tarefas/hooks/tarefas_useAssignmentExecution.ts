@@ -59,14 +59,20 @@ export function useAssignmentExecution(assignmentId: string | null) {
     enabled: !!assignmentId,
   });
 
-  // Reset state when assignmentId changes
+  // Reset state when assignmentId changes (anti-contaminação entre tarefas)
   useEffect(() => {
     setAnswers({});
     setDirty(false);
     pendingFieldsRef.current.clear();
     loggedFieldsRef.current.clear();
+    answersRef.current = {};
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-  }, [assignmentId]);
+    // Cancela queries pendentes da tarefa anterior para evitar resposta tardia poluir o estado
+    qc.cancelQueries({ queryKey: ["operational_field_answers"] });
+    if (assignmentId) {
+      qc.cancelQueries({ queryKey: ["operational_field_answers", assignmentId] });
+    }
+  }, [assignmentId, qc]);
 
   // Hydrate answers from DB
   useEffect(() => {
@@ -76,6 +82,8 @@ export function useAssignmentExecution(assignmentId: string | null) {
     }
     const map: Record<string, FieldAnswer> = {};
     for (const a of savedAnswers) {
+      // Guard defensivo: nunca hidratar resposta de outra tarefa (cache stale)
+      if (assignmentId && a.assignment_id && a.assignment_id !== assignmentId) continue;
       if (!map[a.field_id]) {
         map[a.field_id] = {
           field_id: a.field_id,
@@ -94,7 +102,7 @@ export function useAssignmentExecution(assignmentId: string | null) {
     }
     setAnswers(map);
     setDirty(false);
-  }, [savedAnswers]);
+  }, [savedAnswers, assignmentId]);
 
   // Helper: extract display value from an answer for logging
   const getDisplayValue = useCallback((entry: FieldAnswer): string => {
