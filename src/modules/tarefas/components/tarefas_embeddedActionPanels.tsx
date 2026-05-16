@@ -482,7 +482,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
       const obs = (draft?.observacao ?? existing?.observacao ?? "").trim();
       const evid = draft?.evidencia_url ?? existing?.evidencia_url ?? null;
       const reasons: string[] = [];
-      if (rule?.exige_observacao && !obs) reasons.push(`Observação obrigatória em "${f.label}".`);
+      // Observação obrigatória NÃO bloqueia: o próprio Plano de Ação já tem texto obrigatório de orientação.
       if (rule?.exige_evidencia && !evid) reasons.push(`Evidência obrigatória em "${f.label}".`);
       return reasons;
     });
