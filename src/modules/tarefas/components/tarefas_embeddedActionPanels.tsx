@@ -1357,7 +1357,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                           </div>
                           {/* Resposta do executor ao plano */}
                           {(() => {
-                            const resp = (flow.fieldAnswers as any[]).find((a: any) => a.field_id === f.id && (a.rodada === r.rodada + 1 || a.rodada_plano === r.rodada));
+                            const resp = findExecutorPlanResponse(f, r, c, flow);
                             if (!resp && !(c?.resolvida_em)) {
                               return (
                                 <div className="px-3 py-2 bg-muted/10 flex items-center gap-2">
