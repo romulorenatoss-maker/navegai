@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle2, XCircle, RotateCcw, Send, Play, AlertTriangle, ShieldCheck, ExternalLink, Upload, ArrowLeft, ClipboardList } from "lucide-react";
+import { CheckCircle2, XCircle, RotateCcw, Send, Play, AlertTriangle, ShieldCheck, ExternalLink, Upload, ArrowLeft, ClipboardList, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { useAssignmentReview } from "@/modules/tarefas/hooks/tarefas_useAssignmentReview";
 import { useApprovalFlow } from "@/modules/tarefas/hooks/tarefas_useApprovalFlow";
