@@ -1367,33 +1367,42 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                               );
                             }
                             if (!resp) return null;
+                            const respObs = getObservation(resp);
+                            const respEvid = getEvidence(resp);
+                            const respStatus = normalizeAnswer(getAnswerValue(resp));
+                            const evidUrl = respEvid ? String(respEvid) : "";
                             return (
                               <div className="px-3 py-2 bg-muted/10 border-b border-border space-y-1.5">
-                                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Respondido pelo executor:</p>
-                                {resp.observacao && (
+                                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Resposta do executor — R{r.rodada}</p>
+                                {respStatus && (
+                                  <p className="text-[10px] text-blue-700 dark:text-blue-400">Status: {respStatus === "conforme" ? "Conforme" : respStatus === "nao_conforme" ? "Não Conforme" : "N/A"}</p>
+                                )}
+                                {respObs && (
                                   <div className="bg-card border border-border rounded-md p-2">
                                     <p className="text-[10px] text-muted-foreground mb-1">✏️ {itens.find((i: any) => i.tipo === "texto")?.titulo || "Descrição"}</p>
-                                    <p className="text-xs text-foreground">{resp.observacao}</p>
+                                    <p className="text-xs text-foreground">{respObs}</p>
                                   </div>
                                 )}
-                                {resp.evidencia_url && (
+                                {evidUrl && (
                                   <div className="bg-card border border-border rounded-md overflow-hidden">
                                     <div className="px-2 py-1.5 bg-blue-50 dark:bg-blue-950/20 border-b border-border">
                                       <span className="text-[10px] font-medium text-blue-800 dark:text-blue-400">
-                                        {/\.(jpg|jpeg|png|gif|webp)$/i.test(resp.evidencia_url) ? "📷" : /\.(mp4|webm|mov)$/i.test(resp.evidencia_url) ? "🎥" : "🎵"} {itens.find((i: any) => i.tipo !== "texto")?.titulo || "Evidência"}
+                                        {/\.(jpg|jpeg|png|gif|webp)$/i.test(evidUrl) ? "📷" : /\.(mp4|webm|mov)$/i.test(evidUrl) ? "🎥" : /\.(mp3|wav|ogg|m4a)$/i.test(evidUrl) ? "🎵" : "📎"} {itens.find((i: any) => i.tipo !== "texto")?.titulo || "Evidência"}
                                       </span>
                                     </div>
                                     <div className="p-2">
-                                      {/\.(jpg|jpeg|png|gif|webp)$/i.test(resp.evidencia_url) ? (
+                                      {/\.(jpg|jpeg|png|gif|webp)$/i.test(evidUrl) ? (
                                         <div className="flex gap-2 items-center">
-                                          <img src={resp.evidencia_url} alt="Evidência" className="w-12 h-9 rounded border border-border object-cover cursor-pointer" onClick={() => window.open(resp.evidencia_url, "_blank")} />
-                                          <a href={resp.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver em tela cheia</a>
+                                          <img src={evidUrl} alt="Evidência" className="w-12 h-9 rounded border border-border object-cover cursor-pointer" onClick={() => window.open(evidUrl, "_blank")} />
+                                          <a href={evidUrl} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver em tela cheia</a>
                                         </div>
-                                      ) : /\.(mp4|webm|mov)$/i.test(resp.evidencia_url) ? (
-                                        <video src={resp.evidencia_url} controls playsInline className="w-full max-h-32 rounded border border-border" />
-                                      ) : /\.(mp3|wav|ogg|m4a)$/i.test(resp.evidencia_url) ? (
-                                        <audio src={resp.evidencia_url} controls className="w-full" />
-                                      ) : null}
+                                      ) : /\.(mp4|webm|mov)$/i.test(evidUrl) ? (
+                                        <video src={evidUrl} controls playsInline className="w-full max-h-32 rounded border border-border" />
+                                      ) : /\.(mp3|wav|ogg|m4a)$/i.test(evidUrl) ? (
+                                        <audio src={evidUrl} controls className="w-full" />
+                                      ) : (
+                                        <a href={evidUrl} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver anexo</a>
+                                      )}
                                     </div>
                                   </div>
                                 )}
