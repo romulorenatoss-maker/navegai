@@ -326,10 +326,19 @@ export default function OperationalExecucaoPage() {
   // Lista de setores únicos presentes nas tarefas (para filtro admin)
   const setoresEmAssignments = useMemo(() => {
     const map = new Map<string, string>();
-    for (const a of assignments) {
-      if (a.setor_id) map.set(a.setor_id, a.setor_nome || a.setor_id);
+    for (const a of assignments as any[]) {
+      // Setor executor
+      if (a.setor_executor_id && a.setor_executor?.nome)
+        map.set(a.setor_executor_id, a.setor_executor.nome);
+      else if (a.setor_executor_id)
+        map.set(a.setor_executor_id, a.setor_executor_id);
+      // Setor avaliado
+      if (a.setor_avaliado_id && a.setor_avaliado?.nome)
+        map.set(a.setor_avaliado_id, a.setor_avaliado.nome);
     }
-    return Array.from(map.entries()).map(([id, nome]) => ({ id, nome }));
+    return Array.from(map.entries())
+      .map(([id, nome]) => ({ id, nome }))
+      .sort((a, b) => a.nome.localeCompare(b.nome));
   }, [assignments]);
 
   // === Filtragem base (busca + admin filtros) ===
