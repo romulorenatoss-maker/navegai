@@ -1311,16 +1311,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
       </div>
 
       <div className="flex flex-wrap gap-2 pt-2 sticky bottom-0 bg-background pb-1 border-t border-border">
-        {profile && (assignment?.responsavel_id !== profile.id) && (
-          <Button
-            type="button" size="sm" variant="outline"
-            onClick={encerrarSemAprovar} disabled={flow.isSaving}
-            className="border-amber-300 text-amber-700 hover:bg-amber-50"
-            title="Devolver toda a tarefa para refazer"
-          >
-            <RotateCcw className="w-3.5 h-3.5 mr-1" /> Devolver toda tarefa pra refazer
-          </Button>
-        )}
+        {false && null}
         <div className="flex-1" />
         {perguntasComAcao.length > 0 ? (
           <Button
