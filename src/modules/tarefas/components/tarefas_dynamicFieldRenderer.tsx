@@ -712,7 +712,86 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
         </div>
       )}
 
-      {/* Validation error */}
+      {hasApproverPlan && (
+        <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50/60 p-3 space-y-2">
+          <div className="text-xs font-semibold text-amber-900">
+            Resposta do Plano de Ação — R{planRound}
+          </div>
+
+          {approverPlan?.instrucao_aprovador || approverPlan?.plano_acao_descricao ? (
+            <div className="text-xs text-amber-900 bg-white/70 border border-amber-200 rounded p-2">
+              <strong>Solicitado pelo aprovador:</strong>{" "}
+              {approverPlan?.instrucao_aprovador || approverPlan?.plano_acao_descricao}
+            </div>
+          ) : null}
+
+          <Textarea
+            value={planAnswer.valor_texto ?? ""}
+            onChange={(e) => updatePlanAnswer({ valor_texto: e.target.value })}
+            placeholder="Descreva o que foi corrigido para este plano de ação..."
+            className="min-h-[70px] text-sm bg-white"
+          />
+
+          <div className="space-y-1">
+            <Label className="text-xs text-amber-900">Nova evidência do plano de ação</Label>
+
+            {planAnswer.evidencia_url ? (
+              <div className="flex items-center justify-between gap-2 rounded border border-amber-200 bg-white p-2">
+                <a
+                  href={planAnswer.evidencia_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-primary underline"
+                >
+                  Ver nova evidência enviada
+                </a>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => updatePlanAnswer({ evidencia_url: null })}
+                >
+                  Remover
+                </Button>
+              </div>
+            ) : (
+              <label className="flex items-center justify-center gap-2 border-2 border-dashed border-amber-300 rounded-lg p-3 cursor-pointer hover:border-amber-500 bg-white">
+                <Camera className="w-4 h-4 text-amber-700" />
+                <span className="text-xs text-amber-800">Enviar nova evidência do plano</span>
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/*,video/*,audio/*,*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file || !assignmentId) return;
+                    setUploading(true);
+                    try {
+                      const ext = file.name.split(".").pop();
+                      const path = `${assignmentId}/${planResponseFieldId}/${Date.now()}.${ext}`;
+                      const { error: upErr } = await (supabase as any).storage.from("evidencias").upload(path, file);
+                      if (upErr) throw upErr;
+                      const { data: signed, error: signErr } = await (supabase as any).storage.from("evidencias").createSignedUrl(path, 60 * 60 * 24 * 365);
+                      if (signErr) throw signErr;
+                      updatePlanAnswer({ evidencia_url: signed.signedUrl });
+                    } catch (err) {
+                      console.error(err);
+                    } finally {
+                      setUploading(false);
+                    }
+                  }}
+                />
+              </label>
+            )}
+          </div>
+
+          <p className="text-[11px] text-muted-foreground">
+            A resposta/evidência original acima fica bloqueada como prova. Responda somente este plano.
+          </p>
+        </div>
+      )}
+
       {error && !disabled && (
         <p className="text-xs text-destructive flex items-center gap-1">
           <AlertTriangle className="w-3 h-3" /> {error}
