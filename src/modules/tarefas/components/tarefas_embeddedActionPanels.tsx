@@ -1337,17 +1337,7 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
         </div>
       )}
 
-      {/* Campo de justificativa para devolução total — sempre visível */}
-      <div className="space-y-1 pt-2 border-t border-border">
-        <Label className="text-[11px]">Justificativa para devolver toda a tarefa (obrigatória)</Label>
-        <Textarea
-          value={motivoFinal}
-          onChange={(e) => setMotivoFinal(e.target.value)}
-          className="text-xs min-h-[44px]"
-          placeholder="Descreva o motivo da devolução total..."
-          maxLength={2000}
-        />
-      </div>
+      {false && null}
 
       <div className="flex flex-wrap gap-2 pt-2 sticky bottom-0 bg-background pb-1 border-t border-border">
         {false && null}
