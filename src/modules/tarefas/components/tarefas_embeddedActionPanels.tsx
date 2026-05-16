@@ -1063,6 +1063,38 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
   // ─── PASSO 1: PERGUNTAS DO APROVADOR ───────────────────────────────
   return (
     <div className="space-y-3">
+      {/* Instrução do auditor — aparece no topo quando auditor criou plano para o aprovador */}
+      {(() => {
+        const auditPlan = (flow.fieldReviews as any[])?.find(
+          (r: any) => r.tipo_review === "auditor_para_aprovador" && r.status_plano !== "resolvido"
+        );
+        if (!auditPlan) return null;
+        return (
+          <div className="border border-purple-300 dark:border-purple-800 rounded-lg overflow-hidden mb-1">
+            <div className="flex items-center justify-between px-3 py-2 bg-purple-50 dark:bg-purple-950/30 border-b border-purple-200 dark:border-purple-800">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-3.5 h-3.5 text-purple-700 dark:text-purple-400 shrink-0" />
+                <span className="text-[11px] font-semibold text-purple-800 dark:text-purple-300">Instrução do Auditor</span>
+              </div>
+              <span className="text-[10px] text-muted-foreground">{auditPlan.avaliado_em ? new Date(auditPlan.avaliado_em).toLocaleDateString("pt-BR") : ""}</span>
+            </div>
+            <div className="px-3 py-2 space-y-1">
+              <p className="text-xs text-foreground">{auditPlan.instrucao_aprovador || auditPlan.motivo_devolucao}</p>
+              {auditPlan.plano_acao_prazo && (
+                <p className="text-[10px] text-purple-700 dark:text-purple-400 font-medium">
+                  Prazo para responder: {new Date(auditPlan.plano_acao_prazo).toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" })}
+                </p>
+              )}
+              {auditPlan.tipo_evidencia_exigida && auditPlan.tipo_evidencia_exigida !== "nenhuma" && (
+                <p className="text-[10px] text-purple-700 dark:text-purple-400">
+                  Evidência exigida: {auditPlan.tipo_evidencia_exigida === "foto" ? "📷 Foto" : auditPlan.tipo_evidencia_exigida === "video" ? "🎥 Vídeo" : auditPlan.tipo_evidencia_exigida === "audio" ? "🎵 Áudio" : "✏️ Descrição"}
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="bg-card border border-border rounded-lg p-3">
         <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Resumo</p>
         <div className="grid grid-cols-3 gap-2 text-xs">
