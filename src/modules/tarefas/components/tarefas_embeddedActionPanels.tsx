@@ -737,7 +737,10 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
             tipo_evidencia_exigida: "descricao" as const,
             itens_plano: [] as ItemPlano[],
           };
-          const prazoAlterado = !!(p.prazo && p.prazo_padrao && p.prazo !== p.prazo_padrao);
+          const prazoAlterado = !!(p.prazo && p.prazo_padrao && (() => {
+            try { return new Date(p.prazo).getTime() > new Date(p.prazo_padrao).getTime() + 60000; }
+            catch { return false; }
+          })());
           return (
             <div key={f.id} className="border border-border rounded-lg p-3 bg-card space-y-2">
               <div className="text-sm font-medium text-foreground">{f.label}</div>
@@ -1308,7 +1311,11 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                               <Input type="datetime-local" className="h-8 text-xs"
                                 value={p.prazo}
                                 onChange={e => updateP({ prazo: e.target.value })} />
-                              {p.prazo && p.prazo_padrao && p.prazo > p.prazo_padrao && (
+                              {p.prazo && p.prazo_padrao && (() => {
+                                try {
+                                  return new Date(p.prazo).getTime() > new Date(p.prazo_padrao).getTime() + 60000;
+                                } catch { return false; }
+                              })() && (
                                 <div className="flex items-start gap-1.5 p-2 rounded bg-amber-50 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-800">
                                   <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0 mt-0.5" />
                                   <p className="text-[10px] text-amber-700 dark:text-amber-400">
