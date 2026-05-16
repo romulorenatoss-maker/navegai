@@ -1232,31 +1232,12 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                 {allowedActions.length > 0 && (
                   <div className="border-t border-border/50 pt-2 space-y-1">
                     <Label className="text-[11px]">Tratamento desta resposta</Label>
-                    <div className="flex gap-2">
-                      {[
-                        { v: "plano", label: "Plano de ação", cls: "border-amber-300 text-amber-700" },
-                        { v: "devolver", label: "Devolver p/ refazer", cls: "border-orange-300 text-orange-700" },
-                      ].filter(opt => allowedActions.includes(opt.v as "plano" | "devolver")).map(opt => {
-                        const sel = selectedAction === opt.v;
-                        return (
-                          <button
-                            key={opt.v}
-                            type="button"
-                            onClick={() => setAcaoPorNC(prev => ({ ...prev, [f.id]: opt.v as "plano" | "devolver" }))}
-                            className={`flex-1 text-xs px-2 py-1.5 rounded border transition-colors ${
-                              sel ? `${opt.cls} ring-2 ring-current/20 font-semibold` : "border-border text-muted-foreground hover:bg-muted"
-                            }`}
-                          >
-                            {opt.label}
-                          </button>
-                        );
-                      })}
+                    <div className="mt-1">
+                      <div className="py-1.5 px-2 rounded text-xs border bg-primary/10 border-primary text-primary text-center font-medium">
+                        Plano de ação
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-1">Será criado um plano de ação com prazo na próxima etapa.</p>
                     </div>
-                    <p className="text-[10px] text-muted-foreground">
-                      {selectedAction === "plano"
-                        ? "Será criado um plano de ação com prazo na próxima etapa."
-                        : "Esta pergunta volta ao executor para refazer (a observação acima vira o motivo)."}
-                    </p>
                   </div>
                 )}
 
