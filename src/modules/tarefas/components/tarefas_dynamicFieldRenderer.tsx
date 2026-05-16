@@ -202,11 +202,22 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
   }, [answer?.respondido_em, dataPrevista, horarioLimite]);
 
   const isReturned = review?.devolvido === true;
+  const hasApproverPlan = !!approverPlan && review?.devolvido === true;
+  const planRound = Number(review?.rodada ?? 1);
+  const planResponseFieldId = `${field.id}__plano_acao__r${planRound}`;
+  const planAnswer: FieldAnswer = allAnswers?.[planResponseFieldId] || { field_id: planResponseFieldId };
+  const isOriginalLockedByPlan = hasApproverPlan;
   const [openRodada, setOpenRodada] = useState<number | null>(review?.rodada ?? null);
   const error = showValidation ? validateField(field, answer) : null;
   const val: FieldAnswer = answer || { field_id: field.id };
 
-  const update = (patch: Partial<FieldAnswer>) => onChange(field.id, patch);
+  const originalEditable = isEditableEfetivo && !isOriginalLockedByPlan;
+  const updateOriginal = (patch: Partial<FieldAnswer>) => onChange(field.id, patch);
+  const updatePlanAnswer = (patch: Partial<FieldAnswer>) => onChange(planResponseFieldId, patch);
+  const update = (patch: Partial<FieldAnswer>) => {
+    if (isOriginalLockedByPlan) return;
+    updateOriginal(patch);
+  };
 
   const handleUpload = async (file: File) => {
     setUploading(true);
@@ -263,7 +274,7 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
         return (
           <div className="flex gap-2 flex-wrap">
             {opts.map(opt => (
-              <button key={String(opt.val) + opt.label} type="button" disabled={!isEditableEfetivo}
+              <button key={String(opt.val) + opt.label} type="button" disabled={!originalEditable}
                 onClick={() => update({ valor_booleano: opt.val })}
                 className={`flex-1 min-w-[100px] px-3 py-2 rounded-md border text-sm font-medium transition-colors ${val.valor_booleano === opt.val ? opt.cls + " ring-2 ring-offset-1 ring-primary/30" : "bg-card border-border text-muted-foreground"} ${!isEditableEfetivo ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
                 {opt.label}
@@ -289,7 +300,7 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
         return (
           <div className="flex gap-2 flex-wrap">
             {opts.map(opt => (
-              <button key={String(opt.val) + opt.label} type="button" disabled={!isEditableEfetivo}
+              <button key={String(opt.val) + opt.label} type="button" disabled={!originalEditable}
                 onClick={() => update({ valor_booleano: opt.val })}
                 className={`flex-1 min-w-[100px] px-3 py-2 rounded-md border text-sm font-medium transition-colors ${val.valor_booleano === opt.val ? opt.cls + " ring-2 ring-offset-1 ring-primary/30" : "bg-card border-border text-muted-foreground"} ${!isEditableEfetivo ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
                 {opt.label}
@@ -302,25 +313,25 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
       case "nota_avaliacao":
       case "numero":
         return <Input type="number" value={val.valor_numero ?? ""} onChange={e => update({ valor_numero: e.target.value === "" ? null : +e.target.value })}
-          disabled={!isEditableEfetivo} min={field.validacao?.min} max={field.validacao?.max ?? field.nota_maxima}
+          disabled={!originalEditable} min={field.validacao?.min} max={field.validacao?.max ?? field.nota_maxima}
           className={!isEditableEfetivo ? "opacity-60" : ""} />;
 
       case "texto":
         return <Textarea value={val.valor_texto ?? ""} onChange={e => update({ valor_texto: e.target.value })}
-          disabled={!isEditableEfetivo} placeholder={field.descricao || "Digite..."} maxLength={5000}
+          disabled={!originalEditable} placeholder={field.descricao || "Digite..."} maxLength={5000}
           className={!isEditableEfetivo ? "opacity-60" : ""} />;
 
       case "data":
         return <Input type="date" value={val.valor_data?.slice(0, 10) ?? ""} onChange={e => update({ valor_data: e.target.value })}
-          disabled={!isEditableEfetivo} className={!isEditableEfetivo ? "opacity-60" : ""} />;
+          disabled={!originalEditable} className={!isEditableEfetivo ? "opacity-60" : ""} />;
 
       case "hora":
         return <Input type="time" value={val.valor_texto ?? ""} onChange={e => update({ valor_texto: e.target.value })}
-          disabled={!isEditableEfetivo} className={!isEditableEfetivo ? "opacity-60" : ""} />;
+          disabled={!originalEditable} className={!isEditableEfetivo ? "opacity-60" : ""} />;
 
       case "select":
         return (
-          <Select value={val.valor_texto ?? ""} onValueChange={v => update({ valor_texto: v })} disabled={!isEditableEfetivo}>
+          <Select value={val.valor_texto ?? ""} onValueChange={v => update({ valor_texto: v })} disabled={!originalEditable}>
             <SelectTrigger className={!isEditableEfetivo ? "opacity-60" : ""}><SelectValue placeholder="Selecione" /></SelectTrigger>
             <SelectContent>{(field.opcoes || []).map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
           </Select>
@@ -331,7 +342,7 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
         return (
           <div className="flex flex-wrap gap-1.5">
             {(field.opcoes || []).map(o => (
-              <button key={o} type="button" disabled={!isEditableEfetivo}
+              <button key={o} type="button" disabled={!originalEditable}
                 onClick={() => {
                   const next = selected.includes(o) ? selected.filter(s => s !== o) : [...selected, o];
                   update({ valor_json: next });
@@ -359,14 +370,14 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                 ) : (
                   <a href={val.evidencia_url} target="_blank" rel="noreferrer" className="text-sm text-primary underline">Ver arquivo</a>
                 )}
-                {isEditableEfetivo && (
+                {originalEditable && (
                   <Button type="button" variant="destructive" size="sm" className="absolute -top-2 -right-2 h-6 w-6 p-0 rounded-full"
                     onClick={() => update({ evidencia_url: null })}>
                     <X className="w-3 h-3" />
                   </Button>
                 )}
               </div>
-            ) : isEditableEfetivo ? (
+            ) : originalEditable ? (
               <label className={`flex items-center justify-center gap-2 border-2 border-dashed border-border rounded-lg p-4 cursor-pointer hover:border-primary/50 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
                 {uploading ? <span className="text-sm text-muted-foreground">Enviando...</span> : (
                   <>
@@ -384,7 +395,7 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
         );
 
       default:
-        return <Input value={val.valor_texto ?? ""} onChange={e => update({ valor_texto: e.target.value })} disabled={!isEditableEfetivo} />;
+        return <Input value={val.valor_texto ?? ""} onChange={e => update({ valor_texto: e.target.value })} disabled={!originalEditable} />;
     }
   };
 
@@ -451,7 +462,7 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
               <Textarea
                 value={val.observacao ?? val.valor_texto ?? ""}
                 onChange={e => update({ observacao: e.target.value })}
-                disabled={!isEditableEfetivo}
+                disabled={!originalEditable}
                 placeholder="Descreva o motivo..."
                 rows={2}
                 className={!isEditableEfetivo ? "opacity-60" : ""}
@@ -481,13 +492,13 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
                   ) : (
                     <a href={val.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver evidência</a>
                   )}
-                  {isEditableEfetivo && (
+                  {originalEditable && (
                     <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => update({ evidencia_url: null })}>
                       <X className="w-3 h-3" />
                     </Button>
                   )}
                 </div>
-              ) : isEditableEfetivo ? (
+              ) : originalEditable ? (
                 <label className={`flex items-center justify-center gap-2 border border-dashed border-amber-400/60 rounded p-2 cursor-pointer hover:border-amber-500 transition-colors ${uploading ? "opacity-60 pointer-events-none" : ""}`}>
                   {uploading ? <span className="text-xs text-muted-foreground">Enviando...</span> : (
                     <>
@@ -581,7 +592,7 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
               )}
               {isEditableEfetivo && <Button type="button" variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => update({ evidencia_url: null })}><X className="w-3 h-3" /></Button>}
             </div>
-          ) : isEditableEfetivo ? (
+          ) : originalEditable ? (
             <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer hover:text-primary transition-colors">
               <Upload className="w-3.5 h-3.5" /> Anexar evidência
               <input type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
@@ -701,7 +712,86 @@ export function DynamicFieldRenderer({ field, answer, review, userRole, disabled
         </div>
       )}
 
-      {/* Validation error */}
+      {hasApproverPlan && (
+        <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50/60 p-3 space-y-2">
+          <div className="text-xs font-semibold text-amber-900">
+            Resposta do Plano de Ação — R{planRound}
+          </div>
+
+          {((approverPlan as any)?.instrucao_aprovador) || approverPlan?.plano_acao_descricao ? (
+            <div className="text-xs text-amber-900 bg-white/70 border border-amber-200 rounded p-2">
+              <strong>Solicitado pelo aprovador:</strong>{" "}
+              {((approverPlan as any)?.instrucao_aprovador) || approverPlan?.plano_acao_descricao}
+            </div>
+          ) : null}
+
+          <Textarea
+            value={planAnswer.valor_texto ?? ""}
+            onChange={(e) => updatePlanAnswer({ valor_texto: e.target.value })}
+            placeholder="Descreva o que foi corrigido para este plano de ação..."
+            className="min-h-[70px] text-sm bg-white"
+          />
+
+          <div className="space-y-1">
+            <Label className="text-xs text-amber-900">Nova evidência do plano de ação</Label>
+
+            {planAnswer.evidencia_url ? (
+              <div className="flex items-center justify-between gap-2 rounded border border-amber-200 bg-white p-2">
+                <a
+                  href={planAnswer.evidencia_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-primary underline"
+                >
+                  Ver nova evidência enviada
+                </a>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => updatePlanAnswer({ evidencia_url: null })}
+                >
+                  Remover
+                </Button>
+              </div>
+            ) : (
+              <label className="flex items-center justify-center gap-2 border-2 border-dashed border-amber-300 rounded-lg p-3 cursor-pointer hover:border-amber-500 bg-white">
+                <Camera className="w-4 h-4 text-amber-700" />
+                <span className="text-xs text-amber-800">Enviar nova evidência do plano</span>
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/*,video/*,audio/*,*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file || !assignmentId) return;
+                    setUploading(true);
+                    try {
+                      const ext = file.name.split(".").pop();
+                      const path = `${assignmentId}/${planResponseFieldId}/${Date.now()}.${ext}`;
+                      const { error: upErr } = await (supabase as any).storage.from("evidencias").upload(path, file);
+                      if (upErr) throw upErr;
+                      const { data: signed, error: signErr } = await (supabase as any).storage.from("evidencias").createSignedUrl(path, 60 * 60 * 24 * 365);
+                      if (signErr) throw signErr;
+                      updatePlanAnswer({ evidencia_url: signed.signedUrl });
+                    } catch (err) {
+                      console.error(err);
+                    } finally {
+                      setUploading(false);
+                    }
+                  }}
+                />
+              </label>
+            )}
+          </div>
+
+          <p className="text-[11px] text-muted-foreground">
+            A resposta/evidência original acima fica bloqueada como prova. Responda somente este plano.
+          </p>
+        </div>
+      )}
+
       {error && !disabled && (
         <p className="text-xs text-destructive flex items-center gap-1">
           <AlertTriangle className="w-3 h-3" /> {error}

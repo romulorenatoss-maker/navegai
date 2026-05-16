@@ -60,46 +60,40 @@ const getEvidence = (item: any) =>
 
 const findOriginalFieldAnswer = (field: any, flow: any) => {
   const answers = Array.isArray(flow?.fieldAnswers) ? flow.fieldAnswers : [];
-  // resposta original = rodada 1 (ou sem rodada)
-  const matches = answers.filter((a: any) => sameId(getFieldId(a), field?.id));
-  if (matches.length === 0) return null;
-  const original = matches.find((a: any) => {
-    const r = Number(a?.rodada ?? a?.round ?? 1);
-    return r <= 1;
+
+  const matches = answers.filter((a: any) => {
+    const fid = String(getFieldId(a) ?? "");
+    if (fid.includes("__plano_acao__")) return false;
+    return sameId(fid, field?.id);
   });
-  return original ?? matches[0];
+
+  if (matches.length === 0) return null;
+
+  return matches
+    .slice()
+    .sort((a: any, b: any) => {
+      const ra = Number(a?.rodada ?? a?.round ?? 1);
+      const rb = Number(b?.rodada ?? b?.round ?? 1);
+      return ra - rb;
+    })[0];
 };
 
 const findExecutorPlanResponse = (field: any, review: any, contingency: any, flow: any) => {
   const answers = Array.isArray(flow?.fieldAnswers) ? flow.fieldAnswers : [];
-  const reviewId = review?.id;
-  const contingencyId = contingency?.id;
-  const reviewRound = Number(review?.rodada ?? review?.round ?? 0);
+  const reviewRound = Number(review?.rodada ?? review?.round ?? 1);
+  const planResponseFieldId = `${field?.id}__plano_acao__r${reviewRound}`;
 
+  const bySyntheticId = answers.find((answer: any) =>
+    sameId(getFieldId(answer), planResponseFieldId)
+  );
+
+  if (bySyntheticId) return bySyntheticId;
+
+  // fallback defensivo para dados antigos
   return answers.find((answer: any) => {
-    if (reviewId && (
-      sameId(answer?.plano_acao_id, reviewId) ||
-      sameId(answer?.field_review_id, reviewId) ||
-      sameId(answer?.review_id, reviewId) ||
-      sameId(answer?.devolucao_id, reviewId) ||
-      sameId(answer?.parent_id, reviewId)
-    )) return true;
-
-    if (contingencyId && sameId(answer?.contingency_id, contingencyId)) return true;
-
-    if (!sameId(getFieldId(answer), field?.id)) return false;
-
-    const answerRound = Number(answer?.rodada ?? answer?.round ?? 0);
-    const answerPlanRound = Number(answer?.rodada_plano ?? answer?.plan_round ?? 0);
-    const answerType = String(answer?.tipo ?? answer?.type ?? answer?.kind ?? "").toLowerCase();
-
-    return (
-      answerRound === reviewRound + 1 ||
-      answerPlanRound === reviewRound ||
-      answerType.includes("plano") ||
-      answerType.includes("devolucao") ||
-      answerType.includes("devolução")
-    );
+    const fid = String(getFieldId(answer) ?? "");
+    if (!fid.includes("__plano_acao__")) return false;
+    return fid.startsWith(`${field?.id}__plano_acao__`);
   }) ?? null;
 };
 
