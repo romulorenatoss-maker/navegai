@@ -1249,33 +1249,36 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
                     })}
                   </div>
                   {/* Observação do executor */}
-                  {execAnswer?.observacao && (
-                    <p className="text-xs text-foreground">{execAnswer.observacao}</p>
+                  {execObservation && (
+                    <p className="text-xs text-foreground">{execObservation}</p>
                   )}
                   {/* Evidência do executor */}
-                  {execAnswer?.evidencia_url && (
-                    <div className="bg-card border border-border rounded-md overflow-hidden">
-                      <div className="px-2 py-1.5 bg-blue-50 dark:bg-blue-950/20 border-b border-border flex items-center gap-1.5">
-                        <span className="text-[10px] font-medium text-blue-800 dark:text-blue-400">
-                          {/\.(jpg|jpeg|png|gif|webp)$/i.test(execAnswer.evidencia_url) ? "📷 Foto anexada" : /\.(mp4|webm|mov)$/i.test(execAnswer.evidencia_url) ? "🎥 Vídeo anexado" : /\.(mp3|wav|ogg|m4a)$/i.test(execAnswer.evidencia_url) ? "🎵 Áudio anexado" : "📎 Arquivo anexado"}
-                        </span>
+                  {execEvidence && (() => {
+                    const url = String(execEvidence);
+                    return (
+                      <div className="bg-card border border-border rounded-md overflow-hidden">
+                        <div className="px-2 py-1.5 bg-blue-50 dark:bg-blue-950/20 border-b border-border flex items-center gap-1.5">
+                          <span className="text-[10px] font-medium text-blue-800 dark:text-blue-400">
+                            {/\.(jpg|jpeg|png|gif|webp)$/i.test(url) ? "📷 Foto anexada" : /\.(mp4|webm|mov)$/i.test(url) ? "🎥 Vídeo anexado" : /\.(mp3|wav|ogg|m4a)$/i.test(url) ? "🎵 Áudio anexado" : "📎 Arquivo anexado"}
+                          </span>
+                        </div>
+                        <div className="p-2">
+                          {/\.(jpg|jpeg|png|gif|webp)$/i.test(url) ? (
+                            <div className="flex gap-2 items-center">
+                              <img src={url} alt="Evidência" className="w-14 h-10 rounded border border-border object-cover cursor-pointer" onClick={() => window.open(url, "_blank")} />
+                              <a href={url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver em tela cheia</a>
+                            </div>
+                          ) : /\.(mp4|webm|mov)$/i.test(url) ? (
+                            <video src={url} controls playsInline className="w-full max-h-40 rounded border border-border" />
+                          ) : /\.(mp3|wav|ogg|m4a)$/i.test(url) ? (
+                            <audio src={url} controls className="w-full" />
+                          ) : (
+                            <a href={url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver anexo</a>
+                          )}
+                        </div>
                       </div>
-                      <div className="p-2">
-                        {/\.(jpg|jpeg|png|gif|webp)$/i.test(execAnswer.evidencia_url) ? (
-                          <div className="flex gap-2 items-center">
-                            <img src={execAnswer.evidencia_url} alt="Evidência" className="w-14 h-10 rounded border border-border object-cover cursor-pointer" onClick={() => window.open(execAnswer.evidencia_url, "_blank")} />
-                            <a href={execAnswer.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver em tela cheia</a>
-                          </div>
-                        ) : /\.(mp4|webm|mov)$/i.test(execAnswer.evidencia_url) ? (
-                          <video src={execAnswer.evidencia_url} controls playsInline className="w-full max-h-40 rounded border border-border" />
-                        ) : /\.(mp3|wav|ogg|m4a)$/i.test(execAnswer.evidencia_url) ? (
-                          <audio src={execAnswer.evidencia_url} controls className="w-full" />
-                        ) : (
-                          <a href={execAnswer.evidencia_url} target="_blank" rel="noreferrer" className="text-xs text-primary underline">Ver anexo</a>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                   {/* Quem preencheu + versões */}
                   {execAnswer?.respondido_por_nome && (
                     <p className="text-[10px] text-muted-foreground flex items-center gap-1">
