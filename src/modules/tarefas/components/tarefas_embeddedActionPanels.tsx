@@ -95,21 +95,21 @@ const getEvidence = (item: any) =>
 const findOriginalFieldAnswer = (field: any, flow: any) => {
   const answers = Array.isArray(flow?.fieldAnswers) ? flow.fieldAnswers : [];
 
+  // resposta original = registro do campo real, sem sufixo de plano de ação
   const matches = answers.filter((a: any) => {
     const fid = String(getFieldId(a) ?? "");
+    if (!fid) return false;
     if (fid.includes("__plano_acao__")) return false;
     return sameId(fid, field?.id);
   });
 
   if (matches.length === 0) return null;
 
-  return matches
-    .slice()
-    .sort((a: any, b: any) => {
-      const ra = Number(a?.rodada ?? a?.round ?? 1);
-      const rb = Number(b?.rodada ?? b?.round ?? 1);
-      return ra - rb;
-    })[0];
+  // pegar sempre a primeira resposta original válida
+  const withValue = matches.find((a: any) => normalizeAnswer(getAnswerValue(a)) !== null);
+  if (withValue) return withValue;
+
+  return matches[0];
 };
 
 const findExecutorPlanResponse = (field: any, review: any, contingency: any, flow: any) => {
