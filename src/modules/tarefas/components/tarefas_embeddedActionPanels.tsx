@@ -47,9 +47,43 @@ const getFieldId = (item: any) =>
 
 const getAnswerValue = (item: any) => {
   if (item == null) return null;
+
   if (item.valor_booleano === true) return "conforme";
   if (item.valor_booleano === false) return "nao_conforme";
-  return item?.resposta ?? item?.answer ?? item?.valor ?? item?.value ?? item?.status ?? item?.resultado ?? null;
+
+  const direct =
+    item?.resposta ??
+    item?.answer ??
+    item?.valor ??
+    item?.value ??
+    item?.status ??
+    item?.resultado ??
+    item?.valor_texto ??
+    item?.texto ??
+    item?.label ??
+    item?.opcao ??
+    null;
+
+  if (direct != null && String(direct).trim() !== "") return direct;
+
+  const json = item?.valor_json;
+  if (json && typeof json === "object") {
+    return (
+      json.resposta ??
+      json.answer ??
+      json.valor ??
+      json.value ??
+      json.status ??
+      json.resultado ??
+      json.opcao ??
+      json.option ??
+      json.label ??
+      json.texto ??
+      null
+    );
+  }
+
+  return null;
 };
 
 const getObservation = (item: any) =>
@@ -61,21 +95,21 @@ const getEvidence = (item: any) =>
 const findOriginalFieldAnswer = (field: any, flow: any) => {
   const answers = Array.isArray(flow?.fieldAnswers) ? flow.fieldAnswers : [];
 
+  // resposta original = registro do campo real, sem sufixo de plano de ação
   const matches = answers.filter((a: any) => {
     const fid = String(getFieldId(a) ?? "");
+    if (!fid) return false;
     if (fid.includes("__plano_acao__")) return false;
     return sameId(fid, field?.id);
   });
 
   if (matches.length === 0) return null;
 
-  return matches
-    .slice()
-    .sort((a: any, b: any) => {
-      const ra = Number(a?.rodada ?? a?.round ?? 1);
-      const rb = Number(b?.rodada ?? b?.round ?? 1);
-      return ra - rb;
-    })[0];
+  // pegar sempre a primeira resposta original válida
+  const withValue = matches.find((a: any) => normalizeAnswer(getAnswerValue(a)) !== null);
+  if (withValue) return withValue;
+
+  return matches[0];
 };
 
 const findExecutorPlanResponse = (field: any, review: any, contingency: any, flow: any) => {
@@ -1223,41 +1257,50 @@ export function EmbeddedApprovalPanel({ assignment, fields, onClose }: ApprovalP
 
                 {/* Réplica exata do executor — bloqueada, só leitura */}
                 <div className="px-3 py-2.5 bg-muted/20 border-b border-border space-y-2">
-                  {/* Botões como o executor marcou — bloqueados */}
+                  {/* Botões como o executor marcou — bloqueados e evidentes */}
                   <div className="flex gap-2">
                     {getReviewOptions(f, "aprovador").map((opt) => {
                       const optStatus = normalizeAnswer(opt.v);
-                      const originalValueNorm = execAnswerStatus;
-                      const isSelected = originalValueNorm
-                        ? optStatus === originalValueNorm
-                        : (execAnswer?.valor_booleano === true
-                            ? (opt.v === "conforme" || opt.v === "sim")
-                            : execAnswer?.valor_booleano === false
-                            ? (opt.v === "nao_conforme" || opt.v === "nao")
-                            : execAnswer?.resposta === opt.v);
-                      const aliases = optionAliases(opt.v);
-                      const cls = isSelected
-                        ? aliases.includes("conforme")
-                          ? "bg-emerald-600 text-white border-emerald-700 opacity-100"
-                          : aliases.includes("nao_conforme")
-                          ? "bg-red-600 text-white border-red-700 opacity-100"
-                          : "bg-slate-600 text-white border-slate-700 opacity-100"
-                        : "border-muted bg-background text-muted-foreground opacity-40";
+                      const marcado = !!execAnswerStatus && optStatus === execAnswerStatus;
+
+                      const cls = marcado
+                        ? optStatus === "conforme"
+                          ? "bg-emerald-600 border-emerald-700 text-white shadow-sm ring-2 ring-emerald-300 opacity-100"
+                          : optStatus === "nao_conforme"
+                            ? "bg-red-600 border-red-700 text-white shadow-sm ring-2 ring-red-300 opacity-100"
+                            : "bg-slate-700 border-slate-800 text-white shadow-sm ring-2 ring-slate-300 opacity-100"
+                        : "bg-background border-border text-muted-foreground opacity-25";
+
                       return (
-                        <div key={opt.v}
-                          className={`flex-1 text-xs px-2 py-2 rounded border text-center font-medium transition-none ${cls}`}>
-                          {isSelected && "✓ "}{opt.label}
+                        <div
+                          key={opt.v}
+                          className={`flex-1 text-xs px-2 py-2 rounded border text-center font-semibold transition-none ${cls}`}
+                        >
+                          {marcado ? "✓ " : ""}
+                          {opt.label}
                         </div>
                       );
                     })}
                   </div>
+
                   <div className="text-[11px] font-medium text-muted-foreground">
                     Resposta do executor:
-                    <span className="ml-1 text-foreground">
-                      {execAnswerStatus === "conforme" ? "Conforme"
-                        : execAnswerStatus === "nao_conforme" ? "Não Conforme"
-                        : execAnswerStatus === "na" ? "N/A"
-                        : (getAnswerValue(execAnswer) ?? "Sem resposta")}
+                    <span className={`ml-1 font-bold ${
+                      execAnswerStatus === "conforme"
+                        ? "text-emerald-700"
+                        : execAnswerStatus === "nao_conforme"
+                          ? "text-red-700"
+                          : execAnswerStatus === "na"
+                            ? "text-slate-800"
+                            : "text-muted-foreground"
+                    }`}>
+                      {execAnswerStatus === "conforme"
+                        ? "Conforme"
+                        : execAnswerStatus === "nao_conforme"
+                          ? "Não Conforme"
+                          : execAnswerStatus === "na"
+                            ? "N/A"
+                            : "Sem resposta"}
                     </span>
                   </div>
                   {/* Observação do executor */}
