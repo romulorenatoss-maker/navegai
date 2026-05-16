@@ -1667,6 +1667,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "operational_assignments_setor_aprovador_id_fkey"
+            columns: ["setor_aprovador_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "operational_assignments_setor_auditor_id_fkey"
             columns: ["setor_auditor_id"]
             isOneToOne: false
